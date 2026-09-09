@@ -26,6 +26,19 @@ import com.luc4n3x.levyra.ui.artwork.ArtworkPreviewOverlay
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.livingArtworkColors
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareCard
+import com.luc4n3x.levyra.ui.lyrics.KARAOKE_VISUAL_LEAD_MS
+import com.luc4n3x.levyra.ui.lyrics.LYRICS_INSTRUMENTAL_DOT_COUNT
+import com.luc4n3x.levyra.ui.lyrics.LyricsInstrumentalGap
+import com.luc4n3x.levyra.ui.lyrics.LyricsPlaybackClock
+import com.luc4n3x.levyra.ui.lyrics.TimedLyricText
+import com.luc4n3x.levyra.ui.lyrics.activeLyricsInstrumentalGap
+import com.luc4n3x.levyra.ui.lyrics.adaptiveLyricFontSizeSp
+import com.luc4n3x.levyra.ui.lyrics.buildTimedLyricText
+import com.luc4n3x.levyra.ui.lyrics.karaokeCharacterProgress
+import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalDotIntensity
+import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
+import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
+import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.player.*
@@ -74,6 +87,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.core.Easing
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
@@ -5007,8 +5022,47 @@ private fun LyricsOverlay(
             if (line.translated.isNotBlank()) append("\n").append(line.translated)
         }
     }
-    val effectivePositionMs = (state.positionMs - lyricsOffsetMs).coerceAtLeast(0L)
-    val activeIndex = if (state.lyricsSynced) activeLyricIndex(effectivePositionMs, visibleLyrics) else -1
+    val syncedLyrics = state.lyricsSynced
+    val lyricsClock = rememberLyricsPlaybackClock(
+        trackKey = track?.id.orEmpty(),
+        reportedPositionMs = state.positionMs,
+        isPlaying = state.isPlaying,
+        speed = state.audioSettings.playbackSpeed,
+        smoothingEnabled = syncedLyrics && lyricsAnimationsEnabled
+    )
+    val currentLyricsOffsetMs by rememberUpdatedState(lyricsOffsetMs)
+    val lyricsPositionProvider: () -> Long = remember(lyricsClock) {
+        { (lyricsClock.positionMs - currentLyricsOffsetMs).coerceAtLeast(0L) }
+    }
+    val backgroundLineIndices = remember(visibleLyrics) {
+        visibleLyrics.withIndex()
+            .filter { (_, line) -> line.role == LyricVocalRole.BACKGROUND }
+            .map { (index, _) -> index }
+    }
+    val activeIndex = remember(visibleLyrics, syncedLyrics, lyricsPositionProvider) {
+        derivedStateOf {
+            if (syncedLyrics) activeLyricIndex(lyricsPositionProvider(), visibleLyrics) else -1
+        }
+    }.value
+    val backgroundActiveIndex = remember(visibleLyrics, backgroundLineIndices, syncedLyrics, lyricsPositionProvider) {
+        derivedStateOf {
+            if (!syncedLyrics || backgroundLineIndices.isEmpty()) {
+                -1
+            } else {
+                val position = lyricsPositionProvider()
+                backgroundLineIndices.firstOrNull { index ->
+                    val line = visibleLyrics[index]
+                    position >= line.startMs && position <= line.endMs
+                } ?: -1
+            }
+        }
+    }.value
+    val instrumentalGaps = remember(visibleLyrics, syncedLyrics) {
+        lyricsInstrumentalGaps(visibleLyrics, syncedLyrics)
+    }
+    val instrumentalGap = remember(instrumentalGaps, lyricsPositionProvider) {
+        derivedStateOf { activeLyricsInstrumentalGap(lyricsPositionProvider(), instrumentalGaps) }
+    }.value
     val lyricsStartIndex = 4
     val hasRomanization = state.lyrics.any { it.romanized.isNotBlank() || it.words.any { word -> word.romanized.isNotBlank() } }
     val hasMultipleVoices = state.lyrics.any { it.role != LyricVocalRole.MAIN }
@@ -5026,9 +5080,12 @@ private fun LyricsOverlay(
         }
         mapped
     }
-    val activeSection = remember(state.lyricsSections, effectivePositionMs) {
-        state.lyricsSections.lastOrNull { section -> effectivePositionMs >= section.startMs }
-    }
+    val activeSection = remember(state.lyricsSections, lyricsPositionProvider) {
+        derivedStateOf {
+            val position = lyricsPositionProvider()
+            state.lyricsSections.lastOrNull { section -> position >= section.startMs }
+        }
+    }.value
     val chorusPhrase = state.intelligenceSummary.repeatedPhrases.firstOrNull()
     val chorusIndex = remember(visibleLyrics, chorusPhrase, state.lyricsSections) {
         val sectionStart = state.lyricsSections.firstOrNull { it.type == LyricSectionType.CHORUS }?.startMs
@@ -5057,11 +5114,13 @@ private fun LyricsOverlay(
         }
     }
 
-    LaunchedEffect(activeIndex, lyricsStartIndex, autoScrollEnabled, viewMode, visibleLyrics.size) {
-        if (activeIndex >= 0 && autoScrollEnabled) {
+    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: activeIndex
+
+    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, autoScrollEnabled, viewMode, visibleLyrics.size) {
+        if (scrollFocusIndex >= 0 && autoScrollEnabled) {
             autoScrolling = true
             runCatching {
-                val targetIndex = lyricsStartIndex + activeIndex
+                val targetIndex = lyricsStartIndex + scrollFocusIndex
                 val targetVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
                 centerLyricsItem(
                     listState = listState,
@@ -5498,18 +5557,21 @@ private fun LyricsOverlay(
                 ) { index, line ->
                     val selectionKey = lyricSelectionKey(index, line)
                     val selected = selectionKey in selectedVerseKeys
-                    val timedActive = state.lyricsSynced && (
-                        index == activeIndex ||
-                            line.role == LyricVocalRole.BACKGROUND && effectivePositionMs in line.startMs..line.endMs
-                        )
+                    val timedActive = syncedLyrics && (index == activeIndex || index == backgroundActiveIndex)
+                    val lineInstrumentalGap = instrumentalGap?.takeIf { it.nextLineIndex == index }
                     KaraokeLyricLine(
                         line = line,
-                        positionMs = effectivePositionMs,
+                        positionProvider = lyricsPositionProvider,
+                        instrumentalGap = lineInstrumentalGap,
                         isActive = timedActive,
                         isPrimaryActive = index == activeIndex,
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
-                        distanceFromActive = if (activeIndex >= 0) kotlin.math.abs(index - activeIndex) else 0,
+                        distanceFromActive = when {
+                            lineInstrumentalGap != null -> 0
+                            activeIndex >= 0 -> kotlin.math.abs(index - activeIndex)
+                            else -> 0
+                        },
                         focusMode = lyricsFocusMode,
                         blurEnabled = lyricsAnimationsEnabled,
                         sectionLabel = sectionStarts[index]?.let { lyricSectionLabel(strings, it) },
@@ -5810,7 +5872,8 @@ private fun LyricsControlChip(
 @Composable
 private fun KaraokeLyricLine(
     line: LyricLine,
-    positionMs: Long,
+    positionProvider: () -> Long,
+    instrumentalGap: LyricsInstrumentalGap?,
     isActive: Boolean,
     isPrimaryActive: Boolean,
     synced: Boolean,
@@ -5875,16 +5938,33 @@ private fun KaraokeLyricLine(
         animationSpec = tween(durationMillis = 160),
         label = "lyrics-line-blur"
     )
-    val mainFontSize = when {
-        compact && isPrimaryActive -> 22.sp
-        compact -> 17.sp
-        cinema && isPrimaryActive -> 29.sp
-        cinema -> 24.sp
-        isPrimaryActive -> 26.sp
-        else -> 21.sp
+    val baseFontSizeSp = when {
+        compact && isPrimaryActive -> 22f
+        compact -> 17f
+        cinema && isPrimaryActive -> 29f
+        cinema -> 24f
+        isPrimaryActive -> 26f
+        else -> 21f
+    } * roleScale
+    val configuration = LocalConfiguration.current
+    val fontScale = LocalDensity.current.fontScale
+    val resolvedFontSizeSp = remember(
+        baseFontSizeSp,
+        line.text,
+        configuration.screenWidthDp,
+        configuration.screenHeightDp,
+        fontScale
+    ) {
+        adaptiveLyricFontSizeSp(
+            baseSizeSp = baseFontSizeSp,
+            characterCount = line.text.length,
+            availableWidthDp = (configuration.screenWidthDp - LYRICS_HORIZONTAL_GUTTER_DP).toFloat(),
+            availableHeightDp = configuration.screenHeightDp.toFloat(),
+            fontScale = fontScale
+        )
     }
-    val resolvedFontSize = mainFontSize * roleScale
-    val lineHeight = resolvedFontSize * if (compact) 1.14f else 1.18f
+    val resolvedFontSize = resolvedFontSizeSp.sp
+    val lineHeight = LevyraTypeRhythm.lineHeight(resolvedFontSizeSp)
     val inactiveColor = when {
         isActive -> Color.White.copy(alpha = 0.76f)
         synced -> Color.White.copy(alpha = when {
@@ -5956,10 +6036,19 @@ private fun KaraokeLyricLine(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+        if (instrumentalGap != null) {
+            LyricsInstrumentalPulse(
+                gap = instrumentalGap,
+                positionProvider = positionProvider,
+                accent = accentEnd,
+                compact = compact,
+                alignment = alignment
+            )
+        }
         if (line.words.isNotEmpty() && synced) {
             KaraokeWordTimedText(
                 words = line.words,
-                positionMs = positionMs,
+                positionProvider = positionProvider,
                 isActive = isActive,
                 fontSize = resolvedFontSize,
                 lineHeight = lineHeight,
@@ -6015,9 +6104,45 @@ private fun KaraokeLyricLine(
 }
 
 @Composable
+private fun LyricsInstrumentalPulse(
+    gap: LyricsInstrumentalGap,
+    positionProvider: () -> Long,
+    accent: Color,
+    compact: Boolean,
+    alignment: Alignment.Horizontal
+) {
+    val dotSize = if (compact) 7.dp else 9.dp
+    val spacing = if (compact) 5.dp else 7.dp
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = if (compact) 4.dp else 8.dp)
+            .clearAndSetSemantics { },
+        horizontalArrangement = Arrangement.spacedBy(spacing, alignment),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(LYRICS_INSTRUMENTAL_DOT_COUNT) { index ->
+            Box(
+                modifier = Modifier
+                    .size(dotSize)
+                    .drawBehind {
+                        val progress = lyricsInstrumentalProgress(positionProvider(), gap)
+                        val intensity = lyricsInstrumentalDotIntensity(progress, index)
+                        drawCircle(
+                            color = accent,
+                            radius = size.minDimension / 2f * (0.55f + 0.45f * intensity),
+                            alpha = 0.30f + 0.60f * intensity
+                        )
+                    }
+            )
+        }
+    }
+}
+
+@Composable
 private fun KaraokeWordTimedText(
     words: List<com.luc4n3x.levyra.domain.LyricWord>,
-    positionMs: Long,
+    positionProvider: () -> Long,
     isActive: Boolean,
     fontSize: TextUnit,
     lineHeight: TextUnit,
@@ -6030,37 +6155,7 @@ private fun KaraokeWordTimedText(
 ) {
     val timedText = remember(words) { buildTimedLyricText(words) }
     val karaokeEasing = remember { CubicBezierEasing(0.18f, 0f, 0.20f, 1f) }
-    val targetCharacterProgress = remember(timedText, positionMs, isActive) {
-        if (!isActive || timedText.text.isEmpty()) {
-            0f
-        } else {
-            val visualPositionMs = positionMs + 55L
-            var filledCharacters = 0f
-            timedText.words.forEach { timedWord ->
-                when {
-                    visualPositionMs >= timedWord.endMs -> {
-                        filledCharacters = maxOf(filledCharacters, timedWord.startIndex + timedWord.length.toFloat())
-                    }
-                    visualPositionMs > timedWord.startMs -> {
-                        val raw = (visualPositionMs - timedWord.startMs).toFloat() /
-                            (timedWord.endMs - timedWord.startMs).coerceAtLeast(1L).toFloat()
-                        val eased = karaokeEasing.transform(raw.coerceIn(0f, 1f))
-                        filledCharacters = maxOf(filledCharacters, timedWord.startIndex + timedWord.length * eased)
-                    }
-                }
-            }
-            filledCharacters.coerceIn(0f, timedText.text.length.toFloat())
-        }
-    }
-    val characterProgress by animateFloatAsState(
-        targetValue = targetCharacterProgress,
-        animationSpec = tween(durationMillis = 65, easing = LinearEasing),
-        label = "karaoke-word-progress"
-    )
-    val visualPositionMs = positionMs + 55L
-    val fillColor = remember(words, visualPositionMs, activeColor, completedColor) {
-        if (words.any { visualPositionMs in it.startMs until it.endMs }) activeColor else completedColor
-    }
+    val clipPath = remember { Path() }
     val contentAlignment = when (textAlign) {
         TextAlign.Center -> Alignment.Center
         TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
@@ -6085,10 +6180,10 @@ private fun KaraokeWordTimedText(
                 onTextLayout = { textLayoutResult = it },
                 modifier = Modifier.wrapContentWidth()
             )
-            if (isActive && characterProgress > 0f) {
+            if (isActive) {
                 Text(
                     text = timedText.text,
-                    color = fillColor,
+                    color = if (activeColor == completedColor) completedColor else activeColor,
                     fontSize = fontSize,
                     lineHeight = lineHeight,
                     fontWeight = fontWeight,
@@ -6097,7 +6192,14 @@ private fun KaraokeWordTimedText(
                         .matchParentSize()
                         .drawWithContent {
                             val layoutResult = textLayoutResult ?: return@drawWithContent
+                            val characterProgress = karaokeCharacterProgress(
+                                timedText = timedText,
+                                positionMs = positionProvider() + KARAOKE_VISUAL_LEAD_MS,
+                                easing = karaokeEasing
+                            )
+                            if (characterProgress <= 0f) return@drawWithContent
                             val path = buildKaraokeGlyphPath(
+                                path = clipPath,
                                 layoutResult = layoutResult,
                                 textLength = timedText.text.length,
                                 characterProgress = characterProgress
@@ -6112,81 +6214,68 @@ private fun KaraokeWordTimedText(
     }
 }
 
+private const val INLINE_LYRICS_AUTOSCROLL_RESUME_MS = 3_500L
+private const val LYRICS_HORIZONTAL_GUTTER_DP = 48
+
 private fun buildKaraokeGlyphPath(
+    path: Path,
     layoutResult: TextLayoutResult,
     textLength: Int,
     characterProgress: Float
 ): Path {
-    val path = Path()
+    path.reset()
     if (textLength == 0 || characterProgress <= 0f) return path
     val boundedProgress = characterProgress.coerceIn(0f, textLength.toFloat())
     val completedCharacters = boundedProgress.toInt().coerceIn(0, textLength)
-    for (index in 0 until completedCharacters) {
-        val bounds = layoutResult.getBoundingBox(index)
-        if (bounds.width > 0f && bounds.height > 0f) path.addRect(bounds)
+
+    val activeLine = if (completedCharacters < textLength) {
+        layoutResult.getLineForOffset(completedCharacters)
+    } else {
+        layoutResult.lineCount - 1
     }
-    if (completedCharacters < textLength) {
+
+    for (line in 0 until activeLine) {
+        val left = layoutResult.getLineLeft(line)
+        val right = layoutResult.getLineRight(line)
+        val top = layoutResult.getLineTop(line)
+        val bottom = layoutResult.getLineBottom(line)
+        path.addRectangle(left, top, right, bottom)
+    }
+
+    val top = layoutResult.getLineTop(activeLine)
+    val bottom = layoutResult.getLineBottom(activeLine)
+    val isRtl = layoutResult.getParagraphDirection(layoutResult.getLineStart(activeLine)) == ResolvedTextDirection.Rtl
+    val startX = if (isRtl) layoutResult.getLineRight(activeLine) else layoutResult.getLineLeft(activeLine)
+
+    if (completedCharacters >= textLength) {
+        val endX = if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
+        path.addRectangle(minOf(startX, endX), top, maxOf(startX, endX), bottom)
+    } else {
         val fraction = boundedProgress - completedCharacters
-        if (fraction > 0f) {
-            val bounds = layoutResult.getBoundingBox(completedCharacters)
-            if (bounds.width > 0f && bounds.height > 0f) {
-                val partialBounds = if (layoutResult.getBidiRunDirection(completedCharacters) == ResolvedTextDirection.Rtl) {
-                    Rect(
-                        left = bounds.right - bounds.width * fraction,
-                        top = bounds.top,
-                        right = bounds.right,
-                        bottom = bounds.bottom
-                    )
-                } else {
-                    Rect(
-                        left = bounds.left,
-                        top = bounds.top,
-                        right = bounds.left + bounds.width * fraction,
-                        bottom = bounds.bottom
-                    )
-                }
-                path.addRect(partialBounds)
-            }
+        val charStart = layoutResult.getHorizontalPosition(completedCharacters, usePrimaryDirection = true)
+        val nextOffset = (completedCharacters + 1).coerceAtMost(textLength)
+        val charEnd = if (
+            nextOffset < textLength && layoutResult.getLineForOffset(nextOffset) != activeLine
+        ) {
+            if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
+        } else {
+            layoutResult.getHorizontalPosition(nextOffset, usePrimaryDirection = true)
         }
+        val currentX = charStart + (charEnd - charStart) * fraction
+        path.addRectangle(minOf(startX, currentX), top, maxOf(startX, currentX), bottom)
     }
     return path
 }
 
-private fun buildTimedLyricText(words: List<com.luc4n3x.levyra.domain.LyricWord>): TimedLyricText {
-    val text = StringBuilder()
-    val timedWords = ArrayList<TimedLyricWord>(words.size)
-    words.forEach { word ->
-        val value = word.text.trim()
-        if (value.isNotBlank()) {
-            if (text.isNotEmpty() && !value.first().isPunctuationWithoutLeadingSpace()) {
-                text.append(' ')
-            }
-            val startIndex = text.length
-            text.append(value)
-            timedWords += TimedLyricWord(
-                startIndex = startIndex,
-                length = value.length,
-                startMs = word.startMs,
-                endMs = word.endMs.coerceAtLeast(word.startMs + 1L)
-            )
-        }
-    }
-    return TimedLyricText(text.toString(), timedWords)
+private fun Path.addRectangle(left: Float, top: Float, right: Float, bottom: Float) {
+    if (right <= left || bottom <= top) return
+    moveTo(left, top)
+    lineTo(right, top)
+    lineTo(right, bottom)
+    lineTo(left, bottom)
+    close()
 }
 
-private data class TimedLyricText(
-    val text: String,
-    val words: List<TimedLyricWord>
-)
-
-private data class TimedLyricWord(
-    val startIndex: Int,
-    val length: Int,
-    val startMs: Long,
-    val endMs: Long
-)
-
-private fun Char.isPunctuationWithoutLeadingSpace(): Boolean = this in charArrayOf(',', '.', ';', ':', '!', '?', ')', ']', '}', '’', '\'', '…')
 
 private fun activeLyricIndex(positionMs: Long, lines: List<LyricLine>): Int {
     if (lines.isEmpty()) return -1
@@ -14023,11 +14112,24 @@ private fun PlayerInlineLyricsSection(
 
         lyrics.isNotEmpty() -> {
             val listState = rememberLazyListState()
-            val activeIndex = lyrics.indexOfFirst { positionMs in it.startMs..it.endMs }
+            val activeIndex = remember(lyrics, positionMs) { activeLyricIndex(positionMs, lyrics) }
+            var inlineAutoScroll by remember(trackId) { mutableStateOf(true) }
+            var inlineAutoScrolling by remember(trackId) { mutableStateOf(false) }
 
-            LaunchedEffect(activeIndex) {
-                if (activeIndex >= 0) {
-                    listState.animateScrollToItem(maxOf(0, activeIndex - 1))
+            LaunchedEffect(listState.isScrollInProgress, inlineAutoScrolling) {
+                if (listState.isScrollInProgress && !inlineAutoScrolling) {
+                    inlineAutoScroll = false
+                } else if (!listState.isScrollInProgress && !inlineAutoScrolling && !inlineAutoScroll) {
+                    delay(INLINE_LYRICS_AUTOSCROLL_RESUME_MS)
+                    inlineAutoScroll = true
+                }
+            }
+
+            LaunchedEffect(activeIndex, inlineAutoScroll) {
+                if (activeIndex >= 0 && inlineAutoScroll) {
+                    inlineAutoScrolling = true
+                    runCatching { listState.animateScrollToItem(maxOf(0, activeIndex - 1)) }
+                    inlineAutoScrolling = false
                 }
             }
 
@@ -14045,7 +14147,10 @@ private fun PlayerInlineLyricsSection(
                     contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 52.dp, bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    itemsIndexed(lyrics) { index, line ->
+                    itemsIndexed(
+                        items = lyrics,
+                        key = { index, line -> "${line.startMs}-${line.role.name}-$index" }
+                    ) { index, line ->
                         val isActive = index == activeIndex
                         Text(
                             text = line.text,

@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.ui.library
 
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import java.text.Normalizer
@@ -19,14 +21,6 @@ internal enum class LibraryCategory {
 internal enum class LibraryLayout {
     List,
     Grid
-}
-
-internal enum class LibrarySort {
-    Recent,
-    Title,
-    Artist,
-    Album,
-    Duration
 }
 
 internal data class LibraryAlbum(
@@ -63,10 +57,17 @@ internal data class LibraryCatalog(
     val artists: List<LibraryArtist>,
     val mostPlayed: List<Track>,
     val recent: List<Track>,
-    val offlineItems: List<LibraryOfflineItem>
+    val offlineItems: List<LibraryOfflineItem>,
+    val trackRecency: Map<String, Long> = emptyMap()
 ) {
     val offlineTracks: List<Track>
         get() = offlineItems.map { it.track }
+
+    fun recencyOf(track: Track): Long {
+        val byKey = trackRecency[libraryTrackKey(track)] ?: 0L
+        val byId = if (track.id.isNotBlank()) trackRecency["id:${track.id}"] ?: 0L else 0L
+        return maxOf(byKey, byId)
+    }
 }
 
 internal fun buildLibraryCatalog(
@@ -75,7 +76,8 @@ internal fun buildLibraryCatalog(
     downloads: List<DownloadedTrack>,
     recentListens: List<Track>,
     followedArtists: List<FollowedArtist>,
-    mostPlayedTracks: List<Track> = emptyList()
+    mostPlayedTracks: List<Track> = emptyList(),
+    favoriteTimestamps: Map<String, Long> = emptyMap()
 ): LibraryCatalog {
     val knownTracks = sequenceOf(
         favorites.asSequence(),
@@ -105,6 +107,50 @@ internal fun buildLibraryCatalog(
     val allTracks = (favorites + offlineItems.map { it.track } + playlists.flatMap { it.tracks })
         .filter(::isUsableLibraryTrack)
         .distinctBy(::libraryTrackKey)
+
+    val trackRecency = mutableMapOf<String, Long>()
+
+    fun recordRecency(track: Track, timestamp: Long) {
+        if (timestamp <= 0L) return
+        val key = libraryTrackKey(track)
+        if (timestamp > (trackRecency[key] ?: 0L)) {
+            trackRecency[key] = timestamp
+        }
+        if (track.id.isNotBlank()) {
+            val idKey = "id:${track.id}"
+            if (timestamp > (trackRecency[idKey] ?: 0L)) {
+                trackRecency[idKey] = timestamp
+            }
+        }
+    }
+
+    favorites.forEach { fav ->
+        val ts = favoriteTimestamps[fav.id] ?: 0L
+        if (ts > 0L) recordRecency(fav, ts)
+    }
+
+    downloads.forEach { dl ->
+        if (dl.savedAt > 0L) {
+            val dlTrack = knownById[dl.trackId] ?: knownTracks.firstOrNull { track ->
+                libraryDownloadForTrack(track, listOf(dl)) != null
+            } ?: dl.toLibraryTrack()
+            recordRecency(dlTrack, dl.savedAt)
+            if (dl.trackId.isNotBlank()) {
+                val idKey = "id:${dl.trackId}"
+                if (dl.savedAt > (trackRecency[idKey] ?: 0L)) {
+                    trackRecency[idKey] = dl.savedAt
+                }
+            }
+        }
+    }
+
+    playlists.forEach { pl ->
+        if (pl.updatedAt > 0L) {
+            pl.tracks.forEach { tr ->
+                recordRecency(tr, pl.updatedAt)
+            }
+        }
+    }
 
     val albums = allTracks
         .filter { it.album.trim().isNotBlank() && !isGenericAlbumName(it.album) }
@@ -186,14 +232,17 @@ internal fun buildLibraryCatalog(
         artists = artists,
         mostPlayed = mostPlayed,
         recent = recentListens.filter(::isUsableLibraryTrack).distinctBy(::libraryTrackKey),
-        offlineItems = offlineItems
+        offlineItems = offlineItems,
+        trackRecency = trackRecency
     )
 }
 
 internal fun filterLibraryTracks(
     tracks: List<Track>,
     query: String,
-    sort: LibrarySort
+    sort: LibrarySort,
+    direction: LibrarySortDirection = sort.defaultDirection,
+    recencyProvider: ((Track) -> Long)? = null
 ): List<Track> {
     val normalizedQuery = normalizeLibraryText(query)
     val filtered = if (normalizedQuery.isBlank()) {
@@ -206,26 +255,49 @@ internal fun filterLibraryTracks(
         }
     }
     return when (sort) {
-        LibrarySort.Recent -> filtered
-        LibrarySort.Title -> filtered.sortedBy { normalizeLibraryText(it.title) }
+        LibrarySort.Recent -> {
+            if (recencyProvider != null) {
+                filtered.sortedWith(
+                    libraryValueOrder<Track>(direction) { recencyProvider(it) }
+                        .thenBy { normalizeLibraryText(it.title) }
+                        .thenBy { normalizeLibraryText(it.artist) }
+                        .thenBy { it.id }
+                )
+            } else {
+                if (direction == LibrarySort.Recent.defaultDirection) filtered else filtered.reversed()
+            }
+        }
+        LibrarySort.Title -> filtered.sortedWith(
+            libraryTextOrder<Track>(direction) { it.title }
+                .thenBy { normalizeLibraryText(it.artist) }
+                .thenBy { it.id }
+        )
         LibrarySort.Artist -> filtered.sortedWith(
-            compareBy<Track> { normalizeLibraryText(it.artist) }
+            libraryTextOrder<Track>(direction) { it.artist }
                 .thenBy { normalizeLibraryText(it.title) }
+                .thenBy { it.id }
         )
         LibrarySort.Album -> filtered.sortedWith(
-            compareBy<Track> { normalizeLibraryText(it.album) }
+            libraryTextOrder<Track>(direction) { it.album }
                 .thenBy { it.discNumber }
                 .thenBy { it.trackNumber }
                 .thenBy { normalizeLibraryText(it.title) }
+                .thenBy { it.id }
         )
-        LibrarySort.Duration -> filtered.sortedByDescending { it.durationMs }
+        LibrarySort.Duration -> filtered.sortedWith(
+            libraryValueOrder<Track>(direction) { it.durationMs }
+                .thenBy { normalizeLibraryText(it.title) }
+                .thenBy { normalizeLibraryText(it.artist) }
+                .thenBy { it.id }
+        )
     }
 }
 
 internal fun filterLibraryPlaylists(
     playlists: List<Playlist>,
     query: String,
-    sort: LibrarySort
+    sort: LibrarySort,
+    direction: LibrarySortDirection = sort.defaultDirection
 ): List<Playlist> {
     val normalizedQuery = normalizeLibraryText(query)
     val filtered = playlists.filter { playlist ->
@@ -236,16 +308,29 @@ internal fun filterLibraryPlaylists(
             }
     }
     return when (sort) {
-        LibrarySort.Recent -> filtered.sortedByDescending { it.updatedAt }
-        LibrarySort.Title, LibrarySort.Artist, LibrarySort.Album -> filtered.sortedBy { normalizeLibraryText(it.name) }
-        LibrarySort.Duration -> filtered.sortedByDescending { playlist -> playlist.tracks.sumOf { it.durationMs } }
+        LibrarySort.Recent -> filtered.sortedWith(
+            libraryValueOrder<Playlist>(direction) { it.updatedAt }
+                .thenBy { normalizeLibraryText(it.name) }
+                .thenBy { it.id }
+        )
+        LibrarySort.Title, LibrarySort.Artist, LibrarySort.Album ->
+            filtered.sortedWith(
+                libraryTextOrder<Playlist>(direction) { it.name }
+                    .thenBy { it.id }
+            )
+        LibrarySort.Duration -> filtered.sortedWith(
+            libraryValueOrder<Playlist>(direction) { playlist -> playlist.tracks.sumOf { it.durationMs.coerceAtLeast(0L) } }
+                .thenBy { normalizeLibraryText(it.name) }
+                .thenBy { it.id }
+        )
     }
 }
 
 internal fun filterLibraryAlbums(
     albums: List<LibraryAlbum>,
     query: String,
-    sort: LibrarySort
+    sort: LibrarySort,
+    direction: LibrarySortDirection = sort.defaultDirection
 ): List<LibraryAlbum> {
     val normalizedQuery = normalizeLibraryText(query)
     val filtered = albums.filter { album ->
@@ -255,23 +340,35 @@ internal fun filterLibraryAlbums(
     }
     return when (sort) {
         LibrarySort.Recent -> filtered.sortedWith(
-            compareByDescending<LibraryAlbum> { it.year.toIntOrNull() ?: 0 }
+            libraryValueOrder<LibraryAlbum>(direction) { (it.year.toIntOrNull() ?: 0).toLong() }
                 .thenBy { normalizeLibraryText(it.title) }
+                .thenBy { normalizeLibraryText(it.artist) }
+                .thenBy { it.key }
         )
-        LibrarySort.Title -> filtered.sortedBy { normalizeLibraryText(it.title) }
+        LibrarySort.Title, LibrarySort.Album ->
+            filtered.sortedWith(
+                libraryTextOrder<LibraryAlbum>(direction) { it.title }
+                    .thenBy { normalizeLibraryText(it.artist) }
+                    .thenBy { it.key }
+            )
         LibrarySort.Artist -> filtered.sortedWith(
-            compareBy<LibraryAlbum> { normalizeLibraryText(it.artist) }
+            libraryTextOrder<LibraryAlbum>(direction) { it.artist }
                 .thenBy { normalizeLibraryText(it.title) }
+                .thenBy { it.key }
         )
-        LibrarySort.Album -> filtered.sortedBy { normalizeLibraryText(it.title) }
-        LibrarySort.Duration -> filtered.sortedByDescending { it.durationMs }
+        LibrarySort.Duration -> filtered.sortedWith(
+            libraryValueOrder<LibraryAlbum>(direction) { it.durationMs }
+                .thenBy { normalizeLibraryText(it.title) }
+                .thenBy { it.key }
+        )
     }
 }
 
 internal fun filterLibraryArtists(
     artists: List<LibraryArtist>,
     query: String,
-    sort: LibrarySort
+    sort: LibrarySort,
+    direction: LibrarySortDirection = sort.defaultDirection
 ): List<LibraryArtist> {
     val normalizedQuery = normalizeLibraryText(query)
     val filtered = artists.filter { artist ->
@@ -280,18 +377,28 @@ internal fun filterLibraryArtists(
     }
     return when (sort) {
         LibrarySort.Recent -> filtered.sortedWith(
-            compareByDescending<LibraryArtist> { it.followedAt }
+            libraryValueOrder<LibraryArtist>(direction) { it.followedAt }
                 .thenBy { normalizeLibraryText(it.name) }
+                .thenBy { it.key }
         )
-        LibrarySort.Duration -> filtered.sortedByDescending { artist -> artist.tracks.sumOf { it.durationMs } }
-        else -> filtered.sortedBy { normalizeLibraryText(it.name) }
+        LibrarySort.Duration -> filtered.sortedWith(
+            libraryValueOrder<LibraryArtist>(direction) { artist -> artist.tracks.sumOf { it.durationMs.coerceAtLeast(0L) } }
+                .thenBy { normalizeLibraryText(it.name) }
+                .thenBy { it.key }
+        )
+        LibrarySort.Title, LibrarySort.Artist, LibrarySort.Album ->
+            filtered.sortedWith(
+                libraryTextOrder<LibraryArtist>(direction) { it.name }
+                    .thenBy { it.key }
+            )
     }
 }
 
 internal fun filterLibraryOfflineItems(
     items: List<LibraryOfflineItem>,
     query: String,
-    sort: LibrarySort
+    sort: LibrarySort,
+    direction: LibrarySortDirection = sort.defaultDirection
 ): List<LibraryOfflineItem> {
     val normalizedQuery = normalizeLibraryText(query)
     val filtered = items.filter { item ->
@@ -304,17 +411,62 @@ internal fun filterLibraryOfflineItems(
         ).map(::normalizeLibraryText).any { it.contains(normalizedQuery) }
     }
     return when (sort) {
-        LibrarySort.Recent -> filtered.sortedByDescending { it.download.savedAt }
-        LibrarySort.Title -> filtered.sortedBy { normalizeLibraryText(it.track.title) }
-        LibrarySort.Artist -> filtered.sortedWith(
-            compareBy<LibraryOfflineItem> { normalizeLibraryText(it.track.artist) }
+        LibrarySort.Recent -> filtered.sortedWith(
+            libraryValueOrder<LibraryOfflineItem>(direction) { it.download.savedAt }
                 .thenBy { normalizeLibraryText(it.track.title) }
+                .thenBy { normalizeLibraryText(it.track.artist) }
+                .thenBy { it.key }
+        )
+        LibrarySort.Title -> filtered.sortedWith(
+            libraryTextOrder<LibraryOfflineItem>(direction) { it.track.title }
+                .thenBy { normalizeLibraryText(it.track.artist) }
+                .thenBy { it.key }
+        )
+        LibrarySort.Artist -> filtered.sortedWith(
+            libraryTextOrder<LibraryOfflineItem>(direction) { it.track.artist }
+                .thenBy { normalizeLibraryText(it.track.title) }
+                .thenBy { it.key }
         )
         LibrarySort.Album -> filtered.sortedWith(
-            compareBy<LibraryOfflineItem> { normalizeLibraryText(it.track.album) }
+            libraryTextOrder<LibraryOfflineItem>(direction) { it.track.album }
+                .thenBy { it.track.discNumber }
+                .thenBy { it.track.trackNumber }
                 .thenBy { normalizeLibraryText(it.track.title) }
+                .thenBy { it.key }
         )
-        LibrarySort.Duration -> filtered.sortedByDescending { it.track.durationMs }
+        LibrarySort.Duration -> filtered.sortedWith(
+            libraryValueOrder<LibraryOfflineItem>(direction) { it.track.durationMs }
+                .thenBy { normalizeLibraryText(it.track.title) }
+                .thenBy { it.key }
+        )
+    }
+}
+
+private fun <T> libraryTextOrder(
+    direction: LibrarySortDirection,
+    selector: (T) -> String
+): Comparator<T> = Comparator { first, second ->
+    val left = normalizeLibraryText(selector(first))
+    val right = normalizeLibraryText(selector(second))
+    when {
+        left.isEmpty() && right.isEmpty() -> 0
+        left.isEmpty() -> 1
+        right.isEmpty() -> -1
+        else -> direction.orient(left.compareTo(right))
+    }
+}
+
+private fun <T> libraryValueOrder(
+    direction: LibrarySortDirection,
+    selector: (T) -> Long
+): Comparator<T> = Comparator { first, second ->
+    val left = selector(first)
+    val right = selector(second)
+    when {
+        left <= 0L && right <= 0L -> 0
+        left <= 0L -> 1
+        right <= 0L -> -1
+        else -> direction.orient(left.compareTo(right))
     }
 }
 

@@ -376,6 +376,7 @@ fun LevyraNowPlaying(
             canvasQuality = state.interfaceSettings.canvasQuality,
             morphActive = morphActive,
             swipeOffset = settledSwipeOffset,
+            isVideoMode = state.isVideoMode,
             modifier = Modifier.fillMaxSize()
         )
 

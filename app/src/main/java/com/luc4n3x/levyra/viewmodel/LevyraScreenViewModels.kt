@@ -24,6 +24,8 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.LevyraMixKind
@@ -368,6 +370,11 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun removeTracksFromPlaylist(playlistId: String, tracks: List<Track>) = root.removeTracksFromPlaylist(playlistId, tracks)
     fun renamePlaylist(playlistId: String, name: String) = root.renamePlaylist(playlistId, name)
     fun setPlaylistHidden(playlistId: String, hidden: Boolean) = root.setPlaylistHidden(playlistId, hidden)
+    fun setLibrarySort(sort: LibrarySort, direction: LibrarySortDirection) {
+        val current = root.state.value.interfaceSettings
+        if (current.librarySort == sort && current.librarySortDirection == direction) return
+        root.setInterfaceSettings(current.copy(librarySort = sort, librarySortDirection = direction))
+    }
     fun createPlaylistTag(name: String, assignToPlaylistId: String? = null) =
         root.createPlaylistTag(name, assignToPlaylistId)
     fun renamePlaylistTag(tagId: String, name: String) = root.renamePlaylistTag(tagId, name)
@@ -1143,7 +1150,9 @@ internal data class LibraryProjection(
     val openPlaylist: Playlist?,
     val playlists: List<Playlist>,
     val playlistTags: List<PlaylistTag>,
-    val recentListens: List<Track>
+    val recentListens: List<Track>,
+    val librarySort: LibrarySort,
+    val librarySortDirection: LibrarySortDirection
 )
 
 internal fun libraryProjection(state: LevyraUiState): LibraryProjection = LibraryProjection(
@@ -1164,7 +1173,9 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     openPlaylist = state.openPlaylist,
     playlists = state.playlists,
     playlistTags = state.playlistTags,
-    recentListens = state.recentListens
+    recentListens = state.recentListens,
+    librarySort = state.interfaceSettings.librarySort,
+    librarySortDirection = state.interfaceSettings.librarySortDirection
 )
 
 internal data class PlayerProjection(

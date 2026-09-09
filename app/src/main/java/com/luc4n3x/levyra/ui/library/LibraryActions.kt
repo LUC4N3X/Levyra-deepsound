@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import com.luc4n3x.levyra.domain.OfflineDownloadStage
 import com.luc4n3x.levyra.domain.offlineDownloadStageOf
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.ui.components.LevyraConnectedDefaults
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.ui.components.LevyraConnectedStyle
@@ -971,6 +973,24 @@ internal fun LibrarySort.libraryLabel(strings: LevyraStrings): String = when (th
     LibrarySort.Artist -> strings.artistLabel
     LibrarySort.Album -> strings.albumPlain
     LibrarySort.Duration -> strings.timer
+}
+
+internal fun LibrarySort.directionLabel(
+    direction: LibrarySortDirection,
+    strings: LevyraStrings
+): String = when (this) {
+    LibrarySort.Recent -> when (direction) {
+        LibrarySortDirection.Descending -> strings.librarySortNewestFirst
+        LibrarySortDirection.Ascending -> strings.librarySortOldestFirst
+    }
+    LibrarySort.Duration -> when (direction) {
+        LibrarySortDirection.Descending -> strings.librarySortLongestFirst
+        LibrarySortDirection.Ascending -> strings.librarySortShortestFirst
+    }
+    LibrarySort.Title, LibrarySort.Artist, LibrarySort.Album -> when (direction) {
+        LibrarySortDirection.Ascending -> strings.librarySortAscending
+        LibrarySortDirection.Descending -> strings.librarySortDescending
+    }
 }
 
 internal fun LibraryAlbum.toAlbumHit(): AlbumHit = AlbumHit(

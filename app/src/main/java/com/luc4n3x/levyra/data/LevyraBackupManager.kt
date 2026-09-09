@@ -503,12 +503,15 @@ class LevyraBackupManager(private val context: Context) {
         followedArtistsStore.saveDurable(payload.followedArtists)
         excludedArtistsStore.replaceAll(payload.excludedArtists)
         val now = System.currentTimeMillis()
-        database.withTransaction {
-            database.favoriteTracksDao().replaceAll(payload.favorites.mapIndexed { index, track -> track.toFavoriteTrackEntity(now - index) })
-            restorePlaylists(payload.playlists)
-            restorePlaylistTags(payload.playlistTags, payload.playlists)
-            database.listenEventsDao().replaceAll(payload.history)
-            restoreQueue(payload.queueItems, payload.queueState)
+        favoritesStoreMutationMutex.withLock {
+            database.withTransaction {
+                database.favoriteTracksDao().replaceAll(payload.favorites.mapIndexed { index, track -> track.toFavoriteTrackEntity(now - index) })
+                restorePlaylists(payload.playlists)
+                restorePlaylistTags(payload.playlistTags, payload.playlists)
+                database.listenEventsDao().replaceAll(payload.history)
+                restoreQueue(payload.queueItems, payload.queueState)
+            }
+            invalidateFavoriteTimestampSnapshots()
         }
         AutomaticBackupScheduler.schedule(appContext, payload.settings.backupSettings)
     }
