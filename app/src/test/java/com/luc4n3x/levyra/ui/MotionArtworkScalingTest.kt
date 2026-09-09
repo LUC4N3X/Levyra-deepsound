@@ -46,10 +46,24 @@ class MotionArtworkScalingTest {
     }
 
     @Test
-    fun `card presentation still covers a nine by sixteen canvas`() {
+    fun `card presentation contains a nine by sixteen canvas`() {
         val fit = motionArtworkFit(720, 1280, 1f, 900, 900, MotionArtworkCardMaxZoom)
+        assertEquals(720f / 1280f, fit.scaleX, 0.0001f)
+        assertEquals(1f, fit.scaleY, 0.0001f)
+    }
+
+    @Test
+    fun `card presentation contains a sixteen by nine canvas`() {
+        val fit = motionArtworkFit(1280, 720, 1f, 900, 900, MotionArtworkCardMaxZoom)
         assertEquals(1f, fit.scaleX, 0.0001f)
-        assertEquals(1280f / 720f, fit.scaleY, 0.0001f)
+        assertEquals(720f / 1280f, fit.scaleY, 0.0001f)
+    }
+
+    @Test
+    fun `card presentation still covers a near square canvas`() {
+        val fit = motionArtworkFit(1080, 1000, 1f, 900, 900, MotionArtworkCardMaxZoom)
+        assertEquals(1080f / 1000f, fit.scaleX, 0.0001f)
+        assertEquals(1f, fit.scaleY, 0.0001f)
     }
 
     @Test
