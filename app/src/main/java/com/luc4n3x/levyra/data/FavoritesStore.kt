@@ -173,7 +173,6 @@ class FavoritesStore(context: Context) {
     private companion object {
         const val KEY = "liked_tracks"
         const val MIGRATION_COMPLETE_KEY = "liked_tracks_migrated_to_room"
-
     }
 }
 
