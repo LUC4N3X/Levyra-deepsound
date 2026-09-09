@@ -36,6 +36,14 @@ import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.ui.PlayerAmbience
 import com.luc4n3x.levyra.ui.createPlayerAmbientColorMatrix
 
+private val PlayerDarkBackdropBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFF14151B),
+        Color(0xFF0C0D11),
+        Color(0xFF060709)
+    )
+)
+
 @Composable
 internal fun PlayerBackdrop(
     mode: PlayerBackgroundMode,
@@ -51,17 +59,7 @@ internal fun PlayerBackdrop(
             Box(modifier = modifier.background(Color.Black))
         }
         PlayerBackgroundMode.Dark -> {
-            Box(
-                modifier = modifier.background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF14151B),
-                            Color(0xFF0C0D11),
-                            Color(0xFF060709)
-                        )
-                    )
-                )
-            )
+            Box(modifier = modifier.background(PlayerDarkBackdropBrush))
         }
         PlayerBackgroundMode.Blur -> {
             Box(modifier = modifier.background(Color.Black)) {
