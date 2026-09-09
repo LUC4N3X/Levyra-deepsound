@@ -28,6 +28,7 @@ private val PLAYBACK_VARIANT_MARKER = Regex(
     """\b(?:karaoke|cover|reaction|nightcore|sped\s+up|slowed|reverb|live|remix)\b""",
     RegexOption.IGNORE_CASE
 )
+private val PLAYBACK_WHITESPACE = Regex("""\s+""")
 
 internal fun isKnownMisattributedPlaybackMetadata(artist: String, title: String): Boolean =
     MisattributedPlaybackSignature(
@@ -98,8 +99,10 @@ internal fun trustedPlaybackFallbackCandidates(
         .asSequence()
         .filter { candidate -> candidate.id.isNotBlank() && candidate.title.isNotBlank() && candidate.artist.isNotBlank() }
         .filter { candidate ->
-            originalIsrc.isNotBlank() && candidate.isrc.trim().equals(originalIsrc, ignoreCase = true) ||
-                isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
+            (
+                originalIsrc.isNotBlank() &&
+                    candidate.isrc.trim().equals(originalIsrc, ignoreCase = true)
+                ) || isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
         }
         .distinctBy { candidate -> candidate.id }
         .toList()
@@ -123,10 +126,10 @@ private fun isTrustedPlaybackRecordingMatch(
 
 private fun addsDifferentPlaybackVariant(originalTitle: String, candidateTitle: String): Boolean {
     val originalVariants = PLAYBACK_VARIANT_MARKER.findAll(originalTitle.lowercase(Locale.ROOT))
-        .map { it.value.replace(Regex("\\s+"), " ") }
+        .map { it.value.replace(PLAYBACK_WHITESPACE, " ") }
         .toSet()
     val candidateVariants = PLAYBACK_VARIANT_MARKER.findAll(candidateTitle.lowercase(Locale.ROOT))
-        .map { it.value.replace(Regex("\\s+"), " ") }
+        .map { it.value.replace(PLAYBACK_WHITESPACE, " ") }
         .toSet()
     return candidateVariants.any { it !in originalVariants }
 }
