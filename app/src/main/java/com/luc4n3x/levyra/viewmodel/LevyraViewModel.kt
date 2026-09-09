@@ -3518,6 +3518,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 mergeResult.visible.flatMap { it.tracks }.distinctBy { it.id }
             }
             if (visibleTracks.isEmpty()) {
+                val unavailableMessage = LevyraStrings.forCode(languageCode).homeRemoteUnavailable
                 _state.update { current ->
                     if (current.languageCode == languageCode) {
                         current.copy(
@@ -3525,7 +3526,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
                                 HomeOfflinePolicy.homeErrorAfterRemoteFailure(
                                     deviceOffline = current.isDeviceOffline,
-                                    fallback = HOME_REMOTE_UNAVAILABLE_MESSAGE
+                                    fallback = unavailableMessage
                                 )
                             } else {
                                 current.homeError
@@ -8878,6 +8879,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ) return
 
         if (tracks.isEmpty()) {
+            val emptyMessage = LevyraStrings.forCode(languageCode).homeRemoteEmpty
             _state.update { current ->
                 if (current.languageCode != languageCode) current
                 else current.copy(
@@ -8885,7 +8887,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
                         HomeOfflinePolicy.homeErrorAfterRemoteFailure(
                             deviceOffline = current.isDeviceOffline,
-                            fallback = HOME_REMOTE_EMPTY_MESSAGE
+                            fallback = emptyMessage
                         )
                     } else {
                         current.homeError
@@ -9524,8 +9526,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28
         private const val HOME_ARTIST_SHELF_SIZE = 20
-        private const val HOME_REMOTE_UNAVAILABLE_MESSAGE = "Home non disponibile"
-        private const val HOME_REMOTE_EMPTY_MESSAGE = "Home remota vuota: prova una ricerca"
         private const val HOME_ARTIST_HISTORY_LIMIT = 72
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 72
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4

@@ -498,6 +498,8 @@ class LevyraStrings private constructor(
     val offlineHomePlaylists: String get() = value("offlineHomePlaylists")
     val offlineHomeFavorites: String get() = value("offlineHomeFavorites")
     val offlineHomeRecent: String get() = value("offlineHomeRecent")
+    val homeRemoteUnavailable: String get() = value("homeRemoteUnavailable")
+    val homeRemoteEmpty: String get() = value("homeRemoteEmpty")
     val more: String get() = value("more")
     val mixForYou: String get() = value("mixForYou")
     val genres: String get() = value("genres")

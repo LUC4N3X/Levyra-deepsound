@@ -34,6 +34,8 @@ class LevyraStringsTest {
             assertTrue(strings.offlineHomePlaylists.isNotBlank())
             assertTrue(strings.offlineHomeFavorites.isNotBlank())
             assertTrue(strings.offlineHomeRecent.isNotBlank())
+            assertTrue(strings.homeRemoteUnavailable.isNotBlank())
+            assertTrue(strings.homeRemoteEmpty.isNotBlank())
             assertTrue(strings.lessLikeThis.isNotBlank())
             assertTrue(strings.playbackDiagnostics.isNotBlank())
             assertTrue(strings.playbackDiagnosticsSubtitle.isNotBlank())
