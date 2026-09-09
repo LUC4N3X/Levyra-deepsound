@@ -23,6 +23,40 @@ enum class LevyraCanvasSource {
     }
 }
 
+enum class LibrarySort {
+    Recent,
+    Title,
+    Artist,
+    Album,
+    Duration;
+
+    val defaultDirection: LibrarySortDirection
+        get() = when (this) {
+            Recent, Duration -> LibrarySortDirection.Descending
+            Title, Artist, Album -> LibrarySortDirection.Ascending
+        }
+
+    companion object {
+        fun from(value: String): LibrarySort =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Recent
+    }
+}
+
+enum class LibrarySortDirection {
+    Ascending,
+    Descending;
+
+    val inverted: LibrarySortDirection
+        get() = if (this == Ascending) Descending else Ascending
+
+    fun orient(comparison: Int): Int = if (this == Descending) -comparison else comparison
+
+    companion object {
+        fun from(value: String, fallback: LibrarySortDirection): LibrarySortDirection =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: fallback
+    }
+}
+
 enum class PlayerVisualMode {
     Artwork,
     CanvasCard,
@@ -76,7 +110,9 @@ data class LevyraInterfaceSettings(
     val pureBlack: Boolean = false,
     val hapticFeedback: Boolean = true,
     val playerVisualMode: PlayerVisualMode = PlayerVisualMode.Artwork,
-    val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic
+    val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
+    val librarySort: LibrarySort = LibrarySort.Recent,
+    val librarySortDirection: LibrarySortDirection = LibrarySort.Recent.defaultDirection
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),

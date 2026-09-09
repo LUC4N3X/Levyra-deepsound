@@ -28,6 +28,8 @@ import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
@@ -143,6 +145,8 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_UI_HAPTIC_FEEDBACK] = normalizedInterface.hapticFeedback
             mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
             mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
+            mutable[KEY_UI_LIBRARY_SORT] = normalizedInterface.librarySort.name
+            mutable[KEY_UI_LIBRARY_SORT_DIRECTION] = normalizedInterface.librarySortDirection.name
             mutable[KEY_DOWNLOAD_WIFI_ONLY] = normalizedDownloads.wifiOnly
             mutable[KEY_DOWNLOAD_CHARGING_ONLY] = normalizedDownloads.chargingOnly
             mutable[KEY_DOWNLOAD_RESUMABLE] = normalizedDownloads.resumable
@@ -277,6 +281,8 @@ class LevyraPreferences(context: Context) {
             it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
             it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
             it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
+            it[KEY_UI_LIBRARY_SORT] = normalized.librarySort.name
+            it[KEY_UI_LIBRARY_SORT_DIRECTION] = normalized.librarySortDirection.name
         }
     }
 
@@ -609,6 +615,7 @@ class LevyraPreferences(context: Context) {
             preferences[KEY_UI_PURE_BLACK] == true -> PlayerBackgroundMode.PureBlack
             else -> PlayerBackgroundMode.Dynamic
         }
+        val librarySort = LibrarySort.from(preferences[KEY_UI_LIBRARY_SORT].orEmpty())
         return LevyraInterfaceSettings(
             compactHome = preferences[KEY_UI_COMPACT_HOME] ?: false,
             showPersonalOrbit = preferences[KEY_UI_PERSONAL_ORBIT] ?: true,
@@ -627,7 +634,12 @@ class LevyraPreferences(context: Context) {
             pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
             hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true,
             playerVisualMode = visualMode,
-            playerBackground = background
+            playerBackground = background,
+            librarySort = librarySort,
+            librarySortDirection = LibrarySortDirection.from(
+                preferences[KEY_UI_LIBRARY_SORT_DIRECTION].orEmpty(),
+                librarySort.defaultDirection
+            )
         ).normalized()
     }
 
@@ -845,6 +857,8 @@ class LevyraPreferences(context: Context) {
         val KEY_UI_ENHANCE_VIDEO_METADATA = booleanPreferencesKey("ui_enhance_video_metadata")
         val KEY_UI_PLAYER_VISUAL_MODE = stringPreferencesKey("ui_player_visual_mode")
         val KEY_UI_PLAYER_BACKGROUND = stringPreferencesKey("ui_player_background")
+        val KEY_UI_LIBRARY_SORT = stringPreferencesKey("ui_library_sort")
+        val KEY_UI_LIBRARY_SORT_DIRECTION = stringPreferencesKey("ui_library_sort_direction")
         val KEY_AMBIENT_BRIGHTNESS = floatPreferencesKey("ambient_brightness")
         val KEY_AMBIENT_AUTO_DIM = booleanPreferencesKey("ambient_auto_dim")
         val KEY_AMBIENT_AUTO_DIM_SECONDS = intPreferencesKey("ambient_auto_dim_seconds")

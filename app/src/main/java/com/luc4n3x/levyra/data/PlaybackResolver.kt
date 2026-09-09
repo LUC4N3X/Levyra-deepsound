@@ -300,7 +300,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val MAX_SABR_CANDIDATES = 2
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
-        private val youtubeSearchResultVideoIdRegex = Regex("""\\?["]videoId\\?["]\s*:\s*\\?["]($YOUTUBE_VIDEO_ID_PATTERN)\\?["]""")
+        private val youtubeSearchResultVideoIdRegex = Regex("""\\?[\"]videoId\\?[\"]\s*:\s*\\?[\"]($YOUTUBE_VIDEO_ID_PATTERN)\\?[\"]""")
 
         @Volatile
         private var instance: PlaybackResolver? = null
@@ -1688,6 +1688,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     )
             ) {
                 return track.copy(
+                    artist = canonicalPlaybackFallbackArtist(track, candidate, resolved),
                     streamUrl = resolved.streamUrl,
                     videoUrl = resolved.videoUrl.ifBlank { candidate.videoUrl },
                     thumbnailUrl = track.thumbnailUrl.ifBlank { resolved.thumbnailUrl },
@@ -1907,7 +1908,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun findAlternativeAudioCandidates(track: Track): List<Track> = withContext(Dispatchers.IO) {
         val output = LinkedHashMap<String, Track>()
-        val queries = alternativeSearchQueries(track)
+        val queries = playbackAlternativeSearchQueries(track)
         val repository = YoutubeMusicRepository(context)
         for (query in queries) {
             searchYouTubeWebCandidates(track, query)

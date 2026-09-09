@@ -50,10 +50,11 @@ internal fun PlayerVisualHost(
     canvasQuality: LevyraCanvasQuality,
     morphActive: Boolean,
     swipeOffset: Float,
+    isVideoMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive && track != null
+    val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive && track != null && !isVideoMode
     val backdropArtworkUrl = if (isImmersive) "" else artworkUrl
 
     Box(modifier = modifier) {

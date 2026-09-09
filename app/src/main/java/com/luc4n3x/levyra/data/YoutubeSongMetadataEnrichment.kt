@@ -12,10 +12,23 @@ internal fun Track.withYoutubeSongMetadata(metadata: SongMetadata?): Track {
         ?.toString()
         .orEmpty()
     val extractedDurationMs = metadata.duration?.toMillis()?.takeIf { it > 0L }
+    val extractedArtist = metadata.artist.trim()
+    val canonicalArtist = if (
+        shouldAdoptYoutubeCanonicalArtist(
+            track = this,
+            metadataTitle = metadata.title,
+            metadataArtist = extractedArtist,
+            metadataDurationMs = extractedDurationMs
+        )
+    ) {
+        extractedArtist
+    } else {
+        artist.ifBlank { extractedArtist }
+    }
 
     return copy(
         title = title.ifBlank { metadata.title },
-        artist = artist.ifBlank { metadata.artist },
+        artist = canonicalArtist,
         album = album.ifBlank { metadata.album.orEmpty() },
         durationMs = durationMs.takeIf { it > 0L } ?: extractedDurationMs ?: durationMs,
         releaseDate = releaseDate.ifBlank { extractedReleaseDate },
