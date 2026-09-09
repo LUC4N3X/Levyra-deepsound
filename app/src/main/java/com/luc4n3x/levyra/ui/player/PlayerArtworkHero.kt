@@ -65,14 +65,13 @@ internal fun PlayerArtworkHero(
     val primary = Color(track.accentStart)
     val artworkShape = RoundedCornerShape(cornerRadius)
     val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive
-    val cardScale = if (visualMode == PlayerVisualMode.CanvasCard) 1.14f else 1f
 
     Box(
         modifier = modifier
             .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Full)
             .graphicsLayer {
-                scaleX = artScale * cardScale
-                scaleY = artScale * cardScale
+                scaleX = artScale
+                scaleY = artScale
                 translationX = swipeOffset
                 translationY = artOffset.toPx()
                 alpha = if (morphActive || isImmersive) 0f else 1f
