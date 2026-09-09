@@ -13,33 +13,7 @@ object PlaybackSourceIdentity {
     private val youtubeIdPattern = Regex(YOUTUBE_VIDEO_ID_PATTERN)
     private val youtubeUrlPattern = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
 
-    fun canonicalKey(track: Track): String {
-        val isrc = track.isrc.trim().lowercase(Locale.ROOT)
-        val youtubeIdentity = youtubeIdentityToken(track)
-        if (isrc.isNotBlank()) {
-            return if (youtubeIdentity.isNotBlank()) {
-                "$CANONICAL_KEY_NAMESPACE|isrc:$isrc|$youtubeIdentity"
-            } else {
-                "$CANONICAL_KEY_NAMESPACE|isrc:$isrc"
-            }
-        }
-        val durationBucket = when {
-            track.durationMs <= 0L -> 0L
-            else -> (track.durationMs + 1_000L) / 2_000L
-        }
-        val payload = listOf(
-            normalize(track.title),
-            normalize(track.artist),
-            normalize(track.album),
-            durationBucket.toString(),
-            if (track.explicit) "explicit" else "clean",
-            track.discNumber.coerceAtLeast(0).toString(),
-            track.trackNumber.coerceAtLeast(0).toString(),
-            normalizeIdentifier(track.upc),
-            recordingDiscriminator(track)
-        ).joinToString("|")
-        return "$CANONICAL_KEY_NAMESPACE|track:${sha256(payload).take(32)}"
-    }
+    fun canonicalKey(track: Track): String = "$CANONICAL_KEY_NAMESPACE|${persistentCanonicalKey(track)}"
 
     fun sourceVideoId(track: Track): String {
         val audioId = track.audioVideoId.trim().takeIf(youtubeIdPattern::matches).orEmpty()
@@ -77,7 +51,35 @@ object PlaybackSourceIdentity {
             preferMp4Audio -> "audio-mp4"
             else -> "audio"
         }
-        return "${canonicalKey(track)}|$mode|${audioQuality.trim().lowercase(Locale.ROOT)}"
+        return "${persistentCanonicalKey(track)}|$mode|${audioQuality.trim().lowercase(Locale.ROOT)}"
+    }
+
+    private fun persistentCanonicalKey(track: Track): String {
+        val isrc = track.isrc.trim().lowercase(Locale.ROOT)
+        val youtubeIdentity = youtubeIdentityToken(track)
+        if (isrc.isNotBlank()) {
+            return if (youtubeIdentity.isNotBlank()) {
+                "isrc:$isrc|$youtubeIdentity"
+            } else {
+                "isrc:$isrc"
+            }
+        }
+        val durationBucket = when {
+            track.durationMs <= 0L -> 0L
+            else -> (track.durationMs + 1_000L) / 2_000L
+        }
+        val payload = listOf(
+            normalize(track.title),
+            normalize(track.artist),
+            normalize(track.album),
+            durationBucket.toString(),
+            if (track.explicit) "explicit" else "clean",
+            track.discNumber.coerceAtLeast(0).toString(),
+            track.trackNumber.coerceAtLeast(0).toString(),
+            normalizeIdentifier(track.upc),
+            recordingDiscriminator(track)
+        ).joinToString("|")
+        return "track:${sha256(payload).take(32)}"
     }
 
     private fun recordingDiscriminator(track: Track): String {
