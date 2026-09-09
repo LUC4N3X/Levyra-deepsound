@@ -30,7 +30,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.DoneAll
@@ -167,10 +173,12 @@ internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -
 internal fun LibraryToolbar(
     category: LibraryCategory,
     sort: LibrarySort,
+    direction: LibrarySortDirection,
     layout: LibraryLayout,
     sortExpanded: Boolean,
     onSortExpanded: (Boolean) -> Unit,
-    onSort: (LibrarySort) -> Unit,
+    onSort: (LibrarySort, LibrarySortDirection) -> Unit,
+    onToggleDirection: () -> Unit,
     onLayout: () -> Unit,
     onSelectAll: () -> Unit
 ) {
@@ -180,47 +188,83 @@ internal fun LibraryToolbar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Box {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box {
+                Surface(
+                    color = LevyraGlass,
+                    shape = LibraryPillShape,
+                    modifier = Modifier
+                        .height(38.dp)
+                        .clip(LibraryPillShape)
+                        .clickable(onClick = { onSortExpanded(true) })
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxHeight().padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.Sort,
+                            contentDescription = null,
+                            tint = LevyraCyan,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = sort.libraryLabel(strings),
+                            color = LevyraText,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                DropdownMenu(expanded = sortExpanded, onDismissRequest = { onSortExpanded(false) }) {
+                    LibrarySort.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.libraryLabel(strings)) },
+                            leadingIcon = if (option == sort) {
+                                { Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan) }
+                            } else null,
+                            onClick = {
+                                if (option == sort) {
+                                    onSort(option, direction.inverted)
+                                } else {
+                                    onSort(option, option.defaultDirection)
+                                }
+                                onSortExpanded(false)
+                            }
+                        )
+                    }
+                }
+            }
             Surface(
                 color = LevyraGlass,
                 shape = LibraryPillShape,
                 modifier = Modifier
                     .height(38.dp)
                     .clip(LibraryPillShape)
-                    .clickable(onClick = { onSortExpanded(true) })
+                    .clickable(onClick = onToggleDirection)
+                    .semantics {
+                        contentDescription = "${strings.librarySortDirection}: ${sort.directionLabel(direction, strings)}"
+                    }
             ) {
-                Row(
-                    modifier = Modifier.fillMaxHeight().padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                Box(
+                    modifier = Modifier.size(38.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Rounded.Sort,
+                        imageVector = if (direction == LibrarySortDirection.Ascending) {
+                            Icons.Rounded.ArrowUpward
+                        } else {
+                            Icons.Rounded.ArrowDownward
+                        },
                         contentDescription = null,
                         tint = LevyraCyan,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = sort.libraryLabel(strings),
-                        color = LevyraText,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            DropdownMenu(expanded = sortExpanded, onDismissRequest = { onSortExpanded(false) }) {
-                LibrarySort.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option.libraryLabel(strings)) },
-                        leadingIcon = if (option == sort) {
-                            { Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan) }
-                        } else null,
-                        onClick = {
-                            onSort(option)
-                            onSortExpanded(false)
-                        }
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

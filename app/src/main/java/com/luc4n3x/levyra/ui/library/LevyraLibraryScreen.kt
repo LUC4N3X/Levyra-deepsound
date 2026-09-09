@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.offlineDownloadStageOf
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.filterByTagIds
 import com.luc4n3x.levyra.domain.hiddenInLibrary
@@ -90,6 +92,7 @@ internal fun LevyraLibraryScreen(
     val strings = LocalLevyraStrings.current
     val catalog = remember(
         state.favorites,
+        state.favoriteTimestamps,
         state.playlists,
         state.downloads,
         state.recentListens,
@@ -102,7 +105,8 @@ internal fun LevyraLibraryScreen(
             downloads = state.downloads,
             recentListens = state.recentListens,
             followedArtists = state.followedArtists,
-            mostPlayedTracks = state.mostPlayedTracks
+            mostPlayedTracks = state.mostPlayedTracks,
+            favoriteTimestamps = state.favoriteTimestamps
         )
     }
 
@@ -110,8 +114,8 @@ internal fun LevyraLibraryScreen(
     val category = LibraryCategory.entries.firstOrNull { it.name == categoryName } ?: LibraryCategory.Overview
     var layoutName by rememberSaveable { mutableStateOf(LibraryLayout.List.name) }
     val layout = LibraryLayout.entries.firstOrNull { it.name == layoutName } ?: LibraryLayout.List
-    var sortName by rememberSaveable { mutableStateOf(LibrarySort.Recent.name) }
-    val sort = LibrarySort.entries.firstOrNull { it.name == sortName } ?: LibrarySort.Recent
+    val sort = state.interfaceSettings.librarySort
+    val direction = state.interfaceSettings.librarySortDirection
     var query by rememberSaveable { mutableStateOf("") }
     var selectedKeys by remember { mutableStateOf(emptySet<String>()) }
     var sortExpanded by remember { mutableStateOf(false) }
@@ -156,20 +160,26 @@ internal fun LevyraLibraryScreen(
         val scoped = if (showHiddenPlaylists) state.playlists.hiddenInLibrary() else state.playlists.visibleInLibrary()
         scoped.filterByTagIds(selectedTagIds)
     }
-    val visiblePlaylists = remember(scopedPlaylists, query, sort) {
-        filterLibraryPlaylists(scopedPlaylists, query, sort)
+    val visiblePlaylists = remember(scopedPlaylists, query, sort, direction) {
+        filterLibraryPlaylists(scopedPlaylists, query, sort, direction)
     }
-    val visibleAlbums = remember(catalog.albums, query, sort) {
-        filterLibraryAlbums(catalog.albums, query, sort)
+    val visibleAlbums = remember(catalog.albums, query, sort, direction) {
+        filterLibraryAlbums(catalog.albums, query, sort, direction)
     }
-    val visibleArtists = remember(catalog.artists, query, sort) {
-        filterLibraryArtists(catalog.artists, query, sort)
+    val visibleArtists = remember(catalog.artists, query, sort, direction) {
+        filterLibraryArtists(catalog.artists, query, sort, direction)
     }
-    val visibleTracks = remember(catalog.tracks, query, sort) {
-        filterLibraryTracks(catalog.tracks, query, sort)
+    val visibleTracks = remember(catalog.tracks, query, sort, direction, catalog.trackRecency) {
+        filterLibraryTracks(
+            tracks = catalog.tracks,
+            query = query,
+            sort = sort,
+            direction = direction,
+            recencyProvider = catalog::recencyOf
+        )
     }
-    val visibleOffline = remember(catalog.offlineItems, query, sort) {
-        filterLibraryOfflineItems(catalog.offlineItems, query, sort)
+    val visibleOffline = remember(catalog.offlineItems, query, sort, direction) {
+        filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
     }
 
     val selectedTracks = remember(category, selectedKeys, catalog, state.playlists) {
@@ -292,10 +302,12 @@ internal fun LevyraLibraryScreen(
                     LibraryToolbar(
                         category = category,
                         sort = sort,
+                        direction = direction,
                         layout = layout,
                         sortExpanded = sortExpanded,
                         onSortExpanded = { sortExpanded = it },
-                        onSort = { sortName = it.name },
+                        onSort = { nextSort, nextDirection -> viewModel.setLibrarySort(nextSort, nextDirection) },
+                        onToggleDirection = { viewModel.setLibrarySort(sort, direction.inverted) },
                         onLayout = {
                             layoutName = if (layout == LibraryLayout.List) LibraryLayout.Grid.name else LibraryLayout.List.name
                         },
