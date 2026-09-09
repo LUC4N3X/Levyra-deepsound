@@ -65,7 +65,7 @@ internal fun PlayerArtworkHero(
     val primary = Color(track.accentStart)
     val artworkShape = RoundedCornerShape(cornerRadius)
     val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive
-    val cardScale = if (visualMode == PlayerVisualMode.CanvasCard) 1.06f else 1f
+    val cardScale = if (visualMode == PlayerVisualMode.CanvasCard) 1.14f else 1f
 
     Box(
         modifier = modifier
