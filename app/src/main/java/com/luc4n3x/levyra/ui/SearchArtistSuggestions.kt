@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,17 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
+private const val SEARCH_ARTIST_SUGGESTION_LIMIT = 7
+private val SearchArtistSuggestionShape = RoundedCornerShape(18.dp)
+private val SearchArtistSkeletonBarShape = RoundedCornerShape(99.dp)
+
+internal fun selectSearchArtistSuggestions(artists: List<ArtistHit>): List<ArtistHit> = artists
+    .asSequence()
+    .filter { it.name.isNotBlank() && it.thumbnailUrl.isNotBlank() }
+    .distinctBy { artist -> artist.browseId.ifBlank { artist.name.trim().lowercase() } }
+    .take(SEARCH_ARTIST_SUGGESTION_LIMIT)
+    .toList()
+
 @Composable
 internal fun SearchArtistSuggestions(
     title: String,
@@ -45,12 +57,8 @@ internal fun SearchArtistSuggestions(
     onArtistClick: (ArtistHit) -> Unit,
     onFallbackClick: (String) -> Unit,
 ) {
-    val visibleArtists = artists
-        .asSequence()
-        .filter { it.name.isNotBlank() && it.thumbnailUrl.isNotBlank() }
-        .distinctBy { artist -> artist.browseId.ifBlank { artist.name.trim().lowercase() } }
-        .take(7)
-        .toList()
+    val visibleArtists = remember(artists) { selectSearchArtistSuggestions(artists) }
+    val visibleFallbackNames = remember(fallbackNames) { fallbackNames.take(SEARCH_ARTIST_SUGGESTION_LIMIT) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -81,7 +89,7 @@ internal fun SearchArtistSuggestions(
             }
 
             else -> {
-                fallbackNames.take(7).forEach { name ->
+                visibleFallbackNames.forEach { name ->
                     SearchArtistFallbackRow(
                         name = name,
                         onClick = { onFallbackClick(name) },
@@ -97,7 +105,6 @@ private fun SearchArtistSuggestionRow(
     artist: ArtistHit,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(18.dp)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -107,7 +114,7 @@ private fun SearchArtistSuggestionRow(
             width = 1.dp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f),
         ),
-        shape = shape,
+        shape = SearchArtistSuggestionShape,
         shadowElevation = 1.dp,
     ) {
         Row(
@@ -180,14 +187,13 @@ private fun SearchArtistFallbackRow(
     name: String,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(18.dp)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
-        shape = shape,
+        shape = SearchArtistSuggestionShape,
     ) {
         Row(
             modifier = Modifier
@@ -234,7 +240,7 @@ private fun SearchArtistSuggestionSkeleton() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f),
-        shape = RoundedCornerShape(18.dp),
+        shape = SearchArtistSuggestionShape,
     ) {
         Row(
             modifier = Modifier
@@ -257,14 +263,14 @@ private fun SearchArtistSuggestionSkeleton() {
                     modifier = Modifier
                         .fillMaxWidth(0.46f)
                         .height(15.dp)
-                        .clip(RoundedCornerShape(99.dp))
+                        .clip(SearchArtistSkeletonBarShape)
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.28f)
                         .height(10.dp)
-                        .clip(RoundedCornerShape(99.dp))
+                        .clip(SearchArtistSkeletonBarShape)
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
                 )
             }
