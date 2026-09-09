@@ -801,7 +801,7 @@ private fun HomeOfflinePlaylistRow(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = playlist.size.toString() + " " + strings.songsPlain,
+                            text = strings.formatTrackCount(playlist.size),
                             color = LevyraMuted,
                             fontSize = HOME_ALBUM_CAPTION_SUBTITLE_SIZE,
                             lineHeight = LevyraTypeRhythm.lineHeight(HOME_ALBUM_CAPTION_SUBTITLE_SIZE),
@@ -6998,7 +6998,8 @@ private fun HomeScreen(
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
                                 isResolving = state.isResolving,
-                                onPlay = { track -> viewModel.playFrom(offlineContent.downloads, track) }
+                                onPlay = { track -> viewModel.playFrom(offlineContent.downloads, track) },
+                                onTrackActions = onTrackActions
                             )
                         }
                     }
