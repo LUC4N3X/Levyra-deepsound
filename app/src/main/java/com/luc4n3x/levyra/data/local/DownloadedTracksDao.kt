@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -19,6 +20,9 @@ interface DownloadedTracksDao {
 
     @Query("SELECT * FROM downloaded_tracks ORDER BY savedAt DESC LIMIT :limit")
     suspend fun recent(limit: Int = 80): List<DownloadEntity>
+
+    @Query("SELECT * FROM downloaded_tracks ORDER BY savedAt DESC")
+    suspend fun all(): List<DownloadEntity>
 
     @Query(
         """
@@ -51,4 +55,13 @@ interface DownloadedTracksDao {
 
     @Query("DELETE FROM downloaded_tracks WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM downloaded_tracks")
+    suspend fun clearAll()
+
+    @Transaction
+    suspend fun replaceAll(downloads: List<DownloadEntity>) {
+        clearAll()
+        downloads.forEach { insert(it.copy(id = 0L)) }
+    }
 }
