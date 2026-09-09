@@ -17,18 +17,23 @@ object LevyraMediaItemFactory {
 
     fun build(track: Track, videoMode: Boolean = false): MediaItem {
         val streamUrl = track.streamUrl
+        val cacheReadSpec = playbackCacheReadSpec(streamUrl)
+        val customCacheKey = cacheReadSpec?.cacheKey ?: if (videoMode && track.videoStreamUrl.isBlank()) {
+            LevyraPlaybackCacheKey.video(track)
+        } else {
+            LevyraPlaybackCacheKey.stream(track)
+        }
+        val streamMimeType = if (cacheReadSpec != null) {
+            cacheReadSpec.mimeType.takeIf { it.isNotBlank() }
+        } else {
+            mimeTypeFor(streamUrl, videoMode)
+        }
         val builder = MediaItem.Builder()
             .setUri(streamUrl)
-            .setCustomCacheKey(
-                if (videoMode && track.videoStreamUrl.isBlank()) {
-                    LevyraPlaybackCacheKey.video(track)
-                } else {
-                    LevyraPlaybackCacheKey.stream(track)
-                }
-            )
+            .setCustomCacheKey(customCacheKey)
             .setMediaId(mediaId(track))
             .setMediaMetadata(metadata(track, videoMode))
-        mimeTypeFor(streamUrl, videoMode)?.let { builder.setMimeType(it) }
+        streamMimeType?.let { builder.setMimeType(it) }
         if (videoMode && track.videoSubtitleTracks.isNotEmpty()) {
             builder.setSubtitleConfigurations(
                 track.videoSubtitleTracks.map { subtitle ->
@@ -41,7 +46,18 @@ object LevyraMediaItemFactory {
                 }
             )
         }
-        return builder.build()
+        val mediaItem = builder.build()
+        if (
+            cacheReadSpec == null &&
+            shouldRememberPlaybackCacheHint(streamUrl, streamMimeType, videoMode)
+        ) {
+            PlaybackCacheHintStore.record(
+                track = track,
+                cacheKey = customCacheKey,
+                mimeType = streamMimeType.orEmpty()
+            )
+        }
+        return mediaItem
     }
 
     internal fun mimeTypeFor(url: String, videoMode: Boolean): String? {

@@ -1673,6 +1673,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         for (candidate in candidates) {
             val localErrors = Collections.synchronizedList(mutableListOf<String>())
             val resolved = runCatchingPreservingCancellation { resolveAudioFast(candidate, localErrors, preferMp4Audio, audioQuality) }.getOrNull()
+            if (resolved != null && !isResolvedPlaybackFallbackDurationCompatible(track, resolved)) {
+                errors += "Fallback ${candidate.id}: resolved duration ${resolved.durationMs}ms does not match ${track.durationMs}ms"
+                continue
+            }
             if (
                 resolved != null &&
                 resolved.streamUrl.isNotBlank() &&
@@ -1911,26 +1915,22 @@ class PlaybackResolver private constructor(private val context: Context) {
         val queries = playbackAlternativeSearchQueries(track)
         val repository = YoutubeMusicRepository(context)
         for (query in queries) {
-            searchYouTubeWebCandidates(track, query)
+            val searchResults = runCatchingPreservingCancellation {
+                repository.search(query, 8, userPreferences.languageCode())
+            }.getOrDefault(emptyList())
+            trustedPlaybackFallbackCandidates(track, searchResults)
                 .asSequence()
+                .filter { it.id.isNotBlank() }
                 .filter { !sameVideoIdentity(track, it) }
-                .forEach { candidate -> output.putIfAbsent(candidate.id, candidate) }
-            if (output.size < 4) {
-                runCatchingPreservingCancellation { repository.search(query, 6, userPreferences.languageCode()) }
-                    .getOrDefault(emptyList())
-                    .asSequence()
-                    .filter { it.id.isNotBlank() }
-                    .filter { !sameVideoIdentity(track, it) }
-                    .sortedByDescending { scoreAlternativeCandidate(track, it) }
-                    .forEach { candidate ->
-                        output.putIfAbsent(candidate.id, candidate.copy(streamUrl = "", videoStreamUrl = ""))
-                    }
-            }
-            if (output.size >= 12) break
+                .sortedByDescending { scoreAlternativeCandidate(track, it) }
+                .forEach { candidate ->
+                    output.putIfAbsent(candidate.id, candidate.copy(streamUrl = "", videoStreamUrl = ""))
+                }
+            if (output.size >= 4) break
         }
         output.values
             .sortedByDescending { scoreAlternativeCandidate(track, it) }
-            .take(12)
+            .take(6)
     }
 
     private fun alternativeSearchQueries(track: Track): List<String> {
