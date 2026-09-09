@@ -21,7 +21,15 @@ internal class PlaybackSourceMatchStore(
     ): StoredPlaybackSourceMatch? {
         val matchKey = PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio)
         val entity = dao.get(matchKey) ?: return null
-        return StoredPlaybackSourceMatch(entity, PlaybackManifestCodec.decode(entity.manifestJson))
+        val manifest = PlaybackManifestCodec.decode(entity.manifestJson)
+        if (
+            !videoMode &&
+            !isResolvedPlaybackDurationCompatible(track, manifest?.durationMs ?: 0L)
+        ) {
+            dao.delete(matchKey)
+            return null
+        }
+        return StoredPlaybackSourceMatch(entity, manifest)
     }
 
     suspend fun save(
@@ -33,6 +41,7 @@ internal class PlaybackSourceMatchStore(
         preferMp4Audio: Boolean = false
     ) {
         val manifest = resolved.playbackManifest ?: return
+        if (!videoMode && !isResolvedPlaybackDurationCompatible(original, manifest.durationMs)) return
         val sourceVideoId = manifest.sourceVideoId.ifBlank { PlaybackSourceIdentity.sourceVideoId(resolved) }
         if (sourceVideoId.isBlank()) return
         val now = System.currentTimeMillis()

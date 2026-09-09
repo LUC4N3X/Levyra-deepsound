@@ -19,10 +19,13 @@ object LevyraMediaCache {
 
     fun get(context: Context): SimpleCache {
         val appContext = context.applicationContext
+        PlaybackCacheHintStore.initialize(appContext)
         return cache ?: synchronized(this) {
             cache ?: create(appContext).also { cache = it }
         }
     }
+
+    internal fun currentOrNull(): SimpleCache? = cache
 
     fun currentCacheSpace(): Long = cache?.cacheSpace ?: 0L
 

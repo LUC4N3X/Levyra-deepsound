@@ -114,6 +114,17 @@ class PlaybackSourceIdentityTest {
     }
 
     @Test
+    fun runtimeCacheNamespaceRotatesWithoutChangingPersistentMatchKeyFormat() {
+        val track = track()
+
+        assertTrue(PlaybackSourceIdentity.canonicalKey(track).startsWith("playback-key-v2|track:"))
+        assertTrue(
+            PlaybackSourceIdentity.matchKey(track, videoMode = false, audioQuality = "High")
+                .startsWith("track:")
+        )
+    }
+
+    @Test
     fun canonicalKeySeparatesDifferentDurations() {
         val short = track(durationMs = 180_000L)
         val long = track(durationMs = 240_000L)
