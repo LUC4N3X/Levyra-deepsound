@@ -95,26 +95,34 @@ internal fun trustedPlaybackFallbackCandidates(
     val originalArtist = original.artist.playbackPrimaryArtistKey()
     if (originalTitle.isBlank() || originalArtist.isBlank()) return emptyList()
 
-    return candidates
+    val eligible = candidates
         .asSequence()
         .filter { candidate -> candidate.id.isNotBlank() && candidate.title.isNotBlank() && candidate.artist.isNotBlank() }
-        .filter { candidate ->
-            (
-                originalIsrc.isNotBlank() &&
-                    candidate.isrc.trim().equals(originalIsrc, ignoreCase = true)
-                ) || isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
-        }
         .distinctBy { candidate -> candidate.id }
         .toList()
+
+    if (originalIsrc.isNotBlank()) {
+        val exactIsrcMatches = eligible.filter { candidate ->
+            candidate.isrc.trim().equals(originalIsrc, ignoreCase = true)
+        }
+        if (exactIsrcMatches.isNotEmpty()) return exactIsrcMatches
+    }
+
+    return eligible.filter { candidate ->
+        (originalIsrc.isBlank() || candidate.isrc.isBlank()) &&
+            isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
+    }
 }
 
-internal fun isResolvedPlaybackFallbackDurationCompatible(original: Track, resolved: Track): Boolean {
+internal fun isResolvedPlaybackDurationCompatible(original: Track, resolvedDurationMs: Long): Boolean {
     val expectedDurationMs = original.durationMs
     if (expectedDurationMs <= 0L) return true
-    val resolvedDurationMs = resolved.durationMs
     if (resolvedDurationMs <= 0L) return false
     return abs(expectedDurationMs - resolvedDurationMs) <= CANONICAL_FALLBACK_DURATION_TOLERANCE_MS
 }
+
+internal fun isResolvedPlaybackFallbackDurationCompatible(original: Track, resolved: Track): Boolean =
+    isResolvedPlaybackDurationCompatible(original, resolved.durationMs)
 
 private fun isTrustedPlaybackRecordingMatch(
     original: Track,
