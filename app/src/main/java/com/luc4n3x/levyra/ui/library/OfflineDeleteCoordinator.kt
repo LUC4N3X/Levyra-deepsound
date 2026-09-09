@@ -2,8 +2,11 @@ package com.luc4n3x.levyra.ui.library
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Process
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -38,20 +41,25 @@ internal fun rememberOfflineDeleteHandler(
                 viewModel.deleteDownloads(unique)
             } else {
                 val consentRequired = unique.filter { requiresMediaStoreDeleteConsent(context, it) }
-                val direct = unique.filterNot { download -> consentRequired.any { it.id == download.id } }
+                val consentIds = consentRequired.mapTo(hashSetOf()) { it.id }
+                val direct = unique.filterNot { it.id in consentIds }
                 if (direct.isNotEmpty()) {
                     viewModel.deleteDownloads(direct)
                 }
                 if (consentRequired.isNotEmpty()) {
                     val uris = consentRequired.mapNotNull(::mediaStoreDeleteUri).distinct()
-                    val request = runCatching {
-                        MediaStore.createDeleteRequest(context.contentResolver, uris)
-                    }.getOrNull()
-                    if (request != null && uris.isNotEmpty()) {
-                        pendingSystemDelete = consentRequired
-                        launcher.launch(IntentSenderRequest.Builder(request.intentSender).build())
-                    } else {
+                    if (uris.isEmpty()) {
                         viewModel.deleteDownloads(consentRequired)
+                    } else {
+                        val request = runCatching {
+                            MediaStore.createDeleteRequest(context.contentResolver, uris)
+                        }.getOrNull()
+                        if (request != null) {
+                            pendingSystemDelete = consentRequired
+                            launcher.launch(IntentSenderRequest.Builder(request.intentSender).build())
+                        } else {
+                            viewModel.deleteDownloads(consentRequired)
+                        }
                     }
                 }
             }
@@ -62,14 +70,12 @@ internal fun rememberOfflineDeleteHandler(
 private fun requiresMediaStoreDeleteConsent(context: Context, download: DownloadedTrack): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
     val uri = mediaStoreDeleteUri(download) ?: return false
-    return try {
-        context.contentResolver.openFileDescriptor(uri, "rw")?.use { }
-        false
-    } catch (_: SecurityException) {
-        true
-    } catch (_: Throwable) {
-        false
-    }
+    return context.checkUriPermission(
+        uri,
+        Process.myPid(),
+        Process.myUid(),
+        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+    ) != PackageManager.PERMISSION_GRANTED
 }
 
 private fun mediaStoreDeleteUri(download: DownloadedTrack): Uri? {
