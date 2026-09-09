@@ -69,6 +69,13 @@ class PlaybackCacheHintStoreTest {
         )
         assertFalse(
             shouldRememberPlaybackCacheHint(
+                streamUrl = "https://rr.example/videoplayback?itag=18&mime=video%2Fmp4",
+                mimeType = "video/mp4",
+                videoMode = false
+            )
+        )
+        assertFalse(
+            shouldRememberPlaybackCacheHint(
                 streamUrl = "https://rr.example/videoplayback?itag=18",
                 mimeType = "video/mp4",
                 videoMode = true
