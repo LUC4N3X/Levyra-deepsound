@@ -16,6 +16,19 @@ private val KNOWN_MISATTRIBUTED_PLAYBACK_SIGNATURES = setOf(
     MisattributedPlaybackSignature(artist = "neptune", title = "sottogonna")
 )
 
+private val PLAYBACK_FEATURE_MARKER = Regex(
+    """\s*[\[(]?\s*(?:feat\.?|ft\.?|featuring)\b.*$""",
+    RegexOption.IGNORE_CASE
+)
+private val PLAYBACK_ARTIST_SEPARATOR = Regex(
+    """\s*(?:,|&|/|;|\bx\b|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b)\s*""",
+    RegexOption.IGNORE_CASE
+)
+private val PLAYBACK_VARIANT_MARKER = Regex(
+    """\b(?:karaoke|cover|reaction|nightcore|sped\s+up|slowed|reverb|live|remix)\b""",
+    RegexOption.IGNORE_CASE
+)
+
 internal fun isKnownMisattributedPlaybackMetadata(artist: String, title: String): Boolean =
     MisattributedPlaybackSignature(
         artist = artist.playbackMatchKey(),
@@ -65,6 +78,57 @@ internal fun bestCanonicalPlaybackMetadataMatch(
         if (runnerUpDelta - bestDelta <= CANONICAL_AMBIGUITY_DELTA_MS) return null
     }
     return best
+}
+
+internal fun trustedPlaybackFallbackCandidates(
+    original: Track,
+    candidates: List<Track>
+): List<Track> {
+    if (candidates.isEmpty()) return emptyList()
+    if (isKnownMisattributedPlaybackMetadata(original.artist, original.title)) {
+        return listOfNotNull(bestCanonicalPlaybackMetadataMatch(original, candidates))
+    }
+
+    val originalIsrc = original.isrc.trim()
+    val originalTitle = original.title.playbackRecordingTitleKey()
+    val originalArtist = original.artist.playbackPrimaryArtistKey()
+    if (originalTitle.isBlank() || originalArtist.isBlank()) return emptyList()
+
+    return candidates
+        .asSequence()
+        .filter { candidate -> candidate.id.isNotBlank() && candidate.title.isNotBlank() && candidate.artist.isNotBlank() }
+        .filter { candidate ->
+            originalIsrc.isNotBlank() && candidate.isrc.trim().equals(originalIsrc, ignoreCase = true) ||
+                isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
+        }
+        .distinctBy { candidate -> candidate.id }
+        .toList()
+}
+
+private fun isTrustedPlaybackRecordingMatch(
+    original: Track,
+    candidate: Track,
+    originalTitle: String,
+    originalArtist: String
+): Boolean {
+    if (candidate.title.playbackRecordingTitleKey() != originalTitle) return false
+    if (candidate.artist.playbackPrimaryArtistKey() != originalArtist) return false
+    if (addsDifferentPlaybackVariant(original.title, candidate.title)) return false
+    if (original.durationMs > 0L) {
+        if (candidate.durationMs <= 0L) return false
+        if (abs(original.durationMs - candidate.durationMs) > CANONICAL_FALLBACK_DURATION_TOLERANCE_MS) return false
+    }
+    return true
+}
+
+private fun addsDifferentPlaybackVariant(originalTitle: String, candidateTitle: String): Boolean {
+    val originalVariants = PLAYBACK_VARIANT_MARKER.findAll(originalTitle.lowercase(Locale.ROOT))
+        .map { it.value.replace(Regex("\\s+"), " ") }
+        .toSet()
+    val candidateVariants = PLAYBACK_VARIANT_MARKER.findAll(candidateTitle.lowercase(Locale.ROOT))
+        .map { it.value.replace(Regex("\\s+"), " ") }
+        .toSet()
+    return candidateVariants.any { it !in originalVariants }
 }
 
 private fun canonicalMetadataComparator(original: Track): Comparator<Track> =
@@ -171,6 +235,16 @@ private fun isCanonicalPlaybackRecordingMatch(
     if (originalDurationMs <= 0L || candidateDurationMs <= 0L) return false
     return abs(originalDurationMs - candidateDurationMs) <= CANONICAL_FALLBACK_DURATION_TOLERANCE_MS
 }
+
+private fun String.playbackRecordingTitleKey(): String = PLAYBACK_FEATURE_MARKER
+    .replace(this, " ")
+    .playbackMatchKey()
+
+private fun String.playbackPrimaryArtistKey(): String = PLAYBACK_ARTIST_SEPARATOR
+    .split(this, limit = 2)
+    .firstOrNull()
+    .orEmpty()
+    .playbackMatchKey()
 
 private fun String.playbackSearchToken(): String = trim()
     .filterNot { it.code in 0..31 }
