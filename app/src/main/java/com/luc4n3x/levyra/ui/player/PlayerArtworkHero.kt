@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -124,14 +125,17 @@ internal fun PlayerArtworkHero(
                                 alpha = 0.60f
                             }
                         if (artworkUrl.isNotBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
+                            val canvasBackdropRequest = remember(context, artworkUrl) {
+                                ImageRequest.Builder(context)
                                     .data(LevyraArtworkCache.large(artworkUrl))
                                     .size(512, 512)
                                     .crossfade(false)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .memoryCachePolicy(CachePolicy.ENABLED)
-                                    .build(),
+                                    .build()
+                            }
+                            AsyncImage(
+                                model = canvasBackdropRequest,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = canvasBackdropModifier
