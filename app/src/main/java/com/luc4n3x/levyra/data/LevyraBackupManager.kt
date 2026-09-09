@@ -262,12 +262,13 @@ class LevyraBackupManager(private val context: Context) {
                 vaultSnapshot(entries)
             }
             val rollback = currentSnapshot()
+            val downloads = reconcileDownloadedTracks(target.downloads, scanLevyraDownloads(), ::downloadUriReadable)
             try {
-                applySnapshot(target)
+                applySnapshot(target, downloads)
             } catch (restoreError: Throwable) {
                 withContext(NonCancellable) {
                     try {
-                        applySnapshot(rollback)
+                        applySnapshot(rollback, rollback.downloads)
                     } catch (rollbackError: Throwable) {
                         restoreError.addSuppressed(rollbackError)
                     }
@@ -510,9 +511,7 @@ class LevyraBackupManager(private val context: Context) {
         )
     }
 
-    private suspend fun applySnapshot(payload: VaultSnapshot) {
-        val mediaStoreDownloads = scanLevyraDownloads()
-        val downloads = reconcileDownloadedTracks(payload.downloads, mediaStoreDownloads, ::downloadUriReadable)
+    private suspend fun applySnapshot(payload: VaultSnapshot, downloads: List<DownloadEntity>) {
         preferences.restoreSnapshot(payload.settings)
         followedArtistsStore.saveDurable(payload.followedArtists)
         excludedArtistsStore.replaceAll(payload.excludedArtists)
@@ -572,7 +571,7 @@ class LevyraBackupManager(private val context: Context) {
                 buildList {
                     while (cursor.moveToNext()) {
                         val name = cursor.getString(fileName).orEmpty()
-                        val mediaTitle = cursor.getString(title).orEmpty().takeUnless { it == MediaStore.UNKNOWN_STRING }
+                        val mediaTitle = cursor.getString(title)?.takeUnless { it.isBlank() || it == MediaStore.UNKNOWN_STRING }
                             ?: name.substringBeforeLast('.').ifBlank { "Levyra Track" }
                         add(
                             DownloadEntity(
