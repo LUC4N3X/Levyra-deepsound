@@ -8,6 +8,7 @@ import java.util.Locale
 
 object PlaybackSourceIdentity {
     private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
+    private const val CANONICAL_KEY_NAMESPACE = "playback-key-v2"
     private const val VIDEO_IDENTITY_NAMESPACE = "youtube-video-v4"
     private val youtubeIdPattern = Regex(YOUTUBE_VIDEO_ID_PATTERN)
     private val youtubeUrlPattern = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
@@ -17,9 +18,9 @@ object PlaybackSourceIdentity {
         val youtubeIdentity = youtubeIdentityToken(track)
         if (isrc.isNotBlank()) {
             return if (youtubeIdentity.isNotBlank()) {
-                "isrc:$isrc|$youtubeIdentity"
+                "$CANONICAL_KEY_NAMESPACE|isrc:$isrc|$youtubeIdentity"
             } else {
-                "isrc:$isrc"
+                "$CANONICAL_KEY_NAMESPACE|isrc:$isrc"
             }
         }
         val durationBucket = when {
@@ -37,7 +38,7 @@ object PlaybackSourceIdentity {
             normalizeIdentifier(track.upc),
             recordingDiscriminator(track)
         ).joinToString("|")
-        return "track:${sha256(payload).take(32)}"
+        return "$CANONICAL_KEY_NAMESPACE|track:${sha256(payload).take(32)}"
     }
 
     fun sourceVideoId(track: Track): String {
