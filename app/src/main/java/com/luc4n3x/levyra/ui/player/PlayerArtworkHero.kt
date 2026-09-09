@@ -118,11 +118,11 @@ internal fun PlayerArtworkHero(
                     if (motionArtwork != null && animationsEnabled) {
                         val canvasBackdropModifier = Modifier
                             .fillMaxSize()
-                            .blur(20.dp)
+                            .blur(18.dp)
                             .graphicsLayer {
-                                scaleX = 1.10f
-                                scaleY = 1.10f
-                                alpha = 0.94f
+                                scaleX = 1.08f
+                                scaleY = 1.08f
+                                alpha = 1f
                             }
                         if (artworkUrl.isNotBlank()) {
                             val canvasBackdropRequest = remember(context, artworkUrl) {
