@@ -129,6 +129,7 @@ data class LevyraUiState(
     val detailReturnTarget: DetailReturnTarget = DetailReturnTarget.None,
     val favorites: List<Track> = emptyList(),
     val favoriteIds: Set<String> = emptySet(),
+    val favoriteTimestamps: Map<String, Long> = emptyMap(),
     val forgottenFavorites: List<Track> = emptyList(),
     val playlists: List<com.luc4n3x.levyra.domain.Playlist> = emptyList(),
     val playlistTags: List<PlaylistTag> = emptyList(),

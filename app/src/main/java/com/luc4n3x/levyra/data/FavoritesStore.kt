@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.data.local.toFavoriteTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -14,27 +15,48 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import timber.log.Timber
 
+internal val favoritesStoreMutationMutex = Mutex()
+private val favoritesTimestampGeneration = AtomicLong(0L)
+
+internal fun invalidateFavoriteTimestampSnapshots() {
+    favoritesTimestampGeneration.incrementAndGet()
+}
+
+private data class FavoriteTimestampSnapshot(
+    val generation: Long,
+    val values: Map<String, Long>
+)
+
 class FavoritesStore(context: Context) {
     private val appContext = context.applicationContext
     private val dao = LevyraDatabase.get(appContext).favoriteTracksDao()
     private val legacyPrefs = appContext.getSharedPreferences("levyra_favorites", Context.MODE_PRIVATE)
+    private var timestampSnapshot: FavoriteTimestampSnapshot? = null
 
     fun load(): List<Track> = runBlocking(Dispatchers.IO) {
-        mutationMutex.withLock { loadInternal() }
+        favoritesStoreMutationMutex.withLock { loadInternal() }
+    }
+
+    fun loadTimestamps(): Map<String, Long> = runBlocking(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock { loadTimestampsInternal() }
+    }
+
+    suspend fun loadTimestampsSuspending(): Map<String, Long> = withContext(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock { loadTimestampsInternal() }
     }
 
     fun save(tracks: List<Track>) {
         runBlocking(Dispatchers.IO) {
-            mutationMutex.withLock { saveAndCompleteMigration(tracks) }
+            favoritesStoreMutationMutex.withLock { saveAndCompleteMigration(tracks) }
         }
     }
 
     suspend fun saveSuspending(tracks: List<Track>) = withContext(Dispatchers.IO) {
-        mutationMutex.withLock { saveAndCompleteMigration(tracks) }
+        favoritesStoreMutationMutex.withLock { saveAndCompleteMigration(tracks) }
     }
 
     suspend fun toggleFavorite(track: Track): List<Track> = withContext(Dispatchers.IO) {
-        mutationMutex.withLock {
+        favoritesStoreMutationMutex.withLock {
             val current = loadInternal()
             val targetKey = favoriteTrackKey(track)
             val existingIndex = current.indexOfFirst { favorite ->
@@ -51,7 +73,7 @@ class FavoritesStore(context: Context) {
     }
 
     suspend fun toggleFavorites(tracks: List<Track>): List<Track> = withContext(Dispatchers.IO) {
-        mutationMutex.withLock {
+        favoritesStoreMutationMutex.withLock {
             val current = loadInternal()
             val updated = toggleFavoriteTracks(current, tracks)
             if (updated != current) saveAndCompleteMigration(updated)
@@ -60,10 +82,12 @@ class FavoritesStore(context: Context) {
     }
 
     private suspend fun loadInternal(): List<Track> {
-        val stored = runCatching { dao.all().map { it.toTrack() } }
+        val entities = runCatching { dao.all() }
             .onFailure { Timber.w(it, "Favorite tracks load failed") }
             .getOrNull()
             ?: return emptyList()
+        rememberTimestampSnapshot(entities.associate { it.id to it.createdAt })
+        val stored = entities.map { it.toTrack() }
         if (stored.isNotEmpty()) {
             completeLegacyMigration()
             return stored
@@ -74,6 +98,28 @@ class FavoritesStore(context: Context) {
         replaceAll(legacy)
         completeLegacyMigration()
         return legacy
+    }
+
+    private suspend fun loadTimestampsInternal(): Map<String, Long> {
+        currentTimestampSnapshot()?.let { return it }
+        return runCatching {
+            dao.all().associate { it.id to it.createdAt }
+        }.onSuccess(::rememberTimestampSnapshot)
+            .getOrDefault(emptyMap())
+    }
+
+    private fun currentTimestampSnapshot(): Map<String, Long>? {
+        val generation = favoritesTimestampGeneration.get()
+        return timestampSnapshot
+            ?.takeIf { it.generation == generation }
+            ?.values
+    }
+
+    private fun rememberTimestampSnapshot(values: Map<String, Long>) {
+        timestampSnapshot = FavoriteTimestampSnapshot(
+            generation = favoritesTimestampGeneration.get(),
+            values = values
+        )
     }
 
     private suspend fun saveAndCompleteMigration(tracks: List<Track>) {
@@ -87,10 +133,20 @@ class FavoritesStore(context: Context) {
     }
 
     private suspend fun replaceAll(tracks: List<Track>) {
+        val existingTimestamps = currentTimestampSnapshot() ?: dao.all().associate {
+            it.id to it.createdAt
+        }
         val now = System.currentTimeMillis()
-        dao.replaceAll(tracks.mapIndexed { index, track ->
-            track.toFavoriteTrackEntity(now - index)
-        })
+        val entities = tracks.mapIndexed { index, track ->
+            val timestamp = existingTimestamps[track.id]?.takeIf { it > 0L } ?: (now - index)
+            track.toFavoriteTrackEntity(timestamp)
+        }
+        dao.replaceAll(entities)
+        val generation = favoritesTimestampGeneration.incrementAndGet()
+        timestampSnapshot = FavoriteTimestampSnapshot(
+            generation = generation,
+            values = entities.associate { it.id to it.createdAt }
+        )
     }
 
     private fun loadLegacyForMigration(): List<Track>? {
@@ -117,8 +173,6 @@ class FavoritesStore(context: Context) {
     private companion object {
         const val KEY = "liked_tracks"
         const val MIGRATION_COMPLETE_KEY = "liked_tracks_migrated_to_room"
-
-        val mutationMutex = Mutex()
     }
 }
 
