@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +30,12 @@ internal fun PlayerProgress(
     onSeek: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val displayedSecond = (positionMs / 1_000L).coerceAtLeast(0L)
+    val positionLabel = remember(displayedSecond) { formatSeekbarMillis(positionMs) }
+    val durationLabel = remember(durationMs) {
+        if (durationMs > 0L) formatSeekbarMillis(durationMs) else "--:--"
+    }
+
     Column(modifier = modifier.fillMaxWidth()) {
         PremiumSeekbar(
             positionMs = positionMs,
@@ -53,14 +60,14 @@ internal fun PlayerProgress(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = formatSeekbarMillis(positionMs),
+                text = positionLabel,
                 color = LevyraPlayerDesign.TextSecondary,
                 fontSize = if (compact) 11.sp else 11.5.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.3.sp
             )
             Text(
-                text = if (durationMs > 0L) formatSeekbarMillis(durationMs) else "--:--",
+                text = durationLabel,
                 color = LevyraPlayerDesign.TextTertiary,
                 fontSize = if (compact) 11.sp else 11.5.sp,
                 fontWeight = FontWeight.Medium,
