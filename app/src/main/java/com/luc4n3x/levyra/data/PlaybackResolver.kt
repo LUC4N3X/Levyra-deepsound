@@ -726,8 +726,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val origin = PlaybackStrategyOrigin(mode, strategy)
             listOf(track.streamUrl, track.videoStreamUrl)
                 .filter { it.isNotBlank() }
-                .forEach { strategyOriginByUrl[strategyOriginKey(mode, it)] = origin
-                }
+                .forEach { strategyOriginByUrl[strategyOriginKey(mode, it)] = origin }
         }
     }
 
