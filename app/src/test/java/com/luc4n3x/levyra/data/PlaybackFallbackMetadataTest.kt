@@ -9,10 +9,11 @@ import org.junit.Test
 
 class PlaybackFallbackMetadataTest {
     @Test
-    fun recognizesKnownMisattributedArtistIgnoringPunctuationAndCase() {
-        assertTrue(isKnownMisattributedPlaybackArtist("neptune."))
-        assertTrue(isKnownMisattributedPlaybackArtist("NEPTUNE"))
-        assertFalse(isKnownMisattributedPlaybackArtist("BLANCO"))
+    fun recognizesOnlyKnownMisattributedArtistTitleSignature() {
+        assertTrue(isKnownMisattributedPlaybackMetadata("neptune.", "SOTTOGONNA"))
+        assertTrue(isKnownMisattributedPlaybackMetadata("NEPTUNE", "sottogonna!"))
+        assertFalse(isKnownMisattributedPlaybackMetadata("NEPTUNE", "ALTALENA"))
+        assertFalse(isKnownMisattributedPlaybackMetadata("BLANCO", "SOTTOGONNA"))
     }
 
     @Test

@@ -44,7 +44,7 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 tracks.map { track ->
                     async {
                         val originalKey = identityKey(track)
-                        val correctedTrack = if (isKnownMisattributedPlaybackArtist(track.artist)) {
+                        val correctedTrack = if (isKnownMisattributedPlaybackMetadata(track.artist, track.title)) {
                             lookupSlots.withPermit { recoverCanonicalMetadata(track) }
                         } else {
                             track
@@ -68,7 +68,7 @@ internal class ChartOfficialArtworkResolver(context: Context) {
     }
 
     private suspend fun recoverCanonicalMetadata(track: Track): Track {
-        if (!isKnownMisattributedPlaybackArtist(track.artist)) return track
+        if (!isKnownMisattributedPlaybackMetadata(track.artist, track.title)) return track
         val candidates = runCatchingPreservingCancellation {
             withTimeoutOrNull(CANONICAL_METADATA_LOOKUP_MS) {
                 youtubeMusicRepository.search(track.title, CANONICAL_METADATA_CANDIDATE_LIMIT)

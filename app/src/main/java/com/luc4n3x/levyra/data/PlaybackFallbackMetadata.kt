@@ -7,12 +7,20 @@ import kotlin.math.abs
 private const val CANONICAL_FALLBACK_DURATION_TOLERANCE_MS = 12_000L
 private const val CANONICAL_AMBIGUITY_DELTA_MS = 1_500L
 
-private val KNOWN_MISATTRIBUTED_PLAYBACK_ARTISTS = setOf(
-    "neptune"
+private data class MisattributedPlaybackSignature(
+    val artist: String,
+    val title: String
 )
 
-internal fun isKnownMisattributedPlaybackArtist(value: String): Boolean =
-    value.playbackMatchKey() in KNOWN_MISATTRIBUTED_PLAYBACK_ARTISTS
+private val KNOWN_MISATTRIBUTED_PLAYBACK_SIGNATURES = setOf(
+    MisattributedPlaybackSignature(artist = "neptune", title = "sottogonna")
+)
+
+internal fun isKnownMisattributedPlaybackMetadata(artist: String, title: String): Boolean =
+    MisattributedPlaybackSignature(
+        artist = artist.playbackMatchKey(),
+        title = title.playbackMatchKey()
+    ) in KNOWN_MISATTRIBUTED_PLAYBACK_SIGNATURES
 
 internal fun bestCanonicalPlaybackMetadataMatch(
     original: Track,
@@ -25,7 +33,7 @@ internal fun bestCanonicalPlaybackMetadataMatch(
         .asSequence()
         .filter { candidate ->
             candidate.artist.isNotBlank() &&
-                !isKnownMisattributedPlaybackArtist(candidate.artist) &&
+                !isKnownMisattributedPlaybackMetadata(candidate.artist, candidate.title) &&
                 candidate.title.playbackMatchKey() == originalTitleKey
         }
         .distinctBy { candidate -> "${candidate.id}|${candidate.artist.playbackMatchKey()}" }
@@ -78,7 +86,7 @@ internal fun playbackAlternativeSearchQueries(track: Track): List<String> {
         .filter { it.isNotBlank() }
         .joinToString(" ")
         .ifBlank { title.ifBlank { track.id.trim() } }
-    val misattributedArtist = isKnownMisattributedPlaybackArtist(artist)
+    val misattributedArtist = isKnownMisattributedPlaybackMetadata(track.artist, track.title)
 
     return buildList {
         if (misattributedArtist && title.isNotBlank()) {
@@ -106,15 +114,15 @@ internal fun canonicalPlaybackFallbackArtist(
     resolved: Track
 ): String {
     val donorArtist = resolved.artist.trim().ifBlank { candidate.artist.trim() }
+    val donorTitle = resolved.title.trim().ifBlank { candidate.title.trim() }
     if (
         donorArtist.isBlank() ||
-        isKnownMisattributedPlaybackArtist(donorArtist) ||
+        isKnownMisattributedPlaybackMetadata(donorArtist, donorTitle) ||
         donorArtist.equals(original.artist.trim(), ignoreCase = true)
     ) {
         return original.artist
     }
 
-    val donorTitle = resolved.title.trim().ifBlank { candidate.title.trim() }
     val donorDurationMs = resolved.durationMs.takeIf { it > 0L } ?: candidate.durationMs
     return if (
         isCanonicalPlaybackRecordingMatch(
@@ -139,7 +147,7 @@ internal fun shouldAdoptYoutubeCanonicalArtist(
     val donorArtist = metadataArtist.trim()
     if (
         donorArtist.isBlank() ||
-        isKnownMisattributedPlaybackArtist(donorArtist) ||
+        isKnownMisattributedPlaybackMetadata(donorArtist, metadataTitle) ||
         donorArtist.equals(track.artist.trim(), ignoreCase = true)
     ) return false
     val durationMs = metadataDurationMs?.takeIf { it > 0L } ?: return false
