@@ -213,7 +213,7 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
-    fun verifiedFallbackUsesMetadataWhenCandidateHasNoIsrcAndNoExactMatchExists() {
+    fun verifiedFallbackDoesNotDowngradeKnownIsrcToMetadataOnlyCandidate() {
         val original = track(
             id = "chart-source",
             title = "DALE",
@@ -228,10 +228,7 @@ class PlaybackFallbackMetadataTest {
             durationMs = 188_000L
         )
 
-        assertEquals(
-            listOf("metadata-only"),
-            trustedPlaybackFallbackCandidates(original, listOf(metadataOnly)).map { it.id }
-        )
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(metadataOnly)).isEmpty())
     }
 
     @Test
