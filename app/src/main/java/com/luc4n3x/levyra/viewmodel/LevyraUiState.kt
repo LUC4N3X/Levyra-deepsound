@@ -121,6 +121,7 @@ data class LevyraUiState(
     val homeAlbumsLoading: Boolean = false,
     val isLoadingHome: Boolean = false,
     val homeError: String? = null,
+    val isDeviceOffline: Boolean = false,
     val showAlbum: Boolean = false,
     val albumLoading: Boolean = false,
     val albumError: String? = null,
