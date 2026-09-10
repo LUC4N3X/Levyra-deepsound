@@ -22,7 +22,9 @@ import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
+import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
 import com.luc4n3x.levyra.domain.LevyraIntelligenceSummary
 import com.luc4n3x.levyra.domain.BatchDownload
@@ -177,6 +179,7 @@ data class LevyraUiState(
     val sleepTimerEndOfTrack: Boolean = false,
     val sleepTimerDeadlineElapsedRealtimeMs: Long = 0L,
     val sleepTimerTotalMs: Long = 0L,
+    val sleepTimerFadeMs: Long = 0L,
     val showSleepTimer: Boolean = false,
     val sponsorBlockEnabled: Boolean = true,
     val skipSilence: Boolean = false,
@@ -223,6 +226,8 @@ data class LevyraUiState(
     val interfaceSettings: LevyraInterfaceSettings = LevyraInterfaceSettings(),
     val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
     val backupSettings: LevyraBackupSettings = LevyraBackupSettings(),
+    val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
+    val spotifyCsvImport: SpotifyCsvImportState? = null,
     val vaultStatus: LevyraVaultStatus = LevyraVaultStatus.Idle,
     val backupPreview: VaultPreview? = null,
     val pendingRestoreUri: Uri? = null,
@@ -253,4 +258,17 @@ data class LevyraUiState(
     val listeningDnaPeriod: ListeningDnaPeriod = ListeningDnaPeriod.Month,
     val listeningDna: ListeningDna = ListeningDna(),
     val listeningDnaLoading: Boolean = false
+)
+
+@Immutable
+data class SpotifyCsvImportState(
+    val running: Boolean = false,
+    val processed: Int = 0,
+    val total: Int = 0,
+    val matched: Int = 0,
+    val requested: Int = 0,
+    val unmatched: List<String> = emptyList(),
+    val playlistName: String = "",
+    val failureKind: PlaylistImportFailureKind? = null,
+    val completed: Boolean = false
 )
