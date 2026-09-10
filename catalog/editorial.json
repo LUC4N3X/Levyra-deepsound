@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-09T20:58:28Z",
+  "generatedAt": "2026-09-10T04:48:32Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1830,7 +1830,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -1838,12 +1838,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 28,
@@ -7187,7 +7187,7 @@
         },
         {
           "position": 5,
-          "id": "levyra-24f504d77bdd662b7d6c",
+          "id": "levyra-e9973ac6b328c868feca",
           "title": "Cadeira Cativa - Ao Vivo",
           "artists": [
             {
@@ -7195,8 +7195,8 @@
             }
           ],
           "album": {
-            "name": "Vocês & Deus, Vol. 1 (Ao Vivo no Rio de Janeiro)",
-            "releaseDate": "2026-04-07"
+            "name": "Vocês & Deus (Ao Vivo no Rio de Janeiro)",
+            "releaseDate": "2026-09-03"
           },
           "durationMs": 160613,
           "explicit": false,
@@ -7206,7 +7206,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6Kk_E9qUcPEEAiwsOzzXQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cd6a20fcede386d2d3de6f91"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ede6a29e3b312fba44c9c8f9"
         },
         {
           "position": 6,
@@ -7741,7 +7741,7 @@
         },
         {
           "position": 24,
-          "id": "levyra-9fcb160f1472deddc414",
+          "id": "levyra-6ab4c3a0d1a2879cc0ae",
           "title": "Oi, Tudo Bem? - Ao Vivo",
           "artists": [
             {
@@ -7749,8 +7749,8 @@
             }
           ],
           "album": {
-            "name": "Vocês & Deus, Vol. 1 (Ao Vivo no Rio de Janeiro)",
-            "releaseDate": "2026-04-07"
+            "name": "Vocês & Deus (Ao Vivo no Rio de Janeiro)",
+            "releaseDate": "2026-09-03"
           },
           "durationMs": 187750,
           "explicit": false,
@@ -7760,7 +7760,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6Kk_E9qUcPEEAiwsOzzXQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cd6a20fcede386d2d3de6f91"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ede6a29e3b312fba44c9c8f9"
         },
         {
           "position": 25,
@@ -12493,6 +12493,12 @@
           },
           "durationMs": 148453,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "yXbJrm-XzAo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm5s8ZhhrkBhOIikmS_QcRw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0294f8c9168a79ba591e7b0a3b"
         },
         {
@@ -14569,6 +14575,12 @@
           },
           "durationMs": 334053,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "4wTZ-Bx4aj4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0TV38yNPp2b8r1AilfwEOQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c4a9b2f7b917402f799b1ecd"
         },
         {
@@ -16872,6 +16884,12 @@
           },
           "durationMs": 126614,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "79xPj-NSuvw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCwiGKkQcOlzMpXOc1xHFoeg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257c283d6ab94a1f048b0fff4"
         },
         {
@@ -17430,8 +17448,8 @@
         },
         {
           "position": 36,
-          "id": "levyra-92e3f95bf5f0a7d81c11",
-          "title": "Duše do vesmíru",
+          "id": "levyra-7f139ce5291fa0cd3c50",
+          "title": "Duse do vesmiru",
           "artists": [
             {
               "name": "Michal Hruza"
@@ -17441,12 +17459,12 @@
             }
           ],
           "album": {
-            "name": "Hity & příběhy (Best Of 2001-2021)",
-            "releaseDate": "2021-11-26"
+            "name": "Den",
+            "releaseDate": "2014-05-12"
           },
-          "durationMs": 190146,
+          "durationMs": 190293,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
         },
         {
           "position": 37,
@@ -17713,20 +17731,20 @@
         },
         {
           "position": 48,
-          "id": "levyra-9d3af210c1d9093eda1e",
-          "title": "Zakázané uvolnění",
+          "id": "levyra-a5a017fba38add2b0e35",
+          "title": "Zakazane uvolneni",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Hity & příběhy (Best Of 2001-2021)",
-            "releaseDate": "2021-11-26"
+            "name": "Den",
+            "releaseDate": "2014-05-12"
           },
-          "durationMs": 217013,
+          "durationMs": 217426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
         },
         {
           "position": 49,
@@ -20771,7 +20789,7 @@
             "confidence": 100,
             "artistBrowseId": "UCGKXb1syicud01CJOOFRykg"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02613aaa3ae566d9f36008aed0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e691217483df8798445c82e2"
         },
         {
           "position": 42,
@@ -22334,8 +22352,6 @@
           "youtubeMusic": {
             "audioVideoId": "R5By6ms2a3Y",
             "audioConfidence": 100,
-            "videoId": "gmjZf_Nxlec",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCXYVQ1uTq-KQbPk6IQlXHnA"
           },
@@ -22566,17 +22582,11 @@
           ],
           "album": {
             "name": "Traveler",
-            "releaseDate": "2019-09-30"
+            "releaseDate": "2019-08-31"
           },
           "durationMs": 326842,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "37W7Y2RRyiM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC84Rm0a3gimYXPtqp5O_JRw"
-          },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fc273337d7aafc7e907c383d"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029c4ba827e585fabd3cfd90f2"
         },
         {
           "position": 30,
@@ -22685,6 +22695,12 @@
           },
           "durationMs": 182000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "op05giODUE0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCM9SwoeOLtalqxyuZXIGe2Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e5fd56cd91d38d69aec9a5a2"
         },
         {
@@ -23924,12 +23940,6 @@
           },
           "durationMs": 161250,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "SBOwcGnwuKM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCENhZYUwrR1icuqz-rC-E8w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0221d6e1053df28c5a33208c1a"
         },
         {
@@ -27190,8 +27200,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "RrWFlqoWIHY",
-            "videoConfidence": 97,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
