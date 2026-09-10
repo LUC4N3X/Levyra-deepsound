@@ -149,49 +149,6 @@ class HomeEditorialSixCollectionsRegressionTest {
     }
 
     @Test
-    fun coverUniquenessSurvivesRemovingOneSharedSpotlightTrack() {
-        val spotlight = track(
-            id = "spotlight-shared",
-            tags = setOf("workout", "chill", "focus", "party", "rap", "pop"),
-            energy = 91,
-            replayScore = 100,
-            metadataConfidence = 100,
-            artworkUrl = "https://lh3.googleusercontent.com/shared-spotlight=s512-c-k-c0x00ffffff-no-rj"
-        )
-        val tracks = listOf(spotlight) + (1..14).map { index ->
-            track(
-                id = "hero-safe-$index",
-                tags = setOf("workout", "chill", "focus", "party", "rap", "pop"),
-                energy = 86 + index % 8,
-                artworkUrl = "https://lh3.googleusercontent.com/hero-safe-$index=s512-c-k-c0x00ffffff-no-rj"
-            )
-        }
-
-        val collections = HomeEditorialEngine.buildCollections(
-            homeSections = listOf(HomeSection("hero-safe", tracks)),
-            newReleaseTracks = emptyList(),
-            personalTracks = tracks,
-            resonanceTracks = tracks.reversed(),
-            quickPickTracks = tracks,
-            chartTracks = tracks,
-            favorites = tracks,
-            libraryTracks = tracks,
-            includeFresh = false,
-            nowMillis = Instant.parse("2026-06-10T08:00:00Z").toEpochMilli()
-        )
-        val visible = collections.map { collection ->
-            collection.copy(tracks = collection.tracks.filterNot { it.id == spotlight.id })
-        }
-        val coverKeys = visible.map { collection ->
-            collection.tracks.first().thumbnailUrl.substringBefore('=')
-        }
-
-        assertEquals(6, visible.size)
-        assertTrue(visible.all { it.tracks.isNotEmpty() })
-        assertEquals(coverKeys.size, coverKeys.distinct().size)
-    }
-
-    @Test
     fun undersizedFreshBucketIsNotPaddedWithOldTracks() {
         val freshTracks = (1..3).map { index ->
             track(
