@@ -599,7 +599,7 @@ private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
 private const val HOME_SECTION_HEADER_CONTENT_TYPE = "home-section-header"
 private const val HOME_DENSE_SHELF_CONTENT_TYPE = "home-dense-shelf"
 private const val HOME_QUICK_ACCESS_LIMIT = 20
-private const val HOME_QUICK_ACCESS_PAGE_SIZE = 8
+private const val HOME_QUICK_ACCESS_PAGE_SIZE = 10
 private val HOME_QUICK_ACCESS_CARD_HEIGHT = 58.dp
 private val HOME_QUICK_ACCESS_PAGE_PEEK = 28.dp
 private const val HOME_ARTWORK_GRID_CONTENT_TYPE = "home-artwork-grid"
@@ -8514,6 +8514,13 @@ private fun HomeQuickAccessShelf(
         tracks
             .distinctBy(LevyraPersonalOrbit::identityKey)
             .take(HOME_QUICK_ACCESS_LIMIT)
+            .let { list ->
+                if (list.size > HOME_QUICK_ACCESS_PAGE_SIZE) {
+                    list.take(list.size - list.size % HOME_QUICK_ACCESS_PAGE_SIZE)
+                } else {
+                    list
+                }
+            }
             .chunked(HOME_QUICK_ACCESS_PAGE_SIZE)
     }
     if (pages.isEmpty()) return
