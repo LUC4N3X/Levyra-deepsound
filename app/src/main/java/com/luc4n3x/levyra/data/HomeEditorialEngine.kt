@@ -419,7 +419,11 @@ object HomeEditorialEngine {
                 }
         }
 
-        return withDistinctPrimaryArtwork(selectCollectionsForDay(distinct, nowMillis))
+        return withDistinctPrimaryArtwork(
+            collections = selectCollectionsForDay(distinct, nowMillis),
+            fallbackPool = pool,
+            daySeed = daySeed
+        )
     }
 
     private fun selectCollectionsForDay(
@@ -450,13 +454,40 @@ object HomeEditorialEngine {
     }
 
     private fun withDistinctPrimaryArtwork(
-        collections: List<HomeEditorialCollection>
+        collections: List<HomeEditorialCollection>,
+        fallbackPool: List<Track>,
+        daySeed: Int
     ): List<HomeEditorialCollection> {
         if (collections.size < 2) return collections
+        val candidatesByCollection = collections.map { collection ->
+            val existingKeys = collection.tracks.asSequence().map(::identityKey).toHashSet()
+            val fallbackTracks = if (collection.kind == HomeCollectionKind.Fresh) {
+                emptyList()
+            } else {
+                fallbackPool
+                    .asSequence()
+                    .filterNot { identityKey(it) in existingKeys }
+                    .sortedWith(
+                        compareByDescending<Track> { track ->
+                            kindAffinity(track, collection.kind) +
+                                track.metadataConfidence.coerceIn(0, 100) * 3 +
+                                track.replayScore.coerceIn(0, 100) * 2 +
+                                track.cacheScore.coerceIn(0, 100)
+                        }.thenBy { track ->
+                            stableHash("cover|$daySeed|${collection.id}|${identityKey(track)}")
+                        }
+                    )
+                    .toList()
+            }
+            (collection.tracks + fallbackTracks)
+                .asSequence()
+                .distinctBy(::identityKey)
+                .toList()
+        }
         val ownerByArtwork = HashMap<String, Int>()
 
         fun assign(collectionIndex: Int, visitedArtwork: MutableSet<String>): Boolean {
-            collections[collectionIndex].tracks.forEach { track ->
+            candidatesByCollection[collectionIndex].forEach { track ->
                 val artwork = artworkIdentity(track)
                 if (artwork.isBlank() || !visitedArtwork.add(artwork)) return@forEach
                 val currentOwner = ownerByArtwork[artwork]
@@ -478,14 +509,16 @@ object HomeEditorialEngine {
         }
         return collections.mapIndexed { index, collection ->
             val assignedArtwork = artworkByCollection[index] ?: return@mapIndexed collection
-            val primaryIndex = collection.tracks.indexOfFirst { artworkIdentity(it) == assignedArtwork }
-            if (primaryIndex <= 0) return@mapIndexed collection
-            val primary = collection.tracks[primaryIndex]
+            val primary = candidatesByCollection[index]
+                .firstOrNull { artworkIdentity(it) == assignedArtwork }
+                ?: return@mapIndexed collection
+            val primaryKey = identityKey(primary)
+            if (collection.tracks.firstOrNull()?.let(::identityKey) == primaryKey) return@mapIndexed collection
             collection.copy(
-                tracks = buildList(collection.tracks.size) {
+                tracks = buildList(collection.tracks.size.coerceAtLeast(minimumCollectionSize)) {
                     add(primary)
-                    collection.tracks.forEachIndexed { trackIndex, track ->
-                        if (trackIndex != primaryIndex) add(track)
+                    collection.tracks.forEach { track ->
+                        if (identityKey(track) != primaryKey && size < collectionTrackLimit) add(track)
                     }
                 }
             )
