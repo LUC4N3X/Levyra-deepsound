@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui.library
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -126,6 +128,10 @@ internal fun LevyraLibraryScreen(
     var showCreatePlaylist by remember { mutableStateOf(false) }
     var showImportPlaylist by remember { mutableStateOf(false) }
     var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
+    var pendingCsvPlaylistName by rememberSaveable { mutableStateOf("") }
+    val spotifyCsvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) viewModel.importSpotifyCsv(uri, pendingCsvPlaylistName)
+    }
     var openSmartCollectionName by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTagIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
     var showHiddenPlaylists by rememberSaveable { mutableStateOf(false) }
@@ -748,7 +754,20 @@ internal fun LevyraLibraryScreen(
             onImport = { input ->
                 viewModel.importPlaylist(input)
                 showImportPlaylist = false
+            },
+            onPickSpotifyCsv = { name ->
+                pendingCsvPlaylistName = name
+                spotifyCsvLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "application/octet-stream"))
+                showImportPlaylist = false
             }
+        )
+    }
+
+    state.spotifyCsvImport?.let { importState ->
+        LibrarySpotifyCsvImportDialog(
+            importState = importState,
+            onCancel = viewModel::cancelSpotifyCsvImport,
+            onDismiss = viewModel::dismissSpotifyCsvImport
         )
     }
 

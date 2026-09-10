@@ -30,7 +30,9 @@ import com.luc4n3x.levyra.domain.isExcludableArtist
 import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
+import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
+import com.luc4n3x.levyra.domain.LevyraBedtimeSchedule
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
@@ -822,6 +824,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("interfaceSettings", interfaceSettingsToJson(snapshot.interfaceSettings))
             .put("downloadSettings", downloadSettingsToJson(snapshot.downloadSettings))
             .put("backupSettings", backupSettingsToJson(snapshot.backupSettings))
+            .put("automationSettings", automationSettingsToJson(snapshot.automationSettings))
             .put("jamDisplayName", snapshot.jamDisplayName)
             .put("recentSearches", JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } })
             .put("personalOrbitTracks", JSONArray().apply { snapshot.personalOrbitTracks.forEach { put(TrackJson.toJson(it)) } })
@@ -860,8 +863,53 @@ class LevyraBackupManager(private val context: Context) {
             interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings"), legacyVisualMode),
             downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings")),
             backupSettings = parseBackupSettings(json.optJSONObject("backupSettings")),
+            automationSettings = parseAutomationSettings(json.optJSONObject("automationSettings")),
             jamDisplayName = json.optString("jamDisplayName")
         )
+    }
+
+    private fun automationSettingsToJson(value: LevyraAutomationSettings): JSONObject {
+        val normalized = value.normalized()
+        return JSONObject()
+            .put("resumeOnBluetoothReconnect", normalized.resumeOnBluetoothReconnect)
+            .put("pauseOnMute", normalized.pauseOnMute)
+            .put("autoDownloadFavorites", normalized.autoDownloadFavorites)
+            .put("skipUnrecoverableErrors", normalized.skipUnrecoverableErrors)
+            .put("sleepFadeOutEnabled", normalized.sleepFadeOutEnabled)
+            .put("sleepFadeOutSeconds", normalized.sleepFadeOutSeconds)
+            .put("bedtimeEnabled", normalized.bedtime.enabled)
+            .put("bedtimeStartMinuteOfDay", normalized.bedtime.startMinuteOfDay)
+            .put("bedtimeDurationMinutes", normalized.bedtime.durationMinutes)
+            .put("bedtimeDays", JSONArray().apply { normalized.bedtime.days.forEach { put(it.name) } })
+    }
+
+    private fun parseAutomationSettings(json: JSONObject?): LevyraAutomationSettings {
+        if (json == null) return LevyraAutomationSettings()
+        val defaults = LevyraAutomationSettings()
+        val storedDays = json.optJSONArray("bedtimeDays")
+        val days = if (storedDays == null) {
+            defaults.bedtime.days
+        } else {
+            (0 until storedDays.length())
+                .mapNotNull { index ->
+                    runCatching { java.time.DayOfWeek.valueOf(storedDays.optString(index)) }.getOrNull()
+                }
+                .toSet()
+        }
+        return LevyraAutomationSettings(
+            resumeOnBluetoothReconnect = json.optBoolean("resumeOnBluetoothReconnect", defaults.resumeOnBluetoothReconnect),
+            pauseOnMute = json.optBoolean("pauseOnMute", defaults.pauseOnMute),
+            autoDownloadFavorites = json.optBoolean("autoDownloadFavorites", defaults.autoDownloadFavorites),
+            skipUnrecoverableErrors = json.optBoolean("skipUnrecoverableErrors", defaults.skipUnrecoverableErrors),
+            sleepFadeOutEnabled = json.optBoolean("sleepFadeOutEnabled", defaults.sleepFadeOutEnabled),
+            sleepFadeOutSeconds = json.optInt("sleepFadeOutSeconds", defaults.sleepFadeOutSeconds),
+            bedtime = LevyraBedtimeSchedule(
+                enabled = json.optBoolean("bedtimeEnabled", defaults.bedtime.enabled),
+                startMinuteOfDay = json.optInt("bedtimeStartMinuteOfDay", defaults.bedtime.startMinuteOfDay),
+                durationMinutes = json.optInt("bedtimeDurationMinutes", defaults.bedtime.durationMinutes),
+                days = days
+            )
+        ).normalized()
     }
 
     private fun audioSettingsToJson(value: LevyraAudioSettings): JSONObject =
