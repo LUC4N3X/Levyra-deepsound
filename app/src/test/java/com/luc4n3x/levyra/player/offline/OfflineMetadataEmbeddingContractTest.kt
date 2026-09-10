@@ -14,12 +14,14 @@ class OfflineMetadataEmbeddingContractTest {
             Path.of("src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt")
         ).firstOrNull(Files::exists) ?: error("OfflineAudioExporter.kt not found")
         val content = Files.readString(source)
-        val guard = content
-            .substringAfter("if (!shouldEmbedFastMetadata(input.length(), track.durationMs)) {")
-            .substringBefore("val output = File(workspace", missingDelimiterValue = "")
+        val fallbackGuard = """
+            if (!shouldEmbedFastMetadata(input.length(), track.durationMs)) {
+                return PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)
+            }
+        """.trimIndent()
 
-        assertTrue(guard.contains("return PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)"))
-        assertFalse(guard.contains("throw IOException"))
+        assertTrue(content.contains(fallbackGuard))
+        assertFalse(content.contains("Audio file is outside the safe metadata embedding limit"))
     }
 
     @Test
