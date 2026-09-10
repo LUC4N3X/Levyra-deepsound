@@ -38,6 +38,7 @@ class PlaybackSleepTimer(
     private val _state = MutableStateFlow<PlaybackSleepTimerState>(PlaybackSleepTimerState.Disabled)
     val state: StateFlow<PlaybackSleepTimerState> = _state.asStateFlow()
 
+    private val fadeLock = Any()
     private var countdownJob: Job? = null
     private var fadeActive = false
 
@@ -52,11 +53,21 @@ class PlaybackSleepTimer(
             val untilFade = deadline - effectiveFadeMs - elapsedRealtime()
             if (untilFade > 0L) delay(untilFade)
             if (effectiveFadeMs > 0L && _state.value == target) {
-                fadeActive = true
+                synchronized(fadeLock) {
+                    if (_state.value == target) fadeActive = true
+                }
                 while (_state.value == target) {
                     val remaining = deadline - elapsedRealtime()
                     if (remaining <= 0L) break
-                    onFadeVolume(sleepFadeVolume(remaining, effectiveFadeMs))
+                    val emitted = synchronized(fadeLock) {
+                        if (!fadeActive || _state.value != target) {
+                            false
+                        } else {
+                            onFadeVolume(sleepFadeVolume(remaining, effectiveFadeMs))
+                            true
+                        }
+                    }
+                    if (!emitted) break
                     delay(minOf(SLEEP_FADE_STEP_MS, remaining))
                 }
             }
@@ -92,8 +103,10 @@ class PlaybackSleepTimer(
     }
 
     private fun releaseFade() {
-        if (!fadeActive) return
-        fadeActive = false
-        onFadeVolume(1f)
+        synchronized(fadeLock) {
+            if (!fadeActive) return
+            fadeActive = false
+            onFadeVolume(1f)
+        }
     }
 }
