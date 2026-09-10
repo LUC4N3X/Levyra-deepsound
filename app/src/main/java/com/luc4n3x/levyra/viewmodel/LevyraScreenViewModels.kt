@@ -985,7 +985,7 @@ private fun isLikelyHomePlaylistOrCompilation(track: Track): Boolean {
     ).any(combined::contains)
 }
 
-private data class HomeProjection(
+internal data class HomeProjection(
     val animationsEnabled: Boolean,
     val artistExclusions: ArtistExclusions,
     val chartRegions: List<ChartRegion>,
