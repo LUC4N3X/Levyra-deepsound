@@ -83,7 +83,7 @@ class LevyraPreferencesStoreTest {
         assertEquals(DEFAULT_SPONSORBLOCK_ENABLED, snapshot.sponsorBlock)
         assertEquals("Auto", snapshot.audioQuality)
         assertEquals(LevyraAudioSettings().normalized(), preferences.audioSettings())
-        assertEquals(PlayerVisualMode.Artwork, preferences.interfaceSettings().playerVisualMode)
+        assertEquals(PlayerVisualMode.CanvasImmersive, preferences.interfaceSettings().playerVisualMode)
         assertNull(snapshot.lastTrack)
         assertEquals(LevyraAutomationSettings().normalized(), runBlocking { preferences.automationSettingsFlow.first() })
     }
