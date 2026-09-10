@@ -6,8 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -37,16 +35,14 @@ import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
-import java.io.IOException
 
 private const val PREFERENCES_NAME = "levyra_prefs"
 internal const val DEFAULT_SPONSORBLOCK_ENABLED = true
@@ -87,10 +83,25 @@ data class LevyraPreferencesSnapshot(
     val jamDisplayName: String = ""
 )
 
-class LevyraPreferences(context: Context) {
-    private val dataStore = context.applicationContext.levyraDataStore
+@Volatile
+private var sharedPreferencesStore: LevyraPreferencesStore? = null
 
-    fun snapshot(): LevyraPreferencesSnapshot = read(defaultSnapshot()) { snapshotFrom(it) }
+private fun sharedPreferencesStore(context: Context): LevyraPreferencesStore =
+    sharedPreferencesStore ?: synchronized(LevyraPreferencesStore::class.java) {
+        sharedPreferencesStore ?: LevyraPreferencesStore(
+            context.applicationContext.levyraDataStore,
+            CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        ).also { sharedPreferencesStore = it }
+    }
+
+internal fun preloadLevyraPreferences(context: Context) {
+    sharedPreferencesStore(context)
+}
+
+class LevyraPreferences internal constructor(private val store: LevyraPreferencesStore) {
+    constructor(context: Context) : this(sharedPreferencesStore(context))
+
+    fun snapshot(): LevyraPreferencesSnapshot = store.derived("snapshot") { snapshotFrom(it) }
 
     suspend fun restoreSnapshot(snapshot: LevyraPreferencesSnapshot) {
         val normalizedLanguage = LevyraLanguageCatalog.normalize(snapshot.languageCode)
@@ -102,7 +113,7 @@ class LevyraPreferences(context: Context) {
         val personalOrbitJson = JSONArray().apply {
             snapshot.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT).forEach { put(TrackJson.toJson(it)) }
         }.toString()
-        dataStore.edit { mutable ->
+        store.commit { mutable ->
             mutable[KEY_ONBOARDED] = snapshot.onboarded
             mutable[KEY_TASTES] = snapshot.tastes
             mutable[KEY_USER_NAME] = snapshot.userName
@@ -180,7 +191,7 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun isOnboarded(): Boolean = read(false) { it[KEY_ONBOARDED] ?: false }
+    fun isOnboarded(): Boolean = read { it[KEY_ONBOARDED] ?: false }
 
     fun setOnboarded(tastes: Set<String>) {
         setOnboardingState(true, tastes)
@@ -193,21 +204,21 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun tastes(): Set<String> = read(emptySet<String>()) { it[KEY_TASTES].orEmpty() }
+    fun tastes(): Set<String> = read { it[KEY_TASTES].orEmpty() }
 
-    fun userName(): String = read("") { it[KEY_USER_NAME].orEmpty() }
+    fun userName(): String = read { it[KEY_USER_NAME].orEmpty() }
 
     fun setUserName(name: String) {
         write { it[KEY_USER_NAME] = name }
     }
 
-    fun languageCode(): String = read(LevyraLanguageCatalog.deviceDefault()) { LevyraLanguageCatalog.normalize(it[KEY_LANGUAGE_CODE].orEmpty().ifBlank { LevyraLanguageCatalog.deviceDefault() }) }
+    fun languageCode(): String = read { LevyraLanguageCatalog.normalize(it[KEY_LANGUAGE_CODE].orEmpty().ifBlank { LevyraLanguageCatalog.deviceDefault() }) }
 
     fun setLanguageCode(code: String) {
         write { it[KEY_LANGUAGE_CODE] = LevyraLanguageCatalog.normalize(code) }
     }
 
-    fun animationsEnabled(): Boolean = read(true) { it[KEY_ANIMATIONS] ?: true }
+    fun animationsEnabled(): Boolean = read { it[KEY_ANIMATIONS] ?: true }
 
     fun setAnimationsEnabled(value: Boolean) {
         write { it[KEY_ANIMATIONS] = value }
@@ -215,7 +226,7 @@ class LevyraPreferences(context: Context) {
 
     suspend fun setMotionArtworkEnabled(value: Boolean) {
         try {
-            dataStore.edit { it[KEY_MOTION_ARTWORK] = value }
+            store.commit { it[KEY_MOTION_ARTWORK] = value }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -223,7 +234,7 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun themePreset(): String = read(com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC) {
+    fun themePreset(): String = read {
         com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(it[KEY_THEME_PRESET].orEmpty())
     }
 
@@ -231,13 +242,13 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(value) }
     }
 
-    fun dynamicColor(): Boolean = read(true) { it[KEY_DYNAMIC_COLOR] ?: true }
+    fun dynamicColor(): Boolean = read { it[KEY_DYNAMIC_COLOR] ?: true }
 
     fun setDynamicColor(value: Boolean) {
         write { it[KEY_DYNAMIC_COLOR] = value }
     }
 
-    fun sponsorBlock(): Boolean = read(DEFAULT_SPONSORBLOCK_ENABLED) {
+    fun sponsorBlock(): Boolean = read {
         it[KEY_SPONSORBLOCK] ?: DEFAULT_SPONSORBLOCK_ENABLED
     }
 
@@ -245,25 +256,25 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_SPONSORBLOCK] = value }
     }
 
-    fun skipSilence(): Boolean = read(false) { it[KEY_SKIP_SILENCE] ?: false }
+    fun skipSilence(): Boolean = read { it[KEY_SKIP_SILENCE] ?: false }
 
     fun setSkipSilence(value: Boolean) {
         write { it[KEY_SKIP_SILENCE] = value }
     }
 
-    fun audioNormalization(): Boolean = read(false) { it[KEY_AUDIO_NORMALIZATION] ?: false }
+    fun audioNormalization(): Boolean = read { it[KEY_AUDIO_NORMALIZATION] ?: false }
 
     fun setAudioNormalization(value: Boolean) {
         write { it[KEY_AUDIO_NORMALIZATION] = value }
     }
 
-    fun lyricsTranslationEnabled(): Boolean = read(false) { it[KEY_LYRICS_TRANSLATION] ?: false }
+    fun lyricsTranslationEnabled(): Boolean = read { it[KEY_LYRICS_TRANSLATION] ?: false }
 
     fun setLyricsTranslationEnabled(value: Boolean) {
         write { it[KEY_LYRICS_TRANSLATION] = value }
     }
 
-    fun interfaceSettings(): LevyraInterfaceSettings = read(LevyraInterfaceSettings()) { interfaceSettingsFrom(it) }
+    fun interfaceSettings(): LevyraInterfaceSettings = read { interfaceSettingsFrom(it) }
 
     fun setInterfaceSettings(value: LevyraInterfaceSettings) {
         val normalized = value.normalized()
@@ -291,7 +302,7 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun ambientSettings(): LevyraAmbientSettings = read(LevyraAmbientSettings()) { ambientSettingsFrom(it) }
+    fun ambientSettings(): LevyraAmbientSettings = read { ambientSettingsFrom(it) }
 
     fun setAmbientSettings(value: LevyraAmbientSettings) {
         val normalized = value.normalized()
@@ -306,7 +317,7 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun downloadSettings(): LevyraDownloadSettings = read(LevyraDownloadSettings()) { downloadSettingsFrom(it) }
+    fun downloadSettings(): LevyraDownloadSettings = read { downloadSettingsFrom(it) }
 
     fun setDownloadSettings(value: LevyraDownloadSettings) {
         val normalized = value.normalized()
@@ -325,7 +336,7 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun backupSettings(): LevyraBackupSettings = read(LevyraBackupSettings()) { backupSettingsFrom(it) }
+    fun backupSettings(): LevyraBackupSettings = read { backupSettingsFrom(it) }
 
     fun setBackupSettings(value: LevyraBackupSettings) {
         val normalized = value.normalized()
@@ -338,33 +349,33 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun lastBackupAt(): Long = read(0L) { it[KEY_VAULT_LAST_BACKUP] ?: 0L }
+    fun lastBackupAt(): Long = read { it[KEY_VAULT_LAST_BACKUP] ?: 0L }
 
     fun setLastBackupAt(value: Long) {
         write { it[KEY_VAULT_LAST_BACKUP] = value.coerceAtLeast(0L) }
     }
 
-    fun backupTreeUri(): String = read("") { it[KEY_VAULT_BACKUP_TREE_URI].orEmpty() }
+    fun backupTreeUri(): String = read { it[KEY_VAULT_BACKUP_TREE_URI].orEmpty() }
 
     fun setBackupTreeUri(value: String) {
         write { it[KEY_VAULT_BACKUP_TREE_URI] = value }
     }
 
     suspend fun persistBackupTreeUri(value: String) {
-        dataStore.edit { it[KEY_VAULT_BACKUP_TREE_URI] = value }
+        store.commit { it[KEY_VAULT_BACKUP_TREE_URI] = value }
     }
 
-    fun vaultRuntimeState(): Pair<Long, String> = read(0L to "") {
+    fun vaultRuntimeState(): Pair<Long, String> = read {
         (it[KEY_VAULT_LAST_BACKUP] ?: 0L) to it[KEY_VAULT_BACKUP_TREE_URI].orEmpty()
     }
 
-    fun jamDisplayName(): String = read("") { it[KEY_JAM_DISPLAY_NAME].orEmpty() }
+    fun jamDisplayName(): String = read { it[KEY_JAM_DISPLAY_NAME].orEmpty() }
 
     fun setJamDisplayName(value: String) {
         write { it[KEY_JAM_DISPLAY_NAME] = normalizeJamDisplayName(value) }
     }
 
-    fun audioSettings(): LevyraAudioSettings = read(LevyraAudioSettings()) { audioSettingsFrom(it) }
+    fun audioSettings(): LevyraAudioSettings = store.derived("audio_settings") { audioSettingsFrom(it) }
 
     fun setAudioSettings(value: LevyraAudioSettings) {
         val normalized = value.normalized()
@@ -386,13 +397,13 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun audioQuality(): String = read("Auto") { normalizeAudioQuality(it[KEY_AUDIO_QUALITY].orEmpty()) }
+    fun audioQuality(): String = read { normalizeAudioQuality(it[KEY_AUDIO_QUALITY].orEmpty()) }
 
     fun setAudioQuality(value: String) {
         write { it[KEY_AUDIO_QUALITY] = normalizeAudioQuality(value) }
     }
 
-    fun dismissedUpdateVersion(): String = read("") { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
+    fun dismissedUpdateVersion(): String = read { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
 
     fun setDismissedUpdateVersion(version: String) {
         write { it[KEY_DISMISSED_UPDATE_VERSION] = version }
@@ -412,15 +423,15 @@ class LevyraPreferences(context: Context) {
 
     fun lastTrack(): Track? = snapshot().lastTrack
 
-    fun lastPositionMs(): Long = read(0L) { it[KEY_LAST_POSITION] ?: 0L }
+    fun lastPositionMs(): Long = read { it[KEY_LAST_POSITION] ?: 0L }
 
-    fun listeningLifetimeBackfillVersion(): Int = read(0) { it[KEY_LISTENING_LIFETIME_BACKFILL] ?: 0 }
+    fun listeningLifetimeBackfillVersion(): Int = read { it[KEY_LISTENING_LIFETIME_BACKFILL] ?: 0 }
 
     fun setListeningLifetimeBackfillVersion(value: Int) {
         write { it[KEY_LISTENING_LIFETIME_BACKFILL] = value.coerceAtLeast(0) }
     }
 
-    fun listeningPulseLastPruneMs(): Long = read(0L) { it[KEY_LISTENING_PULSE_LAST_PRUNE] ?: 0L }
+    fun listeningPulseLastPruneMs(): Long = read { it[KEY_LISTENING_PULSE_LAST_PRUNE] ?: 0L }
 
     fun setListeningPulseLastPruneMs(value: Long) {
         write { it[KEY_LISTENING_PULSE_LAST_PRUNE] = value.coerceAtLeast(0L) }
@@ -436,9 +447,8 @@ class LevyraPreferences(context: Context) {
 
     fun loadHomeSections(languageCode: String = languageCode()): List<HomeSection> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        return read(emptyList()) { preferences ->
-            val localized = preferences[homeSectionsKey(normalized)].orEmpty()
-            parseHomeSections(localized)
+        return store.derived("home_sections:$normalized") { preferences ->
+            parseHomeSections(preferences[homeSectionsKey(normalized)].orEmpty())
         }
     }
 
@@ -457,7 +467,7 @@ class LevyraPreferences(context: Context) {
 
     fun loadHomeAlbums(languageCode: String = languageCode()): List<AlbumHit> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        return read(emptyList()) { preferences ->
+        return store.derived("home_albums:$normalized") { preferences ->
             parseAlbumHits(preferences[homeAlbumsKey(normalized)].orEmpty())
         }
     }
@@ -490,24 +500,18 @@ class LevyraPreferences(context: Context) {
     fun loadChartTracks(languageCode: String = languageCode(), regionId: String = ""): List<Track> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         val chartRegion = regionId.ifBlank { com.luc4n3x.levyra.domain.ChartsCatalog.defaultRegionForLanguage(normalized).id }
-        return read(emptyList()) { preferences ->
-            val localized = preferences[chartTracksKey(normalized, chartRegion)].orEmpty()
-            parseTrackList(localized)
+        return store.derived("chart_tracks:$normalized:${chartRegion.lowercase()}") { preferences ->
+            parseTrackList(preferences[chartTracksKey(normalized, chartRegion)].orEmpty())
         }
     }
 
-    /**
-     * Reads several chart regions from a single DataStore snapshot. Calling [loadChartTracks] once
-     * per region blocks a thread on its own snapshot read each time, which is too expensive when
-     * warming every region up front.
-     */
     fun loadChartTracksByRegion(
         languageCode: String = languageCode(),
         regionIds: List<String>
     ): Map<String, List<Track>> {
         if (regionIds.isEmpty()) return emptyMap()
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        return read<Map<String, List<Track>>>(emptyMap()) { preferences ->
+        return read { preferences ->
             val out = LinkedHashMap<String, List<Track>>(regionIds.size)
             regionIds.forEach { regionId ->
                 val region = regionId.trim().lowercase()
@@ -531,9 +535,8 @@ class LevyraPreferences(context: Context) {
 
     fun loadPersonalOrbitTracks(languageCode: String = languageCode()): List<Track> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        return read(emptyList()) { preferences ->
-            val localized = preferences[personalOrbitTracksKey(normalized)].orEmpty()
-            parseTrackList(localized)
+        return store.derived("personal_orbit:$normalized") { preferences ->
+            parseTrackList(preferences[personalOrbitTracksKey(normalized)].orEmpty())
         }
     }
 
@@ -574,33 +577,6 @@ class LevyraPreferences(context: Context) {
             jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty()
         )
     }
-
-    private fun defaultSnapshot(): LevyraPreferencesSnapshot = LevyraPreferencesSnapshot(
-        onboarded = false,
-        tastes = emptySet(),
-        userName = "",
-        languageCode = LevyraLanguageCatalog.deviceDefault(),
-        animationsEnabled = true,
-        motionArtworkEnabled = true,
-        dynamicColor = true,
-        sponsorBlock = DEFAULT_SPONSORBLOCK_ENABLED,
-        skipSilence = false,
-        audioQuality = "Auto",
-        dismissedUpdateVersion = "",
-        lastTrack = null,
-        lastPositionMs = 0L,
-        recentSearches = emptyList(),
-        personalOrbitTracks = emptyList(),
-        audioNormalization = false,
-        lyricsTranslationEnabled = false,
-        themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC,
-        audioSettings = LevyraAudioSettings(),
-        interfaceSettings = LevyraInterfaceSettings(),
-        downloadSettings = LevyraDownloadSettings(),
-        backupSettings = LevyraBackupSettings(),
-        automationSettings = LevyraAutomationSettings(),
-        jamDisplayName = ""
-    )
 
 
     private fun interfaceSettingsFrom(preferences: Preferences): LevyraInterfaceSettings {
@@ -787,22 +763,14 @@ class LevyraPreferences(context: Context) {
         return raw.split(',').mapNotNull { it.trim().toIntOrNull() }
     }
 
-    val automationSettingsFlow: kotlinx.coroutines.flow.Flow<LevyraAutomationSettings> = dataStore.data
-        .catch { error ->
-            if (error is IOException) {
-                Timber.w(error, "DataStore automation read failed")
-                emit(emptyPreferences())
-            } else {
-                throw error
-            }
-        }
+    val automationSettingsFlow: kotlinx.coroutines.flow.Flow<LevyraAutomationSettings> = store.preferences
         .map { preferences -> automationSettingsFrom(preferences) }
         .distinctUntilChanged()
 
     suspend fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
         try {
-            dataStore.edit { writeAutomationSettings(it, normalized) }
+            store.commit { writeAutomationSettings(it, normalized) }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -851,24 +819,10 @@ class LevyraPreferences(context: Context) {
         ).normalized()
     }
 
-    private fun <T> read(default: T, selector: (Preferences) -> T): T = runBlocking(Dispatchers.IO) {
-        dataStore.data
-            .catch { error ->
-                if (error is IOException) {
-                    Timber.w(error, "DataStore read failed")
-                    emit(emptyPreferences())
-                } else {
-                    throw error
-                }
-            }
-            .map(selector)
-            .first() ?: default
-    }
+    private fun <T> read(selector: (Preferences) -> T): T = selector(store.current())
 
     private fun write(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
-        runBlocking(Dispatchers.IO) {
-            runCatching { dataStore.edit(block) }.onFailure { Timber.w(it, "DataStore write failed") }
-        }
+        store.edit(block)
     }
 
     private companion object {
