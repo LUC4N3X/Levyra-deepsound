@@ -1,8 +1,11 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.HomeCollectionKind
+import com.luc4n3x.levyra.domain.HomeCollectionSource
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -38,6 +41,10 @@ class HomeEditorialSixCollectionsRegressionTest {
 
         assertEquals(6, collections.size)
         assertTrue(collections.all { it.tracks.size >= 4 })
+        assertEquals(
+            collections.size,
+            collections.map { collection -> collection.tracks.take(6).map { it.id } }.distinct().size
+        )
     }
 
     @Test
@@ -105,13 +112,121 @@ class HomeEditorialSixCollectionsRegressionTest {
         }
     }
 
+    @Test
+    fun sixVisibleCollectionCoversNeverReuseArtwork() {
+        val tracks = (1..12).map { index ->
+            val artworkIndex = (index - 1) % 6
+            val size = if (index <= 6) 192 else 512
+            track(
+                id = "cover-$index",
+                tags = setOf("workout", "chill", "focus", "party", "rap", "pop"),
+                energy = 88,
+                artworkUrl = "https://lh3.googleusercontent.com/levyra-cover-$artworkIndex=s$size-c-k-c0x00ffffff-no-rj"
+            )
+        }
+
+        val collections = HomeEditorialEngine.buildCollections(
+            homeSections = listOf(
+                HomeSection("editorial-a", tracks.take(8)),
+                HomeSection("editorial-b", tracks.drop(2).take(8))
+            ),
+            newReleaseTracks = emptyList(),
+            personalTracks = tracks,
+            resonanceTracks = tracks.reversed(),
+            quickPickTracks = tracks,
+            chartTracks = tracks.takeLast(8),
+            favorites = tracks.take(6),
+            libraryTracks = tracks,
+            includeFresh = false,
+            nowMillis = Instant.parse("2026-06-10T08:00:00Z").toEpochMilli()
+        )
+
+        val coverKeys = collections.map { collection ->
+            collection.tracks.first().thumbnailUrl.substringBefore('=')
+        }
+        assertEquals(6, collections.size)
+        assertEquals(coverKeys.size, coverKeys.distinct().size)
+    }
+
+    @Test
+    fun undersizedFreshBucketIsNotPaddedWithOldTracks() {
+        val freshTracks = (1..3).map { index ->
+            track(
+                id = "fresh-$index",
+                tags = setOf("pop"),
+                energy = 80,
+                releaseDate = "2026-06-09"
+            )
+        }
+        val catalog = (1..10).map { index ->
+            track(
+                id = "catalog-$index",
+                tags = setOf("workout", "chill", "focus", "party", "rap", "pop"),
+                energy = 86,
+                releaseDate = "2025-01-01"
+            )
+        }
+
+        val collections = HomeEditorialEngine.buildCollections(
+            homeSections = emptyList(),
+            newReleaseTracks = freshTracks,
+            personalTracks = catalog,
+            resonanceTracks = emptyList(),
+            quickPickTracks = catalog,
+            chartTracks = catalog.takeLast(6),
+            favorites = emptyList(),
+            libraryTracks = catalog,
+            includeFresh = true,
+            nowMillis = Instant.parse("2026-06-10T08:00:00Z").toEpochMilli()
+        )
+
+        assertEquals(6, collections.size)
+        assertFalse(collections.any { it.kind == HomeCollectionKind.Fresh })
+    }
+
+    @Test
+    fun discoveryWithoutChartInputIsNotMislabelledAsChartSource() {
+        val tracks = (1..12).map { index ->
+            track(
+                id = "discovery-$index",
+                tags = when (index % 5) {
+                    0 -> setOf("workout")
+                    1 -> setOf("chill")
+                    2 -> setOf("focus")
+                    3 -> setOf("party")
+                    else -> setOf("rap")
+                },
+                energy = 72 + index
+            )
+        }
+
+        val collections = HomeEditorialEngine.buildCollections(
+            homeSections = emptyList(),
+            newReleaseTracks = emptyList(),
+            personalTracks = tracks,
+            resonanceTracks = tracks.reversed(),
+            quickPickTracks = tracks,
+            chartTracks = emptyList(),
+            favorites = emptyList(),
+            libraryTracks = tracks,
+            includeFresh = false,
+            nowMillis = Instant.parse("2026-06-10T08:00:00Z").toEpochMilli()
+        )
+
+        val discovery = collections.firstOrNull { it.kind == HomeCollectionKind.Discovery }
+        assertTrue(discovery != null)
+        assertEquals(HomeCollectionSource.Levyra, discovery?.source)
+    }
+
     private fun track(
         id: String,
         tags: Set<String>,
         energy: Int = 70,
         vocal: Int = 60,
         replayScore: Int = 85,
-        metadataConfidence: Int = 90
+        metadataConfidence: Int = 90,
+        artworkUrl: String = "https://example.com/$id.jpg",
+        releaseDate: String = ""
     ): Track {
         return Track(
             id = id,
@@ -121,8 +236,8 @@ class HomeEditorialSixCollectionsRegressionTest {
             durationMs = 180_000L,
             streamUrl = "",
             videoUrl = "",
-            thumbnailUrl = "https://example.com/$id.jpg",
-            largeThumbnailUrl = "https://example.com/${id}_large.jpg",
+            thumbnailUrl = artworkUrl,
+            largeThumbnailUrl = artworkUrl,
             source = "test",
             moodTags = tags,
             energy = energy,
@@ -131,6 +246,7 @@ class HomeEditorialSixCollectionsRegressionTest {
             cacheScore = 75,
             accentStart = 0xFF123456.toInt(),
             accentEnd = 0xFF654321.toInt(),
+            releaseDate = releaseDate,
             metadataConfidence = metadataConfidence
         )
     }
