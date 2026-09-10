@@ -83,8 +83,8 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
-    fun defaultPlayerVisualModeIsArtwork() {
-        assertEquals(PlayerVisualMode.Artwork, LevyraInterfaceSettings().playerVisualMode)
+    fun defaultPlayerVisualModeIsCanvasImmersive() {
+        assertEquals(PlayerVisualMode.CanvasImmersive, LevyraInterfaceSettings().playerVisualMode)
     }
 
     @Test

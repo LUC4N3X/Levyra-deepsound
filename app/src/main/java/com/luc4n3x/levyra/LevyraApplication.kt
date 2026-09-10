@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.YoutubeLocalDecoder
+import com.luc4n3x.levyra.data.preloadLevyraPreferences
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
 import com.luc4n3x.levyra.feature.cast.CastRuntimeInitializer
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
@@ -31,6 +32,7 @@ class LevyraApplication : Application() {
         CastRuntimeInitializer.initialize(this)
         RuntimeHooks.start(this)
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
+        preloadLevyraPreferences(this)
         LevyraArtworkStartupMetrics.beginSession()
         runCatching { LevyraNetworkController.applyStoredConfiguration(this) }
             .onFailure { Timber.w(it, "Network configuration bootstrap failed") }

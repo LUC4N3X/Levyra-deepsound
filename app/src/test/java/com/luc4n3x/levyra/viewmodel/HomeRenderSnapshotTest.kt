@@ -103,7 +103,10 @@ class HomeRenderSnapshotTest {
 
         val snapshot = buildHomeRenderSnapshot(state)
 
-        assertEquals(listOf(quickTrack), snapshot.derived.quickPicks?.tracks)
+        val quickPicks = snapshot.derived.quickPicks?.tracks.orEmpty()
+        assertEquals(quickTrack, quickPicks.first())
+        assertEquals(20, quickPicks.size)
+        assertEquals(quickPicks.size, quickPicks.map { it.id }.distinct().size)
         assertEquals(emptyList<HomeSection>(), snapshot.derived.otherSections)
     }
 

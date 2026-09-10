@@ -109,7 +109,7 @@ data class LevyraInterfaceSettings(
     val enhanceVideoMetadata: Boolean = false,
     val pureBlack: Boolean = false,
     val hapticFeedback: Boolean = true,
-    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.Artwork,
+    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasImmersive,
     val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
     val librarySort: LibrarySort = LibrarySort.Recent,
     val librarySortDirection: LibrarySortDirection = LibrarySort.Recent.defaultDirection
