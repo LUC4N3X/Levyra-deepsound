@@ -6,22 +6,24 @@ import com.luc4n3x.levyra.domain.HomeEditorialCollection
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
 import com.luc4n3x.levyra.domain.HomeSpotlightKind
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
-import java.util.Calendar
-import java.util.Locale
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.ResolverStyle
 import java.time.temporal.ChronoUnit
+import java.util.Calendar
+import java.util.Locale
 import kotlin.math.absoluteValue
 
 object HomeEditorialEngine {
     private const val collectionTrackLimit = 18
     private const val minimumCollectionSize = 4
-    private const val maximumCollectionCount = 8
+    private const val targetCollectionCount = 6
     private const val stableCollectionSlots = 3
 
     private val localReleaseDateFormatters = listOf(
@@ -30,6 +32,10 @@ object HomeEditorialEngine {
         DateTimeFormatter.ofPattern("uuuu.MM.dd", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT),
         DateTimeFormatter.ofPattern("dd/MM/uuuu", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT),
         DateTimeFormatter.ofPattern("MM/dd/uuuu", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT)
+    )
+    private val artworkSizeSuffixPattern = Regex(
+        "=(?:w\\d+-h\\d+|s\\d+)(?:-[a-z0-9]+)*$",
+        RegexOption.IGNORE_CASE
     )
 
     fun localDayKey(nowMillis: Long = System.currentTimeMillis()): Int {
@@ -55,60 +61,50 @@ object HomeEditorialEngine {
 
         fun append(tracks: List<Track>, priority: Int) {
             tracks.forEach { track ->
+                if (!isReliableCandidate(track)) return@forEach
                 val key = identityKey(track)
-                if (key.isBlank() || !isReliableCandidate(track)) return@forEach
-                if (key !in candidates) candidates[key] = track
-                val previous = sourcePriority[key] ?: Int.MIN_VALUE
-                if (priority > previous) sourcePriority[key] = priority
+                candidates.putIfAbsent(key, track)
+                sourcePriority[key] = maxOf(sourcePriority[key] ?: Int.MIN_VALUE, priority)
             }
         }
 
-        if (showNewReleases) append(newReleaseTracks, 7_000)
-        append(chartTracks, 5_500)
-        if (showPersonalOrbit) append(personalTracks, 4_500)
-        if (showResonance) append(resonanceTracks, 4_000)
-        append(quickPickTracks, 3_500)
-        fallbackSections.forEachIndexed { index, tracks -> append(tracks, 3_000 - index.coerceAtMost(10) * 50) }
+        if (showNewReleases) append(newReleaseTracks, 1_400)
+        if (showPersonalOrbit) append(personalTracks, 1_250)
+        if (showResonance) append(resonanceTracks, 1_100)
+        append(quickPickTracks, 950)
+        fallbackSections.forEachIndexed { index, tracks -> append(tracks, 780 - index.coerceAtMost(5) * 35) }
+        append(chartTracks, 1_300)
 
-        val today = localDate(nowMillis)
         val newReleaseKeys = if (showNewReleases) {
-            newReleaseTracks
-                .asSequence()
-                .filter { track ->
-                    parseReleaseDate(track.releaseDate)
-                        ?.let { releaseMillis -> calendarDayAge(localDate(releaseMillis), today) in 0..7 } == true
-                }
-                .map(::identityKey)
-                .toHashSet()
+            newReleaseTracks.asSequence().map(::identityKey).toHashSet()
         } else {
             emptySet()
         }
         val chartKeys = chartTracks.asSequence().map(::identityKey).toHashSet()
+        val today = localDate(nowMillis)
         val daySeed = localDayKey(nowMillis)
 
-        val rankedCandidates = candidates.map { (key, track) ->
-            val releaseMillis = if (showNewReleases) parseReleaseDate(track.releaseDate) else null
-            val ageDays = releaseMillis?.let { calendarDayAge(localDate(it), today) }
-                ?.takeIf { it >= 0 }
+        val rankedCandidates = candidates.mapNotNull { (key, track) ->
             val inNewReleases = key in newReleaseKeys
             val inCharts = key in chartKeys
+            val releaseDate = if (inNewReleases) parseReleaseDate(track.releaseDate)?.let(::localDate) else null
+            val ageDays = releaseDate?.let { calendarDayAge(it, today) }?.takeIf { it >= 0 }
+            val isFreshRelease = inNewReleases && ageDays != null && ageDays <= 7
             val kind = when {
-                ageDays == 0 -> HomeSpotlightKind.ReleasedToday
-                ageDays != null && ageDays <= 7 -> HomeSpotlightKind.JustReleased
-                inNewReleases -> HomeSpotlightKind.JustReleased
+                isFreshRelease && ageDays == 0 -> HomeSpotlightKind.ReleasedToday
+                isFreshRelease -> HomeSpotlightKind.JustReleased
                 inCharts -> HomeSpotlightKind.ChartTrending
                 else -> HomeSpotlightKind.LevyraSelect
             }
             val freshnessScore = when {
-                ageDays == 0 -> 12_000
-                ageDays != null && ageDays <= 7 -> 10_000 - ageDays * 220
-                inNewReleases -> 8_000
+                isFreshRelease && ageDays == 0 -> 12_000
+                isFreshRelease -> 10_000 - ageDays!! * 220
                 inCharts -> 6_000
                 else -> 0
             }
             val artworkScore = when {
-                track.largeThumbnailUrl.isNotBlank() -> 180
-                track.thumbnailUrl.isNotBlank() -> 90
+                track.largeThumbnailUrl.isNotBlank() -> 420
+                track.thumbnailUrl.isNotBlank() -> 260
                 else -> 0
             }
             val metadataScore = track.metadataConfidence.coerceIn(0, 100) * 2
@@ -121,11 +117,10 @@ object HomeEditorialEngine {
                 score = freshnessScore + sourcePriority.getValue(key) + artworkScore + metadataScore + engagementScore + preferenceBoost + stableDailyJitter,
                 releaseAgeDays = ageDays
             )
-        }
-            .sortedWith(
-                compareByDescending<HomeSpotlightCandidate> { it.score }
-                    .thenBy { stableHash("$daySeed|${it.track.id}|${it.track.title}") }
-            )
+        }.sortedWith(
+            compareByDescending<HomeSpotlightCandidate> { it.score }
+                .thenBy { stableHash("$daySeed|${it.track.id}|${it.track.title}") }
+        )
 
         val freshCandidates = rankedCandidates.filter { candidate ->
             candidate.kind == HomeSpotlightKind.ReleasedToday ||
@@ -146,16 +141,18 @@ object HomeEditorialEngine {
         includeFresh: Boolean = true,
         nowMillis: Long = System.currentTimeMillis()
     ): List<HomeEditorialCollection> {
-        val pool = buildList {
-            addAll(newReleaseTracks)
-            addAll(personalTracks)
-            addAll(resonanceTracks)
-            addAll(quickPickTracks)
-            addAll(chartTracks)
-            homeSections.forEach { addAll(it.tracks) }
-            addAll(favorites)
-            addAll(libraryTracks)
-        }
+        val visibleReleaseTracks = if (includeFresh) newReleaseTracks else emptyList()
+        val sectionTracks = homeSections.flatMap { it.tracks }
+        val pool = (
+            visibleReleaseTracks +
+                personalTracks +
+                resonanceTracks +
+                quickPickTracks +
+                chartTracks +
+                sectionTracks +
+                favorites +
+                libraryTracks
+            )
             .asSequence()
             .filter(::isReliableCandidate)
             .distinctBy(::identityKey)
@@ -164,76 +161,104 @@ object HomeEditorialEngine {
         if (pool.size < minimumCollectionSize) return emptyList()
 
         val today = localDate(nowMillis)
+        val daySeed = localDayKey(nowMillis)
+        val chartKeys = chartTracks.asSequence().map(::identityKey).toHashSet()
+        val personalKeys = (personalTracks + favorites + libraryTracks)
+            .asSequence()
+            .map(::identityKey)
+            .toHashSet()
+        val editorialKeys = sectionTracks.asSequence().map(::identityKey).toHashSet()
+        val resonanceKeys = resonanceTracks.asSequence().map(::identityKey).toHashSet()
+        val quickPickKeys = quickPickTracks.asSequence().map(::identityKey).toHashSet()
+        val newReleaseKeys = visibleReleaseTracks.asSequence().map(::identityKey).toHashSet()
+
+        val local = pool.filter { "local" in normalizedTags(it) }
+        val workout = pool.filter {
+            val tags = normalizedTags(it)
+            it.energy >= 86 || tags.any { tag -> tag in workoutTags }
+        }
+        val chill = pool.filter {
+            val tags = normalizedTags(it)
+            it.energy <= 70 || tags.any { tag -> tag in chillTags }
+        }
+        val focus = pool.filter {
+            val tags = normalizedTags(it)
+            tags.any { tag -> tag in focusTags } || it.energy in 65..82 && it.vocal <= 72
+        }
+        val party = pool.filter {
+            val tags = normalizedTags(it)
+            it.energy >= 84 && tags.any { tag -> tag in partyTags }
+        }
+        val rap = pool.filter { track -> normalizedTags(track).any { it in rapTags } }
+        val pop = pool.filter { track -> normalizedTags(track).any { it in popTags } }
+        val discovery = (chartTracks + sectionTracks + personalTracks + quickPickTracks + pool)
+            .asSequence()
+            .filter(::isReliableCandidate)
+            .distinctBy(::identityKey)
+            .toList()
         val fresh = if (includeFresh) {
             pool.filter { track ->
-                val releaseMillis = parseReleaseDate(track.releaseDate) ?: return@filter false
-                calendarDayAge(localDate(releaseMillis), today) in 0..14
+                identityKey(track) in newReleaseKeys &&
+                    parseReleaseDate(track.releaseDate)
+                        ?.let(::localDate)
+                        ?.let { releaseDate -> calendarDayAge(releaseDate, today) in 0..7 } == true
             }
         } else {
             emptyList()
         }
-        val newReleaseKeys = newReleaseTracks.asSequence().map(::identityKey).toHashSet()
-        val local = pool.filter { "local" in normalizedTags(it) }
-        val workout = pool.filter {
-            val tags = normalizedTags(it)
-            it.energy >= 86 || tags.any { tag -> tag in setOf("gym", "workout", "energy", "training", "running") }
-        }
-        val chill = pool.filter {
-            val tags = normalizedTags(it)
-            it.energy <= 70 || tags.any { tag -> tag in setOf("chill", "relax", "lofi", "calm", "sleep", "mood") }
-        }
-        val focus = pool.filter {
-            val tags = normalizedTags(it)
-            tags.any { tag -> tag in setOf("focus", "study", "drive", "electronic", "instrumental") } ||
-                it.energy in 65..82 && it.vocal <= 72
-        }
-        val party = pool.filter {
-            val tags = normalizedTags(it)
-            it.energy >= 84 && tags.any { tag -> tag in setOf("party", "dance", "latin", "club", "funk") }
-        }
-        val rap = pool.filter {
-            val tags = normalizedTags(it)
-            tags.any { tag -> tag in setOf("rap", "hiphop", "hip-hop", "drill", "trap") }
-        }
-        val pop = pool.filter {
-            val tags = normalizedTags(it)
-            tags.any { tag -> tag in setOf("pop", "hit", "anthem") }
-        }
-        val discovery = pool.sortedWith(
-            compareByDescending<Track> { it.metadataConfidence + it.replayScore + it.cacheScore }
-                .thenByDescending { it.largeThumbnailUrl.isNotBlank() }
-                .thenBy { stableHash(identityKey(it)) }
-        )
 
-        val result = ArrayList<HomeEditorialCollection>(12)
-        val usedCollectionIds = HashSet<String>()
+        val result = mutableListOf<HomeEditorialCollection>()
+
+        fun sourceBoost(track: Track): Int {
+            val key = identityKey(track)
+            var score = 0
+            if (key in personalKeys) score += 1_050
+            if (key in chartKeys) score += 900
+            if (key in editorialKeys) score += 800
+            if (key in newReleaseKeys) score += 720
+            if (key in resonanceKeys) score += 560
+            if (key in quickPickKeys) score += 480
+            return score
+        }
 
         fun addCollection(
             id: String,
             kind: HomeCollectionKind,
-            titleOverride: String = "",
             tracks: List<Track>,
             source: HomeCollectionSource,
-            updatedToday: Boolean = false
+            titleOverride: String = "",
+            updatedToday: Boolean = false,
+            allowSmartFill: Boolean = true
         ) {
-            if (!usedCollectionIds.add(id)) return
-            val selected = tracks
+            val primaryKeys = tracks.asSequence().map(::identityKey).toHashSet()
+            val candidatePool = if (allowSmartFill) {
+                (tracks + pool).asSequence().distinctBy(::identityKey).toList()
+            } else {
+                tracks.asSequence().distinctBy(::identityKey).toList()
+            }
+            val selected = candidatePool
                 .asSequence()
                 .filter(::isReliableCandidate)
-                .distinctBy(::identityKey)
                 .sortedWith(
                     compareByDescending<Track> { track ->
-                        val key = identityKey(track)
-                        val freshBoost = if (key in newReleaseKeys) 400 else 0
-                        freshBoost + track.metadataConfidence * 2 + track.replayScore + track.cacheScore + track.energy / 3
-                    }.thenBy { stableHash("$id|${identityKey(it)}") }
+                        val primaryBoost = if (identityKey(track) in primaryKeys) 3_200 else 0
+                        primaryBoost +
+                            sourceBoost(track) +
+                            kindAffinity(track, kind) +
+                            track.metadataConfidence.coerceIn(0, 100) * 3 +
+                            track.replayScore.coerceIn(0, 100) * 2 +
+                            track.cacheScore.coerceIn(0, 100) +
+                            stableHash("$daySeed|$id|${identityKey(track)}") % 211
+                    }.thenBy { track -> stableHash("$id|${identityKey(track)}") }
                 )
                 .take(collectionTrackLimit)
                 .toList()
             if (selected.size < minimumCollectionSize) return
             val accentSeed = selected.take(4)
             val accentStart = accentSeed.firstOrNull()?.accentStart ?: 0xFF00E5FF.toInt()
-            val accentEnd = accentSeed.getOrNull(1)?.accentEnd ?: accentSeed.firstOrNull()?.accentEnd ?: 0xFF7B42FF.toInt()
+            val accentEnd = accentSeed.getOrNull(1)?.accentEnd
+                ?: accentSeed.firstOrNull()?.accentEnd
+                ?: 0xFF7B42FF.toInt()
             result += HomeEditorialCollection(
                 id = id,
                 kind = kind,
@@ -246,85 +271,260 @@ object HomeEditorialEngine {
             )
         }
 
-        if (includeFresh) {
+        if (includeFresh && fresh.isNotEmpty()) {
             addCollection(
                 id = "fresh",
                 kind = HomeCollectionKind.Fresh,
-                tracks = fresh + newReleaseTracks,
+                tracks = fresh,
                 source = HomeCollectionSource.Editorial,
                 updatedToday = fresh.any { track ->
-                    parseReleaseDate(track.releaseDate)?.let { localDate(it) == today } == true
-                }
+                    parseReleaseDate(track.releaseDate)?.let(::localDate) == today
+                },
+                allowSmartFill = false
             )
         }
-        addCollection("local", HomeCollectionKind.Local, tracks = local, source = HomeCollectionSource.Editorial)
-        addCollection("workout", HomeCollectionKind.Workout, tracks = workout, source = HomeCollectionSource.Levyra)
-        addCollection("chill", HomeCollectionKind.Chill, tracks = chill, source = HomeCollectionSource.Levyra)
-        addCollection("rap", HomeCollectionKind.Rap, tracks = rap, source = HomeCollectionSource.Editorial)
-        addCollection("party", HomeCollectionKind.Party, tracks = party, source = HomeCollectionSource.Levyra)
-        addCollection("focus", HomeCollectionKind.Focus, tracks = focus, source = HomeCollectionSource.Levyra)
-        addCollection("pop", HomeCollectionKind.Pop, tracks = pop, source = HomeCollectionSource.Editorial)
+
+        fun addThemedCollection(
+            id: String,
+            kind: HomeCollectionKind,
+            tracks: List<Track>,
+            source: HomeCollectionSource
+        ) {
+            if (tracks.isNotEmpty()) {
+                addCollection(id, kind, tracks, source)
+            }
+        }
+
+        addThemedCollection("local", HomeCollectionKind.Local, local, HomeCollectionSource.Editorial)
+        addThemedCollection("workout", HomeCollectionKind.Workout, workout, HomeCollectionSource.Levyra)
+        addThemedCollection("chill", HomeCollectionKind.Chill, chill, HomeCollectionSource.Levyra)
+        addThemedCollection("rap", HomeCollectionKind.Rap, rap, HomeCollectionSource.Editorial)
+        addThemedCollection("party", HomeCollectionKind.Party, party, HomeCollectionSource.Levyra)
+        addThemedCollection("focus", HomeCollectionKind.Focus, focus, HomeCollectionSource.Levyra)
+        addThemedCollection("pop", HomeCollectionKind.Pop, pop, HomeCollectionSource.Editorial)
+        if (discovery.isNotEmpty()) {
+            addCollection(
+                id = "discovery",
+                kind = HomeCollectionKind.Discovery,
+                tracks = discovery,
+                source = if (chartKeys.isNotEmpty()) HomeCollectionSource.Charts else HomeCollectionSource.Levyra
+            )
+        }
 
         homeSections
             .asSequence()
-            .filter { section -> section.title.isNotBlank() && section.tracks.size >= minimumCollectionSize }
-            .take(2)
+            .filter { it.title.isNotBlank() }
             .forEachIndexed { index, section ->
                 addCollection(
                     id = "editorial-${stableHash(section.title)}-$index",
                     kind = HomeCollectionKind.Editorial,
-                    titleOverride = section.title,
                     tracks = section.tracks,
-                    source = HomeCollectionSource.Editorial
+                    source = HomeCollectionSource.Editorial,
+                    titleOverride = section.title,
+                    allowSmartFill = true
                 )
             }
 
-        addCollection("discovery", HomeCollectionKind.Discovery, tracks = discovery, source = HomeCollectionSource.Levyra)
+        val distinct = result
+            .sortedWith(
+                compareByDescending<HomeEditorialCollection> { collectionQuality(it) }
+                    .thenBy { stableHash("dedupe|$daySeed|${it.id}") }
+            )
+            .distinctBy(::collectionFingerprint)
+            .toMutableList()
+        if (distinct.size < targetCollectionCount) {
+            val fallbackKinds = listOf(
+                HomeCollectionKind.Discovery,
+                HomeCollectionKind.Pop,
+                HomeCollectionKind.Chill,
+                HomeCollectionKind.Focus,
+                HomeCollectionKind.Workout,
+                HomeCollectionKind.Party,
+                HomeCollectionKind.Rap,
+                HomeCollectionKind.Local
+            ).sortedWith(
+                compareByDescending<HomeCollectionKind> { kind ->
+                    pool.sumOf { track -> kindAffinity(track, kind) } +
+                        when (kind) {
+                            HomeCollectionKind.Discovery -> chartKeys.size * 120
+                            HomeCollectionKind.Local -> editorialKeys.size * 80
+                            else -> 0
+                        }
+                }.thenBy { kind -> stableHash("$daySeed|${kind.name}") }
+            )
+            var fallbackIndex = 0
+            while (distinct.size < targetCollectionCount && fallbackIndex < fallbackKinds.size * 3) {
+                val kind = fallbackKinds[fallbackIndex % fallbackKinds.size]
+                if (distinct.any { it.kind == kind }) {
+                    fallbackIndex++
+                    continue
+                }
+                val id = "smart-${kind.name.lowercase(Locale.ROOT)}-$fallbackIndex"
+                val before = result.size
+                val fallbackSeedTracks = pool
+                    .sortedBy { track -> stableHash("$daySeed|$id|${identityKey(track)}") }
+                    .take((minimumCollectionSize + 4).coerceAtMost(pool.size))
+                addCollection(
+                    id = id,
+                    kind = kind,
+                    tracks = fallbackSeedTracks,
+                    source = if (chartKeys.isNotEmpty()) HomeCollectionSource.Charts else HomeCollectionSource.Levyra,
+                    allowSmartFill = true
+                )
+                if (result.size > before) {
+                    val candidate = result.last()
+                    if (distinct.none { collectionFingerprint(it) == collectionFingerprint(candidate) }) {
+                        distinct += candidate
+                    }
+                }
+                fallbackIndex++
+            }
+        }
 
-        val distinctCollections = result
-            .distinctBy { collection -> collection.tracks.take(6).joinToString("|") { identityKey(it) } }
-        return selectCollectionsForDay(distinctCollections, nowMillis)
+        if (distinct.size < targetCollectionCount) {
+            val selectedIds = distinct.asSequence().map { it.id }.toHashSet()
+            val selectedKinds = distinct.asSequence().map { it.kind }.toHashSet()
+            val selectedFingerprints = distinct.asSequence().map(::collectionFingerprint).toHashSet()
+            val emergencyCandidates = result
+                .asSequence()
+                .filter { it.id !in selectedIds }
+                .sortedWith(
+                    compareByDescending<HomeEditorialCollection> { collectionQuality(it) }
+                        .thenBy { stableHash("emergency|$daySeed|${it.id}") }
+                )
+                .toList()
+
+            emergencyCandidates
+                .asSequence()
+                .filter { it.kind !in selectedKinds }
+                .forEach { candidate ->
+                    val fingerprint = collectionFingerprint(candidate)
+                    if (distinct.size < targetCollectionCount && fingerprint !in selectedFingerprints) {
+                        distinct += candidate
+                        selectedIds += candidate.id
+                        selectedKinds += candidate.kind
+                        selectedFingerprints += fingerprint
+                    }
+                }
+
+            emergencyCandidates
+                .asSequence()
+                .filter { it.id !in selectedIds }
+                .forEach { candidate ->
+                    val fingerprint = collectionFingerprint(candidate)
+                    if (distinct.size < targetCollectionCount && fingerprint !in selectedFingerprints) {
+                        distinct += candidate
+                        selectedIds += candidate.id
+                        selectedFingerprints += fingerprint
+                    }
+                }
+        }
+
+        return withDistinctPrimaryArtwork(
+            collections = selectCollectionsForDay(distinct, nowMillis),
+            fallbackPool = pool,
+            daySeed = daySeed
+        )
     }
 
     private fun selectCollectionsForDay(
         collections: List<HomeEditorialCollection>,
         nowMillis: Long
     ): List<HomeEditorialCollection> {
-        if (collections.size <= maximumCollectionCount) {
-            val pairedSize = collections.size - collections.size % 2
-            return collections.take(pairedSize)
-        }
-
-        val featuredFresh = collections.firstOrNull {
-            it.kind == HomeCollectionKind.Fresh && it.updatedToday
-        }
-        val remaining = collections
-            .filterNot { collection -> collection.id == featuredFresh?.id }
-            .sortedWith(
-                compareByDescending<HomeEditorialCollection>(::collectionQuality)
-                    .thenBy { stableHash(it.id) }
-            )
-
-        val selected = ArrayList<HomeEditorialCollection>(maximumCollectionCount)
-        if (featuredFresh != null) selected += featuredFresh
-
-        val stableCount = minOf(
-            stableCollectionSlots,
-            maximumCollectionCount - selected.size,
-            remaining.size
+        if (collections.isEmpty()) return emptyList()
+        val daySeed = localDayKey(nowMillis)
+        val ranked = collections.sortedWith(
+            compareByDescending<HomeEditorialCollection> { collectionQuality(it) }
+                .thenBy { stableHash("stable|${it.id}") }
         )
-        selected += remaining.take(stableCount)
+        if (ranked.size <= targetCollectionCount) return ranked.take(targetCollectionCount)
 
-        val rotationPool = remaining.drop(stableCount)
-        val rotatingSlots = maximumCollectionCount - selected.size
-        if (rotatingSlots > 0 && rotationPool.isNotEmpty()) {
-            val offset = Math.floorMod(localDayKey(nowMillis), rotationPool.size)
-            val rotated = rotationPool.drop(offset) + rotationPool.take(offset)
-            selected += rotated.take(rotatingSlots)
+        val stable = ranked.take(stableCollectionSlots)
+        val stableIds = stable.asSequence().map { it.id }.toHashSet()
+        val rotating = ranked
+            .asSequence()
+            .filterNot { it.id in stableIds }
+            .sortedWith(
+                compareBy<HomeEditorialCollection> { stableHash("$daySeed|${it.id}") }
+                    .thenByDescending(::collectionQuality)
+            )
+            .toList()
+        return (stable + rotating)
+            .distinctBy { it.id }
+            .take(targetCollectionCount)
+    }
+
+    private fun withDistinctPrimaryArtwork(
+        collections: List<HomeEditorialCollection>,
+        fallbackPool: List<Track>,
+        daySeed: Int
+    ): List<HomeEditorialCollection> {
+        if (collections.size < 2) return collections
+        val candidatesByCollection = collections.map { collection ->
+            val existingKeys = collection.tracks.asSequence().map(::identityKey).toHashSet()
+            val fallbackTracks = if (collection.kind == HomeCollectionKind.Fresh) {
+                emptyList()
+            } else {
+                fallbackPool
+                    .asSequence()
+                    .filterNot { identityKey(it) in existingKeys }
+                    .sortedWith(
+                        compareByDescending<Track> { track ->
+                            kindAffinity(track, collection.kind) +
+                                track.metadataConfidence.coerceIn(0, 100) * 3 +
+                                track.replayScore.coerceIn(0, 100) * 2 +
+                                track.cacheScore.coerceIn(0, 100)
+                        }.thenBy { track ->
+                            stableHash("cover|$daySeed|${collection.id}|${identityKey(track)}")
+                        }
+                    )
+                    .toList()
+            }
+            (collection.tracks + fallbackTracks)
+                .asSequence()
+                .distinctBy(::identityKey)
+                .filter { artworkIdentity(it).isNotBlank() }
+                .toList()
+        }
+        val ownerByArtwork = HashMap<String, Int>()
+
+        fun assign(collectionIndex: Int, visitedArtwork: MutableSet<String>): Boolean {
+            candidatesByCollection[collectionIndex].forEach { track ->
+                val artwork = artworkIdentity(track)
+                if (!visitedArtwork.add(artwork)) return@forEach
+                val currentOwner = ownerByArtwork[artwork]
+                if (currentOwner == null || assign(currentOwner, visitedArtwork)) {
+                    ownerByArtwork[artwork] = collectionIndex
+                    return true
+                }
+            }
+            return false
         }
 
-        val pairedSize = selected.size - selected.size % 2
-        return selected.take(pairedSize)
+        collections.indices.forEach { index ->
+            if (!assign(index, HashSet())) return collections
+        }
+
+        val artworkByCollection = arrayOfNulls<String>(collections.size)
+        ownerByArtwork.forEach { (artwork, collectionIndex) ->
+            artworkByCollection[collectionIndex] = artwork
+        }
+        return collections.mapIndexed { index, collection ->
+            val assignedArtwork = artworkByCollection[index] ?: return@mapIndexed collection
+            val primary = candidatesByCollection[index]
+                .firstOrNull { artworkIdentity(it) == assignedArtwork }
+                ?: return@mapIndexed collection
+            val primaryKey = identityKey(primary)
+            if (collection.tracks.firstOrNull()?.let(::identityKey) == primaryKey) return@mapIndexed collection
+            collection.copy(
+                tracks = buildList(collection.tracks.size.coerceAtLeast(minimumCollectionSize)) {
+                    add(primary)
+                    collection.tracks.forEach { track ->
+                        if (identityKey(track) != primaryKey && size < collectionTrackLimit) add(track)
+                    }
+                }
+            )
+        }
     }
 
     private fun collectionQuality(collection: HomeEditorialCollection): Int {
@@ -333,46 +533,104 @@ object HomeEditorialEngine {
         val averageMetadata = tracks.sumOf { it.metadataConfidence.coerceIn(0, 100) } / tracks.size
         val artworkCount = tracks.count { it.largeThumbnailUrl.isNotBlank() || it.thumbnailUrl.isNotBlank() }
         val uniqueArtists = tracks
-            .asSequence()
             .map { it.artist.trim().lowercase(Locale.ROOT) }
             .filter { it.isNotBlank() }
             .distinct()
-            .count()
+            .size
         val sourceBoost = when (collection.source) {
-            HomeCollectionSource.Editorial -> 90
-            HomeCollectionSource.Charts -> 80
-            HomeCollectionSource.Levyra -> 70
+            HomeCollectionSource.Editorial -> 260
+            HomeCollectionSource.Charts -> 240
+            HomeCollectionSource.Levyra -> 180
         }
-        val freshnessBoost = if (collection.updatedToday) 900 else 0
-        return freshnessBoost +
-            averageMetadata * 3 +
-            artworkCount * 12 +
+        val freshnessBoost = if (collection.updatedToday) 300 else 0
+        val personalizationBoost = if (
+            collection.kind == HomeCollectionKind.Editorial && collection.titleOverride.isNotBlank()
+        ) {
+            720
+        } else {
+            0
+        }
+        return averageMetadata * 4 +
+            artworkCount * 24 +
             uniqueArtists * 18 +
             tracks.size.coerceAtMost(collectionTrackLimit) * 8 +
-            sourceBoost
+            sourceBoost +
+            freshnessBoost +
+            personalizationBoost
+    }
+
+    private fun kindAffinity(track: Track, kind: HomeCollectionKind): Int {
+        val tags = normalizedTags(track)
+        return when (kind) {
+            HomeCollectionKind.Fresh -> if (track.releaseDate.isNotBlank()) 1_100 else 0
+            HomeCollectionKind.Local -> if ("local" in tags) 1_350 else 0
+            HomeCollectionKind.Workout -> {
+                val tagBoost = if (tags.any { it in workoutTags }) 1_350 else 0
+                tagBoost + ((track.energy - 72).coerceAtLeast(0) * 18)
+            }
+            HomeCollectionKind.Chill -> {
+                val tagBoost = if (tags.any { it in chillTags }) 1_350 else 0
+                tagBoost + ((76 - track.energy).coerceAtLeast(0) * 14)
+            }
+            HomeCollectionKind.Focus -> {
+                val tagBoost = if (tags.any { it in focusTags }) 1_350 else 0
+                val energyBoost = if (track.energy in 58..84) 260 else 0
+                val vocalBoost = (75 - track.vocal).coerceAtLeast(0) * 8
+                tagBoost + energyBoost + vocalBoost
+            }
+            HomeCollectionKind.Party -> {
+                val tagBoost = if (tags.any { it in partyTags }) 1_350 else 0
+                tagBoost + ((track.energy - 74).coerceAtLeast(0) * 16)
+            }
+            HomeCollectionKind.Rap -> if (tags.any { it in rapTags }) 1_500 else 0
+            HomeCollectionKind.Pop -> if (tags.any { it in popTags }) 1_450 else 0
+            HomeCollectionKind.Discovery -> {
+                track.replayScore.coerceIn(0, 100) * 5 + track.energy.coerceIn(0, 100) * 2
+            }
+            HomeCollectionKind.Editorial -> track.metadataConfidence.coerceIn(0, 100) * 4
+        }
+    }
+
+    private fun collectionFingerprint(collection: HomeEditorialCollection): String {
+        return collection.tracks.take(6).joinToString("|") { identityKey(it) }
+    }
+
+    private fun artworkIdentity(track: Track): String {
+        val rawArtwork = track.thumbnailUrl
+            .trim()
+            .ifBlank { track.largeThumbnailUrl.trim() }
+            .ifBlank { LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty() }
+        if (rawArtwork.isBlank()) return ""
+        return rawArtwork
+            .substringBefore('?')
+            .replace(artworkSizeSuffixPattern, "")
+            .trimEnd('/')
+            .lowercase(Locale.ROOT)
     }
 
     private fun parseReleaseDate(value: String): Long? {
         val clean = value.trim()
         if (clean.isBlank()) return null
 
-        runCatching { Instant.parse(clean).toEpochMilli() }
-            .getOrNull()
-            ?.let { return it }
+        runCatching { Instant.parse(clean).toEpochMilli() }.getOrNull()?.let { return it }
         runCatching {
             OffsetDateTime.parse(clean, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
                 .toInstant()
                 .toEpochMilli()
-        }
-            .getOrNull()
-            ?.let { return it }
-
-        localReleaseDateFormatters.forEach { formatter ->
-            val parsed = runCatching { LocalDate.parse(clean, formatter) }.getOrNull() ?: return@forEach
-            return parsed
-                .atStartOfDay(ZoneId.systemDefault())
+        }.getOrNull()?.let { return it }
+        runCatching {
+            LocalDateTime.parse(clean, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                .atZone(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
+        }.getOrNull()?.let { return it }
+        localReleaseDateFormatters.forEach { formatter ->
+            runCatching {
+                LocalDate.parse(clean, formatter)
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+            }.getOrNull()?.let { return it }
         }
         return null
     }
@@ -415,4 +673,11 @@ object HomeEditorialEngine {
         value.forEach { char -> hash = hash * 31 + char.code }
         return hash.absoluteValue
     }
+
+    private val workoutTags = setOf("gym", "workout", "energy", "training", "running")
+    private val chillTags = setOf("chill", "relax", "lofi", "calm", "sleep", "mood", "sad")
+    private val focusTags = setOf("focus", "study", "drive", "electronic", "instrumental")
+    private val partyTags = setOf("party", "dance", "latin", "club", "funk", "edm")
+    private val rapTags = setOf("rap", "hiphop", "hip-hop", "drill", "trap")
+    private val popTags = setOf("pop", "hits", "hit", "anthem")
 }
