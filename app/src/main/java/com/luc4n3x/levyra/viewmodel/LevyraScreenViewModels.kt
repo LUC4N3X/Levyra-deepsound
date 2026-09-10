@@ -349,6 +349,12 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun exportTrack(track: Track) = root.exportTrack(track)
     fun exportTracks(tracks: List<Track>, label: String) = root.exportTracks(tracks, label)
     fun importPlaylist(input: String) = root.importPlaylist(input)
+
+    fun importSpotifyCsv(uri: android.net.Uri, playlistName: String) = root.importSpotifyCsv(uri, playlistName)
+
+    fun cancelSpotifyCsvImport() = root.cancelSpotifyCsvImport()
+
+    fun dismissSpotifyCsvImport() = root.dismissSpotifyCsvImport()
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openArtist(track: Track) = root.openArtist(track)
     fun openArtistByName(name: String) = root.openArtistByName(name)
@@ -1184,7 +1190,8 @@ internal data class LibraryProjection(
     val playlistTags: List<PlaylistTag>,
     val recentListens: List<Track>,
     val librarySort: LibrarySort,
-    val librarySortDirection: LibrarySortDirection
+    val librarySortDirection: LibrarySortDirection,
+    val spotifyCsvImport: SpotifyCsvImportState?
 )
 
 internal fun libraryProjection(state: LevyraUiState): LibraryProjection = LibraryProjection(
@@ -1205,6 +1212,7 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     openPlaylist = state.openPlaylist,
     playlists = state.playlists,
     playlistTags = state.playlistTags,
+    spotifyCsvImport = state.spotifyCsvImport,
     recentListens = state.recentListens,
     librarySort = state.interfaceSettings.librarySort,
     librarySortDirection = state.interfaceSettings.librarySortDirection

@@ -2,8 +2,10 @@ package com.luc4n3x.levyra.player
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.AudioManager
 import android.media.AudioDeviceCallback
@@ -69,6 +71,7 @@ import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
 import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackBackendProvider
 import com.luc4n3x.levyra.feature.cast.CastHandoffConverter
@@ -159,8 +162,22 @@ class PlaybackService : MediaLibraryService() {
             .build()
     }
     private val audioDeviceCallback = object : AudioDeviceCallback() {
-        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) = refreshAudioOutputProfile()
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+            refreshAudioOutputProfile()
+            if (addedDevices.any { it.isSink && isBluetoothOutputType(it.type) }) {
+                resumeAfterRouteReconnect()
+            }
+        }
+
         override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = refreshAudioOutputProfile()
+    }
+
+    private val deviceVolumeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != VOLUME_CHANGED_ACTION) return
+            if (intent.getIntExtra(EXTRA_VOLUME_STREAM_TYPE, -1) != AudioManager.STREAM_MUSIC) return
+            pausePlaybackIfMuted()
+        }
     }
 
     companion object {
@@ -181,6 +198,8 @@ class PlaybackService : MediaLibraryService() {
         private const val KEY_PLAYBACK_HEARTBEAT_AT = "playbackHeartbeatAt"
         private const val PLAYBACK_HEARTBEAT_INTERVAL_MS = 30_000L
         private const val STICKY_RESTORE_MAX_AGE_MS = 12L * 60L * 60L * 1_000L
+        private const val VOLUME_CHANGED_ACTION = "android.media.VOLUME_CHANGED_ACTION"
+        private const val EXTRA_VOLUME_STREAM_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
         private const val WATCHDOG_INTERVAL_MS = 5_000L
         private const val WATCHDOG_STALL_TIMEOUT_MS = 15_000L
         private const val MAX_TRANSITION_LOOKAHEAD_MS = 20_000L
@@ -217,7 +236,8 @@ class PlaybackService : MediaLibraryService() {
                 service.sleepTimer.cancel()
                 return true
             }
-            service.sleepTimer.startCountdown(minutes * 60_000L)
+            val totalMs = minutes * 60_000L
+            service.sleepTimer.startCountdown(totalMs, service.automationSettings.fadeMsFor(totalMs))
             return true
         }
 
@@ -292,8 +312,26 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val sleepTimer by lazy { PlaybackSleepTimer(serviceScope) { pausePlaybackForSleepTimer() } }
+    private val sleepTimer by lazy {
+        PlaybackSleepTimer(
+            scope = serviceScope,
+            onFadeVolume = ::applySleepFadeVolume,
+            onExpired = ::pausePlaybackForSleepTimer
+        )
+    }
     private var sleepTimerStateJob: Job? = null
+    private var automationSettingsJob: Job? = null
+
+    @Volatile
+    private var automationSettings = LevyraAutomationSettings()
+    private val playbackFailureGuard = ConsecutivePlaybackFailureGuard()
+    private var sleepFadeBaselineVolume: Float? = null
+    private var pausedByRouteLossAtMs: Long? = null
+
+    @Volatile
+    private var routedOutputIsBluetooth = false
+    private var lostRouteWasBluetooth = false
+    private var deviceVolumeReceiverRegistered = false
     private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
     private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
@@ -472,6 +510,9 @@ class PlaybackService : MediaLibraryService() {
                         RuntimeSignal.MODE_AUDIO
                     }
                 )
+                if (playbackState == Player.STATE_READY && player.playWhenReady) {
+                    playbackFailureGuard.onHealthyPlayback()
+                }
                 if (playbackState != Player.STATE_ENDED) return
                 if (sleepTimer.consumeEndOfTrackBoundary()) {
                     pausePlaybackForSleepTimer()
@@ -499,12 +540,20 @@ class PlaybackService : MediaLibraryService() {
                     serviceRecoveryExhausted = true
                     markPlaybackExpected(false, force = true)
                     releasePlaybackWakeLock()
+                    skipUnrecoverableTrack()
                 } else {
                     scheduleServiceRecovery(error)
                 }
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) {
+                    lostRouteWasBluetooth = routedOutputIsBluetooth
+                    pausedByRouteLossAtMs = SystemClock.elapsedRealtime()
+                } else {
+                    lostRouteWasBluetooth = false
+                    pausedByRouteLossAtMs = null
+                }
                 if (!playWhenReady && queueTransitionJob?.isActive == true) {
                     cancelQueueTransition()
                 }
@@ -523,6 +572,13 @@ class PlaybackService : MediaLibraryService() {
         sleepTimerStateJob?.cancel()
         sleepTimerStateJob = serviceScope.launch {
             sleepTimer.state.collect { state -> _sleepTimerStateFlow.value = state }
+        }
+        automationSettingsJob?.cancel()
+        automationSettingsJob = serviceScope.launch {
+            prefs.automationSettingsFlow.collect { settings ->
+                automationSettings = settings
+                updateDeviceVolumeReceiver(settings.pauseOnMute)
+            }
         }
         serviceScope.launch {
             while (isActive) {
@@ -849,7 +905,8 @@ class PlaybackService : MediaLibraryService() {
         forward: Boolean,
         respectRepeatOne: Boolean,
         autoAdvance: Boolean = false,
-        allowRewind: Boolean = true
+        allowRewind: Boolean = true,
+        onAdvanced: (() -> Unit)? = null
     ) {
         cancelQueueTransition()
         queueSkipJob?.cancel()
@@ -867,6 +924,7 @@ class PlaybackService : MediaLibraryService() {
                 return@launch
             }
             playSkipTarget(player, resolved)
+            onAdvanced?.invoke()
         }
     }
 
@@ -1618,6 +1676,86 @@ class PlaybackService : MediaLibraryService() {
         releaseTransitionPlayer()
     }
 
+    private fun applySleepFadeVolume(volume: Float) {
+        val player = mediaSession?.player ?: return
+        if (volume >= 1f) {
+            val baseline = sleepFadeBaselineVolume ?: return
+            sleepFadeBaselineVolume = null
+            runCatching { player.volume = baseline }
+                .onFailure { Timber.w(it, "Sleep timer volume restore failed") }
+            return
+        }
+        val baseline = sleepFadeBaselineVolume ?: player.volume.also { sleepFadeBaselineVolume = it }
+        runCatching { player.volume = (baseline * volume).coerceIn(0f, 1f) }
+            .onFailure { Timber.w(it, "Sleep timer fade failed") }
+    }
+
+    private fun resumeAfterRouteReconnect() {
+        val player = mediaSession?.player ?: return
+        refreshAudioOutputProfile()
+        if (!lostRouteWasBluetooth || !routedOutputIsBluetooth) return
+        val eligible = PlaybackAutomationPolicy.shouldResumeOnRouteReconnect(
+            enabled = automationSettings.resumeOnBluetoothReconnect,
+            pausedByRouteLossAtMs = pausedByRouteLossAtMs,
+            nowMs = SystemClock.elapsedRealtime(),
+            playerReady = player.playbackState == Player.STATE_READY,
+            hasQueueItem = player.mediaItemCount > 0 && player.currentMediaItem != null,
+            alreadyPlaying = player.playWhenReady
+        )
+        if (!eligible) return
+        pausedByRouteLossAtMs = null
+        lostRouteWasBluetooth = false
+        runCatching { player.play() }.onFailure { Timber.w(it, "Bluetooth resume failed") }
+    }
+
+    private fun pausePlaybackIfMuted() {
+        val player = mediaSession?.player ?: return
+        val manager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val streamVolume = runCatching { manager.getStreamVolume(AudioManager.STREAM_MUSIC) }.getOrDefault(1)
+        if (!PlaybackAutomationPolicy.shouldPauseForMute(automationSettings.pauseOnMute, streamVolume, player.isPlaying)) {
+            return
+        }
+        pausedByRouteLossAtMs = null
+        lostRouteWasBluetooth = false
+        runCatching { player.pause() }.onFailure { Timber.w(it, "Mute pause failed") }
+    }
+
+    private fun skipUnrecoverableTrack() {
+        val player = mediaSession?.player ?: return
+        val hasQueueItem = player.mediaItemCount > 0
+        if (!playbackFailureGuard.shouldSkipAfterUnrecoverableError(
+                enabled = automationSettings.skipUnrecoverableErrors,
+                hasQueueItem = hasQueueItem
+            )
+        ) {
+            return
+        }
+        Timber.w("Skipping track after unrecoverable playback error")
+        skipQueue(forward = true, respectRepeatOne = false, autoAdvance = true) {
+            serviceRecoveryExhausted = false
+            serviceRecoveryAttempts = 0
+            markPlaybackExpected(true, force = true)
+        }
+    }
+
+    private fun updateDeviceVolumeReceiver(enabled: Boolean) {
+        if (enabled == deviceVolumeReceiverRegistered) return
+        if (enabled) {
+            val filter = IntentFilter(VOLUME_CHANGED_ACTION)
+            val registered = runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(deviceVolumeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                } else {
+                    registerReceiver(deviceVolumeReceiver, filter)
+                }
+            }.isSuccess
+            deviceVolumeReceiverRegistered = registered
+        } else {
+            runCatching { unregisterReceiver(deviceVolumeReceiver) }
+            deviceVolumeReceiverRegistered = false
+        }
+    }
+
     private fun pausePlaybackForSleepTimer() {
         cancelQueueTransition()
         mediaSession?.player?.pause()
@@ -1672,6 +1810,8 @@ class PlaybackService : MediaLibraryService() {
         castHandoffJob?.cancel()
         queueTransitionMonitorJob?.cancel()
         sleepTimerStateJob?.cancel()
+        automationSettingsJob?.cancel()
+        updateDeviceVolumeReceiver(false)
         sleepTimer.cancel()
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
@@ -1745,6 +1885,7 @@ class PlaybackService : MediaLibraryService() {
     private fun refreshAudioOutputProfile() {
         val manager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         val types = routedOutputTypes(manager)
+        routedOutputIsBluetooth = types.any(::isBluetoothOutputType)
         equalizerProcessor.outputProfile = when {
             types.any { it == AudioDeviceInfo.TYPE_USB_DEVICE || it == AudioDeviceInfo.TYPE_USB_HEADSET || it == AudioDeviceInfo.TYPE_USB_ACCESSORY } -> LevyraEqualizerAudioProcessor.OutputProfile.USB
             types.any { it == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it == AudioDeviceInfo.TYPE_WIRED_HEADSET || it == AudioDeviceInfo.TYPE_LINE_ANALOG } -> LevyraEqualizerAudioProcessor.OutputProfile.WIRED
@@ -1930,6 +2071,7 @@ class PlaybackService : MediaLibraryService() {
         markPlaybackExpected(false, force = true)
         releasePlaybackWakeLock()
         Timber.e(error, "Background playback recovery exhausted")
+        skipUnrecoverableTrack()
         return true
     }
 

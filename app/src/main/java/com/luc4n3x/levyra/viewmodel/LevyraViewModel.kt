@@ -119,6 +119,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.AutoEqImporter
+import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
@@ -354,6 +355,7 @@ internal fun LevyraUiState.withPublishedSamples(
 )
 
 private const val MAX_DEARROW_VIDEOS = 30
+private const val MAX_IMPORT_CSV_BYTES = 2 * 1024 * 1024
 private const val DEARROW_CONCURRENCY = 4
 
 internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
@@ -729,6 +731,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
             backupSettings = startupSettings.backupSettings,
+            automationSettings = startupSettings.automationSettings,
             lastBackupAtMs = vaultRuntimeState.first,
             backupLocationUri = vaultRuntimeState.second.takeIf { it.isNotBlank() },
             playbackDiagnostics = resolver.playbackDiagnostics(),
@@ -739,6 +742,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val searchGeneration = AtomicInteger(0)
     private val searchSectionJobs = mutableMapOf<SearchFilter, Job>()
     private var playlistImportJob: Job? = null
+    private var spotifyCsvImportJob: Job? = null
+    private val automationMutationMutex = kotlinx.coroutines.sync.Mutex()
     private var sharedMediaJob: Job? = null
     private var recognitionCollectorJob: Job? = null
     private var recognitionHistoryJob: Job? = null
@@ -1054,6 +1059,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            applyAutomationSettings(startupSettings.automationSettings, persist = false)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
             com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.restoreAudD(
                 getApplication<Application>().applicationContext
             )
@@ -1265,19 +1273,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             sleepTimerMinutes = 0,
                             sleepTimerEndOfTrack = false,
                             sleepTimerDeadlineElapsedRealtimeMs = 0L,
-                            sleepTimerTotalMs = 0L
+                            sleepTimerTotalMs = 0L,
+                            sleepTimerFadeMs = 0L
                         )
                         is PlaybackSleepTimerState.Countdown -> current.copy(
                             sleepTimerMinutes = ((timerState.totalMs + 59_999L) / 60_000L).toInt(),
                             sleepTimerEndOfTrack = false,
                             sleepTimerDeadlineElapsedRealtimeMs = timerState.deadlineElapsedRealtimeMs,
-                            sleepTimerTotalMs = timerState.totalMs
+                            sleepTimerTotalMs = timerState.totalMs,
+                            sleepTimerFadeMs = timerState.fadeMs
                         )
                         is PlaybackSleepTimerState.EndOfTrack -> current.copy(
                             sleepTimerMinutes = 0,
                             sleepTimerEndOfTrack = true,
                             sleepTimerDeadlineElapsedRealtimeMs = 0L,
-                            sleepTimerTotalMs = 0L
+                            sleepTimerTotalMs = 0L,
+                            sleepTimerFadeMs = 0L
                         )
                     }
                 }
@@ -2264,6 +2275,116 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         playlistImportJob = job
     }
+
+    fun importSpotifyCsv(uri: android.net.Uri, playlistName: String) {
+        if (spotifyCsvImportJob?.isActive == true) return
+        _state.update {
+            it.copy(spotifyCsvImport = SpotifyCsvImportState(running = true, playlistName = playlistName.trim()))
+        }
+        var job: Job? = null
+        job = viewModelScope.launch {
+            val languageCode = _state.value.languageCode
+            try {
+                val appContext = getApplication<Application>().applicationContext
+                val csvText = withContext(Dispatchers.IO) { readImportCsv(appContext, uri) }
+                if (csvText == null) {
+                    _state.update { current ->
+                        current.copy(
+                            spotifyCsvImport = current.spotifyCsvImport?.copy(
+                                running = false,
+                                completed = true,
+                                failureKind = PlaylistImportFailureKind.INVALID_INPUT
+                            )
+                        )
+                    }
+                    return@launch
+                }
+                when (
+                    val result = playlistImporter.importFromSpotifyCsv(
+                        csvText = csvText,
+                        customName = playlistName,
+                        languageCode = languageCode,
+                        onProgress = { processed, total ->
+                            _state.update { current ->
+                                current.copy(
+                                    spotifyCsvImport = current.spotifyCsvImport
+                                        ?.copy(processed = processed, total = total)
+                                )
+                            }
+                        }
+                    )
+                ) {
+                    is com.luc4n3x.levyra.data.PlaylistImportResult.Success -> {
+                        _state.update { current ->
+                            current.copy(
+                                spotifyCsvImport = current.spotifyCsvImport?.copy(
+                                    running = false,
+                                    completed = true,
+                                    matched = result.importedCount,
+                                    requested = result.requestedCount,
+                                    unmatched = result.unmatched,
+                                    playlistName = result.playlist.name
+                                )
+                            )
+                        }
+                        loadPlaylists()
+                    }
+                    is com.luc4n3x.levyra.data.PlaylistImportResult.Failure -> {
+                        _state.update { current ->
+                            current.copy(
+                                spotifyCsvImport = current.spotifyCsvImport?.copy(
+                                    running = false,
+                                    completed = true,
+                                    failureKind = result.kind
+                                )
+                            )
+                        }
+                    }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Spotify CSV import failed")
+                _state.update { current ->
+                    current.copy(
+                        spotifyCsvImport = current.spotifyCsvImport?.copy(
+                            running = false,
+                            completed = true,
+                            failureKind = PlaylistImportFailureKind.NOT_AVAILABLE
+                        )
+                    )
+                }
+            } finally {
+                if (spotifyCsvImportJob === job) spotifyCsvImportJob = null
+            }
+        }
+        spotifyCsvImportJob = job
+    }
+
+    fun cancelSpotifyCsvImport() {
+        spotifyCsvImportJob?.cancel()
+        spotifyCsvImportJob = null
+        _state.update { it.copy(spotifyCsvImport = null) }
+    }
+
+    fun dismissSpotifyCsvImport() {
+        if (_state.value.spotifyCsvImport?.running == true) return
+        _state.update { it.copy(spotifyCsvImport = null) }
+    }
+
+    private fun readImportCsv(context: android.content.Context, uri: android.net.Uri): String? = runCatching {
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            val buffer = ByteArray(MAX_IMPORT_CSV_BYTES + 1)
+            var read = 0
+            while (read < buffer.size) {
+                val count = stream.read(buffer, read, buffer.size - read)
+                if (count <= 0) break
+                read += count
+            }
+            if (read > MAX_IMPORT_CSV_BYTES) return@use null
+            String(buffer, 0, read, Charsets.UTF_8)
+        }
+    }.onFailure { Timber.w(it, "Unable to read import CSV") }.getOrNull()
 
     fun playlistShareLink(playlist: com.luc4n3x.levyra.domain.Playlist): String? =
         LevyraPlaylistShareCodec.encodeLink(
@@ -5056,6 +5177,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 6
             )
             recordSmartFavorite(track, isFavorite)
+            autoDownloadFavorite(track, isFavorite)
+        }
+    }
+
+    private fun autoDownloadFavorite(track: Track, becameFavorite: Boolean) {
+        val current = _state.value
+        val eligible = com.luc4n3x.levyra.player.PlaybackAutomationPolicy.shouldAutoDownloadFavorite(
+            enabled = current.automationSettings.autoDownloadFavorites,
+            becameFavorite = becameFavorite,
+            trackId = track.id,
+            downloadedTrackIds = current.downloadedTrackIds,
+            downloadingKeys = current.downloadingTrackIds,
+            downloadKey = downloadKeyFor(track)
+        )
+        if (!eligible) return
+        exportTrack(track)
+    }
+
+    fun setAutomationSettings(value: LevyraAutomationSettings) {
+        val normalized = value.normalized()
+        if (normalized == _state.value.automationSettings) return
+        _state.update { it.copy(automationSettings = normalized) }
+        viewModelScope.launch(Dispatchers.IO) {
+            applyAutomationSettings(normalized, persist = true)
+        }
+    }
+
+    private suspend fun applyAutomationSettings(
+        requested: LevyraAutomationSettings,
+        persist: Boolean
+    ) {
+        automationMutationMutex.withLock {
+            val latest = _state.value.automationSettings
+            if (persist && latest != requested) return
+            val effective = if (persist) requested else latest
+            if (persist) preferences.setAutomationSettings(effective)
+            com.luc4n3x.levyra.player.BedtimeSleepScheduler.apply(
+                getApplication<Application>().applicationContext,
+                effective
+            )
         }
     }
 

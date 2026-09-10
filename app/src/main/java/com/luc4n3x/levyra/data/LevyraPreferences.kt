@@ -19,6 +19,8 @@ import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraAutomationSettings
+import com.luc4n3x.levyra.domain.LevyraBedtimeSchedule
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
@@ -37,6 +39,7 @@ import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -80,6 +83,7 @@ data class LevyraPreferencesSnapshot(
     val interfaceSettings: LevyraInterfaceSettings,
     val downloadSettings: LevyraDownloadSettings,
     val backupSettings: LevyraBackupSettings,
+    val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
     val jamDisplayName: String = ""
 )
 
@@ -113,6 +117,7 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
             mutable[KEY_JAM_DISPLAY_NAME] = normalizeJamDisplayName(snapshot.jamDisplayName)
+            writeAutomationSettings(mutable, snapshot.automationSettings.normalized())
             mutable[KEY_AUDIO_EQ_ENABLED] = normalizedAudio.equalizerEnabled
             mutable[KEY_AUDIO_EQ_PRESET] = normalizedAudio.presetId
             mutable[KEY_AUDIO_EQ_BANDS] = normalizedAudio.bandLevels.joinToString(",")
@@ -565,6 +570,7 @@ class LevyraPreferences(context: Context) {
             interfaceSettings = interfaceSettingsFrom(preferences),
             downloadSettings = downloadSettingsFrom(preferences),
             backupSettings = backupSettingsFrom(preferences),
+            automationSettings = automationSettingsFrom(preferences),
             jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty()
         )
     }
@@ -592,6 +598,7 @@ class LevyraPreferences(context: Context) {
         interfaceSettings = LevyraInterfaceSettings(),
         downloadSettings = LevyraDownloadSettings(),
         backupSettings = LevyraBackupSettings(),
+        automationSettings = LevyraAutomationSettings(),
         jamDisplayName = ""
     )
 
@@ -780,6 +787,70 @@ class LevyraPreferences(context: Context) {
         return raw.split(',').mapNotNull { it.trim().toIntOrNull() }
     }
 
+    val automationSettingsFlow: kotlinx.coroutines.flow.Flow<LevyraAutomationSettings> = dataStore.data
+        .catch { error ->
+            if (error is IOException) {
+                Timber.w(error, "DataStore automation read failed")
+                emit(emptyPreferences())
+            } else {
+                throw error
+            }
+        }
+        .map { preferences -> automationSettingsFrom(preferences) }
+        .distinctUntilChanged()
+
+    suspend fun setAutomationSettings(value: LevyraAutomationSettings) {
+        val normalized = value.normalized()
+        try {
+            dataStore.edit { writeAutomationSettings(it, normalized) }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore automation write failed")
+        }
+    }
+
+    private fun writeAutomationSettings(
+        mutable: androidx.datastore.preferences.core.MutablePreferences,
+        value: LevyraAutomationSettings
+    ) {
+        mutable[KEY_AUTOMATION_BT_RESUME] = value.resumeOnBluetoothReconnect
+        mutable[KEY_AUTOMATION_PAUSE_ON_MUTE] = value.pauseOnMute
+        mutable[KEY_AUTOMATION_AUTO_DOWNLOAD_FAVORITES] = value.autoDownloadFavorites
+        mutable[KEY_AUTOMATION_SKIP_UNRECOVERABLE] = value.skipUnrecoverableErrors
+        mutable[KEY_SLEEP_FADE_ENABLED] = value.sleepFadeOutEnabled
+        mutable[KEY_SLEEP_FADE_SECONDS] = value.sleepFadeOutSeconds
+        mutable[KEY_BEDTIME_ENABLED] = value.bedtime.enabled
+        mutable[KEY_BEDTIME_START_MINUTE] = value.bedtime.startMinuteOfDay
+        mutable[KEY_BEDTIME_DURATION_MINUTES] = value.bedtime.durationMinutes
+        mutable[KEY_BEDTIME_DAYS] = value.bedtime.days.map { it.name }.toSet()
+    }
+
+    private fun automationSettingsFrom(preferences: Preferences): LevyraAutomationSettings {
+        val storedDays = preferences[KEY_BEDTIME_DAYS]
+        val days = storedDays
+            ?.mapNotNull { name -> runCatching { java.time.DayOfWeek.valueOf(name) }.getOrNull() }
+            ?.toSet()
+            ?: LevyraBedtimeSchedule.DEFAULT_DAYS
+        return LevyraAutomationSettings(
+            resumeOnBluetoothReconnect = preferences[KEY_AUTOMATION_BT_RESUME] ?: false,
+            pauseOnMute = preferences[KEY_AUTOMATION_PAUSE_ON_MUTE] ?: false,
+            autoDownloadFavorites = preferences[KEY_AUTOMATION_AUTO_DOWNLOAD_FAVORITES] ?: false,
+            skipUnrecoverableErrors = preferences[KEY_AUTOMATION_SKIP_UNRECOVERABLE] ?: false,
+            sleepFadeOutEnabled = preferences[KEY_SLEEP_FADE_ENABLED] ?: false,
+            sleepFadeOutSeconds = preferences[KEY_SLEEP_FADE_SECONDS]
+                ?: LevyraAutomationSettings.DEFAULT_FADE_SECONDS,
+            bedtime = LevyraBedtimeSchedule(
+                enabled = preferences[KEY_BEDTIME_ENABLED] ?: false,
+                startMinuteOfDay = preferences[KEY_BEDTIME_START_MINUTE]
+                    ?: LevyraBedtimeSchedule.DEFAULT_START_MINUTE,
+                durationMinutes = preferences[KEY_BEDTIME_DURATION_MINUTES]
+                    ?: LevyraBedtimeSchedule.DEFAULT_DURATION_MINUTES,
+                days = days
+            )
+        ).normalized()
+    }
+
     private fun <T> read(default: T, selector: (Preferences) -> T): T = runBlocking(Dispatchers.IO) {
         dataStore.data
             .catch { error ->
@@ -812,6 +883,16 @@ class LevyraPreferences(context: Context) {
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val KEY_SPONSORBLOCK = booleanPreferencesKey("sponsorblock_enabled")
         val KEY_SKIP_SILENCE = booleanPreferencesKey("skip_silence")
+        val KEY_AUTOMATION_BT_RESUME = booleanPreferencesKey("automation_bluetooth_resume")
+        val KEY_AUTOMATION_PAUSE_ON_MUTE = booleanPreferencesKey("automation_pause_on_mute")
+        val KEY_AUTOMATION_AUTO_DOWNLOAD_FAVORITES = booleanPreferencesKey("automation_auto_download_favorites")
+        val KEY_AUTOMATION_SKIP_UNRECOVERABLE = booleanPreferencesKey("automation_skip_unrecoverable")
+        val KEY_SLEEP_FADE_ENABLED = booleanPreferencesKey("sleep_timer_fade_enabled")
+        val KEY_SLEEP_FADE_SECONDS = intPreferencesKey("sleep_timer_fade_seconds")
+        val KEY_BEDTIME_ENABLED = booleanPreferencesKey("bedtime_schedule_enabled")
+        val KEY_BEDTIME_START_MINUTE = intPreferencesKey("bedtime_start_minute")
+        val KEY_BEDTIME_DURATION_MINUTES = intPreferencesKey("bedtime_duration_minutes")
+        val KEY_BEDTIME_DAYS = stringSetPreferencesKey("bedtime_days")
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
