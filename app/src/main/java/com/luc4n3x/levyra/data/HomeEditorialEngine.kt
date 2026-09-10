@@ -32,6 +32,10 @@ object HomeEditorialEngine {
         DateTimeFormatter.ofPattern("dd/MM/uuuu", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT),
         DateTimeFormatter.ofPattern("MM/dd/uuuu", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT)
     )
+    private val artworkSizeSuffixPattern = Regex(
+        "=(?:w\\d+-h\\d+|s\\d+)(?:-[a-z0-9]+)*$",
+        RegexOption.IGNORE_CASE
+    )
 
     fun localDayKey(nowMillis: Long = System.currentTimeMillis()): Int {
         val calendar = Calendar.getInstance().apply { timeInMillis = nowMillis }
@@ -274,7 +278,8 @@ object HomeEditorialEngine {
                 source = HomeCollectionSource.Editorial,
                 updatedToday = fresh.any { track ->
                     parseReleaseDate(track.releaseDate)?.let(::localDate) == today
-                }
+                },
+                allowSmartFill = false
             )
         }
 
@@ -297,7 +302,12 @@ object HomeEditorialEngine {
         addThemedCollection("focus", HomeCollectionKind.Focus, focus, HomeCollectionSource.Levyra)
         addThemedCollection("pop", HomeCollectionKind.Pop, pop, HomeCollectionSource.Editorial)
         if (discovery.isNotEmpty()) {
-            addCollection("discovery", HomeCollectionKind.Discovery, discovery, HomeCollectionSource.Charts)
+            addCollection(
+                id = "discovery",
+                kind = HomeCollectionKind.Discovery,
+                tracks = discovery,
+                source = if (chartKeys.isNotEmpty()) HomeCollectionSource.Charts else HomeCollectionSource.Levyra
+            )
         }
 
         homeSections
@@ -373,6 +383,7 @@ object HomeEditorialEngine {
         if (distinct.size < targetCollectionCount) {
             val selectedIds = distinct.asSequence().map { it.id }.toHashSet()
             val selectedKinds = distinct.asSequence().map { it.kind }.toHashSet()
+            val selectedFingerprints = distinct.asSequence().map(::collectionFingerprint).toHashSet()
             val emergencyCandidates = result
                 .asSequence()
                 .filter { it.id !in selectedIds }
@@ -386,10 +397,12 @@ object HomeEditorialEngine {
                 .asSequence()
                 .filter { it.kind !in selectedKinds }
                 .forEach { candidate ->
-                    if (distinct.size < targetCollectionCount) {
+                    val fingerprint = collectionFingerprint(candidate)
+                    if (distinct.size < targetCollectionCount && fingerprint !in selectedFingerprints) {
                         distinct += candidate
                         selectedIds += candidate.id
                         selectedKinds += candidate.kind
+                        selectedFingerprints += fingerprint
                     }
                 }
 
@@ -397,14 +410,16 @@ object HomeEditorialEngine {
                 .asSequence()
                 .filter { it.id !in selectedIds }
                 .forEach { candidate ->
-                    if (distinct.size < targetCollectionCount) {
+                    val fingerprint = collectionFingerprint(candidate)
+                    if (distinct.size < targetCollectionCount && fingerprint !in selectedFingerprints) {
                         distinct += candidate
                         selectedIds += candidate.id
+                        selectedFingerprints += fingerprint
                     }
                 }
         }
 
-        return selectCollectionsForDay(distinct, nowMillis)
+        return withDistinctPrimaryArtwork(selectCollectionsForDay(distinct, nowMillis))
     }
 
     private fun selectCollectionsForDay(
@@ -432,6 +447,49 @@ object HomeEditorialEngine {
         return (stable + rotating)
             .distinctBy { it.id }
             .take(targetCollectionCount)
+    }
+
+    private fun withDistinctPrimaryArtwork(
+        collections: List<HomeEditorialCollection>
+    ): List<HomeEditorialCollection> {
+        if (collections.size < 2) return collections
+        val ownerByArtwork = HashMap<String, Int>()
+
+        fun assign(collectionIndex: Int, visitedArtwork: MutableSet<String>): Boolean {
+            collections[collectionIndex].tracks.forEach { track ->
+                val artwork = artworkIdentity(track)
+                if (artwork.isBlank() || !visitedArtwork.add(artwork)) return@forEach
+                val currentOwner = ownerByArtwork[artwork]
+                if (currentOwner == null || assign(currentOwner, visitedArtwork)) {
+                    ownerByArtwork[artwork] = collectionIndex
+                    return true
+                }
+            }
+            return false
+        }
+
+        collections.indices.forEach { index ->
+            if (!assign(index, HashSet())) return collections
+        }
+
+        val artworkByCollection = arrayOfNulls<String>(collections.size)
+        ownerByArtwork.forEach { (artwork, collectionIndex) ->
+            artworkByCollection[collectionIndex] = artwork
+        }
+        return collections.mapIndexed { index, collection ->
+            val assignedArtwork = artworkByCollection[index] ?: return@mapIndexed collection
+            val primaryIndex = collection.tracks.indexOfFirst { artworkIdentity(it) == assignedArtwork }
+            if (primaryIndex <= 0) return@mapIndexed collection
+            val primary = collection.tracks[primaryIndex]
+            collection.copy(
+                tracks = buildList(collection.tracks.size) {
+                    add(primary)
+                    collection.tracks.forEachIndexed { trackIndex, track ->
+                        if (trackIndex != primaryIndex) add(track)
+                    }
+                }
+            )
+        }
     }
 
     private fun collectionQuality(collection: HomeEditorialCollection): Int {
@@ -500,6 +558,24 @@ object HomeEditorialEngine {
 
     private fun collectionFingerprint(collection: HomeEditorialCollection): String {
         return collection.tracks.take(6).joinToString("|") { identityKey(it) }
+    }
+
+    private fun artworkIdentity(track: Track): String {
+        val rawArtwork = track.thumbnailUrl.trim().ifBlank { track.largeThumbnailUrl.trim() }
+        if (rawArtwork.isNotBlank()) {
+            val normalized = rawArtwork
+                .substringBefore('?')
+                .replace(artworkSizeSuffixPattern, "")
+                .trimEnd('/')
+                .lowercase(Locale.ROOT)
+            if (normalized.isNotBlank()) return normalized
+        }
+        val videoIdentity = track.videoUrl
+            .trim()
+            .substringBefore('?')
+            .trimEnd('/')
+            .lowercase(Locale.ROOT)
+        return videoIdentity.ifBlank { "track:${identityKey(track)}" }
     }
 
     private fun parseReleaseDate(value: String): Long? {
