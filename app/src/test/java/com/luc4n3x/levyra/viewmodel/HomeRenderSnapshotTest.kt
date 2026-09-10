@@ -1,8 +1,12 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.domain.ArtistExclusions
+import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -70,6 +74,40 @@ class HomeRenderSnapshotTest {
         assertEquals(listOf(keptTrack), frozen.state.personalOrbitTracks)
         assertSame(previous.state.tracks, frozen.state.tracks)
         assertSame(previous.state.homeSections, frozen.state.homeSections)
+    }
+
+    @Test
+    fun artistExclusionChangesHomeProjectionImmediately() {
+        val initial = LevyraUiState()
+        val excluded = ExcludedArtist("", "Blocked Artist", 1L)
+        val updated = initial.copy(
+            excludedArtists = listOf(excluded),
+            artistExclusions = ArtistExclusions.from(listOf(excluded))
+        )
+
+        assertNotEquals(homeProjection(initial), homeProjection(updated))
+    }
+
+    @Test
+    fun artistExclusionRemovesQuickPickWhileHomeStructureIsFrozen() {
+        val blocked = track("aaaaaaaaaaa").copy(artist = "Blocked Artist")
+        val allowed = track("bbbbbbbbbbb").copy(artist = "Allowed Artist")
+        val initialState = LevyraUiState(
+            homeSections = listOf(HomeSection("Quick picks", listOf(blocked, allowed))),
+            quickPickSeeds = listOf(blocked, allowed)
+        )
+        val previous = buildHomeRenderSnapshot(initialState)
+        val excluded = ExcludedArtist("", "Blocked Artist", 1L)
+        val updatedState = initialState.copy(
+            excludedArtists = listOf(excluded),
+            artistExclusions = ArtistExclusions.from(listOf(excluded))
+        )
+
+        val frozen = buildStableHomeRenderSnapshot(updatedState, previous, freezeContent = true)
+        val quickPicks = frozen.derived.quickPicks?.tracks.orEmpty()
+
+        assertFalse(quickPicks.any { it.artist == "Blocked Artist" })
+        assertEquals("Allowed Artist", quickPicks.firstOrNull()?.artist)
     }
 
     @Test
