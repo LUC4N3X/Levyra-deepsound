@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import kotlinx.coroutines.CancellationException
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -34,8 +36,10 @@ internal class LevyraPreferencesStore(
     private val lock = Any()
     private val initialLoad = CountDownLatch(1)
     private val state = MutableStateFlow<Preferences?>(null)
-    private val writesBeforeLoad = ArrayList<(MutablePreferences) -> Unit>()
+    private val optimisticWrites = ArrayList<PendingWrite>()
     private val pendingWrites = Channel<PendingWrite>(Channel.UNLIMITED)
+
+    private var persistedState: Preferences? = null
 
     @Volatile
     private var derivedValues = DerivedValues(emptyPreferences())
@@ -68,10 +72,8 @@ internal class LevyraPreferencesStore(
     fun edit(block: (MutablePreferences) -> Unit): Deferred<Unit> {
         val write = PendingWrite(block)
         synchronized(lock) {
-            val loaded = state.value
-            if (loaded == null) {
-                writesBeforeLoad += block
-            } else {
+            optimisticWrites += write
+            state.value?.let { loaded ->
                 state.value = loaded.edited(listOf(block))
             }
             pendingWrites.trySend(write)
@@ -83,31 +85,50 @@ internal class LevyraPreferencesStore(
         edit(block).await()
     }
 
-    private suspend fun readPersisted(): Preferences = try {
-        dataStore.data.first()
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Throwable) {
-        Timber.w(error, "DataStore read failed")
-        emptyPreferences()
+    private suspend fun readPersisted(): Preferences {
+        repeat(3) { attempt ->
+            try {
+                return dataStore.data.first()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: IOException) {
+                Timber.w(error, "DataStore read failed (attempt %d)", attempt + 1)
+                if (attempt < 2) delay(75L * (attempt + 1))
+            } catch (error: Throwable) {
+                Timber.w(error, "DataStore read failed")
+                return emptyPreferences()
+            }
+        }
+        return emptyPreferences()
     }
 
     private fun publishInitial(persisted: Preferences) {
         synchronized(lock) {
-            state.value = persisted.edited(writesBeforeLoad)
-            writesBeforeLoad.clear()
+            persistedState = persisted
+            state.value = persisted.edited(optimisticWrites.map { it.block })
         }
         initialLoad.countDown()
     }
 
     private suspend fun persist(write: PendingWrite) {
         try {
-            dataStore.edit(write.block)
+            val persisted = dataStore.edit(write.block)
+            synchronized(lock) {
+                persistedState = persisted
+                optimisticWrites.remove(write)
+                state.value = persisted.edited(optimisticWrites.map { it.block })
+            }
             write.completion.complete(Unit)
         } catch (error: CancellationException) {
             write.completion.cancel(error)
             throw error
         } catch (error: Throwable) {
+            synchronized(lock) {
+                optimisticWrites.remove(write)
+                persistedState?.let { persisted ->
+                    state.value = persisted.edited(optimisticWrites.map { it.block })
+                }
+            }
             Timber.w(error, "DataStore write failed")
             write.completion.completeExceptionally(error)
         }
