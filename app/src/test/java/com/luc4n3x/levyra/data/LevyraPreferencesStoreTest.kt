@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
+import java.io.IOException
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
@@ -45,13 +46,28 @@ class LevyraPreferencesStoreTest {
         @Volatile
         var readGate: CompletableDeferred<Unit>? = null
 
+        @Volatile
+        var readFailuresRemaining: Int = 0
+
+        @Volatile
+        var writeFailuresRemaining: Int = 0
+
         override val data: Flow<Preferences> = flow {
+            if (readFailuresRemaining > 0) {
+                readFailuresRemaining -= 1
+                throw IOException("Injected read failure")
+            }
             readGate?.await()
             emitAll(persisted)
         }
 
-        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
-            mutex.withLock { transform(persisted.value).also { persisted.value = it } }
+        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
+            if (writeFailuresRemaining > 0) {
+                writeFailuresRemaining -= 1
+                throw IOException("Injected write failure")
+            }
+            return mutex.withLock { transform(persisted.value).also { persisted.value = it } }
+        }
     }
 
     private val scopes = mutableListOf<CoroutineScope>()
@@ -168,6 +184,46 @@ class LevyraPreferencesStoreTest {
         assertEquals("final", reopened.userName())
         assertEquals("High", reopened.audioQuality())
         assertEquals(7, reopened.listeningLifetimeBackfillVersion())
+    }
+
+    @Test
+    fun transientInitialReadFailureRecoversPersistedValues() {
+        runBlocking {
+            disk.edit {
+                it[stringPreferencesKey("user_name")] = "Recovered"
+                it[booleanPreferencesKey("onboarded")] = true
+            }
+        }
+        disk.readFailuresRemaining = 1
+
+        val (_, preferences) = open()
+
+        assertEquals("Recovered", preferences.userName())
+        assertTrue(preferences.isOnboarded())
+    }
+
+    @Test
+    fun failedWriteRollsBackOptimisticValueAndKeepsNewerWrites() {
+        runBlocking {
+            disk.edit {
+                it[stringPreferencesKey("user_name")] = "Persisted"
+                it[stringPreferencesKey("audio_quality")] = "Auto"
+            }
+        }
+        val (store, preferences) = open()
+        assertEquals("Persisted", preferences.userName())
+        disk.writeFailuresRemaining = 1
+
+        preferences.setUserName("Failed")
+        preferences.setAudioQuality("High")
+        flush(store)
+
+        assertEquals("Persisted", preferences.userName())
+        assertEquals("High", preferences.audioQuality())
+
+        val reopened = reopen()
+        assertEquals("Persisted", reopened.userName())
+        assertEquals("High", reopened.audioQuality())
     }
 
     @Test
