@@ -1893,7 +1893,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         }
                     }
                     if (!freezeVisibleShelf && resolved.isNotEmpty() && homeArtistsFingerprint == fingerprint) {
-                        val partialArtists = resolved.values.take(HOME_ARTIST_SHELF_SIZE)
+                        val partialArtists = (resolved.values + visibleArtists)
+                            .distinctBy { it.browseId.lowercase() }
+                            .take(HOME_ARTIST_SHELF_SIZE)
                         _state.update { current ->
                             if (current.languageCode == languageCode) current.copy(homeArtists = partialArtists) else current
                         }
