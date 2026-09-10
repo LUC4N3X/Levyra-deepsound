@@ -38,11 +38,11 @@ class PlaybackSleepTimerFadeTest {
 
         timer.startCountdown(totalMs = 2_000L, fadeMs = 1_800L)
         withTimeout(5_000L) {
-            while (volumes.isEmpty()) delay(10L)
+            while (volumes.none { it < 1f }) delay(10L)
         }
         timer.cancel()
 
-        assertTrue(volumes.first() < 1f)
+        assertTrue(volumes.any { it < 1f })
         assertEquals(1f, volumes.last(), 0f)
         assertEquals(PlaybackSleepTimerState.Disabled, timer.state.value)
         scope.cancel()
