@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.HomeEditorialCollection
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
 import com.luc4n3x.levyra.domain.HomeSpotlightKind
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import java.time.Instant
 import java.time.LocalDate
@@ -482,6 +483,7 @@ object HomeEditorialEngine {
             (collection.tracks + fallbackTracks)
                 .asSequence()
                 .distinctBy(::identityKey)
+                .filter { artworkIdentity(it).isNotBlank() }
                 .toList()
         }
         val ownerByArtwork = HashMap<String, Int>()
@@ -489,7 +491,7 @@ object HomeEditorialEngine {
         fun assign(collectionIndex: Int, visitedArtwork: MutableSet<String>): Boolean {
             candidatesByCollection[collectionIndex].forEach { track ->
                 val artwork = artworkIdentity(track)
-                if (artwork.isBlank() || !visitedArtwork.add(artwork)) return@forEach
+                if (!visitedArtwork.add(artwork)) return@forEach
                 val currentOwner = ownerByArtwork[artwork]
                 if (currentOwner == null || assign(currentOwner, visitedArtwork)) {
                     ownerByArtwork[artwork] = collectionIndex
@@ -594,21 +596,16 @@ object HomeEditorialEngine {
     }
 
     private fun artworkIdentity(track: Track): String {
-        val rawArtwork = track.thumbnailUrl.trim().ifBlank { track.largeThumbnailUrl.trim() }
-        if (rawArtwork.isNotBlank()) {
-            val normalized = rawArtwork
-                .substringBefore('?')
-                .replace(artworkSizeSuffixPattern, "")
-                .trimEnd('/')
-                .lowercase(Locale.ROOT)
-            if (normalized.isNotBlank()) return normalized
-        }
-        val videoIdentity = track.videoUrl
+        val rawArtwork = track.thumbnailUrl
             .trim()
+            .ifBlank { track.largeThumbnailUrl.trim() }
+            .ifBlank { LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty() }
+        if (rawArtwork.isBlank()) return ""
+        return rawArtwork
             .substringBefore('?')
+            .replace(artworkSizeSuffixPattern, "")
             .trimEnd('/')
             .lowercase(Locale.ROOT)
-        return videoIdentity.ifBlank { "track:${identityKey(track)}" }
     }
 
     private fun parseReleaseDate(value: String): Long? {
