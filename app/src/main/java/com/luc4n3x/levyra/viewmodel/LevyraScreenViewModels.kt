@@ -987,6 +987,7 @@ private fun isLikelyHomePlaylistOrCompilation(track: Track): Boolean {
 
 private data class HomeProjection(
     val animationsEnabled: Boolean,
+    val artistExclusions: ArtistExclusions,
     val chartRegions: List<ChartRegion>,
     val charts: List<Track>,
     val currentTrack: Track?,
@@ -1013,6 +1014,7 @@ private data class HomeProjection(
     val moods: List<Mood>,
     val personalOrbitTracks: List<Track>,
     val playlists: List<Playlist>,
+    val quickPickSeeds: List<Track>,
     val recentListens: List<Track>,
     val recentSearches: List<Track>,
     val releaseRadar: List<ReleaseRadarEntry>,
@@ -1028,6 +1030,7 @@ private data class HomeProjection(
 
 private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjection(
     animationsEnabled = state.animationsEnabled,
+    artistExclusions = state.artistExclusions,
     chartRegions = state.chartRegions,
     charts = state.charts,
     currentTrack = state.currentTrack,
@@ -1054,6 +1057,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     moods = state.moods,
     personalOrbitTracks = state.personalOrbitTracks,
     playlists = state.playlists,
+    quickPickSeeds = state.quickPickSeeds,
     recentListens = state.recentListens,
     recentSearches = state.recentSearches,
     releaseRadar = state.releaseRadar,
