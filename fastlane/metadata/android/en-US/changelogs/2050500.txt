@@ -1,0 +1,1 @@
+Levyra 2.5.5 refreshes Home with a cleaner Personal Orbit and instant artist-exclusion updates, removes blocking preference reads from runtime hot paths, improves cached playback and YouTube recovery, adds Lyrics 2.0, Downloads Pro sorting, Motion Artwork Resolver 2.0, Spotify CSV import, Sleep Timer 2.0, playback automations, and stronger offline backup/export handling.
