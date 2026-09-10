@@ -13,6 +13,7 @@ import java.net.URLDecoder
 import java.net.UnknownHostException
 import java.text.Normalizer
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.coroutines.resume
@@ -43,7 +44,8 @@ sealed class PlaylistImportResult {
     data class Success(
         val playlist: Playlist,
         val importedCount: Int,
-        val requestedCount: Int = importedCount
+        val requestedCount: Int = importedCount,
+        val unmatched: List<String> = emptyList()
     ) : PlaylistImportResult()
 
     data class Failure(
@@ -509,6 +511,75 @@ class UniversalPlaylistImporter(
             PlaylistImportResult.Failure(PlaylistImportFailureKind.NETWORK)
         } catch (error: Throwable) {
             Timber.w(error, "Shared playlist import failure")
+            PlaylistImportResult.Failure(PlaylistImportFailureKind.NOT_AVAILABLE)
+        }
+    }
+
+    suspend fun importFromSpotifyCsv(
+        csvText: String,
+        customName: String? = null,
+        languageCode: String = "en",
+        onProgress: (Int, Int) -> Unit = { _, _ -> }
+    ): PlaylistImportResult = withContext(Dispatchers.IO) {
+        if (csvText.length > MAX_IMPORT_INPUT_CHARS) {
+            return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.TOO_LARGE)
+        }
+        val entries = parseSpotifyCsv(csvText)
+        if (entries.isEmpty()) {
+            return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
+        }
+        if (entries.size > MAX_JSON_IMPORT_TRACKS) {
+            return@withContext PlaylistImportResult.Failure(
+                PlaylistImportFailureKind.TOO_LARGE,
+                MAX_JSON_IMPORT_TRACKS
+            )
+        }
+
+        try {
+            val processed = AtomicInteger(0)
+            val limiter = Semaphore(IMPORT_RESOLUTION_CONCURRENCY)
+            val matches = coroutineScope {
+                entries.map { entry ->
+                    async {
+                        val resolved = limiter.withPermit {
+                            try {
+                                resolveBestTrack(entry.title, entry.artist, entry.durationMs, languageCode)
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (error: Throwable) {
+                                Timber.d(error, "Skipping unresolved CSV entry")
+                                null
+                            }
+                        }
+                        onProgress(processed.incrementAndGet(), entries.size)
+                        entry to resolved
+                    }
+                }.awaitAll()
+            }
+
+            val resolvedTracks = matches.mapNotNull { (entry, track) ->
+                track?.copy(
+                    durationMs = track.durationMs.takeIf { it > 0L } ?: entry.durationMs,
+                    source = "Spotify import"
+                )
+            }
+            val unmatched = matches.filter { it.second == null }.map { spotifyCsvEntryLabel(it.first) }
+            if (resolvedTracks.isEmpty()) {
+                return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.NO_MATCHES)
+            }
+
+            val name = customName?.trim()?.ifBlank { null } ?: "Spotify Import"
+            when (val persisted = persistPlaylist(name, resolvedTracks, entries.size)) {
+                is PlaylistImportResult.Success -> persisted.copy(unmatched = unmatched)
+                is PlaylistImportResult.Failure -> persisted
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: IOException) {
+            Timber.w(error, "Spotify CSV import network failure")
+            PlaylistImportResult.Failure(PlaylistImportFailureKind.NETWORK)
+        } catch (error: Throwable) {
+            Timber.w(error, "Spotify CSV import failed")
             PlaylistImportResult.Failure(PlaylistImportFailureKind.NOT_AVAILABLE)
         }
     }
