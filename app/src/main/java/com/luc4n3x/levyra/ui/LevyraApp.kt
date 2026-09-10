@@ -9534,7 +9534,7 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
         ) {
             Surface(
                 color = LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.58f else 0.32f),
-                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline.copy(alpha = 0.78f)),
+                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
                 shape = CircleShape,
                 modifier = Modifier.height(34.dp)
             ) {
@@ -9656,15 +9656,13 @@ private fun PersonalOrbitFeaturedCard(
     val artworkShape = RoundedCornerShape(16.dp)
     val accentStart = remember(track.id, track.accentStart) { Color(track.accentStart) }
     val accentEnd = remember(track.id, track.accentEnd) { Color(track.accentEnd) }
-    val surfaceBrush = remember(accentStart, accentEnd) {
-        Brush.linearGradient(
-            listOf(
-                accentStart.copy(alpha = if (LevyraIsLight) 0.11f else 0.16f),
-                LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.74f else 0.66f),
-                accentEnd.copy(alpha = if (LevyraIsLight) 0.07f else 0.11f)
-            )
+    val surfaceBrush = Brush.linearGradient(
+        listOf(
+            accentStart.copy(alpha = if (LevyraIsLight) 0.11f else 0.16f),
+            LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.74f else 0.66f),
+            accentEnd.copy(alpha = if (LevyraIsLight) 0.07f else 0.11f)
         )
-    }
+    )
 
     Box(
         modifier = Modifier
@@ -9674,7 +9672,7 @@ private fun PersonalOrbitFeaturedCard(
             .background(surfaceBrush)
             .border(
                 width = if (active) 1.5.dp else Dp.Hairline,
-                color = if (active) LevyraCyan.copy(alpha = 0.88f) else LevyraAdaptiveSoftHairline.copy(alpha = 0.82f),
+                color = if (active) LevyraCyan.copy(alpha = 0.88f) else LevyraAdaptiveSoftHairline,
                 shape = shape
             )
             .levyraPressable(
@@ -9835,7 +9833,7 @@ private fun PersonalOrbitSatelliteCard(
                 .clip(shape)
                 .border(
                     width = if (active) 1.5.dp else Dp.Hairline,
-                    color = if (active) LevyraCyan.copy(alpha = 0.88f) else LevyraAdaptiveSoftHairline.copy(alpha = 0.82f),
+                    color = if (active) LevyraCyan.copy(alpha = 0.88f) else LevyraAdaptiveSoftHairline,
                     shape = shape
                 )
         ) {
