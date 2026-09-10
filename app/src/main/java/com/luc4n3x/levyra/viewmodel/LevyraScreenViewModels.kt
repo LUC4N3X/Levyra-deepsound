@@ -1028,7 +1028,7 @@ private data class HomeProjection(
     val interfaceSettings: LevyraInterfaceSettings
 )
 
-private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjection(
+internal fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjection(
     animationsEnabled = state.animationsEnabled,
     artistExclusions = state.artistExclusions,
     chartRegions = state.chartRegions,
