@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+from scripts.agent_skill_router import MAX_ACTIVE_SKILLS
 from scripts.evaluate_skill_routing import CASES, evaluate_all, summary
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,6 +26,7 @@ class SkillIntelligenceTest(unittest.TestCase):
         )
 
         stats = summary(results)
+        self.assertEqual(26, len(CASES))
         self.assertEqual(len(CASES), stats["passed"])
         self.assertEqual(0, stats["failed"])
         self.assertEqual(0, stats["errors"])
@@ -33,6 +35,7 @@ class SkillIntelligenceTest(unittest.TestCase):
     def test_eval_corpus_contains_near_miss_and_collision_coverage(self) -> None:
         names = {case.name for case in CASES}
         for required_name in (
+            "implementation-defers-pr-phase",
             "design-near-miss-kotlin",
             "design-near-miss-gradle",
             "design-near-miss-subscription",
@@ -49,6 +52,7 @@ class SkillIntelligenceTest(unittest.TestCase):
         for case in CASES:
             with self.subTest(case=case.name):
                 self.assertGreater(case.max_skills, 0)
+                self.assertLessEqual(case.max_skills, MAX_ACTIVE_SKILLS)
                 self.assertLessEqual(case.max_context_bytes, 4096)
 
     def test_real_engineering_has_failure_and_retraction_discipline(self) -> None:
