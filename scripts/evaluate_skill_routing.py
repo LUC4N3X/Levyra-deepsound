@@ -17,7 +17,7 @@ class EvalCase:
     prompt: str
     required: tuple[str, ...] = ()
     forbidden: tuple[str, ...] = ()
-    max_skills: int = 6
+    max_skills: int = 2
     max_context_bytes: int = 2048
 
 
@@ -39,15 +39,29 @@ CASES = (
     EvalCase(
         "owner-action-mode",
         "VAI, intervieni e apri la PR",
-        required=("levyra-mode", "levyra-pr-review", "levyra-humanizer"),
-        max_skills=3,
+        required=("levyra-pr-review", "levyra-humanizer"),
+        forbidden=("levyra-mode", "levyra-context-efficiency"),
     ),
     EvalCase(
         "owner-action-playback",
         "VAI sistema il playback crash",
-        required=("levyra-mode", "levyra-real-engineering", "levyra-player"),
-        forbidden=("levyra-context-efficiency",),
-        max_skills=3,
+        required=("levyra-player",),
+        forbidden=("levyra-mode", "levyra-real-engineering", "levyra-context-efficiency"),
+        max_skills=1,
+    ),
+    EvalCase(
+        "implementation-defers-pr-phase",
+        "VAI fix playback crash, test release APK, review and open PR",
+        required=("levyra-player",),
+        forbidden=(
+            "levyra-mode",
+            "levyra-real-engineering",
+            "levyra-context-efficiency",
+            "levyra-pr-review",
+            "levyra-humanizer",
+            "levyra-release-check",
+        ),
+        max_skills=1,
     ),
     EvalCase(
         "owner-mode-near-miss-edit",
@@ -71,20 +85,15 @@ CASES = (
     EvalCase(
         "playback-crash",
         "Fix a playback crash when skipping tracks",
-        required=("levyra-real-engineering", "levyra-player"),
-        forbidden=("levyra-design-taste", "levyra-android-reverse-engineering"),
-        max_skills=3,
+        required=("levyra-player",),
+        forbidden=("levyra-real-engineering", "levyra-design-taste", "levyra-android-reverse-engineering"),
+        max_skills=1,
     ),
     EvalCase(
         "compose-jank",
         "Compose jank while scrolling the album screen",
-        required=(
-            "levyra-compose",
-            "levyra-android-performance",
-            "levyra-real-engineering",
-        ),
-        forbidden=("levyra-design-taste",),
-        max_skills=3,
+        required=("levyra-compose", "levyra-android-performance"),
+        forbidden=("levyra-real-engineering", "levyra-design-taste"),
     ),
     EvalCase(
         "compose-semantics",
@@ -97,46 +106,39 @@ CASES = (
         "pending-intent-security",
         "Audit mutable PendingIntent handling",
         required=("levyra-android-intent-security", "levyra-security-review"),
-        max_skills=2,
     ),
     EvalCase(
         "reverse-r8",
         "Decompile this APK and recover Kotlin R8 metadata",
-        required=(
-            "levyra-android-reverse-engineering",
-            "levyra-r8-proguard",
-            "levyra-security-review",
-            "levyra-release-check",
-        ),
-        max_skills=5,
+        required=("levyra-android-reverse-engineering", "levyra-r8-proguard"),
+        forbidden=("levyra-security-review", "levyra-release-check"),
     ),
     EvalCase(
         "normal-release-apk",
         "Build and validate the release APK",
-        required=("levyra-release-check", "levyra-context-efficiency"),
-        forbidden=("levyra-android-reverse-engineering",),
-        max_skills=2,
+        required=("levyra-release-check",),
+        forbidden=("levyra-context-efficiency", "levyra-android-reverse-engineering"),
+        max_skills=1,
     ),
     EvalCase(
         "visual-premium",
         "Make the Now Playing screen more premium",
         required=("levyra-design-taste", "levyra-compose"),
         forbidden=("levyra-ci-workflows",),
-        max_skills=2,
     ),
     EvalCase(
         "design-near-miss-kotlin",
         "Upgrade to a modern Kotlin compiler version",
         required=("levyra-ci-workflows",),
         forbidden=("levyra-design-taste", "levyra-release-check"),
-        max_skills=2,
+        max_skills=1,
     ),
     EvalCase(
         "design-near-miss-gradle",
         "Clean Gradle build outputs",
-        required=("levyra-ci-workflows", "levyra-context-efficiency"),
-        forbidden=("levyra-design-taste",),
-        max_skills=2,
+        required=("levyra-ci-workflows",),
+        forbidden=("levyra-context-efficiency", "levyra-design-taste"),
+        max_skills=1,
     ),
     EvalCase(
         "design-near-miss-subscription",
@@ -147,21 +149,21 @@ CASES = (
     EvalCase(
         "design-near-miss-screenshot",
         "Inspect this screenshot of a CI stack trace",
-        required=("levyra-context-efficiency",),
-        forbidden=("levyra-design-taste", "levyra-compose"),
-        max_skills=3,
+        required=("levyra-ci-workflows",),
+        forbidden=("levyra-context-efficiency", "levyra-design-taste", "levyra-compose"),
+        max_skills=1,
     ),
     EvalCase(
         "extractor-near-miss-agent-token",
         "Reduce Claude token usage in the coding agents",
-        forbidden=("levyra-extractor",),
-        max_skills=2,
+        required=("levyra-codex-bootstrap",),
+        forbidden=("levyra-extractor", "levyra-context-efficiency"),
+        max_skills=1,
     ),
     EvalCase(
         "extractor-player-token",
         "Investigate an InnerTube player token failure",
-        required=("levyra-extractor", "levyra-player"),
-        max_skills=3,
+        required=("levyra-player", "levyra-extractor"),
     ),
     EvalCase(
         "plain-kotlin-question",
@@ -179,40 +181,35 @@ CASES = (
     EvalCase(
         "debugging-route",
         "Debug an intermittent queue state corruption",
-        required=("levyra-real-engineering", "levyra-player"),
-        max_skills=3,
+        required=("levyra-player",),
+        forbidden=("levyra-real-engineering",),
+        max_skills=1,
     ),
     EvalCase(
         "project-manager",
         "Update roadmap acceptance criteria for the active phase",
-        required=("levyra-project-manager", "levyra-real-engineering"),
-        max_skills=2,
+        required=("levyra-project-manager",),
+        forbidden=("levyra-real-engineering",),
+        max_skills=1,
     ),
     EvalCase(
         "openclaw-handoff",
         "Delegate this Levyra fix through OpenClaw",
-        required=(
-            "levyra-openclaw-orchestrator",
-            "levyra-context-efficiency",
-            "levyra-project-manager",
-        ),
-        max_skills=3,
+        required=("levyra-openclaw-orchestrator", "levyra-project-manager"),
+        forbidden=("levyra-context-efficiency",),
     ),
     EvalCase(
         "cross-domain",
         "Investigate a cross-domain architecture issue across subsystems",
-        required=(
-            "levyra-real-engineering",
-            "levyra-context-efficiency",
-            "levyra-engineering",
-        ),
-        max_skills=3,
+        required=("levyra-real-engineering", "levyra-engineering"),
+        forbidden=("levyra-context-efficiency",),
     ),
     EvalCase(
         "security-review",
         "Review this code for a concrete security vulnerability",
-        required=("levyra-security-review", "levyra-pr-review"),
-        max_skills=2,
+        required=("levyra-security-review",),
+        forbidden=("levyra-pr-review",),
+        max_skills=1,
     ),
 )
 
@@ -237,9 +234,7 @@ def evaluate_case(case: EvalCase) -> EvalResult:
 
     selected_set = set(selected)
     missing = tuple(skill for skill in case.required if skill not in selected_set)
-    forbidden_selected = tuple(
-        skill for skill in case.forbidden if skill in selected_set
-    )
+    forbidden_selected = tuple(skill for skill in case.forbidden if skill in selected_set)
     over_budget = len(selected) > case.max_skills or context_bytes > case.max_context_bytes
     duplicates = len(selected) != len(selected_set)
     status = "PASS" if not (missing or forbidden_selected or over_budget or duplicates) else "FAIL"
@@ -272,19 +267,14 @@ def summary(results: Iterable[EvalResult]) -> dict[str, float | int]:
         "passed": passed,
         "failed": failed,
         "errors": errors,
-        "avg_context_bytes": round(sum(context_values) / len(context_values), 2)
-        if context_values
-        else 0,
+        "avg_context_bytes": round(sum(context_values) / len(context_values), 2) if context_values else 0,
         "max_context_bytes": max(context_values, default=0),
     }
 
 
 def main() -> int:
     results = evaluate_all()
-    payload = {
-        "summary": summary(results),
-        "results": [asdict(result) for result in results],
-    }
+    payload = {"summary": summary(results), "results": [asdict(result) for result in results]}
     print(json.dumps(payload, indent=2))
     return 0 if all(result.status == "PASS" for result in results) else 1
 
