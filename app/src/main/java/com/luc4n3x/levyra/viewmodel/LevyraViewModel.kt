@@ -719,6 +719,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraUiState(
             moods = startupMoods,
             tastes = moodEngine.tastesForLanguage(startupSettings.languageCode),
+            quickPickSeeds = LevyraStartupCatalog.quickPickSeeds(startupSettings.languageCode),
             chartRegions = ChartsCatalog.regions,
             selectedChartId = ChartsCatalog.defaultRegionForLanguage(startupSettings.languageCode).id,
             selectedMood = startupMoods.firstOrNull(),
@@ -1838,7 +1839,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         current
                     }
                 }
-                delay(maxOf(HOME_ARTIST_STARTUP_GRACE_MS, startupPlan.artistStartDelayMs))
+                delay(
+                    if (visibleArtists.isEmpty()) {
+                        HOME_ARTIST_STARTUP_GRACE_MS
+                    } else {
+                        maxOf(HOME_ARTIST_STARTUP_GRACE_MS, startupPlan.artistStartDelayMs)
+                    }
+                )
                 awaitHomeUiIdle(startupPlan)
             }
 
@@ -1883,6 +1890,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             isArtistShelfNameEligible(hit.name)
                         ) {
                             resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+                        }
+                    }
+                    if (!freezeVisibleShelf && resolved.isNotEmpty() && homeArtistsFingerprint == fingerprint) {
+                        val partialArtists = resolved.values.take(HOME_ARTIST_SHELF_SIZE)
+                        _state.update { current ->
+                            if (current.languageCode == languageCode) current.copy(homeArtists = partialArtists) else current
                         }
                     }
                     if (resolved.size >= HOME_ARTIST_SHELF_SIZE) break
@@ -4567,6 +4580,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update {
             it.copy(
                 languageCode = languageCode,
+                quickPickSeeds = LevyraStartupCatalog.quickPickSeeds(languageCode),
                 moods = localizedMoods,
                 tastes = moodEngine.tastesForLanguage(languageCode),
                 selectedMood = selectedMood,
@@ -6564,6 +6578,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             delay(if (deferUntilHomeIdle) startupPlan.secondaryStartDelayMs else 250L)
             if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
             enqueueOfficialMetadata(tracks, LevyraPersonalOrbit.DISPLAY_LIMIT, false)
+            _state.value.quickPickSeeds
+                .chunked(OFFICIAL_METADATA_MAX_BATCH_SIZE)
+                .forEach { seeds -> enqueueOfficialMetadata(seeds, OFFICIAL_METADATA_MAX_BATCH_SIZE, false) }
         }
     }
 
@@ -6799,6 +6816,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val searchResults = current.searchResults.map(::withArtwork)
             val favorites = current.favorites.map(::withArtwork)
             val charts = current.charts.map(::withArtwork)
+            val quickPickSeeds = current.quickPickSeeds.map(::withArtwork)
             val homeAlbums = current.homeAlbums
                 .map(::withAlbumMetadata)
                 .distinctBy(::albumRecommendationDeduplicationKey)
@@ -6868,6 +6886,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 searchResults = searchResults,
                 favorites = favorites,
                 charts = charts,
+                quickPickSeeds = quickPickSeeds,
                 homeAlbums = homeAlbums,
                 homeSections = homeSections,
                 exploreTracks = exploreTracks,
