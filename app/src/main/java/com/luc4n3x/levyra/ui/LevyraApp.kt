@@ -9627,7 +9627,6 @@ private fun PersonalListeningShelf(
                     ) { index, track ->
                         PersonalOrbitSatelliteCard(
                             track = track,
-                            rank = index + 2,
                             active = track.id == currentId,
                             playing = isPlaying && track.id == currentId,
                             resolving = isResolving && track.id == currentId,
@@ -9706,22 +9705,6 @@ private fun PersonalOrbitFeaturedCard(
                     modifier = Modifier.fillMaxSize(),
                     highRes = true
                 )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp)
-                        .background(Color.Black.copy(alpha = 0.60f), CircleShape)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "01",
-                        color = Color.White.copy(alpha = 0.94f),
-                        fontSize = 9.5.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(9.5.sp),
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.6.sp
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.width(13.dp))
@@ -9811,7 +9794,6 @@ private fun PersonalOrbitFeaturedCard(
 @Composable
 private fun PersonalOrbitSatelliteCard(
     track: Track,
-    rank: Int,
     active: Boolean,
     playing: Boolean,
     resolving: Boolean,
@@ -9821,7 +9803,6 @@ private fun PersonalOrbitSatelliteCard(
     onLongClickLabel: String
 ) {
     val shape = RoundedCornerShape(15.dp)
-    val rankText = rank.toString().padStart(2, '0')
 
     Column(
         modifier = Modifier
@@ -9851,23 +9832,6 @@ private fun PersonalOrbitSatelliteCard(
                 modifier = Modifier.fillMaxSize(),
                 highRes = true
             )
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(7.dp)
-                    .background(Color.Black.copy(alpha = 0.58f), CircleShape)
-                    .padding(horizontal = 7.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = rankText,
-                    color = Color.White.copy(alpha = 0.92f),
-                    fontSize = 9.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(9.sp),
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.45.sp
-                )
-            }
 
             if (active) {
                 Box(
