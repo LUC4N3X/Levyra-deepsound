@@ -1,173 +1,195 @@
 # Levyra Engineering Instructions
 
 ## Purpose
-This is Levyra's compact, always-loaded engineering contract. It is a router,
-not a handbook: keep permanent rules here and load detailed procedures only
-when the active task needs them.
+
+This is Levyra's compact always-loaded engineering contract. Keep permanent
+rules here and load detailed procedures only for the current task phase.
 
 Instruction order:
 1. root `AGENTS.md`;
-2. the nearest path-specific `AGENTS.md` for files in scope;
-3. applicable approved planning in `docs/project/`;
-4. matching native skills under `.agents/skills/`;
-5. current implementation, tests, build files, workflows, and runtime evidence;
-6. runtime-specific canonical configuration under `.agents/claude/` or `.agents/codex/`.
+2. nearest path-specific `AGENTS.md`;
+3. approved `docs/project/` requirements when relevant;
+4. at most the routed skill bodies needed for the current phase;
+5. current code, tests, build files, workflows, and runtime evidence;
+6. runtime-specific configuration under `.agents/claude/` or `.agents/codex/`.
 
-Current repository evidence outranks memory, stale comments, previous agent
-output, and old task status. Surface real conflicts before editing.
-For every engineering task apply `docs/ai/ALWAYS_ON_AGENT_GUARDS.md`. For
-production-code implementation or broad review also apply
-`docs/ai/AI_ENGINEERING_GUARDRAILS.md`. Use
-`docs/ai/EVIDENCE_GATED_COMPLETION.md` for non-trivial completion evidence.
+Current repository evidence outranks memory, old comments, previous agent output,
+and stale task status. Apply `docs/ai/ALWAYS_ON_AGENT_GUARDS.md` to every
+engineering task. Use `docs/ai/AI_ENGINEERING_GUARDRAILS.md` when its detailed
+production-code procedure is needed and `docs/ai/EVIDENCE_GATED_COMPLETION.md`
+for non-trivial completion evidence.
 
 ## Execution contract
-- When the owner asks to fix, update, implement, refactor, or otherwise change
-  code, execute the requested work directly inside the authorized scope.
+
+- Explicit owner execution cues such as `VAI`, `PROCEDI`, `INTERVIENI`, `FAI TU`
+  are core behavior, not a reason to load `levyra-mode`.
 - `only this`, `solo questo`, and equivalents are hard scope boundaries.
 - Inspect the current implementation and nearby tests before changing behavior.
-- Fix the root cause with the smallest coherent change. Reuse existing owners,
-  clients, players, caches, stores, state models, dispatchers, and policies.
-- Do not perform opportunistic refactors, dependency churn, version changes,
-  renames, cleanup, or architecture work unrelated to the request.
-- Do not add explanatory source-code comments. Prefer clear names and structure;
-  preserve only legally or mechanically required comments and genuinely
-  non-obvious compatibility/safety contracts.
-- Ask only when an indispensable input is missing, materially different valid
-  interpretations would change the result, or an action is destructive,
+- Fix the root cause with the smallest coherent change and reuse existing owners.
+- Do not perform unrelated refactors, dependency churn, version changes, renames,
+  cleanup, or architecture work.
+- Do not add explanatory source-code comments. Prefer clear names and structure.
+- Investigation does not authorize implementation; implementation does not
+  authorize publication.
+- Ask only when an indispensable input is missing or an action is destructive,
   irreversible, security-sensitive, or outside existing authorization.
-- Investigation verbs such as inspect, review, diagnose, and report do not
-  authorize implementation. Implementation verbs do not authorize publication.
 
 ## Always-on context budget
-Before broad repository reading on every non-trivial task:
+
+Before broad reading:
 1. identify the likely owner/module and the exact question the next read answers;
-2. search path, filename, symbol, or call site first;
+2. search path, symbol, filename, or call site first;
 3. read the smallest useful range, focused diff, or nearby test;
 4. expand only when a concrete unanswered question remains;
-5. do not reread unchanged evidence already present in context;
-6. load only matching skills, never the whole skill tree.
+5. do not reread unchanged evidence already in context;
+6. keep a maximum of two skill bodies active for the current phase.
 
-Use `levyra-context-efficiency` for noisy builds, tests, lint, logs, dependency
-reports, Git/GitHub output, broad searches, or non-trivial repository
-exploration. RTK is an optimization layer only; rerun raw whenever compressed
-output could hide decisive diagnostics, security, signing, Perfetto, or R8 evidence.
+The compact rules above replace automatic loading of `levyra-context-efficiency`.
+This two-skill phase cap overrides older scoped, skill, or playbook wording that says to load every matching skill; defer additional skills until their phase begins.
+Use that skill only when its extended RTK/log/context procedure is specifically
+useful. Token savings come from less redundant context and output, never from
+shallower reasoning, validation, or review.
 
 ## Repository map
+
 - `app/`: Android client; apply `app/AGENTS.md`.
 - `desktop/`: Windows client; apply `desktop/AGENTS.md`.
 - `.github/`: CI/release automation; apply `.github/AGENTS.md`.
 - `docs/`: documentation; apply `docs/AGENTS.md`.
-- `docs/project/`: `SPEC.md`, `ROADMAP.md`, and the active `TASKS.md` phase.
-- `docs/ai/`: detailed cross-runtime engineering procedures.
+- `docs/project/`: durable requirements, roadmap, and active tasks.
 - `.agents/skills/`: the single canonical Levyra skill tree.
-- `.agents/claude/`: canonical Claude-specific settings, hooks, agents, and rules.
-- `.agents/codex/`: canonical Codex project configuration and hooks.
-- `.claude/` and `.codex/`: generated local runtime projections; never sources of truth.
+- `.agents/claude/`: canonical Claude-specific runtime configuration.
+- `.agents/codex/`: canonical Codex project configuration.
 
-Claude Code has a tracked root `CLAUDE.md` whose sole purpose is reliable native
-startup discovery and import of this file. Do not duplicate this contract there.
+Root `CLAUDE.md` is only a small Claude-native bridge importing this file.
 
 ## Automatic skill routing
-Select matching skills automatically from the task. The owner never needs to
-name a skill. Claude/Codex hooks use `scripts/agent_skill_router.py`; compatible
-runtimes should follow the same routing behavior. Several skills may apply.
 
-Core automatic routes:
-- explicit owner execution cues such as `VAI`, `PROCEDI`, `INTERVIENI`, or `FAI TU` -> `levyra-mode`;
-- substantial or ambiguous engineering -> `levyra-real-engineering`;
-- Android playback/Media3/queue -> `levyra-player`;
+`scripts/agent_skill_router.py` selects only the current phase. The owner never
+needs to name a skill. It must route no more than two skill bodies at once.
+
+Implementation/debugging loads the narrowest domain skill first. Ordinary bugs
+do not automatically load the large `levyra-real-engineering` workflow; reserve
+it for explicit architecture, cross-domain, multi-step, concurrency, root-cause,
+specification, or similarly complex work. If implementation and PR/release work
+are requested together, finish the implementation phase first and defer review,
+release, and prose skills until their phase.
+
+Core compatibility inventory:
+`levyra-real-engineering`, `levyra-compose`, `levyra-design-taste`,
+`levyra-android-performance`, `levyra-r8-proguard`,
+`levyra-android-intent-security`, `levyra-ci-workflows`,
+`levyra-context-efficiency`, `levyra-pr-review`, `levyra-release-check`,
+`levyra-player`, `levyra-extractor`, `levyra-database`, `levyra-desktop`,
+`levyra-security-review`, `levyra-project-manager`, `levyra-engineering`,
+`levyra-openclaw-orchestrator`, `levyra-motion-artwork`,
+`levyra-android-reverse-engineering`, `levyra-codex-bootstrap`,
+`levyra-humanizer`, `levyra-mode`.
+
+Phase examples:
+- playback/Media3/queue -> `levyra-player`;
 - extraction/InnerTube/network fallback -> `levyra-extractor`;
-- Room/persistence/backup -> `levyra-database`;
-- Compose/state/navigation/accessibility -> `levyra-compose`;
-- visual redesign/polish -> `levyra-design-taste` plus the matching UI skill;
+- Room/persistence -> `levyra-database`;
+- Compose/accessibility/state -> `levyra-compose`;
+- visual polish -> `levyra-design-taste` plus the matching UI skill when needed;
 - Android performance/memory/jank -> `levyra-android-performance`;
-- R8/Proguard/shrinking -> `levyra-r8-proguard` plus `levyra-release-check`;
-- Intent/deep-link/component security -> `levyra-android-intent-security` plus `levyra-security-review`;
+- R8/Proguard -> `levyra-r8-proguard`;
+- Intent/component security -> `levyra-android-intent-security` plus
+  `levyra-security-review`;
 - Windows Desktop -> `levyra-desktop`;
-- CI/workflows/build tooling -> `levyra-ci-workflows`;
-- branch/commit/PR review -> `levyra-pr-review`;
-- PR creation or description -> `levyra-mode` plus `levyra-pr-review` plus `levyra-humanizer`;
-- release/pre-merge evidence -> `levyra-release-check`;
-- requirements/roadmap/task status -> `levyra-project-manager`;
-- genuine cross-domain orientation -> `levyra-engineering`;
+- CI/Gradle/Kotlin tooling -> `levyra-ci-workflows`;
+- Claude/Codex agent tooling -> `levyra-codex-bootstrap`;
+- final branch/PR review -> `levyra-pr-review`;
+- release/runtime validation -> `levyra-release-check`;
+- PR description -> `levyra-humanizer`;
+- requirements/roadmap -> `levyra-project-manager`;
+- cross-domain orientation -> `levyra-engineering`;
 - OpenClaw coordination -> `levyra-openclaw-orchestrator`;
-- Android artifact decompilation -> `levyra-android-reverse-engineering` plus `levyra-security-review`;
-- secrets/privacy/trust boundaries -> `levyra-security-review`;
-- decorative Canvas/motion artwork -> `levyra-motion-artwork`.
+- Android binary analysis -> `levyra-android-reverse-engineering`.
 
-Do not preload skill bodies. Read the matching `.agents/skills/<name>/SKILL.md` only when routed.
+Do not preload skill bodies. Read only routed
+`.agents/skills/<name>/SKILL.md` files for the active phase. External workflows
+in `docs/ai/MATT_POCOCK_SKILLS.md` are supplementary and opt-in; repository
+rules remain authoritative.
 
 ## Product invariants
-- Protect playback reliability, responsiveness, privacy, user data, and existing choices before optional polish.
-- Keep explicit song/audio mode and native-video mode distinct; never silently remove, merge, hide, or override the user's choice.
-- Motion artwork is decorative, muted, song/audio-only, and must never delay audible playback; static artwork remains the immediate fallback.
-- Keep audible playback, MediaSession, notification, Android Auto, queue, and background service synchronized.
-- Direct playback is the critical path; artwork, lyrics, diagnostics, prefetch, refresh, and enrichment must yield to it.
-- Preserve downloads, favorites, playlists, queues, lyrics, history, settings, localization, onboarding, sessions, and backups unless explicitly changed.
-- Do not add account login, cookies, private tokens, telemetry, or tracking unless explicitly requested.
-- Android and Desktop versions, packages, artifacts, tags, and releases remain independent.
+
+Protect playback reliability, responsiveness, privacy, user data, downloads,
+favorites, playlists, queues, lyrics, history, settings, localization,
+onboarding, sessions, and backups unless explicitly changed. Keep audio/song and
+native-video modes distinct. Motion artwork is decorative and must never delay
+audible playback. Keep playback, MediaSession, notification, Android Auto,
+queue, and background service synchronized. Do not add account login, cookies,
+private tokens, telemetry, or tracking unless explicitly requested. Android and
+Desktop versions/releases remain independent.
 
 ## Work method
+
 Use `Plan -> Execute -> Verify` for non-trivial implementation:
-1. define exact outcome, action mode, scope, preserved behavior, and acceptance;
-2. route only matching skills and inspect the current control/data flow;
-3. identify root cause and the simplest existing-owner solution;
-4. make one minimal coherent change without unrelated churn;
+1. define outcome, scope, preserved behavior, and acceptance;
+2. route only the current phase skills and inspect the current flow;
+3. identify the root cause and smallest existing-owner solution;
+4. make one coherent change without unrelated churn;
 5. run the narrowest useful checks after the latest material edit;
 6. inspect the complete final diff and run `git diff --check`;
-7. report exactly what changed, what passed, what failed, and what is unverified.
+7. report exactly what changed, passed, failed, blocked, or remains unverified.
 
-Treat repeated failures as evidence. Do not retry the same materially unchanged
-approach more than twice. After the second failure, stop that approach, revisit
-the evidence and root-cause hypothesis, then switch to a materially different
-strategy or report the blocker. Cosmetic command or prompt changes do not reset
-the retry count.
-
-For long-running work, when the accumulated conversation, exploratory logs, or superseded hypotheses no longer materially help the current deliverable, suggest a fresh session at the next natural task boundary and provide a compact verified handoff. Do not abandon an active deliverable merely because the context is large; recommend a reset when stale context is now overhead or before a distinct next task.
+Do not retry the same materially unchanged approach more than twice. After the
+second failure, switch to a materially different diagnosis or report the blocker.
+When stale context no longer helps, suggest a fresh session at the next natural
+task boundary and provide a compact verified handoff. Never abandon an active
+deliverable merely because context is large.
 
 Keep blocking network, database, disk, parsing, decoding, extraction, and native
-media work off UI threads. Preserve lifecycle, cancellation, shared-work,
-generation/identity, failure classification, retry, timeout, concurrency, and
-bounded-storage semantics. Do not negative-cache inconclusive failures.
+media work off UI threads. Preserve lifecycle, cancellation, identity/generation,
+retry, timeout, concurrency, and bounded-storage semantics.
 
 ## RTK agent bootstrap
-For shell-capable non-trivial tasks, the pinned `rtk-ai/rtk` bootstrap is
-owner-authorized. Verify `rtk --version` and `rtk gain`; use
-`scripts/ensure-rtk.ps1 -Quiet` on Windows or `./scripts/ensure-rtk.sh --quiet`
-elsewhere when needed. Manual repair remains available through
-`scripts/setup-ai.ps1 -InstallRtk` or `./scripts/setup-ai.sh --install-rtk`.
-If RTK is unavailable, continue raw rather than weakening validation or safety.
-See `docs/ai/RTK.md` for details.
 
-Optional persistent memory and external skill integrations are defined in
-`docs/ai/CLAUDE_MEM.md` and `docs/ai/MATT_POCOCK_SKILLS.md`; use them only when
-relevant and never let optional tooling block implementation.
+For shell-capable non-trivial work, the pinned `rtk-ai/rtk` bootstrap remains
+owner-authorized. Verify `rtk --version` and `rtk gain`; use
+`scripts/ensure-rtk.ps1 -Quiet` or `./scripts/ensure-rtk.sh --quiet` when needed.
+Manual repair remains `scripts/setup-ai.ps1 -InstallRtk` or
+`./scripts/setup-ai.sh --install-rtk`. If RTK is unavailable, continue raw.
+
+Optional persistent memory and external skill integrations must never block
+ordinary work or silently enlarge every session.
 
 ## Mandatory AI quality gate
-Use repository wrappers, never a system Gradle installation. Start with focused checks. Before commit run:
+
+Use repository wrappers, never a system Gradle installation. Before commit run:
+
 ```bash
 python3 scripts/ai_quality_gate.py --profile fast
 ```
+
 Before push or PR publication run:
+
 ```bash
 python3 scripts/ai_quality_gate.py --profile full
 ```
-On Windows use the repository's `.bat` wrappers where applicable. Missing SDK,
-JDK, signing input, device/emulator, libvlc, WiX, network, or OS support is
-`BLOCKED`, never `PASS`. ChatGPT or another runtime without command execution
-must not claim these checks ran. CodeRabbit and other reviewers are
-supplementary evidence, not substitutes for deterministic validation.
+
+Missing SDK/JDK/signing/device/libvlc/WiX/network/OS prerequisites are `BLOCKED`,
+never `PASS`. ChatGPT or another runtime without command execution must not claim
+checks ran. CodeRabbit and other reviewers are supplementary evidence only.
 
 ## Security and publication
-- Never expose or commit secrets, tokens, cookies, private URLs, keystores, signing material, `.env`, or `local.properties`.
-- Never weaken transport, redirect, MIME, checksum, signature, host, Android component, caller, or URI-grant validation just to make one case pass.
-- Do not commit generated APKs/installers/archives/build output unless explicitly required by repository policy and the task.
-- Commit, push, PR creation, merge, tag, release, deployment, version changes, external messages, and repository-setting changes require explicit owner authorization for the exact action and scope.
-- When PR publication is authorized, use a dedicated branch and draft PR by default, preserve `.github/pull_request_template.md`, keep checks truthful, and apply `levyra-humanizer` without changing facts.
+
+Never expose or commit secrets, tokens, cookies, private URLs, keystores,
+signing material, `.env`, or `local.properties`. Never weaken security checks to
+make a case pass. Commit, push, PR creation, merge, tag, release, deployment,
+version changes, external messages, and repository-setting changes require
+explicit owner authorization for that action and scope.
+
+When PR publication is authorized, use a dedicated branch and draft PR by
+default, preserve the complete `.github/pull_request_template.md`, keep
+validation claims truthful, and apply `levyra-humanizer` only in the PR-writing
+phase without changing facts.
 
 ## Delivery contract
+
 Keep these states distinct:
-`planned -> edited -> locally validated -> final diff reviewed -> committed -> pushed -> pull request opened -> CI passed -> independently reviewed -> merged -> released`
-Report rationale/root cause, exact files changed, behavior preserved, validation
-run, blocked/unrun checks, remaining risk, and verified publication state. Never
-represent a plan as an applied patch or an unverified result as complete.
+`planned -> edited -> locally validated -> final diff reviewed -> committed -> pushed -> pull request opened -> CI passed -> independently reviewed -> merged -> released`.
+
+Report rationale/root cause, exact files changed, validation run, blocked/unrun
+checks, remaining risk, and verified publication state.
