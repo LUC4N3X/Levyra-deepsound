@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-10T04:48:32Z",
+  "generatedAt": "2026-09-10T11:25:12Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -383,7 +383,7 @@
     {
       "song": "Iris",
       "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
+      "album": "Dizzy up the Girl",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
@@ -539,13 +539,6 @@
       "artist": "Ashe",
       "album": "Stop The Wedding!",
       "url": "https://canvaz.scdn.co/upload/artist/6P5NO5hzJbuOqSdyPB7SJM/video/901af3dd65ee4d1fa5b9135161d5a96c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Dizzy up the Girl",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2201,6 +2194,13 @@
       "scope": "track"
     },
     {
+      "song": "Pagkosmia Mera Tou Psefti",
+      "artist": "Katerina Lioliou",
+      "album": "Pagkosmia Mera Tou Psefti",
+      "url": "https://canvaz.scdn.co/upload/artist/6vgi3CIDWWdGEGJ6NMgQdD/video/6c418d09d8734f58823997e35a3d3be3.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Xeno Nisi",
       "artist": "JOJO, Saske, Oge",
       "album": "Xeno Nisi",
@@ -2292,6 +2292,125 @@
       "scope": "track"
     },
     {
+      "song": "CASINO",
+      "artist": "RACK, Konstantinos Argiros, Sin Laurent",
+      "album": "Love, Rack.",
+      "url": "https://canvaz.scdn.co/upload/artist/6YYOTK6Qyv6PuFipPxCCoe/video/5b984a735fd0458fa0a590b8c21a2ead.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "BOGOTA",
+      "artist": "Ivan Greko",
+      "album": "TIGER LUV",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/657ef88010c74478b95701b8476c8c71.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "OM DU FRÅGAR NOOSHI",
+      "artist": "Rasmus Gozzi, FRÖKEN SNUSK, Louise Andersson Bodin",
+      "album": "OM DU FRÅGAR NOOSHI",
+      "url": "https://canvaz.scdn.co/upload/artist/3loTvAld5Tpk5aSNbboGpj/video/5b831c3498984625bbdf2ca90e3e4070.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Djurens vaggvisa",
+      "artist": "Humlan Djojj, Josefine Götestam",
+      "album": "Somna med Humlan Djojj",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/f614b344f7454324997a7f3aefa803b6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Olyckligt kär",
+      "artist": "ALEX",
+      "album": "Olyckligt kär",
+      "url": "https://canvaz.scdn.co/upload/artist/3hPJRjlru1p445TrmVGdIA/video/c60e08e250d543f297bd612636f1efd7.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Babblarnas vaggvisa",
+      "artist": "Babblarna",
+      "album": "Upp och ner och hit och dit med Babblarna",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/4d4958a1209645508c94ac1124b2b685.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Tänk om",
+      "artist": "Victor Leksell, Molly Sandén",
+      "album": "Tänk om",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/4f1e12539ef84b7692c69b7b802fc529.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Stjärnorna",
+      "artist": "Humlan Djojj, Josefine Götestam",
+      "album": "Somna med Humlan Djojj",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/3a282039912a4852b61beb3f0d2c9fa9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Humlehum",
+      "artist": "Humlan Djojj, Josefine Götestam",
+      "album": "Sov med Humlan Djojj",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/e32176afb9c448ff8810ef69dd954a27.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Somna",
+      "artist": "Humlan Djojj, Josefine Götestam",
+      "album": "Somna med Humlan Djojj",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/8ec36d5316ec4a8c85f4b9eb286b5f51.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Atom",
+      "artist": "Lovet, Victor Leksell",
+      "album": "Atom",
+      "url": "https://canvaz.scdn.co/upload/artist/2kSCHFK5uErN4BO7IkTrHK/video/f39a3f40f24744aeb9ba0e2e35e8fa69.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "SLICKAR PÅ SNÖRET - Uptempo Remix",
+      "artist": "Rök Liza, Mio Johansson",
+      "album": "SLICKAR PÅ SNÖRET (Uptempo Remix)",
+      "url": "https://canvaz.scdn.co/upload/artist/7bCWtYN5W1RwYKHsAmL7LF/video/8c2ea0c380754ab6a84829d78a3610d8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Godnattvisan",
+      "artist": "Humlan Djojj, Josefine Götestam",
+      "album": "Somna med Humlan Djojj",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/dacf0d73df054bf1813e84bb98839e3b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Är det här det är party",
+      "artist": "Korslagda",
+      "album": "Är det här det är party",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/43eee5818707423b975ffaf573352d07.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Vila med mig",
+      "artist": "Humlan Djojj, Josefine Götestam",
+      "album": "Sov med Humlan Djojj",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/a744e9eff47e44d8b5409567c2a71126.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Matadoren",
+      "artist": "Yasin",
+      "album": "Your Turn In Blue",
+      "url": "https://canvaz.scdn.co/upload/artist/6rYEqmajzlhGVaayOJ2bpJ/video/d3c159c46c7443589ee97a44177c53e9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "SNÄLLA STELLA - UPTEMPO REMIX",
+      "artist": "Rök Liza, KLNH",
+      "album": "SNÄLLA STELLA (UPTEMPO REMIX)",
+      "url": "https://canvaz.scdn.co/upload/artist/7bCWtYN5W1RwYKHsAmL7LF/video/4cfbfe32d2d44383b4cb3008c48a4279.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Man I Need",
       "artist": "Olivia Dean",
       "album": "The Art of Loving",
@@ -2299,10 +2418,122 @@
       "scope": "track"
     },
     {
+      "song": "Sömnmolnet",
+      "artist": "Humlan Djojj, Josefine Götestam",
+      "album": "Sov med Humlan Djojj",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/3e99ba45da654842b2319035d1c5a502.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "STÖRD",
+      "artist": "KYPARN, DIREKTÖREN, OKVH",
+      "album": "STÖRD",
+      "url": "https://canvaz.scdn.co/upload/artist/2p9OeruY0AAgWRu84YZMPw/video/b32e0cf0a3da42c19af9f4990e1d4f01.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Lost and found",
+      "artist": "Molly Sandén, Victor Leksell",
+      "album": "Blåögd",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/3e43e03e1a664dacb9151976dc144892.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Vem du än är",
+      "artist": "Keisha",
+      "album": "Vem du än är",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/fe6cedef642a49cda29692947d0c9bdf.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Dancing On My Own",
       "artist": "Robyn",
       "album": "Body Talk",
       "url": "https://canvaz.scdn.co/upload/artist/6UE7nl9mha6s8z0wFQFIZ2/video/c5ca328dbd4d4971a911431e6e1d51a1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Shen Mao",
+      "artist": "Kundo",
+      "album": "Shen Mao",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/fab3edceb134455094b3c5ca4c59c6be.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Elsker Dig Så Meget Jeg Ku' Gå I Stykker",
+      "artist": "Christopher",
+      "album": "Elsker Dig Så Meget Jeg Ku' Gå I Stykker",
+      "url": "https://canvaz.scdn.co/upload/artist/3zDRCqOhJXJfS2YWOEwGMC/video/ec0d4f62c6d0437ab4033e6b34a370df.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Ringer Om Natten",
+      "artist": "Christopher",
+      "album": "Ringer Om Natten",
+      "url": "https://canvaz.scdn.co/upload/artist/3zDRCqOhJXJfS2YWOEwGMC/video/dfd716269bf7437c81ab39dbb7b4b6ba.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Desperado",
+      "artist": "Annika",
+      "album": "Desperado",
+      "url": "https://canvaz.scdn.co/upload/artist/1GKN1Js8fa19K23eIhOMhg/video/f68554ec52d9407eb1346227815bca20.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Vil du noget?",
+      "artist": "Guldimund, Saveus",
+      "album": "Vil du noget?",
+      "url": "https://canvaz.scdn.co/upload/artist/5269oiQ5yjMDcgXoJr6zkw/video/8a7cba6b9e09460b8a0db5595863e650.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Ham Med Guitaren",
+      "artist": "Christopher",
+      "album": "Ham Med Guitaren",
+      "url": "https://canvaz.scdn.co/upload/artist/3zDRCqOhJXJfS2YWOEwGMC/video/cdaa5cd3d40842fc80062e395057528a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "En drøm om et menneske",
+      "artist": "APHACA",
+      "album": "VILD UNGDOM",
+      "url": "https://canvaz.scdn.co/upload/artist/5Ppbc55kNdjvxP8Tw2P8S9/video/523e0009bd964a9b88c65d24162e5432.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Hvem er det der græder nu?",
+      "artist": "Berg",
+      "album": "Hvem er det der græder nu?",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/9d80e362538147f19b280831db752d4e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Dét Der Udenfor",
+      "artist": "The Minds Of 99",
+      "album": "Dét Der Udenfor",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/bcfad887df2f4a048fcf82321cbd587d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "KBH",
+      "artist": "Nik & Jay",
+      "album": "KBH",
+      "url": "https://canvaz.scdn.co/upload/artist/71k6SmcYKiIPq8M2RxK2Jr/video/9ac4edc04495476aa4727f73cb62e849.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Danser Med Minder",
+      "artist": "Kind mod Kind",
+      "album": "Danser Med Minder",
+      "url": "https://canvaz.scdn.co/upload/artist/0cc3y7owJCbx8MuYJZI6As/video/32c2ff7e8e1a4ac58e3b299526f67585.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Flue i et spind",
+      "artist": "APHACA",
+      "album": "VILD UNGDOM",
+      "url": "https://canvaz.scdn.co/upload/artist/5Ppbc55kNdjvxP8Tw2P8S9/video/37d9926873ee453c8aeadaae82145883.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4207,13 +4438,6 @@
       "artist": "nicole",
       "album": "Panaginip",
       "url": "https://canvaz.scdn.co/upload/artist/64c6qxJIkcvJP3glpCkWHp/video/fcd0860c5a4e465a9519662f8d27b478.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Totoong tayo",
-      "artist": "Jin DC",
-      "album": "Totoong tayo",
-      "url": "https://canvaz.scdn.co/upload/artist/4aYM8Vij7I9a2VLcAPJ6Y2/video/f12e48e4fde042899a6bfa3a7f9fb00a.cnvs.mp4",
       "scope": "track"
     },
     {
