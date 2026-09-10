@@ -1484,9 +1484,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 awaitHomeUiIdle(startupPlan)
                 LevyraArtworkCache.preloadPriority(appContext, orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT)
                 warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = false)
-                refreshMissingOfficialOrbitArtwork(orbitSeed, deferUntilHomeIdle = true)
             }
         }
+        refreshMissingOfficialOrbitArtwork(orbitSeed, deferUntilHomeIdle = true)
 
         viewModelScope.launch {
             delay(startupPlan.homeFeedStartDelayMs)
