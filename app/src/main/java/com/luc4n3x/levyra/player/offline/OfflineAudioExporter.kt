@@ -1186,7 +1186,7 @@ class OfflineAudioExporter(
             throw IOException("Offline metadata embedding requires an M4A audio source")
         }
         if (!shouldEmbedFastMetadata(input.length(), track.durationMs)) {
-            throw IOException("Audio file is outside the safe metadata embedding limit")
+            return PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)
         }
         val output = File(workspace, "tagged-${System.nanoTime()}.${container.extension}")
         val tagResult = LevyraM4aTagWriter.write(
