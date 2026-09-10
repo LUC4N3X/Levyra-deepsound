@@ -27,6 +27,12 @@ object LevyraStartupCatalog {
         )
     }
 
+    fun quickPickSeeds(languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> =
+        (homeSections(languageCode).flatMap { it.tracks } + localTracks("en"))
+            .distinctBy { it.title.lowercase() to it.artist.lowercase() }
+
+    fun isStartupSeedId(id: String): Boolean = id.startsWith("chart-seed-")
+
     fun chartTracks(languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> =
         homeSections(languageCode)
             .flatMap { it.tracks }
