@@ -592,7 +592,7 @@ object HomeEditorialEngine {
     }
 
     private fun collectionFingerprint(collection: HomeEditorialCollection): String {
-        return collection.tracks.take(6).joinToString("|") { identityKey(it) }
+        return "${collection.kind.name}|${collection.tracks.take(6).joinToString("|") { identityKey(it) }}"
     }
 
     private fun artworkIdentity(track: Track): String {
