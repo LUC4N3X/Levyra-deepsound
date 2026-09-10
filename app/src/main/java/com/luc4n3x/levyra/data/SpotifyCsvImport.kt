@@ -9,6 +9,7 @@ data class SpotifyCsvEntry(
 )
 
 internal const val MAX_SPOTIFY_CSV_ROWS = 2_000
+internal const val UTF8_BOM = "\uFEFF"
 
 private val TITLE_HEADERS = listOf(
     "track name",
@@ -40,7 +41,7 @@ private val DURATION_HEADERS = listOf(
     "length (ms)"
 )
 
-private val ARTIST_SEPARATORS = Regex("""\s*(?:,|;|&|/|\||\bfeat\.?\b|\bft\.?\b|\bwith\b|\bx\b)\s*""", RegexOption.IGNORE_CASE)
+private val ARTIST_SEPARATORS = Regex("""\s*(?:,|;|&|\||\bfeat\.?\b|\bft\.?\b|\bwith\b|\bx\b)\s*""", RegexOption.IGNORE_CASE)
 
 internal fun parseCsvRows(text: String, maxRows: Int = MAX_SPOTIFY_CSV_ROWS): List<List<String>> {
     val rows = mutableListOf<List<String>>()
@@ -49,7 +50,7 @@ internal fun parseCsvRows(text: String, maxRows: Int = MAX_SPOTIFY_CSV_ROWS): Li
     var quoted = false
     var index = 0
     var sawField = false
-    val source = text.removePrefix("﻿")
+    val source = text.removePrefix(UTF8_BOM)
 
     fun endField() {
         row.add(field.toString())

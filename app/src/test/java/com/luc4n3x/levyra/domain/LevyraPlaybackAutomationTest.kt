@@ -81,6 +81,34 @@ class LevyraPlaybackAutomationTest {
     }
 
     @Test
+    fun springForwardKeepsTheLocalWallClockStart() {
+        val schedule = LevyraBedtimeSchedule(
+            enabled = true,
+            startMinuteOfDay = 4 * 60,
+            days = setOf(DayOfWeek.SUNDAY)
+        )
+
+        val next = nextBedtimeTrigger(schedule, at(2026, 3, 28, 22, 0))
+
+        assertEquals(4, next?.hour)
+        assertEquals(DayOfWeek.SUNDAY, next?.dayOfWeek)
+    }
+
+    @Test
+    fun fallBackKeepsTheLocalWallClockStart() {
+        val schedule = LevyraBedtimeSchedule(
+            enabled = true,
+            startMinuteOfDay = 4 * 60,
+            days = setOf(DayOfWeek.SUNDAY)
+        )
+
+        val next = nextBedtimeTrigger(schedule, at(2026, 10, 24, 22, 0))
+
+        assertEquals(4, next?.hour)
+        assertEquals(DayOfWeek.SUNDAY, next?.dayOfWeek)
+    }
+
+    @Test
     fun scheduleValuesAreClamped() {
         val schedule = LevyraBedtimeSchedule(
             enabled = true,

@@ -327,6 +327,10 @@ class PlaybackService : MediaLibraryService() {
     private val playbackFailureGuard = ConsecutivePlaybackFailureGuard()
     private var sleepFadeBaselineVolume: Float? = null
     private var pausedByRouteLossAtMs: Long? = null
+
+    @Volatile
+    private var routedOutputIsBluetooth = false
+    private var lostRouteWasBluetooth = false
     private var deviceVolumeReceiverRegistered = false
     private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
     private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
@@ -543,13 +547,12 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                pausedByRouteLossAtMs = if (
-                    !playWhenReady &&
-                    reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
-                ) {
-                    SystemClock.elapsedRealtime()
+                if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) {
+                    lostRouteWasBluetooth = routedOutputIsBluetooth
+                    pausedByRouteLossAtMs = SystemClock.elapsedRealtime()
                 } else {
-                    null
+                    lostRouteWasBluetooth = false
+                    pausedByRouteLossAtMs = null
                 }
                 if (!playWhenReady && queueTransitionJob?.isActive == true) {
                     cancelQueueTransition()
@@ -902,7 +905,8 @@ class PlaybackService : MediaLibraryService() {
         forward: Boolean,
         respectRepeatOne: Boolean,
         autoAdvance: Boolean = false,
-        allowRewind: Boolean = true
+        allowRewind: Boolean = true,
+        onAdvanced: (() -> Unit)? = null
     ) {
         cancelQueueTransition()
         queueSkipJob?.cancel()
@@ -920,6 +924,7 @@ class PlaybackService : MediaLibraryService() {
                 return@launch
             }
             playSkipTarget(player, resolved)
+            onAdvanced?.invoke()
         }
     }
 
@@ -1687,6 +1692,8 @@ class PlaybackService : MediaLibraryService() {
 
     private fun resumeAfterRouteReconnect() {
         val player = mediaSession?.player ?: return
+        refreshAudioOutputProfile()
+        if (!lostRouteWasBluetooth || !routedOutputIsBluetooth) return
         val eligible = PlaybackAutomationPolicy.shouldResumeOnRouteReconnect(
             enabled = automationSettings.resumeOnBluetoothReconnect,
             pausedByRouteLossAtMs = pausedByRouteLossAtMs,
@@ -1697,6 +1704,7 @@ class PlaybackService : MediaLibraryService() {
         )
         if (!eligible) return
         pausedByRouteLossAtMs = null
+        lostRouteWasBluetooth = false
         runCatching { player.play() }.onFailure { Timber.w(it, "Bluetooth resume failed") }
     }
 
@@ -1708,6 +1716,7 @@ class PlaybackService : MediaLibraryService() {
             return
         }
         pausedByRouteLossAtMs = null
+        lostRouteWasBluetooth = false
         runCatching { player.pause() }.onFailure { Timber.w(it, "Mute pause failed") }
     }
 
@@ -1722,10 +1731,11 @@ class PlaybackService : MediaLibraryService() {
             return
         }
         Timber.w("Skipping track after unrecoverable playback error")
-        markPlaybackExpected(true, force = true)
-        serviceRecoveryExhausted = false
-        serviceRecoveryAttempts = 0
-        skipQueue(forward = true, respectRepeatOne = false, autoAdvance = true)
+        skipQueue(forward = true, respectRepeatOne = false, autoAdvance = true) {
+            serviceRecoveryExhausted = false
+            serviceRecoveryAttempts = 0
+            markPlaybackExpected(true, force = true)
+        }
     }
 
     private fun updateDeviceVolumeReceiver(enabled: Boolean) {
@@ -1875,6 +1885,7 @@ class PlaybackService : MediaLibraryService() {
     private fun refreshAudioOutputProfile() {
         val manager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         val types = routedOutputTypes(manager)
+        routedOutputIsBluetooth = types.any(::isBluetoothOutputType)
         equalizerProcessor.outputProfile = when {
             types.any { it == AudioDeviceInfo.TYPE_USB_DEVICE || it == AudioDeviceInfo.TYPE_USB_HEADSET || it == AudioDeviceInfo.TYPE_USB_ACCESSORY } -> LevyraEqualizerAudioProcessor.OutputProfile.USB
             types.any { it == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it == AudioDeviceInfo.TYPE_WIRED_HEADSET || it == AudioDeviceInfo.TYPE_LINE_ANALOG } -> LevyraEqualizerAudioProcessor.OutputProfile.WIRED

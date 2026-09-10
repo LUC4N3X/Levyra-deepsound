@@ -35,7 +35,7 @@ class SpotifyCsvImportTest {
 
     @Test
     fun byteOrderMarkAndEmptyRowsAreTolerated() {
-        val csv = "﻿Song,Artist\r\n\r\nOne,Metallica\r\n\r\n,\r\nTwo,Nirvana\r\n"
+        val csv = "${UTF8_BOM}Song,Artist\r\n\r\nOne,Metallica\r\n\r\n,\r\nTwo,Nirvana\r\n"
 
         val entries = parseSpotifyCsv(csv)
 
@@ -79,6 +79,12 @@ class SpotifyCsvImportTest {
         assertEquals("Drake", normalizeCsvArtist("Drake ft. Future"))
         assertEquals("Calvin Harris", normalizeCsvArtist("Calvin Harris & Dua Lipa"))
         assertEquals("", normalizeCsvArtist("   "))
+    }
+
+    @Test
+    fun slashInsideAnArtistNameIsPreserved() {
+        assertEquals("AC/DC", normalizeCsvArtist("AC/DC"))
+        assertEquals("AC/DC", normalizeCsvArtist("AC/DC, Bon Scott"))
     }
 
     @Test

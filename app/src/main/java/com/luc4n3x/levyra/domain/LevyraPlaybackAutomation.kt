@@ -66,11 +66,15 @@ fun nextBedtimeTrigger(
 ): ZonedDateTime? {
     val normalized = schedule.normalized()
     if (!normalized.isArmed) return null
-    val startTime = now.toLocalDate().atStartOfDay(now.zone)
+    val startDate = now.toLocalDate()
+    val startTime = java.time.LocalTime.of(
+        normalized.startMinuteOfDay / 60,
+        normalized.startMinuteOfDay % 60
+    )
     for (dayOffset in 0..7) {
-        val candidate = startTime.plusDays(dayOffset.toLong())
-            .plusMinutes(normalized.startMinuteOfDay.toLong())
-        if (candidate.dayOfWeek !in normalized.days) continue
+        val date = startDate.plusDays(dayOffset.toLong())
+        if (date.dayOfWeek !in normalized.days) continue
+        val candidate = date.atTime(startTime).atZone(now.zone)
         if (!candidate.isAfter(now)) continue
         return candidate
     }

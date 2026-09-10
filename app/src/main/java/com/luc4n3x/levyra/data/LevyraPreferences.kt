@@ -117,6 +117,7 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
             mutable[KEY_JAM_DISPLAY_NAME] = normalizeJamDisplayName(snapshot.jamDisplayName)
+            writeAutomationSettings(mutable, snapshot.automationSettings.normalized())
             mutable[KEY_AUDIO_EQ_ENABLED] = normalizedAudio.equalizerEnabled
             mutable[KEY_AUDIO_EQ_PRESET] = normalizedAudio.presetId
             mutable[KEY_AUDIO_EQ_BANDS] = normalizedAudio.bandLevels.joinToString(",")
@@ -800,8 +801,13 @@ class LevyraPreferences(context: Context) {
 
     suspend fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
-        runCatching { dataStore.edit { writeAutomationSettings(it, normalized) } }
-            .onFailure { Timber.w(it, "DataStore automation write failed") }
+        try {
+            dataStore.edit { writeAutomationSettings(it, normalized) }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore automation write failed")
+        }
     }
 
     private fun writeAutomationSettings(

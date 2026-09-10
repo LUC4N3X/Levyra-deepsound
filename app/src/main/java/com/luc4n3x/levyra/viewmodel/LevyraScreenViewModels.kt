@@ -1190,7 +1190,8 @@ internal data class LibraryProjection(
     val playlistTags: List<PlaylistTag>,
     val recentListens: List<Track>,
     val librarySort: LibrarySort,
-    val librarySortDirection: LibrarySortDirection
+    val librarySortDirection: LibrarySortDirection,
+    val spotifyCsvImport: SpotifyCsvImportState?
 )
 
 internal fun libraryProjection(state: LevyraUiState): LibraryProjection = LibraryProjection(
@@ -1211,6 +1212,7 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     openPlaylist = state.openPlaylist,
     playlists = state.playlists,
     playlistTags = state.playlistTags,
+    spotifyCsvImport = state.spotifyCsvImport,
     recentListens = state.recentListens,
     librarySort = state.interfaceSettings.librarySort,
     librarySortDirection = state.interfaceSettings.librarySortDirection

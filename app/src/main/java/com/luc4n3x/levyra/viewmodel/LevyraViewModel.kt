@@ -743,6 +743,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val searchSectionJobs = mutableMapOf<SearchFilter, Job>()
     private var playlistImportJob: Job? = null
     private var spotifyCsvImportJob: Job? = null
+    private val automationMutationMutex = kotlinx.coroutines.sync.Mutex()
     private var sharedMediaJob: Job? = null
     private var recognitionCollectorJob: Job? = null
     private var recognitionHistoryJob: Job? = null
@@ -1058,10 +1059,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            com.luc4n3x.levyra.player.BedtimeSleepScheduler.apply(
-                getApplication<Application>().applicationContext,
-                startupSettings.automationSettings
-            )
+            applyAutomationSettings(startupSettings.automationSettings, persist = false)
         }
         viewModelScope.launch(Dispatchers.IO) {
             com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.restoreAudD(
@@ -5202,10 +5200,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (normalized == _state.value.automationSettings) return
         _state.update { it.copy(automationSettings = normalized) }
         viewModelScope.launch(Dispatchers.IO) {
-            preferences.setAutomationSettings(normalized)
+            applyAutomationSettings(normalized, persist = true)
+        }
+    }
+
+    private suspend fun applyAutomationSettings(
+        requested: LevyraAutomationSettings,
+        persist: Boolean
+    ) {
+        automationMutationMutex.withLock {
+            val latest = _state.value.automationSettings
+            if (persist && latest != requested) return
+            val effective = if (persist) requested else latest
+            if (persist) preferences.setAutomationSettings(effective)
             com.luc4n3x.levyra.player.BedtimeSleepScheduler.apply(
                 getApplication<Application>().applicationContext,
-                normalized
+                effective
             )
         }
     }

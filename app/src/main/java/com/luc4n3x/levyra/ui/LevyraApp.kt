@@ -2861,8 +2861,9 @@ private fun SleepTimerAutomationSection(
     onAutomationSettings: (LevyraAutomationSettings) -> Unit
 ) {
     val context = LocalContext.current
-    val copy = LocalLevyraStrings.current.automationCopy()
-    val locale = java.util.Locale.getDefault()
+    val strings = LocalLevyraStrings.current
+    val copy = strings.automationCopy()
+    val locale = remember(strings.code) { java.util.Locale.forLanguageTag(strings.code) }
     val bedtime = automation.bedtime
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         SleepTimerSwitchRow(
