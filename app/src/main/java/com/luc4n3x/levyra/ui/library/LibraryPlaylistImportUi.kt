@@ -6,6 +6,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.playlistImportCopy
 import com.luc4n3x.levyra.ui.i18n.playlistImportDismissMessage
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -223,11 +226,14 @@ internal fun LibraryImportPlaylistCompactAction(
 @Composable
 internal fun LibraryImportPlaylistDialog(
     onDismiss: () -> Unit,
-    onImport: (String) -> Unit
+    onImport: (String) -> Unit,
+    onPickSpotifyCsv: (String) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val copy = strings.playlistImportCopy()
+    val automation = strings.automationCopy()
     var input by remember { mutableStateOf("") }
+    var csvPlaylistName by remember { mutableStateOf("") }
     val canImport = input.isNotBlank()
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -240,7 +246,10 @@ internal fun LibraryImportPlaylistDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
                 Text(
                     text = copy.body,
                     color = LevyraMuted,
@@ -275,6 +284,49 @@ internal fun LibraryImportPlaylistDialog(
                     fontSize = 11.sp,
                     lineHeight = 15.sp
                 )
+                Text(
+                    text = automation.spotifyCsvTitle,
+                    color = LevyraText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = automation.spotifyCsvSubtitle,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp
+                )
+                OutlinedTextField(
+                    value = csvPlaylistName,
+                    onValueChange = { csvPlaylistName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = LevyraText),
+                    placeholder = {
+                        Text(
+                            text = automation.playlistNameLabel,
+                            color = LevyraMuted.copy(alpha = 0.62f)
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = LevyraText,
+                        unfocusedTextColor = LevyraText,
+                        focusedBorderColor = LevyraCyan.copy(alpha = 0.72f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
+                        cursorColor = LevyraCyan
+                    )
+                )
+                TextButton(
+                    onClick = { onPickSpotifyCsv(csvPlaylistName.trim()) },
+                    modifier = Modifier.sizeIn(minHeight = 48.dp)
+                ) {
+                    Text(
+                        text = automation.chooseCsv,
+                        color = LevyraCyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         },
         confirmButton = {
@@ -296,3 +348,78 @@ internal fun LibraryImportPlaylistDialog(
         }
     )
 }
+
+@Composable
+internal fun LibrarySpotifyCsvImportDialog(
+    importState: com.luc4n3x.levyra.viewmodel.SpotifyCsvImportState,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val automation = strings.automationCopy()
+    val running = importState.running
+    AlertDialog(
+        onDismissRequest = { if (!running) onDismiss() },
+        containerColor = LevyraPanel,
+        title = {
+            Text(
+                text = automation.spotifyCsvTitle,
+                color = LevyraText,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                when {
+                    running -> Text(
+                        text = if (importState.total > 0) {
+                            "${automation.importing} ${importState.processed}/${importState.total}"
+                        } else {
+                            automation.importing
+                        },
+                        color = LevyraMuted,
+                        fontSize = 13.sp
+                    )
+                    importState.failureKind != null -> Text(
+                        text = automation.importFailed,
+                        color = LevyraMuted,
+                        fontSize = 13.sp
+                    )
+                    else -> {
+                        Text(
+                            text = "${automation.matched}: ${importState.matched}",
+                            color = LevyraText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "${automation.unmatched}: ${importState.unmatched.size}",
+                            color = LevyraMuted,
+                            fontSize = 13.sp
+                        )
+                        importState.unmatched.take(UNMATCHED_PREVIEW_LIMIT).forEach { label ->
+                            Text(
+                                text = label,
+                                color = LevyraMuted.copy(alpha = 0.78f),
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (running) onCancel() else onDismiss() }) {
+                Text(
+                    text = if (running) strings.cancel else strings.close,
+                    color = LevyraCyan,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    )
+}
+
+private const val UNMATCHED_PREVIEW_LIMIT = 5

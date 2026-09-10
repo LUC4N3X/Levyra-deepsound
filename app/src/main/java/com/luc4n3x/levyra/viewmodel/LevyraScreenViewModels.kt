@@ -349,6 +349,12 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun exportTrack(track: Track) = root.exportTrack(track)
     fun exportTracks(tracks: List<Track>, label: String) = root.exportTracks(tracks, label)
     fun importPlaylist(input: String) = root.importPlaylist(input)
+
+    fun importSpotifyCsv(uri: android.net.Uri, playlistName: String) = root.importSpotifyCsv(uri, playlistName)
+
+    fun cancelSpotifyCsvImport() = root.cancelSpotifyCsvImport()
+
+    fun dismissSpotifyCsvImport() = root.dismissSpotifyCsvImport()
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openArtist(track: Track) = root.openArtist(track)
     fun openArtistByName(name: String) = root.openArtistByName(name)

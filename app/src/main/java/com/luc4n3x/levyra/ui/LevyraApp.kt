@@ -216,7 +216,10 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.LibraryAdd
@@ -506,6 +509,7 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.ambient.LevyraAmbientOverlay
 import com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog
@@ -532,6 +536,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
+import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.ui.player.PlayerDragEvent
 import com.luc4n3x.levyra.ui.player.PlayerGestureZone
@@ -1935,6 +1940,7 @@ fun LevyraApp(
                     excludedArtists = state.excludedArtists,
                     downloadSettings = state.downloadSettings,
                     backupSettings = state.backupSettings,
+                    automationSettings = state.automationSettings,
                     vaultStatus = state.vaultStatus,
                     lastBackupAtMs = state.lastBackupAtMs,
                     backupLocationUri = state.backupLocationUri,
@@ -1965,6 +1971,7 @@ fun LevyraApp(
                     onIncludeArtist = viewModel::includeArtist,
                     onDownloadSettings = viewModel::setDownloadSettings,
                     onBackupSettings = viewModel::setBackupSettings,
+                    onAutomationSettings = viewModel::setAutomationSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
                     onMotionArtwork = viewModel::setMotionArtworkEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
@@ -2118,6 +2125,7 @@ fun LevyraApp(
             if (state.showSleepTimer) {
                 SleepTimerDialog(
                     state = state,
+                    onAutomationSettings = viewModel::setAutomationSettings,
                     onSelectMinutes = viewModel::setSleepTimerMinutes,
                     onSelectEndOfTrack = viewModel::setSleepTimerEndOfTrack,
                     onCancel = viewModel::cancelSleepTimer,
@@ -2772,6 +2780,7 @@ private fun restartLevyra(activity: Activity?) {
 @Composable
 private fun SleepTimerDialog(
     state: LevyraUiState,
+    onAutomationSettings: (LevyraAutomationSettings) -> Unit,
     onSelectMinutes: (Int) -> Unit,
     onSelectEndOfTrack: () -> Unit,
     onCancel: () -> Unit,
@@ -2800,7 +2809,10 @@ private fun SleepTimerDialog(
         containerColor = Color(0xFF11131C),
         title = { Text(strings.sleepTimer, color = LevyraText, fontWeight = FontWeight.Black) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 if (state.sleepTimerMinutes > 0 && state.sleepTimerDeadlineElapsedRealtimeMs > 0L) {
                     Text(
                         text = "${strings.sleepTimerRemaining} ${formatTimerRemaining(remainingSeconds)}",
@@ -2821,6 +2833,10 @@ private fun SleepTimerDialog(
                 SleepTimerOption(strings.formatSleepTimerMinutes(45)) { onSelectMinutes(45) }
                 SleepTimerOption(strings.formatSleepTimerMinutes(60)) { onSelectMinutes(60) }
                 SleepTimerOption(strings.sleepTimerEndOfTrack) { onSelectEndOfTrack() }
+                SleepTimerAutomationSection(
+                    automation = state.automationSettings,
+                    onAutomationSettings = onAutomationSettings
+                )
             }
         },
         confirmButton = {
@@ -2837,6 +2853,125 @@ private fun SleepTimerDialog(
         },
         dismissButton = { TextButton(onClick = onClose) { Text(strings.close, color = LevyraMuted, fontWeight = FontWeight.Bold) } }
     )
+}
+
+@Composable
+private fun SleepTimerAutomationSection(
+    automation: LevyraAutomationSettings,
+    onAutomationSettings: (LevyraAutomationSettings) -> Unit
+) {
+    val context = LocalContext.current
+    val copy = LocalLevyraStrings.current.automationCopy()
+    val locale = java.util.Locale.getDefault()
+    val bedtime = automation.bedtime
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SleepTimerSwitchRow(
+            label = copy.fadeOut,
+            subtitle = copy.fadeOutSubtitle,
+            checked = automation.sleepFadeOutEnabled,
+            onCheckedChange = { onAutomationSettings(automation.copy(sleepFadeOutEnabled = it)) }
+        )
+        SleepTimerSwitchRow(
+            label = copy.bedtime,
+            subtitle = copy.bedtimeSubtitle,
+            checked = bedtime.enabled,
+            onCheckedChange = { onAutomationSettings(automation.copy(bedtime = bedtime.copy(enabled = it))) }
+        )
+        if (!bedtime.enabled) return@Column
+        TextButton(
+            onClick = {
+                android.app.TimePickerDialog(
+                    context,
+                    { _, hour, minute ->
+                        onAutomationSettings(
+                            automation.copy(bedtime = bedtime.copy(startMinuteOfDay = hour * 60 + minute))
+                        )
+                    },
+                    bedtime.startMinuteOfDay / 60,
+                    bedtime.startMinuteOfDay % 60,
+                    true
+                ).show()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "${copy.startTime}: ${formatBedtimeStart(bedtime.startMinuteOfDay)}",
+                color = LevyraText,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        Text(copy.duration, color = LevyraMuted, fontSize = 12.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(15, 30, 45, 60).forEach { minutes ->
+                SleepTimerChip(
+                    label = minutes.toString(),
+                    selected = bedtime.durationMinutes == minutes,
+                    onClick = {
+                        onAutomationSettings(
+                            automation.copy(bedtime = bedtime.copy(durationMinutes = minutes))
+                        )
+                    }
+                )
+            }
+        }
+        Text(copy.repeat, color = LevyraMuted, fontSize = 12.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            java.time.DayOfWeek.entries.forEach { day ->
+                val selected = day in bedtime.days
+                SleepTimerChip(
+                    label = day.getDisplayName(java.time.format.TextStyle.NARROW, locale),
+                    selected = selected,
+                    onClick = {
+                        val updated = if (selected) bedtime.days - day else bedtime.days + day
+                        onAutomationSettings(automation.copy(bedtime = bedtime.copy(days = updated)))
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SleepTimerSwitchRow(
+    label: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .sizeIn(minHeight = 48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = LevyraMuted, fontSize = 11.sp, lineHeight = 15.sp)
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun SleepTimerChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.sizeIn(minWidth = 44.dp, minHeight = 44.dp)
+    ) {
+        Text(
+            text = label,
+            color = if (selected) LevyraCyan else LevyraMuted,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            fontSize = 12.sp
+        )
+    }
+}
+
+private fun formatBedtimeStart(startMinuteOfDay: Int): String {
+    val hour = (startMinuteOfDay / 60).coerceIn(0, 23)
+    val minute = (startMinuteOfDay % 60).coerceIn(0, 59)
+    return "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
 }
 
 @Composable
@@ -16271,6 +16406,7 @@ private fun SettingsOverlay(
     excludedArtists: List<ExcludedArtist>,
     downloadSettings: LevyraDownloadSettings,
     backupSettings: LevyraBackupSettings,
+    automationSettings: LevyraAutomationSettings,
     vaultStatus: LevyraVaultStatus,
     lastBackupAtMs: Long,
     backupLocationUri: String?,
@@ -16295,6 +16431,7 @@ private fun SettingsOverlay(
     onIncludeArtist: (ExcludedArtist) -> Unit,
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
+    onAutomationSettings: (LevyraAutomationSettings) -> Unit,
     onAnimations: (Boolean) -> Unit,
     onMotionArtwork: (Boolean) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
@@ -16325,6 +16462,7 @@ private fun SettingsOverlay(
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val automationCopy = strings.automationCopy()
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var settingsQuery by rememberSaveable { mutableStateOf("") }
@@ -16914,6 +17052,55 @@ private fun SettingsOverlay(
                                     subtitle = strings.skipSilenceSubtitle,
                                     checked = skipSilence,
                                     onCheckedChange = onSkipSilence
+                                )
+                            }
+                            item { SettingsSectionLabel(automationCopy.automation) }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Bluetooth,
+                                    title = automationCopy.bluetoothResume,
+                                    subtitle = automationCopy.bluetoothResumeSubtitle,
+                                    checked = automationSettings.resumeOnBluetoothReconnect,
+                                    onCheckedChange = { value ->
+                                        onAutomationSettings(
+                                            automationSettings.copy(resumeOnBluetoothReconnect = value)
+                                        )
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.VolumeOff,
+                                    title = automationCopy.pauseOnMute,
+                                    subtitle = automationCopy.pauseOnMuteSubtitle,
+                                    checked = automationSettings.pauseOnMute,
+                                    onCheckedChange = { value ->
+                                        onAutomationSettings(automationSettings.copy(pauseOnMute = value))
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.OfflinePin,
+                                    title = automationCopy.autoDownloadFavorites,
+                                    subtitle = automationCopy.autoDownloadFavoritesSubtitle,
+                                    checked = automationSettings.autoDownloadFavorites,
+                                    onCheckedChange = { value ->
+                                        onAutomationSettings(automationSettings.copy(autoDownloadFavorites = value))
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.SkipNext,
+                                    title = automationCopy.skipUnrecoverable,
+                                    subtitle = automationCopy.skipUnrecoverableSubtitle,
+                                    checked = automationSettings.skipUnrecoverableErrors,
+                                    onCheckedChange = { value ->
+                                        onAutomationSettings(
+                                            automationSettings.copy(skipUnrecoverableErrors = value)
+                                        )
+                                    }
                                 )
                             }
                         }
