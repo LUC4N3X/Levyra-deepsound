@@ -67,6 +67,7 @@ data class LevyraUiState(
     val selectedTab: LevyraTab = LevyraTab.Home,
     val moods: List<Mood> = emptyList(),
     val tastes: List<Taste> = emptyList(),
+    val quickPickSeeds: List<Track> = emptyList(),
     val showOnboarding: Boolean = false,
     val isVideoMode: Boolean = false,
     val pendingVideoMode: Boolean? = null,

@@ -533,6 +533,7 @@ private data class HomeDerivedInput(
     val homeSections: List<HomeSection>,
     val homeAlbums: List<AlbumHit>,
     val charts: List<Track>,
+    val quickPickSeeds: List<Track>,
     val cachedResonanceTracks: List<Track>,
     val releaseRadar: List<ReleaseRadarEntry>,
     val similarArtists: List<ArtistHit>,
@@ -619,6 +620,7 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.homeSections === current.homeSections &&
         previous.homeAlbums === current.homeAlbums &&
         previous.charts === current.charts &&
+        previous.quickPickSeeds === current.quickPickSeeds &&
         previous.homeResonanceTracks === current.homeResonanceTracks &&
         previous.releaseRadar === current.releaseRadar &&
         previous.similarArtists === current.similarArtists &&
@@ -643,6 +645,7 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         homeSections = homeSections,
         homeAlbums = homeAlbums,
         charts = charts,
+        quickPickSeeds = quickPickSeeds,
         cachedResonanceTracks = homeResonanceTracks,
         releaseRadar = releaseRadar,
         similarArtists = similarArtists,
@@ -779,10 +782,7 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
         addAll(input.favorites)
         addAll(input.tracks)
         input.currentTrack?.let(::add)
-        LevyraStartupCatalog.homeSections(input.languageCode)
-            .firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
-            ?.tracks
-            ?.let(::addAll)
+        addAll(input.quickPickSeeds.ifEmpty { LevyraStartupCatalog.quickPickSeeds(input.languageCode) })
     })
 
     val selected = ArrayList<Track>(HOME_QUICK_PICKS_LIMIT)
@@ -791,7 +791,8 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
 
     fun addCandidate(track: Track, enforceArtistLimit: Boolean) {
         if (selected.size >= HOME_QUICK_PICKS_LIMIT) return
-        if (track.id.length != 11 || !isReliableHomeMusicCandidate(track)) return
+        if (track.id.length != 11 && !LevyraStartupCatalog.isStartupSeedId(track.id)) return
+        if (!isReliableHomeMusicCandidate(track)) return
         val identity = LevyraPersonalOrbit.identityKey(track)
         if (identity.isBlank() || identity in orbitKeys || !seen.add(identity)) return
         val artistKey = track.artist.trim().lowercase(Locale.ROOT)

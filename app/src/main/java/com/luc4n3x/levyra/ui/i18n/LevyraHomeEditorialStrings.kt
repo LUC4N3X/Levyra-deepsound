@@ -36,15 +36,15 @@ Released this week
 Popular in the charts
 Levyra Collections
 Curated playlists around the music you love
-Fresh right now
-Local essentials
-Workout energy
-After hours
+New this week
+Local hits
+Workout
+Chill vibes
 Deep focus
-Party mode
-Rap rotation
-Pop pulse
-Discover something new
+Party hits
+Rap hits
+Pop hits
+Discover mix
 Updated today
 Editorial collection
 @@it
@@ -58,15 +58,15 @@ Uscito questa settimana
 Tra i brani in classifica
 Levyra Collections
 Playlist curate intorno alla musica che ami
-Novità del momento
-Essenziali locali
-Energia per allenarti
-Dopo il tramonto
-Concentrazione profonda
-Modalità festa
-Rotazione rap
-Impulso pop
-Scopri qualcosa di nuovo
+Novità della settimana
+Hit italiane
+Allenamento
+Chill vibes
+Concentrazione
+Party hits
+Rap del momento
+Pop hits
+Discover mix
 Aggiornata oggi
 Collezione editoriale
 @@es
