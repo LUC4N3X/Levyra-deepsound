@@ -509,7 +509,7 @@ fun LevyraNowPlaying(
                     }
                     PlayerGlassIconButton(
                         icon = Icons.Rounded.MoreVert,
-                        contentDescription = strings.options,
+                        contentDescription = strings.audioQuality,
                         size = headerButtonSize,
                         iconSize = if (compactPlayer) 20.dp else 21.dp,
                         onClick = { viewModel.openAudioQualityPanel() }
