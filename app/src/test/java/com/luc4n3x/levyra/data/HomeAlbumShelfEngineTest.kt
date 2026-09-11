@@ -191,6 +191,20 @@ class HomeAlbumShelfEngineTest {
     }
 
     @Test
+    fun ambiguousCachedCreditsAreExpiredEvenWithCanonicalIds() {
+        val stale = album("Vangelo", "Shiva, Geolier").copy(
+            artistBrowseId = "MPLA_SHIVA"
+        )
+        val collaborative = album("Santana Money Gang", "Sfera Ebbasta, Shiva").copy(
+            artistBrowseId = "MPLA_SFERA"
+        )
+
+        assertTrue(isCanonicalHomeAlbumHit(stale))
+        assertTrue(!isSafeCachedHomeAlbumHit(stale))
+        assertTrue(!isSafeCachedHomeAlbumHit(collaborative))
+    }
+
+    @Test
     fun authoritativeCollaborativeAlbumEntityKeepsAllAlbumLevelArtists() {
         val collaborative = album("Santana Money Gang", "Sfera Ebbasta, Shiva")
             .copy(artistBrowseId = "MPLA_SFERA")
