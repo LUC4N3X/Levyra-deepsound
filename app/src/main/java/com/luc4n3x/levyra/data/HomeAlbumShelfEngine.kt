@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.primaryArtistSegment
 
 internal const val HOME_ALBUM_SHELF_TARGET_SIZE = 14
 
@@ -41,7 +42,11 @@ internal fun buildPersonalizedHomeAlbumShelf(
         .filter(::isUsableAlbumTrack)
         .map(::trackToHomeAlbumHit)
 
-    return (primaryAlbums.asSequence() + strictDerived + relaxedDerived)
+    val canonicalPrimaryAlbums = primaryAlbums
+        .asSequence()
+        .map(::canonicalizeHomeAlbumHit)
+
+    return (canonicalPrimaryAlbums + strictDerived + relaxedDerived)
         .filter(::isUsableHomeAlbum)
         .distinctBy(::albumRecommendationDeduplicationKey)
         .take(HOME_ALBUM_SHELF_TARGET_SIZE)
@@ -58,7 +63,7 @@ private fun isUsableAlbumTrack(track: Track): Boolean {
     val album = track.album.trim()
     val artist = track.artist.trim()
     if (album.isBlank() || artist.isBlank()) return false
-    if (album.equals(track.title.trim(), ignoreCase = true)) return false
+    if (albumRecommendationTextKey(album) == albumRecommendationTextKey(track.title)) return false
     if (album.equals("YouTube Music", ignoreCase = true) || album.equals("YouTube", ignoreCase = true)) return false
     if (artist.equals("YouTube Music", ignoreCase = true) || artist.equals("YouTube", ignoreCase = true)) return false
     return track.largeThumbnailUrl.isNotBlank() || track.thumbnailUrl.isNotBlank()
@@ -77,7 +82,7 @@ private fun hasLikelyAlbumArtwork(track: Track): Boolean {
 
 private fun trackToHomeAlbumHit(track: Track): AlbumHit {
     val album = track.album.trim()
-    val artist = track.artist.trim()
+    val artist = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
     return AlbumHit(
         title = album,
         artist = artist,
@@ -95,5 +100,19 @@ private fun trackToHomeAlbumHit(track: Track): AlbumHit {
         metadataProvider = track.metadataProvider,
         metadataConfidence = track.metadataConfidence,
         releaseType = ReleaseType.Album
+    )
+}
+
+
+private fun canonicalizeHomeAlbumHit(album: AlbumHit): AlbumHit {
+    val currentArtist = album.artist.trim()
+    if (album.artistBrowseId.isBlank()) return album.copy(artist = currentArtist)
+    val primaryArtist = primaryArtistSegment(currentArtist).ifBlank { currentArtist }
+    if (primaryArtist == currentArtist) return album
+    return album.copy(
+        artist = primaryArtist,
+        query = listOf(album.title.trim(), primaryArtist, "album")
+            .filter(String::isNotBlank)
+            .joinToString(" ")
     )
 }
