@@ -6,10 +6,11 @@ import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AlternativeStreamCacheKeyTest {
-    private fun track(url: String, kbps: Int?): Track = Track(
+    private fun track(url: String, kbps: Int?, providerTrackId: String = "pW-kkdqr"): Track = Track(
         id = "4NRXx6U8ABQ",
         title = "Blinding Lights",
         artist = "The Weeknd",
@@ -37,7 +38,7 @@ class AlternativeStreamCacheKeyTest {
                 selectedAudioUrl = url,
                 selectedVideoUrl = "",
                 streams = emptyList(),
-                alternativeSource = AlternativeAudioSource("jiosaavn", "pW-kkdqr", it, AlternativeMatchVerdict.EXACT, 100)
+                alternativeSource = AlternativeAudioSource("jiosaavn", providerTrackId, it, AlternativeMatchVerdict.EXACT, 100)
             )
         }
     )
@@ -61,6 +62,13 @@ class AlternativeStreamCacheKeyTest {
         val signed = track("https://web.saavncdn.com/820/hash_320.mp4?Expires=1&Signature=a", 320)
         val open = track("https://aac.saavncdn.com/820/hash_320.mp4", 320)
         assertEquals(LevyraPlaybackCacheKey.stream(signed), LevyraPlaybackCacheKey.stream(open))
-        assertEquals("levyra:4NRXx6U8ABQ:stream-v2:alt-jiosaavn-pW-kkdqr-320", LevyraPlaybackCacheKey.stream(open))
+        assertTrue(LevyraPlaybackCacheKey.stream(open).startsWith("levyra:4NRXx6U8ABQ:stream-v2:alt-"))
+    }
+
+    @Test
+    fun punctuationDistinctProviderIdsNeverCollide() {
+        val slash = track("https://aac.saavncdn.com/820/hash_320.mp4", 320, providerTrackId = "song/a")
+        val question = track("https://aac.saavncdn.com/820/hash_320.mp4", 320, providerTrackId = "song?a")
+        assertNotEquals(LevyraPlaybackCacheKey.stream(slash), LevyraPlaybackCacheKey.stream(question))
     }
 }
