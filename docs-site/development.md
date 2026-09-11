@@ -60,6 +60,44 @@ Verify ADB first when needed:
 adb devices
 ```
 
+### Physical-device qualification
+
+On Windows, the repository includes a repeatable ADB qualification harness for a connected Android phone:
+
+```powershell
+.\scripts\levyra-device-qualification.ps1
+```
+
+The harness builds and installs the current debug APK unless asked not to, performs repeated cold starts, inspects Levyra's MediaSession, captures process memory, and stores focused logcat and diagnostic dumps. Target selection follows a fixed fallback order: an authorized USB device first, then Android Wireless Debugging, then a running Android emulator. If no USB target is available, the harness also tries to reconnect one already-paired Wireless Debugging device discovered through ADB mDNS before falling back to the emulator.
+
+Wireless pairing remains an Android/ADB setup step; the harness never handles pairing codes or stores pairing secrets. If more than one target exists at the selected priority, select the target explicitly:
+
+```powershell
+.\scripts\levyra-device-qualification.ps1 -DeviceId <serial>
+```
+
+To exercise an existing or restored Levyra playback session and require it to reach `PLAYING`:
+
+```powershell
+.\scripts\levyra-device-qualification.ps1 -ExercisePlayback -RequirePlayback
+```
+
+Playback exercise is intentionally limited to an already available Levyra MediaSession and queue. The harness does not add a debug-only playback entry point, bypass onboarding, inject credentials, or depend on a private account. If it starts a paused session, it sends pause again before finishing.
+
+For fast reruns after a local build and install:
+
+```powershell
+.\scripts\levyra-device-qualification.ps1 -SkipBuild -SkipInstall
+```
+
+Reports are written under:
+
+```text
+.report/device-qualification/
+```
+
+Each run produces a JSON summary plus raw local Logcat, MediaSession, and `dumpsys meminfo` evidence. `.report/` is ignored by Git.
+
 ### Release compile
 
 === "Linux / macOS"
