@@ -322,4 +322,13 @@ class AlternativeTrackMatcherTest {
         )
         assertEquals(MatchRejection.VERSION_MISMATCH, (selection as AlternativeMatchSelection.Rejected).reason)
     }
+    @Test
+    fun missingCreditedCollaboratorIsRejected() {
+        assertRejected(
+            MatchRejection.PRIMARY_ARTIST_MISMATCH,
+            query(title = "One Kiss", artist = "Calvin Harris, Dua Lipa", album = "One Kiss", durationMs = 215_000L),
+            candidate(title = "One Kiss", primary = listOf("Calvin Harris"), featured = emptyList(), album = "One Kiss", duration = 215)
+        )
+    }
+
 }
