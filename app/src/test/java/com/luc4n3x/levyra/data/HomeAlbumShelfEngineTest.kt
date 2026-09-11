@@ -123,6 +123,37 @@ class HomeAlbumShelfEngineTest {
     }
 
     @Test
+    fun singleArtistTextWithoutCanonicalArtistIdIsNotEnoughForInstantAlbumCard() {
+        val album = homeAlbumHitFromTrack(
+            track(
+                id = "solo-no-artist-id",
+                album = "Solo Album",
+                artist = "Solo Artist",
+                artistBrowseIds = emptyList()
+            )
+        )
+
+        assertEquals(null, album)
+    }
+
+    @Test
+    fun upcOrCanonicalUrlWithoutYoutubeAlbumBrowseIdCannotCreateInstantAlbumCard() {
+        val base = track(
+            id = "non-youtube-id",
+            album = "Verified Elsewhere",
+            artist = "Solo Artist",
+            albumBrowseId = "",
+            artistBrowseIds = listOf("MPLA_SOLO")
+        )
+
+        assertEquals(null, homeAlbumHitFromTrack(base.copy(upc = "123456789012")))
+        assertEquals(
+            null,
+            homeAlbumHitFromTrack(base.copy(canonicalAlbumUrl = "https://example.test/album"))
+        )
+    }
+
+    @Test
     fun simpleSingleArtistTrackCanStillCreateCanonicalAlbumCard() {
         val album = homeAlbumHitFromTrack(
             track(
