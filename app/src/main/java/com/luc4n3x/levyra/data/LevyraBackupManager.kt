@@ -24,6 +24,7 @@ import com.luc4n3x.levyra.data.local.PlaylistTagEntity
 import com.luc4n3x.levyra.data.local.PlaylistTagLinkEntity
 import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.FollowedArtist
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.PLAYLIST_TAG_MAX_PER_PLAYLIST
 import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.PlaylistCoverMode
@@ -896,6 +897,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("sponsorBlock", snapshot.sponsorBlock)
             .put("skipSilence", snapshot.skipSilence)
             .put("audioQuality", snapshot.audioQuality)
+            .put("highQualityAudioMode", snapshot.highQualityAudioMode.storageValue)
             .put("audioNormalization", snapshot.audioNormalization)
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
             .put("themePreset", snapshot.themePreset)
@@ -930,6 +932,9 @@ class LevyraBackupManager(private val context: Context) {
             sponsorBlock = json.optBoolean("sponsorBlock", true),
             skipSilence = json.optBoolean("skipSilence", false),
             audioQuality = json.optString("audioQuality", "Auto"),
+            highQualityAudioMode = HighQualityAudioMode.fromStorage(
+                json.optString("highQualityAudioMode", HighQualityAudioMode.PREFER_320.storageValue)
+            ),
             dismissedUpdateVersion = preferences.dismissedUpdateVersion(),
             lastTrack = json.optJSONObject("lastTrack")?.let(TrackJson::fromJson),
             lastPositionMs = json.optLong("lastPositionMs").coerceAtLeast(0L),

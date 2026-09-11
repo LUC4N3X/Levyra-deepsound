@@ -18,9 +18,9 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Fullscreen
@@ -58,12 +58,12 @@ internal fun PlayerQuickActions(
     primaryColor: Color,
     secondaryColor: Color,
     compact: Boolean,
-    queueLabel: String,
+    audioSettingsLabel: String,
     lyricsLabel: String,
     visualModeLabel: String,
     downloadLabel: String,
     radioLabel: String,
-    onQueueClick: () -> Unit,
+    onAudioSettingsClick: () -> Unit,
     onLyricsClick: () -> Unit,
     onCycleVisualMode: () -> Unit,
     onDownloadClick: () -> Unit,
@@ -92,15 +92,15 @@ internal fun PlayerQuickActions(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             PlayerQuickActionButton(
-                icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                contentDescription = queueLabel,
+                icon = Icons.Rounded.Tune,
+                contentDescription = audioSettingsLabel,
                 tint = Color.White.copy(alpha = 0.82f),
                 active = false,
                 compact = compact,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                onClick = onQueueClick
+                onClick = onAudioSettingsClick
             )
             PlayerQuickActionButton(
                 icon = Icons.AutoMirrored.Rounded.Subject,
