@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.player
 
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.domain.Track
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 object LevyraPlaybackCacheKey {
     private val itagPattern = Regex("(?:[?&]|%26)itag(?:=|%3D)(\\d+)", RegexOption.IGNORE_CASE)
@@ -38,11 +40,21 @@ object LevyraPlaybackCacheKey {
 
     private fun streamVariant(track: Track): String {
         val alternative = track.playbackManifest?.alternativeSource ?: return variant(track.streamUrl)
-        val providerTrack = alternative.providerTrackId.replace(unsafeKeyCharacters, "_")
-        return "alt-${alternative.providerId}-$providerTrack-${alternative.bitrateKbps}"
+        val identity = "${alternative.providerId}\u0000${alternative.providerTrackId}\u0000${alternative.bitrateKbps}"
+        return "alt-${sha256(identity)}"
     }
 
-    private val unsafeKeyCharacters = Regex("[^A-Za-z0-9_-]")
+    private fun sha256(value: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8))
+        val hex = "0123456789abcdef"
+        return buildString(bytes.size * 2) {
+            bytes.forEach { byte ->
+                val number = byte.toInt() and 0xFF
+                append(hex[number ushr 4])
+                append(hex[number and 0x0F])
+            }
+        }
+    }
 
     private fun variant(url: String): String {
         val clean = url.lowercase()
