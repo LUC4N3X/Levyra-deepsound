@@ -782,7 +782,8 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
         addAll(input.favorites)
         addAll(input.tracks)
         input.currentTrack?.let(::add)
-        addAll(input.quickPickSeeds.ifEmpty { LevyraStartupCatalog.quickPickSeeds(input.languageCode) })
+        addAll(input.quickPickSeeds)
+        addAll(LevyraStartupCatalog.quickPickSeeds(input.languageCode))
     })
 
     val selected = ArrayList<Track>(HOME_QUICK_PICKS_LIMIT)
