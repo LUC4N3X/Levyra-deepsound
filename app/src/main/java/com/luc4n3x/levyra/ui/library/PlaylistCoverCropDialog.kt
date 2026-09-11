@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -38,6 +41,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -58,6 +66,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import kotlin.math.roundToInt
 
 @Composable
 internal fun PlaylistCoverCropDialog(
@@ -84,6 +93,27 @@ internal fun PlaylistCoverCropDialog(
         offsetX = offsetX.coerceIn(-maxX, maxX)
         offsetY = offsetY.coerceIn(-maxY, maxY)
     }
+
+    fun updateZoom(value: Float) {
+        zoom = value.coerceIn(1f, 4f)
+        clampOffset()
+    }
+
+    fun resetCrop() {
+        zoom = 1f
+        offsetX = 0f
+        offsetY = 0f
+        clampOffset()
+    }
+
+    fun moveCover(deltaX: Float, deltaY: Float): Boolean {
+        offsetX += deltaX
+        offsetY += deltaY
+        clampOffset()
+        return true
+    }
+
+    val panStep = viewport.width.coerceAtLeast(1) * 0.08f
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -121,6 +151,36 @@ internal fun PlaylistCoverCropDialog(
                         .aspectRatio(1f)
                         .clip(RoundedCornerShape(18.dp))
                         .background(LevyraPanelSoft)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = copy.coverPreview
+                            stateDescription = "${(zoom * 100).roundToInt()}%"
+                            customActions = listOf(
+                                CustomAccessibilityAction(copy.zoomIn) {
+                                    updateZoom(zoom + 0.25f)
+                                    true
+                                },
+                                CustomAccessibilityAction(copy.zoomOut) {
+                                    updateZoom(zoom - 0.25f)
+                                    true
+                                },
+                                CustomAccessibilityAction(copy.moveCoverLeft) {
+                                    moveCover(-panStep, 0f)
+                                },
+                                CustomAccessibilityAction(copy.moveCoverRight) {
+                                    moveCover(panStep, 0f)
+                                },
+                                CustomAccessibilityAction(copy.moveCoverUp) {
+                                    moveCover(0f, -panStep)
+                                },
+                                CustomAccessibilityAction(copy.moveCoverDown) {
+                                    moveCover(0f, panStep)
+                                },
+                                CustomAccessibilityAction(copy.resetCrop) {
+                                    resetCrop()
+                                    true
+                                }
+                            )
+                        }
                         .onSizeChanged {
                             viewport = it
                             clampOffset()
@@ -142,7 +202,7 @@ internal fun PlaylistCoverCropDialog(
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.DISABLED)
                             .build(),
-                        contentDescription = copy.coverPreview,
+                        contentDescription = null,
                         contentScale = ContentScale.Crop,
                         onSuccess = { result ->
                             imageSize = IntSize(
@@ -172,6 +232,43 @@ internal fun PlaylistCoverCropDialog(
                     color = LevyraMuted,
                     fontSize = 12.sp
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        enabled = imageSize.width > 0 && zoom > 1f,
+                        onClick = { updateZoom(zoom - 0.25f) }
+                    ) {
+                        Icon(Icons.Rounded.Remove, contentDescription = copy.zoomOut, tint = LevyraText)
+                    }
+                    Text(
+                        text = "${(zoom * 100).roundToInt()}%",
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    IconButton(
+                        enabled = imageSize.width > 0 && zoom < 4f,
+                        onClick = { updateZoom(zoom + 0.25f) }
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = copy.zoomIn, tint = LevyraText)
+                    }
+                    TextButton(
+                        enabled = zoom != 1f || offsetX != 0f || offsetY != 0f,
+                        onClick = ::resetCrop
+                    ) {
+                        Icon(
+                            Icons.Rounded.Refresh,
+                            contentDescription = null,
+                            tint = LevyraText,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(copy.resetCrop, color = LevyraText, modifier = Modifier.padding(start = 6.dp))
+                    }
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
