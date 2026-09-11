@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-label="Download Levyra from GitHub Releases">
+  <title>Download Levyra from GitHub Releases</title>
+  <defs>
+    <linearGradient id="gh-bg-light" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#F1F5F9"/>
+    </linearGradient>
+    <linearGradient id="gh-border-light" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#CBD5E1" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#E2E8F0" stop-opacity="0.6"/>
+    </linearGradient>
+    <linearGradient id="gh-accent-light" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <radialGradient id="gh-glow-light" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Base Card -->
+  <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#gh-bg-light)" stroke="url(#gh-border-light)" stroke-width="1.5"/>
+  <path d="M28 7h704" stroke="#0F172A" stroke-opacity="0.05" stroke-linecap="round"/>
+
+  <!-- Left Accent Pillar -->
+  <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#gh-accent-light)"/>
+
+  <!-- Left Icon Container (kept dark so official logo colors stay legible) -->
+  <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
+  <circle cx="86" cy="77" r="42" fill="url(#gh-glow-light)"/>
+
+  <!-- Official GitHub Mark from Primer Octicons -->
+  <g transform="translate(53 44) scale(2.75)">
+    <path fill="#F8FAFC" d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"/>
+  </g>
+
+  <!-- Eyebrow Tag -->
+  <g transform="translate(156 30)">
+    <rect width="186" height="22" rx="6" fill="#8B5CF6" fill-opacity="0.12" stroke="#8B5CF6" stroke-opacity="0.3"/>
+    <circle cx="10" cy="11" r="3" fill="#7C3AED"/>
+    <text x="20" y="15" fill="#6D28D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.2">OFFICIAL GITHUB RELEASE</text>
+  </g>
+
+  <!-- Title -->
+  <text x="156" y="80" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Download Levyra</text>
+
+  <!-- Subtitle / Meta -->
+  <text x="156" y="106" fill="#475569" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">Signed APK · Android 8.0+ · No Play Store</text>
+
+  <!-- Musical Equalizer Spectrum -->
+  <g transform="translate(156 118)" fill="#8B5CF6" fill-opacity="0.55">
+    <rect x="0" y="8" width="4" height="8" rx="2"/>
+    <rect x="8" y="2" width="4" height="14" rx="2"/>
+    <rect x="16" y="5" width="4" height="11" rx="2"/>
+    <rect x="24" y="0" width="4" height="16" rx="2"/>
+    <rect x="32" y="6" width="4" height="10" rx="2"/>
+    <rect x="40" y="3" width="4" height="13" rx="2"/>
+    <rect x="48" y="9" width="4" height="7" rx="2"/>
+  </g>
+
+  <!-- Right CTA Button (Spacious, No Overlap) -->
+  <g transform="translate(572 50)">
+    <rect width="152" height="54" rx="16" fill="url(#gh-accent-light)"/>
+    <rect width="152" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.3"/>
+    <text x="56" y="34" text-anchor="middle" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="15.5" font-weight="800" letter-spacing="0.2">Get APK</text>
+    <path d="M112 27h-16M106 21l6 6-6 6" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
