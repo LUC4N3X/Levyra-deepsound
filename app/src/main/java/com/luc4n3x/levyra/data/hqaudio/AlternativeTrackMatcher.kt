@@ -129,8 +129,12 @@ class AlternativeTrackMatcher {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
         if (delta > MAXIMUM_DURATION_DELTA_SECONDS) return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
+        val candidateArtists = candidatePrimary.toSet() + candidateFeatured
+        if (!candidateArtists.containsAll(expectedCredit.names)) {
+            return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, relation)
+        }
         val artistsExact = expectedArtists.containsAll(candidatePrimary) &&
-            (candidatePrimary + candidateFeatured).containsAll(expectedCredit.names)
+            candidateArtists.containsAll(expectedCredit.names)
         if (delta > EXCELLENT_DURATION_DELTA_SECONDS && !(relation == AlbumRelation.SAME && artistsExact)) {
             return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
         }
