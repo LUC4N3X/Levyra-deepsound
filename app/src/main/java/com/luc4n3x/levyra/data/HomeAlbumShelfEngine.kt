@@ -67,6 +67,9 @@ internal fun isCanonicalHomeAlbumHit(album: AlbumHit): Boolean {
     return true
 }
 
+internal fun isSafeCachedHomeAlbumHit(album: AlbumHit): Boolean =
+    isCanonicalHomeAlbumHit(album) && !hasAmbiguousHomeAlbumArtistCredit(album.artist)
+
 internal fun homeAlbumHitFromTrack(track: Track): AlbumHit? {
     if (!isUsableHomeAlbumTrack(track)) return null
     val album = track.album.trim()
