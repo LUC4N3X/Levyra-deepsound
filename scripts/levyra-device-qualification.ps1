@@ -154,7 +154,7 @@ function Parse-AmStartTiming {
     $text = $Lines -join "`n"
     $values = @{}
     foreach ($key in @("ThisTime", "TotalTime", "WaitTime")) {
-        $match = [regex]::Match($text, "(?m)^$key:\s*(\d+)\s*$")
+        $match = [regex]::Match($text, "(?m)^${key}:\s*(\d+)\s*$")
         $values[$key] = if ($match.Success) { [int]$match.Groups[1].Value } else { $null }
     }
     return [pscustomobject]@{
