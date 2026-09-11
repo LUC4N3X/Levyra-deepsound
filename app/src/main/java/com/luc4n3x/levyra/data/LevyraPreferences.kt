@@ -474,25 +474,28 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     fun saveHomeAlbums(albums: List<AlbumHit>, languageCode: String = languageCode()) {
         val array = JSONArray()
-        albums.take(14).forEach { album ->
-            array.put(
-                JSONObject()
-                    .put("title", album.title)
-                    .put("artist", album.artist)
-                    .put("year", album.year)
-                    .put("thumbnailUrl", album.thumbnailUrl)
-                    .put("query", album.query)
-                    .put("browseId", album.browseId)
-                    .put("artistBrowseId", album.artistBrowseId)
-                    .put("audioPlaylistId", album.audioPlaylistId)
-                    .put("explicit", album.explicit)
-                    .put("releaseDate", album.releaseDate)
-                    .put("upc", album.upc)
-                    .put("canonicalUrl", album.canonicalUrl)
-                    .put("metadataProvider", album.metadataProvider)
-                    .put("metadataConfidence", album.metadataConfidence)
-            )
-        }
+        albums.asSequence()
+            .filter(::isSafeCachedHomeAlbumHit)
+            .take(14)
+            .forEach { album ->
+                array.put(
+                    JSONObject()
+                        .put("title", album.title)
+                        .put("artist", album.artist)
+                        .put("year", album.year)
+                        .put("thumbnailUrl", album.thumbnailUrl)
+                        .put("query", album.query)
+                        .put("browseId", album.browseId)
+                        .put("artistBrowseId", album.artistBrowseId)
+                        .put("audioPlaylistId", album.audioPlaylistId)
+                        .put("explicit", album.explicit)
+                        .put("releaseDate", album.releaseDate)
+                        .put("upc", album.upc)
+                        .put("canonicalUrl", album.canonicalUrl)
+                        .put("metadataProvider", album.metadataProvider)
+                        .put("metadataConfidence", album.metadataConfidence)
+                )
+            }
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         write { it[homeAlbumsKey(normalized)] = array.toString() }
     }
@@ -721,7 +724,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                         canonicalUrl = item.optString("canonicalUrl").trim(),
                         metadataProvider = item.optString("metadataProvider").trim(),
                         metadataConfidence = item.optInt("metadataConfidence").coerceIn(0, 100)
-                    )
+                    ).takeIf(::isSafeCachedHomeAlbumHit)
                 }
             }
         }.onFailure { Timber.w(it, "Home albums restore failed") }.getOrDefault(emptyList())
