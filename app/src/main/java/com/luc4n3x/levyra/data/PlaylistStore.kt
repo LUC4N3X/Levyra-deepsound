@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.data.local.toPlaylistTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.PLAYLIST_TAG_MAX_PER_PLAYLIST
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.normalizePlaylistTagName
@@ -23,6 +24,7 @@ class PlaylistStore(context: Context) {
     private val database = LevyraDatabase.get(context.applicationContext)
     private val dao = database.playlistDao()
     private val tagsDao = database.playlistTagsDao()
+    private val coverStore = PlaylistCoverStore(context.applicationContext)
 
     suspend fun loadAll(): List<Playlist> = withContext(Dispatchers.IO) {
         runCatching {
@@ -187,7 +189,9 @@ class PlaylistStore(context: Context) {
     }
 
     suspend fun delete(playlistId: String) = withContext(Dispatchers.IO) {
+        val previous = dao.playlist(playlistId)
         dao.deletePlaylist(playlistId)
+        if (previous?.coverMode == PlaylistCoverMode.CUSTOM.name) coverStore.delete(previous.coverUrl)
     }
 
     suspend fun addTrack(playlistId: String, track: Track) = withContext(Dispatchers.IO) {
@@ -195,7 +199,7 @@ class PlaylistStore(context: Context) {
         val nextPos = (dao.maxPosition(playlistId) ?: -1) + 1
         dao.insertTracks(listOf(track.toPlaylistTrackEntity(playlistId, nextPos, now)))
         val cover = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
-        if (cover.isNotBlank()) dao.updateCover(playlistId, cover, now) else dao.touch(playlistId, now)
+        if (cover.isNotBlank()) dao.updateAutomaticCover(playlistId, cover, now) else dao.touch(playlistId, now)
     }
 
     suspend fun addTracks(playlistId: String, tracks: List<Track>) = withContext(Dispatchers.IO) {
@@ -214,7 +218,26 @@ class PlaylistStore(context: Context) {
         val cover = pending.firstNotNullOfOrNull { track ->
             track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)
         }.orEmpty()
-        if (cover.isNotBlank()) dao.updateCover(playlistId, cover, now) else dao.touch(playlistId, now)
+        if (cover.isNotBlank()) dao.updateAutomaticCover(playlistId, cover, now) else dao.touch(playlistId, now)
+    }
+
+    suspend fun setCustomCover(playlistId: String, source: android.net.Uri, crop: PlaylistCoverCrop) =
+        withContext(Dispatchers.IO) {
+            val previous = dao.playlist(playlistId) ?: return@withContext
+            val reference = coverStore.save(playlistId, source, crop)
+            dao.updateCustomCover(playlistId, reference, System.currentTimeMillis())
+            if (previous.coverMode == PlaylistCoverMode.CUSTOM.name && previous.coverUrl != reference) {
+                coverStore.delete(previous.coverUrl)
+            }
+        }
+
+    suspend fun resetCover(playlistId: String) = withContext(Dispatchers.IO) {
+        val previous = dao.playlist(playlistId) ?: return@withContext
+        val automatic = dao.tracksOf(playlistId).firstNotNullOfOrNull { entity ->
+            entity.largeThumbnailUrl.ifBlank { entity.thumbnailUrl }.takeIf(String::isNotBlank)
+        }.orEmpty()
+        dao.resetCover(playlistId, automatic, System.currentTimeMillis())
+        if (previous.coverMode == PlaylistCoverMode.CUSTOM.name) coverStore.delete(previous.coverUrl)
     }
 
     suspend fun removeTrack(playlistId: String, trackId: String) = withContext(Dispatchers.IO) {
@@ -254,7 +277,7 @@ class PlaylistStore(context: Context) {
     private fun PlaylistEntity.toPlaylist(
         tracks: List<Track>,
         tags: List<PlaylistTag> = emptyList()
-    ): Playlist = Playlist(id, name, coverUrl, tracks, createdAt, updatedAt, tags, hidden)
+    ): Playlist = Playlist(id, name, coverUrl, tracks, createdAt, updatedAt, tags, hidden, PlaylistCoverMode.from(coverMode))
 }
 
 private fun PlaylistTagEntity.toDomain() = PlaylistTag(

@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.ui.library
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -46,9 +49,12 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Photo
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -98,9 +104,11 @@ import com.luc4n3x.levyra.domain.BatchDownloadKind
 import com.luc4n3x.levyra.domain.BatchDownloadState
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -321,10 +329,14 @@ internal fun LibrarySelectionBar(
     onAddToPlaylist: () -> Unit,
     onDelete: () -> Unit,
     deleteLabel: String? = null,
+    onSelectAll: (() -> Unit)? = null,
+    allSelected: Boolean = false,
+    primaryLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     val resolvedDeleteLabel = deleteLabel ?: strings.delete
+    val resolvedPrimaryLabel = primaryLabel ?: strings.play
     Surface(
         color = LevyraPanel.copy(alpha = 0.98f),
         shape = RoundedCornerShape(24.dp),
@@ -344,17 +356,29 @@ internal fun LibrarySelectionBar(
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.weight(1f)
                 )
+                if (onSelectAll != null) {
+                    TextButton(onClick = onSelectAll, enabled = !allSelected) {
+                        Text(strings.selectAll, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LibrarySelectionAction(Icons.Rounded.PlayArrow, strings.play, canOperateTracks, onPlay, LevyraCyan, Modifier.weight(1f))
-                LibrarySelectionAction(Icons.AutoMirrored.Rounded.QueueMusic, strings.queue, canOperateTracks, onQueue, LevyraText, Modifier.weight(1f))
-                LibrarySelectionAction(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.addToPlaylist, canOperateTracks, onAddToPlaylist, LevyraText, Modifier.weight(1f))
-                LibrarySelectionAction(Icons.Rounded.Download, strings.offline, canOperateTracks, onDownload, LevyraText, Modifier.weight(1f))
-                LibrarySelectionAction(Icons.Rounded.Delete, resolvedDeleteLabel, canDelete, onDelete, LevyraPink, Modifier.weight(1f))
+                LibrarySelectionAction(
+                    if (primaryLabel == null) Icons.Rounded.PlayArrow else Icons.Rounded.SkipNext,
+                    resolvedPrimaryLabel,
+                    canOperateTracks,
+                    onPlay,
+                    LevyraCyan,
+                    Modifier.widthIn(min = 72.dp)
+                )
+                LibrarySelectionAction(Icons.AutoMirrored.Rounded.QueueMusic, strings.queue, canOperateTracks, onQueue, LevyraText, Modifier.widthIn(min = 72.dp))
+                LibrarySelectionAction(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.addToPlaylist, canOperateTracks, onAddToPlaylist, LevyraText, Modifier.widthIn(min = 72.dp))
+                LibrarySelectionAction(Icons.Rounded.Download, strings.offline, canOperateTracks, onDownload, LevyraText, Modifier.widthIn(min = 72.dp))
+                LibrarySelectionAction(Icons.Rounded.Delete, resolvedDeleteLabel, canDelete, onDelete, LevyraPink, Modifier.widthIn(min = 72.dp))
             }
         }
     }
@@ -386,8 +410,8 @@ internal fun LibrarySelectionAction(
                 label,
                 color = if (enabled) LevyraMuted else LevyraMuted.copy(alpha = 0.35f),
                 fontSize = 9.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                maxLines = 2,
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -575,7 +599,11 @@ internal fun PlaylistDetailHeader(
     onDownload: () -> Unit,
     onRename: () -> Unit,
     onReorder: () -> Unit,
-    onSaveOrder: () -> Unit
+    onSaveOrder: () -> Unit,
+    searchActive: Boolean,
+    onToggleSearch: () -> Unit,
+    onChangeCover: () -> Unit,
+    onResetCover: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
@@ -626,6 +654,24 @@ internal fun PlaylistDetailHeader(
                     }
                 }
             } else {
+                Surface(
+                    color = if (searchActive) LevyraCyan.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, if (searchActive) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.10f)),
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clickable(onClick = onToggleSearch)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            if (searchActive) Icons.Rounded.Close else Icons.Rounded.Search,
+                            contentDescription = if (searchActive) strings.close else strings.search,
+                            tint = if (searchActive) LevyraCyan else LevyraText,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
                 Box {
                     Surface(
                         color = Color.White.copy(alpha = 0.06f),
@@ -655,6 +701,18 @@ internal fun PlaylistDetailHeader(
                             leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Sort, null) },
                             onClick = { menuExpanded = false; onReorder() }
                         )
+                        DropdownMenuItem(
+                            text = { Text(strings.playlistProCopy().changeCover) },
+                            leadingIcon = { Icon(Icons.Rounded.Photo, null) },
+                            onClick = { menuExpanded = false; onChangeCover() }
+                        )
+                        if (playlist.coverMode == PlaylistCoverMode.CUSTOM) {
+                            DropdownMenuItem(
+                                text = { Text(strings.playlistProCopy().resetAutomaticCover) },
+                                leadingIcon = { Icon(Icons.Rounded.Refresh, null) },
+                                onClick = { menuExpanded = false; onResetCover() }
+                            )
+                        }
                     }
                 }
             }
@@ -680,7 +738,14 @@ internal fun PlaylistDetailHeader(
                     .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
             ) {
                 val previewTracks = remember(playlist.tracks) { playlist.tracks.take(4) }
-                if (previewTracks.size >= 4) {
+                if (playlist.coverMode == PlaylistCoverMode.CUSTOM && playlist.coverUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = playlist.coverUrl,
+                        contentDescription = playlist.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (previewTracks.size >= 4) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         Row(modifier = Modifier.weight(1f)) {
                             PlaylistMosaicTile(

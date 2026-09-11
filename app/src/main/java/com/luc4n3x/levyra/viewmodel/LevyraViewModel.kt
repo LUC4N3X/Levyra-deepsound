@@ -22,6 +22,7 @@ import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
+import com.luc4n3x.levyra.data.PlaylistCoverCrop
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -4686,9 +4687,44 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             cleanTracks.forEach { track -> routeJamAction(JamAction.AddTrack(toJamTrack(track))) }
             return
         }
-        cleanTracks.forEach { track -> queueEngine.addLast(track) }
+        queueEngine.addLast(cleanTracks)
         refreshQueuePrefetch()
         _state.update { it.copy(offlineExportMessage = "Aggiunti alla coda: ${cleanTracks.size} brani") }
+    }
+
+    fun setPlaylistCover(playlistId: String, source: Uri, crop: PlaylistCoverCrop) {
+        viewModelScope.launch {
+            try {
+                playlistStore.setCustomCover(playlistId, source, crop)
+                loadPlaylists()
+                refreshOpenPlaylist(playlistId)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Playlist cover update failed")
+                _state.update { it.copy(offlineExportMessage = "Impossibile aggiornare la copertina") }
+            }
+        }
+    }
+
+    fun resetPlaylistCover(playlistId: String) {
+        viewModelScope.launch {
+            playlistStore.resetCover(playlistId)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun playTracksNext(tracks: List<Track>) {
+        val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
+        if (cleanTracks.isEmpty()) return
+        if (_state.value.jam.isActive) {
+            cleanTracks.forEach { track -> routeJamAction(JamAction.AddTrack(toJamTrack(track))) }
+            return
+        }
+        queueEngine.playNext(cleanTracks)
+        refreshQueuePrefetch()
+        _state.update { it.copy(offlineExportMessage = "Riproduci dopo: ${cleanTracks.size} brani") }
     }
 
     fun playNext(track: Track) {
