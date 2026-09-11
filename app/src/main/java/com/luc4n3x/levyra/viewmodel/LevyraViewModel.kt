@@ -4494,6 +4494,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 sponsorBlockEnabled = snapshot.sponsorBlock,
                 skipSilence = snapshot.skipSilence,
                 audioQuality = snapshot.audioQuality,
+                highQualityAudioMode = snapshot.highQualityAudioMode,
                 audioNormalization = snapshot.audioNormalization,
                 audioSettings = snapshot.audioSettings,
                 playbackSpeed = snapshot.audioSettings.playbackSpeed,
@@ -4515,6 +4516,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
         player.setPlayback(snapshot.audioSettings.playbackSpeed, snapshot.audioSettings.pitch)
         resolver.setAudioQuality(snapshot.audioQuality)
+        resolver.setHighQualityAudioMode(snapshot.highQualityAudioMode)
         withContext(Dispatchers.IO) {
             queueEngine.restore(
                 fallbackTracks = emptyList(),
