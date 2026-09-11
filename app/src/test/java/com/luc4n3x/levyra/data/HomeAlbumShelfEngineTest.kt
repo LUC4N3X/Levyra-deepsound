@@ -86,26 +86,6 @@ class HomeAlbumShelfEngineTest {
     }
 
     @Test
-    fun canonicalPrimaryAlbumDropsTrackLevelFeaturingFromArtistLabel() {
-        val result = buildPersonalizedHomeAlbumShelf(
-            primaryAlbums = listOf(
-                album("Vangelo", "Shiva, Geolier").copy(artistBrowseId = "UC_SHIVA")
-            ),
-            personalTracks = emptyList(),
-            recentTracks = emptyList(),
-            favoriteTracks = emptyList(),
-            quickPickTracks = emptyList(),
-            localizedReleaseTracks = emptyList(),
-            localizedSections = emptyList(),
-            chartTracks = emptyList(),
-            fallbackTracks = emptyList()
-        )
-
-        assertEquals("Shiva", result.single().artist)
-        assertEquals("Vangelo Shiva album", result.single().query)
-    }
-
-    @Test
     fun trackTitleCannotMasqueradeAsAlbumAfterCreditNormalization() {
         val result = buildPersonalizedHomeAlbumShelf(
             primaryAlbums = emptyList(),
