@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import java.io.IOException
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -265,6 +266,7 @@ class LevyraPreferencesStoreTest {
             onboarded = true,
             userName = "Restored",
             languageCode = "de",
+            highQualityAudioMode = HighQualityAudioMode.OFF,
             audioSettings = LevyraAudioSettings(
                 equalizerEnabled = true,
                 presetId = customPreset.id,
@@ -282,6 +284,7 @@ class LevyraPreferencesStoreTest {
 
         assertEquals("Restored", preferences.userName())
         assertEquals("de", preferences.languageCode())
+        assertEquals(HighQualityAudioMode.OFF, preferences.highQualityAudioMode())
         assertEquals(listOf(customPreset), preferences.audioSettings().customPresets)
         assertTrue(runBlocking { preferences.automationSettingsFlow.first() }.pauseOnMute)
 
@@ -289,6 +292,7 @@ class LevyraPreferencesStoreTest {
         assertTrue(snapshot.onboarded)
         assertEquals("Restored", snapshot.userName)
         assertEquals("de", snapshot.languageCode)
+        assertEquals(HighQualityAudioMode.OFF, snapshot.highQualityAudioMode)
         assertEquals(customPreset.id, snapshot.audioSettings.presetId)
         assertEquals(listOf(customPreset), snapshot.audioSettings.customPresets)
         assertEquals(5, snapshot.audioSettings.crossfadeSeconds)

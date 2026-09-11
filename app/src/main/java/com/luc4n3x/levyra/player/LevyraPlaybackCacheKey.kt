@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.player
 
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.domain.Track
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 object LevyraPlaybackCacheKey {
     private val itagPattern = Regex("(?:[?&]|%26)itag(?:=|%3D)(\\d+)", RegexOption.IGNORE_CASE)
@@ -13,7 +15,7 @@ object LevyraPlaybackCacheKey {
         val id = PlaybackSourceIdentity.sourceVideoId(track)
             .ifBlank { stableId(track) }
             .replace(':', '_')
-        return "levyra:$id:stream-v2:${variant(track.streamUrl)}"
+        return "levyra:$id:stream-v2:${streamVariant(track)}"
     }
 
     fun offlineStream(track: Track): String {
@@ -35,6 +37,24 @@ object LevyraPlaybackCacheKey {
         .ifBlank { track.videoUrl.trim() }
         .ifBlank { "${track.artist.trim()}-${track.title.trim()}" }
         .replace(':', '_')
+
+    private fun streamVariant(track: Track): String {
+        val alternative = track.playbackManifest?.alternativeSource ?: return variant(track.streamUrl)
+        val identity = "${alternative.providerId}\u0000${alternative.providerTrackId}\u0000${alternative.bitrateKbps}"
+        return "alt-${sha256(identity)}"
+    }
+
+    private fun sha256(value: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8))
+        val hex = "0123456789abcdef"
+        return buildString(bytes.size * 2) {
+            bytes.forEach { byte ->
+                val number = byte.toInt() and 0xFF
+                append(hex[number ushr 4])
+                append(hex[number and 0x0F])
+            }
+        }
+    }
 
     private fun variant(url: String): String {
         val clean = url.lowercase()

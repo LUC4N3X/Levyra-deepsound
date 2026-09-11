@@ -91,8 +91,12 @@ data class ResolvedPlaybackManifest(
     val streams: List<PlaybackStreamDescriptor>,
     val loudnessDb: Float? = null,
     val perceptualLoudnessDb: Float? = null,
-    val provenance: PlaybackStreamProvenance? = null
+    val provenance: PlaybackStreamProvenance? = null,
+    val alternativeSource: AlternativeAudioSource? = null
 ) {
+    val isAlternativeSource: Boolean
+        get() = alternativeSource != null
+
     val isMuxed: Boolean
         get() = selectedAudioUrl.isNotBlank() && selectedVideoUrl.isBlank() &&
             streams.any { it.selected && it.kind == PlaybackStreamKind.MUXED }
