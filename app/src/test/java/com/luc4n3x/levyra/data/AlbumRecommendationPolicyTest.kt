@@ -29,6 +29,55 @@ class AlbumRecommendationPolicyTest {
     }
 
     @Test
+    fun seedDeduplicationUsesBrowseIdAsTheWholeIdentityWhenPresent() {
+        val first = AlbumRecommendationSeed(
+            query = "PER NOI album",
+            artist = "Geolier, Sfera Ebbasta",
+            album = "PER NOI",
+            browseId = "MPRE_CANONICAL",
+            moodTags = setOf("rap")
+        )
+        val second = AlbumRecommendationSeed(
+            query = "TUTTO È POSSIBILE Geolier album",
+            artist = "Geolier",
+            album = "TUTTO È POSSIBILE",
+            browseId = "mpre_canonical",
+            moodTags = setOf("hip hop")
+        )
+
+        assertEquals(
+            albumRecommendationSeedDeduplicationKey(first),
+            albumRecommendationSeedDeduplicationKey(second)
+        )
+    }
+
+    @Test
+    fun seedDeduplicationFallsBackToMetadataWhenBrowseIdIsMissing() {
+        val first = AlbumRecommendationSeed(query = "Bresh album", artist = "Bresh")
+        val second = AlbumRecommendationSeed(query = "ANNA album", artist = "ANNA")
+
+        assertTrue(
+            albumRecommendationSeedDeduplicationKey(first) !=
+                albumRecommendationSeedDeduplicationKey(second)
+        )
+    }
+
+    @Test
+    fun ambiguousCanonicalBrowseSeedNeverFallsBackToTextSearch() {
+        val ambiguous = AlbumRecommendationSeed(
+            query = "Santana Money Gang album",
+            album = "Santana Money Gang",
+            browseId = "MPRE_CANONICAL"
+        )
+        val verifiedSingleArtist = ambiguous.copy(artist = "Shiva")
+        val searchOnly = ambiguous.copy(browseId = "")
+
+        assertTrue(!shouldSearchAlbumSeedFallback(ambiguous))
+        assertTrue(shouldSearchAlbumSeedFallback(verifiedSingleArtist))
+        assertTrue(shouldSearchAlbumSeedFallback(searchOnly))
+    }
+
+    @Test
     fun artistSeedRejectsDifferentArtist() {
         val seed = AlbumRecommendationSeed(
             query = "Bresh album",
@@ -40,6 +89,22 @@ class AlbumRecommendationPolicyTest {
             LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE,
             levyraAlbumRecommendationMatchScore(album("Vera Baddie", "ANNA"), seed)
         )
+    }
+
+    @Test
+    fun canonicalBrowseIdOverridesStaleTrackLevelAlbumText() {
+        val seed = AlbumRecommendationSeed(
+            query = "PER NOI album",
+            artist = "Geolier, Sfera Ebbasta",
+            album = "PER NOI",
+            browseId = "MPRE_CANONICAL",
+            weight = 500
+        )
+        val canonical = album("TUTTO È POSSIBILE", "Geolier").copy(
+            browseId = "MPRE_CANONICAL"
+        )
+
+        assertEquals(2_400, levyraAlbumRecommendationMatchScore(canonical, seed))
     }
 
     @Test

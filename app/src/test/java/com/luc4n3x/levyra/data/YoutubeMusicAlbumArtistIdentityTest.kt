@@ -41,6 +41,16 @@ class YoutubeMusicAlbumArtistIdentityTest {
                             "contents": [
                               {
                                 "musicResponsiveHeaderRenderer": {
+                                  "navigationEndpoint": {
+                                    "browseEndpoint": {
+                                      "browseId": "MPRE_SYNTH",
+                                      "browseEndpointContextSupportedConfigs": {
+                                        "browseEndpointContextMusicConfig": {
+                                          "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                        }
+                                      }
+                                    }
+                                  },
                                   "title": {"runs": [{"text": "SYNTH RELEASE"}]},
                                   "subtitle": {
                                     "runs": [
@@ -176,7 +186,9 @@ class YoutubeMusicAlbumArtistIdentityTest {
             secondSubtitle = "11 brani • 47 minuti"
         )
 
-        val header = YoutubeMusicRepository().parseAlbumHeader(page, seed(browseId = "MPRE_SYNTH"))
+        val header = requireNotNull(
+            YoutubeMusicRepository().parseAlbumHeader(page, seed(browseId = "MPRE_SYNTH"))
+        )
 
         assertEquals("Artist One, Artist Two", header.artist)
         assertEquals("UC_SYNTH_ONE", header.artistBrowseId)
@@ -186,9 +198,94 @@ class YoutubeMusicAlbumArtistIdentityTest {
     fun albumHeaderWithoutStraplineNeverPromotesTheReleaseDurationToArtist() {
         val page = albumPage(strapline = null, secondSubtitle = "47 minuti")
 
-        val header = YoutubeMusicRepository().parseAlbumHeader(page, seed(artist = "Artist One"))
+        val header = requireNotNull(
+            YoutubeMusicRepository().parseAlbumHeader(page, seed(artist = "Artist One"))
+        )
 
         assertEquals("Artist One", header.artist)
+    }
+
+    @Test
+    fun albumHeaderRejectsNonAlbumBrowsePages() {
+        val page = albumPage(strapline = null, secondSubtitle = "47 minuti")
+        val configs = mutableListOf<JSONObject>()
+        fun visit(value: Any?) {
+            when (value) {
+                is JSONObject -> {
+                    val keys = value.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        val child = value.opt(key)
+                        if (key == "browseEndpointContextMusicConfig" && child is JSONObject) {
+                            configs += child
+                        }
+                        visit(child)
+                    }
+                }
+                is org.json.JSONArray -> {
+                    for (index in 0 until value.length()) visit(value.opt(index))
+                }
+            }
+        }
+        visit(page)
+        configs.forEach { it.put("pageType", "MUSIC_PAGE_TYPE_PLAYLIST") }
+
+        assertNull(
+            YoutubeMusicRepository().parseAlbumHeader(
+                page,
+                seed(browseId = "MPRE_SYNTH", artist = "Artist One")
+            )
+        )
+    }
+
+    @Test
+    fun nonAlbumHeaderWithNestedAlbumLinkIsRejected() {
+        val page = albumPage(strapline = null, secondSubtitle = "47 minuti")
+        val header = page
+            .getJSONObject("contents")
+            .getJSONObject("twoColumnBrowseResultsRenderer")
+            .getJSONArray("tabs")
+            .getJSONObject(0)
+            .getJSONObject("tabRenderer")
+            .getJSONObject("content")
+            .getJSONObject("sectionListRenderer")
+            .getJSONArray("contents")
+            .getJSONObject(0)
+            .getJSONObject("musicResponsiveHeaderRenderer")
+
+        header
+            .getJSONObject("navigationEndpoint")
+            .getJSONObject("browseEndpoint")
+            .getJSONObject("browseEndpointContextSupportedConfigs")
+            .getJSONObject("browseEndpointContextMusicConfig")
+            .put("pageType", "MUSIC_PAGE_TYPE_PLAYLIST")
+
+        page.put(
+            "nestedAlbumLink",
+            JSONObject(
+                """
+                {
+                  "navigationEndpoint": {
+                    "browseEndpoint": {
+                      "browseId": "MPRE_NESTED",
+                      "browseEndpointContextSupportedConfigs": {
+                        "browseEndpointContextMusicConfig": {
+                          "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                        }
+                      }
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+
+        assertNull(
+            YoutubeMusicRepository().parseAlbumHeader(
+                page,
+                seed(browseId = "MPRE_SYNTH", artist = "Artist One")
+            )
+        )
     }
 
     @Test
@@ -254,7 +351,9 @@ class YoutubeMusicAlbumArtistIdentityTest {
             """.trimIndent(),
             secondSubtitle = "11 brani • 47 minuti"
         )
-        val header = YoutubeMusicRepository().parseAlbumHeader(page, seed(browseId = "MPRE_STALE"))
+        val header = requireNotNull(
+            YoutubeMusicRepository().parseAlbumHeader(page, seed(browseId = "MPRE_STALE"))
+        )
         val trueAlbum = seed(artist = "Artist One", browseId = "MPRE_TRUE", artistBrowseId = "UC_SYNTH_ONE")
 
         val recovered = selectAlbumRecoveryCandidate(
@@ -281,5 +380,7 @@ class YoutubeMusicAlbumArtistIdentityTest {
 
         assertEquals(listOf(YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS), requestedParams)
         assertEquals("MPRE_SYNTH_TRUE", hits.singleOrNull()?.browseId)
+        assertEquals("Artist One, Artist Two", hits.singleOrNull()?.artist)
+        assertEquals("UC_SYNTH_ONE", hits.singleOrNull()?.artistBrowseId)
     }
 }

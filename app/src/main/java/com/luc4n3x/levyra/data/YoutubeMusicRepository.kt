@@ -83,6 +83,17 @@ private data class ScoredAlbumRecommendation(
 
 internal const val LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE = Int.MIN_VALUE
 
+internal fun albumRecommendationSeedDeduplicationKey(seed: AlbumRecommendationSeed): String {
+    val browseId = seed.browseId.trim().lowercase(Locale.ROOT)
+    if (browseId.isNotBlank()) return "browse:$browseId"
+    return listOf(
+        albumRecommendationTextKey(seed.query),
+        albumRecommendationTextKey(seed.artist),
+        albumRecommendationTextKey(seed.album),
+        seed.moodTags.map(::albumRecommendationTextKey).sorted().joinToString("|")
+    ).joinToString("|")
+}
+
 internal val LEVYRA_LOCALIZED_ALBUM_LABELS = setOf(
     "album",
     "álbum",
@@ -135,12 +146,23 @@ internal fun isPlausibleYoutubeMusicAlbumTitle(value: String): Boolean {
     return !ALBUM_TRACK_METRIC_PATTERN.containsMatchIn(normalized)
 }
 
+internal fun shouldSearchAlbumSeedFallback(seed: AlbumRecommendationSeed): Boolean =
+    seed.browseId.isBlank() || seed.artist.isNotBlank()
+
 internal fun levyraAlbumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {
     val albumKey = albumRecommendationTextKey(album.title)
     val artistKey = albumRecommendationTextKey(album.artist)
     val seedAlbumKey = albumRecommendationTextKey(seed.album)
     val seedArtistKey = albumRecommendationTextKey(seed.artist)
     if (!isPlausibleYoutubeMusicAlbumTitle(album.title) || albumKey.isBlank() || artistKey.isBlank()) return LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
+
+    val seedBrowseId = seed.browseId.trim()
+    if (
+        seedBrowseId.isNotBlank() &&
+        album.browseId.trim().equals(seedBrowseId, ignoreCase = true)
+    ) {
+        return 2_400
+    }
 
     val seedArtistTokens = recommendationTokens(seedArtistKey)
     val artistCompatibility = recommendationCompatibility(artistKey, seedArtistKey)
@@ -997,8 +1019,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val albumArtist = tokens.drop(1).firstOrNull(::isAlbumArtistToken)
             ?: tokens.firstOrNull(::isAlbumArtistToken)
             .orEmpty()
-        val artistReference = extractYoutubeMusicArtistReference(renderer, albumArtist)
-        val resolvedArtist = artistReference?.name.orEmpty().ifBlank { albumArtist }.cleanLabel()
+        val artistReferences = extractYoutubeMusicArtistReferences(renderer, albumArtist)
+            .ifEmpty { listOfNotNull(extractYoutubeMusicArtistReference(renderer, albumArtist)) }
+        val resolvedArtist = artistReferences.creditLabel(albumArtist).cleanLabel()
         val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }.orEmpty()
         return AlbumHit(
             title = title.cleanLabel(),
@@ -1007,7 +1030,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             thumbnailUrl = upgradeThumbnail(findBestThumbnail(renderer)),
             query = listOf(title, resolvedArtist).filter(String::isNotBlank).joinToString(" "),
             browseId = extractAlbumBrowseId(renderer),
-            artistBrowseId = artistReference?.browseId.orEmpty(),
+            artistBrowseId = artistReferences.firstOrNull()?.browseId.orEmpty(),
             audioPlaylistId = extractSearchPlaylistId(renderer),
             releaseType = releaseType
         )
@@ -1137,16 +1160,15 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val boundedLimit = limit.coerceIn(1, 40)
         val normalizedSeeds = seeds
             .asSequence()
-            .map { seed -> seed.copy(query = seed.query.trim(), weight = seed.weight.coerceIn(0, 2_000)) }
-            .filter { it.query.length >= 2 }
-            .distinctBy { seed ->
-                listOf(
-                    albumRecommendationTextKey(seed.query),
-                    albumRecommendationTextKey(seed.artist),
-                    albumRecommendationTextKey(seed.album),
-                    seed.moodTags.map(::albumRecommendationTextKey).sorted().joinToString("|")
-                ).joinToString("|")
+            .map { seed ->
+                seed.copy(
+                    query = seed.query.trim(),
+                    browseId = seed.browseId.trim(),
+                    weight = seed.weight.coerceIn(0, 2_000)
+                )
             }
+            .filter { it.query.length >= 2 || it.browseId.isNotBlank() }
+            .distinctBy(::albumRecommendationSeedDeduplicationKey)
             .take(MAX_ALBUM_RECOMMENDATION_SEEDS)
             .toList()
         val personalized = if (normalizedSeeds.isEmpty()) {
@@ -1158,15 +1180,20 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                     async {
                         limiter.withPermit {
                             runCatching {
-                                searchAlbumHits(seed.query, languageCode, ALBUM_RESULTS_PER_SEED)
-                                    .mapIndexedNotNull { index, album ->
-                                        val matchScore = levyraAlbumRecommendationMatchScore(album, seed)
-                                        if (matchScore == LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE) null
-                                        else ScoredAlbumRecommendation(
-                                            album = album,
-                                            score = seed.weight + matchScore - index * ALBUM_RESULT_RANK_PENALTY
-                                        )
-                                    }
+                                val directAlbum = resolveHomeAlbumSeedByBrowseId(seed, languageCode)
+                                val candidates = when {
+                                    directAlbum != null -> listOf(directAlbum)
+                                    !shouldSearchAlbumSeedFallback(seed) -> emptyList()
+                                    else -> searchAlbumHits(seed.query, languageCode, ALBUM_RESULTS_PER_SEED)
+                                }
+                                candidates.mapIndexedNotNull { index, album ->
+                                    val matchScore = levyraAlbumRecommendationMatchScore(album, seed)
+                                    if (matchScore == LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE) null
+                                    else ScoredAlbumRecommendation(
+                                        album = album,
+                                        score = seed.weight + matchScore - index * ALBUM_RESULT_RANK_PENALTY
+                                    )
+                                }
                             }.getOrDefault(emptyList())
                         }
                     }
@@ -1214,6 +1241,32 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .distinctBy(::albumRecommendationDeduplicationKey)
             .take(boundedLimit)
             .toList()
+    }
+
+    private fun resolveHomeAlbumSeedByBrowseId(
+        seed: AlbumRecommendationSeed,
+        languageCode: String
+    ): AlbumHit? {
+        val browseId = seed.browseId.trim()
+        if (!browseId.startsWith("MPRE", ignoreCase = true)) return null
+        val fallback = AlbumHit(
+            title = seed.album.trim(),
+            artist = seed.artist.trim(),
+            year = "",
+            thumbnailUrl = "",
+            query = seed.query.trim(),
+            browseId = browseId,
+            releaseType = ReleaseType.Album
+        )
+        val root = requestMusicBrowseRoot(languageCode, browseId) ?: return null
+        if (!isAlbumBrowseResponse(root, browseId)) return null
+        val resolved = parseAlbumHeader(root, fallback) ?: return null
+        return resolved.takeIf { album ->
+            album.browseId.isNotBlank() &&
+                album.artist.isNotBlank() &&
+                album.thumbnailUrl.isNotBlank() &&
+                isPlausibleYoutubeMusicAlbumTitle(album.title)
+        }
     }
 
     suspend fun moodCategories(
@@ -1779,8 +1832,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val watchEndpoints = mutableListOf<JSONObject>()
         collectObjectsByKey(card, "watchEndpoint", watchEndpoints)
         val audioPlaylistId = watchEndpoints.firstNotNullOfOrNull { endpoint -> endpoint.optString("playlistId").takeIf { it.isNotBlank() } }.orEmpty()
-        val artistReference = extractYoutubeMusicArtistReference(card, artist)
-        val resolvedArtist = artistReference?.name.orEmpty().ifBlank { artist }
+        val artistReferences = extractYoutubeMusicArtistReferences(card, artist)
+            .ifEmpty { listOfNotNull(extractYoutubeMusicArtistReference(card, artist)) }
+        val resolvedArtist = artistReferences.creditLabel(artist)
         return AlbumHit(
             title = title.cleanLabel(),
             artist = resolvedArtist.cleanLabel(),
@@ -1788,7 +1842,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             thumbnailUrl = upgradeThumbnail(findBestThumbnail(card)),
             query = "$title $resolvedArtist".trim(),
             browseId = browseId,
-            artistBrowseId = artistReference?.browseId.orEmpty(),
+            artistBrowseId = artistReferences.firstOrNull()?.browseId.orEmpty(),
             audioPlaylistId = audioPlaylistId,
             explicit = card.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
             releaseType = releaseType
@@ -2042,8 +2096,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }.orEmpty()
         val thumbnail = findBestThumbnail(two)
         if (thumbnail.isBlank()) return null
-        val artistReference = extractYoutubeMusicArtistReference(two, artist)
-        val resolvedArtist = artistReference?.name?.ifBlank { artist }.orEmpty().ifBlank { artist }
+        val artistReferences = extractYoutubeMusicArtistReferences(two, artist)
+            .ifEmpty { listOfNotNull(extractYoutubeMusicArtistReference(two, artist)) }
+        val resolvedArtist = artistReferences.creditLabel(artist)
         return AlbumHit(
             title = title.cleanLabel(),
             artist = resolvedArtist.cleanLabel(),
@@ -2051,7 +2106,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             thumbnailUrl = upgradeThumbnail(thumbnail),
             query = "$title $resolvedArtist",
             browseId = extractAlbumBrowseId(two),
-            artistBrowseId = artistReference?.browseId.orEmpty(),
+            artistBrowseId = artistReferences.firstOrNull()?.browseId.orEmpty(),
             releaseType = releaseType
         )
     }
@@ -2068,8 +2123,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }.orEmpty()
         val thumbnail = findBestThumbnail(renderer)
         if (thumbnail.isBlank()) return null
-        val artistReference = extractYoutubeMusicArtistReference(renderer, artist)
-        val resolvedArtist = artistReference?.name?.ifBlank { artist }.orEmpty().ifBlank { artist }
+        val artistReferences = extractYoutubeMusicArtistReferences(renderer, artist)
+            .ifEmpty { listOfNotNull(extractYoutubeMusicArtistReference(renderer, artist)) }
+        val resolvedArtist = artistReferences.creditLabel(artist)
         return AlbumHit(
             title = title.cleanLabel(),
             artist = resolvedArtist.cleanLabel(),
@@ -2077,7 +2133,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             thumbnailUrl = upgradeThumbnail(thumbnail),
             query = "$title $resolvedArtist",
             browseId = extractAlbumBrowseId(renderer),
-            artistBrowseId = artistReference?.browseId.orEmpty(),
+            artistBrowseId = artistReferences.firstOrNull()?.browseId.orEmpty(),
             releaseType = releaseType
         )
     }
@@ -2123,7 +2179,32 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         } ?: album.copy(title = album.title.takeIf(::isPlausibleYoutubeMusicAlbumTitle).orEmpty())
     }
 
-    internal fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit {
+    private fun isAlbumBrowseResponse(root: JSONObject, expectedBrowseId: String = ""): Boolean {
+        val expected = expectedBrowseId.trim()
+        if (expected.isNotBlank() && !expected.startsWith("MPRE", ignoreCase = true)) return false
+
+        val headers = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicDetailHeaderRenderer", headers)
+        collectObjectsByKey(root, "musicResponsiveHeaderRenderer", headers)
+        collectObjectsByKey(root, "musicEditablePlaylistDetailHeaderRenderer", headers)
+
+        return headers.any { header ->
+            val browseEndpoint = header.optJSONObject("navigationEndpoint")
+                ?.optJSONObject("browseEndpoint")
+                ?: return@any false
+            val pageType = browseEndpoint
+                .optJSONObject("browseEndpointContextSupportedConfigs")
+                ?.optJSONObject("browseEndpointContextMusicConfig")
+                ?.optString("pageType")
+                .orEmpty()
+            val browseId = browseEndpoint.optString("browseId").trim()
+            pageType.equals(MUSIC_PAGE_TYPE_ALBUM, ignoreCase = true) &&
+                (expected.isBlank() || browseId.isBlank() || browseId.equals(expected, ignoreCase = true))
+        }
+    }
+
+    internal fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit? {
+        if (!isAlbumBrowseResponse(root)) return null
         val detailHeaders = mutableListOf<JSONObject>()
         val responsiveHeaders = mutableListOf<JSONObject>()
         val editableHeaders = mutableListOf<JSONObject>()
@@ -2172,7 +2253,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             year = year,
             thumbnailUrl = upgradeThumbnail(thumbnail),
             query = "$title ${artist.cleanLabel()}".trim(),
-            browseId = fallback.browseId.ifBlank { root.optString("browseId") },
+            browseId = fallback.browseId.ifBlank { extractAlbumBrowseId(root) },
             artistBrowseId = artistReferences.firstOrNull()?.browseId.orEmpty().ifBlank { fallback.artistBrowseId }
         )
     }

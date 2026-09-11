@@ -41,6 +41,11 @@ data class RecommendationFeedback(
         }
     }
 
+    fun isExplicitlyAvoided(track: Track): Boolean {
+        if (avoidedTrackKeys.isEmpty()) return false
+        return ListenIdentity.trackKey(track.id, track.title, track.artist) in avoidedTrackKeys
+    }
+
     fun trackScore(track: Track): Int {
         if (isEmpty) return 0
         val key = ListenIdentity.trackKey(track.id, track.title, track.artist)
