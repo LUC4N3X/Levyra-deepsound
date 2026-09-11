@@ -31,6 +31,11 @@
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-stars.svg">
     <img src="docs/assets/levyra-stars.svg" alt="GitHub Stars">
   </picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/wiki"><picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki.svg">
+    <img src="docs/assets/levyra-wiki.svg" alt="Levyra Wiki">
+  </picture></a>
 </p>
 
 ### ✦ Download
@@ -77,12 +82,6 @@
 </p>
 
 </div>
-
----
-
-## ✦ Documentation
-
-[Wiki](https://github.com/LUC4N3X/Levyra-deepsound/wiki) · [Getting Started](https://github.com/LUC4N3X/Levyra-deepsound/wiki/Getting-Started) · [Development](https://github.com/LUC4N3X/Levyra-deepsound/wiki/Development)
 
 ---
 
