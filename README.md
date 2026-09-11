@@ -1,6 +1,10 @@
 <div align="center">
 
-<img src="docs/assets/levyra-github-banner.webp" alt="Levyra — Advanced Music Application" width="100%" />
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-banner-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-github-banner.webp">
+  <img src="docs/assets/levyra-github-banner.webp" alt="Levyra — Advanced Music Application" width="100%">
+</picture>
 
 # Hear every layer. No limits.
 
