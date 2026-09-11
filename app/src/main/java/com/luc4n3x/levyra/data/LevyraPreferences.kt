@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -80,7 +81,8 @@ data class LevyraPreferencesSnapshot(
     val downloadSettings: LevyraDownloadSettings,
     val backupSettings: LevyraBackupSettings,
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
-    val jamDisplayName: String = ""
+    val jamDisplayName: String = "",
+    val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320
 )
 
 @Volatile
@@ -124,6 +126,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_SPONSORBLOCK] = snapshot.sponsorBlock
             mutable[KEY_SKIP_SILENCE] = snapshot.skipSilence
             mutable[KEY_AUDIO_QUALITY] = normalizeAudioQuality(snapshot.audioQuality)
+            mutable[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = snapshot.highQualityAudioMode.storageValue
             mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
@@ -403,6 +406,13 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[KEY_AUDIO_QUALITY] = normalizeAudioQuality(value) }
     }
 
+    fun highQualityAudioMode(): HighQualityAudioMode =
+        read { HighQualityAudioMode.fromStorage(it[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO]) }
+
+    fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
+        write { it[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = mode.storageValue }
+    }
+
     fun dismissedUpdateVersion(): String = read { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
 
     fun setDismissedUpdateVersion(version: String) {
@@ -577,7 +587,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             downloadSettings = downloadSettingsFrom(preferences),
             backupSettings = backupSettingsFrom(preferences),
             automationSettings = automationSettingsFrom(preferences),
-            jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty()
+            jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty(),
+            highQualityAudioMode = HighQualityAudioMode.fromStorage(preferences[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO])
         )
     }
 
@@ -851,6 +862,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_BEDTIME_DURATION_MINUTES = intPreferencesKey("bedtime_duration_minutes")
         val KEY_BEDTIME_DAYS = stringSetPreferencesKey("bedtime_days")
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
+        val KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO = stringPreferencesKey("high_quality_alternative_audio")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")

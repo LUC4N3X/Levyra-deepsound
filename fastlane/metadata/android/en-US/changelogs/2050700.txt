@@ -1,0 +1,1 @@
+Levyra 2.5.7 adds Verified High-Quality Audio on Android. Levyra can use a strictly matched and validated JioSaavn source up to 320 kbps while preserving the original track identity. Wrong, ambiguous, restricted or invalid candidates fall back safely to normal playback. Also improves HQ cache isolation, concurrency, backup/restore and provider safety.
