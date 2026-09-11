@@ -14,9 +14,10 @@ class PlaybackRecoveryBudgetContractTest {
         assertTrue(service.contains("private object LevyraPlaybackLoadErrorHandlingPolicy"))
         assertTrue(service.contains("getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long =\n        C.TIME_UNSET"))
         assertTrue(service.contains("getMinimumLoadableRetryCount(dataType: Int): Int = 0"))
-        assertTrue(service.contains("HlsMediaSource.Factory(dataSourceFactory)\n                    .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
-        assertTrue(service.contains("DashMediaSource.Factory(dataSourceFactory)\n                    .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
-        assertTrue(service.contains("ProgressiveMediaSource.Factory(dataSourceFactory)\n                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
+        assertTrue(service.contains("DefaultMediaSourceFactory("))
+        assertTrue(service.contains(").setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
+        assertTrue(service.contains("uri in subtitleUris -> subtitleDataSourceFactory"))
+        assertFalse(service.contains("SingleSampleMediaSource"))
     }
 
     @Test

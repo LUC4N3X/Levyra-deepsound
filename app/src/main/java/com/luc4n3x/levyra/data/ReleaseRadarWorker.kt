@@ -118,7 +118,6 @@ class ReleaseRadarWorker(
     }
 
     private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < 26) return
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,

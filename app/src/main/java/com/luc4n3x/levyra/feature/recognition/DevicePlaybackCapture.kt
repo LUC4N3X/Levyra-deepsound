@@ -22,7 +22,6 @@ class DevicePlaybackCapture(private val projection: MediaProjection) : AudioCapt
 
     @SuppressLint("MissingPermission")
     override suspend fun capture(durationMs: Long): CapturedAudio = withContext(Dispatchers.IO) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) throw DevicePlaybackCaptureUnsupportedException()
         if (durationMs !in 1L..MicrophoneCapture.MAX_CAPTURE_DURATION_MS) {
             throw MicrophoneCaptureException(
                 "Capture duration must be between 1 and ${MicrophoneCapture.MAX_CAPTURE_DURATION_MS} ms"
