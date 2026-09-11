@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-10T20:55:43Z",
+  "generatedAt": "2026-09-11T04:46:00Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -320,7 +320,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -525,13 +525,6 @@
       "artist": "SIENNA SPIRO",
       "album": "Visitor",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/03877583cb194e8aaa8cb60f90e239ee.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2432,6 +2425,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Lost and found",
       "artist": "Molly Sandén, Victor Leksell",
       "album": "Blåögd",
@@ -3191,7 +3191,7 @@
       "song": "Yes! 東京",
       "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, 原因は自分にある。, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
       "album": "Yes! 東京",
-      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/6e8af178a7b34192a9e234ad4e6ed91a.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/8d52a2b2ce444b068638844885ed1632.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4511,171 +4511,143 @@
       "scope": "track"
     },
     {
-      "song": "GASS (feat. Travis Scott)",
-      "artist": "Nemzzz, Travis Scott",
-      "album": "LOCKED IN",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/e5aca87f074c4df49014e80fa30d726d.cnvs.mp4",
+      "song": "crank 2",
+      "artist": "Slayyyter",
+      "album": "crank 2",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/d4fb0786fbce4c8389ed14af3d264ca9.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "SO GOOD",
-      "artist": "Shay Lia, KAYTRANADA",
-      "album": "SO GOOD",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/20eb878a07084724bd0f389d2c0e0384.cnvs.mp4",
+      "song": "lamb (feat. Kellin Quinn)",
+      "artist": "Julia Wolf, Kellin Quinn",
+      "album": "lamb (feat. Kellin Quinn)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/23e52bfd6daa41ee82c2eebf722ced2e.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Funeral",
-      "artist": "Ashe",
-      "album": "Funeral",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/40e3a1877e6e4c4f84d6c687cbecf5ca.cnvs.mp4",
+      "song": "When In Rome",
+      "artist": "Dove Cameron",
+      "album": "When In Rome",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/bc2375f29c2f4ba6a190df36785ab102.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Just A Little Bit More",
-      "artist": "Mau P",
-      "album": "Just A Little Bit More",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/0cec48badc204779b8cf88e6276a7e0e.cnvs.mp4",
+      "song": "The Kid With the Crown",
+      "artist": "This Is Lorelei",
+      "album": "The Kid With the Crown",
+      "url": "https://canvaz.scdn.co/upload/licensor/3s9xx51B4fJ4KBntEJ8dKl/video/891149a3db7c476b8d9c2e3be94f1918.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "It's Not Easy (Falling In Love)",
-      "artist": "Medium Build",
-      "album": "King of Having Fun",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/669aae5fa04c4804951f7a8258b47111.cnvs.mp4",
+      "song": "Mourning",
+      "artist": "Spiritbox",
+      "album": "Mourning",
+      "url": "https://canvaz.scdn.co/upload/artist/4MzJMcHQBl9SIYSjwWn8QW/video/59542ff727d34175af1dd3cea0e0bc2a.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Muevelo pa Mi",
-      "artist": "Wisin, Kapo",
-      "album": "La Universidad del Perreo",
-      "url": "https://canvaz.scdn.co/upload/artist/3E6xrwgnVfYCrCs0ePERDz/video/25188b8a2d2d4356b0e54c3a3e995d73.cnvs.mp4",
+      "song": "Juicy",
+      "artist": "Victoria Monét",
+      "album": "Juicy",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/4c5d63b1573c43c69f893c6ba09458b8.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "act like you know ? (feat. Muni Long)",
-      "artist": "Master Peace, Muni Long",
-      "album": "act like you know ? (feat. Muni Long)",
-      "url": "https://canvaz.scdn.co/upload/artist/4GNHtO2iEJ09r4JNTlqnO9/video/de7d23e881294bbf9993c3ff851010ff.cnvs.mp4",
+      "song": "LA SAPIÓ",
+      "artist": "Ryan Castro",
+      "album": "LA SAPIÓ",
+      "url": "https://canvaz.scdn.co/upload/artist/7j6DKwmjbxvpQO8h914uEz/video/47a1c3517de744ad98fdbb03777de1bc.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Distraction",
-      "artist": "Jordan Adetunji",
-      "album": "Distraction",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/5813ef9d49934b1d974dfff8dd700132.cnvs.mp4",
+      "song": "I Do",
+      "artist": "Sophia Stel",
+      "album": "I Do",
+      "url": "https://canvaz.scdn.co/upload/artist/18w9tq3c2x11niEFNYqeex/video/e2032e84a7954ef99b43ead0ec065e47.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Petty Crimes",
-      "artist": "Mollie Elizabeth",
-      "album": "Petty Crimes",
-      "url": "https://canvaz.scdn.co/upload/artist/7a5GcLbKGNuyqIfl6mw99Z/video/613ea3f9641245d9867f29b334e629b5.cnvs.mp4",
+      "song": "Get Up And Dance",
+      "artist": "Cloonee",
+      "album": "Get Up And Dance",
+      "url": "https://canvaz.scdn.co/upload/artist/7MdlXmq2HViAJWo9cf30sR/video/dbae6c9753074f85bf2488c7f0063887.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Fly (Someone You Love)",
-      "artist": "Joyce Wrice, SALIMATA",
-      "album": "Fly (Someone You Love)",
-      "url": "https://canvaz.scdn.co/upload/artist/24Cf1irKt7kcewb9OOkPum/video/d62604c4c8e4492fad06c7003714c84c.cnvs.mp4",
+      "song": "to love and to lose",
+      "artist": "Dylan",
+      "album": "to love and to lose",
+      "url": "https://canvaz.scdn.co/upload/artist/4LOM7NzyrZvlGSYPFDsnTk/video/89a83f8492674041a641fc910863eeec.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "For Your Entertainment",
-      "artist": "Ellie Goulding",
-      "album": "I Know Too Much",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/8817941ff8cd47e59764e64d09c3a7c3.cnvs.mp4",
+      "song": "PER NOI (feat. Achille Lauro)",
+      "artist": "Geolier, Achille Lauro",
+      "album": "PER NOI (feat. Achille Lauro)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/d931cd0e597b4192a73f7d3201f69648.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "DEDICA",
-      "artist": "Ernia",
-      "album": "PER SOLDI E PER AMORE",
-      "url": "https://canvaz.scdn.co/upload/artist/3fhMfkPPzksWuw0hEm4ldm/video/b0b4bc56fcda4d6fa2e663b4ff9855d9.cnvs.mp4",
+      "song": "piccola magia",
+      "artist": "prima stanza a destra, Angelica Bove",
+      "album": "piccola magia",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/69ef795eb770436f88cd05d408a03b33.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "RAGAZZINO",
-      "artist": "Fred De Palma, Cino",
-      "album": "RAGAZZINO",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/777b9816d0f64ef7b2c4cb0b6c20d0f3.cnvs.mp4",
+      "song": "Kintsugi",
+      "artist": "Elisa",
+      "album": "Kintsugi",
+      "url": "https://canvaz.scdn.co/upload/artist/2ARH58Hit3yC6ziGdhma23/video/f658e8625edc4c6a8b36e5f058603139.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "detto tra noi",
-      "artist": "Malika Ayane",
-      "album": "detto tra noi",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/a33e4bc5ff2e4932b9ad863b4048faca.cnvs.mp4",
+      "song": "Provinciali",
+      "artist": "22simba",
+      "album": "Provinciali",
+      "url": "https://canvaz.scdn.co/upload/artist/4Xsf5hhfIyhTgiVymlPLA7/video/ee981f79b28f4a3185849bcd6ca3e8f6.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "VITA MORTE MIRACOLI",
-      "artist": "J-AX",
-      "album": "VITA MORTE MIRACOLI",
-      "url": "https://canvaz.scdn.co/upload/artist/2iK8weavvfS2xJCmzNzNE5/video/3d8323c219cd44be8c5c93fb35dfee50.cnvs.mp4",
+      "song": "Chiquita",
+      "artist": "Camilo",
+      "album": "Para Cuando Sean Mayores",
+      "url": "https://canvaz.scdn.co/upload/artist/28gNT5KBp7IjEOQoevXf9N/video/f5c931a338af452682ef62d1b10fc9c6.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Niente di me",
-      "artist": "Anna Castiglia",
-      "album": "Niente di me",
-      "url": "https://canvaz.scdn.co/upload/artist/3BSckhNAabodVgd9NkHyJV/video/ca37f665fd0b4452b5b00d0461a20d4b.cnvs.mp4",
+      "song": "Morire È Niente",
+      "artist": "Silent Bob, Sick Budd",
+      "album": "Morire È Niente",
+      "url": "https://canvaz.scdn.co/upload/artist/4oEO6Ud3efrjTNSR9SMleI/video/85503a661d9c4a539861a3f89d0cb65f.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Los Angeles",
-      "artist": "Giuse The Lizia",
-      "album": "Los Angeles",
-      "url": "https://canvaz.scdn.co/upload/artist/5RUZs42sw44u16SpQQvubK/video/67fefee2a0b94260b93a33588e13c8e9.cnvs.mp4",
+      "song": "Cigarette",
+      "artist": "soap",
+      "album": "Cigarette",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/7fb2630b4c36419faad692cf8f098b70.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Louis",
-      "artist": "Mauvais djo",
-      "album": "L'undertaker, Pt.2",
-      "url": "https://canvaz.scdn.co/upload/artist/51OKuyM4BiiYxFm8Mi6fa9/video/d73bda63b4c848fca7a254c6b5bed103.cnvs.mp4",
+      "song": "Menta",
+      "artist": "Camilla Magli",
+      "album": "Menta",
+      "url": "https://canvaz.scdn.co/upload/artist/3HRSdDvPAE54ocmaq0JRrJ/video/c1dc8d5a15d94749a51f486651d91deb.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Paraiso",
-      "artist": "Lost Frequencies, Mari Froes",
-      "album": "Paraiso",
-      "url": "https://canvaz.scdn.co/upload/artist/7f5Zgnp2spUuuzKplmRkt7/video/6c616cc9aa754e34986850992a77eaae.cnvs.mp4",
+      "song": "PUGNO DI FERRO (Red Bull 64 Bars)",
+      "artist": "Artie 5ive",
+      "album": "PUGNO DI FERRO (Red Bull 64 Bars)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/855093bd8b414030b77e977539562314.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Quando Viaggi da Sola",
-      "artist": "Benji & Fede",
-      "album": "Quando Viaggi da Sola",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/835b0364565d4a59bb1beb156f18fe9d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "odio stare sobrio (feat. Side Baby)",
-      "artist": "DrefGold, Side Baby",
-      "album": "The Summer SmAsher",
-      "url": "https://canvaz.scdn.co/upload/artist/6jwzGu5VdkR5tsRROYuxso/video/82a32044bd3c450187eccdec9cd22cab.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "COCORITA",
-      "artist": "Disme",
-      "album": "COCORITA",
-      "url": "https://canvaz.scdn.co/upload/artist/0CXnO9kUawdDjzToSqCC3p/video/8b91720690924fb9aec9c819e5445204.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "As We Get High (feat. Omah Lay & BEAM)",
-      "artist": "bees & honey, OMAH LAY, BEAM, Gyptian",
-      "album": "As We Get High (feat. Omah Lay & BEAM)",
-      "url": "https://canvaz.scdn.co/upload/artist/2OFij1ppCwYFCOTq7vzafi/video/d7124260523646a1853d33ccf28ba79f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Vultures",
-      "artist": "Kodaline",
-      "album": "Vultures",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/56136b2a6c484f038b475436d619a4f3.cnvs.mp4",
+      "song": "Changes",
+      "artist": "Becky Hill",
+      "album": "Changes",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/234672dde50a4ee7b4a888aacc2c2b61.cnvs.mp4",
       "scope": "track"
     }
   ]
