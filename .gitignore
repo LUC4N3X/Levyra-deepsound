@@ -26,3 +26,4 @@ skills-lock.json
 
 # Local build diagnostics
 /[Bb]uild log.txt
+/.report/
