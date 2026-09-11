@@ -157,6 +157,31 @@ class HomeRenderSnapshotTest {
     }
 
     @Test
+    fun partialEnrichedQuickPickSeedsAreBackfilledToTwenty() {
+        val enrichedSeeds = (0 until 9).map { index ->
+            track(("seed" + index.toString().padStart(7, '0')).take(11))
+                .copy(
+                    title = "Enriched $index",
+                    artist = "Enriched Artist $index"
+                )
+        }
+        val state = LevyraUiState(
+            languageCode = "it",
+            quickPickSeeds = enrichedSeeds
+        )
+
+        val snapshot = buildHomeRenderSnapshot(state)
+        val quickPicks = snapshot.derived.quickPicks?.tracks.orEmpty()
+
+        assertEquals(20, quickPicks.size)
+        assertEquals(20, quickPicks.map(LevyraPersonalOrbit::identityKey).distinct().size)
+        assertEquals(
+            enrichedSeeds.map(LevyraPersonalOrbit::identityKey),
+            quickPicks.take(enrichedSeeds.size).map(LevyraPersonalOrbit::identityKey)
+        )
+    }
+
+    @Test
     fun keepsCachedResonanceStableAcrossOtherHomeChanges() {
         val cachedResonance = track("aaaaaaaaaaa")
         val refreshedTrack = track("bbbbbbbbbbb")
