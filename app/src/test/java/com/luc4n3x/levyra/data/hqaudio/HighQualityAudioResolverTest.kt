@@ -124,15 +124,15 @@ class HighQualityAudioResolverTest {
     }
 
     @Test
-    fun uncertainMatchIsPlayableButNeverPersisted() {
+    fun incompleteArtistCreditFallsBackWithoutPersistence() {
         val provider = FakeHighQualityProvider(
             searchOutcome = {
                 ProviderSearchOutcome.Found(listOf(candidate(title = "Starboy", album = "Starboy", duration = 202)))
             }
         )
         val result = resolver(provider).resolveNow(query(title = "Starboy", artist = "The Weeknd, Daft Punk", album = ""))
-        assertEquals(AlternativeMatchVerdict.HIGH, (result as HighQualityResolution.Selected).evaluation.verdict)
-        assertTrue(result.evaluation.confidence < AlternativeTrackMatcher.PERSISTABLE_CONFIDENCE)
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (result as HighQualityResolution.Fallback).reason)
+        assertTrue(provider.streamRequests.isEmpty())
         assertTrue(storage.values.isEmpty())
     }
 
@@ -207,6 +207,7 @@ class HighQualityAudioResolverTest {
         val resolver = resolver(provider)
         resolver.resolveNow()
         resolver.reportPlaybackFailure(identity, "pW-kkdqr", "HTTP 403")
+        assertTrue(storage.values.isEmpty())
         assertNull(resolver.cachedSelection(identity))
         val result = resolver.resolveNow()
         assertEquals(HighQualityFallbackReason.QUARANTINED, (result as HighQualityResolution.Fallback).reason)
@@ -220,4 +221,20 @@ class HighQualityAudioResolverTest {
         resolver.mode = HighQualityAudioMode.AUTOMATIC
         assertNull(resolver.cachedSelection(identity))
     }
+    @Test
+    fun inFlightLimitRejectsAdditionalDistinctLookup() {
+        val provider = FakeHighQualityProvider(searchOutcome = {
+            delay(5_000L)
+            ProviderSearchOutcome.Found(emptyList())
+        })
+        val resolver = resolver(provider)
+        val admitted = (0 until HighQualityAudioResolver.MAX_IN_FLIGHT_LOOKUPS)
+            .map { index -> resolver.begin("$identity-$index", query()) }
+        val overflow = runBlocking {
+            resolver.await(resolver.begin("$identity-overflow", query()), 100L)
+        }
+        assertEquals(HighQualityFallbackReason.BUSY, (overflow as HighQualityResolution.Fallback).reason)
+        admitted.forEach { it.cancel() }
+    }
+
 }
