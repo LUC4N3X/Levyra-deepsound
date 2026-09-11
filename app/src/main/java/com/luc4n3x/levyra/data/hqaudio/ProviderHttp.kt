@@ -9,6 +9,9 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Interceptor
 import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -41,12 +44,37 @@ fun interface ProviderHttpExchange {
     suspend fun execute(request: ProviderHttpRequest): ProviderHttpResponse
 }
 
+internal object ProviderDestinationPolicy {
+    private val allowedDomains = setOf("jiosaavn.com", "saavncdn.com")
+
+    fun allows(url: HttpUrl): Boolean {
+        if (!url.isHttps) return false
+        val host = url.host.lowercase(Locale.ROOT).trimEnd('.')
+        return allowedDomains.any { domain -> host == domain || host.endsWith(".$domain") }
+    }
+
+    fun requireAllowed(url: String): HttpUrl {
+        val parsed = url.toHttpUrlOrNull() ?: throw IOException("Invalid provider URL")
+        if (!allows(parsed)) throw IOException("Blocked provider destination")
+        return parsed
+    }
+}
+
+internal object ProviderDestinationInterceptor : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        if (!ProviderDestinationPolicy.allows(chain.request().url)) {
+            throw IOException("Blocked provider redirect destination")
+        }
+        return chain.proceed(chain.request())
+    }
+}
+
 internal class OkHttpProviderExchange(
     private val clientProvider: () -> OkHttpClient
 ) : ProviderHttpExchange {
     override suspend fun execute(request: ProviderHttpRequest): ProviderHttpResponse =
         suspendCancellableCoroutine { continuation ->
-            val builder = Request.Builder().url(request.url).get()
+            val builder = Request.Builder().url(ProviderDestinationPolicy.requireAllowed(request.url)).get()
             request.headers.forEach { (name, value) -> builder.header(name, value) }
             val call = clientProvider().newCall(builder.build())
             continuation.invokeOnCancellation { call.cancel() }
@@ -104,6 +132,7 @@ internal object HighQualityProviderHttpClient {
                 .readTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .writeTimeout(WRITE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .callTimeout(CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .addNetworkInterceptor(ProviderDestinationInterceptor)
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .retryOnConnectionFailure(false)
