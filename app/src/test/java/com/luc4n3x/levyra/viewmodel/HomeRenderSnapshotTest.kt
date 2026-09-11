@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.HomeSection
@@ -180,6 +181,23 @@ class HomeRenderSnapshotTest {
             enrichedSeeds.map(LevyraPersonalOrbit::identityKey),
             quickPicks.take(enrichedSeeds.size).map(LevyraPersonalOrbit::identityKey)
         )
+    }
+
+    @Test
+    fun personalOrbitOverlapCannotLeaveQuickPicksBelowTwenty() {
+        val startupSeeds = LevyraStartupCatalog.quickPickSeeds("it")
+        val orbitTracks = startupSeeds.take(8)
+        val orbitKeys = orbitTracks.map(LevyraPersonalOrbit::identityKey).toSet()
+        val state = LevyraUiState(
+            languageCode = "it",
+            personalOrbitTracks = orbitTracks
+        )
+
+        val quickPicks = buildHomeRenderSnapshot(state).derived.quickPicks?.tracks.orEmpty()
+
+        assertEquals(20, quickPicks.size)
+        assertEquals(20, quickPicks.map(LevyraPersonalOrbit::identityKey).distinct().size)
+        assertEquals(2, quickPicks.count { LevyraPersonalOrbit.identityKey(it) in orbitKeys })
     }
 
     @Test

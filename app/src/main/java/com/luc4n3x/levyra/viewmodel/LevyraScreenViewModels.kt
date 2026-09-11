@@ -790,12 +790,16 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
     val seen = HashSet<String>()
     val artistCounts = HashMap<String, Int>()
 
-    fun addCandidate(track: Track, enforceArtistLimit: Boolean) {
+    fun addCandidate(
+        track: Track,
+        enforceArtistLimit: Boolean,
+        allowOrbitOverlap: Boolean
+    ) {
         if (selected.size >= HOME_QUICK_PICKS_LIMIT) return
         if (track.id.length != 11 && !LevyraStartupCatalog.isStartupSeedId(track.id)) return
         if (!isReliableHomeMusicCandidate(track)) return
         val identity = LevyraPersonalOrbit.identityKey(track)
-        if (identity.isBlank() || identity in orbitKeys || !seen.add(identity)) return
+        if (identity.isBlank() || (!allowOrbitOverlap && identity in orbitKeys) || !seen.add(identity)) return
         val artistKey = track.artist.trim().lowercase(Locale.ROOT)
         val artistCount = artistCounts[artistKey] ?: 0
         if (enforceArtistLimit && artistKey.isNotBlank() && artistCount >= HOME_QUICK_PICKS_ARTIST_LIMIT) {
@@ -806,9 +810,18 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
         if (artistKey.isNotBlank()) artistCounts[artistKey] = artistCount + 1
     }
 
-    candidates.forEach { track -> addCandidate(track, enforceArtistLimit = true) }
+    candidates.forEach { track ->
+        addCandidate(track, enforceArtistLimit = true, allowOrbitOverlap = false)
+    }
     if (selected.size < HOME_QUICK_PICKS_LIMIT) {
-        candidates.forEach { track -> addCandidate(track, enforceArtistLimit = false) }
+        candidates.forEach { track ->
+            addCandidate(track, enforceArtistLimit = false, allowOrbitOverlap = false)
+        }
+    }
+    if (selected.size < HOME_QUICK_PICKS_LIMIT) {
+        candidates.forEach { track ->
+            addCandidate(track, enforceArtistLimit = false, allowOrbitOverlap = true)
+        }
     }
     if (selected.isEmpty()) return null
 
