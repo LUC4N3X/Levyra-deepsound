@@ -73,4 +73,22 @@ class JioSaavnPayloadParserTest {
         assertEquals(JioSaavnMediaAuthorization.Denied, JioSaavnPayloadParser.mediaAuthorization("{\"status\":\"failure\"}"))
         assertEquals(JioSaavnMediaAuthorization.Malformed, JioSaavnPayloadParser.mediaAuthorization("nope"))
     }
+
+    @Test
+    fun proOnlyAndRestrictedRightsCandidatesAreExplicitlyRejected() {
+        val validSong = saavnSong("v1", "Free Song", listOf("Artist"), "Album", 180).apply {
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "0").put("cacheable", "true").put("delete_cached_object", "false"))
+        }
+        val proOnlySong = saavnSong("p1", "Pro Only Song", listOf("Artist"), "Album", 180).apply {
+            getJSONObject("more_info").put("is_pro_only", "true")
+        }
+        val rightsUnavailableSong = saavnSong("r1", "Unavailable Rights Song", listOf("Artist"), "Album", 180).apply {
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "1").put("reason", "Unavailable").put("cacheable", "false"))
+        }
+        val paywalledSong = saavnSong("pw1", "Paywalled Song", listOf("Artist"), "Album", 180).apply {
+            getJSONObject("more_info").put("paywalled", "true")
+        }
+        val candidates = JioSaavnPayloadParser.searchCandidates(searchBody(validSong, proOnlySong, rightsUnavailableSong, paywalledSong))!!
+        assertEquals(listOf("v1"), candidates.map { it.providerTrackId })
+    }
 }

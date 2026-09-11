@@ -52,6 +52,7 @@ internal object JioSaavnPayloadParser {
         val type = json.optString("type")
         if (type.isNotEmpty() && type != "song") return null
         val info = json.optJSONObject("more_info") ?: JSONObject()
+        if (isRestricted(json, info)) return null
         val artistMap = info.optJSONObject("artistMap")
         val providerTrackId = json.optString("id").trim()
         val title = decode(json.optString("title").ifBlank { json.optString("song") })
@@ -95,6 +96,30 @@ internal object JioSaavnPayloadParser {
         (0 until array.length()).mapNotNull(array::optJSONObject)
 
     private fun decode(value: String): String = AlternativeTrackText.decodeHtmlEntities(value).trim()
+
+    private fun isRestricted(json: JSONObject, info: JSONObject): Boolean {
+        if (isProFlag(info.opt("is_pro_only")) || isProFlag(json.opt("is_pro_only"))) return true
+        if (isProFlag(info.opt("is_pro")) || isProFlag(json.opt("is_pro"))) return true
+        if (isProFlag(info.opt("pro_only")) || isProFlag(json.opt("pro_only"))) return true
+        if (isProFlag(info.opt("paywalled")) || isProFlag(json.opt("paywalled"))) return true
+        val rights = info.optJSONObject("rights") ?: json.optJSONObject("rights")
+        if (rights != null) {
+            val code = rights.optString("code", "0").trim()
+            if (code.isNotEmpty() && code != "0") return true
+            val reason = rights.optString("reason").trim()
+            if (reason.isNotEmpty() && !reason.equals("none", ignoreCase = true)) return true
+            if (isProFlag(rights.opt("is_pro_only"))) return true
+            if (rights.optString("cacheable").equals("false", ignoreCase = true)) return true
+            if (rights.optString("delete_cached_object").equals("true", ignoreCase = true)) return true
+        }
+        return false
+    }
+
+    private fun isProFlag(value: Any?): Boolean {
+        if (value == null) return false
+        val text = value.toString().trim().lowercase()
+        return text == "true" || text == "1"
+    }
 
     private fun parseObject(body: String): JSONObject? = runCatching { JSONObject(body.trim()) }.getOrNull()
 }
