@@ -6195,7 +6195,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (tracks.isEmpty()) return
         dismissSharedMedia()
         tracks.asReversed().forEach(::playNext)
-        _state.update { it.copy(offlineExportMessage = if (tracks.size == 1) "Riproduci dopo: ${tracks.first().title}" else "${tracks.size} brani aggiunti dopo quello corrente") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update {
+            val message = if (tracks.size == 1) {
+                "${strings.playNext}: ${tracks.first().title}"
+            } else {
+                "${strings.playNext}: ${strings.formatTrackCount(tracks.size)}"
+            }
+            it.copy(offlineExportMessage = message)
+        }
     }
 
     fun queueSharedMedia() {
@@ -6203,7 +6211,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (tracks.isEmpty()) return
         dismissSharedMedia()
         tracks.forEach(::addToQueue)
-        _state.update { it.copy(offlineExportMessage = if (tracks.size == 1) "Aggiunto alla coda: ${tracks.first().title}" else "${tracks.size} brani aggiunti alla coda") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update {
+            val message = if (tracks.size == 1) {
+                "${strings.addToQueue}: ${tracks.first().title}"
+            } else {
+                "${strings.addToQueue}: ${strings.formatTrackCount(tracks.size)}"
+            }
+            it.copy(offlineExportMessage = message)
+        }
     }
 
     fun downloadSharedMedia() {
