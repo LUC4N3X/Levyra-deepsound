@@ -2204,7 +2204,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     internal fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit? {
-        if (!isAlbumBrowseResponse(root, fallback.browseId)) return null
+        if (!isAlbumBrowseResponse(root)) return null
         val detailHeaders = mutableListOf<JSONObject>()
         val responsiveHeaders = mutableListOf<JSONObject>()
         val editableHeaders = mutableListOf<JSONObject>()
