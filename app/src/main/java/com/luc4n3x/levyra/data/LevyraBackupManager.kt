@@ -289,7 +289,8 @@ class LevyraBackupManager(private val context: Context) {
             val playlistEntities = database.playlistDao().allPlaylists()
             val coverEntries = playlistEntities.mapNotNull { playlist ->
                 if (playlist.coverMode != PlaylistCoverMode.CUSTOM.name) return@mapNotNull null
-                val bytes = playlistCoverStore.readBackup(playlist.coverUrl) ?: return@mapNotNull null
+                val bytes = playlistCoverStore.readBackup(playlist.coverUrl)
+                    ?: throw IOException("Custom playlist cover is missing or unreadable: ${playlist.id}")
                 playlist.id to (playlistCoverBackupEntry(playlist.id) to bytes)
             }.toMap()
             if (coverEntries.size > MAX_PLAYLIST_COVER_ENTRIES ||
