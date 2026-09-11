@@ -42,11 +42,7 @@ internal fun buildPersonalizedHomeAlbumShelf(
         .filter(::isUsableAlbumTrack)
         .map(::trackToHomeAlbumHit)
 
-    val canonicalPrimaryAlbums = primaryAlbums
-        .asSequence()
-        .map(::canonicalizeHomeAlbumHit)
-
-    return (canonicalPrimaryAlbums + strictDerived + relaxedDerived)
+    return (primaryAlbums.asSequence() + strictDerived + relaxedDerived)
         .filter(::isUsableHomeAlbum)
         .distinctBy(::albumRecommendationDeduplicationKey)
         .take(HOME_ALBUM_SHELF_TARGET_SIZE)
@@ -100,19 +96,5 @@ private fun trackToHomeAlbumHit(track: Track): AlbumHit {
         metadataProvider = track.metadataProvider,
         metadataConfidence = track.metadataConfidence,
         releaseType = ReleaseType.Album
-    )
-}
-
-
-private fun canonicalizeHomeAlbumHit(album: AlbumHit): AlbumHit {
-    val currentArtist = album.artist.trim()
-    if (album.artistBrowseId.isBlank()) return album.copy(artist = currentArtist)
-    val primaryArtist = primaryArtistSegment(currentArtist).ifBlank { currentArtist }
-    if (primaryArtist == currentArtist) return album
-    return album.copy(
-        artist = primaryArtist,
-        query = listOf(album.title.trim(), primaryArtist, "album")
-            .filter(String::isNotBlank)
-            .joinToString(" ")
     )
 }
