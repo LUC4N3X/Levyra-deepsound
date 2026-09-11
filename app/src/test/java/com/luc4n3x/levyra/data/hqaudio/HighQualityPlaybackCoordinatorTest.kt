@@ -76,7 +76,7 @@ class HighQualityPlaybackCoordinatorTest {
     fun alternativeUsesItsOwnMediaCacheNamespace() {
         val result = coordinator(exactProvider()).play()
         val alternativeKey = LevyraPlaybackCacheKey.stream(result)
-        assertTrue(alternativeKey.contains("alt-jiosaavn-pW-kkdqr-320"))
+        assertTrue(alternativeKey.contains(":stream-v2:alt-"))
         assertNotEquals(LevyraPlaybackCacheKey.stream(normalTrack()), alternativeKey)
     }
 
@@ -160,9 +160,12 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
-    fun alreadyUpgradedTrackIsReturnedAsIs() {
-        val coordinator = coordinator(exactProvider())
+    fun alreadyUpgradedTrackDoesNotStartAnotherProviderLookup() {
+        val provider = exactProvider()
+        val coordinator = coordinator(provider)
         val alternative = coordinator.play()
-        assertSame(alternative, coordinator.play(requested = alternative, normal = { alternative }))
+        val searchesBefore = provider.searches.size
+        assertNull(coordinator.queryFor(alternative, isVideoMode = false, audioQuality = "Auto"))
+        assertEquals(searchesBefore, provider.searches.size)
     }
 }
