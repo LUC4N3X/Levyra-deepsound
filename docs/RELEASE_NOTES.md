@@ -1,8 +1,16 @@
-# Levyra 2.5.5
+# Levyra 2.5.6
+
+## Why 2.5.6 replaces 2.5.5
+
+Levyra 2.5.6 replaces the short-lived 2.5.5 release. After 2.5.5 shipped, a Home regression was identified in **Scelte rapide / Quick Picks**: background seed enrichment and filtering could rebuild the shelf at the wrong moment, and the paging code could drop a partial second page by rounding 11–19 available tracks down to only 10. The same large page grouping also made the Home scroll feel slightly less fluid than intended because Compose could materialize more cards than were actually visible.
+
+2.5.6 fixes that regression without changing recommendation scoring or the visual language of the Home. Quick Picks now keeps partial pages instead of discarding them, preserves the intended two-column ordering and right-edge peek, keeps artist exclusions immediate, and renders the dense shelf in smaller lazy 5-row columns so less UI work is performed while scrolling.
+
+The 2.5.5 GitHub release is withdrawn in favor of 2.5.6. Users on 2.5.5 should update directly to 2.5.6.
 
 ## Highlights
 
-Levyra 2.5.5 brings together the latest Android work around the parts of the app that are touched most often: Home, playback, lyrics, downloads and everyday automation. Home is faster and more personal, cached playback can reopen with less work, lyrics and motion artwork have richer rendering paths, and the library gains new ways to import and organize music.
+Levyra 2.5.6 brings together the latest Android work around the parts of the app that are touched most often: Home, playback, lyrics, downloads and everyday automation. Home is faster and more personal, cached playback can reopen with less work, lyrics and motion artwork have richer rendering paths, and the library gains new ways to import and organize music.
 
 The update also strengthens the less visible paths underneath those features. Preference reads no longer depend on synchronous DataStore access in normal runtime hot paths, YouTube stream recovery has broader semantic fallback coverage, and offline content is handled more deliberately across Home, exports and backups.
 
@@ -48,18 +56,18 @@ The Room database moves from schema 19 to 20 with an additive recommendation-fee
 
 ## Validation
 
-The 2.5.5 release content was prepared from the Android changes currently merged on `main` after the 2.5.3 release. The repository contains focused automated coverage for Home render stability and artist exclusions, preference-store recovery, playback cache identity and audio-quality isolation, semantic player analysis, YouTube stream recovery, Lyrics 2.0 timing and rendering helpers, motion-artwork upgrade behavior, library sorting, Spotify CSV parsing, sleep-timer scheduling, backup/offline reconciliation and the Room 19-to-20 migration.
+The 2.5.6 release content was prepared from the Android changes currently merged on `main` after the 2.5.3 release. The repository contains focused automated coverage for Home render stability and artist exclusions, preference-store recovery, playback cache identity and audio-quality isolation, semantic player analysis, YouTube stream recovery, Lyrics 2.0 timing and rendering helpers, motion-artwork upgrade behavior, library sorting, Spotify CSV parsing, sleep-timer scheduling, backup/offline reconciliation and the Room 19-to-20 migration.
 
 This metadata commit does not claim a new physical-device, Android Auto, long-session, notification, Bluetooth, bedtime-alarm or final signed-APK validation run before publication. The signed release artifact is built and verified by the repository's existing `Publish Release APK` workflow after the version commit reaches `main`.
 
 ## Versioning
 
-- Version name: `2.5.5`
-- Version code: `2050500`
+- Version name: `2.5.6`
+- Version code: `2050600`
 
-`gradle.properties`, the Android Gradle fallback, README version wiring, architecture metadata, release notes, release badge and Fastlane changelogs are aligned to 2.5.5. Levyra Desktop remains independently versioned and is not bumped by this Android release.
+`gradle.properties`, the Android Gradle fallback, README version wiring, architecture metadata, release notes, release badge and Fastlane changelogs are aligned to 2.5.6. Levyra Desktop remains independently versioned and is not bumped by this Android release.
 
-Version 2.5.4 was not published as a GitHub release; 2.5.5 is the next published Android version after 2.5.3.
+Version 2.5.4 was not published as a GitHub release. Version 2.5.5 was withdrawn after the Quick Picks and Home-scroll regression was identified; 2.5.6 is the current published Android release after 2.5.3.
 
 ## Upgrade notes
 
@@ -67,7 +75,7 @@ No manual migration is required. Existing installations move from Room schema 19
 
 ## Final note
 
-Levyra 2.5.5 makes the app feel more immediate without trading away the local-first behavior underneath it. Home reacts faster, playback has stronger recovery paths, and the new library and automation tools stay attached to the same data and playback owners already used by the app.
+Levyra 2.5.6 makes the app feel more immediate without trading away the local-first behavior underneath it. Home reacts faster, playback has stronger recovery paths, and the new library and automation tools stay attached to the same data and playback owners already used by the app.
 
 ---
 
