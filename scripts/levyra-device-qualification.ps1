@@ -19,6 +19,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $mainActivity = "com.luc4n3x.levyra.MainActivity"
 $selectedDevice = ""
+$selectedTransport = ""
 $reportRoot = if ([System.IO.Path]::IsPathRooted($ReportDirectory)) {
     $ReportDirectory
 } else {
@@ -48,41 +49,134 @@ function Invoke-Adb {
     return $lines
 }
 
+function Get-AdbTargets {
+    $rows = @(& adb devices -l 2>&1 | ForEach-Object { $_.ToString() })
+    if ($LASTEXITCODE -ne 0) {
+        throw "adb devices -l failed.`n$($rows -join "`n")"
+    }
+
+    return @(
+        $rows |
+            ForEach-Object {
+                if ($_ -match "^\s*(\S+)\s+(device|offline|unauthorized)(?:\s+(.*))?$") {
+                    $serial = $Matches[1]
+                    $state = $Matches[2]
+                    $details = $Matches[3]
+                    $transport = if ($serial -like "emulator-*") {
+                        "emulator"
+                    } elseif ($details -match "(?:^|\s)usb:\S+") {
+                        "usb"
+                    } elseif ($serial -match "_adb-tls-connect\._tcp" -or $serial -match "^.+:\d+$") {
+                        "wireless"
+                    } else {
+                        "usb"
+                    }
+
+                    [pscustomobject]@{
+                        serial = $serial
+                        state = $state
+                        transport = $transport
+                    }
+                }
+            }
+    )
+}
+
+function Connect-WirelessDebugging {
+    $services = @(& adb mdns services 2>&1 | ForEach-Object { $_.ToString() })
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+
+    $endpoints = @(
+        $services |
+            Where-Object { $_ -match "_adb-tls-connect\._tcp" } |
+            ForEach-Object {
+                $match = [regex]::Match($_, "(\[[0-9A-Fa-f:]+\]|[^\s]+):\d+\s*$")
+                if ($match.Success) {
+                    $match.Value.Trim()
+                }
+            } |
+            Sort-Object -Unique
+    )
+
+    if ($endpoints.Count -ne 1) {
+        return $false
+    }
+
+    $output = @(& adb connect $endpoints[0] 2>&1 | ForEach-Object { $_.ToString() })
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+
+    $text = $output -join "`n"
+    if ($text -notmatch "(?i)connected to|already connected to") {
+        return $false
+    }
+
+    Start-Sleep -Milliseconds 500
+    return $true
+}
+
 function Resolve-Device {
     if (-not (Get-Command adb -ErrorAction SilentlyContinue)) {
         throw "adb was not found in PATH."
     }
 
-    $rows = @(& adb devices 2>&1 | ForEach-Object { $_.ToString() })
-    if ($LASTEXITCODE -ne 0) {
-        throw "adb devices failed.`n$($rows -join "`n")"
-    }
-
-    $devices = @(
-        $rows |
-            Select-Object -Skip 1 |
-            ForEach-Object {
-                if ($_ -match "^\s*(\S+)\s+device(?:\s|$)") {
-                    $Matches[1]
-                }
-            } |
-            Where-Object { $_ }
-    )
+    $targets = @(Get-AdbTargets)
 
     if ($DeviceId) {
-        if ($DeviceId -notin $devices) {
-            throw "Requested device '$DeviceId' is not connected and authorized. Connected devices: $($devices -join ', ')"
+        $requested = $targets | Where-Object { $_.serial -eq $DeviceId } | Select-Object -First 1
+        if ($null -eq $requested -and $DeviceId -match "^.+:\d+$") {
+            @(& adb connect $DeviceId 2>&1) | Out-Null
+            Start-Sleep -Milliseconds 500
+            $targets = @(Get-AdbTargets)
+            $requested = $targets | Where-Object { $_.serial -eq $DeviceId } | Select-Object -First 1
         }
-        return $DeviceId
+        if ($null -eq $requested -or $requested.state -ne "device") {
+            $available = @($targets | ForEach-Object { "$($_.serial) [$($_.state), $($_.transport)]" })
+            throw "Requested device '$DeviceId' is not connected and authorized. Available targets: $($available -join ', ')"
+        }
+        $script:selectedTransport = $requested.transport
+        return $requested.serial
     }
 
-    if ($devices.Count -eq 0) {
-        throw "No authorized Android device is connected."
+    $authorized = @($targets | Where-Object { $_.state -eq "device" })
+    $usbTargets = @($authorized | Where-Object { $_.transport -eq "usb" })
+    if ($usbTargets.Count -eq 1) {
+        $script:selectedTransport = "usb"
+        return $usbTargets[0].serial
     }
-    if ($devices.Count -gt 1) {
-        throw "Multiple Android devices are connected. Re-run with -DeviceId. Connected devices: $($devices -join ', ')"
+    if ($usbTargets.Count -gt 1) {
+        throw "Multiple authorized USB devices are connected. Re-run with -DeviceId. USB devices: $($usbTargets.serial -join ', ')"
     }
-    return $devices[0]
+
+    $wirelessTargets = @($authorized | Where-Object { $_.transport -eq "wireless" })
+    if ($wirelessTargets.Count -eq 0 -and (Connect-WirelessDebugging)) {
+        $targets = @(Get-AdbTargets)
+        $authorized = @($targets | Where-Object { $_.state -eq "device" })
+        $wirelessTargets = @($authorized | Where-Object { $_.transport -eq "wireless" })
+    }
+    if ($wirelessTargets.Count -eq 1) {
+        $script:selectedTransport = "wireless"
+        return $wirelessTargets[0].serial
+    }
+    if ($wirelessTargets.Count -gt 1) {
+        throw "Multiple authorized wireless-debugging devices are available. Re-run with -DeviceId. Wireless devices: $($wirelessTargets.serial -join ', ')"
+    }
+
+    $emulators = @($authorized | Where-Object { $_.transport -eq "emulator" })
+    if ($emulators.Count -eq 1) {
+        $script:selectedTransport = "emulator"
+        return $emulators[0].serial
+    }
+    if ($emulators.Count -gt 1) {
+        throw "Multiple Android emulators are running. Re-run with -DeviceId. Emulators: $($emulators.serial -join ', ')"
+    }
+
+    $unavailable = @($targets | Where-Object { $_.state -ne "device" } | ForEach-Object { "$($_.serial) [$($_.state)]" })
+    $suffix = if ($unavailable.Count -gt 0) { " Unavailable targets: $($unavailable -join ', ')." } else { "" }
+    throw "No authorized USB device, wireless-debugging device, or Android emulator is available.$suffix"
 }
 
 function Invoke-GradleDebugBuild {
@@ -405,6 +499,7 @@ $report = [ordered]@{
     }
     device = [ordered]@{
         serial = $selectedDevice
+        transport = $selectedTransport
         manufacturer = Get-Prop -Name "ro.product.manufacturer"
         model = Get-Prop -Name "ro.product.model"
         androidRelease = Get-Prop -Name "ro.build.version.release"
@@ -437,7 +532,7 @@ $report | ConvertTo-Json -Depth 8 | Set-Content -Path $reportPath -Encoding utf8
 
 Write-Output ""
 Write-Output "Levyra device qualification: $($report.status)"
-Write-Output "Device: $($report.device.manufacturer) $($report.device.model) (Android $($report.device.androidRelease), SDK $($report.device.sdk))"
+Write-Output "Device: $($report.device.manufacturer) $($report.device.model) (Android $($report.device.androidRelease), SDK $($report.device.sdk), ADB $($report.device.transport))"
 Write-Output "Cold start: avg=$averageTotalTimeMs ms p50=$p50TotalTimeMs ms p95=$p95TotalTimeMs ms"
 Write-Output "Playback: requested=$($playback.requested) session=$($playback.sessionFound) reachedPlaying=$($playback.reachedPlaying) latency=$($playback.playingLatencyMs) ms"
 Write-Output "Memory: PSS=$totalPssKb KB RSS=$totalRssKb KB"
