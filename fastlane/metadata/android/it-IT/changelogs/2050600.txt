@@ -1,0 +1,1 @@
+Levyra 2.5.6 sostituisce la release 2.5.5, ritirata. Corregge un problema di Scelte rapide che, dopo filtri o aggiornamenti dei seed in background, poteva perdere una seconda pagina parziale, e rende lo scroll della Home più fluido componendo la shelf in colonne lazy più piccole. Le esclusioni degli artisti restano immediate. Include tutte le novità della 2.5.5.

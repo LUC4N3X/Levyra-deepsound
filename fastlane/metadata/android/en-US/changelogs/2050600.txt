@@ -1,0 +1,1 @@
+Levyra 2.5.6 replaces the withdrawn 2.5.5 release. It fixes a Quick Picks regression where filtering or background seed enrichment could collapse a partial second page and makes Home scrolling smoother by composing the dense shelf in smaller lazy columns. Artist exclusions still update immediately. All 2.5.5 feature work is included.
