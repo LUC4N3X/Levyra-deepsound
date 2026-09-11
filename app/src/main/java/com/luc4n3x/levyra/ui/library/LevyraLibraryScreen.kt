@@ -850,7 +850,7 @@ internal fun LevyraPlaylistDetailScreen(
     var query by rememberSaveable(playlist.id) { mutableStateOf("") }
     var searchActive by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var selectedKeys by remember(playlist.id) { mutableStateOf(emptySet<String>()) }
-    var selectionMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
+    var selectionMode by remember(playlist.id) { mutableStateOf(false) }
     var reorderMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var orderedTracks by remember(playlist.id) { mutableStateOf(playlist.tracks) }
     var renameDialog by remember { mutableStateOf(false) }
