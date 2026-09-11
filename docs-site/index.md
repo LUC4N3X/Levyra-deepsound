@@ -1,81 +1,49 @@
-<div class="levyra-hero" markdown>
+<div class="levyra-docs-intro" markdown>
 
-<div class="levyra-kicker">ANDROID · WINDOWS · OPEN SOURCE</div>
+<img class="levyra-docs-logo" src="https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/main/app/src/main/res/drawable/levyra_logo.png" alt="Levyra logo">
 
-# Hear every layer. No limits.
+# Levyra Documentation
 
-**Levyra is a native music player, stream extractor and private offline vault built around fast playback, ownership and privacy.**
+Everything you need to understand and use Levyra on **Android** and **Windows**.
 
-[Download Levyra](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest){ .md-button .md-button--primary }
-[Get started](getting-started.md){ .md-button }
-[View on GitHub](https://github.com/LUC4N3X/Levyra-deepsound){ .md-button }
-
-<div class="levyra-tech">100% Kotlin · Jetpack Compose · Compose Multiplatform · Media3 · libvlc · Zero Tracking</div>
+Use this documentation to get started, learn the main features, solve common problems, or explore how Levyra is built.
 
 </div>
 
 ## Start here
 
-<div class="grid cards" markdown>
+<div class="levyra-docs-links">
 
--   :material-rocket-launch-outline:{ .lg .middle } **Install Levyra**
+<a class="levyra-docs-link" href="getting-started/">
+<strong>Getting Started</strong>
+<span>Install Levyra, update it, and learn the basics.</span>
+</a>
 
-    ---
+<a class="levyra-docs-link" href="features/">
+<strong>Features</strong>
+<span>See what Levyra can do and how the main features work.</span>
+</a>
 
-    Android and Windows installation, updates and first launch.
+<a class="levyra-docs-link" href="troubleshooting/">
+<strong>FAQ & Troubleshooting</strong>
+<span>Find simple solutions to common problems.</span>
+</a>
 
-    [:octicons-arrow-right-24: Getting Started](getting-started.md)
-
--   :material-headphones:{ .lg .middle } **Explore the experience**
-
-    ---
-
-    Playback, discovery, lyrics, offline music, radio, Ambient and more.
-
-    [:octicons-arrow-right-24: Features](features.md)
-
--   :material-lifebuoy:{ .lg .middle } **Fix a problem**
-
-    ---
-
-    Fast answers for installation, playback, metadata, lyrics and downloads.
-
-    [:octicons-arrow-right-24: Troubleshooting](troubleshooting.md)
-
--   :material-code-braces:{ .lg .middle } **Build Levyra**
-
-    ---
-
-    Android and Windows build requirements, validation and contribution workflow.
-
-    [:octicons-arrow-right-24: Development](development.md)
+<a class="levyra-docs-link" href="development/">
+<strong>Development</strong>
+<span>Build Levyra from source and contribute to the project.</span>
+</a>
 
 </div>
 
-## What Levyra is built around
+## Learn more
 
-<div class="grid cards" markdown>
+- [Architecture](architecture.md) explains how the Android and Windows apps are structured.
+- [Roadmap](roadmap.md) shows the current engineering direction.
+- [Privacy & Data](privacy.md) explains what Levyra stores locally and which network services it can use.
 
-- **Native playback**
-  Media3 / ExoPlayer on Android and an isolated libvlc core on Windows.
+## About Levyra
 
-- **Portable offline music**
-  Downloads can remain standard tagged media files instead of being trapped in an app-only vault.
+Levyra is an open-source music application focused on native playback, music discovery, offline ownership, synced lyrics, and privacy.
 
-- **Local-first listening data**
-  Playlists, history, listening insights and settings are designed around local ownership.
-
-- **No mandatory Levyra account**
-  Core listening does not require a Levyra-hosted profile or analytics identity.
-
-</div>
-
-!!! info "Two platforms, two native runtimes"
-    Android and Windows intentionally keep platform-specific playback and release systems independent while following the same Levyra engineering principles.
-
-## Quick links
-
-[Latest release](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest) ·
-[GitHub repository](https://github.com/LUC4N3X/Levyra-deepsound) ·
-[Issues](https://github.com/LUC4N3X/Levyra-deepsound/issues) ·
-[Website](https://levyra.dpdns.org/)
+The Android and Windows apps use different native playback engines, but follow the same product principles.
