@@ -57,8 +57,12 @@ import com.luc4n3x.levyra.data.youtubeShortsRetryDelayMs
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
+import com.luc4n3x.levyra.data.albumRecommendationSeedDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.isPlausibleYoutubeMusicAlbumTitle
+import com.luc4n3x.levyra.data.homeAlbumHitFromTrack
+import com.luc4n3x.levyra.data.homeAlbumArtistFromTrack
+import com.luc4n3x.levyra.data.isCanonicalHomeAlbumHit
 import com.luc4n3x.levyra.data.RecordingIdentityMatch
 import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
@@ -3864,37 +3868,55 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val seeds = LinkedHashMap<String, AlbumRecommendationSeed>()
         fun put(seed: AlbumRecommendationSeed) {
             val cleanQuery = seed.query.trim()
-            if (cleanQuery.length < 2) return
             val normalized = seed.copy(
                 query = cleanQuery,
                 artist = seed.artist.trim(),
                 album = seed.album.trim(),
+                browseId = seed.browseId.trim(),
                 moodTags = seed.moodTags.map { it.trim() }.filter { it.length >= 2 }.toSet(),
                 weight = seed.weight.coerceIn(0, 2_000)
             )
-            val key = listOf(
-                albumRecommendationTextKey(normalized.artist),
-                albumRecommendationTextKey(normalized.album),
-                normalized.moodTags.map(::albumRecommendationTextKey).sorted().joinToString("|")
-            ).joinToString("|")
-            if (key.isBlank() || key == "||") return
+            if (normalized.query.length < 2 && normalized.browseId.isBlank()) return
+            val key = albumRecommendationSeedDeduplicationKey(normalized)
+            if (key.isBlank()) return
             val existing = seeds[key]
             if (existing == null || normalized.weight > existing.weight) seeds[key] = normalized
         }
         fun putTrack(track: Track, baseWeight: Int) {
-            val artist = track.artist.trim()
-            if (!isUsefulRecommendationArtist(artist)) return
-            val album = track.album.trim()
-            if (isUsefulRecommendationAlbum(album, track.title)) {
+            val canonicalAlbum = homeAlbumHitFromTrack(track)
+            if (canonicalAlbum != null && isUsefulRecommendationArtist(canonicalAlbum.artist)) {
                 put(
                     AlbumRecommendationSeed(
-                        query = "$album $artist album",
-                        artist = artist,
-                        album = album,
+                        query = canonicalAlbum.query,
+                        artist = canonicalAlbum.artist,
+                        album = canonicalAlbum.title,
+                        browseId = canonicalAlbum.browseId,
                         weight = baseWeight + 60
                     )
                 )
+            } else {
+                val album = track.album.trim()
+                if (
+                    track.albumBrowseId.isNotBlank() &&
+                    isUsefulRecommendationAlbum(album, track.title)
+                ) {
+                    val verifiedFallbackArtist = homeAlbumArtistFromTrack(track).orEmpty()
+                    put(
+                        AlbumRecommendationSeed(
+                            query = listOf(album, verifiedFallbackArtist, "album")
+                                .filter(String::isNotBlank)
+                                .joinToString(" "),
+                            artist = verifiedFallbackArtist,
+                            album = album,
+                            browseId = track.albumBrowseId.trim(),
+                            weight = baseWeight + 45
+                        )
+                    )
+                }
             }
+
+            val artist = track.artist.trim()
+            if (!isUsefulRecommendationArtist(artist)) return
             put(
                 AlbumRecommendationSeed(
                     query = "$artist album",
@@ -3975,7 +3997,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         state: LevyraUiState,
         limit: Int
     ): List<AlbumHit> {
-        val candidates = mergeAlbums(instant, remote).filter { isPlausibleYoutubeMusicAlbumTitle(it.title) }
+        val candidates = mergeAlbums(remote, instant)
+            .filter(::isCanonicalHomeAlbumHit)
+            .filter { isPlausibleYoutubeMusicAlbumTitle(it.title) }
         if (candidates.isEmpty()) return emptyList()
         val allSeeds = albumRecommendationSeeds(state)
         val directSeeds = allSeeds.filter { it.artist.isNotBlank() || it.album.isNotBlank() }
@@ -9395,67 +9419,47 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         limit: Int,
         profile: SmartMusicProfile = _state.value.smartProfile
     ): List<AlbumHit> {
-        val primaryCandidates = mergeTracks(emptyList(), primary).filter(::isInstantAlbumCandidate)
-        val candidates = if (primaryCandidates.isNotEmpty()) primaryCandidates else {
-            mergeTracks(emptyList(), secondary).filter(::isInstantAlbumCandidate)
-        }
-        return candidates
-            .asSequence()
-            .sortedWith(compareByDescending<Track> { smartAlbumScore(it.album, it.artist, profile) }.thenByDescending { it.replayScore + it.cacheScore })
-            .distinctBy { "${it.album.trim().lowercase()}|${it.artist.trim().lowercase()}" }
-            .map { track ->
-                val albumTitle = track.album.trim()
-                val artistName = track.artist.trim()
-                AlbumHit(
-                    title = albumTitle,
-                    artist = artistName,
-                    year = "",
-                    thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-                    query = "$albumTitle $artistName album",
-                    browseId = ""
-                )
+        fun candidates(source: List<Track>): List<Pair<Track, AlbumHit>> =
+            mergeTracks(emptyList(), source).mapNotNull { track ->
+                homeAlbumHitFromTrack(track)?.let { album -> track to album }
             }
+
+        val primaryCandidates = candidates(primary)
+        val albumCandidates = primaryCandidates + candidates(secondary)
+
+        return albumCandidates
+            .asSequence()
+            .sortedWith(
+                compareByDescending<Pair<Track, AlbumHit>> {
+                    smartAlbumScore(it.second.title, it.second.artist, profile)
+                }.thenByDescending { it.first.replayScore + it.first.cacheScore }
+            )
+            .distinctBy { albumRecommendationDeduplicationKey(it.second) }
+            .map { it.second }
             .take(limit)
             .toList()
     }
 
-    private fun isInstantAlbumCandidate(track: Track): Boolean {
-        val title = track.title.trim()
-        val album = track.album.trim()
-        val artist = track.artist.trim()
-        if (album.length < 2 || artist.length < 2) return false
-        if (album.equals(title, ignoreCase = true)) return false
-        if (album.equals("YouTube", ignoreCase = true) || album.equals("YouTube Music", ignoreCase = true)) return false
-        if (artist.equals("YouTube", ignoreCase = true) || artist.equals("YouTube Music", ignoreCase = true)) return false
-        val lowerAlbum = album.lowercase()
-        if (lowerAlbum.contains("single") || lowerAlbum.contains("singolo") || lowerAlbum == "ep" || lowerAlbum.endsWith(" ep") || lowerAlbum.contains(" ep ")) return false
-        val art = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.trim()
-        if (art.isBlank()) return false
-        val lowerArt = art.lowercase()
-        val looksLikeVideoFrame = lowerArt.contains("/vi/") ||
-            lowerArt.contains("/vi_webp/") ||
-            lowerArt.contains("ytimg.com/an_webp") ||
-            lowerArt.contains("hqdefault") ||
-            lowerArt.contains("mqdefault") ||
-            lowerArt.contains("sddefault") ||
-            lowerArt.contains("maxresdefault") ||
-            lowerArt.contains("hq720") ||
-            lowerArt.endsWith("default.jpg") ||
-            lowerArt.endsWith("default.webp")
-        return !looksLikeVideoFrame
-    }
-
     private fun mergeAlbums(primary: List<AlbumHit>, secondary: List<AlbumHit>): List<AlbumHit> {
         val map = LinkedHashMap<String, AlbumHit>()
-        (primary + secondary).forEach { album ->
+
+        primary.forEach { album ->
+            if (album.title.isBlank() || album.artist.isBlank() || album.thumbnailUrl.isBlank()) return@forEach
+            map.putIfAbsent(albumRecommendationDeduplicationKey(album), album)
+        }
+
+        secondary.forEach { album ->
             if (album.title.isBlank() || album.artist.isBlank() || album.thumbnailUrl.isBlank()) return@forEach
             val key = albumRecommendationDeduplicationKey(album)
-            val existing = map[key]
-            val shouldReplace = existing == null ||
-                album.metadataConfidence > existing.metadataConfidence ||
-                (existing.browseId.isBlank() && album.browseId.isNotBlank()) ||
-                (existing.upc.isBlank() && album.upc.isNotBlank())
-            if (shouldReplace) map[key] = album
+            val remote = map[key]
+            if (remote == null) {
+                map[key] = album
+            } else {
+                map[key] = remote.copy(
+                    browseId = remote.browseId.ifBlank { album.browseId },
+                    upc = remote.upc.ifBlank { album.upc }
+                )
+            }
         }
         return map.values.toList()
     }

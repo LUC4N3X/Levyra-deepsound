@@ -426,6 +426,7 @@ data class AlbumRecommendationSeed(
     val query: String,
     val artist: String = "",
     val album: String = "",
+    val browseId: String = "",
     val moodTags: Set<String> = emptySet(),
     val weight: Int = 0
 )
