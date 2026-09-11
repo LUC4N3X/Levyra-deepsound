@@ -721,7 +721,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                         canonicalUrl = item.optString("canonicalUrl").trim(),
                         metadataProvider = item.optString("metadataProvider").trim(),
                         metadataConfidence = item.optInt("metadataConfidence").coerceIn(0, 100)
-                    )
+                    ).takeIf(::isCanonicalHomeAlbumHit)
                 }
             }
         }.onFailure { Timber.w(it, "Home albums restore failed") }.getOrDefault(emptyList())

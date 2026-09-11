@@ -59,6 +59,151 @@ class HomeAlbumShelfEngineTest {
         assertTrue(result.size >= expectedMinimumShelfSize)
     }
 
+    @Test
+    fun multiArtistTrackCreditsNeverCreateAlbumCardsDirectly() {
+        val cases = listOf(
+            "Madame, Marracash",
+            "Shiva feat. Geolier",
+            "Alpha x Beta"
+        )
+
+        cases.forEachIndexed { index, credit ->
+            val album = homeAlbumHitFromTrack(
+                track(
+                    id = "multi-$index",
+                    album = "Album $index",
+                    artist = credit,
+                    artistBrowseIds = listOf("MPLA_PRIMARY_$index", "MPLA_GUEST_$index")
+                )
+            )
+
+            assertEquals(null, album)
+        }
+    }
+
+    @Test
+    fun ambiguousTrackCreditWithoutCanonicalArtistReferencesIsRejected() {
+        val album = homeAlbumHitFromTrack(
+            track(
+                id = "ambiguous",
+                album = "Disincanto",
+                artist = "Madame, Marracash",
+                artistBrowseIds = emptyList()
+            )
+        )
+
+        assertEquals(null, album)
+    }
+
+    @Test
+    fun legacyCachedAlbumWithoutCanonicalIdentityIsRejected() {
+        val legacy = AlbumHit(
+            title = "Disincanto",
+            artist = "Madame, Marracash",
+            year = "",
+            thumbnailUrl = "https://example.com/disincanto.jpg",
+            query = "Disincanto Madame Marracash album"
+        )
+
+        assertTrue(!isCanonicalHomeAlbumHit(legacy))
+    }
+
+    @Test
+    fun trackWithoutCanonicalAlbumIdentityCannotBecomeAnAlbumCard() {
+        val album = homeAlbumHitFromTrack(
+            track(
+                id = "no-album-id",
+                album = "Invented Album",
+                artist = "Artist",
+                albumBrowseId = ""
+            )
+        )
+
+        assertEquals(null, album)
+    }
+
+    @Test
+    fun simpleSingleArtistTrackCanStillCreateCanonicalAlbumCard() {
+        val album = homeAlbumHitFromTrack(
+            track(
+                id = "solo",
+                album = "Solo Album",
+                artist = "Solo Artist",
+                artistBrowseIds = listOf("MPLA_SOLO")
+            )
+        )
+
+        assertEquals("Solo Album", album?.title)
+        assertEquals("Solo Artist", album?.artist)
+        assertEquals("MPLA_SOLO", album?.artistBrowseId)
+    }
+
+    @Test
+    fun singlesAndEpsCannotEnterAlbumForYou() {
+        val single = homeAlbumHitFromTrack(
+            track(
+                id = "single",
+                album = "Example Single",
+                artist = "Artist"
+            )
+        )
+        val ep = homeAlbumHitFromTrack(
+            track(
+                id = "ep",
+                album = "Example EP",
+                artist = "Artist"
+            )
+        )
+
+        assertEquals(null, single)
+        assertEquals(null, ep)
+    }
+
+    @Test
+    fun authoritativeCollaborativeAlbumEntityKeepsAllAlbumLevelArtists() {
+        val collaborative = album("Santana Money Gang", "Sfera Ebbasta, Shiva")
+            .copy(artistBrowseId = "MPLA_SFERA")
+
+        val result = buildPersonalizedHomeAlbumShelf(
+            primaryAlbums = listOf(collaborative),
+            personalTracks = emptyList(),
+            recentTracks = emptyList(),
+            favoriteTracks = emptyList(),
+            quickPickTracks = emptyList(),
+            localizedReleaseTracks = emptyList(),
+            localizedSections = emptyList(),
+            chartTracks = emptyList(),
+            fallbackTracks = emptyList()
+        )
+
+        assertEquals("Santana Money Gang", result.single().title)
+        assertEquals("Sfera Ebbasta, Shiva", result.single().artist)
+    }
+
+    @Test
+    fun trackTitleCannotMasqueradeAsAlbumAfterCreditNormalization() {
+        val result = buildPersonalizedHomeAlbumShelf(
+            primaryAlbums = emptyList(),
+            personalTracks = listOf(
+                track(
+                    id = "per-noi",
+                    album = "PER NOI",
+                    artist = "Geolier",
+                    title = "PER NOI feat. Sfera Ebbasta"
+                )
+            ),
+            recentTracks = emptyList(),
+            favoriteTracks = emptyList(),
+            quickPickTracks = emptyList(),
+            localizedReleaseTracks = emptyList(),
+            localizedSections = emptyList(),
+            chartTracks = emptyList(),
+            fallbackTracks = emptyList()
+        )
+
+        assertTrue(result.none { it.title.equals("PER NOI", ignoreCase = true) })
+    }
+
     private fun album(title: String, artist: String): AlbumHit = AlbumHit(
         title = title,
         artist = artist,
@@ -68,9 +213,16 @@ class HomeAlbumShelfEngineTest {
         browseId = "MPREb_${title.replace(' ', '_')}"
     )
 
-    private fun track(id: String, album: String, artist: String): Track = Track(
+    private fun track(
+        id: String,
+        album: String,
+        artist: String,
+        title: String = "$album Song",
+        artistBrowseIds: List<String> = listOf("UC_$id"),
+        albumBrowseId: String = "MPREb_$id"
+    ): Track = Track(
         id = id,
-        title = "$album Song",
+        title = title,
         artist = artist,
         album = album,
         durationMs = 180_000L,
@@ -86,7 +238,7 @@ class HomeAlbumShelfEngineTest {
         cacheScore = 50,
         accentStart = 0xFF3366FF.toInt(),
         accentEnd = 0xFF6633FF.toInt(),
-        albumBrowseId = "MPREb_$id",
-        artistBrowseIds = listOf("UC_$id")
+        albumBrowseId = albumBrowseId,
+        artistBrowseIds = artistBrowseIds
     )
 }

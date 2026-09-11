@@ -1,8 +1,11 @@
 package com.luc4n3x.levyra.domain
 
 import java.util.Locale
+import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
+
+private val LISTENING_SIGNAL_WHITESPACE = Regex("""\s+""")
 
 data class ListeningSignalWeights(
     val completion: Int = 40,
@@ -97,6 +100,7 @@ data class ListeningSignalProfile(
     }
 
     fun isSuppressed(track: Track): Boolean {
+        if (feedback.isExplicitlyAvoided(track)) return true
         val key = ListenIdentity.trackKey(track.id, track.title, track.artist)
         if (key in feedback.preferredTrackKeys) return false
         if (key in favoriteKeys || key in playlistKeys) return false
@@ -272,19 +276,29 @@ object ListeningSignalRanker {
     ): List<Track> {
         if (candidates.isEmpty()) return emptyList()
         val max = limit.coerceAtLeast(1)
-        if (!profile.hasSignal) return candidates.take(max)
+        val eligibleCandidates = candidates.filterNot(profile.feedback::isExplicitlyAvoided)
+        if (eligibleCandidates.isEmpty()) return emptyList()
 
         val contextKeys = ListeningSignalEngine.splitArtists(contextArtist)
             .mapTo(LinkedHashSet(), ListenIdentity::artistKey)
             .filterTo(LinkedHashSet(), String::isNotBlank)
+        val smartOrbitDiversity = !dropSuppressed && contextKeys.isEmpty()
+
+        if (!profile.hasSignal) {
+            if (!smartOrbitDiversity) return eligibleCandidates.take(max)
+            val unscored = eligibleCandidates.mapIndexed { index, candidate ->
+                ScoredCandidate(track = candidate, score = 0, originalIndex = index)
+            }
+            return diversify(unscored, max, artistRunLimit, contextKeys, smartOrbitDiversity = true)
+        }
 
         val pool = if (!dropSuppressed) {
-            candidates
+            eligibleCandidates
         } else {
-            candidates.filterNot { candidate ->
+            eligibleCandidates.filterNot { candidate ->
                 if (matchesContext(candidate, contextKeys)) return@filterNot false
                 profile.isSuppressed(candidate) || profile.isArtistSuppressed(candidate.artist)
-            }.ifEmpty { candidates }
+            }.ifEmpty { eligibleCandidates }
         }
 
         val scored = pool.mapIndexed { index, candidate ->
@@ -295,10 +309,89 @@ object ListeningSignalRanker {
             )
         }.sortedWith(compareByDescending<ScoredCandidate> { it.score }.thenBy { it.originalIndex })
 
-        return diversify(scored, max, artistRunLimit, contextKeys)
+        return diversify(scored, max, artistRunLimit, contextKeys, smartOrbitDiversity)
     }
 
     private fun diversify(
+        scored: List<ScoredCandidate>,
+        limit: Int,
+        artistRunLimit: Int,
+        contextKeys: Set<String>,
+        smartOrbitDiversity: Boolean
+    ): List<Track> {
+        if (!smartOrbitDiversity) {
+            return diversifyRuns(scored, limit, artistRunLimit, contextKeys)
+        }
+
+        val target = min(limit, scored.size)
+        val selected = ArrayList<Track>(target)
+        val pending = scored.toMutableList()
+        val artistCounts = HashMap<String, Int>()
+        val albumCounts = HashMap<String, Int>()
+        val moodCounts = HashMap<String, Int>()
+        val moodLimit = max(1, ceil(target * SMART_ORBIT_MOOD_CAP_RATIO).toInt())
+        var previousArtistKey = ""
+        var consecutiveArtistCount = 0
+
+        val phases = listOf(
+            DiversityPolicy(true, true, true, true),
+            DiversityPolicy(true, true, false, true),
+            DiversityPolicy(true, false, false, true),
+            DiversityPolicy(false, false, false, true),
+            DiversityPolicy(false, false, false, false)
+        )
+
+        for (policy in phases) {
+            while (selected.size < target && pending.isNotEmpty()) {
+                val index = pending.indexOfFirst { candidate ->
+                    canSelectSmartOrbitCandidate(
+                        track = candidate.track,
+                        policy = policy,
+                        artistCounts = artistCounts,
+                        albumCounts = albumCounts,
+                        moodCounts = moodCounts,
+                        moodLimit = moodLimit,
+                        previousArtistKey = previousArtistKey,
+                        consecutiveArtistCount = consecutiveArtistCount,
+                        artistRunLimit = artistRunLimit
+                    )
+                }
+                if (index < 0) break
+
+                val candidate = pending.removeAt(index).track
+                selected += candidate
+
+                val artistKey = primaryArtistKey(candidate.artist)
+                if (artistKey.isNotBlank()) {
+                    artistCounts[artistKey] = (artistCounts[artistKey] ?: 0) + 1
+                }
+
+                val albumKey = albumKey(candidate)
+                if (albumKey.isNotBlank()) {
+                    albumCounts[albumKey] = (albumCounts[albumKey] ?: 0) + 1
+                }
+
+                moodKeys(candidate).forEach { moodKey ->
+                    moodCounts[moodKey] = (moodCounts[moodKey] ?: 0) + 1
+                }
+
+                if (artistKey.isBlank()) {
+                    previousArtistKey = ""
+                    consecutiveArtistCount = 0
+                } else if (artistKey == previousArtistKey) {
+                    consecutiveArtistCount += 1
+                } else {
+                    previousArtistKey = artistKey
+                    consecutiveArtistCount = 1
+                }
+            }
+            if (selected.size >= target) break
+        }
+
+        return selected
+    }
+
+    private fun diversifyRuns(
         scored: List<ScoredCandidate>,
         limit: Int,
         artistRunLimit: Int,
@@ -336,6 +429,55 @@ object ListeningSignalRanker {
         return selected
     }
 
+    private fun canSelectSmartOrbitCandidate(
+        track: Track,
+        policy: DiversityPolicy,
+        artistCounts: Map<String, Int>,
+        albumCounts: Map<String, Int>,
+        moodCounts: Map<String, Int>,
+        moodLimit: Int,
+        previousArtistKey: String,
+        consecutiveArtistCount: Int,
+        artistRunLimit: Int
+    ): Boolean {
+        val artistKey = primaryArtistKey(track.artist)
+        if (
+            policy.enforceArtistCap &&
+            artistKey.isNotBlank() &&
+            (artistCounts[artistKey] ?: 0) >= SMART_ORBIT_ARTIST_CAP
+        ) {
+            return false
+        }
+
+        val albumKey = albumKey(track)
+        if (
+            policy.enforceAlbumCap &&
+            albumKey.isNotBlank() &&
+            (albumCounts[albumKey] ?: 0) >= SMART_ORBIT_ALBUM_CAP
+        ) {
+            return false
+        }
+
+        val moods = moodKeys(track)
+        if (
+            policy.enforceMoodCap &&
+            moods.any { moodKey -> (moodCounts[moodKey] ?: 0) >= moodLimit }
+        ) {
+            return false
+        }
+
+        val runCap = artistRunLimit.coerceAtLeast(1)
+        if (
+            policy.enforceRunCap &&
+            artistKey.isNotBlank() &&
+            artistKey == previousArtistKey &&
+            consecutiveArtistCount >= runCap
+        ) {
+            return false
+        }
+        return true
+    }
+
     private fun matchesContext(track: Track, contextKeys: Set<String>): Boolean {
         if (contextKeys.isEmpty()) return false
         return ListeningSignalEngine.splitArtists(track.artist)
@@ -345,11 +487,52 @@ object ListeningSignalRanker {
     private fun primaryArtistKey(artist: String): String =
         ListeningSignalEngine.splitArtists(artist).firstOrNull()?.let(ListenIdentity::artistKey).orEmpty()
 
+    private fun albumKey(track: Track): String {
+        val browseId = track.albumBrowseId.trim().lowercase(Locale.ROOT)
+        if (browseId.isNotBlank()) return "browse:$browseId"
+
+        val album = track.album.trim().replace(LISTENING_SIGNAL_WHITESPACE, " ").lowercase(Locale.ROOT)
+        if (album.isBlank()) return ""
+        return "${primaryArtistKey(track.artist)}|$album"
+    }
+
+    private fun moodKeys(track: Track): Set<String> = track.moodTags
+        .asSequence()
+        .map { tag ->
+            tag.trim()
+                .replace('_', ' ')
+                .replace(LISTENING_SIGNAL_WHITESPACE, " ")
+                .lowercase(Locale.ROOT)
+        }
+        .filter { it.isNotBlank() && it !in GENERIC_MOOD_TAGS }
+        .toSortedSet()
+
     private data class ScoredCandidate(
         val track: Track,
         val score: Int,
         val originalIndex: Int
     )
 
+    private data class DiversityPolicy(
+        val enforceArtistCap: Boolean,
+        val enforceAlbumCap: Boolean,
+        val enforceMoodCap: Boolean,
+        val enforceRunCap: Boolean
+    )
+
+    private val GENERIC_MOOD_TAGS = setOf(
+        "music",
+        "youtube",
+        "video",
+        "shared",
+        "offline",
+        "download",
+        "hit",
+        "local"
+    )
+
+    private const val SMART_ORBIT_ARTIST_CAP = 2
+    private const val SMART_ORBIT_ALBUM_CAP = 1
+    private const val SMART_ORBIT_MOOD_CAP_RATIO = 0.35
     private const val CONTEXT_BONUS = 240
 }
