@@ -173,13 +173,13 @@ internal object AlternativeTrackText {
         var current = value
         repeat(2) {
             current = htmlEntity.replace(current) { match ->
-                val token = match.groupValues[1]
+                val entity = match.groupValues[1]
                 when {
-                    token.startsWith("#x") || token.startsWith("#X") ->
-                        token.substring(2).toIntOrNull(16)?.let(::codePointText) ?: match.value
-                    token.startsWith("#") ->
-                        token.substring(1).toIntOrNull()?.let(::codePointText) ?: match.value
-                    else -> namedEntities[token.lowercase(Locale.ROOT)] ?: match.value
+                    entity.startsWith("#x") || entity.startsWith("#X") ->
+                        entity.substring(2).toIntOrNull(16)?.let(::codePointText) ?: match.value
+                    entity.startsWith("#") ->
+                        entity.substring(1).toIntOrNull()?.let(::codePointText) ?: match.value
+                    else -> namedEntities[entity.lowercase(Locale.ROOT)] ?: match.value
                 }
             }
         }

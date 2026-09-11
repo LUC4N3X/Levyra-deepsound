@@ -22,9 +22,9 @@ class JioSaavnEndpointsTest {
 
     @Test
     fun mediaAuthorizationPreservesEncodedTokenCharacters() {
-        val token = "ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyT79OrPehdsFwZi/fqnWtzOD6rU74/VgN+wza9=="
-        val url = JioSaavnEndpoints.authorizeMedia(token, AudioQualityTier.KBPS_320).toHttpUrl()
-        assertEquals(token, url.queryParameter("url"))
+        val mediaToken = "dummy-media-token-payload-ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyT79OrPehdsFwZi/fqnWtzOD6rU74/VgN+wza9=="
+        val url = JioSaavnEndpoints.authorizeMedia(mediaToken, AudioQualityTier.KBPS_320).toHttpUrl()
+        assertEquals(mediaToken, url.queryParameter("url"))
         assertEquals("320", url.queryParameter("bitrate"))
         assertEquals("song.generateAuthToken", url.queryParameter("__call"))
     }
