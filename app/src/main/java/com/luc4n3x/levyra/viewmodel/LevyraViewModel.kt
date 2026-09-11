@@ -100,6 +100,7 @@ import com.luc4n3x.levyra.ui.i18n.playlistImportAlreadyRunningMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportStartedMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportSuccessMessage
+import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ExcludedArtist
@@ -4677,7 +4678,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun addToQueueLocal(track: Track) {
         queueEngine.addLast(track)
         refreshQueuePrefetch()
-        _state.update { it.copy(offlineExportMessage = "Aggiunto alla coda: ${track.title}") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update { it.copy(offlineExportMessage = "${strings.addToQueue}: ${track.title}") }
     }
 
     fun addTracksToQueue(tracks: List<Track>) {
@@ -4689,7 +4691,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         queueEngine.addLast(cleanTracks)
         refreshQueuePrefetch()
-        _state.update { it.copy(offlineExportMessage = "Aggiunti alla coda: ${cleanTracks.size} brani") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update {
+            it.copy(offlineExportMessage = "${strings.addToQueue}: ${strings.formatTrackCount(cleanTracks.size)}")
+        }
     }
 
     fun setPlaylistCover(playlistId: String, source: Uri, crop: PlaylistCoverCrop) {
@@ -4702,7 +4707,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 throw cancelled
             } catch (error: Exception) {
                 Timber.w(error, "Playlist cover update failed")
-                _state.update { it.copy(offlineExportMessage = "Impossibile aggiornare la copertina") }
+                val message = LevyraStrings.forCode(_state.value.languageCode).playlistProCopy().coverUpdateFailed
+                _state.update { it.copy(offlineExportMessage = message) }
             }
         }
     }
@@ -4724,7 +4730,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         queueEngine.playNext(cleanTracks)
         refreshQueuePrefetch()
-        _state.update { it.copy(offlineExportMessage = "Riproduci dopo: ${cleanTracks.size} brani") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update {
+            it.copy(offlineExportMessage = "${strings.playNext}: ${strings.formatTrackCount(cleanTracks.size)}")
+        }
     }
 
     fun playNext(track: Track) {
@@ -4734,7 +4743,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         queueEngine.playNext(track)
         refreshQueuePrefetch()
-        _state.update { it.copy(offlineExportMessage = "Riproduci dopo: ${track.title}") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update { it.copy(offlineExportMessage = "${strings.playNext}: ${track.title}") }
     }
 
     fun removeFromQueue(index: Int) {
