@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="172" height="40" viewBox="0 0 172 40" role="img" aria-label="Levyra Wiki">
+<title>Levyra Wiki</title>
+<defs>
+  <linearGradient id="wiki-bg-light" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".58" stop-color="#F8FAFC"/><stop offset="1" stop-color="#F1F5F9"/></linearGradient>
+  <linearGradient id="wiki-accent-light" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A78BFA"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
+</defs>
+<rect x=".5" y=".5" width="171" height="39" rx="12" fill="url(#wiki-bg-light)" stroke="#E2E8F0"/>
+<path d="M13 1h146" stroke="#0F172A" stroke-opacity=".05" stroke-linecap="round"/>
+<rect x="2" y="9" width="3" height="22" rx="1.5" fill="url(#wiki-accent-light)"/>
+<circle cx="22" cy="20" r="11" fill="#A78BFA" fill-opacity=".12" stroke="#A78BFA" stroke-opacity=".35"/>
+<g transform="translate(14 12)" fill="none" stroke="url(#wiki-accent-light)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 3.5h6.2A2.8 2.8 0 0 1 12 6.3V13H5.8A2.8 2.8 0 0 0 3 15.8V3.5Z"/>
+  <path d="M13 3.5H9.8A2.8 2.8 0 0 0 7 6.3"/>
+</g>
+<text x="42" y="24.1" fill="#0F172A" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11.4" font-weight="800" letter-spacing=".12">Wiki</text>
+<rect x="103" y="6" width="62" height="28" rx="9" fill="url(#wiki-accent-light)"/>
+<rect x="103.5" y="6.5" width="61" height="27" rx="8.5" fill="none" stroke="#FFFFFF" stroke-opacity=".35"/>
+<text x="134" y="24.2" text-anchor="middle" fill="#FFFFFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11" font-weight="900">Docs</text>
+</svg>
