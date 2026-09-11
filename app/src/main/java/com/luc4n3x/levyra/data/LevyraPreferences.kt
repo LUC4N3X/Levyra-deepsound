@@ -474,7 +474,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     fun saveHomeAlbums(albums: List<AlbumHit>, languageCode: String = languageCode()) {
         val array = JSONArray()
-        albums.take(14).forEach { album ->
+        albums.asSequence()
+            .filter(::isSafeCachedHomeAlbumHit)
+            .take(14)
+            .forEach { album ->
             array.put(
                 JSONObject()
                     .put("title", album.title)
@@ -721,7 +724,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                         canonicalUrl = item.optString("canonicalUrl").trim(),
                         metadataProvider = item.optString("metadataProvider").trim(),
                         metadataConfidence = item.optInt("metadataConfidence").coerceIn(0, 100)
-                    ).takeIf(::isCanonicalHomeAlbumHit)
+                    ).takeIf(::isSafeCachedHomeAlbumHit)
                 }
             }
         }.onFailure { Timber.w(it, "Home albums restore failed") }.getOrDefault(emptyList())
