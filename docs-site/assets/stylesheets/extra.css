@@ -1,0 +1,119 @@
+:root {
+  --levyra-violet: #8b5cf6;
+  --levyra-violet-soft: #a78bfa;
+  --levyra-blue: #38bdf8;
+  --levyra-ink: #070a12;
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #ffffff;
+  --md-primary-bg-color: #111827;
+  --md-accent-fg-color: #7c3aed;
+  --md-typeset-a-color: #6d28d9;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #070a12;
+  --md-default-fg-color: #edf2ff;
+  --md-primary-fg-color: #090d16;
+  --md-primary-bg-color: #f8fafc;
+  --md-accent-fg-color: #a78bfa;
+  --md-typeset-a-color: #a78bfa;
+  --md-code-bg-color: #0d1320;
+}
+
+.md-header {
+  backdrop-filter: blur(18px);
+  background: color-mix(in srgb, var(--md-primary-fg-color) 88%, transparent);
+}
+
+.md-tabs {
+  background: color-mix(in srgb, var(--md-primary-fg-color) 94%, transparent);
+}
+
+.md-main__inner {
+  margin-top: 1.25rem;
+}
+
+.levyra-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(2rem, 6vw, 4.8rem);
+  margin: .6rem 0 2rem;
+  border: 1px solid color-mix(in srgb, var(--levyra-violet-soft) 30%, transparent);
+  border-radius: 1.4rem;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(139, 92, 246, .28), transparent 34%),
+    radial-gradient(circle at 90% 15%, rgba(56, 189, 248, .18), transparent 30%),
+    linear-gradient(145deg, rgba(15, 23, 42, .98), rgba(7, 10, 18, .98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .24);
+  color: #f8fafc;
+}
+
+.levyra-hero h1 {
+  max-width: 760px;
+  margin: .6rem 0 .7rem;
+  font-size: clamp(2.35rem, 7vw, 5rem);
+  line-height: .98;
+  letter-spacing: -.045em;
+  color: #ffffff;
+}
+
+.levyra-hero > p {
+  max-width: 760px;
+  font-size: 1.05rem;
+  color: #dbeafe;
+}
+
+.levyra-hero .md-button {
+  margin-top: .65rem;
+  margin-right: .4rem;
+  border-color: rgba(255,255,255,.22);
+  color: #ffffff;
+}
+
+.levyra-hero .md-button--primary {
+  border-color: transparent;
+  background: linear-gradient(90deg, var(--levyra-violet), #6d5dfc);
+}
+
+.levyra-kicker {
+  display: inline-flex;
+  padding: .32rem .65rem;
+  border: 1px solid rgba(167, 139, 250, .28);
+  border-radius: 999px;
+  background: rgba(139, 92, 246, .09);
+  color: #c4b5fd;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.levyra-tech {
+  margin-top: 1.5rem;
+  color: #94a3b8;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.grid.cards > ul > li,
+.grid.cards > .card {
+  border-radius: 1rem;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.grid.cards > ul > li:hover,
+.grid.cards > .card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--levyra-violet-soft) 45%, transparent);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .08);
+}
+
+[data-md-color-scheme="slate"] .grid.cards > ul > li {
+  background: linear-gradient(145deg, rgba(17, 24, 39, .75), rgba(10, 14, 24, .8));
+}
+
+.md-footer {
+  background: #070a12;
+}

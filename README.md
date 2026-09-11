@@ -31,10 +31,10 @@
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-stars.svg">
     <img src="docs/assets/levyra-stars.svg" alt="GitHub Stars">
   </picture></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/wiki"><picture>
+  <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture>
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-light.svg">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki.svg">
-    <img src="docs/assets/levyra-wiki.svg" alt="Levyra Wiki">
+    <img src="docs/assets/levyra-wiki.svg" alt="Levyra Documentation">
   </picture></a>
 </p>
 
@@ -503,7 +503,7 @@ levyraDesktopVersion=1.2.0
 ## ✦ Contributing
 We welcome community contributions, bug fixes, localization, and performance enhancements.
 
-For build and contributor docs, see the [Levyra Wiki](https://github.com/LUC4N3X/Levyra-deepsound/wiki).
+For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ### Engineering Workflow
 
