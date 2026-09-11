@@ -68,9 +68,9 @@ On Windows, the repository includes a repeatable ADB qualification harness for a
 .\scripts\levyra-device-qualification.ps1
 ```
 
-The harness builds and installs the current debug APK unless asked not to, selects exactly one authorized device, performs repeated cold starts, inspects Levyra's MediaSession, captures process memory, and stores focused logcat and diagnostic dumps.
+The harness builds and installs the current debug APK unless asked not to, performs repeated cold starts, inspects Levyra's MediaSession, captures process memory, and stores focused logcat and diagnostic dumps. Target selection follows a fixed fallback order: an authorized USB device first, then Android Wireless Debugging, then a running Android emulator. If no USB target is available, the harness also tries to reconnect one already-paired Wireless Debugging device discovered through ADB mDNS before falling back to the emulator.
 
-If more than one device is connected, select the target explicitly:
+Wireless pairing remains an Android/ADB setup step; the harness never handles pairing codes or stores pairing secrets. If more than one target exists at the selected priority, select the target explicitly:
 
 ```powershell
 .\scripts\levyra-device-qualification.ps1 -DeviceId <serial>
