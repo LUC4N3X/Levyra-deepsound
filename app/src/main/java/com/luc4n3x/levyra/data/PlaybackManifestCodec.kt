@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.AlternativeAudioSource
+import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
@@ -45,6 +47,7 @@ object PlaybackManifestCodec {
             .put("loudnessDb", manifest.loudnessDb)
             .put("perceptualLoudnessDb", manifest.perceptualLoudnessDb)
             .put("provenance", manifest.provenance?.toJson())
+            .put("alternativeSource", manifest.alternativeSource?.toJson())
             .put("streams", streams)
             .toString()
     }
@@ -94,7 +97,8 @@ object PlaybackManifestCodec {
             streams = streams,
             loudnessDb = root.optNullableFloat("loudnessDb"),
             perceptualLoudnessDb = root.optNullableFloat("perceptualLoudnessDb"),
-            provenance = root.optJSONObject("provenance")?.toPlaybackStreamProvenance()
+            provenance = root.optJSONObject("provenance")?.toPlaybackStreamProvenance(),
+            alternativeSource = root.optJSONObject("alternativeSource")?.toAlternativeAudioSource()
         )
     }.getOrNull()
 }
@@ -139,6 +143,27 @@ private fun JSONObject.toPlaybackStreamProvenance(): PlaybackStreamProvenance = 
     resolvedAtMs = optLong("resolvedAtMs", 0L),
     expiresAtMs = optLong("expiresAtMs", 0L)
 )
+
+private fun AlternativeAudioSource.toJson(): JSONObject = JSONObject()
+    .put("providerId", providerId)
+    .put("providerTrackId", providerTrackId)
+    .put("bitrateKbps", bitrateKbps)
+    .put("verdict", verdict.name)
+    .put("confidence", confidence)
+
+private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
+    val providerId = optString("providerId")
+    val providerTrackId = optString("providerTrackId")
+    val verdict = optEnum("verdict", AlternativeMatchVerdict.REJECTED)
+    if (providerId.isBlank() || providerTrackId.isBlank() || verdict == AlternativeMatchVerdict.REJECTED) return null
+    return AlternativeAudioSource(
+        providerId = providerId,
+        providerTrackId = providerTrackId,
+        bitrateKbps = optInt("bitrateKbps", 0),
+        verdict = verdict,
+        confidence = optInt("confidence", 0)
+    )
+}
 
 private inline fun <reified T : Enum<T>> JSONObject.optEnum(key: String, fallback: T): T {
     return enumValues<T>().firstOrNull { it.name == optString(key) } ?: fallback

@@ -132,6 +132,43 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ---
 
+## ✦ New in 2.5.7 · Verified High-Quality Audio
+
+<div align="center">
+
+### 🎧 Higher fidelity, without gambling on the wrong song.
+
+<p><sub>Levyra can now verify an alternative high-quality audio source before playback, while keeping the original track identity, metadata, queue state, artwork, lyrics, history, and recommendations untouched.</sub></p>
+
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="33%">
+      <h3>🎚️ <b>Verified HQ Routing</b></h3>
+      <p><sub>Levyra can resolve a genuine higher-bitrate stream — up to 320 kbps when available and validated — with automatic 160/96 kbps fallback when the requested tier is not actually usable.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>🧬 <b>Identity-First Matching</b></h3>
+      <p><sub>Title, primary and featured artists, album, duration, explicit state, ISRC and version markers are checked before an alternative source is accepted. Remix, live, acoustic, sped-up and ambiguous matches are rejected.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>🛡️ <b>Seamless Fallback</b></h3>
+      <p><sub>If the verified source is unavailable, stale, restricted or not meaningfully better, Levyra keeps the normal playback path. No track identity swap. No forced match. No broken queue.</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p>
+  <code>OFF</code> &nbsp;·&nbsp;
+  <code>AUTOMATIC</code> &nbsp;·&nbsp;
+  <code>PREFER 320 KBPS</code>
+</p>
+
+<sub>High-quality alternative audio uses JioSaavn as an external third-party provider when enabled. Levyra is not affiliated with or endorsed by JioSaavn.</sub>
+
+</div>
+
+---
+
 ## ✦ Interface & Experience Showcase
 
 <div align="center">
@@ -210,6 +247,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <p><b>Fast, native, interruption-free.</b><br><sub>The listening path is tuned around low overhead, predictable behavior, and direct playback control on both platforms.</sub></p>
       <ul>
         <li><b>Native Engines:</b> Media3 / ExoPlayer on Android and isolated libvlc on Windows.</li>
+        <li><b>Verified HQ Audio:</b> Android can route to a validated alternative source up to 320 kbps while preserving the original Levyra/YouTube track identity and falling back safely when verification fails.</li>
         <li><b>Gapless & Queue:</b> Seamless track transitions, shuffle/repeat, and queue Undo.</li>
         <li><b>Tempo & Timing:</b> Speed/pitch controls plus a built-in sleep timer.</li>
         <li><b>Android Auto:</b> Playback integrates with the car-focused Android media experience.</li>
@@ -235,7 +273,8 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <h3>🔍 <b>Discovery & Extraction</b></h3>
       <p><b>Find it, resolve it, start it.</b><br><sub>Discovery and stream resolution are designed as one continuous path into playback.</sub></p>
       <ul>
-        <li><b>Dual Resolver:</b> Highest-fidelity Opus or AAC with automatic fallback.</li>
+        <li><b>Multi-Source Resolver:</b> Highest-fidelity Opus or AAC on the normal path, plus verified JioSaavn alternative audio when enabled and demonstrably matched to the same recording.</li>
+        <li><b>Strict Match Guard:</b> Artist credits, album, duration, explicit state, ISRC and recording/version markers prevent remixes, live cuts, covers and ambiguous candidates from replacing the requested track.</li>
         <li><b>Queue Prefetch:</b> Upcoming tracks buffer quietly before the skip.</li>
         <li><b>Discovery Engine:</b> Global Top 50, Smart Orbit recommendations, and Samples feed.</li>
       </ul>
@@ -446,8 +485,8 @@ cd desktop
 **Version Wiring Contract:**
 ```properties
 # Android: gradle.properties
-levyraVersionName=2.5.6
-levyraVersionCode=2050600
+levyraVersionName=2.5.7
+levyraVersionCode=2050700
 
 # Windows: desktop/version.properties
 levyraDesktopVersion=1.2.0
