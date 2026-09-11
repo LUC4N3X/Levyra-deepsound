@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.library
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -185,6 +191,20 @@ internal fun PlaylistCoverCropDialog(
                             viewport = it
                             clampOffset()
                         }
+                        .onKeyEvent { event ->
+                            if (event.type != KeyEventType.KeyDown) {
+                                false
+                            } else {
+                                when (event.key) {
+                                    Key.DirectionLeft -> moveCover(-panStep, 0f)
+                                    Key.DirectionRight -> moveCover(panStep, 0f)
+                                    Key.DirectionUp -> moveCover(0f, -panStep)
+                                    Key.DirectionDown -> moveCover(0f, panStep)
+                                    else -> false
+                                }
+                            }
+                        }
+                        .focusable()
                         .pointerInput(source, imageSize, viewport) {
                             detectTransformGestures { _, pan, gestureZoom, _ ->
                                 zoom = (zoom * gestureZoom).coerceIn(1f, 4f)
