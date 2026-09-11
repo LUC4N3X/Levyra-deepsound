@@ -77,6 +77,14 @@ class HomeRenderSnapshotTest {
     }
 
     @Test
+    fun quickPickSeedEnrichmentDoesNotRecomposeHomeByItself() {
+        val initial = LevyraUiState()
+        val enriched = initial.copy(quickPickSeeds = listOf(track("aaaaaaaaaaa")))
+
+        assertEquals(homeProjection(initial), homeProjection(enriched))
+    }
+
+    @Test
     fun artistExclusionChangesHomeProjectionImmediately() {
         val initial = LevyraUiState()
         val excluded = ExcludedArtist("", "Blocked Artist", 1L)
