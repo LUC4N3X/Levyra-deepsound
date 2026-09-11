@@ -11,7 +11,6 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 enum class HighQualityFallbackReason {
@@ -51,6 +50,7 @@ class HighQualityAudioResolver(
     private val quarantinedIdentities = ConcurrentHashMap<String, Long>()
     private val quarantinedProviderTracks = ConcurrentHashMap<String, Long>()
     private val inFlight = ConcurrentHashMap<String, Deferred<HighQualityResolution>>()
+    private val inFlightLock = Any()
 
     @Volatile
     var mode: HighQualityAudioMode = HighQualityAudioMode.OFF
@@ -81,18 +81,19 @@ class HighQualityAudioResolver(
         if (!mode.enabled) return completed(HighQualityFallbackReason.DISABLED)
         if (isQuarantined(quarantinedIdentities, identityKey)) return completed(HighQualityFallbackReason.QUARANTINED)
         cachedSelection(identityKey)?.let { return CompletableDeferred(it) }
-        inFlight[identityKey]?.let { return it }
-        if (inFlight.size >= MAX_IN_FLIGHT_LOOKUPS) return completed(HighQualityFallbackReason.BUSY)
-        val lookup = scope.async(start = CoroutineStart.LAZY) {
-            withTimeoutOrNull(lookupBudgetMs) { lookup(identityKey, query) }
-                ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
+        val lookup = synchronized(inFlightLock) {
+            inFlight[identityKey]?.let { return it }
+            if (inFlight.size >= MAX_IN_FLIGHT_LOOKUPS) return completed(HighQualityFallbackReason.BUSY)
+            scope.async(start = CoroutineStart.LAZY) {
+                withTimeoutOrNull(lookupBudgetMs) { lookup(identityKey, query) }
+                    ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
+            }.also { inFlight[identityKey] = it }
         }
-        val existing = inFlight.putIfAbsent(identityKey, lookup)
-        if (existing != null) {
-            lookup.cancel()
-            return existing
+        lookup.invokeOnCompletion {
+            synchronized(inFlightLock) {
+                inFlight.remove(identityKey, lookup)
+            }
         }
-        lookup.invokeOnCompletion { inFlight.remove(identityKey, lookup) }
         lookup.start()
         return lookup
     }
@@ -114,7 +115,7 @@ class HighQualityAudioResolver(
         streams.remove(identityKey)
         quarantine(quarantinedIdentities, identityKey, until)
         if (providerTrackId.isNotBlank()) quarantine(quarantinedProviderTracks, providerTrackId, until)
-        scope.launch { mappingStore.remove(identityKey) }
+        mappingStore.remove(identityKey)
         HighQualityAudioDiagnostics.fallback(HighQualityFallbackReason.QUARANTINED, "playback failure: ${reason.take(80)}", providerTrackId)
     }
 
