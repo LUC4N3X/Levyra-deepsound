@@ -23,6 +23,7 @@ class HighQualityPlaybackCoordinator(
 
     fun queryFor(track: Track, isVideoMode: Boolean, audioQuality: String): AlternativeTrackQuery? {
         if (!resolver.mode.enabled || isVideoMode) return null
+        if (track.playbackManifest?.alternativeSource != null) return null
         if (audioQuality.equals(DATA_SAVER_AUDIO_QUALITY, ignoreCase = true)) return null
         if (isLocalTrack(track)) return null
         if (track.title.isBlank() || track.artist.isBlank() || track.durationMs <= 0L) return null
