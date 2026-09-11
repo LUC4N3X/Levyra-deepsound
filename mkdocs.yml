@@ -1,0 +1,81 @@
+site_name: Levyra Docs
+site_description: Official documentation for Levyra, the native open-source music experience for Android and Windows.
+site_url: https://luc4n3x.github.io/Levyra-deepsound/
+repo_url: https://github.com/LUC4N3X/Levyra-deepsound
+repo_name: LUC4N3X/Levyra-deepsound
+edit_uri: edit/main/docs-site/
+docs_dir: docs-site
+use_directory_urls: true
+
+theme:
+  name: material
+  language: en
+  logo: assets/levyra-logo.png
+  favicon: assets/levyra-logo.png
+  font: false
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Start Here:
+      - Getting Started: getting-started.md
+      - Features: features.md
+  - Help:
+      - FAQ & Troubleshooting: troubleshooting.md
+  - Development:
+      - Build & Contribute: development.md
+      - Architecture: architecture.md
+  - Project:
+      - Roadmap: roadmap.md
+      - Privacy & Data: privacy.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/LUC4N3X/Levyra-deepsound
+      name: Levyra on GitHub
+
+copyright: Levyra · Open source under GNU GPL v3.0
