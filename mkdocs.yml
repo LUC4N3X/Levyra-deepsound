@@ -10,10 +10,9 @@ use_directory_urls: true
 theme:
   name: material
   language: en
-  logo: assets/levyra-logo.png
-  favicon: assets/levyra-logo.png
   font: false
   icon:
+    logo: material/music-circle
     repo: fontawesome/brands/github
   features:
     - navigation.tabs

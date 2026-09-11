@@ -56,16 +56,16 @@
 
 <div class="grid cards" markdown>
 
-- **Native playback**  
+- **Native playback**
   Media3 / ExoPlayer on Android and an isolated libvlc core on Windows.
 
-- **Portable offline music**  
+- **Portable offline music**
   Downloads can remain standard tagged media files instead of being trapped in an app-only vault.
 
-- **Local-first listening data**  
+- **Local-first listening data**
   Playlists, history, listening insights and settings are designed around local ownership.
 
-- **No mandatory Levyra account**  
+- **No mandatory Levyra account**
   Core listening does not require a Levyra-hosted profile or analytics identity.
 
 </div>
