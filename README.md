@@ -80,6 +80,12 @@
 
 ---
 
+## ✦ Documentation
+
+[Wiki](https://github.com/LUC4N3X/Levyra-deepsound/wiki) · [Getting Started](https://github.com/LUC4N3X/Levyra-deepsound/wiki/Getting-Started) · [Development](https://github.com/LUC4N3X/Levyra-deepsound/wiki/Development)
+
+---
+
 ## ✦ The Pure Listening Philosophy
 
 <div align="center">
@@ -497,6 +503,8 @@ levyraDesktopVersion=1.2.0
 
 ## ✦ Contributing
 We welcome community contributions, bug fixes, localization, and performance enhancements.
+
+For build and contributor docs, see the [Levyra Wiki](https://github.com/LUC4N3X/Levyra-deepsound/wiki).
 
 ### Engineering Workflow
 
