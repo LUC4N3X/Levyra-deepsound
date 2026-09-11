@@ -9813,6 +9813,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (deArrowRepository.isInitialized()) deArrowRepository.value.close()
         levyraMixJob?.cancel()
         listeningDnaJob?.cancel()
+        super.onCleared()
     }
 
     private var levyraMixJob: Job? = null

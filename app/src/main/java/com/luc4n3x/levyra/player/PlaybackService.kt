@@ -2556,12 +2556,18 @@ private class LevyraRoutingDataSource(
     private var delegate: DataSource? = null
 
     override fun addTransferListener(transferListener: TransferListener) {
-        transferListeners += transferListener
+        if (transferListener !in transferListeners) {
+            transferListeners += transferListener
+        }
         delegate?.addTransferListener(transferListener)
     }
 
     override fun open(dataSpec: DataSpec): Long {
-        check(delegate == null)
+        val previous = delegate
+        if (previous != null) {
+            delegate = null
+            runCatching { previous.close() }
+        }
         val uri = dataSpec.uri
         val factory = when {
             uri in subtitleUris -> subtitleDataSourceFactory

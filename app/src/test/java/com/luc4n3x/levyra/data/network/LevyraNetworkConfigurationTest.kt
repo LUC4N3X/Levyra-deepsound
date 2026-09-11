@@ -58,7 +58,7 @@ class LevyraNetworkConfigurationTest {
                 try {
                     startLatch.await()
                     repeat(iterations) {
-                        LevyraNetworkConfiguration.dns()
+                        assertNotNull(LevyraNetworkConfiguration.dns())
                     }
                 } catch (t: Throwable) {
                     failureOccurred.set(true)
