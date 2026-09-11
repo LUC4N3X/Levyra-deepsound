@@ -8487,6 +8487,19 @@ private fun HomeEditorialCollectionDialog(
     )
 }
 
+internal fun homeQuickAccessColumns(tracks: List<Track>): List<List<Track>> {
+    return tracks
+        .distinctBy(LevyraPersonalOrbit::identityKey)
+        .take(HOME_QUICK_ACCESS_LIMIT)
+        .chunked(HOME_QUICK_ACCESS_PAGE_SIZE)
+        .flatMap { page ->
+            listOf(
+                page.filterIndexed { index, _ -> index % 2 == 0 },
+                page.filterIndexed { index, _ -> index % 2 != 0 }
+            ).filter { it.isNotEmpty() }
+        }
+}
+
 @Composable
 private fun HomeQuickAccessShelf(
     title: String,
@@ -8497,67 +8510,56 @@ private fun HomeQuickAccessShelf(
     onPlay: (Track) -> Unit,
     onTrackActions: ((Track) -> Unit)? = null
 ) {
-    val pages = remember(tracks) {
-        tracks
-            .distinctBy(LevyraPersonalOrbit::identityKey)
-            .take(HOME_QUICK_ACCESS_LIMIT)
-            .let { list ->
-                if (list.size > HOME_QUICK_ACCESS_PAGE_SIZE) {
-                    list.take(list.size - list.size % HOME_QUICK_ACCESS_PAGE_SIZE)
-                } else {
-                    list
-                }
-            }
-            .chunked(HOME_QUICK_ACCESS_PAGE_SIZE)
-    }
-    if (pages.isEmpty()) return
+    val columns = remember(tracks) { homeQuickAccessColumns(tracks) }
+    if (columns.isEmpty()) return
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
             HomeSectionHeader(title = title)
         }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val cardGap = 8.dp
             val pageGap = 12.dp
             val pageWidth = maxWidth - HomeHorizontalInset - pageGap - HOME_QUICK_ACCESS_PAGE_PEEK
+            val cardWidth = (pageWidth - cardGap) / 2
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(pageGap),
+                horizontalArrangement = Arrangement.spacedBy(cardGap),
                 contentPadding = PaddingValues(
                     start = HomeHorizontalInset,
                     end = HomeHorizontalShelfEndPadding
                 )
             ) {
                 itemsIndexed(
-                    items = pages,
-                    key = { _, page ->
-                        page.joinToString(prefix = "quick-access-page-", separator = "|") {
+                    items = columns,
+                    key = { index, column ->
+                        column.joinToString(prefix = "quick-access-column-$index-", separator = "|") {
                             LevyraPersonalOrbit.identityKey(it)
                         }
                     },
-                    contentType = { _, _ -> "quick-access-page" }
-                ) { _, page ->
+                    contentType = { _, _ -> "quick-access-column" }
+                ) { index, column ->
+                    val pageBoundaryPadding = if (index % 2 == 1 && index < columns.lastIndex) {
+                        pageGap - cardGap
+                    } else {
+                        0.dp
+                    }
                     Column(
-                        modifier = Modifier.width(pageWidth),
+                        modifier = Modifier
+                            .width(cardWidth + pageBoundaryPadding)
+                            .padding(end = pageBoundaryPadding),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        page.chunked(2).forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                row.forEach { track ->
-                                    HomeQuickAccessCard(
-                                        track = track,
-                                        isCurrent = track.id == currentId,
-                                        isPlaying = isPlaying && track.id == currentId,
-                                        isResolving = isResolving && track.id == currentId,
-                                        onPlay = { onPlay(track) },
-                                        onActions = onTrackActions?.let { actions -> { actions(track) } },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                            }
+                        column.forEach { track ->
+                            HomeQuickAccessCard(
+                                track = track,
+                                isCurrent = track.id == currentId,
+                                isPlaying = isPlaying && track.id == currentId,
+                                isResolving = isResolving && track.id == currentId,
+                                onPlay = { onPlay(track) },
+                                onActions = onTrackActions?.let { actions -> { actions(track) } },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
