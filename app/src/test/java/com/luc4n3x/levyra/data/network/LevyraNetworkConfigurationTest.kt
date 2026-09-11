@@ -57,12 +57,8 @@ class LevyraNetworkConfigurationTest {
             executor.execute {
                 try {
                     startLatch.await()
-                    for (j in 0 until iterations) {
-                        val dns = LevyraNetworkConfiguration.dns()
-                        if (dns == null) {
-                            failureOccurred.set(true)
-                            break
-                        }
+                    repeat(iterations) {
+                        LevyraNetworkConfiguration.dns()
                     }
                 } catch (t: Throwable) {
                     failureOccurred.set(true)

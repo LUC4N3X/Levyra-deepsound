@@ -12,6 +12,7 @@ import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Bundle
 import android.app.ActivityManager
 import android.os.Debug
@@ -30,7 +31,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
@@ -40,14 +43,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
-import androidx.media3.exoplayer.dash.DashMediaSource
-import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.session.CommandButton
@@ -2443,6 +2442,7 @@ private class LevyraMediaSourceFactory(
     private val sabrDataSourceFactory: DataSource.Factory
 ) : MediaSource.Factory {
     private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy = LevyraPlaybackLoadErrorHandlingPolicy
+    private var drmSessionManagerProvider: androidx.media3.exoplayer.drm.DrmSessionManagerProvider? = null
 
     private val subtitleDataSourceFactory: DataSource.Factory by lazy {
         OkHttpDataSource.Factory(LevyraHttpClientFactory.externalIntegrations())
@@ -2453,6 +2453,7 @@ private class LevyraMediaSourceFactory(
     override fun setDrmSessionManagerProvider(
         provider: androidx.media3.exoplayer.drm.DrmSessionManagerProvider
     ): MediaSource.Factory {
+        drmSessionManagerProvider = provider
         delegate.setDrmSessionManagerProvider(provider)
         return this
     }
@@ -2470,7 +2471,7 @@ private class LevyraMediaSourceFactory(
             ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_URL)
 
         if (videoUrl.isNullOrBlank()) {
-            return mergeSubtitles(mediaItem, mediaSourceFor(mediaItem))
+            return mediaSourceFor(mediaItem)
         }
 
         val videoCacheKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_CACHE_KEY)
@@ -2488,78 +2489,104 @@ private class LevyraMediaSourceFactory(
             .build()
         val videoSource = mediaSourceFor(videoItem)
 
-        return mergeSubtitles(mediaItem, MergingMediaSource(true, true, videoSource, audioSource))
-    }
-
-    private fun mergeSubtitles(mediaItem: MediaItem, primarySource: MediaSource): MediaSource {
-        val configurations = mediaItem.localConfiguration?.subtitleConfigurations.orEmpty()
-        if (configurations.isEmpty()) return primarySource
-        val subtitleSources = configurations.map { configuration ->
-            SingleSampleMediaSource.Factory(subtitleDataSourceFactory)
-                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
-                .createMediaSource(configuration, C.TIME_UNSET)
-        }
-        return MergingMediaSource(true, true, primarySource, *subtitleSources.toTypedArray())
+        return MergingMediaSource(true, true, videoSource, audioSource)
     }
 
     private fun mediaSourceFor(mediaItem: MediaItem): MediaSource {
+        val subtitleUris = mediaItem.localConfiguration?.subtitleConfigurations
+            .orEmpty()
+            .mapTo(hashSetOf()) { it.uri }
+        val factory = DefaultMediaSourceFactory(
+            LevyraRoutingDataSourceFactory(
+                dataSourceFactory = dataSourceFactory,
+                localDataSourceFactory = localDataSourceFactory,
+                sabrDataSourceFactory = sabrDataSourceFactory,
+                subtitleDataSourceFactory = subtitleDataSourceFactory,
+                subtitleUris = subtitleUris
+            )
+        ).setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+        drmSessionManagerProvider?.let { factory.setDrmSessionManagerProvider(it) }
         val localUri = mediaItem.localConfiguration?.uri
-        val scheme = localUri?.scheme.orEmpty().lowercase()
-        if (SabrStreamSpec.isSabrUri(localUri?.toString().orEmpty())) {
-            val sabrItem = mediaItem.buildUpon().setCustomCacheKey(null).build()
-            return ProgressiveMediaSource.Factory(sabrDataSourceFactory)
-                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
-                .createMediaSource(sabrItem)
+        val inferredManifestMimeType = mediaItem.localConfiguration?.mimeType
+            ?.takeIf { it.isNotBlank() }
+            ?: LevyraMediaItemFactory.mimeTypeFor(localUri?.toString().orEmpty(), false)
+                ?.takeIf { it == MimeTypes.APPLICATION_M3U8 || it == MimeTypes.APPLICATION_MPD }
+        val item = if (
+            SabrStreamSpec.isSabrUri(localUri?.toString().orEmpty()) ||
+            localUri?.scheme.orEmpty().lowercase() == "content" ||
+            localUri?.scheme.orEmpty().lowercase() == "file"
+        ) {
+            mediaItem.buildUpon().setCustomCacheKey(null).build()
+        } else if (mediaItem.localConfiguration?.mimeType.isNullOrBlank() && inferredManifestMimeType != null) {
+            mediaItem.buildUpon().setMimeType(inferredManifestMimeType).build()
+        } else {
+            mediaItem
         }
-        if (scheme == "content" || scheme == "file") {
-            val localItem = mediaItem.buildUpon().setCustomCacheKey(null).build()
-            return ProgressiveMediaSource.Factory(localDataSourceFactory)
-                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
-                .createMediaSource(localItem)
-        }
-        val uri = localUri?.toString().orEmpty()
-        // The declared MIME type wins over URL shape: a YouTube HLS audio manifest whose URL does
-        // not look like a playlist would otherwise reach the progressive extractor, which fails on
-        // the #EXTM3U header instead of playing.
-        val mimeType = mediaItem.localConfiguration?.mimeType.orEmpty()
-        return when {
-            isHlsMimeType(mimeType) || isHlsManifestUri(uri) ->
-                HlsMediaSource.Factory(dataSourceFactory)
-                    .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
-                    .createMediaSource(mediaItem)
-            isDashMimeType(mimeType) || isDashManifestUri(uri) ->
-                DashMediaSource.Factory(dataSourceFactory)
-                    .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
-                    .createMediaSource(mediaItem)
-            else -> ProgressiveMediaSource.Factory(dataSourceFactory)
-                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
-                .createMediaSource(mediaItem)
-        }
+        return factory.createMediaSource(item)
     }
 
-    private fun isHlsMimeType(mimeType: String): Boolean =
-        mimeType.equals(MimeTypes.APPLICATION_M3U8, ignoreCase = true) ||
-            mimeType.equals("application/vnd.apple.mpegurl", ignoreCase = true)
+}
 
-    private fun isDashMimeType(mimeType: String): Boolean =
-        mimeType.equals(MimeTypes.APPLICATION_MPD, ignoreCase = true)
+@UnstableApi
+private class LevyraRoutingDataSourceFactory(
+    private val dataSourceFactory: DataSource.Factory,
+    private val localDataSourceFactory: DataSource.Factory,
+    private val sabrDataSourceFactory: DataSource.Factory,
+    private val subtitleDataSourceFactory: DataSource.Factory,
+    private val subtitleUris: Set<Uri>
+) : DataSource.Factory {
+    override fun createDataSource(): DataSource = LevyraRoutingDataSource(
+        dataSourceFactory = dataSourceFactory,
+        localDataSourceFactory = localDataSourceFactory,
+        sabrDataSourceFactory = sabrDataSourceFactory,
+        subtitleDataSourceFactory = subtitleDataSourceFactory,
+        subtitleUris = subtitleUris
+    )
+}
 
-    private fun isHlsManifestUri(uri: String): Boolean {
-        val clean = uri.substringBefore('#').lowercase()
-        val path = clean.substringBefore('?')
-        return path.endsWith(".m3u8") ||
-            path.contains("/hls_playlist") ||
-            path.contains("/manifest/hls") ||
-            clean.contains("mime=application%2fx-mpegurl") ||
-            clean.contains("mime=application/vnd.apple.mpegurl") ||
-            clean.contains("type=application%2fx-mpegurl")
+@UnstableApi
+private class LevyraRoutingDataSource(
+    private val dataSourceFactory: DataSource.Factory,
+    private val localDataSourceFactory: DataSource.Factory,
+    private val sabrDataSourceFactory: DataSource.Factory,
+    private val subtitleDataSourceFactory: DataSource.Factory,
+    private val subtitleUris: Set<Uri>
+) : DataSource {
+    private val transferListeners = mutableListOf<TransferListener>()
+    private var delegate: DataSource? = null
+
+    override fun addTransferListener(transferListener: TransferListener) {
+        transferListeners += transferListener
+        delegate?.addTransferListener(transferListener)
     }
 
-    private fun isDashManifestUri(uri: String): Boolean {
-        val clean = uri.substringBefore('#').lowercase()
-        val path = clean.substringBefore('?')
-        return path.endsWith(".mpd") ||
-            clean.contains("mime=application%2fdash+xml") ||
-            clean.contains("mime=application/dash+xml")
+    override fun open(dataSpec: DataSpec): Long {
+        check(delegate == null)
+        val uri = dataSpec.uri
+        val factory = when {
+            uri in subtitleUris -> subtitleDataSourceFactory
+            SabrStreamSpec.isSabrUri(uri.toString()) -> sabrDataSourceFactory
+            uri.scheme.orEmpty().lowercase() == "content" || uri.scheme.orEmpty().lowercase() == "file" ->
+                localDataSourceFactory
+            else -> dataSourceFactory
+        }
+        val source = factory.createDataSource()
+        transferListeners.forEach(source::addTransferListener)
+        delegate = source
+        return source.open(dataSpec)
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+        checkNotNull(delegate).read(buffer, offset, length)
+
+    override fun getUri(): Uri? = delegate?.uri
+
+    override fun getResponseHeaders(): Map<String, List<String>> =
+        delegate?.responseHeaders.orEmpty()
+
+    override fun close() {
+        val source = delegate
+        delegate = null
+        source?.close()
     }
 }
