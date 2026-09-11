@@ -55,7 +55,6 @@ jobs:
     permissions:
       contents: read
       pages: write
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -72,8 +71,6 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
-        with:
-          enablement: true
 
       - name: Build documentation
         run: mkdocs build --strict
