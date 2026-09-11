@@ -283,7 +283,6 @@ class OfflineExportWorker(
     }
 
     private fun ensureNotificationChannel(strings: LevyraStrings) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = applicationContext.getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,

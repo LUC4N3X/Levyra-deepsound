@@ -7,7 +7,6 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.content.ContextCompat
 import com.luc4n3x.levyra.LevyraLaunchActions
 import com.luc4n3x.levyra.MainActivity
@@ -48,7 +47,7 @@ class RecognitionWidgetProvider : AppWidgetProvider() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        private fun hasPermission(context: Context): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+        private fun hasPermission(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
         private fun permissionIntent(context: Context) = Intent(context, MainActivity::class.java).apply {

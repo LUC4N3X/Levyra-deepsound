@@ -98,7 +98,7 @@ object HomeEditorialEngine {
             }
             val freshnessScore = when {
                 isFreshRelease && ageDays == 0 -> 12_000
-                isFreshRelease -> 10_000 - ageDays!! * 220
+                isFreshRelease -> 10_000 - ageDays * 220
                 inCharts -> 6_000
                 else -> 0
             }

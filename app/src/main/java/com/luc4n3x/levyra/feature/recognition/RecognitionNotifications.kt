@@ -22,7 +22,6 @@ class RecognitionNotifications(private val context: Context) {
     private val manager = NotificationManagerCompat.from(context)
 
     fun createChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.recognition_notification_channel),
