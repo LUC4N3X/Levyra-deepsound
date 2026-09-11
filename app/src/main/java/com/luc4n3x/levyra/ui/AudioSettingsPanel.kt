@@ -31,6 +31,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -71,6 +73,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -84,6 +87,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.domain.AutoEqImporter
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -112,6 +116,8 @@ internal fun AudioSettingsPanel(
     volumePercent: Int,
     audioSettings: LevyraAudioSettings,
     onSelect: (String) -> Unit,
+    highQualityAudioMode: HighQualityAudioMode,
+    onHighQualityAudioMode: (HighQualityAudioMode) -> Unit,
     onEqualizerEnabled: (Boolean) -> Unit,
     onPreset: (String) -> Unit,
     onBandLevel: (Int, Int) -> Unit,
@@ -177,6 +183,19 @@ internal fun AudioSettingsPanel(
                             strings.audioQualityLow to "Low"
                         ),
                         onSelect = onSelect
+                    )
+                }
+                item {
+                    AlternativeAudioCard(
+                        title = strings.alternativeAudioTitle,
+                        description = strings.alternativeAudioSubtitle,
+                        selected = highQualityAudioMode,
+                        options = listOf(
+                            HighQualityAudioMode.OFF to strings.alternativeAudioOff,
+                            HighQualityAudioMode.AUTOMATIC to strings.alternativeAudioAutomatic,
+                            HighQualityAudioMode.PREFER_320 to strings.alternativeAudioPrefer320
+                        ),
+                        onSelect = onHighQualityAudioMode
                     )
                 }
 
@@ -947,6 +966,65 @@ private fun AudioQualityRow(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlternativeAudioCard(
+    title: String,
+    description: String,
+    selected: HighQualityAudioMode,
+    options: List<Pair<HighQualityAudioMode, String>>,
+    onSelect: (HighQualityAudioMode) -> Unit
+) {
+    AudioCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(
+                    description,
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 16.sp
+                )
+            }
+            Column(
+                modifier = Modifier.selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                options.forEach { (mode, label) ->
+                    val isSelected = mode == selected
+                    Surface(
+                        color = if (isSelected) LevyraCyan.copy(alpha = 0.18f) else LevyraAdaptiveChip,
+                        shape = ChipShape,
+                        border = BorderStroke(1.dp, if (isSelected) LevyraCyan.copy(alpha = 0.7f) else LevyraAdaptiveHairline),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .selectable(
+                                selected = isSelected,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(mode) }
+                            )
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.CenterStart,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            Text(
+                                label,
+                                color = if (isSelected) LevyraCyan else LevyraText,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
         }

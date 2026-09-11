@@ -1,4 +1,75 @@
-# Levyra 2.5.6
+# Levyra 2.5.7
+
+## Highlights
+
+Levyra 2.5.7 introduces **Verified High-Quality Audio** on Android: a second, optional audio-resolution path designed to improve source quality without ever treating bitrate as more important than track identity.
+
+When enabled, Levyra can resolve audio through JioSaavn as an external provider, validate that the candidate is the same recording the user requested, verify the stream that will actually be played, and use a genuine higher-quality source when it is available. If any part of that verification fails, normal Levyra/YouTube playback remains the fallback.
+
+## ✦ Verified high-quality routing
+
+The new high-quality resolver works inside Levyra's existing Media3 playback architecture rather than creating a second player. The original Levyra/YouTube track remains the logical source of truth for title, artist, album, artwork, lyrics, queue identity, listening history, favorites, recommendations and MediaSession metadata; only the audio transport can change.
+
+Three user-facing modes are available:
+
+- **Off** keeps the existing playback path untouched.
+- **Automatic** uses an alternative source only when Levyra can verify that it is the same recording and meaningfully preferable.
+- **Prefer 320 kbps** prioritizes a validated 320 kbps source when one genuinely exists, with lower validated tiers and the normal Levyra path retained as fallbacks.
+
+## ✦ Identity before bitrate
+
+Alternative candidates are not accepted just because their titles look similar. Levyra evaluates primary and featured artists, album relationship, duration, explicit state, ISRC when available, and recording/version markers before an alternative source can enter playback.
+
+Remixes, live performances, acoustic versions, instrumentals, karaoke, covers, sped-up or slowed edits, incompatible remasters and ambiguous candidate sets are rejected when they do not match the requested recording strongly enough.
+
+Incomplete credited-artist matches are also rejected. Levyra would rather keep the normal source than play the wrong song at a higher bitrate.
+
+## ✦ Real stream validation and fallback
+
+A provider result advertising 320 kbps is not trusted blindly. Levyra probes the resolved media, validates the response and checks the effective stream characteristics before accepting the tier.
+
+If a requested 320 kbps stream is unavailable or does not validate as expected, Levyra can fall back through lower verified tiers. Provider failures, expired mappings, stale streams and playback failures return safely to the existing resolver path instead of poisoning the active queue.
+
+Verified alternative streams use their own collision-resistant cache namespace, while provider mappings are refreshed and invalidated independently from short-lived media URLs.
+
+## ✦ Reliability hardening
+
+The high-quality path is bounded so optional provider work cannot overwhelm normal playback. Concurrent lookups use atomic admission limits, repeated requests for the same identity share in-flight work, failed mappings are removed immediately, and already-upgraded tracks do not trigger another provider lookup.
+
+Provider destinations are restricted to approved HTTPS JioSaavn/CDN domains across redirect hops without changing the working redirect behavior used by the media path.
+
+The high-quality mode is also part of Levyra's preference snapshot and backup/restore contract, so restoring a backup keeps the UI and playback resolver synchronized with the saved setting.
+
+## ✦ Privacy and external provider behavior
+
+High-quality alternative audio is optional. When enabled, Levyra contacts JioSaavn directly as an external third-party provider for the requests needed to resolve the alternative audio source.
+
+Levyra is not affiliated with or endorsed by JioSaavn. Restricted, paywalled and Pro-only candidates are rejected before they can become playable alternatives.
+
+## Validation
+
+The 2.5.7 implementation includes focused automated coverage for strict track matching, ambiguity rejection, provider parsing, restricted-content rejection, request profiles, stream validation, quality fallback, manifest provenance, mapping persistence, cache isolation, preference restore and localization parity.
+
+The PR also builds a verified PR Diagnostics APK through the repository workflow. Normal YouTube playback remains the fallback owner whenever the optional high-quality path cannot produce a verified source.
+
+## Versioning
+
+- Version name: `2.5.7`
+- Version code: `2050700`
+
+`gradle.properties`, the Android Gradle fallback, README version wiring, architecture metadata, release notes, release badge and Fastlane changelogs are aligned to 2.5.7. Levyra Desktop remains independently versioned and is not bumped by this Android release.
+
+## Upgrade notes
+
+No manual migration is required for 2.5.7. Existing local library data, playlists, favorites, history, queue and settings remain on the same owners. The high-quality audio preference participates in the normal Levyra backup and restore flow.
+
+## Final note
+
+Levyra 2.5.7 adds another route to better audio without weakening the rule that matters most: **the audio source may change; the song must not.**
+
+---
+
+# Levyra 2.5.6 (previous release)
 
 ## Why 2.5.6 replaces 2.5.5
 
@@ -67,7 +138,7 @@ This metadata commit does not claim a new physical-device, Android Auto, long-se
 
 `gradle.properties`, the Android Gradle fallback, README version wiring, architecture metadata, release notes, release badge and Fastlane changelogs are aligned to 2.5.6. Levyra Desktop remains independently versioned and is not bumped by this Android release.
 
-Version 2.5.4 was not published as a GitHub release. Version 2.5.5 was withdrawn after the Quick Picks and Home-scroll regression was identified; 2.5.6 is the current published Android release after 2.5.3.
+Version 2.5.4 was not published as a GitHub release. Version 2.5.5 was withdrawn after the Quick Picks and Home-scroll regression was identified; 2.5.6 was the published Android release after 2.5.3.
 
 ## Upgrade notes
 

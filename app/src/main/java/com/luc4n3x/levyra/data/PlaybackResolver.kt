@@ -11,6 +11,14 @@ import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
 import com.luc4n3x.levyra.data.network.YoutubeClientIdentityInterceptor
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
+import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
+import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
+import com.luc4n3x.levyra.data.hqaudio.HighQualityPlaybackCoordinator
+import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
+import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
+import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
+import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
@@ -298,6 +306,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val MAX_FAILED_PLAYBACK_URLS = 256
         private const val MAX_STRATEGY_ORIGINS = 256
         private const val MAX_SABR_CANDIDATES = 2
+        private const val ALTERNATIVE_STREAM_QUARANTINE_MS = 30L * 60L * 1000L
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
         private val youtubeSearchResultVideoIdRegex = Regex("""\\?[\"]videoId\\?[\"]\s*:\s*\\?[\"]($YOUTUBE_VIDEO_ID_PATTERN)\\?[\"]""")
@@ -342,6 +351,13 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
     private val sourceMatchMutationMutex = Mutex()
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val highQualityPlayback = HighQualityPlaybackCoordinator(
+        HighQualityAudioResolver(
+            provider = JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
+            mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
+            scope = resolveScope
+        )
+    ).apply { mode = userPreferences.highQualityAudioMode() }
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
     private val youtubeEngagementTtlMs = 12L * 60L * 60L * 1000L
@@ -398,6 +414,10 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun setAudioQuality(value: String) {
         selectedAudioQuality = normalizeAudioQuality(value)
+    }
+
+    fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
+        highQualityPlayback.mode = mode
     }
 
     private fun refreshPlaybackPolicyInBackground(force: Boolean, reason: String) {
@@ -498,7 +518,14 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     fun cached(track: Track, isVideoMode: Boolean = false): Track? {
-        return cached(track, isVideoMode, selectedAudioQuality)
+        val normal = cached(track, isVideoMode, selectedAudioQuality)
+        return highQualityPlayback.cachedUpgrade(
+            track = track,
+            normalCached = normal,
+            isVideoMode = isVideoMode,
+            audioQuality = selectedAudioQuality,
+            provenance = ::basePlaybackProvenance
+        ) ?: normal
     }
 
     private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
@@ -552,6 +579,12 @@ class PlaybackResolver private constructor(private val context: Context) {
     ) {
         if (isLocalPlaybackTrack(track)) {
             resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
+            return
+        }
+        if (highQualityPlayback.handlesFailure(track)) {
+            val now = System.currentTimeMillis()
+            quarantinePlaybackUrl(track.streamUrl, now + ALTERNATIVE_STREAM_QUARANTINE_MS, now)
+            highQualityPlayback.reportFailure(track, reason)
             return
         }
         if (!hasValidatedInternet() && isNetworkFailureReason(reason)) {
@@ -741,8 +774,12 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun strategyOriginKey(mode: String, url: String): String = "$mode\u0000$url"
 
-    fun activeStrategyFor(track: Track, isVideoMode: Boolean): String =
-        strategyOriginFor(track, isVideoMode)?.strategy.orEmpty()
+    fun activeStrategyFor(track: Track, isVideoMode: Boolean): String {
+        track.playbackManifest?.alternativeSource?.let {
+            return "ALTERNATIVE_${it.providerId.uppercase()}_${it.bitrateKbps}"
+        }
+        return strategyOriginFor(track, isVideoMode)?.strategy.orEmpty()
+    }
 
     fun playbackDiagnostics(): String {
         val health = clientHealth.mapValues { (_, value) ->
@@ -758,6 +795,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val strategyHealthJson = JSONObject()
         strategyHealth.snapshot().forEach { (key, value) -> strategyHealthJson.put(key, value) }
         diagnostics.put("strategyHealth", strategyHealthJson)
+        diagnostics.put("highQualityAudioMode", highQualityPlayback.mode.name)
         return diagnostics.toString(2)
     }
 
@@ -831,17 +869,28 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
-        val resolved = resolveInternal(
-            track = track,
-            isVideoMode = isVideoMode,
-            timeoutMs = playbackResolveTimeoutMs,
-            preferMp4Audio = false,
-            requestKind = "playback",
-            audioQuality = selectedAudioQuality,
-            reuseProvidedStream = true
-        )
+        val alternativeQuery = highQualityPlayback
+            .queryFor(track, isVideoMode, selectedAudioQuality)
+            ?.takeIf { hasInternetCapableNetwork() }
+        val resolved = if (alternativeQuery == null) {
+            resolveForPlayback(track, isVideoMode)
+        } else {
+            highQualityPlayback.resolve(track, alternativeQuery, ::basePlaybackProvenance) {
+                resolveForPlayback(track, isVideoMode)
+            }
+        }
         return preserveEditorialArtwork(track, resolved)
     }
+
+    private suspend fun resolveForPlayback(track: Track, isVideoMode: Boolean): Track = resolveInternal(
+        track = track,
+        isVideoMode = isVideoMode,
+        timeoutMs = playbackResolveTimeoutMs,
+        preferMp4Audio = false,
+        requestKind = "playback",
+        audioQuality = selectedAudioQuality,
+        reuseProvidedStream = true
+    )
 
     suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
@@ -949,6 +998,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
+            if (track.playbackManifest?.alternativeSource != null) {
+                val expiresAt = track.playbackManifest.expiresAtMs
+                if (expiresAt > 0L && System.currentTimeMillis() + 90_000L >= expiresAt) return null
+                return track
+            }
             if (streamStillFresh(track.streamUrl)) {
                 store(track, track, isVideoMode, expectedGeneration = resolverGeneration.get())
                 return track
@@ -2311,6 +2365,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ) {
         if (preferMp4Audio) return
+        if (resolvedTrack.playbackManifest?.alternativeSource != null) return
         if (resolvedTrack.streamUrl.isBlank() || !streamStillFresh(resolvedTrack.streamUrl)) return
         if (!isVideoMode && !isPlayableAudioUrl(resolvedTrack.streamUrl)) return
         val key = cacheKey(requestedTrack, isVideoMode, audioQuality)
@@ -2497,7 +2552,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun expireSeconds(url: String): Long? {
-        return Regex("(?:[?&])expire=(\\d+)").find(url)?.groupValues?.getOrNull(1)?.toLongOrNull()
+        return Regex("(?:[?&])expires?=(\\d+)", RegexOption.IGNORE_CASE).find(url)?.groupValues?.getOrNull(1)?.toLongOrNull()
     }
 
     private fun cacheKey(

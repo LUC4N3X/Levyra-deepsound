@@ -2082,6 +2082,8 @@ fun LevyraApp(
                     volumePercent = 33,
                     audioSettings = state.audioSettings,
                     onSelect = viewModel::setAudioQuality,
+                    highQualityAudioMode = state.highQualityAudioMode,
+                    onHighQualityAudioMode = viewModel::setHighQualityAudioMode,
                     onEqualizerEnabled = viewModel::setEqualizerEnabled,
                     onPreset = viewModel::setEqualizerPreset,
                     onBandLevel = viewModel::setEqualizerBand,
