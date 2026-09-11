@@ -7,10 +7,26 @@
 **A native music player, stream extractor, and private offline vault for Android & Windows.**
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest release"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total downloads"></a>
-  <a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="GitHub Stars"></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release.svg">
+    <img src="docs/assets/levyra-release.svg" alt="Latest release">
+  </picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-downloads-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-downloads.svg">
+    <img src="docs/assets/levyra-downloads.svg" alt="Total downloads">
+  </picture></a>
+  <a href="LICENSE"><picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-license-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-license.svg">
+    <img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License">
+  </picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-stars-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-stars.svg">
+    <img src="docs/assets/levyra-stars.svg" alt="GitHub Stars">
+  </picture></a>
 </p>
 
 ### ✦ Download
