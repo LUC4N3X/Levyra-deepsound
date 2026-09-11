@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -401,6 +402,13 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     fun setAudioQuality(value: String) {
         write { it[KEY_AUDIO_QUALITY] = normalizeAudioQuality(value) }
+    }
+
+    fun highQualityAudioMode(): HighQualityAudioMode =
+        read { HighQualityAudioMode.fromStorage(it[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO]) }
+
+    fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
+        write { it[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = mode.storageValue }
     }
 
     fun dismissedUpdateVersion(): String = read { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
@@ -851,6 +859,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_BEDTIME_DURATION_MINUTES = intPreferencesKey("bedtime_duration_minutes")
         val KEY_BEDTIME_DAYS = stringSetPreferencesKey("bedtime_days")
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
+        val KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO = stringPreferencesKey("high_quality_alternative_audio")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")

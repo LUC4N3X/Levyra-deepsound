@@ -353,7 +353,6 @@ fun LevyraNowPlaying(
 
         val artworkPreviewAvailable = !state.isVideoMode && artworkUrl.isNotBlank() && visualMode == PlayerVisualMode.Artwork
         var showArtworkPreview by remember(track?.id, state.isVideoMode) { mutableStateOf(false) }
-        var optionsExpanded by remember(track?.id) { mutableStateOf(false) }
         var videoFullscreen by remember(track?.id, state.isVideoMode) { mutableStateOf(false) }
         val videoTransform = remember(track?.id, state.isVideoMode) {
             mutableStateOf(PlayerVideoTransform.None)
@@ -393,7 +392,8 @@ fun LevyraNowPlaying(
             ) {
                 Row(
                     modifier = Modifier.align(Alignment.CenterStart),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
                 ) {
                     PlayerGlassIconButton(
                         icon = Icons.Rounded.KeyboardArrowDown,
@@ -402,6 +402,16 @@ fun LevyraNowPlaying(
                         iconSize = if (compactPlayer) 22.dp else 24.dp,
                         onClick = collapseActions.collapse
                     )
+                    if (visualMode == PlayerVisualMode.CanvasImmersive && !state.isVideoMode) {
+                        PlayerGlassIconButton(
+                            icon = Icons.Rounded.CloseFullscreen,
+                            contentDescription = strings.exitImmersive,
+                            size = headerButtonSize,
+                            iconSize = if (compactPlayer) 20.dp else 22.dp,
+                            tint = primary,
+                            onClick = { viewModel.setPlayerVisualMode(PlayerVisualMode.CanvasCard) }
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier.align(Alignment.Center),
@@ -437,16 +447,6 @@ fun LevyraNowPlaying(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
                 ) {
-                    if (visualMode == PlayerVisualMode.CanvasImmersive && !state.isVideoMode) {
-                        PlayerGlassIconButton(
-                            icon = Icons.Rounded.CloseFullscreen,
-                            contentDescription = strings.exitImmersive,
-                            size = headerButtonSize,
-                            iconSize = if (compactPlayer) 20.dp else 22.dp,
-                            tint = primary,
-                            onClick = { viewModel.setPlayerVisualMode(PlayerVisualMode.CanvasCard) }
-                        )
-                    }
                     if (!state.isVideoMode) {
                         CastRouteButton(modifier = Modifier.size(headerButtonSize))
                     }
@@ -507,29 +507,13 @@ fun LevyraNowPlaying(
                             onClick = { LevyraPipBridge.enter() }
                         )
                     }
-                    Box(contentAlignment = Alignment.TopEnd) {
-                        PlayerGlassIconButton(
-                            icon = Icons.Rounded.MoreVert,
-                            contentDescription = strings.options,
-                            size = headerButtonSize,
-                            iconSize = if (compactPlayer) 20.dp else 21.dp,
-                            onClick = { optionsExpanded = !optionsExpanded }
-                        )
-                        if (optionsMenuContent != null) {
-                            DropdownMenu(
-                                expanded = optionsExpanded,
-                                onDismissRequest = { optionsExpanded = false },
-                                modifier = Modifier
-                                    .width(if (compactPlayer) 276.dp else 296.dp)
-                                    .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
-                                    .border(1.dp, Color.White.copy(alpha = 0.12f), LevyraPlayerDesign.ShapeMd)
-                            ) {
-                                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                                    optionsMenuContent()
-                                }
-                            }
-                        }
-                    }
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.MoreVert,
+                        contentDescription = strings.options,
+                        size = headerButtonSize,
+                        iconSize = if (compactPlayer) 20.dp else 21.dp,
+                        onClick = { viewModel.openAudioQualityPanel() }
+                    )
                 }
             }
         }
@@ -797,7 +781,7 @@ fun LevyraNowPlaying(
                 primaryColor = primary,
                 secondaryColor = secondary,
                 compact = compactPlayer,
-                queueLabel = strings.queue,
+                audioSettingsLabel = strings.audioQuality,
                 lyricsLabel = strings.lyrics,
                 visualModeLabel = when (visualMode) {
                     PlayerVisualMode.Artwork -> strings.playerVisualModeArtwork
@@ -810,7 +794,7 @@ fun LevyraNowPlaying(
                     else -> strings.download
                 },
                 radioLabel = strings.startRadio,
-                onQueueClick = viewModel::openQueue,
+                onAudioSettingsClick = viewModel::openAudioQualityPanel,
                 onLyricsClick = viewModel::openLyrics,
                 onCycleVisualMode = {
                     val nextMode = when (visualMode) {

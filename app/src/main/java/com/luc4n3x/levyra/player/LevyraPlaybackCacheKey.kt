@@ -13,7 +13,7 @@ object LevyraPlaybackCacheKey {
         val id = PlaybackSourceIdentity.sourceVideoId(track)
             .ifBlank { stableId(track) }
             .replace(':', '_')
-        return "levyra:$id:stream-v2:${variant(track.streamUrl)}"
+        return "levyra:$id:stream-v2:${streamVariant(track)}"
     }
 
     fun offlineStream(track: Track): String {
@@ -35,6 +35,14 @@ object LevyraPlaybackCacheKey {
         .ifBlank { track.videoUrl.trim() }
         .ifBlank { "${track.artist.trim()}-${track.title.trim()}" }
         .replace(':', '_')
+
+    private fun streamVariant(track: Track): String {
+        val alternative = track.playbackManifest?.alternativeSource ?: return variant(track.streamUrl)
+        val providerTrack = alternative.providerTrackId.replace(unsafeKeyCharacters, "_")
+        return "alt-${alternative.providerId}-$providerTrack-${alternative.bitrateKbps}"
+    }
+
+    private val unsafeKeyCharacters = Regex("[^A-Za-z0-9_-]")
 
     private fun variant(url: String): String {
         val clean = url.lowercase()

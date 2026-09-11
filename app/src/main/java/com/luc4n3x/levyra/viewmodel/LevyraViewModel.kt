@@ -68,6 +68,7 @@ import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistBiography
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -1209,6 +1210,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 sponsorBlockEnabled = settings.sponsorBlock,
                 skipSilence = settings.skipSilence,
                 audioQuality = settings.audioQuality,
+                highQualityAudioMode = preferences.highQualityAudioMode(),
                 audioNormalization = settings.audioNormalization,
                 audioSettings = settings.audioSettings,
                 lyricsTranslationEnabled = settings.lyricsTranslationEnabled,
@@ -3460,6 +3462,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         preferences.setAudioQuality(normalized)
         resolver.setAudioQuality(normalized)
         _state.update { it.copy(audioQuality = normalized) }
+    }
+
+    fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
+        preferences.setHighQualityAudioMode(mode)
+        resolver.setHighQualityAudioMode(mode)
+        _state.update { it.copy(highQualityAudioMode = mode) }
     }
 
     fun openSleepTimer() {
