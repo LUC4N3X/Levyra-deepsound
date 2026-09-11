@@ -81,7 +81,8 @@ data class LevyraPreferencesSnapshot(
     val downloadSettings: LevyraDownloadSettings,
     val backupSettings: LevyraBackupSettings,
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
-    val jamDisplayName: String = ""
+    val jamDisplayName: String = "",
+    val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320
 )
 
 @Volatile
@@ -125,6 +126,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_SPONSORBLOCK] = snapshot.sponsorBlock
             mutable[KEY_SKIP_SILENCE] = snapshot.skipSilence
             mutable[KEY_AUDIO_QUALITY] = normalizeAudioQuality(snapshot.audioQuality)
+            mutable[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = snapshot.highQualityAudioMode.storageValue
             mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
@@ -585,7 +587,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             downloadSettings = downloadSettingsFrom(preferences),
             backupSettings = backupSettingsFrom(preferences),
             automationSettings = automationSettingsFrom(preferences),
-            jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty()
+            jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty(),
+            highQualityAudioMode = HighQualityAudioMode.fromStorage(preferences[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO])
         )
     }
 
