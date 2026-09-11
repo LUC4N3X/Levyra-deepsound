@@ -2035,16 +2035,15 @@ fun LevyraApp(
             }
 
             state.backupPreview?.let { preview ->
-                val mediaPermission = when {
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> Manifest.permission.READ_MEDIA_AUDIO
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> Manifest.permission.READ_EXTERNAL_STORAGE
-                    else -> null
+                val mediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Manifest.permission.READ_MEDIA_AUDIO
+                } else {
+                    Manifest.permission.READ_EXTERNAL_STORAGE
                 }
                 VaultRestorePreviewDialog(
                     preview = preview,
                     onConfirm = {
                         if (
-                            mediaPermission != null &&
                             ContextCompat.checkSelfPermission(toastContext, mediaPermission) != PackageManager.PERMISSION_GRANTED
                         ) {
                             restoreMediaPermissionLauncher.launch(mediaPermission)

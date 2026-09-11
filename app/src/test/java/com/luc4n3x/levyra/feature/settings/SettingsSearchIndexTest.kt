@@ -56,7 +56,7 @@ class SettingsSearchIndexTest {
                     categoryLabel = "Tercihler"
                 )
             ),
-            locale = Locale("tr")
+            locale = Locale.forLanguageTag("tr")
         )
 
         assertEquals("system", turkish.search("istanbul").single().categoryId)

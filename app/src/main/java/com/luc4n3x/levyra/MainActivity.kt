@@ -272,10 +272,7 @@ class MainActivity : ComponentActivity() {
 
         LevyraLaunchActions.pendingShortcut.value = LevyraLaunchActions.SHORTCUT_SEARCH
         if (!LevyraRecognitionCenter.isAvailable || !permissionRequest) return
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             recognitionPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         } else {
             startMicrophoneRecognitionService()
@@ -445,7 +442,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestPackageInstall(prepared: PreparedAppUpdate) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+        if (!packageManager.canRequestPackageInstalls()) {
             pendingUpdate = prepared
             updatePhase.value = LevyraUpdatePhase.PermissionRequired(prepared.versionName)
             val settingsIntent = Intent(
@@ -464,7 +461,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun resumePendingUpdateInstall() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+        if (!packageManager.canRequestPackageInstalls()) {
             updatePhase.value = pendingUpdate
                 ?.let { LevyraUpdatePhase.PermissionRequired(it.versionName) }
                 ?: LevyraUpdatePhase.Idle
@@ -508,7 +505,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun enterPictureInPicture(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) return false
         val state = LevyraPipBridge.current()
         if (!state.canEnter) return false
@@ -526,7 +522,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updatePictureInPictureParams(state: LevyraPipBridge.State) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         setPictureInPictureParams(buildPictureInPictureParams(state))
     }
 
@@ -546,7 +541,7 @@ class MainActivity : ComponentActivity() {
 
     private fun applyOrientationPolicy() {
         requestedOrientation = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            isInPictureInPictureMode -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             resources.configuration.smallestScreenWidthDp >= 600 -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
             else -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
