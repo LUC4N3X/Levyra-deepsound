@@ -98,7 +98,7 @@ internal fun homeAlbumArtistFromTrack(track: Track): String? {
         .map(String::trim)
         .filter(String::isNotBlank)
         .distinctBy { it.lowercase() }
-    if (artistBrowseIds.size > 1 || hasAmbiguousHomeAlbumArtistCredit(rawArtist)) return null
+    if (artistBrowseIds.size != 1 || hasAmbiguousHomeAlbumArtistCredit(rawArtist)) return null
     return rawArtist
 }
 
@@ -109,11 +109,8 @@ internal fun hasAmbiguousHomeAlbumArtistCredit(value: String): Boolean =
 private fun isUsableHomeAlbumTrack(track: Track): Boolean {
     val album = track.album.trim()
     if (album.isBlank() || track.artist.isBlank()) return false
-    val hasCanonicalAlbumIdentity =
-        track.albumBrowseId.isNotBlank() ||
-            track.upc.isNotBlank() ||
-            track.canonicalAlbumUrl.isNotBlank()
-    if (!hasCanonicalAlbumIdentity) return false
+    val albumBrowseId = track.albumBrowseId.trim()
+    if (!albumBrowseId.startsWith("MPRE", ignoreCase = true)) return false
     if (albumRecommendationTextKey(album) == albumRecommendationTextKey(track.title)) return false
     val albumKey = albumRecommendationTextKey(album)
     if (
