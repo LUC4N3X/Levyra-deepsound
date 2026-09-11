@@ -17,6 +17,8 @@ import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.sanitizePlaylistTagName
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -25,6 +27,11 @@ class PlaylistStore(context: Context) {
     private val dao = database.playlistDao()
     private val tagsDao = database.playlistTagsDao()
     private val coverStore = PlaylistCoverStore(context.applicationContext)
+    private val coverMutationLocks = mutableMapOf<String, Mutex>()
+
+    private fun coverMutationLock(playlistId: String): Mutex = synchronized(coverMutationLocks) {
+        coverMutationLocks.getOrPut(playlistId) { Mutex() }
+    }
 
     suspend fun loadAll(): List<Playlist> = withContext(Dispatchers.IO) {
         runCatching {
@@ -223,21 +230,25 @@ class PlaylistStore(context: Context) {
 
     suspend fun setCustomCover(playlistId: String, source: android.net.Uri, crop: PlaylistCoverCrop) =
         withContext(Dispatchers.IO) {
-            val previous = dao.playlist(playlistId) ?: return@withContext
-            val reference = coverStore.save(playlistId, source, crop)
-            dao.updateCustomCover(playlistId, reference, System.currentTimeMillis())
-            if (previous.coverMode == PlaylistCoverMode.CUSTOM.name && previous.coverUrl != reference) {
-                coverStore.delete(previous.coverUrl)
+            coverMutationLock(playlistId).withLock {
+                val previous = dao.playlist(playlistId) ?: return@withLock
+                val reference = coverStore.save(playlistId, source, crop)
+                dao.updateCustomCover(playlistId, reference, System.currentTimeMillis())
+                if (previous.coverMode == PlaylistCoverMode.CUSTOM.name && previous.coverUrl != reference) {
+                    coverStore.delete(previous.coverUrl)
+                }
             }
         }
 
     suspend fun resetCover(playlistId: String) = withContext(Dispatchers.IO) {
-        val previous = dao.playlist(playlistId) ?: return@withContext
-        val automatic = dao.tracksOf(playlistId).firstNotNullOfOrNull { entity ->
-            entity.largeThumbnailUrl.ifBlank { entity.thumbnailUrl }.takeIf(String::isNotBlank)
-        }.orEmpty()
-        dao.resetCover(playlistId, automatic, System.currentTimeMillis())
-        if (previous.coverMode == PlaylistCoverMode.CUSTOM.name) coverStore.delete(previous.coverUrl)
+        coverMutationLock(playlistId).withLock {
+            val previous = dao.playlist(playlistId) ?: return@withLock
+            val automatic = dao.tracksOf(playlistId).firstNotNullOfOrNull { entity ->
+                entity.largeThumbnailUrl.ifBlank { entity.thumbnailUrl }.takeIf(String::isNotBlank)
+            }.orEmpty()
+            dao.resetCover(playlistId, automatic, System.currentTimeMillis())
+            if (previous.coverMode == PlaylistCoverMode.CUSTOM.name) coverStore.delete(previous.coverUrl)
+        }
     }
 
     suspend fun removeTrack(playlistId: String, trackId: String) = withContext(Dispatchers.IO) {
