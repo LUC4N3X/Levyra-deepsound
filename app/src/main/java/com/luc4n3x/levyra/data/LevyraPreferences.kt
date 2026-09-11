@@ -478,8 +478,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             .filter(::isSafeCachedHomeAlbumHit)
             .take(14)
             .forEach { album ->
-            array.put(
-                JSONObject()
+                array.put(
+                    JSONObject()
                     .put("title", album.title)
                     .put("artist", album.artist)
                     .put("year", album.year)
@@ -492,10 +492,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                     .put("releaseDate", album.releaseDate)
                     .put("upc", album.upc)
                     .put("canonicalUrl", album.canonicalUrl)
-                    .put("metadataProvider", album.metadataProvider)
-                    .put("metadataConfidence", album.metadataConfidence)
-            )
-        }
+                        .put("metadataProvider", album.metadataProvider)
+                        .put("metadataConfidence", album.metadataConfidence)
+                )
+            }
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         write { it[homeAlbumsKey(normalized)] = array.toString() }
     }
