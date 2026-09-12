@@ -7362,7 +7362,6 @@ private fun HomeScreen(
                     if (homeAlbums.isNotEmpty()) {
                         HomeAlbumHitRow(
                             albums = homeAlbums,
-                            animationsEnabled = state.animationsEnabled,
                             onOpen = viewModel::openAlbum
                         )
                     } else if (showHomeAlbumShimmer) {
@@ -7418,7 +7417,6 @@ private fun HomeScreen(
                     AlbumCardRow(
                         tracks = newReleases.tracks,
                         currentId = state.currentTrack?.id,
-                        animationsEnabled = state.animationsEnabled,
                         onPlay = { viewModel.playFrom(newReleases.tracks, it) }
                     )
                 }
@@ -7529,7 +7527,6 @@ private fun HomeScreen(
                                     AlbumCardGrid(
                                         tracks = section.tracks,
                                         currentId = state.currentTrack?.id,
-                                        animationsEnabled = state.animationsEnabled,
                                         onPlay = { viewModel.playFrom(section.tracks, it) }
                                     )
                                 }
@@ -7541,7 +7538,6 @@ private fun HomeScreen(
                                     AlbumCardRow(
                                         tracks = section.tracks,
                                         currentId = state.currentTrack?.id,
-                                        animationsEnabled = state.animationsEnabled,
                                         onPlay = { viewModel.playFrom(section.tracks, it) }
                                     )
                                 }
@@ -19043,9 +19039,8 @@ private fun HomeAlbumLoadingRow() {
 }
 
 @Composable
-private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, onOpen: (AlbumHit) -> Unit) {
+private fun HomeAlbumHitRow(albums: List<AlbumHit>, onOpen: (AlbumHit) -> Unit) {
     if (albums.isEmpty()) return
-    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val cardWidth = rememberShelfItemWidth(maxWidth, HOME_ALBUM_CARD_WIDTH)
         LazyRow(
@@ -19057,25 +19052,10 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                 key = { index, album -> "home-album-$index-${album.browseId.ifBlank { "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}" }}" },
                 contentType = { _, _ -> "home-album-card" }
             ) { _, album ->
-                val interaction = remember { MutableInteractionSource() }
-                val isPressed by interaction.collectIsPressedAsState()
-                val scale by animateFloatAsState(
-                    targetValue = if (isPressed && effectiveAnimationsEnabled) 0.975f else 1f,
-                    animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
-                    label = "homeAlbumScale"
-                )
                 Column(
                     modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                        }
                         .width(cardWidth)
-                        .clickable(
-                            interactionSource = interaction,
-                            indication = null,
-                            onClick = { onOpen(album) }
-                        ),
+                        .clickable(onClick = { onOpen(album) }),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val artworkShape = LevyraHomeDesign.ArtworkShape
@@ -19143,7 +19123,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
 }
 
 @Composable
-private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
+private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val cardWidth = rememberShelfItemWidth(maxWidth, LevyraHomeDesign.ArtworkCardWidth)
@@ -19159,7 +19139,6 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                 AlbumArtworkCard(
                     track = track,
                     isCurrent = track.id == currentId,
-                    animationsEnabled = animationsEnabled,
                     width = cardWidth,
                     onPlay = { onPlay(track) }
                 )
@@ -19211,7 +19190,7 @@ private fun rememberCardCaptionHeight(
 }
 
 @Composable
-private fun AlbumCardGrid(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
+private fun AlbumCardGrid(tracks: List<Track>, currentId: String?, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     val columns = remember(tracks) {
         tracks.take(HomeSectionLayoutPolicy.ARTWORK_GRID_CAPACITY).chunked(2)
@@ -19235,7 +19214,6 @@ private fun AlbumCardGrid(tracks: List<Track>, currentId: String?, animationsEna
                         AlbumArtworkCard(
                             track = track,
                             isCurrent = track.id == currentId,
-                            animationsEnabled = animationsEnabled,
                             width = cardWidth,
                             onPlay = { onPlay(track) }
                         )
@@ -19250,33 +19228,16 @@ private fun AlbumCardGrid(tracks: List<Track>, currentId: String?, animationsEna
 private fun AlbumArtworkCard(
     track: Track,
     isCurrent: Boolean,
-    animationsEnabled: Boolean,
     width: Dp,
     onPlay: () -> Unit
 ) {
-    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
-    val interaction = remember { MutableInteractionSource() }
-    val isPressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.975f else 1f,
-        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
-        label = "albumCardScale"
-    )
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     val meta = displayableAlbumLabel(track) ?: track.artist
     Column(
         modifier = Modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
             .width(width)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onPlay
-            ),
+            .clickable(onClick = onPlay),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         val artworkShape = LevyraHomeDesign.ArtworkShape
@@ -19284,19 +19245,6 @@ private fun AlbumArtworkCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .then(
-                    if (isCurrent) {
-                        Modifier.shadow(
-                            elevation = 10.dp,
-                            shape = artworkShape,
-                            clip = false,
-                            ambientColor = accentStart.copy(alpha = 0.16f),
-                            spotColor = accentEnd.copy(alpha = 0.20f)
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
                 .clip(artworkShape)
                 .background(LevyraPanel)
                 .border(
