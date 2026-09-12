@@ -1067,6 +1067,8 @@ internal fun LevyraPlaylistDetailScreen(
                 onSelectAll = { selectedKeys = selectAllPlaylistTrackKeys(orderedTracks) },
                 allSelected = orderedTracks.isNotEmpty() && selectedKeys.size == orderedTracks.size,
                 primaryLabel = strings.playNext,
+                canPlayTracks = selectedTracks.isNotEmpty() && (!state.jam.isActive || state.jam.canControlPlayback),
+                canQueueTracks = selectedTracks.isNotEmpty() && (!state.jam.isActive || state.jam.canAddTracks),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
