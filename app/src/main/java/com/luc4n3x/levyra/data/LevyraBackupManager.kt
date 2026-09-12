@@ -288,19 +288,22 @@ class LevyraBackupManager(private val context: Context) {
         val sections = linkedMapOf<String, SectionInfo>()
         ZipOutputStream(output.buffered()).use { zip ->
             val playlistEntities = database.playlistDao().allPlaylists()
-            val coverEntries = playlistEntities.mapNotNull { playlist ->
-                if (playlist.coverMode != PlaylistCoverMode.CUSTOM.name) return@mapNotNull null
-                val bytes = playlistCoverStore.readBackup(playlist.coverUrl)
-                    ?: throw IOException("Custom playlist cover is missing or unreadable: ${playlist.id}")
-                playlist.id to (playlistCoverBackupEntry(playlist.id) to bytes)
-            }.toMap()
-            if (coverEntries.size > MAX_PLAYLIST_COVER_ENTRIES ||
-                coverEntries.values.sumOf { it.second.size.toLong() } > MAX_PLAYLIST_COVER_TOTAL_BYTES
-            ) {
+            val customCoverPlaylists = playlistEntities.filter { it.coverMode == PlaylistCoverMode.CUSTOM.name }
+            if (customCoverPlaylists.size > MAX_PLAYLIST_COVER_ENTRIES) {
                 throw IOException("Playlist cover backup is too large")
             }
-            coverEntries.values.forEach { (name, bytes) ->
+            val coverEntries = linkedMapOf<String, String>()
+            var coverBytesTotal = 0L
+            customCoverPlaylists.forEach { playlist ->
+                val bytes = playlistCoverStore.readBackup(playlist.coverUrl)
+                    ?: throw IOException("Custom playlist cover is missing or unreadable: ${playlist.id}")
+                coverBytesTotal += bytes.size.toLong()
+                if (coverBytesTotal > MAX_PLAYLIST_COVER_TOTAL_BYTES) {
+                    throw IOException("Playlist cover backup is too large")
+                }
+                val name = playlistCoverBackupEntry(playlist.id)
                 sections[name] = writeBinarySection(zip, name, bytes)
+                coverEntries[playlist.id] = name
             }
             sections[FAVORITES_ENTRY] = writeJsonSection(zip, FAVORITES_ENTRY) { writer ->
                 val favorites = database.favoriteTracksDao().all().map { it.toTrack() }
@@ -328,7 +331,7 @@ class LevyraBackupManager(private val context: Context) {
                         .put("name", playlist.name)
                         .put("coverUrl", coverUrl)
                         .put("coverMode", coverMode.name)
-                        .put("coverEntry", customCover?.first.orEmpty())
+                        .put("coverEntry", customCover.orEmpty())
                         .put("createdAt", playlist.createdAt)
                         .put("updatedAt", playlist.updatedAt)
                         .put("hidden", playlist.hidden)
@@ -427,6 +430,8 @@ class LevyraBackupManager(private val context: Context) {
             ZipInputStream(stream.buffered()).use { zip ->
                 var totalBytes = 0L
                 var entryCount = 0
+                var coverEntryCount = 0
+                var coverBytesTotal = 0L
                 while (true) {
                     val entry = zip.nextEntry ?: break
                     entryCount += 1
@@ -434,9 +439,18 @@ class LevyraBackupManager(private val context: Context) {
                     if (entry.isDirectory) throw IOException("Backup non valido: voce ZIP directory")
                     if (!vaultEntryAllowed(entry.name)) throw IOException("Backup non valido: voce ZIP inattesa ${entry.name}")
                     if (entries.containsKey(entry.name)) throw IOException("Backup non valido: voce duplicata ${entry.name}")
+                    val isPlaylistCover = playlistCoverBackupEntryAllowed(entry.name)
+                    if (isPlaylistCover) {
+                        coverEntryCount += 1
+                        if (coverEntryCount > MAX_PLAYLIST_COVER_ENTRIES) throw IOException("Backup non valido: troppe cover playlist")
+                    }
                     val entryLimit = vaultEntryLimit(entry.name)
                     if (entry.size > entryLimit) throw IOException("Backup troppo grande")
                     val bytes = readZipEntry(zip, entryLimit)
+                    if (isPlaylistCover) {
+                        coverBytesTotal += bytes.size.toLong()
+                        if (coverBytesTotal > MAX_PLAYLIST_COVER_TOTAL_BYTES) throw IOException("Backup non valido: cover playlist troppo grandi")
+                    }
                     totalBytes += bytes.size
                     if (totalBytes > MAX_TOTAL_BYTES) throw IOException("Backup troppo grande")
                     entries[entry.name] = bytes
