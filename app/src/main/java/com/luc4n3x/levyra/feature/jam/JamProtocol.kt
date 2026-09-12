@@ -143,8 +143,9 @@ object JamProtocol {
         put("shuffle", state.shuffle)
         put("repeatMode", state.repeatMode)
         put("permission", state.permission.id)
+        require(state.capabilities.size <= MAX_CAPABILITIES)
         put("capabilities", JSONArray().apply {
-            state.capabilities.take(MAX_CAPABILITIES).forEach(::put)
+            state.capabilities.forEach { capability -> put(capability) }
         })
         put(
             "participants",
