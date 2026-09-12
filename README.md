@@ -36,6 +36,9 @@
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki.svg">
     <img src="docs/assets/levyra-wiki.svg" alt="Levyra Documentation">
   </picture></a>
+  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
+    <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" width="150">
+  </a>
 </p>
 
 ### ✦ Download
