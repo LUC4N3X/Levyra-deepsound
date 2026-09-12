@@ -711,7 +711,11 @@ internal fun LevyraLibraryScreen(
                     selectedKeys = emptySet()
                 },
                 onAddToPlaylist = { addToPlaylistTracks = selectedTracks },
-                onDelete = { confirmDelete = true }
+                onDelete = { confirmDelete = true },
+                canQueueTracks = selectedTracks.isNotEmpty() && (
+                    !state.jam.isActive ||
+                        state.jam.canAddTracks && (selectedTracks.size == 1 || state.jam.supportsBatchAddTracks)
+                    )
             )
         }
 
@@ -1072,7 +1076,10 @@ internal fun LevyraPlaylistDetailScreen(
                 allSelected = orderedTracks.isNotEmpty() && selectedKeys.size == orderedTracks.size,
                 primaryLabel = strings.playNext,
                 canPlayTracks = selectedTracks.isNotEmpty() && (!state.jam.isActive || state.jam.isHost),
-                canQueueTracks = selectedTracks.isNotEmpty() && (!state.jam.isActive || state.jam.canAddTracks),
+                canQueueTracks = selectedTracks.isNotEmpty() && (
+                    !state.jam.isActive ||
+                        state.jam.canAddTracks && (selectedTracks.size == 1 || state.jam.supportsBatchAddTracks)
+                    ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
