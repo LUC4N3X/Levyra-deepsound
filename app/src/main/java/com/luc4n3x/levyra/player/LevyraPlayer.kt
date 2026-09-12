@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -236,7 +237,8 @@ class LevyraPlayer(context: Context) {
                         return
                     }
                     val terminalFailure = isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))
-                    if (!terminalFailure && isRecoverable(error) && !recoveryInFlight && recoveryAttempts < 3 && onRecoverableStreamError != null) {
+                    val allowRecovery = (!terminalFailure || track.isLiveRadio()) && isRecoverable(error) && !recoveryInFlight && recoveryAttempts < 3 && onRecoverableStreamError != null
+                    if (allowRecovery) {
                         recoveryInFlight = true
                         recoveryAttempts++
                         val playWhenReadyBeforeError = connected.playWhenReady
@@ -247,7 +249,7 @@ class LevyraPlayer(context: Context) {
                         connected.pause()
                         onRecoverableStreamError?.invoke(
                             track,
-                            connected.currentPosition.coerceAtLeast(0L),
+                            if (track.isLiveRadio()) 0L else connected.currentPosition.coerceAtLeast(0L),
                             loadedVideoMode,
                             playWhenReadyBeforeError,
                             message
@@ -278,6 +280,10 @@ class LevyraPlayer(context: Context) {
             ?: pendingPlayback?.playWhenReady
             ?: false
 
+    fun markRecoverySucceeded() {
+        if (!recoveryInFlight) recoveryAttempts = 0
+    }
+
     val positionMs: Long
         get() {
             val active = controller ?: return pendingPlayback?.positionMs ?: 0L
@@ -293,6 +299,7 @@ class LevyraPlayer(context: Context) {
 
     val durationMs: Long
         get() {
+            if (loadedTrack?.isLiveRadio() == true) return 0L
             val duration = controller?.duration ?: return 0L
             return if (duration == C.TIME_UNSET) 0L else duration.coerceAtLeast(0L)
         }
@@ -365,13 +372,17 @@ class LevyraPlayer(context: Context) {
         recoveryInFlight = false
         if (!recoveryReplacement) recoveryAttempts = 0
         val sameTrack = loadedTrack?.id == track.id
-        val startPositionMs = replacementStartPosition(
-            sameTrack = sameTrack,
-            requestedPositionMs = positionMs,
-            activePositionMs = if (active.mediaItemCount > 0) active.currentPosition else 0L,
-            durationMs = track.durationMs,
-            allowBackwardActivePosition = sameTrack && !recoveryReplacement
-        )
+        val startPositionMs = if (track.isLiveRadio()) {
+            0L
+        } else {
+            replacementStartPosition(
+                sameTrack = sameTrack,
+                requestedPositionMs = positionMs,
+                activePositionMs = if (active.mediaItemCount > 0) active.currentPosition else 0L,
+                durationMs = track.durationMs,
+                allowBackwardActivePosition = sameTrack && !recoveryReplacement
+            )
+        }
         val effectivePlayWhenReady = if (sameTrack && !recoveryReplacement && active.mediaItemCount > 0) {
             active.playWhenReady
         } else {
@@ -433,6 +444,7 @@ class LevyraPlayer(context: Context) {
     }
 
     fun seekTo(positionMs: Long) {
+        if (loadedTrack?.isLiveRadio() == true) return
         val safePositionMs = positionMs.coerceAtLeast(0L)
         pendingStartPositionMs = null
         val active = controller

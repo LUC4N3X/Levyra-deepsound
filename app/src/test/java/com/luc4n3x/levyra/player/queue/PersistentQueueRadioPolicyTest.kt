@@ -97,6 +97,24 @@ class PersistentQueueRadioPolicyTest {
         assertEquals(0, radioInsertionIndex(currentIndex = 7, queueSize = 0, afterCurrent = true))
     }
 
+    @Test
+    fun queueTracksAfterAddLastAppendsNewTracksAndSkipsDuplicates() {
+        val t1 = track("1", "Song 1")
+        val t2 = track("2", "Song 2")
+        val t3 = track("3", "Song 3")
+        val updated = queueTracksAfterAddLast(listOf(t1, t2), listOf(t2, t3))
+        assertEquals(listOf("1", "2", "3"), updated.map(Track::id))
+    }
+
+    @Test
+    fun queueTracksAfterPlayNextInsertsAfterCurrent() {
+        val t1 = track("1", "Song 1")
+        val t2 = track("2", "Song 2")
+        val t3 = track("3", "Song 3")
+        val updated = queueTracksAfterPlayNext(listOf(t1, t2), currentIndex = 0, listOf(t3))
+        assertEquals(listOf("1", "3", "2"), updated.map(Track::id))
+    }
+
     private fun track(id: String, title: String, artist: String = "Artist") = Track(
         id = id,
         title = title,

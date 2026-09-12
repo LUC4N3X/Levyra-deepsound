@@ -24,4 +24,14 @@ class LevyraMediaItemFactoryTest {
         assertNull(LevyraMediaItemFactory.mimeTypeFor("content://media/external/audio/media/42", false))
         assertNull(LevyraMediaItemFactory.mimeTypeFor("file:///storage/emulated/0/Music/download", false))
     }
+
+    @Test
+    fun liveRadioOnlyForcesManifestMimeTypes() {
+        assertNull(LevyraMediaItemFactory.liveRadioMimeTypeFor("https://radio.example/live"))
+        assertNull(LevyraMediaItemFactory.liveRadioMimeTypeFor("https://radio.example/live.mp3"))
+        assertEquals(
+            "application/x-mpegURL",
+            LevyraMediaItemFactory.liveRadioMimeTypeFor("https://radio.example/live.m3u8")
+        )
+    }
 }
