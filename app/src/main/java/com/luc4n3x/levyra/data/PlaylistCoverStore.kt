@@ -197,8 +197,10 @@ internal class PlaylistCoverStore(context: Context) {
         }
     }
 
-    private fun targetFile(playlistId: String): File =
-        File(directory, playlistCoverBackupEntry(playlistId).substringAfterLast('/'))
+    private fun targetFile(playlistId: String): File {
+        val identity = "$playlistId\u0000${UUID.randomUUID()}"
+        return File(directory, "${sha256(identity.toByteArray(Charsets.UTF_8))}.jpg")
+    }
 
     private fun ownedFile(reference: String): File? {
         if (reference.isBlank()) return null
