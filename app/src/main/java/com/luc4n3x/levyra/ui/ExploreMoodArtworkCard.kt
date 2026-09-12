@@ -154,7 +154,7 @@ internal fun RowScope.ExploreMoodCard(
     zone: ExploreZone,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onStartZoneMix: () -> Unit
+    onStartZoneMix: (() -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
@@ -250,7 +250,7 @@ internal fun RowScope.ExploreMoodCard(
                 role = Role.Button,
                 onClickLabel = zone.label,
                 onLongClick = onStartZoneMix,
-                onLongClickLabel = strings.mixStartRadio
+                onLongClickLabel = if (onStartZoneMix != null) strings.mixStartRadio else null
             )
     ) {
         if (portraitUrl.isNotBlank()) {
