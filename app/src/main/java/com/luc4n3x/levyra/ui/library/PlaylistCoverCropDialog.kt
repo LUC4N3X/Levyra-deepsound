@@ -160,32 +160,36 @@ internal fun PlaylistCoverCropDialog(
                         .semantics(mergeDescendants = true) {
                             contentDescription = copy.coverPreview
                             stateDescription = "${(zoom * 100).roundToInt()}%"
-                            customActions = listOf(
-                                CustomAccessibilityAction(copy.zoomIn) {
-                                    updateZoom(zoom + 0.25f)
-                                    true
-                                },
-                                CustomAccessibilityAction(copy.zoomOut) {
-                                    updateZoom(zoom - 0.25f)
-                                    true
-                                },
-                                CustomAccessibilityAction(copy.moveCoverLeft) {
+                            customActions = buildList {
+                                if (zoom < 4f) {
+                                    add(CustomAccessibilityAction(copy.zoomIn) {
+                                        updateZoom(zoom + 0.25f)
+                                        true
+                                    })
+                                }
+                                if (zoom > 1f) {
+                                    add(CustomAccessibilityAction(copy.zoomOut) {
+                                        updateZoom(zoom - 0.25f)
+                                        true
+                                    })
+                                }
+                                add(CustomAccessibilityAction(copy.moveCoverLeft) {
                                     moveCover(-panStep, 0f)
-                                },
-                                CustomAccessibilityAction(copy.moveCoverRight) {
+                                })
+                                add(CustomAccessibilityAction(copy.moveCoverRight) {
                                     moveCover(panStep, 0f)
-                                },
-                                CustomAccessibilityAction(copy.moveCoverUp) {
+                                })
+                                add(CustomAccessibilityAction(copy.moveCoverUp) {
                                     moveCover(0f, -panStep)
-                                },
-                                CustomAccessibilityAction(copy.moveCoverDown) {
+                                })
+                                add(CustomAccessibilityAction(copy.moveCoverDown) {
                                     moveCover(0f, panStep)
-                                },
-                                CustomAccessibilityAction(copy.resetCrop) {
+                                })
+                                add(CustomAccessibilityAction(copy.resetCrop) {
                                     resetCrop()
                                     true
-                                }
-                            )
+                                })
+                            }
                         }
                         .onSizeChanged {
                             viewport = it
