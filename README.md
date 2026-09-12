@@ -178,17 +178,45 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 <div align="center">
 
-<img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra Panoramic Experience Showcase" width="100%" />
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/00_levyra_hero_showcase-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/00_levyra_hero_showcase.webp">
+  <img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra Panoramic Experience Showcase" width="100%" />
+</picture>
 
 <br><br>
 
 | | |
 | :---: | :---: |
-| <img src="docs/assets/showcase/01_playback_and_lyrics.webp" alt="Immersive Playback & Live Synced Lyrics" width="100%"> | <img src="docs/assets/showcase/02_home_and_charts.webp" alt="Smart Orbit Feed & Global Top Charts" width="100%"> |
+| <picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/01_playback_and_lyrics-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/01_playback_and_lyrics.webp">
+  <img src="docs/assets/showcase/01_playback_and_lyrics.webp" alt="Immersive Playback & Live Synced Lyrics" width="100%" />
+</picture> | <picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/02_home_and_charts-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/02_home_and_charts.webp">
+  <img src="docs/assets/showcase/02_home_and_charts.webp" alt="Smart Orbit Feed & Global Top Charts" width="100%" />
+</picture> |
 | **Immersive Playback & Live Synced Lyrics**<br><sub>ExoPlayer audio engine · Line-by-line LRCLIB synced lyrics · Song/Video toggle · SponsorBlock</sub> | **Smart Orbit Feed & Global Charts**<br><sub>Dynamic 'Your Orbit' rotation · Live Top 50 international charts · Mood chips · Instant prefetch</sub> |
-| <img src="docs/assets/showcase/03_search_and_artist.webp" alt="Deep Search & Artist Immersion" width="100%"> | <img src="docs/assets/showcase/04_library_and_pulse.webp" alt="Offline M4A Vault & Listening Pulse" width="100%"> |
+| <picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/03_search_and_artist-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/03_search_and_artist.webp">
+  <img src="docs/assets/showcase/03_search_and_artist.webp" alt="Deep Search & Artist Immersion" width="100%" />
+</picture> | <picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/04_library_and_pulse-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/04_library_and_pulse.webp">
+  <img src="docs/assets/showcase/04_library_and_pulse.webp" alt="Offline M4A Vault & Listening Pulse" width="100%" />
+</picture> |
 | **Deep Search & Artist Immersion**<br><sub>Live search with artist bubbles · Wikipedia biography cards · Complete chronological discography</sub> | **Offline M4A Vault & Listening Pulse**<br><sub>Real tagged M4A files with art · On-device 7-day listening analytics · 100% private SQLite</sub> |
-| <img src="docs/assets/showcase/05_video_and_samples.webp" alt="Samples Clips & Comment Energy" width="100%"> | <img src="docs/assets/showcase/06_collections_and_genres.webp" alt="Editorial Playlists & Genre Matrix" width="100%"> |
+| <picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/05_video_and_samples-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/05_video_and_samples.webp">
+  <img src="docs/assets/showcase/05_video_and_samples.webp" alt="Samples Clips & Comment Energy" width="100%" />
+</picture> | <picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/06_collections_and_genres-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/06_collections_and_genres.webp">
+  <img src="docs/assets/showcase/06_collections_and_genres.webp" alt="Editorial Playlists & Genre Matrix" width="100%" />
+</picture> |
 | **Samples Clips & Comment Energy**<br><sub>Vertical video teaser clips · Live music video feeds · Real-time 73% comment energy resonance</sub> | **Editorial Playlists & Genre Matrix**<br><sub>4-tile dynamic editorial collections · Expansive mood spectrum (Rap, Lo-Fi, Anime, Electronic)</sub> |
 
 </div>
