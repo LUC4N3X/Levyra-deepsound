@@ -595,7 +595,8 @@ fun LevyraNowPlaying(
                 }
 
                 val videoGesturesEnabled = state.isVideoMode && activeTrack.videoUrl.isNotBlank()
-                if ((state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
+                if (!liveRadio &&
+                    (state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
                     gestureLayerContent != null &&
                     !videoFullscreen
                 ) {

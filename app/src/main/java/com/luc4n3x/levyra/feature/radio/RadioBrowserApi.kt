@@ -133,8 +133,9 @@ internal class RadioBrowserApi(
     private suspend fun execute(path: String, params: Map<String, String>, maxBytes: Int): String {
         var lastFailure: Throwable? = null
         val servers = serverPool.servers()
+        val rotation = nextServer.getAndIncrement()
         repeat(minOf(servers.size, MAX_SERVER_ATTEMPTS)) { attempt ->
-            val server = servers[Math.floorMod(attempt + nextServer.getAndIncrement(), servers.size)]
+            val server = servers[Math.floorMod(rotation + attempt, servers.size)]
             val url = buildUrl(server, path, params)
             try {
                 val request = Request.Builder()
@@ -207,10 +208,12 @@ internal class RadioBrowserServerPool(
 ) {
     @Volatile private var cached = emptyList<String>()
     @Volatile private var cachedAt = 0L
+    @Volatile private var isFallback = false
 
     suspend fun servers(): List<String> {
         val current = cached
-        if (current.isNotEmpty() && now() - cachedAt < SERVER_CACHE_MS) return current
+        val ttl = if (isFallback) FALLBACK_CACHE_MS else SERVER_CACHE_MS
+        if (current.isNotEmpty() && now() - cachedAt < ttl) return current
         val discovered = try {
             lookup(DISCOVERY_HOST).mapNotNull { address ->
                 address.canonicalHostName
@@ -223,15 +226,18 @@ internal class RadioBrowserServerPool(
         } catch (_: Throwable) {
             emptyList()
         }
+        val fallback = discovered.isEmpty()
         val result = discovered.ifEmpty { listOf(DISCOVERY_HOST) }
         cached = result
         cachedAt = now()
+        isFallback = fallback
         return result
     }
 
     private companion object {
         const val DISCOVERY_HOST = "all.api.radio-browser.info"
         const val SERVER_CACHE_MS = 24 * 60 * 60 * 1_000L
+        const val FALLBACK_CACHE_MS = 5 * 60 * 1_000L
     }
 }
 

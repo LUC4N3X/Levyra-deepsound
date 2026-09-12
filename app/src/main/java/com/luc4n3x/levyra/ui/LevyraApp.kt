@@ -1812,7 +1812,7 @@ fun LevyraApp(
                                         bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
                                         liveNowPlaying = state.liveRadioNowPlaying,
                                         animated = state.animationsEnabled,
-                                        gesturesEnabled = state.interfaceSettings.playerGesturesEnabled && !track.isLiveRadio()
+                                        gesturesEnabled = state.interfaceSettings.playerGesturesEnabled
                                     ),
                                     morphAnchors = morphAnchors,
                                     playbackActions = MiniPlayerPlaybackActions(
@@ -20391,12 +20391,17 @@ private fun handleMiniPlayerDragEvent(
     playbackActions: MiniPlayerPlaybackActions,
     expansionActions: MiniPlayerExpansionActions,
     haptics: LevyraHaptics,
+    horizontalGesturesEnabled: Boolean,
     updateSwipeOffset: (Float) -> Unit
 ) {
     when (event) {
-        is PlayerDragEvent.HorizontalOffset -> updateSwipeOffset(event.offsetPx)
+        is PlayerDragEvent.HorizontalOffset -> {
+            if (horizontalGesturesEnabled) updateSwipeOffset(event.offsetPx)
+        }
         is PlayerDragEvent.HorizontalSettled -> {
-            handleMiniPlayerSwipeResult(event.result, playbackActions, haptics)
+            if (horizontalGesturesEnabled) {
+                handleMiniPlayerSwipeResult(event.result, playbackActions, haptics)
+            }
             updateSwipeOffset(0f)
         }
         is PlayerDragEvent.VerticalStart -> expansionActions.start()
@@ -20560,13 +20565,14 @@ private fun MiniPlayer(
             )
         )
     }
+    val horizontalGesturesEnabled = gesturesEnabled && !liveRadio
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(miniBarBackground)
             .playerAxisDragGestures(
                 key = track.id,
-                enabled = gesturesEnabled,
+                enabled = true,
                 rightToLeft = miniRightToLeft,
                 edgeZonesEnabled = false
             ) { event ->
@@ -20575,6 +20581,7 @@ private fun MiniPlayer(
                     playbackActions = playbackActions,
                     expansionActions = expansionActions,
                     haptics = miniHaptics,
+                    horizontalGesturesEnabled = horizontalGesturesEnabled,
                     updateSwipeOffset = { swipeOffsetPx = it }
                 )
             }

@@ -144,4 +144,39 @@ class RadioModelsTest {
         clickCount = clicks,
         lastCheckOk = ok
     )
+
+    @Test
+    fun internetRequiredStringIsProperlyLocalized() {
+        val nonEnglishCodes = listOf("uk", "ru", "tr", "ja", "ko", "hi", "th", "he")
+        nonEnglishCodes.forEach { code ->
+            val message = LevyraLiveRadioCatalog.forCode(code).internetRequired
+            assertFalse("Language $code contains unlocalized 'Internet': $message", message.contains("Internet"))
+        }
+    }
+
+    @Test
+    fun serverPoolFallbackExpiresFasterThanDiscoveredServers() = kotlinx.coroutines.runBlocking {
+        var currentTime = 1_000L
+        var lookupCount = 0
+        val pool = RadioBrowserServerPool(
+            lookup = {
+                lookupCount++
+                emptyArray()
+            },
+            now = { currentTime }
+        )
+
+        pool.servers()
+        assertEquals(1, lookupCount)
+
+        // Before fallback TTL (5 min), should use cache
+        currentTime += 4 * 60 * 1000L
+        pool.servers()
+        assertEquals(1, lookupCount)
+
+        // After fallback TTL (5 min), should query again
+        currentTime += 2 * 60 * 1000L
+        pool.servers()
+        assertEquals(2, lookupCount)
+    }
 }

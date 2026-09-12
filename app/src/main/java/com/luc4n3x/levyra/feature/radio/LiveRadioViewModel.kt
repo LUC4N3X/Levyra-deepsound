@@ -93,7 +93,10 @@ internal class LiveRadioViewModel(
                 loadFirstPage(localeBoost = isDefaultLocaleSelection())
                 return@launch
             }
-            if (clean.trim().length < 2) return@launch
+            if (clean.trim().length < 2) {
+                _state.update { it.copy(loading = false, loadingMore = false) }
+                return@launch
+            }
             delay(SEARCH_DEBOUNCE_MS)
             _state.update { it.copy(loading = true, error = null) }
             runCatching { repository.search(clean) }
@@ -161,18 +164,27 @@ internal class LiveRadioViewModel(
     fun loadMore() {
         val snapshot = _state.value
         if (snapshot.loading || snapshot.loadingMore || !snapshot.canLoadMore || snapshot.query.isNotBlank()) return
+        _state.update { it.copy(loadingMore = true) }
+        browseJob?.cancel()
+        val filter = currentFilter(offset = snapshot.stations.size)
         browseJob = viewModelScope.launch {
-            _state.update { it.copy(loadingMore = true) }
-            val filter = currentFilter(offset = snapshot.stations.size)
             runCatching { repository.discover(snapshot.preference, filter, localeBoost = false) }
                 .onSuccess { additions ->
                     _state.update { current ->
+                        if (current.query.isNotBlank() ||
+                            current.category != filter.category ||
+                            current.selectedCountryCode != filter.countryCode ||
+                            current.selectedLanguage != filter.language
+                        ) {
+                            return@update current.copy(loadingMore = false)
+                        }
                         val merged = filterAndRankRadioStations(current.stations + additions)
                             .take(MAX_VISIBLE_STATIONS)
+                        val grew = merged.size > current.stations.size
                         current.copy(
                             stations = merged,
                             loadingMore = false,
-                            canLoadMore = merged.size < MAX_VISIBLE_STATIONS && additions.size >= PAGE_SIZE / 2,
+                            canLoadMore = grew && merged.size < MAX_VISIBLE_STATIONS && additions.size >= PAGE_SIZE / 2,
                             error = null
                         )
                     }

@@ -239,6 +239,8 @@ import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
+import com.luc4n3x.levyra.player.queue.queueTracksAfterPlayNext
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
@@ -4768,8 +4770,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun addToQueueLocal(track: Track) {
-        queueEngine.addLast(track)
-        refreshQueuePrefetch()
+        val preserved = liveRadioQueueSnapshot
+        if (preserved != null) {
+            val updatedTracks = queueTracksAfterAddLast(preserved.tracks, listOf(track))
+            liveRadioQueueSnapshot = preserved.copy(
+                tracks = updatedTracks,
+                generation = preserved.generation + 1L
+            )
+        } else {
+            queueEngine.addLast(track)
+            refreshQueuePrefetch()
+        }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update { it.copy(offlineExportMessage = "${strings.addToQueue}: ${track.title}") }
     }
@@ -4790,8 +4801,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             return
         }
-        queueEngine.addLast(cleanTracks)
-        refreshQueuePrefetch()
+        val preserved = liveRadioQueueSnapshot
+        if (preserved != null) {
+            val updatedTracks = queueTracksAfterAddLast(preserved.tracks, cleanTracks)
+            liveRadioQueueSnapshot = preserved.copy(
+                tracks = updatedTracks,
+                generation = preserved.generation + 1L
+            )
+        } else {
+            queueEngine.addLast(cleanTracks)
+            refreshQueuePrefetch()
+        }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update {
             it.copy(offlineExportMessage = "${strings.addToQueue}: ${strings.formatTrackCount(cleanTracks.size)}")
@@ -4837,8 +4857,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             routeJamAction(JamAction.PlayNextTracks(cleanTracks.map(::toJamTrack)))
             return
         }
-        queueEngine.playNext(cleanTracks)
-        refreshQueuePrefetch()
+        val preserved = liveRadioQueueSnapshot
+        if (preserved != null) {
+            val updatedTracks = queueTracksAfterPlayNext(preserved.tracks, preserved.currentIndex, cleanTracks)
+            liveRadioQueueSnapshot = preserved.copy(
+                tracks = updatedTracks,
+                generation = preserved.generation + 1L
+            )
+        } else {
+            queueEngine.playNext(cleanTracks)
+            refreshQueuePrefetch()
+        }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update {
             it.copy(offlineExportMessage = "${strings.playNext}: ${strings.formatTrackCount(cleanTracks.size)}")
@@ -4850,8 +4879,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             routeJamAction(JamAction.PlayNextTracks(listOf(toJamTrack(track))))
             return
         }
-        queueEngine.playNext(track)
-        refreshQueuePrefetch()
+        val preserved = liveRadioQueueSnapshot
+        if (preserved != null) {
+            val updatedTracks = queueTracksAfterPlayNext(preserved.tracks, preserved.currentIndex, listOf(track))
+            liveRadioQueueSnapshot = preserved.copy(
+                tracks = updatedTracks,
+                generation = preserved.generation + 1L
+            )
+        } else {
+            queueEngine.playNext(track)
+            refreshQueuePrefetch()
+        }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update { it.copy(offlineExportMessage = "${strings.playNext}: ${track.title}") }
     }
