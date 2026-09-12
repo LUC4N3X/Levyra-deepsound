@@ -20572,7 +20572,7 @@ private fun MiniPlayer(
             .background(miniBarBackground)
             .playerAxisDragGestures(
                 key = track.id,
-                enabled = true,
+                enabled = gesturesEnabled,
                 rightToLeft = miniRightToLeft,
                 edgeZonesEnabled = false
             ) { event ->
