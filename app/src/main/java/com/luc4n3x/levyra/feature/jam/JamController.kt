@@ -27,11 +27,14 @@ data class JamUiState(
     val isHost: Boolean get() = role == JamRole.Host
     val canControlPlayback: Boolean get() = isHost || permission.canControlPlayback
     val canAddTracks: Boolean get() = isHost || permission.canAddTracks
+    val supportsBatchAddTracks: Boolean
+        get() = isHost || JamCapabilities.BATCH_ADD_TRACKS in session?.capabilities.orEmpty()
 }
 
 private fun jamActionExceedsQueueLimit(action: JamAction, queue: List<JamTrack>): Boolean {
     val requested = when (action) {
         is JamAction.AddTrack -> listOf(action.track)
+        is JamAction.AddTracks -> action.tracks
         is JamAction.PlayNextTracks -> action.tracks
         else -> emptyList()
     }
@@ -179,6 +182,12 @@ class JamController(
                     publishHostState()
                 }
                 JamRole.Guest -> {
+                    if (action is JamAction.AddTracks &&
+                        JamCapabilities.BATCH_ADD_TRACKS !in current.session?.capabilities.orEmpty()
+                    ) {
+                        _state.update { it.copy(failure = JamFailure.NotAuthorized) }
+                        return
+                    }
                     if (!JamAuthorization.allows(current.permission, action)) {
                         _state.update { it.copy(failure = JamFailure.NotAuthorized) }
                         return
@@ -400,7 +409,8 @@ class JamController(
             shuffle = snapshot.shuffle,
             repeatMode = snapshot.repeatMode,
             permission = permission,
-            updatedAtElapsedMs = SystemClock.elapsedRealtime()
+            updatedAtElapsedMs = SystemClock.elapsedRealtime(),
+            capabilities = JamCapabilities.current
         )
     }
 
