@@ -143,16 +143,12 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
                 database.withTransaction {
                     lifetimeDao.clearTracks()
                     lifetimeDao.clearArtists()
-                    var afterId = 0L
-                    var processed = 0
-                    while (processed < BACKFILL_MAX_EVENTS) {
-                        val page = dao.pageAfter(afterId, BACKFILL_PAGE_SIZE)
-                        if (page.isEmpty()) break
-                        page.forEach { entity -> backfillEvent(entity) }
-                        afterId = page.last().id
-                        processed += page.size
-                        if (page.size < BACKFILL_PAGE_SIZE) break
-                    }
+                    executeLifetimeBackfillPaging(
+                        pageSize = BACKFILL_PAGE_SIZE,
+                        fetchPage = { afterId, limit -> dao.pageAfter(afterId, limit) },
+                        getId = { it.id },
+                        processEvent = { entity -> backfillEvent(entity) }
+                    )
                 }
                 preferences.setListeningLifetimeBackfillVersion(LIFETIME_BACKFILL_VERSION)
                 true
@@ -350,9 +346,29 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
         const val LIFETIME_TOP_LIMIT = 8
         const val LAST_PLAYED_QUERY_CHUNK = 500
         const val BACKFILL_PAGE_SIZE = 400
-        const val BACKFILL_MAX_EVENTS = 50_000
         val RETENTION_MS = TimeUnit.DAYS.toMillis(RETENTION_DAYS.toLong())
         val PRUNE_INTERVAL_MS = TimeUnit.HOURS.toMillis(24L)
         val RECORD_SYNC_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(2L)
     }
+}
+
+internal suspend fun <T> executeLifetimeBackfillPaging(
+    pageSize: Int,
+    fetchPage: suspend (afterId: Long, pageSize: Int) -> List<T>,
+    getId: (T) -> Long,
+    processEvent: suspend (T) -> Unit
+): Int {
+    var afterId = 0L
+    var totalProcessed = 0
+    while (true) {
+        val page = fetchPage(afterId, pageSize)
+        if (page.isEmpty()) break
+        for (item in page) {
+            processEvent(item)
+        }
+        afterId = getId(page.last())
+        totalProcessed += page.size
+        if (page.size < pageSize) break
+    }
+    return totalProcessed
 }

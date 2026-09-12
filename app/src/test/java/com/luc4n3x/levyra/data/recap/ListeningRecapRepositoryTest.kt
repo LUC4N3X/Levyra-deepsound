@@ -219,7 +219,7 @@ class ListeningRecapRepositoryTest {
         assertEquals(initial, repository.peekCached(ListeningRecapPeriod.Days7))
         assertEquals(1, eventsCalls)
 
-        activeZone = ZoneId.of("Europe/Rome")
+        activeZone = ZoneId.of("GMT")
         assertNull(repository.peekCached(ListeningRecapPeriod.Days7))
         val recomputed = repository.getRecap(ListeningRecapPeriod.Days7)
         assertNotNull(recomputed)
