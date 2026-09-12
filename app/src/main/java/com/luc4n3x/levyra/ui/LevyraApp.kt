@@ -8705,7 +8705,7 @@ private fun HomeQuickPicksShelf(
     val columns = remember(tracks) {
         tracks
             .distinctBy(LevyraPersonalOrbit::identityKey)
-            .chunked(2)
+            .chunked(5)
     }
     val density = LocalDensity.current
     val containerWidthPx = LocalWindowInfo.current.containerSize.width
@@ -9709,7 +9709,7 @@ private fun PersonalOrbitQuickTile(
     onLongClick: () -> Unit,
     onLongClickLabel: String
 ) {
-    val shape = RoundedCornerShape(15.dp)
+    val shape = RoundedCornerShape(11.dp)
 
     Box(
         modifier = Modifier
@@ -9717,7 +9717,7 @@ private fun PersonalOrbitQuickTile(
             .aspectRatio(1f)
             .clip(shape)
             .border(
-                width = if (active) 1.5.dp else Dp.Hairline,
+                width = if (active) 2.dp else Dp.Hairline,
                 color = if (active) LevyraCyan.copy(alpha = 0.90f) else LevyraAdaptiveSoftHairline,
                 shape = shape
             )
@@ -9743,8 +9743,8 @@ private fun PersonalOrbitQuickTile(
                         colorStops = arrayOf(
                             0f to Color.Black.copy(alpha = 0.02f),
                             0.50f to Color.Transparent,
-                            0.72f to Color.Black.copy(alpha = 0.40f),
-                            1f to Color.Black.copy(alpha = 0.88f)
+                            0.76f to Color.Black.copy(alpha = 0.34f),
+                            1f to Color.Black.copy(alpha = 0.82f)
                         )
                     )
                 )
@@ -9753,15 +9753,15 @@ private fun PersonalOrbitQuickTile(
         Text(
             text = track.title,
             color = if (active) LevyraCyan else Color.White,
-            fontSize = 13.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 2,
+            fontSize = 12.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(horizontal = 9.dp, vertical = 8.dp)
+                .padding(horizontal = 8.dp, vertical = 7.dp)
         )
 
         if (active) {
@@ -9771,8 +9771,8 @@ private fun PersonalOrbitQuickTile(
                 border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.16f)),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(7.dp)
-                    .size(29.dp)
+                    .padding(6.dp)
+                    .size(26.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (resolving) {
