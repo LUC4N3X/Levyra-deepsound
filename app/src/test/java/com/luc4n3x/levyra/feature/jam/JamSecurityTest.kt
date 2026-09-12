@@ -19,7 +19,8 @@ class JamSecurityTest {
         assertFalse(JamAuthorization.allows(JamGuestPermission.HostOnly, JamAction.PlayNextTracks(listOf(track))))
         assertFalse(JamAuthorization.allows(JamGuestPermission.AddSongs, JamAction.Next))
         assertTrue(JamAuthorization.allows(JamGuestPermission.AddSongs, JamAction.AddTrack(track)))
-        assertTrue(JamAuthorization.allows(JamGuestPermission.AddSongs, JamAction.PlayNextTracks(listOf(track))))
+        assertFalse(JamAuthorization.allows(JamGuestPermission.AddSongs, JamAction.PlayNextTracks(listOf(track))))
+        assertTrue(JamAuthorization.allows(JamGuestPermission.Collaborative, JamAction.PlayNextTracks(listOf(track))))
         assertTrue(JamAuthorization.allows(JamGuestPermission.Collaborative, JamAction.Next))
         assertTrue(JamAuthorization.allows(JamGuestPermission.Collaborative, JamAction.RemoveTrack("id")))
     }
