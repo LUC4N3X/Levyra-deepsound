@@ -7047,9 +7047,14 @@ private fun HomeScreen(
         homeAccentStart = Color(palette.start)
         homeAccentEnd = Color(palette.end)
     }
+    val homeScrollInProgress by remember(homeListState) {
+        derivedStateOf { homeListState.isScrollInProgress }
+    }
+    val homeAnimationsEnabled = state.animationsEnabled && !homeScrollInProgress
+
     val animatedHomeAccentStart by animateColorAsState(
         targetValue = homeAccentStart,
-        animationSpec = if (state.animationsEnabled) {
+        animationSpec = if (homeAnimationsEnabled) {
             tween(520, easing = FastOutSlowInEasing)
         } else {
             snap()
@@ -7058,7 +7063,7 @@ private fun HomeScreen(
     )
     val animatedHomeAccentEnd by animateColorAsState(
         targetValue = homeAccentEnd,
-        animationSpec = if (state.animationsEnabled) {
+        animationSpec = if (homeAnimationsEnabled) {
             tween(520, easing = FastOutSlowInEasing)
         } else {
             snap()
@@ -7122,7 +7127,7 @@ private fun HomeScreen(
     }
     val homeBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null,
-        animationsEnabled = state.animationsEnabled
+        animationsEnabled = homeAnimationsEnabled
     )
     val compactHome = state.interfaceSettings.compactHome
     Box(modifier = Modifier.fillMaxSize()) {
@@ -7130,10 +7135,11 @@ private fun HomeScreen(
             accentStart = animatedHomeAccentStart,
             accentEnd = animatedHomeAccentEnd,
             isLight = LevyraIsLight,
-            animationsEnabled = state.animationsEnabled,
+            animationsEnabled = homeAnimationsEnabled,
             modifier = Modifier.fillMaxSize()
         )
-        LazyColumn(
+        CompositionLocalProvider(LocalAnimationsEnabled provides homeAnimationsEnabled) {
+            LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(top = 6.dp, bottom = homeBottomInset + LevyraBottomContentGap),
@@ -7145,7 +7151,7 @@ private fun HomeScreen(
                         GreetingBar(
                             userName = state.userName,
                             isResolving = state.isResolving,
-                            animationsEnabled = state.animationsEnabled,
+                            animationsEnabled = homeAnimationsEnabled,
                             onSearch = viewModel::openSearch,
                             onSettings = viewModel::openSettings
                         )
@@ -7194,7 +7200,7 @@ private fun HomeScreen(
                     item(key = "home-offline-playlists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                         HomeOfflinePlaylistRow(
                             playlists = offlineContent.playlists,
-                            animationsEnabled = state.animationsEnabled,
+                            animationsEnabled = homeAnimationsEnabled,
                             onOpen = { playlist -> viewModel.openPlaylist(playlist.id) }
                         )
                     }
@@ -7300,7 +7306,7 @@ private fun HomeScreen(
 
 
             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
-                item(key = "home-personal", contentType = "home-shelf") {
+                item(key = "home-personal", contentType = "home-personal-orbit") {
                     HomeSectionLead(compactHome) {
                         PersonalListeningShelf(
                             tracks = visiblePersonalTracks,
@@ -7362,7 +7368,7 @@ private fun HomeScreen(
                     if (homeAlbums.isNotEmpty()) {
                         HomeAlbumHitRow(
                             albums = homeAlbums,
-                            animationsEnabled = state.animationsEnabled,
+                            animationsEnabled = homeAnimationsEnabled,
                             onOpen = viewModel::openAlbum
                         )
                     } else if (showHomeAlbumShimmer) {
@@ -7375,7 +7381,7 @@ private fun HomeScreen(
                 showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
                 (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
             ) {
-                item(key = "home-trending-artists", contentType = "home-shelf") {
+                item(key = "home-trending-artists", contentType = "home-trending-artists") {
                     HomeSectionLead(compactHome) {
                         TrendingArtistsShelf(
                             artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
@@ -7396,7 +7402,7 @@ private fun HomeScreen(
                     HomeSectionLead(compactHome) {
                         HomeEditorialCollectionsShelf(
                             collections = visibleEditorialCollections,
-                            animationsEnabled = state.animationsEnabled,
+                            animationsEnabled = homeAnimationsEnabled,
                             onOpen = { collection -> selectedHomeCollectionId = collection.id }
                         )
                     }
@@ -7418,7 +7424,7 @@ private fun HomeScreen(
                     AlbumCardRow(
                         tracks = newReleases.tracks,
                         currentId = state.currentTrack?.id,
-                        animationsEnabled = state.animationsEnabled,
+                        animationsEnabled = homeAnimationsEnabled,
                         onPlay = { viewModel.playFrom(newReleases.tracks, it) }
                     )
                 }
@@ -7529,7 +7535,7 @@ private fun HomeScreen(
                                     AlbumCardGrid(
                                         tracks = section.tracks,
                                         currentId = state.currentTrack?.id,
-                                        animationsEnabled = state.animationsEnabled,
+                                        animationsEnabled = homeAnimationsEnabled,
                                         onPlay = { viewModel.playFrom(section.tracks, it) }
                                     )
                                 }
@@ -7541,7 +7547,7 @@ private fun HomeScreen(
                                     AlbumCardRow(
                                         tracks = section.tracks,
                                         currentId = state.currentTrack?.id,
-                                        animationsEnabled = state.animationsEnabled,
+                                        animationsEnabled = homeAnimationsEnabled,
                                         onPlay = { viewModel.playFrom(section.tracks, it) }
                                     )
                                 }
@@ -7556,7 +7562,7 @@ private fun HomeScreen(
                 showDeferredHomeSections && state.interfaceSettings.showResonance &&
                 resonanceTracks.isNotEmpty()
             ) {
-                item(key = "home-resonance", contentType = "home-shelf") {
+                item(key = "home-resonance", contentType = "home-resonance") {
                     HomeSectionLead(compactHome) {
                         ResonanceShelf(
                             tracks = resonanceTracks,
@@ -7662,6 +7668,7 @@ private fun HomeScreen(
                         HomeSectionInset { StatusBlock(state) }
                     }
                 }
+            }
             }
         }
     }
@@ -8996,7 +9003,7 @@ private fun ArtistHitShelfItem(
             contentDescription = artist.name,
             modifier = Modifier.size(HOME_ARTIST_ARTWORK_SIZE).clip(CircleShape),
             contentScale = ContentScale.Crop,
-            highRes = true
+            highRes = false
         )
         Text(
             text = artist.name,
@@ -9328,7 +9335,7 @@ private fun HomeMusicVideoShelf(
                             CoverImage(
                                 track = track,
                                 modifier = Modifier.fillMaxSize(),
-                                highRes = true,
+                                highRes = false,
                                 zoom = 1f
                             )
                             Box(
