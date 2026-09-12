@@ -31,6 +31,12 @@ data class JamUiState(
         get() = isHost || JamCapabilities.BATCH_ADD_TRACKS in session?.capabilities.orEmpty()
 }
 
+private fun jamActionBatchValid(action: JamAction): Boolean = when (action) {
+    is JamAction.AddTracks -> action.tracks.size in 1..JamSessionState.MAX_QUEUE_SIZE
+    is JamAction.PlayNextTracks -> action.tracks.size in 1..JamSessionState.MAX_QUEUE_SIZE
+    else -> true
+}
+
 private fun jamActionExceedsQueueLimit(action: JamAction, queue: List<JamTrack>): Boolean {
     val requested = when (action) {
         is JamAction.AddTrack -> listOf(action.track)
@@ -170,6 +176,10 @@ class JamController(
     suspend fun requestAction(action: JamAction) {
         mutex.withLock {
             val current = _state.value
+            if (!jamActionBatchValid(action)) {
+                _state.update { it.copy(failure = JamFailure.NotAuthorized) }
+                return
+            }
             if (jamActionExceedsQueueLimit(action, bridge.snapshot().queue) ||
                 current.session?.queue?.let { jamActionExceedsQueueLimit(action, it) } == true
             ) {
