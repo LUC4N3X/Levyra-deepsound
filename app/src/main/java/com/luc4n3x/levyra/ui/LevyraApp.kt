@@ -18303,24 +18303,17 @@ private fun HomeHeaderIconButton(
     val background = if (isLight) {
         Color.White.copy(alpha = 0.86f)
     } else {
-        Color(0xFF12141A).copy(alpha = 0.86f)
+        Color(0xFF111318).copy(alpha = 0.72f)
     }
     val border = if (isLight) {
         Color(0x1911131F)
     } else {
-        Color.White.copy(alpha = 0.075f)
+        Color.White.copy(alpha = 0.085f)
     }
 
     Box(
         modifier = Modifier
             .size(LevyraHomeDesign.SettingsControlHeight)
-            .shadow(
-                elevation = if (isLight) 2.dp else 8.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.12f),
-                spotColor = Color.Black.copy(alpha = 0.28f)
-            )
             .clip(shape)
             .background(background)
             .border(Dp.Hairline, border, shape)
@@ -18700,17 +18693,14 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
             val selected = mood.id == selectedId
             val shape = LevyraHomeDesign.MoodChipShape
             val background = when {
-                selected -> Brush.linearGradient(
-                    listOf(
-                        LevyraCyan.copy(alpha = 0.94f),
-                        LevyraViolet.copy(alpha = 0.88f)
-                    )
+                selected -> SolidColor(
+                    LevyraCyan.copy(alpha = if (LevyraIsLight) 0.13f else 0.11f)
                 )
                 LevyraIsLight -> SolidColor(Color.White.copy(alpha = 0.76f))
                 else -> SolidColor(Color(0xFF12141A).copy(alpha = 0.78f))
             }
             val border = when {
-                selected -> Color.White.copy(alpha = 0.16f)
+                selected -> LevyraCyan.copy(alpha = 0.48f)
                 LevyraIsLight -> Color(0x1711131F)
                 else -> Color.White.copy(alpha = 0.07f)
             }
@@ -18726,7 +18716,7 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
             ) {
                 Text(
                     text = mood.title,
-                    color = if (selected) Color.White else LevyraText.copy(alpha = 0.90f),
+                    color = if (selected) LevyraCyan else LevyraText.copy(alpha = 0.90f),
                     fontSize = 13.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
