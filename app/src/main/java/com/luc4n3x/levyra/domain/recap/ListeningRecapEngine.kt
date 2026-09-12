@@ -17,10 +17,17 @@ object ListeningRecapEngine {
     private const val TOP_LIMIT = 5
     private const val DISCOVERY_REFERENCE_DAYS = 30L
 
+    fun periodCutoffMs(period: ListeningRecapPeriod, today: LocalDate, zone: ZoneId): Long {
+        if (period.days <= 0) return 0L
+        val startDate = today.minusDays(period.days - 1L)
+        return startDate.atStartOfDay(zone).toInstant().toEpochMilli()
+    }
+
     fun build(
         events: List<ListenEvent>,
         period: ListeningRecapPeriod,
         lifetime: LifetimeListening? = null,
+        firstPlayedMap: Map<String, Long> = emptyMap(),
         nowMs: Long = System.currentTimeMillis(),
         zone: ZoneId = ZoneId.systemDefault()
     ): ListeningRecapSummary {
@@ -29,7 +36,7 @@ object ListeningRecapEngine {
         }
 
         val today = dayOf(nowMs, zone)
-        val cutoff = if (period.days <= 0) 0L else nowMs - TimeUnit.DAYS.toMillis(period.days.toLong())
+        val cutoff = periodCutoffMs(period, today, zone)
         val scoped = if (cutoff <= 0L) valid else valid.filter { it.startedAt >= cutoff }
 
         if (scoped.isEmpty()) {
@@ -127,14 +134,16 @@ object ListeningRecapEngine {
             lifetime != null && lifetime.hasSignal && lifetime.totalListenMs > totalListenMs
 
         val hasPriorHistory = if (period == ListeningRecapPeriod.Days7 || period == ListeningRecapPeriod.Days30) {
-            val oldestEvent = valid.minOfOrNull { it.startedAt } ?: nowMs
-            oldestEvent < cutoff
+            firstPlayedMap.values.any { it in 1 until cutoff } || valid.any { it.startedAt < cutoff }
         } else {
             false
         }
 
         val (discoveryRate, repeatRate) = if (hasPriorHistory && uniqueTrackKeys.isNotEmpty()) {
-            val discoveredCount = uniqueTrackKeys.count { (firstSeenMap[it] ?: 0L) >= cutoff }
+            val discoveredCount = uniqueTrackKeys.count { key ->
+                val firstPlayed = firstPlayedMap[key] ?: firstSeenMap[key]
+                firstPlayed != null && firstPlayed >= cutoff
+            }
             val disc = ((discoveredCount * 100) / uniqueTrackKeys.size).coerceIn(0, 100)
             val rep = (100 - disc).coerceIn(0, 100)
             disc to rep
@@ -206,15 +215,7 @@ object ListeningRecapEngine {
                 finalMostActiveDayDate = null
                 finalMostActiveDayMinutes = 0L
                 finalMostReplayedTrack = null
-                if (lifetime.firstPlayedAt > 0L) {
-                    val firstDay = dayOf(lifetime.firstPlayedAt, zone)
-                    val endMs = if (lifetime.lastPlayedAt >= lifetime.firstPlayedAt) lifetime.lastPlayedAt else nowMs
-                    val endDay = dayOf(endMs, zone)
-                    val spanDays = maxOf(1L, java.time.temporal.ChronoUnit.DAYS.between(firstDay, endDay) + 1L)
-                    finalAverageMinutesPerDay = (finalListenMs / 60_000L) / spanDays
-                } else {
-                    finalAverageMinutesPerDay = 0L
-                }
+                finalAverageMinutesPerDay = calculateLifetimeDailyAverage(finalListenMs, lifetime.firstPlayedAt, today, zone)
             }
         }
 
@@ -404,6 +405,12 @@ object ListeningRecapEngine {
         } else {
             0
         }
+        val averageMinutesPerDay = calculateLifetimeDailyAverage(
+            lifetime.totalListenMs,
+            lifetime.firstPlayedAt,
+            today,
+            zone
+        )
 
         return ListeningRecapSummary(
             period = period,
@@ -413,12 +420,28 @@ object ListeningRecapEngine {
             uniqueArtists = lifetime.distinctArtists,
             uniqueAlbums = 0,
             completionRate = completionRate,
-            highlights = RecapHighlightStat(),
+            highlights = RecapHighlightStat(
+                averageMinutesPerDay = averageMinutesPerDay,
+                isWindowBounded = true
+            ),
             topTracks = topTracks,
             topArtists = topArtists,
             topAlbums = emptyList(),
             dailyActivity = emptyDailyPoints(period, today)
         )
+    }
+
+    private fun calculateLifetimeDailyAverage(
+        totalListenMs: Long,
+        firstPlayedAt: Long,
+        today: LocalDate,
+        zone: ZoneId
+    ): Long {
+        if (firstPlayedAt <= 0L) return 0L
+        val firstDay = dayOf(firstPlayedAt, zone)
+        if (firstDay.isAfter(today)) return 0L
+        val spanDays = maxOf(1L, java.time.temporal.ChronoUnit.DAYS.between(firstDay, today) + 1L)
+        return (totalListenMs / 60_000L) / spanDays
     }
 
     private fun dayOf(epochMs: Long, zone: ZoneId): LocalDate =

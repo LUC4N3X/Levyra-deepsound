@@ -129,6 +129,23 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun recapPeriod365DaysUsesRollingWindowSemanticsAcrossLocales() {
+        assertEquals("Last 365 Days", LevyraStrings.forCode("en").recapPeriod365Days)
+        assertEquals("Ultimi 365 giorni", LevyraStrings.forCode("it").recapPeriod365Days)
+        assertEquals("Últimos 365 días", LevyraStrings.forCode("es").recapPeriod365Days)
+        assertEquals("Letzte 365 Tage", LevyraStrings.forCode("de").recapPeriod365Days)
+        val calendarYearWords = listOf("This Year", "Quest'anno", "Este año", "Cette année", "Dieses Jahr", "Este ano", "Dit jaar", "Ten rok")
+        LevyraStrings.all().forEach { strings ->
+            calendarYearWords.forEach { banned ->
+                assertFalse(
+                    "recapPeriod365Days for ${strings.code} implies calendar year ($banned)",
+                    strings.recapPeriod365Days.equals(banned, ignoreCase = true)
+                )
+            }
+        }
+    }
+
+    @Test
     fun replayValuesUseTheSelectedLocale() {
         assertEquals("30 days", LevyraStrings.forCode("en").formatReplayPeriod(30))
         assertEquals("30 gg", LevyraStrings.forCode("it").formatReplayPeriod(30))

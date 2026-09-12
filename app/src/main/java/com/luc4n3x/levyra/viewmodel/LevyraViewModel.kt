@@ -68,6 +68,7 @@ import com.luc4n3x.levyra.data.RecordingIdentityMatch
 import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.ArtistProfile
@@ -10100,14 +10101,43 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playListeningRecapTrack(entry: TopTrackStat) {
         val snapshot = _state.value
-        val local = (snapshot.recentListens + snapshot.mostPlayedTracks).firstOrNull { candidate ->
+        val inMemoryCandidate = listOf(
+            snapshot.recentListens,
+            snapshot.mostPlayedTracks,
+            snapshot.favorites,
+            snapshot.tracks,
+            snapshot.queue,
+            snapshot.recentSearches,
+            snapshot.forgottenFavorites,
+            snapshot.personalOrbitTracks,
+            snapshot.quickPickSeeds,
+            snapshot.charts,
+            snapshot.exploreTracks,
+            snapshot.exploreFreshTracks
+        ).asSequence().flatten().firstOrNull { candidate ->
             candidate.id.isNotBlank() && candidate.id == entry.trackId
         }
-        if (local != null) {
-            playFrom(listOf(local), local)
+        if (inMemoryCandidate != null) {
+            playFrom(listOf(inMemoryCandidate), inMemoryCandidate)
+            return
+        }
+        val downloaded = snapshot.downloads.firstOrNull { it.trackId == entry.trackId }
+        if (downloaded != null) {
+            playDownloaded(downloaded)
             return
         }
         viewModelScope.launch {
+            if (entry.trackId.isNotBlank()) {
+                val dbTrack: Track? = runCatching {
+                    withContext(Dispatchers.IO) {
+                        database.listenEventsDao().findLatestByTrackId(entry.trackId)?.toTrack()
+                    }
+                }.getOrNull()
+                if (dbTrack != null) {
+                    playFrom(listOf(dbTrack), dbTrack)
+                    return@launch
+                }
+            }
             val resolved = try {
                 repository.searchSongMatch(entry.title, entry.artist, snapshot.languageCode)
             } catch (cancelled: CancellationException) {

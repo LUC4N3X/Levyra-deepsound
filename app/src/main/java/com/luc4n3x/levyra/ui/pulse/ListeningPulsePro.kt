@@ -66,6 +66,9 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import java.text.NumberFormat
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 
@@ -331,9 +334,7 @@ private fun PulseDailyActivityVisualizer(
         }
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(88.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
@@ -369,56 +370,6 @@ private fun PulseDailyActivityVisualizer(
                     )
                 }
 
-                val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL_STANDALONE, locale)
-                val minutes = (day.listenedMs / 60_000L).coerceAtLeast(0L)
-                val durationText = "${number.format(minutes)} ${strings.pulseMinuteShort}"
-                val barDescription = "$dayName, $durationText"
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom
-                ) {
-                    if (isPeak && day.listenedMs > 0L) {
-                        Box(
-                            modifier = Modifier
-                                .size(5.dp)
-                                .clip(CircleShape)
-                                .background(LevyraCyan)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(animatedFraction)
-                            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
-                            .background(barBrush)
-                            .semantics {
-                                role = Role.Button
-                                contentDescription = barDescription
-                            }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                role = Role.Button,
-                                onClick = { onSelectDay(index) }
-                            )
-                    )
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            week.forEachIndexed { index, day ->
-                val isToday = index == week.lastIndex
-                val isSelected = selectedDayIndex == index
                 val dayLabel = day.date.dayOfWeek
                     .getDisplayName(DayTextStyle.SHORT_STANDALONE, locale)
                     .replace(".", "")
@@ -428,16 +379,7 @@ private fun PulseDailyActivityVisualizer(
                 val durationText = "${number.format(minutes)} ${strings.pulseMinuteShort}"
                 val barDescription = "$dayName, $durationText"
 
-                Text(
-                    text = dayLabel,
-                    color = when {
-                        isSelected -> LevyraCyan
-                        isToday -> LevyraText
-                        else -> LevyraMuted.copy(alpha = 0.75f)
-                    },
-                    fontSize = 10.sp,
-                    fontWeight = if (isToday || isSelected) FontWeight.Black else FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
+                Column(
                     modifier = Modifier
                         .weight(1f)
                         .semantics {
@@ -449,8 +391,51 @@ private fun PulseDailyActivityVisualizer(
                             indication = null,
                             role = Role.Button,
                             onClick = { onSelectDay(index) }
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(88.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom
+                    ) {
+                        if (isPeak && day.listenedMs > 0L) {
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(LevyraCyan)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(animatedFraction)
+                                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
+                                .background(barBrush)
                         )
-                )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = dayLabel,
+                        color = when {
+                            isSelected -> LevyraCyan
+                            isToday -> LevyraText
+                            else -> LevyraMuted.copy(alpha = 0.75f)
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = if (isToday || isSelected) FontWeight.Black else FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }
@@ -465,6 +450,9 @@ private fun PulseFooterInsights(
     isDark: Boolean
 ) {
     val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
+    val timeFormatter = remember(locale) {
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
+    }
     val borderCol = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.06f)
     val bgCol = if (isDark) Color.White.copy(alpha = 0.035f) else Color.Black.copy(alpha = 0.03f)
     Row(
@@ -511,7 +499,7 @@ private fun PulseFooterInsights(
                     modifier = Modifier.size(13.dp)
                 )
                 Text(
-                    text = "${pulse.peakHour.toString().padStart(2, '0')}:00",
+                    text = LocalTime.of(pulse.peakHour, 0).format(timeFormatter),
                     color = LevyraMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold

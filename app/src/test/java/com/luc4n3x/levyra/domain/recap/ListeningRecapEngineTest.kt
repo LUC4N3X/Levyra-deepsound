@@ -3,7 +3,9 @@ package com.luc4n3x.levyra.domain.recap
 import com.luc4n3x.levyra.domain.LifetimeArtist
 import com.luc4n3x.levyra.domain.LifetimeListening
 import com.luc4n3x.levyra.domain.ListenEvent
+import com.luc4n3x.levyra.domain.ListenIdentity
 import com.luc4n3x.levyra.domain.PulseTrack
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
@@ -374,6 +376,124 @@ class ListeningRecapEngineTest {
 
         assertEquals(80, recap.completionRate)
         assertEquals(100L, recap.highlights.averageMinutesPerDay)
+    }
+
+    @Test
+    fun calendarDayBoundaryIncludesStartOfDayAndExcludesPrecedingMidnight() {
+        val startOfWindow = ZonedDateTime.of(2026, 7, 4, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val justBeforeWindow = startOfWindow - 1L
+        val justAfterWindowStart = startOfWindow + 1_000L
+
+        val eventInside = event(trackId = "in", listenedMs = 60_000L, startedAt = justAfterWindowStart)
+        val eventOutside = event(trackId = "out", listenedMs = 60_000L, startedAt = justBeforeWindow)
+
+        val recap = ListeningRecapEngine.build(
+            events = listOf(eventInside, eventOutside),
+            period = ListeningRecapPeriod.Days7,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals(1, recap.totalPlays)
+        assertEquals("in", recap.topTracks.first().trackId)
+    }
+
+    @Test
+    fun dstBoundaryIsHandledSafelyAcrossTransition() {
+        val romeZone = ZoneId.of("Europe/Rome")
+        val postDstNow = ZonedDateTime.of(2026, 4, 2, 14, 0, 0, 0, romeZone).toInstant().toEpochMilli()
+        val startOfWindow = ZonedDateTime.of(2026, 3, 27, 0, 0, 0, 0, romeZone).toInstant().toEpochMilli()
+
+        val eventInside = event(trackId = "dst-in", listenedMs = 60_000L, startedAt = startOfWindow + 3_600_000L)
+        val eventBefore = event(trackId = "dst-out", listenedMs = 60_000L, startedAt = startOfWindow - 1_000L)
+
+        val recap = ListeningRecapEngine.build(
+            events = listOf(eventInside, eventBefore),
+            period = ListeningRecapPeriod.Days7,
+            nowMs = postDstNow,
+            zone = romeZone
+        )
+
+        assertEquals(1, recap.totalPlays)
+        assertEquals("dst-in", recap.topTracks.first().trackId)
+    }
+
+    @Test
+    fun discoveryRateConsidersLifetimeFirstPlayed() {
+        val oldFirstPlayed = ZonedDateTime.of(2024, 1, 1, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val recentPlayed = ZonedDateTime.of(2026, 7, 8, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
+
+        val oldTrackEvent = event(trackId = "old-track", title = "Old Song", artist = "Old Artist", listenedMs = 60_000L, startedAt = recentPlayed)
+        val newTrackEvent = event(trackId = "new-track", title = "New Song", artist = "New Artist", listenedMs = 60_000L, startedAt = recentPlayed + 1000L)
+
+        val oldTrackKey = ListenIdentity.trackKey(oldTrackEvent)
+        val newTrackKey = ListenIdentity.trackKey(newTrackEvent)
+
+        val firstPlayedMap = mapOf(
+            oldTrackKey to oldFirstPlayed,
+            newTrackKey to recentPlayed + 1000L
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = listOf(oldTrackEvent, newTrackEvent),
+            period = ListeningRecapPeriod.Days7,
+            firstPlayedMap = firstPlayedMap,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals(50, recap.highlights.discoveryRate)
+    }
+
+    @Test
+    fun allTimeDailyAverageUsesTodayEvenIfLastPlayWasMonthsAgo() {
+        val firstPlay = ZonedDateTime.of(2026, 1, 1, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val lastPlay = ZonedDateTime.of(2026, 3, 1, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val lifetime = LifetimeListening(
+            totalListenMs = 191 * 60 * 60_000L,
+            countedPlays = 100,
+            completedCount = 80,
+            eventCount = 100,
+            distinctTracks = 50,
+            distinctArtists = 10,
+            firstPlayedAt = firstPlay,
+            lastPlayedAt = lastPlay
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = emptyList(),
+            period = ListeningRecapPeriod.AllTime,
+            lifetime = lifetime,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals(60L, recap.highlights.averageMinutesPerDay)
+    }
+
+    @Test
+    fun allTimeBuildFromLifetimePopulatesAverageMinutesWhenNoEvents() {
+        val firstPlay = ZonedDateTime.of(2026, 7, 1, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val lifetime = LifetimeListening(
+            totalListenMs = 10 * 60 * 60_000L,
+            countedPlays = 20,
+            completedCount = 15,
+            eventCount = 20,
+            distinctTracks = 10,
+            distinctArtists = 4,
+            firstPlayedAt = firstPlay,
+            lastPlayedAt = firstPlay
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = emptyList(),
+            period = ListeningRecapPeriod.AllTime,
+            lifetime = lifetime,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals(60L, recap.highlights.averageMinutesPerDay)
     }
 
     private fun hoursAgo(hours: Int): Long = now - hours * 3_600_000L

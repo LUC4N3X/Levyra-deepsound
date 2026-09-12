@@ -195,6 +195,21 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
         }
     }
 
+    override suspend fun firstPlayedByKey(trackKeys: List<String>): Map<String, Long> = withContext(Dispatchers.IO) {
+        val keys = trackKeys.filter(String::isNotEmpty).distinct()
+        if (keys.isEmpty()) return@withContext emptyMap()
+        try {
+            keys.chunked(LAST_PLAYED_QUERY_CHUNK)
+                .flatMap { chunk -> lifetimeDao.firstPlayedFor(chunk) }
+                .associate { it.trackKey to it.firstPlayedAt }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "First played lookup failed")
+            emptyMap()
+        }
+    }
+
     override suspend fun lifetime(): LifetimeListening = withContext(Dispatchers.IO) {
         try {
             val totals = lifetimeDao.trackTotals()

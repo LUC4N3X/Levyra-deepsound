@@ -34,6 +34,11 @@ data class ListenLifetimeLastPlayed(
     val lastPlayedAt: Long
 )
 
+data class ListenLifetimeFirstPlayed(
+    val trackKey: String,
+    val firstPlayedAt: Long
+)
+
 data class ListenLifetimeTotals(
     val listenedMs: Long,
     val countedPlays: Int,

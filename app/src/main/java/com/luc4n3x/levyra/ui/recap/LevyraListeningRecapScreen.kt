@@ -94,6 +94,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import java.text.NumberFormat
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -504,6 +505,9 @@ private fun RecapHighlightsGrid(
     isDark: Boolean
 ) {
     val highlights = recap.highlights
+    val timeFormatter = remember(locale) {
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
+    }
     val percentFormat = remember(locale) {
         NumberFormat.getPercentInstance(locale).apply {
             maximumFractionDigits = 0
@@ -526,7 +530,9 @@ private fun RecapHighlightsGrid(
                 isDark = isDark
             )
             val daypartName = highlights.favoriteDaypart?.let { formatDaypart(it, strings) }.orEmpty()
-            val hourText = if (highlights.favoriteHour >= 0) "${highlights.favoriteHour.toString().padStart(2, '0')}:00" else ""
+            val hourText = if (highlights.favoriteHour in 0..23) {
+                LocalTime.of(highlights.favoriteHour, 0).format(timeFormatter)
+            } else ""
             if (daypartName.isNotBlank()) {
                 RecapHighlightCard(
                     modifier = Modifier.weight(1f),
