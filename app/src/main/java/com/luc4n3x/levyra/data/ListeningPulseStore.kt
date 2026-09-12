@@ -75,7 +75,7 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
         )
         val currentArtistIdentity = lifetimeArtistIdentity(
             artist = track.artist,
-            rawBrowseIds = track.artistBrowseIds,
+            rawBrowseIds = existingArtistIds + track.artistBrowseIds,
             preferredPrimaryId = existingArtistIds.firstOrNull().orEmpty()
         )
         val persistedTrack = track.copy(artistBrowseIds = currentArtistIdentity.browseIds)
