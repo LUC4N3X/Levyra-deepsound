@@ -196,9 +196,13 @@ class PlaylistStore(context: Context) {
     }
 
     suspend fun delete(playlistId: String) = withContext(Dispatchers.IO) {
-        val previous = dao.playlist(playlistId)
-        dao.deletePlaylist(playlistId)
-        if (previous?.coverMode == PlaylistCoverMode.CUSTOM.name) coverStore.delete(previous.coverUrl)
+        LevyraVaultOperationMutex.withLock vault@ {
+            coverMutationLock(playlistId).withLock cover@ {
+                val previous = dao.playlist(playlistId)
+                dao.deletePlaylist(playlistId)
+                if (previous?.coverMode == PlaylistCoverMode.CUSTOM.name) coverStore.delete(previous.coverUrl)
+            }
+        }
     }
 
     suspend fun addTrack(playlistId: String, track: Track) = withContext(Dispatchers.IO) {
@@ -230,29 +234,33 @@ class PlaylistStore(context: Context) {
 
     suspend fun setCustomCover(playlistId: String, source: android.net.Uri, crop: PlaylistCoverCrop) =
         withContext(Dispatchers.IO) {
-            coverMutationLock(playlistId).withLock {
-                val previous = dao.playlist(playlistId) ?: return@withLock
-                val reference = coverStore.save(playlistId, source, crop)
-                try {
-                    dao.updateCustomCover(playlistId, reference, System.currentTimeMillis())
-                } catch (error: Throwable) {
-                    coverStore.delete(reference)
-                    throw error
-                }
-                if (previous.coverMode == PlaylistCoverMode.CUSTOM.name && previous.coverUrl != reference) {
-                    coverStore.delete(previous.coverUrl)
+            LevyraVaultOperationMutex.withLock vault@ {
+                coverMutationLock(playlistId).withLock cover@ {
+                    val previous = dao.playlist(playlistId) ?: return@cover
+                    val reference = coverStore.save(playlistId, source, crop)
+                    try {
+                        dao.updateCustomCover(playlistId, reference, System.currentTimeMillis())
+                    } catch (error: Throwable) {
+                        coverStore.delete(reference)
+                        throw error
+                    }
+                    if (previous.coverMode == PlaylistCoverMode.CUSTOM.name && previous.coverUrl != reference) {
+                        coverStore.delete(previous.coverUrl)
+                    }
                 }
             }
         }
 
     suspend fun resetCover(playlistId: String) = withContext(Dispatchers.IO) {
-        coverMutationLock(playlistId).withLock {
-            val previous = dao.playlist(playlistId) ?: return@withLock
-            val automatic = dao.tracksOf(playlistId).firstNotNullOfOrNull { entity ->
-                entity.largeThumbnailUrl.ifBlank { entity.thumbnailUrl }.takeIf(String::isNotBlank)
-            }.orEmpty()
-            dao.resetCover(playlistId, automatic, System.currentTimeMillis())
-            if (previous.coverMode == PlaylistCoverMode.CUSTOM.name) coverStore.delete(previous.coverUrl)
+        LevyraVaultOperationMutex.withLock vault@ {
+            coverMutationLock(playlistId).withLock cover@ {
+                val previous = dao.playlist(playlistId) ?: return@cover
+                val automatic = dao.tracksOf(playlistId).firstNotNullOfOrNull { entity ->
+                    entity.largeThumbnailUrl.ifBlank { entity.thumbnailUrl }.takeIf(String::isNotBlank)
+                }.orEmpty()
+                dao.resetCover(playlistId, automatic, System.currentTimeMillis())
+                if (previous.coverMode == PlaylistCoverMode.CUSTOM.name) coverStore.delete(previous.coverUrl)
+            }
         }
     }
 
