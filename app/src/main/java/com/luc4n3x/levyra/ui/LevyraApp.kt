@@ -1135,14 +1135,14 @@ private fun HomeSectionHeader(
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = displayTitle,
                 color = LevyraText,
-                fontSize = 23.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
-                letterSpacing = (-0.65).sp,
+                fontSize = 24.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(24.sp),
+                letterSpacing = (-0.70).sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1151,8 +1151,8 @@ private fun HomeSectionHeader(
                 Text(
                     text = displaySubtitle,
                     color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                    fontSize = 13.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
                     fontWeight = FontWeight.Medium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
