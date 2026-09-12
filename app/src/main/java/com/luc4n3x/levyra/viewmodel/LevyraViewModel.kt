@@ -10069,7 +10069,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { current ->
             current.copy(
                 listeningRecapPeriod = period,
-                listeningRecap = cached ?: current.listeningRecap.copy(period = period),
+                listeningRecap = cached ?: ListeningRecapSummary(period = period),
                 listeningRecapLoading = cached == null
             )
         }

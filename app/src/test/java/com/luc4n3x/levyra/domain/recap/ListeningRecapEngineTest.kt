@@ -161,9 +161,7 @@ class ListeningRecapEngineTest {
         val day2 = ZonedDateTime.of(2026, 7, 8, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
 
         val events = listOf(
-            // unique1 listened to 20 days ago (prior history)
             event(trackId = "unique1", listenedMs = 60_000L, startedAt = daysAgo(20)),
-            // 7d period listens
             event(trackId = "unique1", listenedMs = 60_000L, startedAt = day0),
             event(trackId = "unique2", listenedMs = 60_000L, startedAt = day1),
             event(trackId = "unique1", listenedMs = 60_000L, startedAt = day2)
@@ -173,10 +171,6 @@ class ListeningRecapEngineTest {
 
         assertEquals(3, recap.highlights.currentStreakDays)
         assertEquals(3, recap.highlights.bestStreakDays)
-        // In 7d window: 2 unique tracks (unique1, unique2).
-        // unique1 was first seen 20 days ago (< cutoff).
-        // unique2 was first seen on day1 (>= cutoff).
-        // 1 of 2 tracks is a new discovery => 50% discovery rate, 50% repeat rate.
         assertEquals(50, recap.highlights.discoveryRate)
         assertEquals(50, recap.highlights.repeatRate)
         assertNotNull(recap.highlights.mostReplayedTrack)
@@ -284,8 +278,85 @@ class ListeningRecapEngineTest {
         assertEquals(null, recap.highlights.favoriteDaypart)
         assertEquals(-1, recap.highlights.favoriteHour)
         assertEquals(-1, recap.highlights.discoveryRate)
-        assertEquals("t-all-1", recap.highlights.mostReplayedTrack?.trackId)
-        assertEquals(30, recap.highlights.mostReplayedTrack?.plays)
+        assertEquals(null, recap.highlights.mostReplayedTrack)
+        assertEquals(50, recap.completionRate)
+    }
+
+    @Test
+    fun mostReplayedTrackFindsTrackOutsideTopDurationTracks() {
+        val longTracks = (1..5).map { i ->
+            event(
+                trackId = "long-$i",
+                title = "Long Track $i",
+                artist = "Artist",
+                listenedMs = 600_000L,
+                startedAt = hoursAgo(i)
+            )
+        }
+        val shortRepeatedTracks = (1..10).map { i ->
+            event(
+                trackId = "short-repeated",
+                title = "Short Track",
+                artist = "Artist",
+                listenedMs = 30_000L,
+                startedAt = hoursAgo(10 + i)
+            )
+        }
+
+        val recap = ListeningRecapEngine.build(longTracks + shortRepeatedTracks, ListeningRecapPeriod.Days7, nowMs = now, zone = zone)
+
+        assertEquals(5, recap.topTracks.size)
+        assertTrue(recap.topTracks.none { it.trackId == "short-repeated" })
+        assertEquals("short-repeated", recap.highlights.mostReplayedTrack?.trackId)
+        assertEquals(10, recap.highlights.mostReplayedTrack?.plays)
+    }
+
+    @Test
+    fun lifetimeThumbnailFallbackKeepsNonBlankArtwork() {
+        val lifetime = LifetimeListening(
+            totalListenMs = 1_000_000L,
+            countedPlays = 20,
+            completedCount = 10,
+            eventCount = 20,
+            distinctTracks = 1,
+            distinctArtists = 1,
+            tracks = listOf(
+                PulseTrack("track-1", "Song One", "Artist", 20, 1_000_000L)
+            ),
+            artists = listOf(LifetimeArtist("Artist", 20, 1_000_000L))
+        )
+        val windowEvents = listOf(
+            event(trackId = "track-1", thumbnailUrl = "https://example.com/art.jpg", listenedMs = 60_000L, startedAt = hoursAgo(2)),
+            event(trackId = "track-1", thumbnailUrl = "", listenedMs = 60_000L, startedAt = hoursAgo(1))
+        )
+
+        val recap = ListeningRecapEngine.build(windowEvents, ListeningRecapPeriod.AllTime, lifetime = lifetime, nowMs = now, zone = zone)
+
+        assertEquals("https://example.com/art.jpg", recap.topTracks.first().thumbnailUrl)
+    }
+
+    @Test
+    fun allTimeDerivesLifetimeCompletionRateAndAverageMinutes() {
+        val firstPlay = ZonedDateTime.of(2026, 7, 1, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val lastPlay = ZonedDateTime.of(2026, 7, 10, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val lifetime = LifetimeListening(
+            totalListenMs = 60_000_000L,
+            countedPlays = 50,
+            completedCount = 40,
+            eventCount = 50,
+            distinctTracks = 20,
+            distinctArtists = 5,
+            firstPlayedAt = firstPlay,
+            lastPlayedAt = lastPlay
+        )
+        val windowEvents = listOf(
+            event(trackId = "recent", listenedMs = 60_000L, startedAt = hoursAgo(1))
+        )
+
+        val recap = ListeningRecapEngine.build(windowEvents, ListeningRecapPeriod.AllTime, lifetime = lifetime, nowMs = now, zone = zone)
+
+        assertEquals(80, recap.completionRate)
+        assertEquals(100L, recap.highlights.averageMinutesPerDay)
     }
 
     private fun hoursAgo(hours: Int): Long = now - hours * 3_600_000L

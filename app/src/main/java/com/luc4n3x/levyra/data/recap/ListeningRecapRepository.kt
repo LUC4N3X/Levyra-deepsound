@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.recap
 
-import com.luc4n3x.levyra.data.ListeningPulseStore
+import com.luc4n3x.levyra.domain.LifetimeListening
+import com.luc4n3x.levyra.domain.ListenEvent
 import com.luc4n3x.levyra.domain.recap.ListeningRecapEngine
 import com.luc4n3x.levyra.domain.recap.ListeningRecapPeriod
 import com.luc4n3x.levyra.domain.recap.ListeningRecapSummary
@@ -10,25 +11,34 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+
+interface ListeningPulseDataSource {
+    suspend fun eventsWindow(days: Int = 365): List<ListenEvent>
+    suspend fun lifetime(): LifetimeListening
+}
 
 class ListeningRecapRepository(
-    private val pulseStore: ListeningPulseStore,
+    private val pulseStore: ListeningPulseDataSource,
     private val zoneIdProvider: () -> ZoneId = { ZoneId.systemDefault() }
 ) {
     private val cache = ConcurrentHashMap<ListeningRecapPeriod, ListeningRecapSummary>()
     private val computeMutex = Mutex()
+    private val generation = AtomicLong(0L)
 
     suspend fun getRecap(
         period: ListeningRecapPeriod,
         force: Boolean = false
     ): ListeningRecapSummary = withContext(Dispatchers.IO) {
+        val currentGen = generation.get()
         if (!force) {
             val cached = cache[period]
             if (cached != null) return@withContext cached
         }
 
         computeMutex.withLock {
-            if (!force) {
+            val genAtLock = generation.get()
+            if (!force && genAtLock == currentGen) {
                 val cached = cache[period]
                 if (cached != null) return@withLock cached
             }
@@ -50,7 +60,9 @@ class ListeningRecapRepository(
                 )
             }
 
-            cache[period] = summary
+            if (generation.get() == genAtLock) {
+                cache[period] = summary
+            }
             summary
         }
     }
@@ -58,6 +70,7 @@ class ListeningRecapRepository(
     fun peekCached(period: ListeningRecapPeriod): ListeningRecapSummary? = cache[period]
 
     fun invalidateCache() {
+        generation.incrementAndGet()
         cache.clear()
     }
 }

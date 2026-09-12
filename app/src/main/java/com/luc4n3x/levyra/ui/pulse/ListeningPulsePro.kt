@@ -46,6 +46,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -136,7 +139,6 @@ private fun PulseActiveContent(
     var selectedDayIndex by remember { mutableStateOf<Int?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        // Top Header with Title and Recap Pill
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -212,7 +214,6 @@ private fun PulseActiveContent(
             }
         }
 
-        // Hero Metric + Quick Summary Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -240,7 +241,6 @@ private fun PulseActiveContent(
                 )
             }
 
-            // Stat Badges
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PulseMiniBadge(
                     icon = Icons.Rounded.PlayArrow,
@@ -263,7 +263,6 @@ private fun PulseActiveContent(
             }
         }
 
-        // Main Visualizer: Smooth Daily Activity Bars
         PulseDailyActivityVisualizer(
             week = week,
             peakMs = peakMs,
@@ -275,7 +274,6 @@ private fun PulseActiveContent(
             strings = strings
         )
 
-        // Footer Insight Pill (Peak Hour & Active Day)
         PulseFooterInsights(
             pulse = pulse,
             peakDay = peakDay,
@@ -302,7 +300,6 @@ private fun PulseDailyActivityVisualizer(
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // Selected day detail indicator
         if (selectedDayIndex != null && selectedDayIndex in week.indices) {
             val selectedDay = week[selectedDayIndex]
             val dayName = selectedDay.date.dayOfWeek.getDisplayName(DayTextStyle.FULL, locale)
@@ -331,7 +328,6 @@ private fun PulseDailyActivityVisualizer(
             }
         }
 
-        // Bar Chart
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -371,6 +367,11 @@ private fun PulseDailyActivityVisualizer(
                     )
                 }
 
+                val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL_STANDALONE, locale)
+                val minutes = (day.listenedMs / 60_000L).coerceAtLeast(0L)
+                val durationText = "$minutes ${strings.pulseMinuteShort}"
+                val barDescription = "$dayName, $durationText"
+
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -378,7 +379,6 @@ private fun PulseDailyActivityVisualizer(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Bottom
                 ) {
-                    // Small peak dot/badge
                     if (isPeak && day.listenedMs > 0L) {
                         Box(
                             modifier = Modifier
@@ -395,9 +395,14 @@ private fun PulseDailyActivityVisualizer(
                             .fillMaxHeight(animatedFraction)
                             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
                             .background(barBrush)
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = barDescription
+                            }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
+                                role = Role.Button,
                                 onClick = { onSelectDay(index) }
                             )
                     )
@@ -405,7 +410,6 @@ private fun PulseDailyActivityVisualizer(
             }
         }
 
-        // Days labels row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -417,6 +421,10 @@ private fun PulseDailyActivityVisualizer(
                     .getDisplayName(DayTextStyle.SHORT_STANDALONE, locale)
                     .replace(".", "")
                     .take(3)
+                val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL_STANDALONE, locale)
+                val minutes = (day.listenedMs / 60_000L).coerceAtLeast(0L)
+                val durationText = "$minutes ${strings.pulseMinuteShort}"
+                val barDescription = "$dayName, $durationText"
 
                 Text(
                     text = dayLabel,
@@ -430,9 +438,14 @@ private fun PulseDailyActivityVisualizer(
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .weight(1f)
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = barDescription
+                        }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
+                            role = Role.Button,
                             onClick = { onSelectDay(index) }
                         )
                 )
@@ -582,7 +595,6 @@ private fun PulseEmptyState(
             )
         }
 
-        // Ghost bars preview
         Row(
             modifier = Modifier
                 .fillMaxWidth()

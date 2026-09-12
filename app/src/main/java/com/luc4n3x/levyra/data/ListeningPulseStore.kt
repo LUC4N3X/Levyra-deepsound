@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
-class ListeningPulseStore(context: Context) {
+class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.ListeningPulseDataSource {
     private val database = LevyraDatabase.get(context.applicationContext)
     private val dao = database.listenEventsDao()
     private val lifetimeDao = database.listenLifetimeDao()
@@ -195,7 +195,7 @@ class ListeningPulseStore(context: Context) {
         }
     }
 
-    suspend fun lifetime(): LifetimeListening = withContext(Dispatchers.IO) {
+    override suspend fun lifetime(): LifetimeListening = withContext(Dispatchers.IO) {
         try {
             val totals = lifetimeDao.trackTotals()
             LifetimeListening(
@@ -250,7 +250,7 @@ class ListeningPulseStore(context: Context) {
         }.onFailure { Timber.w(it, "Timed out while flushing listen event") }
     }
 
-    suspend fun eventsWindow(days: Int = RETENTION_DAYS): List<ListenEvent> = withContext(Dispatchers.IO) {
+    override suspend fun eventsWindow(days: Int): List<ListenEvent> = withContext(Dispatchers.IO) {
         val since = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong())
         runCatching { dao.since(since).map { it.toListenEvent() } }
             .onFailure { Timber.w(it, "Listen events load failed") }

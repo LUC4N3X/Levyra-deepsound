@@ -141,7 +141,6 @@ fun LevyraListeningRecapOverlay(
             contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header Bar
             item(contentType = "recap-header") {
                 Row(
                     modifier = Modifier
@@ -174,7 +173,6 @@ fun LevyraListeningRecapOverlay(
                 }
             }
 
-            // Period Selector Chips
             item(contentType = "recap-period-selector") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -193,7 +191,6 @@ fun LevyraListeningRecapOverlay(
                 }
             }
 
-            // Loading Skeleton vs Empty vs Content
             if (loading && !recap.hasSignal) {
                 item(contentType = "recap-loading") {
                     Column(
@@ -211,7 +208,6 @@ fun LevyraListeningRecapOverlay(
                     RecapEmptyView(strings = strings)
                 }
             } else {
-                // Hero Section
                 item(contentType = "recap-hero") {
                     RecapHeroCard(
                         recap = recap,
@@ -222,7 +218,6 @@ fun LevyraListeningRecapOverlay(
                     )
                 }
 
-                // Highlights Section
                 item(contentType = "recap-highlights-title") {
                     RecapSectionTitle(title = strings.highlightsTitle, icon = Icons.Rounded.AutoAwesome, accent = LevyraViolet)
                 }
@@ -236,7 +231,6 @@ fun LevyraListeningRecapOverlay(
                     )
                 }
 
-                // Top Tracks Section
                 if (recap.topTracks.isNotEmpty()) {
                     item(contentType = "recap-tracks-title") {
                         RecapSectionTitle(title = strings.topTracksTitle, icon = Icons.Rounded.Headphones, accent = LevyraCyan)
@@ -256,7 +250,6 @@ fun LevyraListeningRecapOverlay(
                     }
                 }
 
-                // Top Artists Section
                 if (recap.topArtists.isNotEmpty()) {
                     item(contentType = "recap-artists-title") {
                         RecapSectionTitle(title = strings.topArtistsTitle, icon = Icons.Rounded.Person, accent = LevyraPink)
@@ -276,7 +269,6 @@ fun LevyraListeningRecapOverlay(
                     }
                 }
 
-                // Top Albums Section
                 if (recap.topAlbums.isNotEmpty()) {
                     item(contentType = "recap-albums-title") {
                         RecapSectionTitle(title = strings.topAlbumsTitle, icon = Icons.Rounded.Album, accent = LevyraOrange)
@@ -295,7 +287,6 @@ fun LevyraListeningRecapOverlay(
                     }
                 }
 
-                // Daily Activity Pulse Timeline
                 if (recap.dailyActivity.any { it.listenedMs > 0L }) {
                     item(contentType = "recap-pulse-title") {
                         val chartTitle = if (period == ListeningRecapPeriod.Days365 || period == ListeningRecapPeriod.AllTime) {
@@ -395,7 +386,6 @@ private fun RecapHeroCard(
                 .padding(22.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Period Badge
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
@@ -412,7 +402,6 @@ private fun RecapHeroCard(
                     )
                 }
 
-                // Dominant Metric (Minutes Listened)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = formatRecapDuration(recap.totalListenMs, strings),
@@ -430,7 +419,6 @@ private fun RecapHeroCard(
                     )
                 }
 
-                // Secondary Stats Strip
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -514,7 +502,6 @@ private fun RecapHighlightsGrid(
 ) {
     val highlights = recap.highlights
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // Row 1: Streak + Favorite Time / Completion
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -555,7 +542,6 @@ private fun RecapHighlightsGrid(
             }
         }
 
-        // Row 2: Most Active Day + Discovery vs Repeat / Daily Average
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -595,7 +581,6 @@ private fun RecapHighlightsGrid(
             }
         }
 
-        // Row 3: Most Replayed Track (if any)
         if (highlights.mostReplayedTrack != null) {
             val track = highlights.mostReplayedTrack
             RecapHighlightCard(
@@ -693,7 +678,6 @@ private fun TopTrackRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Rank Indicator
         Text(
             text = "#${track.rank}",
             color = if (track.rank == 1) LevyraCyan else LevyraMuted,
@@ -703,7 +687,6 @@ private fun TopTrackRow(
             textAlign = TextAlign.Center
         )
 
-        // Artwork
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -728,7 +711,6 @@ private fun TopTrackRow(
             }
         }
 
-        // Title and Artist
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = track.title,
@@ -748,7 +730,6 @@ private fun TopTrackRow(
             )
         }
 
-        // Listening Stat
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
                 text = "${track.plays} ${strings.pulsePlays}",
