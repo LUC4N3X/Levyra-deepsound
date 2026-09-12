@@ -21,7 +21,17 @@ private fun recapStrings(
     openRecap: String,
     pulseProPeak: String,
     pulseProAverage: String,
-    pulseProActivity: String
+    pulseProActivity: String,
+    daypartMorning: String,
+    daypartAfternoon: String,
+    daypartEvening: String,
+    daypartNight: String,
+    recapStreakMax: String,
+    recapUnitDays: String,
+    recapUnitMinutes: String,
+    recapRecentActivity: String,
+    recapActivityLast30Days: String,
+    recapCompletionRate: String
 ): Map<String, String> = mapOf(
     "listeningRecap" to listeningRecap,
     "recapSubtitle" to recapSubtitle,
@@ -43,7 +53,17 @@ private fun recapStrings(
     "openRecap" to openRecap,
     "pulseProPeak" to pulseProPeak,
     "pulseProAverage" to pulseProAverage,
-    "pulseProActivity" to pulseProActivity
+    "pulseProActivity" to pulseProActivity,
+    "daypartMorning" to daypartMorning,
+    "daypartAfternoon" to daypartAfternoon,
+    "daypartEvening" to daypartEvening,
+    "daypartNight" to daypartNight,
+    "recapStreakMax" to recapStreakMax,
+    "recapUnitDays" to recapUnitDays,
+    "recapUnitMinutes" to recapUnitMinutes,
+    "recapRecentActivity" to recapRecentActivity,
+    "recapActivityLast30Days" to recapActivityLast30Days,
+    "recapCompletionRate" to recapCompletionRate
 )
 
 private val recapBundles: Map<String, Map<String, String>> = mapOf(
@@ -68,7 +88,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Open Recap",
         pulseProPeak = "Peak Day",
         pulseProAverage = "Daily Avg",
-        pulseProActivity = "Listening Activity"
+        pulseProActivity = "Listening Activity",
+        daypartMorning = "Morning",
+        daypartAfternoon = "Afternoon",
+        daypartEvening = "Evening",
+        daypartNight = "Night",
+        recapStreakMax = "Max: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Recent Activity",
+        recapActivityLast30Days = "Last 30 days",
+        recapCompletionRate = "Completion Rate"
     ),
     "it" to recapStrings(
         listeningRecap = "Recap d'ascolto",
@@ -91,7 +121,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Apri Recap",
         pulseProPeak = "Giorno di picco",
         pulseProAverage = "Media giornaliera",
-        pulseProActivity = "Attività di ascolto"
+        pulseProActivity = "Attività di ascolto",
+        daypartMorning = "Mattina",
+        daypartAfternoon = "Pomeriggio",
+        daypartEvening = "Sera",
+        daypartNight = "Notte",
+        recapStreakMax = "Max: %sg",
+        recapUnitDays = "g",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Attività recente",
+        recapActivityLast30Days = "Ultimi 30 giorni",
+        recapCompletionRate = "Completamento"
     ),
     "es" to recapStrings(
         listeningRecap = "Recap de escucha",
@@ -114,7 +154,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Abrir Recap",
         pulseProPeak = "Día pico",
         pulseProAverage = "Promedio diario",
-        pulseProActivity = "Actividad de escucha"
+        pulseProActivity = "Actividad de escucha",
+        daypartMorning = "Mañana",
+        daypartAfternoon = "Tarde",
+        daypartEvening = "Noche",
+        daypartNight = "Madrugada",
+        recapStreakMax = "Máx: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Actividad reciente",
+        recapActivityLast30Days = "Últimos 30 días",
+        recapCompletionRate = "Finalización"
     ),
     "fr" to recapStrings(
         listeningRecap = "Bilan d'écoute",
@@ -137,7 +187,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Ouvrir le bilan",
         pulseProPeak = "Pic d'écoute",
         pulseProAverage = "Moy. quotidienne",
-        pulseProActivity = "Activité d'écoute"
+        pulseProActivity = "Activité d'écoute",
+        daypartMorning = "Matin",
+        daypartAfternoon = "Après-midi",
+        daypartEvening = "Soirée",
+        daypartNight = "Nuit",
+        recapStreakMax = "Max : %sj",
+        recapUnitDays = "j",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Activité récente",
+        recapActivityLast30Days = "30 derniers jours",
+        recapCompletionRate = "Complétion"
     ),
     "de" to recapStrings(
         listeningRecap = "Hör-Rückblick",
@@ -160,7 +220,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Rückblick öffnen",
         pulseProPeak = "Spitzentag",
         pulseProAverage = "Tagesdurchschnitt",
-        pulseProActivity = "Höraktivität"
+        pulseProActivity = "Höraktivität",
+        daypartMorning = "Morgen",
+        daypartAfternoon = "Nachmittag",
+        daypartEvening = "Abend",
+        daypartNight = "Nacht",
+        recapStreakMax = "Max: %sT",
+        recapUnitDays = "T",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Kürzliche Aktivität",
+        recapActivityLast30Days = "Letzte 30 Tage",
+        recapCompletionRate = "Abschluss"
     ),
     "pt" to recapStrings(
         listeningRecap = "Recap de escuta",
@@ -183,7 +253,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Abrir Recap",
         pulseProPeak = "Dia de pico",
         pulseProAverage = "Média diária",
-        pulseProActivity = "Atividade de escuta"
+        pulseProActivity = "Atividade de escuta",
+        daypartMorning = "Manhã",
+        daypartAfternoon = "Tarde",
+        daypartEvening = "Noite",
+        daypartNight = "Madrugada",
+        recapStreakMax = "Máx: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Atividade recente",
+        recapActivityLast30Days = "Últimos 30 dias",
+        recapCompletionRate = "Conclusão"
     ),
     "nl" to recapStrings(
         listeningRecap = "Luisteroverzicht",
@@ -206,7 +286,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Overzicht openen",
         pulseProPeak = "Piekdag",
         pulseProAverage = "Dagelijks gem.",
-        pulseProActivity = "Luisteractiviteit"
+        pulseProActivity = "Luisteractiviteit",
+        daypartMorning = "Ochtend",
+        daypartAfternoon = "Middag",
+        daypartEvening = "Avond",
+        daypartNight = "Nacht",
+        recapStreakMax = "Max: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Recente activiteit",
+        recapActivityLast30Days = "Laatste 30 dagen",
+        recapCompletionRate = "Voltooiing"
     ),
     "pl" to recapStrings(
         listeningRecap = "Podsumowanie słuchania",
@@ -229,7 +319,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Otwórz podsumowanie",
         pulseProPeak = "Dzień szczytowy",
         pulseProAverage = "Śr. dzienna",
-        pulseProActivity = "Aktywność słuchania"
+        pulseProActivity = "Aktywność słuchania",
+        daypartMorning = "Rano",
+        daypartAfternoon = "Popołudnie",
+        daypartEvening = "Wieczór",
+        daypartNight = "Noc",
+        recapStreakMax = "Maks: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Ostatnia aktywność",
+        recapActivityLast30Days = "Ostatnie 30 dni",
+        recapCompletionRate = "Ukończenie"
     ),
     "ro" to recapStrings(
         listeningRecap = "Recapitulare ascultare",
@@ -252,7 +352,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Deschide recapitularea",
         pulseProPeak = "Ziua de vârf",
         pulseProAverage = "Medie zilnică",
-        pulseProActivity = "Activitate de ascultare"
+        pulseProActivity = "Activitate de ascultare",
+        daypartMorning = "Dimineață",
+        daypartAfternoon = "După-amiază",
+        daypartEvening = "Seară",
+        daypartNight = "Noapte",
+        recapStreakMax = "Max: %sz",
+        recapUnitDays = "z",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Activitate recentă",
+        recapActivityLast30Days = "Ultimele 30 de zile",
+        recapCompletionRate = "Finalizare"
     ),
     "el" to recapStrings(
         listeningRecap = "Ανασκόπηση ακρόασης",
@@ -275,7 +385,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Άνοιγμα ανασκόπησης",
         pulseProPeak = "Ημέρα κορύφωσης",
         pulseProAverage = "Ημερήσιος μ.ο.",
-        pulseProActivity = "Δραστηριότητα ακρόασης"
+        pulseProActivity = "Δραστηριότητα ακρόασης",
+        daypartMorning = "Πρωί",
+        daypartAfternoon = "Απόγευμα",
+        daypartEvening = "Βράδυ",
+        daypartNight = "Νύχτα",
+        recapStreakMax = "Μέγ: %sημ",
+        recapUnitDays = "ημ",
+        recapUnitMinutes = "λ",
+        recapRecentActivity = "Πρόσφατη δραστηριότητα",
+        recapActivityLast30Days = "Τελευταίες 30 ημέρες",
+        recapCompletionRate = "Ολοκλήρωση"
     ),
     "sv" to recapStrings(
         listeningRecap = "Lyssningssammanfattning",
@@ -298,7 +418,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Öppna sammanfattning",
         pulseProPeak = "Toppdag",
         pulseProAverage = "Dagsgenomsnitt",
-        pulseProActivity = "Lyssningsaktivitet"
+        pulseProActivity = "Lyssningsaktivitet",
+        daypartMorning = "Morgon",
+        daypartAfternoon = "Eftermiddag",
+        daypartEvening = "Kväll",
+        daypartNight = "Natt",
+        recapStreakMax = "Max: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Senaste aktivitet",
+        recapActivityLast30Days = "Senaste 30 dagarna",
+        recapCompletionRate = "Slutförande"
     ),
     "da" to recapStrings(
         listeningRecap = "Lyttesammenfatning",
@@ -321,7 +451,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Åbn oversigt",
         pulseProPeak = "Spidsdag",
         pulseProAverage = "Dagligt gns.",
-        pulseProActivity = "Lytteaktivitet"
+        pulseProActivity = "Lytteaktivitet",
+        daypartMorning = "Morgen",
+        daypartAfternoon = "Eftermiddag",
+        daypartEvening = "Aften",
+        daypartNight = "Nat",
+        recapStreakMax = "Maks: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Seneste aktivitet",
+        recapActivityLast30Days = "Sidste 30 dage",
+        recapCompletionRate = "Gennemførelse"
     ),
     "cs" to recapStrings(
         listeningRecap = "Poslechový přehled",
@@ -344,7 +484,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Otevřít přehled",
         pulseProPeak = "Špičkový den",
         pulseProAverage = "Denní průměr",
-        pulseProActivity = "Aktivita poslechu"
+        pulseProActivity = "Aktivita poslechu",
+        daypartMorning = "Ráno",
+        daypartAfternoon = "Odpoledne",
+        daypartEvening = "Večer",
+        daypartNight = "Noc",
+        recapStreakMax = "Max: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Nedávná aktivita",
+        recapActivityLast30Days = "Posledních 30 dní",
+        recapCompletionRate = "Dokončení"
     ),
     "uk" to recapStrings(
         listeningRecap = "Підсумок прослуховування",
@@ -367,7 +517,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Відкрити підсумок",
         pulseProPeak = "Піковий день",
         pulseProAverage = "Середнє за день",
-        pulseProActivity = "Активність прослуховування"
+        pulseProActivity = "Активність прослуховування",
+        daypartMorning = "Ранок",
+        daypartAfternoon = "День",
+        daypartEvening = "Вечір",
+        daypartNight = "Ніч",
+        recapStreakMax = "Макс: %sд",
+        recapUnitDays = "д",
+        recapUnitMinutes = "хв",
+        recapRecentActivity = "Нещодавня активність",
+        recapActivityLast30Days = "Останні 30 днів",
+        recapCompletionRate = "Завершення"
     ),
     "ru" to recapStrings(
         listeningRecap = "Итоги прослушивания",
@@ -390,7 +550,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Открыть итоги",
         pulseProPeak = "Пиковый день",
         pulseProAverage = "Среднее в день",
-        pulseProActivity = "Активность прослушивания"
+        pulseProActivity = "Активность прослушивания",
+        daypartMorning = "Утро",
+        daypartAfternoon = "День",
+        daypartEvening = "Вечер",
+        daypartNight = "Ночь",
+        recapStreakMax = "Макс: %sд",
+        recapUnitDays = "д",
+        recapUnitMinutes = "мин",
+        recapRecentActivity = "Недавняя активность",
+        recapActivityLast30Days = "Последние 30 дней",
+        recapCompletionRate = "Завершение"
     ),
     "tr" to recapStrings(
         listeningRecap = "Dinleme Özeti",
@@ -413,7 +583,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Özeti Aç",
         pulseProPeak = "Zirve Günü",
         pulseProAverage = "Günlük Ort.",
-        pulseProActivity = "Dinleme Aktivitesi"
+        pulseProActivity = "Dinleme Aktivitesi",
+        daypartMorning = "Sabah",
+        daypartAfternoon = "Öğleden sonra",
+        daypartEvening = "Akşam",
+        daypartNight = "Gece",
+        recapStreakMax = "Maks: %sg",
+        recapUnitDays = "g",
+        recapUnitMinutes = "dk",
+        recapRecentActivity = "Son etkinlik",
+        recapActivityLast30Days = "Son 30 gün",
+        recapCompletionRate = "Tamamlama"
     ),
     "ar" to recapStrings(
         listeningRecap = "ملخص الاستماع",
@@ -436,7 +616,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "فتح الملخص",
         pulseProPeak = "يوم الذروة",
         pulseProAverage = "المعدل اليومي",
-        pulseProActivity = "نشاط الاستماع"
+        pulseProActivity = "نشاط الاستماع",
+        daypartMorning = "الصباح",
+        daypartAfternoon = "بعد الظهر",
+        daypartEvening = "المساء",
+        daypartNight = "الليل",
+        recapStreakMax = "الحد الأقصى: %s يوم",
+        recapUnitDays = "ي",
+        recapUnitMinutes = "د",
+        recapRecentActivity = "النشاط الأخير",
+        recapActivityLast30Days = "آخر 30 يوماً",
+        recapCompletionRate = "الإكمال"
     ),
     "zh" to recapStrings(
         listeningRecap = "聆听回顾",
@@ -459,7 +649,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "打开回顾",
         pulseProPeak = "最高峰日",
         pulseProAverage = "日均时长",
-        pulseProActivity = "聆听活动"
+        pulseProActivity = "聆听活动",
+        daypartMorning = "早晨",
+        daypartAfternoon = "下午",
+        daypartEvening = "傍晚",
+        daypartNight = "夜晚",
+        recapStreakMax = "最高: %s天",
+        recapUnitDays = "天",
+        recapUnitMinutes = "分",
+        recapRecentActivity = "近期动态",
+        recapActivityLast30Days = "最近 30 天",
+        recapCompletionRate = "完听率"
     ),
     "ja" to recapStrings(
         listeningRecap = "リスニング振り返り",
@@ -482,7 +682,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "振り返りを開く",
         pulseProPeak = "ピーク日",
         pulseProAverage = "1日平均",
-        pulseProActivity = "再生アクティビティ"
+        pulseProActivity = "再生アクティビティ",
+        daypartMorning = "朝",
+        daypartAfternoon = "昼",
+        daypartEvening = "夕方",
+        daypartNight = "夜",
+        recapStreakMax = "最長: %s日",
+        recapUnitDays = "日",
+        recapUnitMinutes = "分",
+        recapRecentActivity = "最近のアクティビティ",
+        recapActivityLast30Days = "直近30日間",
+        recapCompletionRate = "完了率"
     ),
     "ko" to recapStrings(
         listeningRecap = "감상 리캡",
@@ -505,7 +715,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "리캡 열기",
         pulseProPeak = "최고의 날",
         pulseProAverage = "일일 평균",
-        pulseProActivity = "감상 활동"
+        pulseProActivity = "감상 활동",
+        daypartMorning = "아침",
+        daypartAfternoon = "오후",
+        daypartEvening = "저녁",
+        daypartNight = "밤",
+        recapStreakMax = "최대: %s일",
+        recapUnitDays = "일",
+        recapUnitMinutes = "분",
+        recapRecentActivity = "최근 활동",
+        recapActivityLast30Days = "지난 30일",
+        recapCompletionRate = "완청률"
     ),
     "hi" to recapStrings(
         listeningRecap = "लिसनिंग रीकैप",
@@ -528,7 +748,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "रीकैप खोलें",
         pulseProPeak = "शीर्ष दिन",
         pulseProAverage = "दैनिक औसत",
-        pulseProActivity = "सुनने की गतिविधि"
+        pulseProActivity = "सुनने की गतिविधि",
+        daypartMorning = "सुबह",
+        daypartAfternoon = "दोपहर",
+        daypartEvening = "शाम",
+        daypartNight = "रात",
+        recapStreakMax = "अधिकतम: %s दिन",
+        recapUnitDays = "दिन",
+        recapUnitMinutes = "मि",
+        recapRecentActivity = "हाल की गतिविधि",
+        recapActivityLast30Days = "पिछले 30 दिन",
+        recapCompletionRate = "पूर्णता दर"
     ),
     "id" to recapStrings(
         listeningRecap = "Rekap Mendengarkan",
@@ -551,7 +781,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Buka Rekap",
         pulseProPeak = "Hari Puncak",
         pulseProAverage = "Rata-rata harian",
-        pulseProActivity = "Aktivitas Mendengarkan"
+        pulseProActivity = "Aktivitas Mendengarkan",
+        daypartMorning = "Pagi",
+        daypartAfternoon = "Siang",
+        daypartEvening = "Sore",
+        daypartNight = "Malam",
+        recapStreakMax = "Maks: %sh",
+        recapUnitDays = "h",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Aktivitas terbaru",
+        recapActivityLast30Days = "30 hari terakhir",
+        recapCompletionRate = "Penyelesaian"
     ),
     "vi" to recapStrings(
         listeningRecap = "Tổng kết nghe nhạc",
@@ -574,7 +814,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Mở tổng kết",
         pulseProPeak = "Ngày cao điểm",
         pulseProAverage = "Trung bình ngày",
-        pulseProActivity = "Hoạt động nghe"
+        pulseProActivity = "Hoạt động nghe",
+        daypartMorning = "Buổi sáng",
+        daypartAfternoon = "Buổi chiều",
+        daypartEvening = "Buổi tối",
+        daypartNight = "Ban đêm",
+        recapStreakMax = "Tối đa: %s ngày",
+        recapUnitDays = "ng",
+        recapUnitMinutes = "p",
+        recapRecentActivity = "Hoạt động gần đây",
+        recapActivityLast30Days = "30 ngày qua",
+        recapCompletionRate = "Hoàn thành"
     ),
     "th" to recapStrings(
         listeningRecap = "สรุปการฟัง",
@@ -597,7 +847,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "เปิดสรุป",
         pulseProPeak = "วันยอดนิยม",
         pulseProAverage = "เฉลี่ยรายวัน",
-        pulseProActivity = "กิจกรรมการฟัง"
+        pulseProActivity = "กิจกรรมการฟัง",
+        daypartMorning = "ช่วงเช้า",
+        daypartAfternoon = "ช่วงบ่าย",
+        daypartEvening = "ช่วงเย็น",
+        daypartNight = "ช่วงค่ำ",
+        recapStreakMax = "สูงสุด: %sวัน",
+        recapUnitDays = "วัน",
+        recapUnitMinutes = "น.",
+        recapRecentActivity = "กิจกรรมล่าสุด",
+        recapActivityLast30Days = "30 วันที่ผ่านมา",
+        recapCompletionRate = "การฟังจนจบ"
     ),
     "fil" to recapStrings(
         listeningRecap = "Recap sa Pakikinig",
@@ -620,7 +880,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "Buksan ang Recap",
         pulseProPeak = "Peak na Araw",
         pulseProAverage = "Pang-araw-araw na Ave",
-        pulseProActivity = "Aktibidad sa Pakikinig"
+        pulseProActivity = "Aktibidad sa Pakikinig",
+        daypartMorning = "Umaga",
+        daypartAfternoon = "Hapon",
+        daypartEvening = "Gabi",
+        daypartNight = "Madaling araw",
+        recapStreakMax = "Max: %sd",
+        recapUnitDays = "d",
+        recapUnitMinutes = "m",
+        recapRecentActivity = "Kamakailang aktibidad",
+        recapActivityLast30Days = "Huling 30 araw",
+        recapCompletionRate = "Pagtatapos"
     ),
     "he" to recapStrings(
         listeningRecap = "סיכום האזנה",
@@ -643,7 +913,17 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         openRecap = "פתח סיכום",
         pulseProPeak = "יום שיא",
         pulseProAverage = "ממוצע יומי",
-        pulseProActivity = "פעילות האזנה"
+        pulseProActivity = "פעילות האזנה",
+        daypartMorning = "בוקר",
+        daypartAfternoon = "אחר הצהריים",
+        daypartEvening = "ערב",
+        daypartNight = "לילה",
+        recapStreakMax = "מקסימום: %s ימים",
+        recapUnitDays = "ימ'",
+        recapUnitMinutes = "דק'",
+        recapRecentActivity = "פעילות אחרונה",
+        recapActivityLast30Days = "30 הימים האחרונים",
+        recapCompletionRate = "השלמה"
     )
 )
 

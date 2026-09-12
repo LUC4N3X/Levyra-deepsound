@@ -250,13 +250,13 @@ private fun PulseActiveContent(
                 )
                 PulseMiniBadge(
                     icon = Icons.Rounded.LocalFireDepartment,
-                    value = "${pulse.streakDays}d",
+                    value = "${pulse.streakDays}${strings.recapUnitDays}",
                     label = strings.pulseStreak,
                     accent = LevyraOrange
                 )
                 PulseMiniBadge(
                     icon = Icons.Rounded.Equalizer,
-                    value = "${avgMinutesPerDay}m",
+                    value = "${avgMinutesPerDay}${strings.recapUnitMinutes}",
                     label = strings.pulseProAverage,
                     accent = LevyraViolet
                 )

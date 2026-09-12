@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.LocalFireDepartment
@@ -70,11 +71,13 @@ import com.luc4n3x.levyra.domain.recap.RecapHighlightStat
 import com.luc4n3x.levyra.domain.recap.TopAlbumStat
 import com.luc4n3x.levyra.domain.recap.TopArtistStat
 import com.luc4n3x.levyra.domain.recap.TopTrackStat
+import com.luc4n3x.levyra.ui.components.LevyraArtistAvatar
 import com.luc4n3x.levyra.ui.components.LevyraConnectedDefaults
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.ui.components.LevyraConnectedStyle
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSkeletonBlock
+import com.luc4n3x.levyra.ui.components.levyraArtistAccent
 import com.luc4n3x.levyra.ui.components.levyraConnectedRowSurface
 import com.luc4n3x.levyra.ui.components.levyraConnectedSurface
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -225,7 +228,7 @@ fun LevyraListeningRecapOverlay(
                 }
                 item(contentType = "recap-highlights") {
                     RecapHighlightsGrid(
-                        highlights = recap.highlights,
+                        recap = recap,
                         strings = strings,
                         locale = locale,
                         number = number,
@@ -295,7 +298,22 @@ fun LevyraListeningRecapOverlay(
                 // Daily Activity Pulse Timeline
                 if (recap.dailyActivity.any { it.listenedMs > 0L }) {
                     item(contentType = "recap-pulse-title") {
-                        RecapSectionTitle(title = strings.pulseProActivity, icon = Icons.Rounded.CalendarMonth, accent = LevyraCyan)
+                        val chartTitle = if (period == ListeningRecapPeriod.Days365 || period == ListeningRecapPeriod.AllTime) {
+                            strings.recapRecentActivity
+                        } else {
+                            strings.pulseProActivity
+                        }
+                        val chartSubtitle = if (period == ListeningRecapPeriod.Days365 || period == ListeningRecapPeriod.AllTime) {
+                            strings.recapActivityLast30Days
+                        } else {
+                            null
+                        }
+                        RecapSectionTitle(
+                            title = chartTitle,
+                            subtitle = chartSubtitle,
+                            icon = Icons.Rounded.CalendarMonth,
+                            accent = LevyraCyan
+                        )
                     }
                     item(contentType = "recap-pulse-chart") {
                         RecapTimelineChart(
@@ -488,14 +506,15 @@ private fun RowScope.RecapMiniStat(
 
 @Composable
 private fun RecapHighlightsGrid(
-    highlights: RecapHighlightStat,
+    recap: ListeningRecapSummary,
     strings: LevyraStrings,
     locale: Locale,
     number: NumberFormat,
     isDark: Boolean
 ) {
+    val highlights = recap.highlights
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // Row 1: Streak + Favorite Time
+        // Row 1: Streak + Favorite Time / Completion
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -505,24 +524,38 @@ private fun RecapHighlightsGrid(
                 icon = Icons.Rounded.LocalFireDepartment,
                 accent = LevyraOrange,
                 title = strings.streakHighlight,
-                headline = "${highlights.currentStreakDays}d",
-                subtitle = if (highlights.bestStreakDays > 0) "Max: ${highlights.bestStreakDays}d" else "",
+                headline = "${highlights.currentStreakDays} ${strings.recapUnitDays}",
+                subtitle = if (highlights.bestStreakDays > 0) {
+                    strings.recapStreakMax.replace("%s", "${highlights.bestStreakDays}")
+                } else "",
                 isDark = isDark
             )
-            val daypartName = formatDaypart(highlights.favoriteDaypart, strings.code)
+            val daypartName = highlights.favoriteDaypart?.let { formatDaypart(it, strings) }.orEmpty()
             val hourText = if (highlights.favoriteHour >= 0) "${highlights.favoriteHour.toString().padStart(2, '0')}:00" else ""
-            RecapHighlightCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Rounded.Schedule,
-                accent = LevyraViolet,
-                title = strings.favoriteTimeHighlight,
-                headline = daypartName,
-                subtitle = if (hourText.isNotBlank()) "${strings.pulseProPeak}: $hourText" else "",
-                isDark = isDark
-            )
+            if (daypartName.isNotBlank()) {
+                RecapHighlightCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Rounded.Schedule,
+                    accent = LevyraViolet,
+                    title = strings.favoriteTimeHighlight,
+                    headline = daypartName,
+                    subtitle = if (hourText.isNotBlank()) "${strings.pulseProPeak}: $hourText" else "",
+                    isDark = isDark
+                )
+            } else {
+                RecapHighlightCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Rounded.CheckCircle,
+                    accent = LevyraViolet,
+                    title = strings.recapCompletionRate,
+                    headline = "${recap.completionRate}%",
+                    subtitle = "${number.format(recap.totalPlays)} ${strings.pulsePlays}",
+                    isDark = isDark
+                )
+            }
         }
 
-        // Row 2: Most Active Day + Discovery vs Repeat
+        // Row 2: Most Active Day + Discovery vs Repeat / Daily Average
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -535,19 +568,31 @@ private fun RecapHighlightsGrid(
                 icon = Icons.Rounded.CalendarMonth,
                 accent = LevyraCyan,
                 title = strings.mostActiveDayHighlight,
-                headline = if (highlights.mostActiveDayMinutes > 0) "${highlights.mostActiveDayMinutes}m" else "—",
+                headline = if (highlights.mostActiveDayMinutes > 0) "${highlights.mostActiveDayMinutes} ${strings.recapUnitMinutes}" else "—",
                 subtitle = mostActiveText,
                 isDark = isDark
             )
-            RecapHighlightCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Rounded.Explore,
-                accent = LevyraPink,
-                title = strings.discoveryHighlight,
-                headline = "${highlights.discoveryRate}%",
-                subtitle = "${highlights.repeatRate}% ${strings.pulsePlays}",
-                isDark = isDark
-            )
+            if (highlights.discoveryRate >= 0) {
+                RecapHighlightCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Rounded.Explore,
+                    accent = LevyraPink,
+                    title = strings.discoveryHighlight,
+                    headline = "${highlights.discoveryRate}%",
+                    subtitle = "${highlights.repeatRate}% ${strings.pulsePlays}",
+                    isDark = isDark
+                )
+            } else {
+                RecapHighlightCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Rounded.Schedule,
+                    accent = LevyraPink,
+                    title = strings.pulseProAverage,
+                    headline = "${highlights.averageMinutesPerDay} ${strings.recapUnitMinutes}",
+                    subtitle = periodLabel(recap.period, strings),
+                    isDark = isDark
+                )
+            }
         }
 
         // Row 3: Most Replayed Track (if any)
@@ -712,7 +757,7 @@ private fun TopTrackRow(
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "${track.totalMinutes} ${strings.pulseMinuteShort}",
+                text = "${track.totalMinutes} ${strings.recapUnitMinutes}",
                 color = LevyraMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold
@@ -729,6 +774,7 @@ private fun TopArtistRow(
     strings: LevyraStrings,
     onOpen: () -> Unit
 ) {
+    val artistAccents = remember(artist.name) { levyraArtistAccent(artist.name) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -752,29 +798,13 @@ private fun TopArtistRow(
             textAlign = TextAlign.Center
         )
 
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(LevyraPink.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (artist.thumbnailUrl.isNotBlank()) {
-                AsyncImage(
-                    model = artist.thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Rounded.Person,
-                    contentDescription = null,
-                    tint = LevyraPink,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
+        LevyraArtistAvatar(
+            name = artist.name,
+            thumbnailUrl = artist.thumbnailUrl,
+            accentStart = artistAccents.first,
+            accentEnd = artistAccents.second,
+            size = 44.dp
+        )
 
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
@@ -785,12 +815,14 @@ private fun TopArtistRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = "${artist.trackCount} ${strings.statTracks}",
-                color = LevyraMuted,
-                fontSize = 11.5.sp,
-                fontWeight = FontWeight.Medium
-            )
+            if (artist.trackCount > 0) {
+                Text(
+                    text = "${artist.trackCount} ${strings.statTracks}",
+                    color = LevyraMuted,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
 
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -801,7 +833,7 @@ private fun TopArtistRow(
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "${artist.totalMinutes} ${strings.pulseMinuteShort}",
+                text = "${artist.totalMinutes} ${strings.recapUnitMinutes}",
                 color = LevyraMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold
@@ -885,7 +917,7 @@ private fun TopAlbumRow(
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "${album.totalMinutes} ${strings.pulseMinuteShort}",
+                text = "${album.totalMinutes} ${strings.recapUnitMinutes}",
                 color = LevyraMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold
@@ -953,20 +985,31 @@ private fun RecapTimelineChart(
 private fun RecapSectionTitle(
     title: String,
     icon: ImageVector,
-    accent: Color
+    accent: Color,
+    subtitle: String? = null
 ) {
-    Row(
-        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
-        Text(
-            text = title,
-            color = LevyraText,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Black
-        )
+    Column(modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
+            Text(
+                text = title,
+                color = LevyraText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+        if (!subtitle.isNullOrBlank()) {
+            Text(
+                text = subtitle,
+                color = LevyraMuted,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 24.dp, top = 2.dp)
+            )
+        }
     }
 }
 
@@ -1023,59 +1066,15 @@ private fun formatRecapDuration(listenedMs: Long, strings: LevyraStrings): Strin
     val hours = totalMinutes / 60L
     val remainingMinutes = totalMinutes % 60L
     return when {
-        hours > 0 && remainingMinutes > 0 -> "${hours}h ${remainingMinutes}m"
+        hours > 0 && remainingMinutes > 0 -> "${hours}h ${remainingMinutes} ${strings.recapUnitMinutes}"
         hours > 0 -> "${hours}h"
-        else -> "$totalMinutes ${strings.pulseMinuteShort}"
+        else -> "$totalMinutes ${strings.recapUnitMinutes}"
     }
 }
 
-private fun formatDaypart(daypart: Daypart, code: String): String = when (code) {
-    "it" -> when (daypart) {
-        Daypart.Morning -> "Mattina"
-        Daypart.Afternoon -> "Pomeriggio"
-        Daypart.Evening -> "Sera"
-        Daypart.Night -> "Notte"
-    }
-    "es" -> when (daypart) {
-        Daypart.Morning -> "Mañana"
-        Daypart.Afternoon -> "Tarde"
-        Daypart.Evening -> "Noche"
-        Daypart.Night -> "Madrugada"
-    }
-    "fr" -> when (daypart) {
-        Daypart.Morning -> "Matin"
-        Daypart.Afternoon -> "Après-midi"
-        Daypart.Evening -> "Soirée"
-        Daypart.Night -> "Nuit"
-    }
-    "de" -> when (daypart) {
-        Daypart.Morning -> "Morgen"
-        Daypart.Afternoon -> "Nachmittag"
-        Daypart.Evening -> "Abend"
-        Daypart.Night -> "Nacht"
-    }
-    "pt" -> when (daypart) {
-        Daypart.Morning -> "Manhã"
-        Daypart.Afternoon -> "Tarde"
-        Daypart.Evening -> "Noite"
-        Daypart.Night -> "Madrugada"
-    }
-    "ru" -> when (daypart) {
-        Daypart.Morning -> "Утро"
-        Daypart.Afternoon -> "День"
-        Daypart.Evening -> "Вечер"
-        Daypart.Night -> "Ночь"
-    }
-    "ja" -> when (daypart) {
-        Daypart.Morning -> "朝"
-        Daypart.Afternoon -> "昼"
-        Daypart.Evening -> "夕方"
-        Daypart.Night -> "夜"
-    }
-    else -> when (daypart) {
-        Daypart.Morning -> "Morning"
-        Daypart.Afternoon -> "Afternoon"
-        Daypart.Evening -> "Evening"
-        Daypart.Night -> "Night"
-    }
+private fun formatDaypart(daypart: Daypart, strings: LevyraStrings): String = when (daypart) {
+    Daypart.Morning -> strings.daypartMorning
+    Daypart.Afternoon -> strings.daypartAfternoon
+    Daypart.Evening -> strings.daypartEvening
+    Daypart.Night -> strings.daypartNight
 }

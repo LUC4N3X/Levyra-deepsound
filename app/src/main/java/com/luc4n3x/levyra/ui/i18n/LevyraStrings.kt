@@ -380,6 +380,16 @@ class LevyraStrings private constructor(
     val pulseProPeak: String get() = value("pulseProPeak")
     val pulseProAverage: String get() = value("pulseProAverage")
     val pulseProActivity: String get() = value("pulseProActivity")
+    val daypartMorning: String get() = value("daypartMorning")
+    val daypartAfternoon: String get() = value("daypartAfternoon")
+    val daypartEvening: String get() = value("daypartEvening")
+    val daypartNight: String get() = value("daypartNight")
+    val recapStreakMax: String get() = value("recapStreakMax")
+    val recapUnitDays: String get() = value("recapUnitDays")
+    val recapUnitMinutes: String get() = value("recapUnitMinutes")
+    val recapRecentActivity: String get() = value("recapRecentActivity")
+    val recapActivityLast30Days: String get() = value("recapActivityLast30Days")
+    val recapCompletionRate: String get() = value("recapCompletionRate")
     val listeningHistory: String get() = value("listeningHistory")
     val listeningHistorySubtitle: String get() = value("listeningHistorySubtitle")
     val listeningPrompt: String get() = value("listeningPrompt")
@@ -1520,7 +1530,17 @@ class LevyraStrings private constructor(
             "openRecap",
             "pulseProPeak",
             "pulseProAverage",
-            "pulseProActivity"
+            "pulseProActivity",
+            "daypartMorning",
+            "daypartAfternoon",
+            "daypartEvening",
+            "daypartNight",
+            "recapStreakMax",
+            "recapUnitDays",
+            "recapUnitMinutes",
+            "recapRecentActivity",
+            "recapActivityLast30Days",
+            "recapCompletionRate"
         )
 
         private val integrationKeys = setOf(

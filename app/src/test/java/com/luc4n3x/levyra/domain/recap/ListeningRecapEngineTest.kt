@@ -208,6 +208,86 @@ class ListeningRecapEngineTest {
         assertEquals("Lifetime Artist", recap.topArtists.first().name)
     }
 
+    @Test
+    fun topAlbumsGroupsFeaturingTracks() {
+        val events = listOf(
+            event(trackId = "t1", title = "Track 1", artist = "Daft Punk", album = "Random Access Memories", listenedMs = 60_000L, startedAt = hoursAgo(1)),
+            event(trackId = "t2", title = "Track 2", artist = "Daft Punk feat. Pharrell Williams", album = "Random Access Memories", listenedMs = 60_000L, startedAt = hoursAgo(2)),
+            event(trackId = "t3", title = "Track 3", artist = "Daft Punk with Julian Casablancas", album = "Random Access Memories", listenedMs = 60_000L, startedAt = hoursAgo(3))
+        )
+
+        val recap = ListeningRecapEngine.build(events, ListeningRecapPeriod.Days7, nowMs = now, zone = zone)
+
+        assertEquals(1, recap.topAlbums.size)
+        assertEquals("Random Access Memories", recap.topAlbums[0].title)
+        assertEquals("Daft Punk", recap.topAlbums[0].artist)
+        assertEquals(3, recap.topAlbums[0].plays)
+        assertEquals(3, recap.topAlbums[0].trackCount)
+    }
+
+    @Test
+    fun topArtistsDoesNotUseTrackArtwork() {
+        val events = listOf(
+            event(trackId = "t1", title = "Song 1", artist = "Artist A", thumbnailUrl = "https://image.test/album.jpg", listenedMs = 60_000L, startedAt = hoursAgo(1))
+        )
+
+        val recap = ListeningRecapEngine.build(events, ListeningRecapPeriod.Days7, nowMs = now, zone = zone)
+
+        assertEquals(1, recap.topArtists.size)
+        assertEquals("Artist A", recap.topArtists[0].name)
+        assertTrue(recap.topArtists[0].thumbnailUrl.isEmpty())
+    }
+
+    @Test
+    fun discoveryRateReturnsMinusOneWhenNoPriorHistoryOrYearPeriod() {
+        val events = listOf(
+            event(trackId = "t1", listenedMs = 60_000L, startedAt = daysAgo(2)),
+            event(trackId = "t2", listenedMs = 60_000L, startedAt = daysAgo(3))
+        )
+
+        val recap7 = ListeningRecapEngine.build(events, ListeningRecapPeriod.Days7, nowMs = now, zone = zone)
+        assertEquals(-1, recap7.highlights.discoveryRate)
+        assertEquals(-1, recap7.highlights.repeatRate)
+
+        val recap365 = ListeningRecapEngine.build(events, ListeningRecapPeriod.Days365, nowMs = now, zone = zone)
+        assertEquals(-1, recap365.highlights.discoveryRate)
+
+        val recapAll = ListeningRecapEngine.build(events, ListeningRecapPeriod.AllTime, nowMs = now, zone = zone)
+        assertEquals(-1, recapAll.highlights.discoveryRate)
+    }
+
+    @Test
+    fun allTimeWithOlderLifetimeHistoryDoesNotExposeWindowAlbumsOrBestStreak() {
+        val lifetime = LifetimeListening(
+            totalListenMs = 10_000_000L,
+            countedPlays = 100,
+            completedCount = 50,
+            eventCount = 100,
+            distinctTracks = 40,
+            distinctArtists = 10,
+            tracks = listOf(
+                PulseTrack("t-all-1", "Lifetime Song 1", "Artist L", 30, 3_000_000L),
+                PulseTrack("t-all-2", "Lifetime Song 2", "Artist L", 20, 2_000_000L)
+            ),
+            artists = listOf(LifetimeArtist("Artist L", 50, 5_000_000L))
+        )
+        val windowEvents = listOf(
+            event(trackId = "t-recent", title = "Recent", artist = "Recent Artist", album = "Recent Album", listenedMs = 60_000L, startedAt = hoursAgo(1))
+        )
+
+        val recap = ListeningRecapEngine.build(windowEvents, ListeningRecapPeriod.AllTime, lifetime = lifetime, nowMs = now, zone = zone)
+
+        assertTrue(recap.highlights.isWindowBounded)
+        assertEquals(0, recap.uniqueAlbums)
+        assertTrue(recap.topAlbums.isEmpty())
+        assertEquals(0, recap.highlights.bestStreakDays)
+        assertEquals(null, recap.highlights.favoriteDaypart)
+        assertEquals(-1, recap.highlights.favoriteHour)
+        assertEquals(-1, recap.highlights.discoveryRate)
+        assertEquals("t-all-1", recap.highlights.mostReplayedTrack?.trackId)
+        assertEquals(30, recap.highlights.mostReplayedTrack?.plays)
+    }
+
     private fun hoursAgo(hours: Int): Long = now - hours * 3_600_000L
     private fun daysAgo(days: Int): Long = now - days * 86_400_000L
 

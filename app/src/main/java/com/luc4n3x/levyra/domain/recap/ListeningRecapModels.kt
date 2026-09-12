@@ -67,10 +67,11 @@ data class RecapHighlightStat(
     val mostActiveDayDate: LocalDate? = null,
     val mostActiveDayMinutes: Long = 0L,
     val favoriteHour: Int = -1,
-    val favoriteDaypart: Daypart = Daypart.Afternoon,
+    val favoriteDaypart: Daypart? = Daypart.Afternoon,
     val mostReplayedTrack: TopTrackStat? = null,
-    val discoveryRate: Int = 0,
-    val repeatRate: Int = 0
+    val discoveryRate: Int = -1,
+    val repeatRate: Int = -1,
+    val isWindowBounded: Boolean = false
 )
 
 @Immutable
