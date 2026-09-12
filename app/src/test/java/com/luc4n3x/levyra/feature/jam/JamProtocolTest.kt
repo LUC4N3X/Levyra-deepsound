@@ -27,6 +27,7 @@ class JamProtocolTest {
     fun everyActionRoundTrips() {
         val actions = listOf(
             JamAction.AddTrack(sampleTrack()),
+            JamAction.PlayNextTracks(listOf(sampleTrack())),
             JamAction.RemoveTrack("track-1"),
             JamAction.SelectIndex(0),
             JamAction.SetPlayWhenReady(true),
