@@ -21377,41 +21377,23 @@ private fun ExploreLiveRadioEntry(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
-            modifier = Modifier.size(width = 56.dp, height = 40.dp),
-            contentAlignment = Alignment.CenterStart
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(LevyraCyan.copy(alpha = if (LevyraIsLight) 0.14f else 0.18f))
+                .border(
+                    Dp.Hairline,
+                    LevyraCyan.copy(alpha = if (LevyraIsLight) 0.32f else 0.40f),
+                    RoundedCornerShape(13.dp)
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(LevyraAdaptiveChip)
-                    .border(Dp.Hairline, LevyraAdaptiveHairline, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Language,
-                    contentDescription = null,
-                    tint = LevyraMuted,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(LevyraCyan.copy(alpha = if (LevyraIsLight) 0.18f else 0.22f))
-                    .border(1.dp, LevyraCyan.copy(alpha = 0.55f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Radio,
-                    contentDescription = null,
-                    tint = LevyraCyan,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            Icon(
+                imageVector = Icons.Rounded.Radio,
+                contentDescription = null,
+                tint = LevyraCyan,
+                modifier = Modifier.size(21.dp)
+            )
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
