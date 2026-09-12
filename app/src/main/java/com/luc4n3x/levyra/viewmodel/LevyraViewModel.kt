@@ -2737,6 +2737,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun applyJamAction(action: JamAction) {
         when (action) {
             is JamAction.AddTrack -> addToQueueLocal(fromJamTrack(action.track))
+            is JamAction.PlayNextTracks -> {
+                queueEngine.playNext(action.tracks.map(::fromJamTrack))
+                refreshQueuePrefetch()
+            }
             is JamAction.RemoveTrack -> {
                 val index = _state.value.queue.indexOfFirst { it.id == action.trackId }
                 if (index >= 0) removeFromQueueLocal(index)
@@ -2804,6 +2808,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun routeJamAction(action: JamAction): Boolean {
         if (!_state.value.jam.isActive) return false
         viewModelScope.launch { jamController.requestAction(action) }
+        return true
+    }
+
+    private fun routeJamActions(actions: List<JamAction>): Boolean {
+        if (!_state.value.jam.isActive) return false
+        viewModelScope.launch {
+            actions.forEach { action -> jamController.requestAction(action) }
+        }
         return true
     }
 
@@ -4696,7 +4708,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
         if (cleanTracks.isEmpty()) return
         if (_state.value.jam.isActive) {
-            cleanTracks.forEach { track -> routeJamAction(JamAction.AddTrack(toJamTrack(track))) }
+            routeJamActions(cleanTracks.map { track -> JamAction.AddTrack(toJamTrack(track)) })
             return
         }
         queueEngine.addLast(cleanTracks)
@@ -4743,7 +4755,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
         if (cleanTracks.isEmpty()) return
         if (_state.value.jam.isActive) {
-            cleanTracks.forEach { track -> routeJamAction(JamAction.AddTrack(toJamTrack(track))) }
+            routeJamAction(JamAction.PlayNextTracks(cleanTracks.map(::toJamTrack)))
             return
         }
         queueEngine.playNext(cleanTracks)
@@ -4756,7 +4768,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playNext(track: Track) {
         if (_state.value.jam.isActive) {
-            routeJamAction(JamAction.AddTrack(toJamTrack(track)))
+            routeJamAction(JamAction.PlayNextTracks(listOf(toJamTrack(track))))
             return
         }
         queueEngine.playNext(track)
