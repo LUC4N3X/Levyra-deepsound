@@ -13,6 +13,7 @@ import com.luc4n3x.levyra.domain.LifetimeListening
 import com.luc4n3x.levyra.domain.ListenEvent
 import com.luc4n3x.levyra.domain.ListenIdentity
 import com.luc4n3x.levyra.domain.ListenPlayPolicy
+import com.luc4n3x.levyra.domain.primaryArtistCredit
 import com.luc4n3x.levyra.domain.PulseTrack
 import com.luc4n3x.levyra.domain.PersonalizedArtistCandidate
 import com.luc4n3x.levyra.domain.SmartPlaylistListen
@@ -90,6 +91,7 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
             trackId = track.id,
             title = track.title,
             artist = track.artist,
+            artistBrowseIds = track.artistBrowseIds,
             listenedMsDelta = newMs - previousMs,
             playDelta = if (!previousCounted && newCounted) 1 else 0,
             completionDelta = if (!previousCompleted && newCompleted) 1 else 0,
@@ -102,6 +104,7 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
         trackId: String,
         title: String,
         artist: String,
+        artistBrowseIds: List<String>,
         listenedMsDelta: Long,
         playDelta: Int,
         completionDelta: Int,
@@ -120,11 +123,17 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
             eventCount = eventDelta,
             playedAt = playedAt
         )
-        val artistKey = ListenIdentity.artistKey(artist)
+        val primaryArtist = primaryArtistCredit(artist, artistBrowseIds).ifBlank { artist.trim() }
+        val primaryBrowseId = artistBrowseIds.firstOrNull().orEmpty().trim()
+        val artistKey = if (primaryBrowseId.isNotBlank()) {
+            "id:${primaryBrowseId.lowercase(java.util.Locale.ROOT)}"
+        } else {
+            ListenIdentity.artistKey(primaryArtist)
+        }
         if (artistKey.isNotEmpty()) {
             lifetimeDao.addArtistDelta(
                 artistKey = artistKey,
-                name = artist.trim(),
+                name = primaryArtist,
                 listenedMs = listenedMsDelta,
                 countedPlays = playDelta,
                 completedCount = completionDelta,
@@ -168,6 +177,7 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
             trackId = entity.trackId,
             title = entity.title,
             artist = entity.artist,
+            artistBrowseIds = entity.artistBrowseIds.split(ARTIST_ID_SEPARATOR).filter(String::isNotBlank),
             listenedMsDelta = entity.listenedMs,
             playDelta = if (counted) 1 else 0,
             completionDelta = if (entity.completed) 1 else 0,
@@ -342,7 +352,7 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
         const val PERSONALIZED_ARTIST_LIMIT = 16
         const val OVERSCAN = 4
         const val MAX_LOOPS = 6L
-        const val LIFETIME_BACKFILL_VERSION = 1
+        const val LIFETIME_BACKFILL_VERSION = 2
         const val LIFETIME_TOP_LIMIT = 8
         const val LAST_PLAYED_QUERY_CHUNK = 500
         const val BACKFILL_PAGE_SIZE = 400

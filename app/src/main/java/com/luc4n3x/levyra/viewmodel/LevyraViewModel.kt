@@ -151,6 +151,7 @@ import com.luc4n3x.levyra.domain.ListeningPulseEngine
 import com.luc4n3x.levyra.domain.recap.ListeningRecapPeriod
 import com.luc4n3x.levyra.domain.recap.ListeningRecapSummary
 import com.luc4n3x.levyra.domain.recap.TopTrackStat
+import com.luc4n3x.levyra.domain.recap.TopArtistStat
 import com.luc4n3x.levyra.data.recap.ListeningRecapRepository
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
@@ -10090,7 +10091,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listeningRecapJob = viewModelScope.launch {
             _state.update { it.copy(listeningRecapLoading = true) }
             try {
-                val recap = listeningRecapRepository.getRecap(period, force = force)
+                val rawRecap = listeningRecapRepository.getRecap(period, force = force)
+                val recap = enrichListeningRecapArtists(rawRecap)
                 _state.update { current ->
                     if (current.listeningRecapPeriod != period) {
                         current.copy(listeningRecapLoading = false)
@@ -10104,6 +10106,41 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 Timber.w(error, "Listening recap load failed")
                 _state.update { it.copy(listeningRecapLoading = false) }
             }
+        }
+    }
+
+    private suspend fun enrichListeningRecapArtists(recap: ListeningRecapSummary): ListeningRecapSummary {
+        if (recap.topArtists.isEmpty()) return recap
+        val enriched = coroutineScope {
+            recap.topArtists.map { artist ->
+                async(Dispatchers.IO) { resolveRecapArtist(artist) }
+            }.awaitAll()
+        }
+        return recap.copy(topArtists = enriched)
+    }
+
+    private suspend fun resolveRecapArtist(artist: TopArtistStat): TopArtistStat {
+        val lookupName = artist.lookupName.ifBlank { artist.name }
+        return try {
+            val hit = if (artist.browseId.isNotBlank()) {
+                artistRepository.artistHit(artist.browseId, lookupName)
+            } else {
+                artistRepository.artistHitFor(artist.name)
+            }
+            if (hit == null || hit.thumbnailUrl.isBlank()) {
+                artist
+            } else {
+                artist.copy(
+                    name = hit.name.ifBlank { artist.name },
+                    browseId = hit.browseId.ifBlank { artist.browseId },
+                    thumbnailUrl = hit.thumbnailUrl
+                )
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Listening recap artist artwork resolve failed for ${artist.name}")
+            artist
         }
     }
 

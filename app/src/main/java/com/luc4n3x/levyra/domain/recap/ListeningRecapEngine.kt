@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.ListenIdentity
 import com.luc4n3x.levyra.domain.ListenPlayPolicy
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.primaryArtistSegment
+import com.luc4n3x.levyra.domain.primaryArtistCredit
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -56,7 +57,9 @@ object ListeningRecapEngine {
 
         val totalPlays = scoped.count { ListenPlayPolicy.isCountedPlay(it) }
         val uniqueTrackKeys = scoped.map { ListenIdentity.trackKey(it) }.toSet()
-        val uniqueArtists = scoped.map { ListenIdentity.artistKey(it.artist) }.filter { it.isNotBlank() }.toSet().size
+        val uniqueArtists = scoped.mapNotNull { event ->
+            primaryArtistIdentityKey(event).takeIf { it.isNotBlank() }
+        }.toSet().size
         val uniqueAlbums = scoped.map { albumKey(it.album, it.artist) }.filter { it.isNotBlank() }.toSet().size
 
         val byDay = scoped.groupBy { dayOf(it.startedAt, zone) }
@@ -268,13 +271,17 @@ object ListeningRecapEngine {
     }
 
     private fun topArtists(events: List<ListenEvent>): List<TopArtistStat> {
-        return events.filter { it.artist.isNotBlank() }
-            .groupBy { ListenIdentity.artistKey(it.artist) }
+        return events.filter { primaryArtistIdentityKey(it).isNotBlank() }
+            .groupBy(::primaryArtistIdentityKey)
             .map { (_, group) ->
                 val newest = group.maxBy { it.startedAt }
+                val primaryName = primaryArtistCredit(newest.artist, newest.artistBrowseIds)
+                    .ifBlank { newest.artist.trim() }
                 TopArtistStat(
                     rank = 0,
-                    name = newest.artist.trim(),
+                    name = primaryName,
+                    browseId = newest.artistBrowseIds.firstOrNull().orEmpty().trim(),
+                    lookupName = newest.artist.trim(),
                     plays = group.count { ListenPlayPolicy.isCountedPlay(it) },
                     listenedMs = group.sumOf { it.listenedMs },
                     thumbnailUrl = "",
@@ -284,6 +291,13 @@ object ListeningRecapEngine {
             .sortedWith(compareByDescending<TopArtistStat> { it.listenedMs }.thenByDescending { it.plays })
             .take(TOP_LIMIT)
             .mapIndexed { index, item -> item.copy(rank = index + 1) }
+    }
+
+    private fun primaryArtistIdentityKey(event: ListenEvent): String {
+        val browseId = event.artistBrowseIds.firstOrNull().orEmpty().trim()
+        if (browseId.isNotBlank()) return "id:${browseId.lowercase(Locale.ROOT)}"
+        val primaryName = primaryArtistCredit(event.artist, event.artistBrowseIds)
+        return artistIdentityKey(primaryName)
     }
 
     private fun topAlbums(events: List<ListenEvent>): List<TopAlbumStat> {
@@ -390,6 +404,7 @@ object ListeningRecapEngine {
             TopArtistStat(
                 rank = idx + 1,
                 name = a.name,
+                lookupName = a.name,
                 plays = a.countedPlays,
                 listenedMs = a.listenedMs
             )

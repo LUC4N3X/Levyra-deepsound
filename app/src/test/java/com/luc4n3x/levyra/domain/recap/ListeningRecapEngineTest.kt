@@ -506,6 +506,64 @@ class ListeningRecapEngineTest {
     }
 
     @Test
+    fun topArtistsAttributeFeaturingToPrimaryArtistIdentity() {
+        val feature = event(
+            trackId = "feature-track",
+            title = "2 GIORNI DI...",
+            artist = "Geolier, Sfera Ebbasta",
+            artistBrowseIds = listOf("UC_GEOLIER", "UC_SFERA"),
+            listenedMs = 120_000L,
+            completed = true,
+            startedAt = now - 2_000L
+        )
+        val solo = event(
+            trackId = "solo-track",
+            title = "Solo",
+            artist = "Geolier",
+            artistBrowseIds = listOf("UC_GEOLIER"),
+            listenedMs = 120_000L,
+            completed = true,
+            startedAt = now - 1_000L
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = listOf(feature, solo),
+            period = ListeningRecapPeriod.Days7,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals(1, recap.uniqueArtists)
+        assertEquals(1, recap.topArtists.size)
+        assertEquals("Geolier", recap.topArtists.single().name)
+        assertEquals("UC_GEOLIER", recap.topArtists.single().browseId)
+        assertEquals(2, recap.topArtists.single().trackCount)
+    }
+
+    @Test
+    fun structuredSingleArtistPreservesOfficialNameWithSeparators() {
+        val band = event(
+            trackId = "band-track",
+            title = "September",
+            artist = "Earth, Wind & Fire",
+            artistBrowseIds = listOf("UC_EWF"),
+            listenedMs = 120_000L,
+            completed = true,
+            startedAt = now - 1_000L
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = listOf(band),
+            period = ListeningRecapPeriod.Days7,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals("Earth, Wind & Fire", recap.topArtists.single().name)
+        assertEquals("UC_EWF", recap.topArtists.single().browseId)
+    }
+
+    @Test
     fun allTimeDailyAverageUsesTodayEvenIfLastPlayWasMonthsAgo() {
         val firstPlay = ZonedDateTime.of(2026, 1, 1, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
         val lastPlay = ZonedDateTime.of(2026, 3, 1, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
@@ -604,6 +662,7 @@ class ListeningRecapEngineTest {
         artist: String = "Artist",
         album: String = "Album",
         thumbnailUrl: String = "",
+        artistBrowseIds: List<String> = emptyList(),
         listenedMs: Long = 30_000L,
         durationMs: Long = 180_000L,
         completed: Boolean = false,
@@ -614,6 +673,7 @@ class ListeningRecapEngineTest {
         artist = artist,
         album = album,
         thumbnailUrl = thumbnailUrl,
+        artistBrowseIds = artistBrowseIds,
         listenedMs = listenedMs,
         trackDurationMs = durationMs,
         completed = completed,

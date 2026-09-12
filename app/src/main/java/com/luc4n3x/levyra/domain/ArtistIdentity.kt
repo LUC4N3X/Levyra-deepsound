@@ -85,6 +85,19 @@ internal fun primaryArtistSegment(value: String): String {
     }
 }
 
+internal fun primaryArtistCredit(value: String, artistBrowseIds: List<String>): String {
+    val clean = value.trim()
+    if (clean.isBlank()) return ""
+    val structuredIds = artistBrowseIds.asSequence()
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinct()
+        .take(2)
+        .toList()
+    if (structuredIds.size == 1) return clean
+    return primaryArtistSegment(clean).ifBlank { clean }
+}
+
 internal fun isArtistShelfNameEligible(value: String): Boolean {
     val primary = primaryArtistSegment(value).ifBlank { value.trim() }
     val key = artistIdentityKey(primary)

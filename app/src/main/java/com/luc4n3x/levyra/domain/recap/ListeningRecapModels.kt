@@ -36,6 +36,8 @@ data class TopTrackStat(
 data class TopArtistStat(
     val rank: Int,
     val name: String,
+    val browseId: String = "",
+    val lookupName: String = "",
     val plays: Int = 0,
     val listenedMs: Long = 0L,
     val thumbnailUrl: String = "",
