@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
 
 object LevyraMediaItemFactory {
     fun metadataOnly(track: Track): MediaItem {
@@ -17,22 +18,28 @@ object LevyraMediaItemFactory {
 
     fun build(track: Track, videoMode: Boolean = false): MediaItem {
         val streamUrl = track.streamUrl
+        val liveRadio = track.isLiveRadio()
         val cacheReadSpec = playbackCacheReadSpec(streamUrl)
-        val customCacheKey = cacheReadSpec?.cacheKey ?: if (videoMode && track.videoStreamUrl.isBlank()) {
+        val customCacheKey = if (liveRadio) null else cacheReadSpec?.cacheKey ?: if (videoMode && track.videoStreamUrl.isBlank()) {
             LevyraPlaybackCacheKey.video(track)
         } else {
             LevyraPlaybackCacheKey.stream(track)
         }
-        val streamMimeType = if (cacheReadSpec != null) {
+        val streamMimeType = if (liveRadio) {
+            liveRadioMimeTypeFor(streamUrl)
+        } else if (cacheReadSpec != null) {
             cacheReadSpec.mimeType.takeIf { it.isNotBlank() }
         } else {
             mimeTypeFor(streamUrl, videoMode)
         }
         val builder = MediaItem.Builder()
             .setUri(streamUrl)
-            .setCustomCacheKey(customCacheKey)
             .setMediaId(mediaId(track))
             .setMediaMetadata(metadata(track, videoMode))
+        if (liveRadio) {
+            builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().build())
+        }
+        customCacheKey?.let(builder::setCustomCacheKey)
         streamMimeType?.let { builder.setMimeType(it) }
         if (videoMode && track.videoSubtitleTracks.isNotEmpty()) {
             builder.setSubtitleConfigurations(
@@ -49,13 +56,15 @@ object LevyraMediaItemFactory {
         val mediaItem = builder.build()
         if (
             cacheReadSpec == null &&
-            shouldRememberPlaybackCacheHint(streamUrl, streamMimeType, videoMode)
+            !liveRadio && shouldRememberPlaybackCacheHint(streamUrl, streamMimeType, videoMode)
         ) {
-            PlaybackCacheHintStore.record(
-                track = track,
-                cacheKey = customCacheKey,
-                mimeType = streamMimeType.orEmpty()
-            )
+            customCacheKey?.let { nonNullKey ->
+                PlaybackCacheHintStore.record(
+                    track = track,
+                    cacheKey = nonNullKey,
+                    mimeType = streamMimeType.orEmpty()
+                )
+            }
         }
         return mediaItem
     }
@@ -83,6 +92,9 @@ object LevyraMediaItemFactory {
         }
     }
 
+    internal fun liveRadioMimeTypeFor(url: String): String? = mimeTypeFor(url, false)
+        ?.takeIf { it == MimeTypes.APPLICATION_M3U8 || it == MimeTypes.APPLICATION_MPD }
+
     private fun metadata(track: Track, videoMode: Boolean): MediaMetadata {
         val art = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
         val extras = Bundle().apply {
@@ -92,6 +104,7 @@ object LevyraMediaItemFactory {
             putLong("levyra.durationMs", track.durationMs.coerceAtLeast(0L))
             putString("levyra.source", track.source)
             putBoolean(PlaybackService.EXTRA_VIDEO_MODE, videoMode)
+            putBoolean(PlaybackService.EXTRA_LIVE_RADIO, track.isLiveRadio())
             track.youtubeLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_LOUDNESS_DB, it) }
             track.youtubePerceptualLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB, it) }
             if (videoMode && track.videoStreamUrl.isNotBlank()) {
@@ -100,7 +113,7 @@ object LevyraMediaItemFactory {
                 mimeTypeFor(track.videoStreamUrl, true)?.let { putString(PlaybackService.EXTRA_VIDEO_MIME_TYPE, it) }
             }
         }
-        return MediaMetadata.Builder()
+        val builder = MediaMetadata.Builder()
             .setTitle(track.title)
             .setDisplayTitle(track.title)
             .setArtist(track.artist)
@@ -108,7 +121,11 @@ object LevyraMediaItemFactory {
             .setAlbumTitle(track.album.ifBlank { "Levyra" })
             .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
             .setExtras(extras)
-            .build()
+        if (track.isLiveRadio()) {
+            builder.setIsPlayable(true)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+        }
+        return builder.build()
     }
 
     private fun mediaId(track: Track): String {
