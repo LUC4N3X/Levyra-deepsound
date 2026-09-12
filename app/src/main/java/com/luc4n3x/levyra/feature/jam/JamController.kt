@@ -29,6 +29,20 @@ data class JamUiState(
     val canAddTracks: Boolean get() = isHost || permission.canAddTracks
 }
 
+private fun jamActionExceedsQueueLimit(action: JamAction, queue: List<JamTrack>): Boolean {
+    val requested = when (action) {
+        is JamAction.AddTrack -> listOf(action.track)
+        is JamAction.PlayNextTracks -> action.tracks
+        else -> emptyList()
+    }
+    if (requested.isEmpty()) return false
+    val knownIds = queue.mapTo(hashSetOf()) { it.id }
+    val added = requested.asSequence()
+        .distinctBy { it.id }
+        .count { knownIds.add(it.id) }
+    return queue.size + added > JamSessionState.MAX_QUEUE_SIZE
+}
+
 class JamController(
     private val scope: CoroutineScope,
     private val bridge: JamPlayerBridge,
@@ -153,9 +167,8 @@ class JamController(
     suspend fun requestAction(action: JamAction) {
         mutex.withLock {
             val current = _state.value
-            if (action is JamAction.AddTrack &&
-                (bridge.snapshot().queue.size >= JamSessionState.MAX_QUEUE_SIZE ||
-                    (current.session?.queue?.size ?: 0) >= JamSessionState.MAX_QUEUE_SIZE)
+            if (jamActionExceedsQueueLimit(action, bridge.snapshot().queue) ||
+                current.session?.queue?.let { jamActionExceedsQueueLimit(action, it) } == true
             ) {
                 _state.update { it.copy(failure = JamFailure.NotAuthorized) }
                 return
@@ -256,9 +269,7 @@ class JamController(
                     val sender = participants.firstOrNull { it.id == event.participantId }
                     if (sender == null || sender.isHost) return
                     if (!JamAuthorization.allows(permission, event.action)) return
-                    if (event.action is JamAction.AddTrack &&
-                        bridge.snapshot().queue.size >= JamSessionState.MAX_QUEUE_SIZE
-                    ) return
+                    if (jamActionExceedsQueueLimit(event.action, bridge.snapshot().queue)) return
                     bridge.applyAction(event.action)
                     publishHostState()
                 }
