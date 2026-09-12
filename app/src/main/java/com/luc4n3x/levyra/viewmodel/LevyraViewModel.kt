@@ -4725,9 +4725,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun resetPlaylistCover(playlistId: String) {
         viewModelScope.launch {
-            playlistStore.resetCover(playlistId)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
+            try {
+                playlistStore.resetCover(playlistId)
+                loadPlaylists()
+                refreshOpenPlaylist(playlistId)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Playlist cover reset failed")
+                val message = LevyraStrings.forCode(_state.value.languageCode).playlistProCopy().coverUpdateFailed
+                _state.update { it.copy(offlineExportMessage = message) }
+            }
         }
     }
 
