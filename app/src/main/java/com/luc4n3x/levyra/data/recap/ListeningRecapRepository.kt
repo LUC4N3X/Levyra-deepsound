@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.concurrent.ConcurrentHashMap
@@ -27,6 +28,7 @@ class ListeningRecapRepository(
 ) {
     private data class CachedRecap(
         val date: LocalDate,
+        val zoneId: ZoneId,
         val summary: ListeningRecapSummary
     )
 
@@ -37,6 +39,7 @@ class ListeningRecapRepository(
     private var cachedEventsSnapshot: List<ListenEvent>? = null
     private var snapshotGeneration: Long = -1L
     private var snapshotDate: LocalDate? = null
+    private var snapshotZone: ZoneId? = null
 
     suspend fun getRecap(
         period: ListeningRecapPeriod,
@@ -44,27 +47,29 @@ class ListeningRecapRepository(
     ): ListeningRecapSummary = withContext(Dispatchers.IO) {
         val currentGen = generation.get()
         val zone = zoneIdProvider()
-        val today = LocalDate.now(zone)
+        val nowMs = System.currentTimeMillis()
+        val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
 
         if (!force) {
             val cached = cache[period]
-            if (cached != null && cached.date == today) return@withContext cached.summary
+            if (cached != null && cached.date == today && cached.zoneId == zone) return@withContext cached.summary
         }
 
         computeMutex.withLock {
             val genAtLock = generation.get()
             if (!force && genAtLock == currentGen) {
                 val cached = cache[period]
-                if (cached != null && cached.date == today) return@withLock cached.summary
+                if (cached != null && cached.date == today && cached.zoneId == zone) return@withLock cached.summary
             }
 
-            val events = if (cachedEventsSnapshot != null && snapshotGeneration == genAtLock && snapshotDate == today) {
+            val events = if (cachedEventsSnapshot != null && snapshotGeneration == genAtLock && snapshotDate == today && snapshotZone == zone) {
                 cachedEventsSnapshot!!
             } else {
                 val loaded = pulseStore.eventsWindow()
                 cachedEventsSnapshot = loaded
                 snapshotGeneration = genAtLock
                 snapshotDate = today
+                snapshotZone = zone
                 loaded
             }
 
@@ -87,22 +92,23 @@ class ListeningRecapRepository(
                     period = period,
                     lifetime = lifetime,
                     firstPlayedMap = firstPlayedMap,
-                    nowMs = System.currentTimeMillis(),
+                    nowMs = nowMs,
                     zone = zone
                 )
             }
 
             if (generation.get() == genAtLock) {
-                cache[period] = CachedRecap(today, summary)
+                cache[period] = CachedRecap(today, zone, summary)
             }
             summary
         }
     }
 
     fun peekCached(period: ListeningRecapPeriod): ListeningRecapSummary? {
-        val today = LocalDate.now(zoneIdProvider())
+        val zone = zoneIdProvider()
+        val today = LocalDate.now(zone)
         val entry = cache[period] ?: return null
-        return if (entry.date == today) entry.summary else null
+        return if (entry.date == today && entry.zoneId == zone) entry.summary else null
     }
 
     fun invalidateCache() {
@@ -111,5 +117,6 @@ class ListeningRecapRepository(
         cachedEventsSnapshot = null
         snapshotGeneration = -1L
         snapshotDate = null
+        snapshotZone = null
     }
 }

@@ -187,4 +187,42 @@ class ListeningRecapRepositoryTest {
 
         assertEquals(1, queriedKeys.size)
     }
+
+    @Test
+    fun cachedSummaryExpiresWhenTimeZoneChangesEvenIfDateIsSame() = runBlocking {
+        var activeZone: ZoneId = ZoneId.of("UTC")
+        var eventsCalls = 0
+        val fakeSource = object : ListeningPulseDataSource {
+            override suspend fun eventsWindow(days: Int): List<ListenEvent> {
+                eventsCalls++
+                return listOf(
+                    ListenEvent(
+                        trackId = "track-1",
+                        title = "Song",
+                        artist = "Artist",
+                        album = "Album",
+                        thumbnailUrl = "",
+                        listenedMs = 120_000L,
+                        trackDurationMs = 180_000L,
+                        completed = true,
+                        startedAt = System.currentTimeMillis() - 60_000L
+                    )
+                )
+            }
+
+            override suspend fun lifetime(): LifetimeListening = LifetimeListening()
+        }
+
+        val repository = ListeningRecapRepository(fakeSource) { activeZone }
+        val initial = repository.getRecap(ListeningRecapPeriod.Days7)
+        assertNotNull(initial)
+        assertEquals(initial, repository.peekCached(ListeningRecapPeriod.Days7))
+        assertEquals(1, eventsCalls)
+
+        activeZone = ZoneId.of("Europe/Rome")
+        assertNull(repository.peekCached(ListeningRecapPeriod.Days7))
+        val recomputed = repository.getRecap(ListeningRecapPeriod.Days7)
+        assertNotNull(recomputed)
+        assertEquals(2, eventsCalls)
+    }
 }

@@ -32,7 +32,8 @@ private fun recapStrings(
     recapUnitMinutes: String,
     recapRecentActivity: String,
     recapActivityLast30Days: String,
-    recapCompletionRate: String
+    recapCompletionRate: String,
+    recapRepeatLabel: String
 ): Map<String, String> = mapOf(
     "listeningRecap" to listeningRecap,
     "recapSubtitle" to recapSubtitle,
@@ -65,7 +66,8 @@ private fun recapStrings(
     "recapUnitMinutes" to recapUnitMinutes,
     "recapRecentActivity" to recapRecentActivity,
     "recapActivityLast30Days" to recapActivityLast30Days,
-    "recapCompletionRate" to recapCompletionRate
+    "recapCompletionRate" to recapCompletionRate,
+    "recapRepeatLabel" to recapRepeatLabel
 )
 
 private val recapBundles: Map<String, Map<String, String>> = mapOf(
@@ -101,7 +103,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Recent Activity",
         recapActivityLast30Days = "Last 30 days",
-        recapCompletionRate = "Completion Rate"
+        recapCompletionRate = "Completion Rate",
+        recapRepeatLabel = "Repeat"
     ),
     "it" to recapStrings(
         listeningRecap = "Recap d'ascolto",
@@ -135,7 +138,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Attività recente",
         recapActivityLast30Days = "Ultimi 30 giorni",
-        recapCompletionRate = "Completamento"
+        recapCompletionRate = "Completamento",
+        recapRepeatLabel = "Ripetizioni"
     ),
     "es" to recapStrings(
         listeningRecap = "Recap de escucha",
@@ -169,7 +173,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Actividad reciente",
         recapActivityLast30Days = "Últimos 30 días",
-        recapCompletionRate = "Finalización"
+        recapCompletionRate = "Finalización",
+        recapRepeatLabel = "Repetición"
     ),
     "fr" to recapStrings(
         listeningRecap = "Bilan d'écoute",
@@ -203,7 +208,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Activité récente",
         recapActivityLast30Days = "30 derniers jours",
-        recapCompletionRate = "Complétion"
+        recapCompletionRate = "Complétion",
+        recapRepeatLabel = "Répétition"
     ),
     "de" to recapStrings(
         listeningRecap = "Hör-Rückblick",
@@ -237,7 +243,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Kürzliche Aktivität",
         recapActivityLast30Days = "Letzte 30 Tage",
-        recapCompletionRate = "Abschluss"
+        recapCompletionRate = "Abschluss",
+        recapRepeatLabel = "Wiederholungen"
     ),
     "pt" to recapStrings(
         listeningRecap = "Recap de escuta",
@@ -271,7 +278,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Atividade recente",
         recapActivityLast30Days = "Últimos 30 dias",
-        recapCompletionRate = "Conclusão"
+        recapCompletionRate = "Conclusão",
+        recapRepeatLabel = "Repetições"
     ),
     "nl" to recapStrings(
         listeningRecap = "Luisteroverzicht",
@@ -305,7 +313,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Recente activiteit",
         recapActivityLast30Days = "Laatste 30 dagen",
-        recapCompletionRate = "Voltooiing"
+        recapCompletionRate = "Voltooiing",
+        recapRepeatLabel = "Herhalingen"
     ),
     "pl" to recapStrings(
         listeningRecap = "Podsumowanie słuchania",
@@ -339,7 +348,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Ostatnia aktywność",
         recapActivityLast30Days = "Ostatnie 30 dni",
-        recapCompletionRate = "Ukończenie"
+        recapCompletionRate = "Ukończenie",
+        recapRepeatLabel = "Powtórzenia"
     ),
     "ro" to recapStrings(
         listeningRecap = "Recapitulare ascultare",
@@ -373,7 +383,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Activitate recentă",
         recapActivityLast30Days = "Ultimele 30 de zile",
-        recapCompletionRate = "Finalizare"
+        recapCompletionRate = "Finalizare",
+        recapRepeatLabel = "Repetări"
     ),
     "el" to recapStrings(
         listeningRecap = "Ανασκόπηση ακρόασης",
@@ -407,7 +418,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "λ",
         recapRecentActivity = "Πρόσφατη δραστηριότητα",
         recapActivityLast30Days = "Τελευταίες 30 ημέρες",
-        recapCompletionRate = "Ολοκλήρωση"
+        recapCompletionRate = "Ολοκλήρωση",
+        recapRepeatLabel = "Επαναλήψεις"
     ),
     "sv" to recapStrings(
         listeningRecap = "Lyssningssammanfattning",
@@ -441,7 +453,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Senaste aktivitet",
         recapActivityLast30Days = "Senaste 30 dagarna",
-        recapCompletionRate = "Slutförande"
+        recapCompletionRate = "Slutförande",
+        recapRepeatLabel = "Upprepningar"
     ),
     "da" to recapStrings(
         listeningRecap = "Lyttesammenfatning",
@@ -475,7 +488,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Seneste aktivitet",
         recapActivityLast30Days = "Sidste 30 dage",
-        recapCompletionRate = "Gennemførelse"
+        recapCompletionRate = "Gennemførelse",
+        recapRepeatLabel = "Gentagelser"
     ),
     "cs" to recapStrings(
         listeningRecap = "Poslechový přehled",
@@ -509,7 +523,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Nedávná aktivita",
         recapActivityLast30Days = "Posledních 30 dní",
-        recapCompletionRate = "Dokončení"
+        recapCompletionRate = "Dokončení",
+        recapRepeatLabel = "Opakování"
     ),
     "uk" to recapStrings(
         listeningRecap = "Підсумок прослуховування",
@@ -543,7 +558,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "хв",
         recapRecentActivity = "Нещодавня активність",
         recapActivityLast30Days = "Останні 30 днів",
-        recapCompletionRate = "Завершення"
+        recapCompletionRate = "Завершення",
+        recapRepeatLabel = "Повтори"
     ),
     "ru" to recapStrings(
         listeningRecap = "Итоги прослушивания",
@@ -577,7 +593,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "мин",
         recapRecentActivity = "Недавняя активность",
         recapActivityLast30Days = "Последние 30 дней",
-        recapCompletionRate = "Завершение"
+        recapCompletionRate = "Завершение",
+        recapRepeatLabel = "Повторы"
     ),
     "tr" to recapStrings(
         listeningRecap = "Dinleme Özeti",
@@ -611,7 +628,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "dk",
         recapRecentActivity = "Son etkinlik",
         recapActivityLast30Days = "Son 30 gün",
-        recapCompletionRate = "Tamamlama"
+        recapCompletionRate = "Tamamlama",
+        recapRepeatLabel = "Tekrar"
     ),
     "ar" to recapStrings(
         listeningRecap = "ملخص الاستماع",
@@ -645,7 +663,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "د",
         recapRecentActivity = "النشاط الأخير",
         recapActivityLast30Days = "آخر 30 يوماً",
-        recapCompletionRate = "الإكمال"
+        recapCompletionRate = "الإكمال",
+        recapRepeatLabel = "تكرار"
     ),
     "zh" to recapStrings(
         listeningRecap = "聆听回顾",
@@ -679,7 +698,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "分",
         recapRecentActivity = "近期动态",
         recapActivityLast30Days = "最近 30 天",
-        recapCompletionRate = "完听率"
+        recapCompletionRate = "完听率",
+        recapRepeatLabel = "重听"
     ),
     "ja" to recapStrings(
         listeningRecap = "リスニング振り返り",
@@ -713,7 +733,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "分",
         recapRecentActivity = "最近のアクティビティ",
         recapActivityLast30Days = "直近30日間",
-        recapCompletionRate = "完了率"
+        recapCompletionRate = "完了率",
+        recapRepeatLabel = "リピート"
     ),
     "ko" to recapStrings(
         listeningRecap = "감상 리캡",
@@ -747,7 +768,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "분",
         recapRecentActivity = "최근 활동",
         recapActivityLast30Days = "지난 30일",
-        recapCompletionRate = "완청률"
+        recapCompletionRate = "완청률",
+        recapRepeatLabel = "반복"
     ),
     "hi" to recapStrings(
         listeningRecap = "लिसनिंग रीकैप",
@@ -781,7 +803,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "मि",
         recapRecentActivity = "हाल की गतिविधि",
         recapActivityLast30Days = "पिछले 30 दिन",
-        recapCompletionRate = "पूर्णता दर"
+        recapCompletionRate = "पूर्णता दर",
+        recapRepeatLabel = "दोहराव"
     ),
     "id" to recapStrings(
         listeningRecap = "Rekap Mendengarkan",
@@ -815,7 +838,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Aktivitas terbaru",
         recapActivityLast30Days = "30 hari terakhir",
-        recapCompletionRate = "Penyelesaian"
+        recapCompletionRate = "Penyelesaian",
+        recapRepeatLabel = "Pengulangan"
     ),
     "vi" to recapStrings(
         listeningRecap = "Tổng kết nghe nhạc",
@@ -849,7 +873,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "p",
         recapRecentActivity = "Hoạt động gần đây",
         recapActivityLast30Days = "30 ngày qua",
-        recapCompletionRate = "Hoàn thành"
+        recapCompletionRate = "Hoàn thành",
+        recapRepeatLabel = "Lặp lại"
     ),
     "th" to recapStrings(
         listeningRecap = "สรุปการฟัง",
@@ -883,7 +908,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "น.",
         recapRecentActivity = "กิจกรรมล่าสุด",
         recapActivityLast30Days = "30 วันที่ผ่านมา",
-        recapCompletionRate = "การฟังจนจบ"
+        recapCompletionRate = "การฟังจนจบ",
+        recapRepeatLabel = "เล่นซ้ำ"
     ),
     "fil" to recapStrings(
         listeningRecap = "Recap sa Pakikinig",
@@ -917,7 +943,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "m",
         recapRecentActivity = "Kamakailang aktibidad",
         recapActivityLast30Days = "Huling 30 araw",
-        recapCompletionRate = "Pagtatapos"
+        recapCompletionRate = "Pagtatapos",
+        recapRepeatLabel = "Pag-uulit"
     ),
     "he" to recapStrings(
         listeningRecap = "סיכום האזנה",
@@ -951,7 +978,8 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
         recapUnitMinutes = "דק'",
         recapRecentActivity = "פעילות אחרונה",
         recapActivityLast30Days = "30 הימים האחרונים",
-        recapCompletionRate = "השלמה"
+        recapCompletionRate = "השלמה",
+        recapRepeatLabel = "חזרות"
     )
 )
 

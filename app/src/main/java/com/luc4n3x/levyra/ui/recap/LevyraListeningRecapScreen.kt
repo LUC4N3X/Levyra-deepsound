@@ -579,7 +579,7 @@ private fun RecapHighlightsGrid(
                     accent = LevyraPink,
                     title = strings.discoveryHighlight,
                     headline = percentFormat.format(highlights.discoveryRate / 100.0),
-                    subtitle = "${percentFormat.format(highlights.repeatRate / 100.0)} ${strings.pulsePlays}",
+                    subtitle = "${percentFormat.format(highlights.repeatRate / 100.0)} ${strings.recapRepeatLabel}",
                     isDark = isDark
                 )
             } else {

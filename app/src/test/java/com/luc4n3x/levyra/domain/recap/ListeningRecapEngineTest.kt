@@ -170,7 +170,18 @@ class ListeningRecapEngineTest {
             event(trackId = "unique1", listenedMs = 60_000L, startedAt = day2)
         )
 
-        val recap = ListeningRecapEngine.build(events, ListeningRecapPeriod.Days7, nowMs = now, zone = zone)
+        val firstPlayedMap = mapOf(
+            "unique1" to daysAgo(20),
+            "unique2" to day1
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = events,
+            period = ListeningRecapPeriod.Days7,
+            firstPlayedMap = firstPlayedMap,
+            nowMs = now,
+            zone = zone
+        )
 
         assertEquals(3, recap.highlights.currentStreakDays)
         assertEquals(3, recap.highlights.bestStreakDays)
@@ -443,6 +454,55 @@ class ListeningRecapEngineTest {
         )
 
         assertEquals(50, recap.highlights.discoveryRate)
+        assertEquals(50, recap.highlights.repeatRate)
+    }
+
+    @Test
+    fun discoveryRateUnavailableWhenFirstPlayedMapIncomplete() {
+        val oldFirstPlayed = ZonedDateTime.of(2024, 1, 1, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val recentPlayed = ZonedDateTime.of(2026, 7, 8, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
+
+        val oldTrackEvent = event(trackId = "old-track", title = "Old Song", artist = "Old Artist", listenedMs = 60_000L, startedAt = recentPlayed)
+        val newTrackEvent = event(trackId = "new-track", title = "New Song", artist = "New Artist", listenedMs = 60_000L, startedAt = recentPlayed + 1000L)
+
+        val oldTrackKey = ListenIdentity.trackKey(oldTrackEvent)
+
+        val firstPlayedMap = mapOf(
+            oldTrackKey to oldFirstPlayed
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = listOf(oldTrackEvent, newTrackEvent),
+            period = ListeningRecapPeriod.Days7,
+            firstPlayedMap = firstPlayedMap,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals(-1, recap.highlights.discoveryRate)
+        assertEquals(-1, recap.highlights.repeatRate)
+    }
+
+    @Test
+    fun discoveryRateUnavailableWhenZeroPriorHistory() {
+        val recentPlayed = ZonedDateTime.of(2026, 7, 8, 12, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val newTrackEvent = event(trackId = "new-track", title = "New Song", artist = "New Artist", listenedMs = 60_000L, startedAt = recentPlayed)
+        val newTrackKey = ListenIdentity.trackKey(newTrackEvent)
+
+        val firstPlayedMap = mapOf(
+            newTrackKey to recentPlayed
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = listOf(newTrackEvent),
+            period = ListeningRecapPeriod.Days7,
+            firstPlayedMap = firstPlayedMap,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals(-1, recap.highlights.discoveryRate)
+        assertEquals(-1, recap.highlights.repeatRate)
     }
 
     @Test

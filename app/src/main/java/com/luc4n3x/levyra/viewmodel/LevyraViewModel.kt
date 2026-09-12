@@ -1341,9 +1341,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         refreshForgottenFavorites()
         viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
         viewModelScope.launch(Dispatchers.IO) {
-            listeningPulseStore.ensureLifetimeBackfill()
-            if (_state.value.listeningDnaPeriod == ListeningDnaPeriod.AllTime) {
-                refreshListeningDna(ListeningDnaPeriod.AllTime)
+            val backfilled = listeningPulseStore.ensureLifetimeBackfill()
+            if (backfilled) {
+                listeningRecapRepository.invalidateCache()
+                if (_state.value.showListeningRecap) {
+                    withContext(Dispatchers.Main) {
+                        refreshListeningRecap(force = true)
+                    }
+                }
+                if (_state.value.listeningDnaPeriod == ListeningDnaPeriod.AllTime) {
+                    refreshListeningDna(ListeningDnaPeriod.AllTime)
+                }
             }
         }
         refreshListeningPulse(force = true)

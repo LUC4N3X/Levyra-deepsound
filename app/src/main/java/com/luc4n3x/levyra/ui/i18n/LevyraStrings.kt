@@ -391,6 +391,7 @@ class LevyraStrings private constructor(
     val recapRecentActivity: String get() = value("recapRecentActivity")
     val recapActivityLast30Days: String get() = value("recapActivityLast30Days")
     val recapCompletionRate: String get() = value("recapCompletionRate")
+    val recapRepeatLabel: String get() = value("recapRepeatLabel")
     val listeningHistory: String get() = value("listeningHistory")
     val listeningHistorySubtitle: String get() = value("listeningHistorySubtitle")
     val listeningPrompt: String get() = value("listeningPrompt")
@@ -985,55 +986,58 @@ class LevyraStrings private constructor(
 
     fun formatTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
+        val formattedValue = NumberFormat
+            .getIntegerInstance(Locale.forLanguageTag(code))
+            .format(value)
         return when (code) {
-            "it" -> if (value == 1) "$value brano" else "$value brani"
-            "es" -> if (value == 1) "$value canción" else "$value canciones"
-            "fr" -> if (value == 1) "$value titre" else "$value titres"
-            "de" -> "$value Titel"
-            "pt" -> if (value == 1) "$value música" else "$value músicas"
-            "nl" -> if (value == 1) "$value nummer" else "$value nummers"
+            "it" -> if (value == 1) "$formattedValue brano" else "$formattedValue brani"
+            "es" -> if (value == 1) "$formattedValue canción" else "$formattedValue canciones"
+            "fr" -> if (value == 1) "$formattedValue titre" else "$formattedValue titres"
+            "de" -> "$formattedValue Titel"
+            "pt" -> if (value == 1) "$formattedValue música" else "$formattedValue músicas"
+            "nl" -> if (value == 1) "$formattedValue nummer" else "$formattedValue nummers"
             "pl" -> when {
-                value == 1 -> "$value utwór"
-                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value utwory"
-                else -> "$value utworów"
+                value == 1 -> "$formattedValue utwór"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue utwory"
+                else -> "$formattedValue utworów"
             }
-            "ro" -> if (value == 1) "$value piesă" else "$value piese"
-            "el" -> if (value == 1) "$value τραγούδι" else "$value τραγούδια"
-            "sv" -> if (value == 1) "$value låt" else "$value låtar"
-            "da" -> if (value == 1) "$value sang" else "$value sange"
+            "ro" -> if (value == 1) "$formattedValue piesă" else "$formattedValue piese"
+            "el" -> if (value == 1) "$formattedValue τραγούδι" else "$formattedValue τραγούδια"
+            "sv" -> if (value == 1) "$formattedValue låt" else "$formattedValue låtar"
+            "da" -> if (value == 1) "$formattedValue sang" else "$formattedValue sange"
             "cs" -> when {
-                value == 1 -> "$value skladba"
-                value in 2..4 -> "$value skladby"
-                else -> "$value skladeb"
+                value == 1 -> "$formattedValue skladba"
+                value in 2..4 -> "$formattedValue skladby"
+                else -> "$formattedValue skladeb"
             }
             "uk" -> when {
-                value % 10 == 1 && value % 100 != 11 -> "$value трек"
-                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value треки"
-                else -> "$value треків"
+                value % 10 == 1 && value % 100 != 11 -> "$formattedValue трек"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue треки"
+                else -> "$formattedValue треків"
             }
             "ru" -> when {
-                value % 10 == 1 && value % 100 != 11 -> "$value трек"
-                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value трека"
-                else -> "$value треков"
+                value % 10 == 1 && value % 100 != 11 -> "$formattedValue трек"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue трека"
+                else -> "$formattedValue треков"
             }
-            "tr" -> "$value şarkı"
+            "tr" -> "$formattedValue şarkı"
             "ar" -> when {
                 value == 0 -> "لا مقاطع"
                 value == 1 -> "مقطع واحد"
                 value == 2 -> "مقطعان"
-                value % 100 in 3..10 -> "$value مقاطع"
-                else -> "$value مقطعًا"
+                value % 100 in 3..10 -> "$formattedValue مقاطع"
+                else -> "$formattedValue مقطعًا"
             }
-            "zh" -> "$value 首歌曲"
-            "ja" -> "$value 曲"
-            "ko" -> "${value}곡"
-            "hi" -> "$value ट्रैक"
-            "id" -> "$value lagu"
-            "vi" -> "$value bài hát"
-            "th" -> "$value เพลง"
-            "fil" -> "$value kanta"
-            "he" -> if (value == 1) "שיר אחד" else "$value שירים"
-            else -> if (value == 1) "$value track" else "$value tracks"
+            "zh" -> "$formattedValue 首歌曲"
+            "ja" -> "$formattedValue 曲"
+            "ko" -> "${formattedValue}곡"
+            "hi" -> "$formattedValue ट्रैक"
+            "id" -> "$formattedValue lagu"
+            "vi" -> "$formattedValue bài hát"
+            "th" -> "$formattedValue เพลง"
+            "fil" -> "$formattedValue kanta"
+            "he" -> if (value == 1) "שיר אחד" else "$formattedValue שירים"
+            else -> if (value == 1) "$formattedValue track" else "$formattedValue tracks"
         }
     }
 
@@ -1542,7 +1546,8 @@ class LevyraStrings private constructor(
             "recapUnitMinutes",
             "recapRecentActivity",
             "recapActivityLast30Days",
-            "recapCompletionRate"
+            "recapCompletionRate",
+            "recapRepeatLabel"
         )
 
         private val integrationKeys = setOf(

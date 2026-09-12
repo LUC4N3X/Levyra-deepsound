@@ -134,33 +134,33 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
         }
     }
 
-    suspend fun ensureLifetimeBackfill() {
-        withContext(Dispatchers.IO) {
-            writeLock.withLock {
-                if (preferences.listeningLifetimeBackfillVersion() >= LIFETIME_BACKFILL_VERSION) {
-                    return@withLock
-                }
-                try {
-                    database.withTransaction {
-                        lifetimeDao.clearTracks()
-                        lifetimeDao.clearArtists()
-                        var afterId = 0L
-                        var processed = 0
-                        while (processed < BACKFILL_MAX_EVENTS) {
-                            val page = dao.pageAfter(afterId, BACKFILL_PAGE_SIZE)
-                            if (page.isEmpty()) break
-                            page.forEach { entity -> backfillEvent(entity) }
-                            afterId = page.last().id
-                            processed += page.size
-                            if (page.size < BACKFILL_PAGE_SIZE) break
-                        }
+    suspend fun ensureLifetimeBackfill(): Boolean = withContext(Dispatchers.IO) {
+        writeLock.withLock {
+            if (preferences.listeningLifetimeBackfillVersion() >= LIFETIME_BACKFILL_VERSION) {
+                return@withLock false
+            }
+            try {
+                database.withTransaction {
+                    lifetimeDao.clearTracks()
+                    lifetimeDao.clearArtists()
+                    var afterId = 0L
+                    var processed = 0
+                    while (processed < BACKFILL_MAX_EVENTS) {
+                        val page = dao.pageAfter(afterId, BACKFILL_PAGE_SIZE)
+                        if (page.isEmpty()) break
+                        page.forEach { entity -> backfillEvent(entity) }
+                        afterId = page.last().id
+                        processed += page.size
+                        if (page.size < BACKFILL_PAGE_SIZE) break
                     }
-                    preferences.setListeningLifetimeBackfillVersion(LIFETIME_BACKFILL_VERSION)
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (error: Exception) {
-                    Timber.w(error, "Lifetime listening backfill failed")
                 }
+                preferences.setListeningLifetimeBackfillVersion(LIFETIME_BACKFILL_VERSION)
+                true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Lifetime listening backfill failed")
+                false
             }
         }
     }

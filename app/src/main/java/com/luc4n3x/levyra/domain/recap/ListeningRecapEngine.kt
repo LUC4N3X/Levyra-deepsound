@@ -50,15 +50,6 @@ object ListeningRecapEngine {
             }
         }
 
-        val firstSeenMap = HashMap<String, Long>(valid.size)
-        for (event in valid) {
-            val key = ListenIdentity.trackKey(event)
-            val prev = firstSeenMap[key]
-            if (prev == null || event.startedAt < prev) {
-                firstSeenMap[key] = event.startedAt
-            }
-        }
-
         val totalListenMs = scoped.sumOf { it.listenedMs }
         val completedCount = scoped.count { it.completed }
         val completionRate = if (scoped.isNotEmpty()) (completedCount * 100) / scoped.size else 0
@@ -133,16 +124,19 @@ object ListeningRecapEngine {
         val hasLifetimeOlderHistory = period == ListeningRecapPeriod.AllTime &&
             lifetime != null && lifetime.hasSignal && lifetime.totalListenMs > totalListenMs
 
-        val hasPriorHistory = if (period == ListeningRecapPeriod.Days7 || period == ListeningRecapPeriod.Days30) {
-            firstPlayedMap.values.any { it in 1 until cutoff } || valid.any { it.startedAt < cutoff }
-        } else {
-            false
-        }
+        val isDiscoveryPeriod = period == ListeningRecapPeriod.Days7 || period == ListeningRecapPeriod.Days30
+        val hasAuthoritativeFirstPlayed = isDiscoveryPeriod &&
+            uniqueTrackKeys.isNotEmpty() &&
+            uniqueTrackKeys.all { key ->
+                (firstPlayedMap[key] ?: 0L) > 0L
+            }
+        val hasPriorHistory = hasAuthoritativeFirstPlayed && (
+            firstPlayedMap.values.any { it in 1 until cutoff } || valid.any { it.startedAt in 1 until cutoff }
+        )
 
-        val (discoveryRate, repeatRate) = if (hasPriorHistory && uniqueTrackKeys.isNotEmpty()) {
+        val (discoveryRate, repeatRate) = if (hasAuthoritativeFirstPlayed && hasPriorHistory) {
             val discoveredCount = uniqueTrackKeys.count { key ->
-                val firstPlayed = firstPlayedMap[key] ?: firstSeenMap[key]
-                firstPlayed != null && firstPlayed >= cutoff
+                (firstPlayedMap[key] ?: 0L) >= cutoff
             }
             val disc = ((discoveredCount * 100) / uniqueTrackKeys.size).coerceIn(0, 100)
             val rep = (100 - disc).coerceIn(0, 100)
