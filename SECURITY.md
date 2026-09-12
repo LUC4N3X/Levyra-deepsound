@@ -49,6 +49,25 @@ Issues that exist exclusively in third-party services, operating systems, upstre
 
 If Levyra meaningfully introduces, exposes, or amplifies an upstream issue, it may still be appropriate to report it here.
 
+## Cryptographic Interoperability
+
+Levyra's own security boundaries use modern platform primitives such as AES-GCM, HMAC-SHA256, SHA-256, SecureRandom, and Android Keystore-backed key management.
+
+A small number of external interoperability paths use older algorithms because the remote protocol or compatibility flow expects them:
+
+- **Last.fm API signing:** Last.fm's `api_sig` construction uses MD5 as part of the service's published authentication protocol. Levyra uses it only to construct Last.fm API signatures over HTTPS. MD5 is not used by Levyra for password hashing, local authentication, encryption, credential storage, or internal integrity decisions.
+- **Spotify compatibility TOTP:** the anonymous-token compatibility flow currently uses HMAC-SHA1 TOTP. This is isolated to the external Spotify compatibility path and is not used for Levyra Jam authentication, local credential encryption, password storage, or release verification.
+- **YouTube player fingerprinting:** an MD5 digest is used only as a compact non-security fingerprint for player-script identity/change detection. It is not treated as a cryptographic authenticity or integrity guarantee.
+
+These compatibility uses are intentionally isolated from Levyra's own security mechanisms. They should be migrated to stronger alternatives if and when the corresponding upstream protocols support them without breaking interoperability.
+
+References:
+
+- https://www.last.fm/api/authspec
+- https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/feature/scrobbling/Scrobbling.kt
+- https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/data/SpotifyArtistArtworkRepository.kt
+- https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/data/YoutubeLocalDecoder.kt
+
 ## Response Process
 
 The project aims to acknowledge valid vulnerability reports within **14 days**, and usually sooner when possible.
