@@ -359,6 +359,27 @@ class LevyraStrings private constructor(
     val pulseWeek: String get() = value("pulseWeek")
     val pulsePeakHour: String get() = value("pulsePeakHour")
     val pulseEmpty: String get() = value("pulseEmpty")
+    val listeningRecap: String get() = value("listeningRecap")
+    val recapSubtitle: String get() = value("recapSubtitle")
+    val recapPeriod7Days: String get() = value("recapPeriod7Days")
+    val recapPeriod30Days: String get() = value("recapPeriod30Days")
+    val recapPeriod365Days: String get() = value("recapPeriod365Days")
+    val recapPeriodAllTime: String get() = value("recapPeriodAllTime")
+    val topTracksTitle: String get() = value("topTracksTitle")
+    val topArtistsTitle: String get() = value("topArtistsTitle")
+    val topAlbumsTitle: String get() = value("topAlbumsTitle")
+    val highlightsTitle: String get() = value("highlightsTitle")
+    val streakHighlight: String get() = value("streakHighlight")
+    val favoriteTimeHighlight: String get() = value("favoriteTimeHighlight")
+    val mostActiveDayHighlight: String get() = value("mostActiveDayHighlight")
+    val replayHighlight: String get() = value("replayHighlight")
+    val discoveryHighlight: String get() = value("discoveryHighlight")
+    val emptyRecapTitle: String get() = value("emptyRecapTitle")
+    val emptyRecapSubtitle: String get() = value("emptyRecapSubtitle")
+    val openRecap: String get() = value("openRecap")
+    val pulseProPeak: String get() = value("pulseProPeak")
+    val pulseProAverage: String get() = value("pulseProAverage")
+    val pulseProActivity: String get() = value("pulseProActivity")
     val listeningHistory: String get() = value("listeningHistory")
     val listeningHistorySubtitle: String get() = value("listeningHistorySubtitle")
     val listeningPrompt: String get() = value("listeningPrompt")
@@ -1478,6 +1499,30 @@ class LevyraStrings private constructor(
             "networkApplied"
         )
 
+        private val recapKeys = setOf(
+            "listeningRecap",
+            "recapSubtitle",
+            "recapPeriod7Days",
+            "recapPeriod30Days",
+            "recapPeriod365Days",
+            "recapPeriodAllTime",
+            "topTracksTitle",
+            "topArtistsTitle",
+            "topAlbumsTitle",
+            "highlightsTitle",
+            "streakHighlight",
+            "favoriteTimeHighlight",
+            "mostActiveDayHighlight",
+            "replayHighlight",
+            "discoveryHighlight",
+            "emptyRecapTitle",
+            "emptyRecapSubtitle",
+            "openRecap",
+            "pulseProPeak",
+            "pulseProAverage",
+            "pulseProActivity"
+        )
+
         private val integrationKeys = setOf(
             "integrations",
             "apiKeyLabel",
@@ -1520,8 +1565,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys + similarSongsKeys + playerVisualKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys + similarSongsKeys + playerVisualKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

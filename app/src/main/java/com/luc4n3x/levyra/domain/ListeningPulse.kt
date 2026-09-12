@@ -12,7 +12,9 @@ data class ListenEvent(
     val trackDurationMs: Long,
     val completed: Boolean,
     val startedAt: Long,
-    val artistBrowseIds: List<String> = emptyList()
+    val artistBrowseIds: List<String> = emptyList(),
+    val album: String = "",
+    val thumbnailUrl: String = ""
 )
 
 data class PulseTrack(

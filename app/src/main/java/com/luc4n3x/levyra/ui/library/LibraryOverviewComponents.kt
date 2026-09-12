@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -679,7 +680,8 @@ internal fun LibraryListeningDashboard(
     trackCount: Int,
     playlistCount: Int,
     offlineCount: Int,
-    onOpenYourSound: (() -> Unit)? = null
+    onOpenYourSound: (() -> Unit)? = null,
+    onOpenRecap: (() -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
     val week = pulse.week.takeLast(7)
@@ -754,6 +756,38 @@ internal fun LibraryListeningDashboard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                    if (onOpenRecap != null) {
+                        Surface(
+                            modifier = Modifier.levyraPressable(
+                                onClick = onOpenRecap,
+                                pressedScale = LevyraPressScale.Control,
+                                role = Role.Button,
+                                onClickLabel = strings.listeningRecap
+                            ),
+                            color = LevyraCyan.copy(alpha = 0.14f),
+                            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.35f)),
+                            shape = CircleShape
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = LevyraCyan,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = strings.listeningRecap,
+                                    color = LevyraCyan,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 }
 

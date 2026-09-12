@@ -147,6 +147,10 @@ import com.luc4n3x.levyra.domain.mixTrackKey
 import java.util.TimeZone
 import com.luc4n3x.levyra.domain.PulseTrack
 import com.luc4n3x.levyra.domain.ListeningPulseEngine
+import com.luc4n3x.levyra.domain.recap.ListeningRecapPeriod
+import com.luc4n3x.levyra.domain.recap.ListeningRecapSummary
+import com.luc4n3x.levyra.domain.recap.TopTrackStat
+import com.luc4n3x.levyra.data.recap.ListeningRecapRepository
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
@@ -716,6 +720,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listOf(lastFmScrobbling, listenBrainzScrobbling)
     )
     private val listeningPulseEngine = ListeningPulseEngine()
+    private val listeningRecapRepository = ListeningRecapRepository(listeningPulseStore)
     private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
     private val vaultRuntimeState = preferences.vaultRuntimeState()
@@ -910,6 +915,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     @Volatile private var pendingLastFmToken: String? = null
     private var listenSessionPersistJob: Job? = null
     private var listeningPulseRefreshJob: Job? = null
+    private var listeningRecapJob: Job? = null
     private var lastPlaybackSaveJob: Job? = null
     private var lastListeningPulseRefreshMs = 0L
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
@@ -9714,6 +9720,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val recent = listeningPulseStore.recentTracks()
             val mostPlayed = listeningPulseStore.mostPlayedTracks()
             val pulse = listeningPulseEngine.build(events)
+            listeningRecapRepository.invalidateCache()
+            if (_state.value.showListeningRecap) {
+                refreshListeningRecap(force = true)
+            }
             lastListeningPulseRefreshMs = android.os.SystemClock.elapsedRealtime()
             val signalSnapshot = _state.value
             val signals = com.luc4n3x.levyra.domain.ListeningSignalEngine.build(
@@ -10043,6 +10053,75 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             playFrom(listOf(resolved), resolved)
         }
     }
+    fun openListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod) {
+        _state.update { it.copy(showListeningRecap = true, listeningRecapPeriod = period) }
+        refreshListeningRecap(period)
+    }
+
+    fun closeListeningRecap() {
+        if (!_state.value.showListeningRecap) return
+        _state.update { it.copy(showListeningRecap = false) }
+    }
+
+    fun selectListeningRecapPeriod(period: ListeningRecapPeriod) {
+        if (_state.value.listeningRecapPeriod == period && _state.value.listeningRecap.hasSignal) return
+        val cached = listeningRecapRepository.peekCached(period)
+        _state.update { current ->
+            current.copy(
+                listeningRecapPeriod = period,
+                listeningRecap = cached ?: current.listeningRecap.copy(period = period),
+                listeningRecapLoading = cached == null
+            )
+        }
+        refreshListeningRecap(period)
+    }
+
+    fun refreshListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod, force: Boolean = false) {
+        listeningRecapJob?.cancel()
+        listeningRecapJob = viewModelScope.launch {
+            _state.update { it.copy(listeningRecapLoading = true) }
+            try {
+                val recap = listeningRecapRepository.getRecap(period, force = force)
+                _state.update { current ->
+                    if (current.listeningRecapPeriod != period) {
+                        current.copy(listeningRecapLoading = false)
+                    } else {
+                        current.copy(listeningRecap = recap, listeningRecapLoading = false)
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening recap load failed")
+                _state.update { it.copy(listeningRecapLoading = false) }
+            }
+        }
+    }
+
+    fun playListeningRecapTrack(entry: TopTrackStat) {
+        val snapshot = _state.value
+        val local = (snapshot.recentListens + snapshot.mostPlayedTracks).firstOrNull { candidate ->
+            candidate.id.isNotBlank() && candidate.id == entry.trackId
+        }
+        if (local != null) {
+            playFrom(listOf(local), local)
+            return
+        }
+        viewModelScope.launch {
+            val resolved = try {
+                repository.searchSongMatch(entry.title, entry.artist, snapshot.languageCode)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening recap track resolve failed")
+                null
+            }
+            if (resolved != null) {
+                playFrom(listOf(resolved), resolved)
+            }
+        }
+    }
+
     fun openYourSound() {
         _state.update { it.copy(showYourSound = true) }
         refreshListeningDna(_state.value.listeningDnaPeriod)

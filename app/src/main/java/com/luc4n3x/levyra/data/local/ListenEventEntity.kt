@@ -36,7 +36,9 @@ fun ListenEventEntity.toListenEvent(): ListenEvent = ListenEvent(
     trackDurationMs = durationMs,
     completed = completed,
     startedAt = startedAt,
-    artistBrowseIds = artistBrowseIds.split(ARTIST_ID_SEPARATOR).filter(String::isNotBlank)
+    artistBrowseIds = artistBrowseIds.split(ARTIST_ID_SEPARATOR).filter(String::isNotBlank),
+    album = album,
+    thumbnailUrl = largeThumbnailUrl.ifBlank { thumbnailUrl }
 )
 
 fun ListenEventEntity.toTrack(): Track = Track(

@@ -436,6 +436,8 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.ListeningPulse
+import com.luc4n3x.levyra.ui.pulse.ListeningPulseProCard
+import com.luc4n3x.levyra.ui.recap.LevyraListeningRecapOverlay
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
 import com.luc4n3x.levyra.domain.LyricSectionType
@@ -1563,13 +1565,15 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showYourSound || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    BackHandler(enabled = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showYourSound || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
         } else if (state.showRecognition) {
             viewModel.closeRecognition()
         } else if (state.showJam) {
             viewModel.closeJam()
+        } else if (state.showListeningRecap) {
+            viewModel.closeListeningRecap()
         } else if (state.showYourSound) {
             viewModel.closeYourSound()
         } else if (state.sharedMediaPreview != null) {
@@ -1688,6 +1692,7 @@ fun LevyraApp(
                 !state.showAudioQualityPanel &&
                 !state.youtubeEngagement.comments.visible &&
                 !state.showYourSound &&
+                !state.showListeningRecap &&
                 !state.showJam &&
                 !state.showRecognition &&
                 state.openPlaylist == null &&
@@ -2247,6 +2252,21 @@ fun LevyraApp(
                     },
                     onPlayTrack = viewModel::playListeningDnaTrack,
                     onClose = viewModel::closeYourSound
+                )
+            }
+
+            AnimatedVisibility(visible = state.showListeningRecap, enter = overlayEnter, exit = overlayExit) {
+                LevyraListeningRecapOverlay(
+                    recap = state.listeningRecap,
+                    period = state.listeningRecapPeriod,
+                    loading = state.listeningRecapLoading,
+                    onSelectPeriod = viewModel::selectListeningRecapPeriod,
+                    onPlayTrack = viewModel::playListeningRecapTrack,
+                    onOpenArtist = { artistName ->
+                        viewModel.closeListeningRecap()
+                        viewModel.openArtistByName(artistName)
+                    },
+                    onClose = viewModel::closeListeningRecap
                 )
             }
 
@@ -12039,7 +12059,11 @@ private fun LibraryScreen(
                     )
                 }
                 item(key = "lib-pulse-card", contentType = "lib-pulse-card") {
-                    ListeningPulseCard(pulse = state.listeningPulse, strings = strings)
+                    ListeningPulseProCard(
+                        pulse = state.listeningPulse,
+                        strings = strings,
+                        onOpenRecap = viewModel::openListeningRecap
+                    )
                 }
             }
 
