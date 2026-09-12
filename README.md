@@ -608,6 +608,7 @@ For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.g
 * **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Reference for Levyra's renderer-recovery backoff policy and BetterLyrics TTML parsing behavior, reimplemented for Levyra.
 * **[PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)** — LevyraExtractor is maintained as a Levyra-specific fork of this project, with additional stream-resolution, playback-reliability, diagnostics, and fallback work.
 * **[NewPipe & PipePipe Communities](https://github.com/TeamNewPipe/NewPipeExtractor)** — Foundational extractor architecture, service implementations, parser protocols, and downstream ecosystem work retained in LevyraExtractor.
+* **[zemer-cipher](https://github.com/ZemerTeam/zemer-cipher)** — Special thanks to the Zemer team for its open-source work on YouTube cipher deobfuscation and PoToken generation.
 * **[LRCLIB](https://lrclib.net/)** — Community synchronized lyric database and open API powering real-time karaoke synchronization.
 
 ---
