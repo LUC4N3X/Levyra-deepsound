@@ -44,7 +44,10 @@ import androidx.compose.material.icons.rounded.CloseFullscreen
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -84,6 +87,7 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraLayoutMode
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
@@ -96,6 +100,7 @@ import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.playerGlass
 import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
 import com.luc4n3x.levyra.ui.levyraFoldAwareGutterDp
 import com.luc4n3x.levyra.ui.levyraPlayerArtworkMaxWidthDp
@@ -136,6 +141,8 @@ fun LevyraNowPlaying(
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
+    val liveRadio = track?.isLiveRadio() == true
+    val liveRadioStrings = LevyraLiveRadioCatalog.forCode(strings.code)
     val playerContext = LocalContext.current
     val playerActivity = playerContext as? Activity
     val audioManager = remember(playerContext) { playerContext.getSystemService(AudioManager::class.java) }
@@ -447,7 +454,7 @@ fun LevyraNowPlaying(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
                 ) {
-                    if (!state.isVideoMode) {
+                    if (!state.isVideoMode && !liveRadio) {
                         CastRouteButton(modifier = Modifier.size(headerButtonSize))
                     }
                     if (state.isVideoMode) {
@@ -588,7 +595,8 @@ fun LevyraNowPlaying(
                 }
 
                 val videoGesturesEnabled = state.isVideoMode && activeTrack.videoUrl.isNotBlank()
-                if ((state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
+                if (!liveRadio &&
+                    (state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
                     gestureLayerContent != null &&
                     !videoFullscreen
                 ) {
@@ -697,80 +705,146 @@ fun LevyraNowPlaying(
         }
 
         val metadataBlock: @Composable (Track) -> Unit = { activeTrack ->
-            val isFavorite = activeTrack.id in state.favoriteIds
-            val favoriteScale by animateFloatAsState(
-                targetValue = if (isFavorite) 1.05f else 1f,
-                animationSpec = if (state.animationsEnabled) {
-                    LevyraPlayerDesign.snappySpring()
-                } else {
-                    snap()
-                },
-                label = "player-favorite-scale"
-            )
-            val favoriteTint = if (isFavorite) primary else Color.White.copy(alpha = 0.88f)
-            val favoriteFill = if (isFavorite) primary.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f)
-            val favoriteBorderTop = if (isFavorite) primary.copy(alpha = 0.44f) else Color.White.copy(alpha = 0.14f)
-            val favoriteBorderBottom = if (isFavorite) primary.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f)
-
-            PlayerTrackMetadata(
-                track = activeTrack,
-                isFavorite = isFavorite,
-                favoriteScale = favoriteScale,
-                favoriteTint = favoriteTint,
-                favoriteFill = favoriteFill,
-                favoriteBorderTop = favoriteBorderTop,
-                favoriteBorderBottom = favoriteBorderBottom,
-                animationsEnabled = state.animationsEnabled,
-                compact = compactPlayer,
-                openArtistLabel = strings.openArtist,
-                favoritesLabel = strings.favoritesPlain,
-                addToPlaylistLabel = strings.addToPlaylist,
-                onArtistClick = { viewModel.openArtist(activeTrack) },
-                onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
-                onAddToPlaylist = { onOpenPlaylistDialog?.invoke(activeTrack) },
-                engagementContent = if (engagementContent != null) {
-                    { engagementContent(activeTrack) }
-                } else null
-            )
+            if (activeTrack.isLiveRadio()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = activeTrack.title,
+                        color = Color.White,
+                        fontSize = if (compactPlayer) 21.sp else 25.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = state.liveRadioNowPlaying.ifBlank { liveRadioStrings.live },
+                        color = if (state.liveRadioNowPlaying.isBlank()) LevyraCyan else Color.White.copy(alpha = 0.82f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    state.liveRadioStation?.let { station ->
+                        Text(
+                            text = listOf(station.country, station.language, station.qualityLabel)
+                                .filter(String::isNotBlank)
+                                .joinToString(" / "),
+                            color = Color.White.copy(alpha = 0.58f),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            } else {
+                val isFavorite = activeTrack.id in state.favoriteIds
+                val favoriteScale by animateFloatAsState(
+                    targetValue = if (isFavorite) 1.05f else 1f,
+                    animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.snappySpring() else snap(),
+                    label = "player-favorite-scale"
+                )
+                PlayerTrackMetadata(
+                    track = activeTrack,
+                    isFavorite = isFavorite,
+                    favoriteScale = favoriteScale,
+                    favoriteTint = if (isFavorite) primary else Color.White.copy(alpha = 0.88f),
+                    favoriteFill = if (isFavorite) primary.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f),
+                    favoriteBorderTop = if (isFavorite) primary.copy(alpha = 0.44f) else Color.White.copy(alpha = 0.14f),
+                    favoriteBorderBottom = if (isFavorite) primary.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f),
+                    animationsEnabled = state.animationsEnabled,
+                    compact = compactPlayer,
+                    openArtistLabel = strings.openArtist,
+                    favoritesLabel = strings.favoritesPlain,
+                    addToPlaylistLabel = strings.addToPlaylist,
+                    onArtistClick = { viewModel.openArtist(activeTrack) },
+                    onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
+                    onAddToPlaylist = { onOpenPlaylistDialog?.invoke(activeTrack) },
+                    engagementContent = if (engagementContent != null) {
+                        { engagementContent(activeTrack) }
+                    } else null
+                )
+            }
         }
 
         val progressBlock: @Composable () -> Unit = {
-            PlayerProgress(
-                positionMs = state.positionMs,
-                bufferedPositionMs = state.bufferedPositionMs,
-                durationMs = state.durationMs,
-                activeColor = Color.White.copy(alpha = 0.94f),
-                secondaryColor = Color.White.copy(alpha = 0.62f),
-                isPlaying = state.isPlaying,
-                animationsEnabled = state.animationsEnabled,
-                compact = compactPlayer,
-                onSeek = viewModel::seekTo
-            )
+            if (liveRadio) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(CircleShape)
+                        .background(LevyraCyan.copy(alpha = if (state.isResolving) 0.38f else 0.88f))
+                )
+            } else {
+                PlayerProgress(
+                    positionMs = state.positionMs,
+                    bufferedPositionMs = state.bufferedPositionMs,
+                    durationMs = state.durationMs,
+                    activeColor = Color.White.copy(alpha = 0.94f),
+                    secondaryColor = Color.White.copy(alpha = 0.62f),
+                    isPlaying = state.isPlaying,
+                    animationsEnabled = state.animationsEnabled,
+                    compact = compactPlayer,
+                    onSeek = viewModel::seekTo
+                )
+            }
         }
 
         val transportBlock: @Composable () -> Unit = {
-            PlayerTransportBar(
-                isPlaying = state.isPlaying,
-                isResolving = state.isResolving,
-                shuffleOn = state.shuffleEnabled,
-                repeatMode = state.repeatMode,
-                accents = playerAccentColors,
-                compact = compactPlayer,
-                animated = state.animationsEnabled,
-                labels = playerControlLabels,
-                onShuffle = viewModel::toggleShuffle,
-                onPrevious = viewModel::previous,
-                onTogglePlay = viewModel::togglePlay,
-                onNext = viewModel::next,
-                onRepeat = viewModel::toggleRepeat
-            )
+            if (liveRadio) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(22.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.Stop,
+                        contentDescription = strings.close,
+                        size = 48.dp,
+                        iconSize = 22.dp,
+                        onClick = viewModel::closePlayer
+                    )
+                    PlayerGlassIconButton(
+                        icon = if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = if (state.isPlaying) strings.pause else strings.play,
+                        size = 66.dp,
+                        iconSize = 31.dp,
+                        tint = primaryContent,
+                        fill = primary,
+                        borderTop = primary.copy(alpha = 0.86f),
+                        borderBottom = secondary.copy(alpha = 0.44f),
+                        enabled = !state.isResolving,
+                        onClick = viewModel::togglePlay
+                    )
+                }
+            } else {
+                PlayerTransportBar(
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    shuffleOn = state.shuffleEnabled,
+                    repeatMode = state.repeatMode,
+                    accents = playerAccentColors,
+                    compact = compactPlayer,
+                    animated = state.animationsEnabled,
+                    labels = playerControlLabels,
+                    onShuffle = viewModel::toggleShuffle,
+                    onPrevious = viewModel::previous,
+                    onTogglePlay = viewModel::togglePlay,
+                    onNext = viewModel::next,
+                    onRepeat = viewModel::toggleRepeat
+                )
+            }
         }
 
         val quickActionsBlock: @Composable (Track) -> Unit = { activeTrack ->
-            val isDownloaded = activeTrack.id in state.downloadedTrackIds
-            val canStartRadio = !state.jam.isActive || state.jam.isHost
+            if (!activeTrack.isLiveRadio()) {
+                val isDownloaded = activeTrack.id in state.downloadedTrackIds
+                val canStartRadio = !state.jam.isActive || state.jam.isHost
 
-            PlayerQuickActions(
+                PlayerQuickActions(
                 visualMode = visualMode,
                 motionCanvasAvailable = !state.isVideoMode,
                 showLyrics = state.showLyrics,
@@ -811,7 +885,8 @@ fun LevyraNowPlaying(
                     viewModel.openQueue()
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 }
-            )
+                )
+            }
         }
 
         if (playerPane == LevyraPlayerPane.SideBySide && track != null) {
@@ -851,7 +926,7 @@ fun LevyraNowPlaying(
                         progressBlock()
                         transportBlock()
                         quickActionsBlock(track)
-                        similarSongsContent?.invoke(track)
+                        if (!liveRadio) similarSongsContent?.invoke(track)
                         errorContent?.invoke()
                     }
                 }
@@ -905,7 +980,7 @@ fun LevyraNowPlaying(
                         progressBlock()
                         transportBlock()
                         quickActionsBlock(track)
-                        similarSongsContent?.invoke(track)
+                        if (!liveRadio) similarSongsContent?.invoke(track)
                         errorContent?.invoke()
                     }
                 }

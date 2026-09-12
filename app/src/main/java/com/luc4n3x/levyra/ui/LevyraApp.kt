@@ -511,6 +511,7 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.ambient.LevyraAmbientOverlay
@@ -1809,6 +1810,7 @@ fun LevyraApp(
                                         isResolving = state.isResolving,
                                         progress = progressOf(state.positionMs, state.durationMs),
                                         bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
+                                        liveNowPlaying = state.liveRadioNowPlaying,
                                         animated = state.animationsEnabled,
                                         gesturesEnabled = state.interfaceSettings.playerGesturesEnabled
                                     ),
@@ -14694,6 +14696,7 @@ private data class MiniPlayerModel(
     val isResolving: Boolean,
     val progress: Float,
     val bufferedProgress: Float,
+    val liveNowPlaying: String,
     val animated: Boolean,
     val gesturesEnabled: Boolean
 )
@@ -20388,12 +20391,17 @@ private fun handleMiniPlayerDragEvent(
     playbackActions: MiniPlayerPlaybackActions,
     expansionActions: MiniPlayerExpansionActions,
     haptics: LevyraHaptics,
+    horizontalGesturesEnabled: Boolean,
     updateSwipeOffset: (Float) -> Unit
 ) {
     when (event) {
-        is PlayerDragEvent.HorizontalOffset -> updateSwipeOffset(event.offsetPx)
+        is PlayerDragEvent.HorizontalOffset -> {
+            if (horizontalGesturesEnabled) updateSwipeOffset(event.offsetPx)
+        }
         is PlayerDragEvent.HorizontalSettled -> {
-            handleMiniPlayerSwipeResult(event.result, playbackActions, haptics)
+            if (horizontalGesturesEnabled) {
+                handleMiniPlayerSwipeResult(event.result, playbackActions, haptics)
+            }
             updateSwipeOffset(0f)
         }
         is PlayerDragEvent.VerticalStart -> expansionActions.start()
@@ -20465,9 +20473,11 @@ private fun MiniPlayer(
     val isResolving = model.isResolving
     val progress = model.progress
     val bufferedProgress = model.bufferedProgress
+    val liveRadio = track.isLiveRadio()
     val animated = model.animated
     val gesturesEnabled = model.gesturesEnabled
     val strings = LocalLevyraStrings.current
+    val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(strings.code)
     val miniRightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val miniHaptics = LocalLevyraHaptics.current
     val context = LocalContext.current
@@ -20555,6 +20565,7 @@ private fun MiniPlayer(
             )
         )
     }
+    val horizontalGesturesEnabled = gesturesEnabled && !liveRadio
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -20570,6 +20581,7 @@ private fun MiniPlayer(
                     playbackActions = playbackActions,
                     expansionActions = expansionActions,
                     haptics = miniHaptics,
+                    horizontalGesturesEnabled = horizontalGesturesEnabled,
                     updateSwipeOffset = { swipeOffsetPx = it }
                 )
             }
@@ -20652,7 +20664,9 @@ private fun MiniPlayer(
                         )
                         Spacer(modifier = Modifier.height(1.dp))
                         Text(
-                            text = animatedTrack.artist,
+                            text = if (liveRadio) {
+                                model.liveNowPlaying.ifBlank { "${radioStrings.live} / ${animatedTrack.artist}" }
+                            } else animatedTrack.artist,
                             color = miniSecondaryContent,
                             fontSize = 12.5.sp,
                             lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
@@ -20667,16 +20681,18 @@ private fun MiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                PlayerRoundIconButton(
-                    icon = Icons.Rounded.SkipPrevious,
-                    contentDescription = strings.previous,
-                    size = 42.dp,
-                    iconSize = 23.dp,
-                    tint = miniSecondaryContent,
-                    background = Color.Transparent,
-                    borderColor = Color.Transparent,
-                    onClick = playbackActions.previous
-                )
+                if (!liveRadio) {
+                    PlayerRoundIconButton(
+                        icon = Icons.Rounded.SkipPrevious,
+                        contentDescription = strings.previous,
+                        size = 42.dp,
+                        iconSize = 23.dp,
+                        tint = miniSecondaryContent,
+                        background = Color.Transparent,
+                        borderColor = Color.Transparent,
+                        onClick = playbackActions.previous
+                    )
+                }
                 MiniPlayerToggleButton(
                     isPlaying = isPlaying,
                     isResolving = isResolving,
@@ -20684,16 +20700,18 @@ private fun MiniPlayer(
                     animated = animated,
                     onToggle = playbackActions.toggle
                 )
-                PlayerRoundIconButton(
-                    icon = Icons.Rounded.SkipNext,
-                    contentDescription = strings.next,
-                    size = 42.dp,
-                    iconSize = 23.dp,
-                    tint = miniSecondaryContent,
-                    background = Color.Transparent,
-                    borderColor = Color.Transparent,
-                    onClick = playbackActions.next
-                )
+                if (!liveRadio) {
+                    PlayerRoundIconButton(
+                        icon = Icons.Rounded.SkipNext,
+                        contentDescription = strings.next,
+                        size = 42.dp,
+                        iconSize = 23.dp,
+                        tint = miniSecondaryContent,
+                        background = Color.Transparent,
+                        borderColor = Color.Transparent,
+                        onClick = playbackActions.next
+                    )
+                }
                 // Dismiss gets its own accent-tinted well instead of a fourth
                 // bare glyph, so it reads as a separate action and the transport
                 // group keeps its rhythm. Narrower slot than the play controls
@@ -20728,20 +20746,24 @@ private fun MiniPlayer(
                 .height(2.dp)
                 .drawBehind {
                     drawRect(MiniPlayerTrackColor)
-                    drawRect(
-                        color = MiniPlayerBufferedColor,
-                        size = androidx.compose.ui.geometry.Size(
-                            size.width * animatedBuffered.value,
-                            size.height
+                    if (liveRadio) {
+                        drawRect(color = LevyraCyan.copy(alpha = if (isResolving) 0.35f else 0.85f))
+                    } else {
+                        drawRect(
+                            color = MiniPlayerBufferedColor,
+                            size = androidx.compose.ui.geometry.Size(
+                                size.width * animatedBuffered.value,
+                                size.height
+                            )
                         )
-                    )
-                    drawRect(
-                        brush = miniProgressBrush,
-                        size = androidx.compose.ui.geometry.Size(
-                            size.width * animatedProgress.value,
-                            size.height
+                        drawRect(
+                            brush = miniProgressBrush,
+                            size = androidx.compose.ui.geometry.Size(
+                                size.width * animatedProgress.value,
+                                size.height
+                            )
                         )
-                    )
+                    }
                 }
         )
     }
@@ -20892,6 +20914,7 @@ private fun ExploreScreen(
     var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
     var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
+    var liveRadioOpen by rememberSaveable { mutableStateOf(false) }
 
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val selectedZone = remember(zones, state.exploreZoneId) {
@@ -20963,10 +20986,11 @@ private fun ExploreScreen(
                         verticalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
                         ExploreShortcutRow(
-    availableAnchors = availableAnchors,
-    onSelect = onShortcut,
-    onOpenJam = onOpenJam
-)
+                            availableAnchors = availableAnchors,
+                            onSelect = onShortcut,
+                            onOpenLiveRadio = { liveRadioOpen = true },
+                            onOpenJam = onOpenJam
+                        )
                         LevyraMixLauncherPanel(
                             familiarity = state.mixFamiliarity,
                             loading = state.mixLoading,
@@ -21153,6 +21177,19 @@ private fun ExploreScreen(
                     }
                 )
             }
+
+        if (liveRadioOpen) {
+            LiveRadioScreen(
+                languageCode = state.languageCode,
+                currentStationId = state.currentTrack
+                    ?.takeIf { it.isLiveRadio() }
+                    ?.id
+                    ?.removePrefix("live-radio:"),
+                isPlaying = state.isPlaying,
+                onBack = { liveRadioOpen = false },
+                onPlay = viewModel::playLiveRadio
+            )
+        }
     }
 }
 
@@ -21174,6 +21211,7 @@ private fun ExploreSectionHeader(
 private fun ExploreShortcutRow(
     availableAnchors: Set<ExploreAnchor>,
     onSelect: (ExploreShortcut) -> Unit,
+    onOpenLiveRadio: () -> Unit,
     onOpenJam: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -21181,6 +21219,7 @@ private fun ExploreShortcutRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        ExploreLiveRadioShortcut(onClick = onOpenLiveRadio)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -21219,6 +21258,62 @@ private fun ExploreShortcutRow(
                 onClick = onOpenJam
             )
         }
+    }
+}
+
+@Composable
+private fun ExploreLiveRadioShortcut(onClick: () -> Unit) {
+    val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
+        .forCode(LocalLevyraStrings.current.code)
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 76.dp)
+            .clip(shape)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = if (LevyraIsLight) 0.14f else 0.20f),
+                        LevyraAdaptiveCardDeep
+                    )
+                )
+            )
+            .border(Dp.Hairline, LevyraCyan.copy(alpha = 0.26f), shape)
+            .semantics(mergeDescendants = true) { role = Role.Button }
+            .pressable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(44.dp).background(LevyraCyan, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.Radio, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(23.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = radioStrings.title,
+                color = LevyraText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = radioStrings.subtitle,
+                color = LevyraMuted,
+                fontSize = 11.5.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text(
+            text = radioStrings.live,
+            color = LevyraCyan,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
+        )
     }
 }
 

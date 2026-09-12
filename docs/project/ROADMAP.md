@@ -28,6 +28,8 @@ visual polish or feature breadth.
   memory, cancellation, and user-seek boundaries.
 - Classic and templated Android Auto surfaces share one media catalog and one
   playback token.
+- Live Radio shares Media3 notification and background behavior while keeping
+  its transient station session separate from Song Radio and the music queue.
 
 ### Exit criteria for a phase
 
@@ -54,6 +56,8 @@ provider changes, hidden fallback latency, and duplicated playback state.
 - Smart playlists remain local projections over durable listening/library data.
 - Automatic backups are opt-in, atomic, checksum-protected, constrained by
   WorkManager, and pruned to a bounded retention count.
+- Live Radio favorites, recent stations, and a modest locale catalog cache stay
+  bounded and require no account.
 
 ### Exit criteria for a phase
 
@@ -77,6 +81,8 @@ writes, stale cache publication, and backup incompatibility.
 - Accessibility, localization, RTL, reduced motion, lifecycle, and
   configuration changes are preserved.
 - Optional motion and artwork never become correctness dependencies.
+- Explore includes a locale-aware, accessible Live Radio surface with graceful
+  artwork fallbacks and explicit country, language, category and search paths.
 
 ### Exit criteria for a phase
 
@@ -101,6 +107,8 @@ unbounded animation, inaccessible controls, and stale localized text.
   provider failures remain distinguishable.
 - Remote media is validated before playback, caching, writing, or display.
 - Provider degradation does not corrupt durable user state.
+- Radio Browser discovery, response parsing, station filtering, direct streams,
+  metadata and reconnection are bounded and cancellation-aware.
 
 ### Exit criteria for a phase
 

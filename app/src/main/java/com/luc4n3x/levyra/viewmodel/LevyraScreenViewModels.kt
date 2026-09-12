@@ -47,6 +47,7 @@ import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.domain.prepareMixPlaybackTracks
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
+import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -280,6 +281,7 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun endSamplesPlayback() = root.endSamplesPlayback()
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun playSample(list: List<Track>, track: Track) = root.playSample(list, track)
+    fun playLiveRadio(station: RadioStation) = root.playLiveRadio(station)
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
     fun setMixFamiliarity(value: Float) = root.setMixFamiliarity(value)
 
@@ -1249,6 +1251,9 @@ internal data class PlayerProjection(
     val audioNormalization: Boolean,
     val bufferedPositionMs: Long,
     val currentTrack: Track?,
+    val liveRadioStation: RadioStation?,
+    val liveRadioNowPlaying: String,
+    val liveRadioReconnectAttempt: Int,
     val durationMs: Long,
     val favoriteIds: Set<String>,
     val isOfflineExporting: Boolean,
@@ -1284,6 +1289,9 @@ internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPr
     audioNormalization = state.audioNormalization,
     bufferedPositionMs = state.bufferedPositionMs,
     currentTrack = state.currentTrack,
+    liveRadioStation = state.liveRadioStation,
+    liveRadioNowPlaying = state.liveRadioNowPlaying,
+    liveRadioReconnectAttempt = state.liveRadioReconnectAttempt,
     durationMs = state.durationMs,
     favoriteIds = state.favoriteIds,
     isOfflineExporting = state.isOfflineExporting,
