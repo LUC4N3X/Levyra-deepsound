@@ -208,7 +208,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
 
     private fun artistKey(event: ListenEvent): String {
         val browseId = event.artistBrowseIds.firstOrNull().orEmpty().trim()
-        if (browseId.isNotBlank()) return "id:${browseId.lowercase()}"
+        if (browseId.isNotBlank()) return "id:${browseId.lowercase(java.util.Locale.ROOT)}"
         val primary = primaryArtistCredit(event.artist, event.artistBrowseIds)
         return ListenIdentity.artistKey(primary)
     }

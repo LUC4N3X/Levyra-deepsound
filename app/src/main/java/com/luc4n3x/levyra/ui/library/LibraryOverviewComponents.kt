@@ -47,6 +47,7 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.Person
