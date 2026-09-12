@@ -332,6 +332,8 @@ internal fun LibrarySelectionBar(
     onSelectAll: (() -> Unit)? = null,
     allSelected: Boolean = false,
     primaryLabel: String? = null,
+    canPlayTracks: Boolean = canOperateTracks,
+    canQueueTracks: Boolean = canOperateTracks,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -370,12 +372,12 @@ internal fun LibrarySelectionBar(
                 LibrarySelectionAction(
                     if (primaryLabel == null) Icons.Rounded.PlayArrow else Icons.Rounded.SkipNext,
                     resolvedPrimaryLabel,
-                    canOperateTracks,
+                    canPlayTracks,
                     onPlay,
                     LevyraCyan,
                     Modifier.widthIn(min = 72.dp)
                 )
-                LibrarySelectionAction(Icons.AutoMirrored.Rounded.QueueMusic, strings.queue, canOperateTracks, onQueue, LevyraText, Modifier.widthIn(min = 72.dp))
+                LibrarySelectionAction(Icons.AutoMirrored.Rounded.QueueMusic, strings.queue, canQueueTracks, onQueue, LevyraText, Modifier.widthIn(min = 72.dp))
                 LibrarySelectionAction(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.addToPlaylist, canOperateTracks, onAddToPlaylist, LevyraText, Modifier.widthIn(min = 72.dp))
                 LibrarySelectionAction(Icons.Rounded.Download, strings.offline, canOperateTracks, onDownload, LevyraText, Modifier.widthIn(min = 72.dp))
                 LibrarySelectionAction(Icons.Rounded.Delete, resolvedDeleteLabel, canDelete, onDelete, LevyraPink, Modifier.widthIn(min = 72.dp))
