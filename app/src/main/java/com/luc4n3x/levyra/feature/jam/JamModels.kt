@@ -96,7 +96,8 @@ internal fun JamAction.isPlaybackControl(): Boolean = when (this) {
 
 object JamAuthorization {
     fun allows(permission: JamGuestPermission, action: JamAction): Boolean = when {
-        action is JamAction.AddTrack || action is JamAction.PlayNextTracks -> permission.canAddTracks
+        action is JamAction.AddTrack -> permission.canAddTracks
+        action is JamAction.PlayNextTracks -> permission.canControlPlayback
         action.isPlaybackControl() -> permission.canControlPlayback
         else -> false
     }
