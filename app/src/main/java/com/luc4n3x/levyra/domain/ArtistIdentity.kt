@@ -85,15 +85,17 @@ internal fun primaryArtistSegment(value: String): String {
     }
 }
 
-internal fun primaryArtistCredit(value: String, artistBrowseIds: List<String>): String {
-    val clean = value.trim()
-    if (clean.isBlank()) return ""
-    val structuredIds = artistBrowseIds.asSequence()
+internal fun canonicalArtistBrowseIds(values: Iterable<String>): List<String> =
+    values.asSequence()
         .map(String::trim)
         .filter(String::isNotBlank)
         .distinct()
-        .take(2)
         .toList()
+
+internal fun primaryArtistCredit(value: String, artistBrowseIds: List<String>): String {
+    val clean = value.trim()
+    if (clean.isBlank()) return ""
+    val structuredIds = canonicalArtistBrowseIds(artistBrowseIds).take(2)
     if (structuredIds.size == 1) return clean
     return primaryArtistSegment(clean).ifBlank { clean }
 }

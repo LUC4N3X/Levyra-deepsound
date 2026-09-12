@@ -181,6 +181,12 @@ interface ListenLifetimeDao {
     )
     suspend fun topArtists(limit: Int): List<ListenLifetimeArtistEntity>
 
+    @Query("SELECT * FROM listen_lifetime_artists WHERE artistKey = :artistKey LIMIT 1")
+    suspend fun artistByKey(artistKey: String): ListenLifetimeArtistEntity?
+
+    @Query("DELETE FROM listen_lifetime_artists WHERE artistKey = :artistKey")
+    suspend fun deleteArtistByKey(artistKey: String)
+
     @Query("DELETE FROM listen_lifetime_tracks")
     suspend fun clearTracks()
 
