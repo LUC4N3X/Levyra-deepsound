@@ -574,7 +574,25 @@ object LevyraPersonalOrbit {
         "bruno mars", "harry styles", "miley cyrus", "glass animals", "daft punk", "m83", "a-ha"
     )
 
+    fun isEligibleTrack(track: Track): Boolean {
+        val source = track.source.trim()
+        if (track.id.startsWith("live-radio:", ignoreCase = true)) return false
+        if (source.equals("Live Radio", ignoreCase = true)) return false
+        if (source.equals("YouTube Shorts", ignoreCase = true)) return false
+        if (source.contains("sample", ignoreCase = true)) return false
+        if (track.videoType.equals("SHORTS", ignoreCase = true)) return false
+        if (track.videoUrl.contains("/shorts/", ignoreCase = true)) return false
+        if (track.moodTags.any {
+                it.equals("shorts", ignoreCase = true) ||
+                    it.equals("sample", ignoreCase = true) ||
+                    it.equals("samples", ignoreCase = true)
+            }
+        ) return false
+        return true
+    }
+
     fun isReliableMusicCandidate(track: Track): Boolean {
+        if (!isEligibleTrack(track)) return false
         val title = track.title.trim()
         val artist = track.artist.trim()
         if (title.length < 2 || artist.length < 2) return false
