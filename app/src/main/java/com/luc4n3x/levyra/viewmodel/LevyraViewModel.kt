@@ -2738,8 +2738,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         when (action) {
             is JamAction.AddTrack -> addToQueueLocal(fromJamTrack(action.track))
             is JamAction.PlayNextTracks -> {
-                queueEngine.playNext(action.tracks.map(::fromJamTrack))
+                val tracks = action.tracks.map(::fromJamTrack)
+                queueEngine.playNext(tracks)
                 refreshQueuePrefetch()
+                val strings = LevyraStrings.forCode(_state.value.languageCode)
+                _state.update {
+                    val message = if (tracks.size == 1) {
+                        "${strings.playNext}: ${tracks.first().title}"
+                    } else {
+                        "${strings.playNext}: ${strings.formatTrackCount(tracks.size)}"
+                    }
+                    it.copy(offlineExportMessage = message)
+                }
             }
             is JamAction.RemoveTrack -> {
                 val index = _state.value.queue.indexOfFirst { it.id == action.trackId }
