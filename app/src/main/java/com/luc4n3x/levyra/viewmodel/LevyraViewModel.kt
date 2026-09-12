@@ -98,6 +98,7 @@ import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.playlistImportAlreadyRunningMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportStartedMessage
@@ -221,6 +222,9 @@ import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaResolver
+import com.luc4n3x.levyra.feature.radio.RadioStation
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
+import com.luc4n3x.levyra.feature.radio.liveRadioRetryPlan
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.theme.LevyraTypographyController
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
@@ -235,6 +239,8 @@ import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
+import com.luc4n3x.levyra.player.queue.queueTracksAfterPlayNext
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
@@ -905,6 +911,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
     private var samplesPlaybackSession: SamplesPlaybackSession? = null
+    private var liveRadioQueueSnapshot: PlaybackQueueSnapshot? = null
+    private var liveRadioRecoveryAttempt = 0
     private var deferredPlaybackStartSideEffectsKey: String? = null
     @Volatile
     private var listeningSignals: com.luc4n3x.levyra.domain.ListeningSignalProfile? = null
@@ -1316,13 +1324,40 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPlayback(settings.audioSettings.playbackSpeed, settings.audioSettings.pitch)
         player.onCompletion = { onTrackCompleted() }
         player.onRecoverableStreamError = { track, positionMs, videoMode, playWhenReady, errorMessage ->
-            recoverPlaybackStream(track, positionMs, videoMode, playWhenReady, errorMessage)
+            if (track.isLiveRadio()) {
+                recoverLiveRadioStream(track, playWhenReady, errorMessage)
+            } else {
+                recoverPlaybackStream(track, positionMs, videoMode, playWhenReady, errorMessage)
+            }
         }
         player.onError = { errorMsg ->
-            _state.value.currentTrack
-                ?.takeUnless(::isLocalPlaybackTrack)
-                ?.let { resolver.invalidate(it, _state.value.isVideoMode) }
-            _state.update { it.copy(playerError = cleanPlaybackError(errorMsg), isPlaying = false, isResolving = false) }
+            val current = _state.value.currentTrack
+            if (current?.isLiveRadio() != true) {
+                current?.takeUnless(::isLocalPlaybackTrack)?.let { resolver.invalidate(it, _state.value.isVideoMode) }
+            }
+            _state.update {
+                it.copy(
+                    playerError = cleanPlaybackError(errorMsg),
+                    isPlaying = false,
+                    isResolving = false,
+                    liveRadioReconnectAttempt = if (current?.isLiveRadio() == true) liveRadioRecoveryAttempt else 0
+                )
+            }
+        }
+        viewModelScope.launch {
+            PlaybackService.liveRadioMetadataFlow.collect { metadata ->
+                val snapshot = _state.value
+                val station = snapshot.liveRadioStation ?: return@collect
+                val clean = metadata.trim().take(240)
+                val nowPlaying = clean.takeUnless { value ->
+                    value.equals(station.name, ignoreCase = true) || value.equals(snapshot.liveRadioNowPlaying, ignoreCase = true)
+                } ?: if (clean.isBlank()) "" else snapshot.liveRadioNowPlaying
+                if (nowPlaying != snapshot.liveRadioNowPlaying) {
+                    _state.update { current ->
+                        if (current.liveRadioStation?.uuid == station.uuid) current.copy(liveRadioNowPlaying = nowPlaying) else current
+                    }
+                }
+            }
         }
         val followedLoadGeneration = followedArtistsGeneration
         viewModelScope.launch(Dispatchers.IO) {
@@ -3094,6 +3129,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val current = snapshot.currentTrack ?: return
         if (PlaybackService.isQueueTransitionInProgress) return
         if (snapshot.isResolving || playJob?.isActive == true || current.streamUrl.isBlank()) return
+        if (current.isLiveRadio()) {
+            recoverLiveRadioStream(
+                current,
+                playWhenReady = true,
+                errorMessage = LevyraLiveRadioCatalog.streamUnavailable(snapshot.languageCode)
+            )
+            return
+        }
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
         listenSessionCompleted = true
@@ -3129,6 +3172,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleVideoMode() {
         val snapshot = _state.value
         val track = snapshot.currentTrack ?: return
+        if (track.isLiveRadio()) return
         if (snapshot.isResolving) return
         val sourceMode = snapshot.isVideoMode
         val targetMode = !sourceMode
@@ -4714,6 +4758,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playAll(tracks: List<Track>) {
         if (tracks.isEmpty()) return
+        leaveLiveRadioQueue()
         queueEngine.replace(tracks, 0, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
         queueIndex = 0
         startResolve(tracks.first())
@@ -4725,8 +4770,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun addToQueueLocal(track: Track) {
-        queueEngine.addLast(track)
-        refreshQueuePrefetch()
+        val preserved = liveRadioQueueSnapshot
+        if (preserved != null) {
+            val updatedTracks = queueTracksAfterAddLast(preserved.tracks, listOf(track))
+            liveRadioQueueSnapshot = preserved.copy(
+                tracks = updatedTracks,
+                generation = preserved.generation + 1L
+            )
+        } else {
+            queueEngine.addLast(track)
+            refreshQueuePrefetch()
+        }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update { it.copy(offlineExportMessage = "${strings.addToQueue}: ${track.title}") }
     }
@@ -4747,8 +4801,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             return
         }
-        queueEngine.addLast(cleanTracks)
-        refreshQueuePrefetch()
+        val preserved = liveRadioQueueSnapshot
+        if (preserved != null) {
+            val updatedTracks = queueTracksAfterAddLast(preserved.tracks, cleanTracks)
+            liveRadioQueueSnapshot = preserved.copy(
+                tracks = updatedTracks,
+                generation = preserved.generation + 1L
+            )
+        } else {
+            queueEngine.addLast(cleanTracks)
+            refreshQueuePrefetch()
+        }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update {
             it.copy(offlineExportMessage = "${strings.addToQueue}: ${strings.formatTrackCount(cleanTracks.size)}")
@@ -4794,8 +4857,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             routeJamAction(JamAction.PlayNextTracks(cleanTracks.map(::toJamTrack)))
             return
         }
-        queueEngine.playNext(cleanTracks)
-        refreshQueuePrefetch()
+        val preserved = liveRadioQueueSnapshot
+        if (preserved != null) {
+            val updatedTracks = queueTracksAfterPlayNext(preserved.tracks, preserved.currentIndex, cleanTracks)
+            liveRadioQueueSnapshot = preserved.copy(
+                tracks = updatedTracks,
+                generation = preserved.generation + 1L
+            )
+        } else {
+            queueEngine.playNext(cleanTracks)
+            refreshQueuePrefetch()
+        }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update {
             it.copy(offlineExportMessage = "${strings.playNext}: ${strings.formatTrackCount(cleanTracks.size)}")
@@ -4807,8 +4879,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             routeJamAction(JamAction.PlayNextTracks(listOf(toJamTrack(track))))
             return
         }
-        queueEngine.playNext(track)
-        refreshQueuePrefetch()
+        val preserved = liveRadioQueueSnapshot
+        if (preserved != null) {
+            val updatedTracks = queueTracksAfterPlayNext(preserved.tracks, preserved.currentIndex, listOf(track))
+            liveRadioQueueSnapshot = preserved.copy(
+                tracks = updatedTracks,
+                generation = preserved.generation + 1L
+            )
+        } else {
+            queueEngine.playNext(track)
+            refreshQueuePrefetch()
+        }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update { it.copy(offlineExportMessage = "${strings.playNext}: ${track.title}") }
     }
@@ -4858,12 +4939,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleContinuousRadio() {
+        if (_state.value.currentTrack?.isLiveRadio() == true) return
         val enabled = !queueEngine.state.value.radioEnabled
         queueEngine.setRadioEnabled(enabled)
         if (enabled) ensureRadioTail(force = true) else radioJob?.cancel()
     }
 
     fun startSongRadio() {
+        if (_state.value.currentTrack?.isLiveRadio() == true) return
         if (jamController.rejectGuestLocalMutation()) return
         if (!queueEngine.state.value.radioEnabled) queueEngine.setRadioEnabled(true)
         radioJob?.cancel()
@@ -5308,6 +5391,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleFavorite(track: Track) {
+        if (track.isLiveRadio()) return
         viewModelScope.launch {
             val (updated, isFavorite) = favoriteMutationMutex.withLock {
                 val updated = favoritesStore.toggleFavorite(track)
@@ -7081,6 +7165,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun playQueueTrack(track: Track) {
+        leaveLiveRadioQueue()
         val snapshot = queueEngine.state.value
         val index = snapshot.tracks.indexOfFirst { samePlayableTrack(it, track) }
         if (index < 0) {
@@ -7093,12 +7178,150 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(snapshot.tracks[index])
     }
 
+    fun playLiveRadio(station: RadioStation) {
+        if (jamController.rejectGuestLocalMutation()) return
+        if (!hasInternetCapableNetwork()) {
+            _state.update {
+                it.copy(playerError = LevyraLiveRadioCatalog.forCode(it.languageCode).internetRequired)
+            }
+            return
+        }
+        val streamUrl = station.preferredStreamUrl
+        if (streamUrl.isBlank()) {
+            _state.update {
+                it.copy(playerError = LevyraLiveRadioCatalog.streamUnavailable(it.languageCode))
+            }
+            return
+        }
+        val track = station.toTrack(streamUrl)
+        playRequestId++
+        streamTransitionId++
+        playJob?.cancel()
+        cancelResolutionSideJobs()
+        cancelBackgroundWarmups(cancelList = true)
+        flushListenSession()
+        sponsorJob?.cancel()
+        sponsorSegments = emptyList()
+        sponsorSkipTracker.reset()
+        loopCurrentQueueOnCompletion = false
+        liveRadioRecoveryAttempt = 0
+        if (liveRadioQueueSnapshot == null) {
+            liveRadioQueueSnapshot = queueEngine.state.value
+            queueEngine.beginTransientPlayback(liveRadioQueueSnapshot!!, listOf(track), 0)
+        } else {
+            queueEngine.replaceTransient(listOf(track), 0)
+        }
+        queueIndex = 0
+        pendingSeekMs = 0L
+        player.play(track, videoMode = false, startPositionMs = 0L)
+        _state.update {
+            it.copy(
+                currentTrack = track,
+                liveRadioStation = station,
+                liveRadioNowPlaying = "",
+                liveRadioReconnectAttempt = 0,
+                isVideoMode = false,
+                pendingVideoMode = null,
+                isPlaying = true,
+                isResolving = false,
+                positionMs = 0L,
+                bufferedPositionMs = 0L,
+                durationMs = 0L,
+                playerError = null,
+                motionArtwork = null,
+                motionArtworkLoading = false,
+                showQueue = false,
+                showLyrics = false,
+                lyrics = emptyList(),
+                lyricsSections = emptyList(),
+                lyricsLoading = false,
+                lyricsSynced = false,
+                lyricsProvider = "",
+                activeLyric = null,
+                youtubeEngagement = YoutubeEngagementState()
+            )
+        }
+        updateWidget()
+    }
+
+    private fun recoverLiveRadioStream(failedTrack: Track, playWhenReady: Boolean, errorMessage: String) {
+        val station = _state.value.liveRadioStation ?: return
+        if (failedTrack.id != station.toTrack().id) return
+        val attempt = liveRadioRecoveryAttempt + 1
+        val recovery = liveRadioRetryPlan(station, failedTrack.streamUrl, attempt)
+        if (recovery == null) {
+            player.stop()
+            _state.update {
+                it.copy(
+                    isPlaying = false,
+                    isResolving = false,
+                    playerError = cleanPlaybackError(errorMessage)
+                )
+            }
+            return
+        }
+        liveRadioRecoveryAttempt = attempt
+        _state.update {
+            it.copy(
+                isPlaying = false,
+                isResolving = true,
+                liveRadioReconnectAttempt = attempt,
+                playerError = null
+            )
+        }
+        streamRecoveryJob?.cancel()
+        streamRecoveryJob = viewModelScope.launch {
+            delay(recovery.delayMs)
+            if (!isActive || _state.value.liveRadioStation?.uuid != station.uuid) return@launch
+            val replacement = station.toTrack(recovery.streamUrl)
+            queueEngine.replaceTransient(listOf(replacement), 0)
+            player.replaceSource(
+                track = replacement,
+                positionMs = 0L,
+                videoMode = false,
+                playWhenReady = playWhenReady
+            )
+            _state.update {
+                it.copy(
+                    currentTrack = replacement,
+                    isPlaying = playWhenReady,
+                    isResolving = false,
+                    liveRadioReconnectAttempt = attempt,
+                    playerError = null
+                )
+            }
+            updateWidget()
+            delay(LIVE_RADIO_RECOVERY_STABLE_MS)
+            if (_state.value.liveRadioStation?.uuid == station.uuid && player.isPlaying) {
+                liveRadioRecoveryAttempt = 0
+                player.markRecoverySucceeded()
+                _state.update { it.copy(liveRadioReconnectAttempt = 0) }
+            }
+        }
+    }
+
+    private fun leaveLiveRadioQueue() {
+        val preserved = liveRadioQueueSnapshot ?: return
+        liveRadioQueueSnapshot = null
+        liveRadioRecoveryAttempt = 0
+        streamRecoveryJob?.cancel()
+        queueEngine.endTransientPlayback(preserved)
+        _state.update {
+            it.copy(
+                liveRadioStation = null,
+                liveRadioNowPlaying = "",
+                liveRadioReconnectAttempt = 0
+            )
+        }
+    }
+
     fun play(track: Track) {
         if (_state.value.jam.role == JamRole.Guest) {
             val index = _state.value.jam.session?.queue?.indexOfFirst { it.id == track.id } ?: -1
             routeJamAction(if (index >= 0) JamAction.SelectIndex(index) else JamAction.AddTrack(toJamTrack(track)))
             return
         }
+        leaveLiveRadioQueue()
         val contextualQueue = queueForTrack(track)
         loopCurrentQueueOnCompletion = contextualQueue.size > 1
         val index = contextualQueue.indexOfFirst { samePlayableTrack(it, track) }.coerceAtLeast(0)
@@ -7113,6 +7336,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             play(track)
             return
         }
+        leaveLiveRadioQueue()
         loopCurrentQueueOnCompletion = loopOnCompletion
         val index = list.indexOfFirst { samePlayableTrack(it, track) }.coerceAtLeast(0)
         queueEngine.replace(list, index, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
@@ -7140,6 +7364,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playSample(list: List<Track>, track: Track) {
         val selected = selectYoutubeShortSample(list, track) ?: return
+        leaveLiveRadioQueue()
         val currentState = _state.value
         val actualPositionMs = player.positionMs.coerceAtLeast(0L).takeIf { it > 0L }
             ?: currentState.positionMs
@@ -7851,6 +8076,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             accentStart = 0,
             accentEnd = 0
         )
+        leaveLiveRadioQueue()
         _state.update { it.copy(isVideoMode = false) }
         loopCurrentQueueOnCompletion = false
         queueEngine.replace(listOf(track), 0, keepPlaybackModes = true, radioEnabled = false)
@@ -7859,7 +8085,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun resumePositionFor(track: Track): Long =
-        resumeStartPositionMs(pendingSeekMs, track.durationMs)
+        if (track.isLiveRadio()) 0L else resumeStartPositionMs(pendingSeekMs, track.durationMs)
 
     private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {
         if (request.id != playRequestId) return
@@ -7915,6 +8141,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun dispatchPlaybackStartSideEffects(track: Track) {
+        if (track.isLiveRadio()) return
         recordPlaybackHistory(track)
         beginListenSession(track)
         recordSmartPlayback(track)
@@ -7922,7 +8149,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun refreshYoutubeEngagement(track: Track) {
-        if (track.source.equals("Offline", ignoreCase = true)) return
+        if (track.isLiveRadio() || track.source.equals("Offline", ignoreCase = true)) return
         val videoId = youtubeEngagementVideoId(track)
         if (videoId.isBlank()) return
         val generation = prepareYoutubeEngagement(videoId)
@@ -8874,6 +9101,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun radioTailRequest(force: Boolean): RadioTailRequest? {
         val snapshot = queueEngine.state.value
         val seed = snapshot.currentTrack ?: return null
+        if (seed.isLiveRadio()) return null
         if (!snapshot.radioEnabled) return null
         if (!force && queueEngine.upcoming(3).size >= 3) return null
         if (radioJob?.isActive == true) return null
@@ -9053,7 +9281,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         if (_state.value.isPlaying) {
             player.pause()
-            saveLastPlaybackAsync(current, player.positionMs)
+            if (!current.isLiveRadio()) saveLastPlaybackAsync(current, player.positionMs)
             _state.update { it.copy(isPlaying = false) }
         } else {
             player.play(current, _state.value.isVideoMode, startPositionMs = resumePositionFor(current))
@@ -9066,6 +9294,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun closePlayer() {
+        leaveLiveRadioQueue()
         loopCurrentQueueOnCompletion = false
         streamTransitionId++
         playRequestId++
@@ -9103,6 +9332,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 selectedTab = if (it.selectedTab == LevyraTab.Player) LevyraTab.Home else it.selectedTab,
                 currentTrack = null,
+                liveRadioStation = null,
+                liveRadioNowPlaying = "",
+                liveRadioReconnectAttempt = 0,
                 youtubeEngagement = YoutubeEngagementState(),
                 queue = emptyList(),
                 queueCurrentIndex = -1,
@@ -9146,6 +9378,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun nextLocal() {
+        if (_state.value.currentTrack?.isLiveRadio() == true) return
         val nextTrack = queueEngine.next(respectRepeatOne = false)
         if (nextTrack != null) {
             startResolve(nextTrack)
@@ -9160,6 +9393,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun previousLocal() {
+        if (_state.value.currentTrack?.isLiveRadio() == true) return
         if (player.positionMs > 5_000L) {
             player.seekTo(0L)
             queueEngine.updatePosition(0L)
@@ -9170,6 +9404,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun seekTo(progress: Float) {
+        if (_state.value.currentTrack?.isLiveRadio() == true) return
         val duration = _state.value.durationMs.coerceAtLeast(1L)
         val target = (duration * progress.coerceIn(0f, 1f)).toLong()
         if (routeJamAction(JamAction.Seek(target))) return
@@ -9178,6 +9413,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun seekBy(deltaMs: Long) {
         if (deltaMs == 0L) return
+        if (_state.value.currentTrack?.isLiveRadio() == true) return
         val currentPosition = player.positionMs.coerceAtLeast(0L)
         val duration = player.durationMs.takeIf { it > 0L } ?: _state.value.durationMs
         val unboundedTarget = (currentPosition + deltaMs).coerceAtLeast(0L)
@@ -9277,6 +9513,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun saveLastPlaybackAsync(track: Track?, positionMs: Long) {
+        if (track?.isLiveRadio() == true) return
         if (lastPlaybackSaveJob?.isActive == true) return
         val stableTrack = track?.copy(streamUrl = "", videoStreamUrl = "")
         lastPlaybackSaveJob = viewModelScope.launch(Dispatchers.IO) {
@@ -9883,6 +10120,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         const val MIX_UNAVAILABLE_MARKER = "levyra_mix_unavailable"
         const val JAM_TRACK_SOURCE = "jam"
         const val JAM_DISPLAY_NAME_MAX_LENGTH = 32
+        const val LIVE_RADIO_RECOVERY_STABLE_MS = 10_000L
     }
 
     override fun onCleared() {
@@ -9896,7 +10134,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         networkTestJob?.cancel()
         jamStateJob?.cancel()
         if (jamControllerDelegate.isInitialized()) jamController.close()
-        _state.value.currentTrack?.let { preferences.saveLastPlayback(it, player.positionMs) }
+        _state.value.currentTrack?.takeUnless(Track::isLiveRadio)?.let {
+            preferences.saveLastPlayback(it, player.positionMs)
+        }
         audioSettingsPersistJob?.cancel()
         audioSettingsPersistence.flush()
         flushListenSessionBlocking()

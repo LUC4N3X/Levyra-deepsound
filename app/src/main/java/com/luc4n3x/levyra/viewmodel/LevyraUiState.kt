@@ -57,6 +57,7 @@ import com.luc4n3x.levyra.feature.jam.JamUiState
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.recognition.RecognitionHistoryEntry
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
+import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 
 enum class DetailReturnTarget {
@@ -142,6 +143,9 @@ data class LevyraUiState(
     val playlistTags: List<PlaylistTag> = emptyList(),
     val openPlaylist: com.luc4n3x.levyra.domain.Playlist? = null,
     val currentTrack: Track? = null,
+    val liveRadioStation: RadioStation? = null,
+    val liveRadioNowPlaying: String = "",
+    val liveRadioReconnectAttempt: Int = 0,
     val motionArtwork: MotionArtwork? = null,
     val motionArtworkLoading: Boolean = false,
     val youtubeEngagement: YoutubeEngagementState = YoutubeEngagementState(),
