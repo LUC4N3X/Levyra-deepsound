@@ -261,6 +261,11 @@ object JamProtocol {
 
     private fun encodeAction(action: JamAction): JSONObject = when (action) {
         is JamAction.AddTrack -> JSONObject().put("kind", "add").put("track", encodeTrack(action.track))
+        is JamAction.PlayNextTracks -> JSONObject()
+            .put("kind", "play_next")
+            .put("tracks", JSONArray().apply {
+                action.tracks.take(JamSessionState.MAX_QUEUE_SIZE).forEach { put(encodeTrack(it)) }
+            })
         is JamAction.RemoveTrack -> JSONObject().put("kind", "remove").put("trackId", action.trackId)
         is JamAction.SelectIndex -> JSONObject().put("kind", "select").put("index", action.index)
         is JamAction.SetPlayWhenReady -> JSONObject().put("kind", "play").put("playWhenReady", action.playWhenReady)
@@ -275,6 +280,9 @@ object JamProtocol {
         val payload = root.optJSONObject("action") ?: return null
         val action = when (payload.optString("kind")) {
             "add" -> decodeTrack(payload.optJSONObject("track"))?.let(JamAction::AddTrack)
+            "play_next" -> decodeTracks(payload.optJSONArray("tracks"))
+                ?.takeIf { it.isNotEmpty() }
+                ?.let(JamAction::PlayNextTracks)
             "remove" -> payload.optString("trackId").trim().take(JamSessionState.MAX_TEXT_LENGTH)
                 .takeIf { it.isNotBlank() }
                 ?.let(JamAction::RemoveTrack)
