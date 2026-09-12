@@ -356,16 +356,15 @@ internal fun LevyraLibraryScreen(
                         )
                     }
                     item(key = "overview-insights-title") {
-                        LibrarySectionTitle(strings.pulseTitle, strings.pulseSubtitle)
+                        LibrarySectionTitle(
+                            title = strings.pulseTitle,
+                            detail = strings.pulseSubtitle
+                        )
                     }
                     item(key = "overview-insights-card") {
                         LibraryListeningDashboard(
                             pulse = state.listeningPulse,
-                            artistCount = catalog.artists.size,
-                            trackCount = catalog.tracks.size,
-                            playlistCount = state.playlists.size,
-                            offlineCount = state.downloads.size,
-                            onOpenYourSound = viewModel::openYourSound
+                            onOpenRecap = viewModel::openListeningRecap
                         )
                     }
                     if (visiblePlaylists.isNotEmpty()) {
