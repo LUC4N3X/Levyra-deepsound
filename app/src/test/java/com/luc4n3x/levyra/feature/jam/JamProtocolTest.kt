@@ -4,6 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -40,6 +41,21 @@ class JamProtocolTest {
             val message = JamMessage.Action("session-1", "guest-1", action)
             assertEquals(message, JamProtocol.decode(JamProtocol.encode(message)))
         }
+    }
+
+    @Test
+    fun invalidPlayNextBatchesAreRejectedBeforeEncoding() {
+        val empty = JamMessage.Action("session-1", "guest-1", JamAction.PlayNextTracks(emptyList()))
+        val oversized = JamMessage.Action(
+            "session-1",
+            "guest-1",
+            JamAction.PlayNextTracks(List(JamSessionState.MAX_QUEUE_SIZE + 1) { index ->
+                JamTrack("track-$index", "Song $index", "Artist", 180_000L, "")
+            })
+        )
+
+        assertThrows(IllegalArgumentException::class.java) { JamProtocol.encode(empty) }
+        assertThrows(IllegalArgumentException::class.java) { JamProtocol.encode(oversized) }
     }
 
     @Test
