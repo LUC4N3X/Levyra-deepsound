@@ -233,7 +233,12 @@ class PlaylistStore(context: Context) {
             coverMutationLock(playlistId).withLock {
                 val previous = dao.playlist(playlistId) ?: return@withLock
                 val reference = coverStore.save(playlistId, source, crop)
-                dao.updateCustomCover(playlistId, reference, System.currentTimeMillis())
+                try {
+                    dao.updateCustomCover(playlistId, reference, System.currentTimeMillis())
+                } catch (error: Throwable) {
+                    coverStore.delete(reference)
+                    throw error
+                }
                 if (previous.coverMode == PlaylistCoverMode.CUSTOM.name && previous.coverUrl != reference) {
                     coverStore.delete(previous.coverUrl)
                 }
