@@ -16,8 +16,13 @@ class JamSecurityTest {
         val track = JamTrack("id", "Song", "Artist", 1_000L, "")
 
         assertFalse(JamAuthorization.allows(JamGuestPermission.HostOnly, JamAction.AddTrack(track)))
+        assertFalse(JamAuthorization.allows(JamGuestPermission.HostOnly, JamAction.AddTracks(listOf(track))))
+        assertFalse(JamAuthorization.allows(JamGuestPermission.HostOnly, JamAction.PlayNextTracks(listOf(track))))
         assertFalse(JamAuthorization.allows(JamGuestPermission.AddSongs, JamAction.Next))
         assertTrue(JamAuthorization.allows(JamGuestPermission.AddSongs, JamAction.AddTrack(track)))
+        assertTrue(JamAuthorization.allows(JamGuestPermission.AddSongs, JamAction.AddTracks(listOf(track))))
+        assertFalse(JamAuthorization.allows(JamGuestPermission.AddSongs, JamAction.PlayNextTracks(listOf(track))))
+        assertFalse(JamAuthorization.allows(JamGuestPermission.Collaborative, JamAction.PlayNextTracks(listOf(track))))
         assertTrue(JamAuthorization.allows(JamGuestPermission.Collaborative, JamAction.Next))
         assertTrue(JamAuthorization.allows(JamGuestPermission.Collaborative, JamAction.RemoveTrack("id")))
     }
