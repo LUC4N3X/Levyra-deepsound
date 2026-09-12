@@ -74,6 +74,7 @@ data class JamSessionState(
 
 sealed interface JamAction {
     data class AddTrack(val track: JamTrack) : JamAction
+    data class PlayNextTracks(val tracks: List<JamTrack>) : JamAction
     data class RemoveTrack(val trackId: String) : JamAction
     data class SelectIndex(val index: Int) : JamAction
     data class SetPlayWhenReady(val playWhenReady: Boolean) : JamAction
@@ -83,7 +84,8 @@ sealed interface JamAction {
 }
 
 internal fun JamAction.isPlaybackControl(): Boolean = when (this) {
-    is JamAction.AddTrack -> false
+    is JamAction.AddTrack,
+    is JamAction.PlayNextTracks -> false
     is JamAction.RemoveTrack,
     is JamAction.SelectIndex,
     is JamAction.SetPlayWhenReady,
@@ -94,7 +96,7 @@ internal fun JamAction.isPlaybackControl(): Boolean = when (this) {
 
 object JamAuthorization {
     fun allows(permission: JamGuestPermission, action: JamAction): Boolean = when {
-        action is JamAction.AddTrack -> permission.canAddTracks
+        action is JamAction.AddTrack || action is JamAction.PlayNextTracks -> permission.canAddTracks
         action.isPlaybackControl() -> permission.canControlPlayback
         else -> false
     }
