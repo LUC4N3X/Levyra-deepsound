@@ -6,6 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.PlaylistCoverMode
 
 @Entity(tableName = "playlists")
 data class PlaylistEntity(
@@ -14,7 +15,8 @@ data class PlaylistEntity(
     val coverUrl: String,
     val createdAt: Long,
     val updatedAt: Long,
-    @ColumnInfo(defaultValue = "0") val hidden: Boolean = false
+    @ColumnInfo(defaultValue = "0") val hidden: Boolean = false,
+    @ColumnInfo(defaultValue = "'AUTO'") val coverMode: String = PlaylistCoverMode.AUTO.name
 )
 
 @Entity(

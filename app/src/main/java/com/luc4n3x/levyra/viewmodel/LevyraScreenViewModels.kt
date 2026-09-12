@@ -375,10 +375,14 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun playDownloaded(download: DownloadedTrack) = root.playDownloaded(download)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun playPlaylist(playlistId: String, startTrackId: String? = null) = root.playPlaylist(playlistId, startTrackId)
+    fun playTracksNext(tracks: List<Track>) = root.playTracksNext(tracks)
     fun removeFavorites(tracks: List<Track>) = root.removeFavorites(tracks)
     fun removeFromPlaylist(playlistId: String, trackId: String) = root.removeFromPlaylist(playlistId, trackId)
     fun removeTracksFromPlaylist(playlistId: String, tracks: List<Track>) = root.removeTracksFromPlaylist(playlistId, tracks)
     fun renamePlaylist(playlistId: String, name: String) = root.renamePlaylist(playlistId, name)
+    fun setPlaylistCover(playlistId: String, source: android.net.Uri, crop: com.luc4n3x.levyra.data.PlaylistCoverCrop) =
+        root.setPlaylistCover(playlistId, source, crop)
+    fun resetPlaylistCover(playlistId: String) = root.resetPlaylistCover(playlistId)
     fun setPlaylistHidden(playlistId: String, hidden: Boolean) = root.setPlaylistHidden(playlistId, hidden)
     fun setLibrarySort(sort: LibrarySort, direction: LibrarySortDirection) {
         val current = root.state.value.interfaceSettings

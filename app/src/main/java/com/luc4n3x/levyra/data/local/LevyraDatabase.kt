@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 20
+const val LEVYRA_DATABASE_VERSION = 21
 
 @Database(
     entities = [
@@ -603,6 +603,12 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE playlists ADD COLUMN coverMode TEXT NOT NULL DEFAULT 'AUTO'")
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -622,7 +628,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_16_17,
             MIGRATION_17_18,
             MIGRATION_18_19,
-            MIGRATION_19_20
+            MIGRATION_19_20,
+            MIGRATION_20_21
         )
 
         fun get(context: Context): LevyraDatabase {

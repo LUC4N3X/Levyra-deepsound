@@ -48,6 +48,11 @@ data class JamParticipant(
     val isHost: Boolean
 )
 
+object JamCapabilities {
+    const val BATCH_ADD_TRACKS = "batch_add_tracks_v1"
+    val current: Set<String> = setOf(BATCH_ADD_TRACKS)
+}
+
 data class JamSessionState(
     val sessionId: String,
     val hostId: String,
@@ -62,7 +67,8 @@ data class JamSessionState(
     val shuffle: Boolean,
     val repeatMode: Int,
     val permission: JamGuestPermission,
-    val updatedAtElapsedMs: Long
+    val updatedAtElapsedMs: Long,
+    val capabilities: Set<String> = emptySet()
 ) {
     companion object {
         const val MAX_QUEUE_SIZE = 200
@@ -74,6 +80,8 @@ data class JamSessionState(
 
 sealed interface JamAction {
     data class AddTrack(val track: JamTrack) : JamAction
+    data class AddTracks(val tracks: List<JamTrack>) : JamAction
+    data class PlayNextTracks(val tracks: List<JamTrack>) : JamAction
     data class RemoveTrack(val trackId: String) : JamAction
     data class SelectIndex(val index: Int) : JamAction
     data class SetPlayWhenReady(val playWhenReady: Boolean) : JamAction
@@ -83,7 +91,9 @@ sealed interface JamAction {
 }
 
 internal fun JamAction.isPlaybackControl(): Boolean = when (this) {
-    is JamAction.AddTrack -> false
+    is JamAction.AddTrack,
+    is JamAction.AddTracks,
+    is JamAction.PlayNextTracks -> false
     is JamAction.RemoveTrack,
     is JamAction.SelectIndex,
     is JamAction.SetPlayWhenReady,
@@ -94,7 +104,8 @@ internal fun JamAction.isPlaybackControl(): Boolean = when (this) {
 
 object JamAuthorization {
     fun allows(permission: JamGuestPermission, action: JamAction): Boolean = when {
-        action is JamAction.AddTrack -> permission.canAddTracks
+        action is JamAction.AddTrack || action is JamAction.AddTracks -> permission.canAddTracks
+        action is JamAction.PlayNextTracks -> false
         action.isPlaybackControl() -> permission.canControlPlayback
         else -> false
     }

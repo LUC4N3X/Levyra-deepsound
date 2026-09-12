@@ -20,6 +20,37 @@ import timber.log.Timber
 private val YOUTUBE_VIDEO_ID_PATTERN =
     Regex("(?:v=|youtu\\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,})")
 
+internal fun queueTracksAfterAddLast(current: List<Track>, additions: List<Track>): List<Track> {
+    val identities = current.mapTo(hashSetOf(), ::playbackQueueIdentity)
+    val pending = additions.distinctBy(::playbackQueueIdentity).filter { identities.add(playbackQueueIdentity(it)) }
+    return if (pending.isEmpty()) current else current + pending.map(Track::queueStoredCopy)
+}
+
+internal fun queueTracksAfterPlayNext(
+    current: List<Track>,
+    currentIndex: Int,
+    additions: List<Track>
+): List<Track> {
+    if (additions.isEmpty()) return current
+    val currentTrack = current.getOrNull(currentIndex)
+    val currentIdentity = currentTrack?.let(::playbackQueueIdentity)
+    val ordered = additions
+        .distinctBy(::playbackQueueIdentity)
+        .filterNot { playbackQueueIdentity(it) == currentIdentity }
+    if (ordered.isEmpty()) return current
+    val pendingIdentities = ordered.mapTo(hashSetOf(), ::playbackQueueIdentity)
+    val withoutPending = current.filterNot { track ->
+        playbackQueueIdentity(track) in pendingIdentities && playbackQueueIdentity(track) != currentIdentity
+    }
+    val baseIndex = currentIdentity
+        ?.let { identity -> withoutPending.indexOfFirst { playbackQueueIdentity(it) == identity } }
+        ?.takeIf { it >= 0 }
+        ?: currentIndex.coerceIn(-1, withoutPending.lastIndex)
+    return withoutPending.toMutableList().apply {
+        addAll((baseIndex + 1).coerceIn(0, size), ordered.map(Track::queueStoredCopy))
+    }
+}
+
 internal fun queuePersistenceAllowed(transientPlaybackActive: Boolean): Boolean =
     !transientPlaybackActive
 
@@ -288,6 +319,12 @@ class PersistentQueueEngine private constructor(context: Context) {
         rebuildAfterStructureChange(current, nextTracks, current.currentIndex)
     }
 
+    fun addLast(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        val nextTracks = queueTracksAfterAddLast(current.tracks, tracks)
+        if (nextTracks == current.tracks) return@mutate current
+        rebuildAfterStructureChange(current, nextTracks, current.currentIndex)
+    }
+
     fun playNext(track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         val identity = playbackQueueIdentity(track)
         val withoutDuplicate = current.tracks.filterNot { playbackQueueIdentity(it) == identity }
@@ -300,6 +337,17 @@ class PersistentQueueEngine private constructor(context: Context) {
             add(insertionIndex, track.queueStoredCopy())
         }
         rebuildAfterStructureChange(current, nextTracks, baseIndex)
+    }
+
+    fun playNext(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        val nextTracks = queueTracksAfterPlayNext(current.tracks, current.currentIndex, tracks)
+        if (nextTracks == current.tracks) return@mutate current
+        val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
+        val nextCurrentIndex = currentIdentity
+            ?.let { identity -> nextTracks.indexOfFirst { playbackQueueIdentity(it) == identity } }
+            ?.takeIf { it >= 0 }
+            ?: current.currentIndex.coerceIn(-1, nextTracks.lastIndex)
+        rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex)
     }
 
     fun remove(index: Int): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->

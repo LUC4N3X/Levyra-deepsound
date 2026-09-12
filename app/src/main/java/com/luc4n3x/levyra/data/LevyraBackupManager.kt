@@ -27,6 +27,7 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.PLAYLIST_TAG_MAX_PER_PLAYLIST
 import com.luc4n3x.levyra.domain.PlaylistTag
+import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.isExcludableArtist
 import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
@@ -71,6 +72,7 @@ class LevyraBackupManager(private val context: Context) {
     private val preferences = LevyraPreferences(appContext)
     private val followedArtistsStore = FollowedArtistsStore(appContext)
     private val excludedArtistsStore = ExcludedArtistsStore(appContext)
+    private val playlistCoverStore = PlaylistCoverStore(appContext)
     private val tagsDao get() = database.playlistTagsDao()
 
     suspend fun exportTo(uri: Uri): LevyraBackupResult = withContext(Dispatchers.IO) {
@@ -219,14 +221,14 @@ class LevyraBackupManager(private val context: Context) {
                         if (!vaultEntryAllowed(entry.name)) throw IOException("Backup non valido: voce ZIP inattesa ${entry.name}")
                         if (!seenEntries.add(entry.name)) throw IOException("Backup non valido: voce duplicata ${entry.name}")
                         when {
-                            entry.name == MANIFEST_ENTRY -> manifestBytes = readZipEntry(zip, MAX_ENTRY_BYTES)
+                            entry.name == MANIFEST_ENTRY -> manifestBytes = readZipEntry(zip, vaultEntryLimit(entry.name))
                             entry.name == LEGACY_PAYLOAD_ENTRY -> hasLegacyPayload = true
                             else -> sectionNames.add(entry.name)
                         }
                         totalBytes += if (entry.name == MANIFEST_ENTRY) {
                             (manifestBytes?.size ?: 0).toLong()
                         } else {
-                            countZipEntry(zip, MAX_ENTRY_BYTES)
+                            countZipEntry(zip, vaultEntryLimit(entry.name))
                         }
                         if (totalBytes > MAX_TOTAL_BYTES) throw IOException("Backup troppo grande")
                         zip.closeEntry()
@@ -285,6 +287,24 @@ class LevyraBackupManager(private val context: Context) {
     private suspend fun writeArchive(output: OutputStream): LevyraBackupResult {
         val sections = linkedMapOf<String, SectionInfo>()
         ZipOutputStream(output.buffered()).use { zip ->
+            val playlistEntities = database.playlistDao().allPlaylists()
+            val customCoverPlaylists = playlistEntities.filter { it.coverMode == PlaylistCoverMode.CUSTOM.name }
+            if (customCoverPlaylists.size > MAX_PLAYLIST_COVER_ENTRIES) {
+                throw IOException("Playlist cover backup is too large")
+            }
+            val coverEntries = linkedMapOf<String, String>()
+            var coverBytesTotal = 0L
+            customCoverPlaylists.forEach { playlist ->
+                val bytes = playlistCoverStore.readBackup(playlist.coverUrl)
+                    ?: throw IOException("Custom playlist cover is missing or unreadable: ${playlist.id}")
+                coverBytesTotal += bytes.size.toLong()
+                if (coverBytesTotal > MAX_PLAYLIST_COVER_TOTAL_BYTES) {
+                    throw IOException("Playlist cover backup is too large")
+                }
+                val name = playlistCoverBackupEntry(playlist.id)
+                sections[name] = writeBinarySection(zip, name, bytes)
+                coverEntries[playlist.id] = name
+            }
             sections[FAVORITES_ENTRY] = writeJsonSection(zip, FAVORITES_ENTRY) { writer ->
                 val favorites = database.favoriteTracksDao().all().map { it.toTrack() }
                 writeJsonArray(writer, favorites) { TrackJson.toJson(it).toString() }
@@ -293,15 +313,25 @@ class LevyraBackupManager(private val context: Context) {
                 writeJsonArray(writer, followedArtistsStore.load()) { followedArtistToJson(it).toString() }
             }
             sections[PLAYLISTS_ENTRY] = writeJsonSection(zip, PLAYLISTS_ENTRY) { writer ->
-                val playlists = database.playlistDao().allPlaylists()
                 writer.write("[")
-                playlists.forEachIndexed { index, playlist ->
+                playlistEntities.forEachIndexed { index, playlist ->
                     if (index > 0) writer.write(",")
                     val tracks = database.playlistDao().tracksOf(playlist.id)
+                    val customCover = coverEntries[playlist.id]
+                    val coverMode = if (customCover != null) PlaylistCoverMode.CUSTOM else PlaylistCoverMode.AUTO
+                    val coverUrl = if (coverMode == PlaylistCoverMode.AUTO && playlist.coverMode == PlaylistCoverMode.CUSTOM.name) {
+                        tracks.firstNotNullOfOrNull { track ->
+                            track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)
+                        }.orEmpty()
+                    } else {
+                        playlist.coverUrl
+                    }
                     val json = JSONObject()
                         .put("id", playlist.id)
                         .put("name", playlist.name)
-                        .put("coverUrl", playlist.coverUrl)
+                        .put("coverUrl", coverUrl)
+                        .put("coverMode", coverMode.name)
+                        .put("coverEntry", customCover.orEmpty())
                         .put("createdAt", playlist.createdAt)
                         .put("updatedAt", playlist.updatedAt)
                         .put("hidden", playlist.hidden)
@@ -372,6 +402,17 @@ class LevyraBackupManager(private val context: Context) {
         return SectionInfo(sha256Hex(digest.digest()), counter.count)
     }
 
+    private fun writeBinarySection(zip: ZipOutputStream, name: String, bytes: ByteArray): SectionInfo {
+        zip.putNextEntry(ZipEntry(name))
+        val digest = MessageDigest.getInstance("SHA-256")
+        val counter = ByteCounterOutputStream(zip)
+        val output = DigestOutputStream(counter, digest)
+        output.write(bytes)
+        output.flush()
+        zip.closeEntry()
+        return SectionInfo(sha256Hex(digest.digest()), counter.count)
+    }
+
     private fun <T> writeJsonArray(writer: OutputStreamWriter, items: List<T>, encode: (T) -> String) {
         writer.write("[")
         items.forEachIndexed { index, item ->
@@ -389,6 +430,8 @@ class LevyraBackupManager(private val context: Context) {
             ZipInputStream(stream.buffered()).use { zip ->
                 var totalBytes = 0L
                 var entryCount = 0
+                var coverEntryCount = 0
+                var coverBytesTotal = 0L
                 while (true) {
                     val entry = zip.nextEntry ?: break
                     entryCount += 1
@@ -396,8 +439,18 @@ class LevyraBackupManager(private val context: Context) {
                     if (entry.isDirectory) throw IOException("Backup non valido: voce ZIP directory")
                     if (!vaultEntryAllowed(entry.name)) throw IOException("Backup non valido: voce ZIP inattesa ${entry.name}")
                     if (entries.containsKey(entry.name)) throw IOException("Backup non valido: voce duplicata ${entry.name}")
-                    if (entry.size > MAX_ENTRY_BYTES) throw IOException("Backup troppo grande")
-                    val bytes = readZipEntry(zip, MAX_ENTRY_BYTES)
+                    val isPlaylistCover = playlistCoverBackupEntryAllowed(entry.name)
+                    if (isPlaylistCover) {
+                        coverEntryCount += 1
+                        if (coverEntryCount > MAX_PLAYLIST_COVER_ENTRIES) throw IOException("Backup non valido: troppe cover playlist")
+                    }
+                    val entryLimit = vaultEntryLimit(entry.name)
+                    if (entry.size > entryLimit) throw IOException("Backup troppo grande")
+                    val bytes = readZipEntry(zip, entryLimit)
+                    if (isPlaylistCover) {
+                        coverBytesTotal += bytes.size.toLong()
+                        if (coverBytesTotal > MAX_PLAYLIST_COVER_TOTAL_BYTES) throw IOException("Backup non valido: cover playlist troppo grandi")
+                    }
                     totalBytes += bytes.size
                     if (totalBytes > MAX_TOTAL_BYTES) throw IOException("Backup troppo grande")
                     entries[entry.name] = bytes
@@ -434,7 +487,7 @@ class LevyraBackupManager(private val context: Context) {
             followedArtists = parseFollowedArtists(entries[FOLLOWED_ARTISTS_ENTRY].toJsonArray()),
             excludedArtists = parseExcludedArtists(entries[ORGANIZATION_ENTRY].toJsonObject()),
             playlistTags = parsePlaylistTags(entries[ORGANIZATION_ENTRY].toJsonObject()),
-            playlists = parsePlaylists(entries[PLAYLISTS_ENTRY].toJsonArray()),
+            playlists = parsePlaylists(entries[PLAYLISTS_ENTRY].toJsonArray(), entries),
             history = parseHistory(entries[HISTORY_ENTRY].toJsonArray()),
             downloads = parseDownloads(entries[DOWNLOADS_ENTRY].toJsonArray()),
             queueItems = parseQueueItems(queueJson),
@@ -489,15 +542,32 @@ class LevyraBackupManager(private val context: Context) {
     private suspend fun currentSnapshot(): VaultSnapshot {
         val snapshot = preferences.snapshot()
         val playlists = database.playlistDao().allPlaylists().map { playlist ->
+            val tracks = database.playlistDao().tracksOf(playlist.id).map { it.toTrack() }
+            val requestedMode = PlaylistCoverMode.from(playlist.coverMode)
+            val coverBytes = if (requestedMode == PlaylistCoverMode.CUSTOM) {
+                playlistCoverStore.readBackup(playlist.coverUrl)
+            } else {
+                null
+            }
+            val mode = if (coverBytes != null) PlaylistCoverMode.CUSTOM else PlaylistCoverMode.AUTO
+            val coverUrl = if (mode == PlaylistCoverMode.AUTO && requestedMode == PlaylistCoverMode.CUSTOM) {
+                tracks.firstNotNullOfOrNull { track ->
+                    track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)
+                }.orEmpty()
+            } else {
+                playlist.coverUrl
+            }
             PlaylistBackup(
                 id = playlist.id,
                 name = playlist.name,
-                coverUrl = playlist.coverUrl,
+                coverUrl = coverUrl,
+                coverMode = mode,
+                coverBytes = coverBytes,
                 createdAt = playlist.createdAt,
                 updatedAt = playlist.updatedAt,
                 hidden = playlist.hidden,
                 tagIds = tagsDao.tagIdsOf(playlist.id),
-                tracks = database.playlistDao().tracksOf(playlist.id).map { it.toTrack() }
+                tracks = tracks
             )
         }
         return VaultSnapshot(
@@ -519,10 +589,11 @@ class LevyraBackupManager(private val context: Context) {
         followedArtistsStore.saveDurable(payload.followedArtists)
         excludedArtistsStore.replaceAll(payload.excludedArtists)
         val now = System.currentTimeMillis()
+        val restoredCoverReferences = hashSetOf<String>()
         favoritesStoreMutationMutex.withLock {
             database.withTransaction {
                 database.favoriteTracksDao().replaceAll(payload.favorites.mapIndexed { index, track -> track.toFavoriteTrackEntity(now - index) })
-                restorePlaylists(payload.playlists)
+                restorePlaylists(payload.playlists, restoredCoverReferences)
                 restorePlaylistTags(payload.playlistTags, payload.playlists)
                 database.listenEventsDao().replaceAll(payload.history)
                 database.downloadedTracksDao().replaceAll(downloads)
@@ -530,6 +601,7 @@ class LevyraBackupManager(private val context: Context) {
             }
             invalidateFavoriteTimestampSnapshots()
         }
+        playlistCoverStore.prune(restoredCoverReferences)
         AutomaticBackupScheduler.schedule(appContext, payload.settings.backupSettings)
     }
 
@@ -612,19 +684,26 @@ class LevyraBackupManager(private val context: Context) {
         }.getOrDefault(false)
     }
 
-    private suspend fun restorePlaylists(playlists: List<PlaylistBackup>) {
+    private suspend fun restorePlaylists(playlists: List<PlaylistBackup>, restoredCoverReferences: MutableSet<String>) {
         val dao = database.playlistDao()
         dao.clearAll()
         playlists.forEach { playlist ->
             if (playlist.id.isBlank()) return@forEach
+            val coverReference = if (playlist.coverMode == PlaylistCoverMode.CUSTOM) {
+                val bytes = playlist.coverBytes ?: throw IOException("Backup cover missing for playlist ${playlist.id}")
+                playlistCoverStore.restore(playlist.id, bytes).also(restoredCoverReferences::add)
+            } else {
+                playlist.coverUrl
+            }
             dao.upsertPlaylist(
                 PlaylistEntity(
                     playlist.id,
                     playlist.name.ifBlank { "Playlist" },
-                    playlist.coverUrl,
+                    coverReference,
                     playlist.createdAt,
                     playlist.updatedAt,
-                    playlist.hidden
+                    playlist.hidden,
+                    playlist.coverMode.name
                 )
             )
             if (playlist.tracks.isNotEmpty()) {
@@ -781,7 +860,10 @@ class LevyraBackupManager(private val context: Context) {
         )
     }
 
-    private fun parsePlaylists(array: JSONArray?): List<PlaylistBackup> {
+    private fun parsePlaylists(
+        array: JSONArray?,
+        archiveEntries: Map<String, ByteArray> = emptyMap()
+    ): List<PlaylistBackup> {
         if (array == null) return emptyList()
         return buildList {
             for (index in 0 until array.length()) {
@@ -790,11 +872,22 @@ class LevyraBackupManager(private val context: Context) {
                 if (id.isBlank()) continue
                 val createdAt = json.optLong("createdAt", System.currentTimeMillis())
                 val updatedAt = json.optLong("updatedAt", createdAt)
+                val coverMode = PlaylistCoverMode.from(json.optString("coverMode"))
+                val coverEntry = json.optString("coverEntry")
+                val coverBytes = if (coverMode == PlaylistCoverMode.CUSTOM) {
+                    if (!playlistCoverBackupEntryAllowed(coverEntry)) throw IOException("Invalid playlist cover entry")
+                    archiveEntries[coverEntry]?.takeIf(::playlistCoverPayloadAccepted)
+                        ?: throw IOException("Invalid playlist cover payload")
+                } else {
+                    null
+                }
                 add(
                     PlaylistBackup(
                         id = id,
                         name = json.optString("name", "Playlist"),
                         coverUrl = json.optString("coverUrl"),
+                        coverMode = coverMode,
+                        coverBytes = coverBytes,
                         createdAt = createdAt,
                         updatedAt = updatedAt,
                         hidden = json.optBoolean("hidden", false),
@@ -1130,6 +1223,8 @@ class LevyraBackupManager(private val context: Context) {
         val id: String,
         val name: String,
         val coverUrl: String,
+        val coverMode: PlaylistCoverMode,
+        val coverBytes: ByteArray?,
         val createdAt: Long,
         val updatedAt: Long,
         val hidden: Boolean,
@@ -1183,9 +1278,11 @@ class LevyraBackupManager(private val context: Context) {
         const val DOWNLOADS_ENTRY = "data/downloads.json"
         const val QUEUE_ENTRY = "data/queue.json"
         const val ORGANIZATION_ENTRY = "data/library_organization.json"
-        const val MAX_ZIP_ENTRIES = 16
+        const val MAX_ZIP_ENTRIES = 528
         const val MAX_ENTRY_BYTES = 64L * 1024L * 1024L
         const val MAX_TOTAL_BYTES = 96L * 1024L * 1024L
+        const val MAX_PLAYLIST_COVER_ENTRIES = 512
+        const val MAX_PLAYLIST_COVER_TOTAL_BYTES = 64L * 1024L * 1024L
         const val MAX_AUTOMATIC_BACKUPS = 12
         const val AUTOMATIC_BACKUP_DIRECTORY = "backups"
         const val AUTOMATIC_BACKUP_PREFIX = "levyra-auto-backup-"
@@ -1220,8 +1317,12 @@ data class VaultPreview(
 
 internal fun vaultEntryAllowed(name: String): Boolean {
     if (name.isEmpty() || name.startsWith("/") || name.contains("..") || name.contains('\\')) return false
-    return name in LevyraBackupManager.ALLOWED_VAULT_ENTRIES
+    return name in LevyraBackupManager.ALLOWED_VAULT_ENTRIES || playlistCoverBackupEntryAllowed(name)
 }
+
+private fun vaultEntryLimit(name: String): Long =
+    if (playlistCoverBackupEntryAllowed(name)) MAX_PLAYLIST_COVER_BACKUP_BYTES.toLong()
+    else LevyraBackupManager.MAX_ENTRY_BYTES
 
 internal val REQUIRED_VAULT_ENTRIES = setOf(
     LevyraBackupManager.SETTINGS_ENTRY,

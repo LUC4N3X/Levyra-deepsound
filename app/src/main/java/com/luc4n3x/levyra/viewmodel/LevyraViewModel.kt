@@ -22,6 +22,7 @@ import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
+import com.luc4n3x.levyra.data.PlaylistCoverCrop
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -100,6 +101,7 @@ import com.luc4n3x.levyra.ui.i18n.playlistImportAlreadyRunningMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportStartedMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportSuccessMessage
+import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ExcludedArtist
@@ -2735,6 +2737,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun applyJamAction(action: JamAction) {
         when (action) {
             is JamAction.AddTrack -> addToQueueLocal(fromJamTrack(action.track))
+            is JamAction.AddTracks -> {
+                val tracks = action.tracks.map(::fromJamTrack)
+                queueEngine.addLast(tracks)
+                refreshQueuePrefetch()
+                val strings = LevyraStrings.forCode(_state.value.languageCode)
+                _state.update {
+                    it.copy(offlineExportMessage = "${strings.addToQueue}: ${strings.formatTrackCount(tracks.size)}")
+                }
+            }
+            is JamAction.PlayNextTracks -> {
+                val tracks = action.tracks.map(::fromJamTrack)
+                queueEngine.playNext(tracks)
+                refreshQueuePrefetch()
+                val strings = LevyraStrings.forCode(_state.value.languageCode)
+                _state.update {
+                    val message = if (tracks.size == 1) {
+                        "${strings.playNext}: ${tracks.first().title}"
+                    } else {
+                        "${strings.playNext}: ${strings.formatTrackCount(tracks.size)}"
+                    }
+                    it.copy(offlineExportMessage = message)
+                }
+            }
             is JamAction.RemoveTrack -> {
                 val index = _state.value.queue.indexOfFirst { it.id == action.trackId }
                 if (index >= 0) removeFromQueueLocal(index)
@@ -4686,29 +4711,90 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun addToQueueLocal(track: Track) {
         queueEngine.addLast(track)
         refreshQueuePrefetch()
-        _state.update { it.copy(offlineExportMessage = "Aggiunto alla coda: ${track.title}") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update { it.copy(offlineExportMessage = "${strings.addToQueue}: ${track.title}") }
     }
 
     fun addTracksToQueue(tracks: List<Track>) {
         val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
         if (cleanTracks.isEmpty()) return
         if (_state.value.jam.isActive) {
-            cleanTracks.forEach { track -> routeJamAction(JamAction.AddTrack(toJamTrack(track))) }
+            val jam = _state.value.jam
+            when {
+                cleanTracks.size == 1 -> routeJamAction(JamAction.AddTrack(toJamTrack(cleanTracks.first())))
+                jam.supportsBatchAddTracks -> routeJamAction(JamAction.AddTracks(cleanTracks.map(::toJamTrack)))
+                else -> {
+                    jamController.rejectGuestLocalMutation()
+                    val strings = LevyraStrings.forCode(_state.value.languageCode)
+                    _state.update { it.copy(offlineExportMessage = strings.jamNotAuthorized) }
+                }
+            }
             return
         }
-        cleanTracks.forEach { track -> queueEngine.addLast(track) }
+        queueEngine.addLast(cleanTracks)
         refreshQueuePrefetch()
-        _state.update { it.copy(offlineExportMessage = "Aggiunti alla coda: ${cleanTracks.size} brani") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update {
+            it.copy(offlineExportMessage = "${strings.addToQueue}: ${strings.formatTrackCount(cleanTracks.size)}")
+        }
+    }
+
+    fun setPlaylistCover(playlistId: String, source: Uri, crop: PlaylistCoverCrop) {
+        viewModelScope.launch {
+            try {
+                playlistStore.setCustomCover(playlistId, source, crop)
+                loadPlaylists()
+                refreshOpenPlaylist(playlistId)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Playlist cover update failed")
+                val message = LevyraStrings.forCode(_state.value.languageCode).playlistProCopy().coverUpdateFailed
+                _state.update { it.copy(offlineExportMessage = message) }
+            }
+        }
+    }
+
+    fun resetPlaylistCover(playlistId: String) {
+        viewModelScope.launch {
+            try {
+                playlistStore.resetCover(playlistId)
+                loadPlaylists()
+                refreshOpenPlaylist(playlistId)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Playlist cover reset failed")
+                val message = LevyraStrings.forCode(_state.value.languageCode).playlistProCopy().coverUpdateFailed
+                _state.update { it.copy(offlineExportMessage = message) }
+            }
+        }
+    }
+
+    fun playTracksNext(tracks: List<Track>) {
+        val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
+        if (cleanTracks.isEmpty()) return
+        if (_state.value.jam.isActive) {
+            routeJamAction(JamAction.PlayNextTracks(cleanTracks.map(::toJamTrack)))
+            return
+        }
+        queueEngine.playNext(cleanTracks)
+        refreshQueuePrefetch()
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update {
+            it.copy(offlineExportMessage = "${strings.playNext}: ${strings.formatTrackCount(cleanTracks.size)}")
+        }
     }
 
     fun playNext(track: Track) {
         if (_state.value.jam.isActive) {
-            routeJamAction(JamAction.AddTrack(toJamTrack(track)))
+            routeJamAction(JamAction.PlayNextTracks(listOf(toJamTrack(track))))
             return
         }
         queueEngine.playNext(track)
         refreshQueuePrefetch()
-        _state.update { it.copy(offlineExportMessage = "Riproduci dopo: ${track.title}") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update { it.copy(offlineExportMessage = "${strings.playNext}: ${track.title}") }
     }
 
     fun removeFromQueue(index: Int) {
@@ -6159,7 +6245,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (tracks.isEmpty()) return
         dismissSharedMedia()
         tracks.asReversed().forEach(::playNext)
-        _state.update { it.copy(offlineExportMessage = if (tracks.size == 1) "Riproduci dopo: ${tracks.first().title}" else "${tracks.size} brani aggiunti dopo quello corrente") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update {
+            val message = if (tracks.size == 1) {
+                "${strings.playNext}: ${tracks.first().title}"
+            } else {
+                "${strings.playNext}: ${strings.formatTrackCount(tracks.size)}"
+            }
+            it.copy(offlineExportMessage = message)
+        }
     }
 
     fun queueSharedMedia() {
@@ -6167,7 +6261,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (tracks.isEmpty()) return
         dismissSharedMedia()
         tracks.forEach(::addToQueue)
-        _state.update { it.copy(offlineExportMessage = if (tracks.size == 1) "Aggiunto alla coda: ${tracks.first().title}" else "${tracks.size} brani aggiunti alla coda") }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        _state.update {
+            val message = if (tracks.size == 1) {
+                "${strings.addToQueue}: ${tracks.first().title}"
+            } else {
+                "${strings.addToQueue}: ${strings.formatTrackCount(tracks.size)}"
+            }
+            it.copy(offlineExportMessage = message)
+        }
     }
 
     fun downloadSharedMedia() {
