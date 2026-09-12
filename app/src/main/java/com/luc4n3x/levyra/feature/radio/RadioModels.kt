@@ -39,6 +39,9 @@ data class RadioStation(
             it != preferredStreamUrl && RadioUrlPolicy.isAllowed(it)
         }.orEmpty()
 
+    val safeFaviconUrl: String
+        get() = faviconUrl.takeIf(RadioUrlPolicy::isAllowed).orEmpty()
+
     val qualityLabel: String
         get() = listOfNotNull(
             codec.trim().takeIf(String::isNotBlank),

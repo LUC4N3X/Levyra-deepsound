@@ -85,6 +85,18 @@ class RadioModelsTest {
     }
 
     @Test
+    fun safeFaviconUrlRejectsUnsafeTargetsAndAcceptsPublicHttp() {
+        val base = station(uuid = "test-station")
+        assertEquals("", base.copy(faviconUrl = "http://127.0.0.1/icon.png").safeFaviconUrl)
+        assertEquals("", base.copy(faviconUrl = "http://192.168.1.1/icon.png").safeFaviconUrl)
+        assertEquals("", base.copy(faviconUrl = "http://10.0.0.1/icon.png").safeFaviconUrl)
+        assertEquals("", base.copy(faviconUrl = "http://localhost/icon.png").safeFaviconUrl)
+        assertEquals("", base.copy(faviconUrl = "http://[::1]/icon.png").safeFaviconUrl)
+        assertEquals("", base.copy(faviconUrl = "file:///data/local/tmp/icon.png").safeFaviconUrl)
+        assertEquals("https://radio.example/icon.png", base.copy(faviconUrl = "https://radio.example/icon.png").safeFaviconUrl)
+    }
+
+    @Test
     fun rankingDropsBrokenUnsafeAndDuplicateStations() {
         val strong = station(uuid = "station-a", votes = 900, clicks = 20_000)
         val duplicate = station(uuid = "station-b", name = "  TEST--RADIO ", votes = 20, clicks = 10)

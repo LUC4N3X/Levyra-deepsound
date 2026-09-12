@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.feature.radio.LiveRadioArtworkLoader
 import com.luc4n3x.levyra.feature.radio.LiveRadioUiState
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioCategory
@@ -620,7 +621,10 @@ private fun RadioStationRail(
 
 @Composable
 private fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.Dp, shape: RoundedCornerShape) {
-    var failed by remember(station.faviconUrl) { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val imageLoader = remember(context.applicationContext) { LiveRadioArtworkLoader.get(context.applicationContext) }
+    val safeFavicon = remember(station.faviconUrl) { station.safeFaviconUrl }
+    var failed by remember(safeFavicon) { mutableStateOf(false) }
     val initials = remember(station.name) {
         station.name.split(radioArtworkWordPattern).mapNotNull { it.firstOrNull()?.uppercaseChar() }.take(2).joinToString("").ifBlank { "LR" }
     }
@@ -631,9 +635,10 @@ private fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.D
         contentAlignment = Alignment.Center
     ) {
         Text(initials, color = LevyraCyan.copy(alpha = 0.88f), fontSize = if (size > 70.dp) 26.sp else 18.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
-        if (station.faviconUrl.isNotBlank() && !failed) {
+        if (safeFavicon.isNotBlank() && !failed) {
             AsyncImage(
-                model = station.faviconUrl,
+                model = safeFavicon,
+                imageLoader = imageLoader,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 onError = { failed = true },
