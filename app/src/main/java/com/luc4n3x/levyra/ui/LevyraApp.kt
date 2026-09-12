@@ -9747,7 +9747,7 @@ private fun PersonalOrbitQuickTile(
         CoverImage(
             track = track,
             modifier = Modifier.fillMaxSize(),
-            highRes = true
+            highRes = false
         )
 
         Box(
