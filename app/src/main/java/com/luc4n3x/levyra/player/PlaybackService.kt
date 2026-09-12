@@ -76,6 +76,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_SOURCE
+import com.luc4n3x.levyra.feature.radio.RadioUrlPolicy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackBackendProvider
 import com.luc4n3x.levyra.feature.cast.CastHandoffConverter
@@ -401,7 +402,10 @@ class PlaybackService : MediaLibraryService() {
                 )
             )
         val upstreamFactory = LevyraYoutubeDataSource.Factory(baseHttpFactory)
-        val liveRadioDataSourceFactory = OkHttpDataSource.Factory(LevyraHttpClientFactory.streaming(this))
+        val liveRadioHttpClient = LevyraHttpClientFactory.streaming(this).newBuilder()
+            .dns(RadioUrlPolicy.publicDns)
+            .build()
+        val liveRadioDataSourceFactory = OkHttpDataSource.Factory(liveRadioHttpClient)
             .setDefaultRequestProperties(
                 mapOf(
                     "Accept" to "*/*",

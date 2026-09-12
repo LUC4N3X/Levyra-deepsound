@@ -1,9 +1,13 @@
 package com.luc4n3x.levyra.feature.radio
 
+import com.luc4n3x.levyra.data.security.SafeImageUrlPolicy
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
+import java.net.InetAddress
 import java.net.URI
+import java.net.UnknownHostException
 import java.util.Locale
+import okhttp3.Dns
 
 internal const val LIVE_RADIO_SOURCE = "Live Radio"
 
@@ -169,6 +173,23 @@ internal object RadioUrlPolicy {
         Regex("^192\\.168\\."),
         Regex("^172\\.(1[6-9]|2[0-9]|3[01])\\.")
     )
+
+    val publicDns: Dns = publicDns { host ->
+        InetAddress.getAllByName(host).toList()
+    }
+
+    internal fun publicDns(dnsLookup: (String) -> List<InetAddress>): Dns = Dns { hostname ->
+        val addresses = try {
+            dnsLookup(hostname)
+        } catch (e: Exception) {
+            if (e is UnknownHostException) throw e
+            throw UnknownHostException("Failed to resolve radio host: $hostname").apply { initCause(e) }
+        }
+        if (addresses.isEmpty() || addresses.any { !SafeImageUrlPolicy.isPublicAddress(it) }) {
+            throw UnknownHostException("Blocked non-public radio host: $hostname")
+        }
+        addresses
+    }
 
     fun isAllowed(value: String): Boolean {
         val uri = runCatching { URI(value.trim()) }.getOrNull() ?: return false

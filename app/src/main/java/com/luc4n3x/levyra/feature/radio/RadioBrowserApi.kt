@@ -11,6 +11,7 @@ import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -46,20 +47,34 @@ internal class RadioBrowserApi(
         if (clean.length < 2) return emptyList()
         val boundedLimit = limit.coerceIn(1, MAX_STATION_LIMIT)
         return coroutineScope {
-            listOf("name", "country", "language", "tag").map { field ->
+            val deferreds = listOf("name", "country", "language", "tag").map { field ->
                 async {
-                    stationRequest(
-                        path = "json/stations/search",
-                        params = mapOf(
-                            field to clean,
-                            "order" to "votes",
-                            "reverse" to "true",
-                            "hidebroken" to "true",
-                            "limit" to boundedLimit.toString()
+                    try {
+                        Result.success(
+                            stationRequest(
+                                path = "json/stations/search",
+                                params = mapOf(
+                                    field to clean,
+                                    "order" to "votes",
+                                    "reverse" to "true",
+                                    "hidebroken" to "true",
+                                    "limit" to boundedLimit.toString()
+                                )
+                            )
                         )
-                    )
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        Result.failure(error)
+                    }
                 }
-            }.flatMap { it.await() }
+            }
+            val results = deferreds.awaitAll()
+            val (successes, failures) = results.partition { it.isSuccess }
+            if (successes.isEmpty() && failures.isNotEmpty()) {
+                throw failures.first().exceptionOrNull() ?: IllegalStateException("Radio Browser search failed")
+            }
+            successes.flatMap { it.getOrDefault(emptyList()) }
         }
     }
 

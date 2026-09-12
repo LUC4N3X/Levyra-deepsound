@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.feature.radio
 
 import android.content.Context
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -39,13 +40,49 @@ internal class RadioRepository(
     }
 
     private suspend fun localeDiscovery(preference: RadioLanguagePreference, limit: Int): List<RadioStation> = coroutineScope {
-        buildList {
-            add(async { api.stations(RadioFilter(countryCode = preference.primaryCountry, limit = limit)) })
-            add(async { api.stations(RadioFilter(language = preference.radioLanguages.first(), limit = 18)) })
+        val deferreds = buildList {
+            add(
+                async {
+                    try {
+                        Result.success(api.stations(RadioFilter(countryCode = preference.primaryCountry, limit = limit)))
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        Result.failure(error)
+                    }
+                }
+            )
+            add(
+                async {
+                    try {
+                        Result.success(api.stations(RadioFilter(language = preference.radioLanguages.first(), limit = 18)))
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        Result.failure(error)
+                    }
+                }
+            )
             preference.preferredCountries.drop(1).take(2).forEach { country ->
-                add(async { api.stations(RadioFilter(countryCode = country, limit = 10)) })
+                add(
+                    async {
+                        try {
+                            Result.success(api.stations(RadioFilter(countryCode = country, limit = 10)))
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Throwable) {
+                            Result.failure(error)
+                        }
+                    }
+                )
             }
-        }.awaitAll().flatten()
+        }
+        val results = deferreds.awaitAll()
+        val (successes, failures) = results.partition { it.isSuccess }
+        if (successes.isEmpty() && failures.isNotEmpty()) {
+            throw failures.first().exceptionOrNull() ?: IllegalStateException("Radio discovery failed")
+        }
+        successes.flatMap { it.getOrDefault(emptyList()) }
     }
 
     suspend fun search(query: String): List<RadioStation> = withContext(Dispatchers.IO) {

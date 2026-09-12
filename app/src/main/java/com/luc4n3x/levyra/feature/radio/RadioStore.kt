@@ -3,12 +3,15 @@ package com.luc4n3x.levyra.feature.radio
 import android.content.Context
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
 internal class RadioStore(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    private val mutex = Mutex()
 
     suspend fun favorites(): List<RadioStation> = withContext(Dispatchers.IO) {
         decode(preferences.getString(KEY_FAVORITES, null)).take(MAX_FAVORITES)
@@ -19,21 +22,25 @@ internal class RadioStore(context: Context) {
     }
 
     suspend fun setFavorite(station: RadioStation, favorite: Boolean): List<RadioStation> = withContext(Dispatchers.IO) {
-        val current = decode(preferences.getString(KEY_FAVORITES, null)).toMutableList()
-        current.removeAll { it.uuid.equals(station.uuid, true) }
-        if (favorite) current.add(0, station.copy(lastPlayedAt = 0L))
-        val result = current.take(MAX_FAVORITES)
-        preferences.edit().putString(KEY_FAVORITES, encode(result)).commit()
-        result
+        mutex.withLock {
+            val current = decode(preferences.getString(KEY_FAVORITES, null)).toMutableList()
+            current.removeAll { it.uuid.equals(station.uuid, true) }
+            if (favorite) current.add(0, station.copy(lastPlayedAt = 0L))
+            val result = current.take(MAX_FAVORITES)
+            preferences.edit().putString(KEY_FAVORITES, encode(result)).commit()
+            result
+        }
     }
 
     suspend fun recordRecent(station: RadioStation, playedAt: Long): List<RadioStation> = withContext(Dispatchers.IO) {
-        val current = decode(preferences.getString(KEY_RECENT, null)).toMutableList()
-        current.removeAll { it.uuid.equals(station.uuid, true) }
-        current.add(0, station.copy(lastPlayedAt = playedAt))
-        val result = current.take(MAX_RECENT)
-        preferences.edit().putString(KEY_RECENT, encode(result)).commit()
-        result
+        mutex.withLock {
+            val current = decode(preferences.getString(KEY_RECENT, null)).toMutableList()
+            current.removeAll { it.uuid.equals(station.uuid, true) }
+            current.add(0, station.copy(lastPlayedAt = playedAt))
+            val result = current.take(MAX_RECENT)
+            preferences.edit().putString(KEY_RECENT, encode(result)).commit()
+            result
+        }
     }
 
     suspend fun cachedCatalog(languageCode: String): CachedRadioCatalog? = withContext(Dispatchers.IO) {
@@ -47,11 +54,13 @@ internal class RadioStore(context: Context) {
     }
 
     suspend fun saveCatalog(languageCode: String, stations: List<RadioStation>, savedAt: Long) = withContext(Dispatchers.IO) {
-        val key = languageCatalogKey(languageCode)
-        preferences.edit()
-            .putString("$KEY_CATALOG_PREFIX$key", encode(stations.take(MAX_CACHED_STATIONS)))
-            .putLong("$KEY_CATALOG_TIME_PREFIX$key", savedAt)
-            .commit()
+        mutex.withLock {
+            val key = languageCatalogKey(languageCode)
+            preferences.edit()
+                .putString("$KEY_CATALOG_PREFIX$key", encode(stations.take(MAX_CACHED_STATIONS)))
+                .putLong("$KEY_CATALOG_TIME_PREFIX$key", savedAt)
+                .commit()
+        }
     }
 
     private fun encode(stations: List<RadioStation>): String = JSONArray().apply {

@@ -2,9 +2,12 @@ package com.luc4n3x.levyra.feature.radio
 
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
+import java.net.InetAddress
+import java.net.UnknownHostException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class RadioModelsTest {
@@ -40,6 +43,45 @@ class RadioModelsTest {
         assertFalse(RadioUrlPolicy.isAllowed("http://127.0.0.1/live"))
         assertFalse(RadioUrlPolicy.isAllowed("http://192.168.1.20/live"))
         assertFalse(RadioUrlPolicy.isAllowed("https://user:pass@example.org/live"))
+    }
+
+    @Test
+    fun publicDnsAllowsPublicAddressAndRejectsPrivateOrLoopback() {
+        val publicIp = InetAddress.getByName("93.184.216.34")
+        val loopback = InetAddress.getByName("127.0.0.1")
+        val privateIp = InetAddress.getByName("192.168.1.1")
+        val ipv6Loopback = InetAddress.getByName("::1")
+
+        val allowedDns = RadioUrlPolicy.publicDns { listOf(publicIp) }
+        assertEquals(listOf(publicIp), allowedDns.lookup("stream.example.org"))
+
+        val loopbackDns = RadioUrlPolicy.publicDns { listOf(loopback) }
+        try {
+            loopbackDns.lookup("localhost")
+            fail("Expected UnknownHostException for loopback")
+        } catch (_: UnknownHostException) {
+        }
+
+        val privateDns = RadioUrlPolicy.publicDns { listOf(privateIp) }
+        try {
+            privateDns.lookup("internal.lan")
+            fail("Expected UnknownHostException for private IP")
+        } catch (_: UnknownHostException) {
+        }
+
+        val ipv6LoopbackDns = RadioUrlPolicy.publicDns { listOf(ipv6Loopback) }
+        try {
+            ipv6LoopbackDns.lookup("local6")
+            fail("Expected UnknownHostException for IPv6 loopback")
+        } catch (_: UnknownHostException) {
+        }
+
+        val emptyDns = RadioUrlPolicy.publicDns { emptyList() }
+        try {
+            emptyDns.lookup("empty.example.org")
+            fail("Expected UnknownHostException for empty address list")
+        } catch (_: UnknownHostException) {
+        }
     }
 
     @Test
