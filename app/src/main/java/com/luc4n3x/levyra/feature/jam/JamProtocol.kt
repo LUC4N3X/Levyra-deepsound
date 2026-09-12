@@ -262,9 +262,13 @@ object JamProtocol {
     private fun encodeAction(action: JamAction): JSONObject = when (action) {
         is JamAction.AddTrack -> JSONObject().put("kind", "add").put("track", encodeTrack(action.track))
         is JamAction.PlayNextTracks -> JSONObject()
+            .also {
+                require(action.tracks.isNotEmpty())
+                require(action.tracks.size <= JamSessionState.MAX_QUEUE_SIZE)
+            }
             .put("kind", "play_next")
             .put("tracks", JSONArray().apply {
-                action.tracks.take(JamSessionState.MAX_QUEUE_SIZE).forEach { put(encodeTrack(it)) }
+                action.tracks.forEach { put(encodeTrack(it)) }
             })
         is JamAction.RemoveTrack -> JSONObject().put("kind", "remove").put("trackId", action.trackId)
         is JamAction.SelectIndex -> JSONObject().put("kind", "select").put("index", action.index)
