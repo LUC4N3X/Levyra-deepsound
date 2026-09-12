@@ -36,9 +36,11 @@
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki.svg">
     <img src="docs/assets/levyra-wiki.svg" alt="Levyra Documentation">
   </picture></a>
-  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
-    <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" width="150">
-  </a>
+  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-saashub-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-saashub.svg">
+    <img src="docs/assets/levyra-saashub.svg" alt="Approved on SaaSHub">
+  </picture></a>
 </p>
 
 ### ✦ Download
