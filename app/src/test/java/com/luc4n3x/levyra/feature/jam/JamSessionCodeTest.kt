@@ -51,7 +51,7 @@ class JamSessionCodeTest {
         val generated = List(128) { JamSessionCode.newSecret() }
 
         assertEquals(128, JamSessionCode.SECRET_BITS)
-        assertTrue(generated.all(JamSessionCode::isValidSecret))
+        assertTrue(generated.all { JamSessionCode.isValidSecret(it) })
         assertEquals(generated.size, generated.toSet().size)
         assertNotEquals(generated.first(), generated.last())
     }
