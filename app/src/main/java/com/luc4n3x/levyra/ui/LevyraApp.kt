@@ -720,8 +720,8 @@ private fun HomeOfflineNotice(
                 Text(
                     text = retryLabel,
                     color = LevyraCyan,
-                    fontSize = 13.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+                    fontSize = 12.5.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1135,13 +1135,13 @@ private fun HomeSectionHeader(
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(
                 text = displayTitle,
                 color = LevyraText,
-                fontSize = 24.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(24.sp),
+                fontSize = 22.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(22.5.sp),
                 letterSpacing = (-0.70).sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
@@ -1151,8 +1151,8 @@ private fun HomeSectionHeader(
                 Text(
                     text = displaySubtitle,
                     color = LevyraMuted,
-                    fontSize = 13.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+                    fontSize = 12.5.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                     fontWeight = FontWeight.Medium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -2685,7 +2685,7 @@ private fun DownloadProgressHud(state: LevyraUiState, onCancel: (String) -> Unit
                     Icons.Rounded.Close,
                     contentDescription = LocalLevyraStrings.current.cancelDownload,
                     tint = LevyraMuted,
-                    modifier = Modifier.size(21.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -3271,7 +3271,7 @@ private fun AlbumLoadingCard() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(modifier = Modifier.size(226.dp).clip(RoundedCornerShape(28.dp)).background(Color.White.copy(alpha = 0.08f)))
-            Box(modifier = Modifier.height(34.dp).fillMaxWidth(0.70f).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.08f)))
+            Box(modifier = Modifier.height(32.dp).fillMaxWidth(0.70f).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.08f)))
             Box(modifier = Modifier.height(18.dp).fillMaxWidth(0.48f).clip(RoundedCornerShape(9.dp)).background(Color.White.copy(alpha = 0.06f)))
             Box(modifier = Modifier.height(78.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = 0.055f)))
         }
@@ -8234,7 +8234,7 @@ private fun HomeEditorialCollectionsShelf(
 ) {
     val strings = LocalLevyraStrings.current
     val indexedColumns = remember(collections) {
-        collections.mapIndexed { index, collection -> index to collection }.chunked(2)
+        collections.mapIndexed { index, collection -> index to collection }.chunked(5)
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionHeader(
@@ -8474,7 +8474,7 @@ private fun HomeEditorialCollectionDialog(
                             .pressable(onClick = { onPlay(track) })
                             .padding(start = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(11.dp)
+                        horizontalArrangement = Arrangement.spacedBy(9.dp)
                     ) {
                         Box(modifier = Modifier.size(50.dp).clip(RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
                             CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
@@ -8711,8 +8711,8 @@ private fun HomeQuickPicksShelf(
     val containerWidthPx = LocalWindowInfo.current.containerSize.width
     val columnWidth = remember(containerWidthPx, density) {
         val availableWidth = with(density) { containerWidthPx.toDp() }
-        (availableWidth - HomeHorizontalInset - 64.dp)
-            .coerceIn(252.dp, 292.dp)
+        (availableWidth - HomeHorizontalInset - 26.dp)
+            .coerceIn(300.dp, 348.dp)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -8721,7 +8721,7 @@ private fun HomeQuickPicksShelf(
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HOME_DENSE_SHELF_END_PADDING)
         ) {
             itemsIndexed(
@@ -8735,7 +8735,7 @@ private fun HomeQuickPicksShelf(
             ) { _, column ->
                 Column(
                     modifier = Modifier.width(columnWidth),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
                     column.forEach { track ->
                         HomeQuickPickRow(
@@ -8767,7 +8767,7 @@ private fun HomeQuickPickRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp)
+            .heightIn(min = 56.dp)
             .clip(shape)
             .then(
                 if (isCurrent) Modifier.background(LevyraCyan.copy(alpha = 0.07f)) else Modifier
@@ -8775,11 +8775,11 @@ private fun HomeQuickPickRow(
             .pressable(onClick = onPlay)
             .padding(start = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(52.dp)
+                .size(48.dp)
                 .clip(RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
@@ -8819,8 +8819,8 @@ private fun HomeQuickPickRow(
             Text(
                 text = track.title,
                 color = if (isCurrent) LevyraCyan else LevyraText,
-                fontSize = 14.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
+                fontSize = 14.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -8828,8 +8828,8 @@ private fun HomeQuickPickRow(
             Text(
                 text = track.artist,
                 color = LevyraMuted,
-                fontSize = 12.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                fontSize = 11.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -8838,13 +8838,13 @@ private fun HomeQuickPickRow(
         if (onActions != null) {
             IconButton(
                 onClick = onActions,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(42.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.MoreVert,
                     contentDescription = strings.songOptions,
                     tint = LevyraMuted,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         } else {
@@ -9522,7 +9522,6 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -9542,7 +9541,7 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
             )
             Box(
                 modifier = Modifier
-                    .height(44.dp)
+                    .height(40.dp)
                     .pressable(onClick = onPlayAll),
                 contentAlignment = Alignment.Center
             ) {
@@ -9567,8 +9566,8 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
                             text = strings.playAll,
                             color = LevyraText.copy(alpha = 0.90f),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 10.5.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(10.5.sp),
+                            fontSize = 10.sp,
+                            lineHeight = LevyraTypeRhythm.lineHeight(10.sp),
                             maxLines = 1
                         )
                     }
@@ -9576,16 +9575,6 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
             }
         }
 
-        Text(
-            text = strings.personalOrbitSubtitle,
-            color = LevyraMuted,
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium),
-            autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 13.sp, stepSize = 0.5.sp),
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
@@ -18210,7 +18199,7 @@ private fun GreetingBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp)
         ) {
-            LevyraLogoMark(size = 38.dp)
+            LevyraLogoMark(size = 34.dp)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
@@ -18218,8 +18207,8 @@ private fun GreetingBar(
                 Text(
                     text = "LEVYRA",
                     color = LevyraText,
-                    fontSize = 20.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
+                    fontSize = 18.5.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(18.5.sp),
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-0.65).sp,
                     maxLines = 1
@@ -18227,8 +18216,8 @@ private fun GreetingBar(
                 Text(
                     text = greeting,
                     color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                    fontSize = 11.5.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -18642,7 +18631,7 @@ private fun QuickAction(icon: ImageVector, label: String, accent: Color, enabled
             .pressable(enabled = enabled, onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp),
+            modifier = Modifier.padding(horizontal = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
