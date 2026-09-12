@@ -19232,7 +19232,6 @@ private fun AlbumArtworkCard(
     onPlay: () -> Unit
 ) {
     val accentStart = Color(track.accentStart)
-    val accentEnd = Color(track.accentEnd)
     val meta = displayableAlbumLabel(track) ?: track.artist
     Column(
         modifier = Modifier
