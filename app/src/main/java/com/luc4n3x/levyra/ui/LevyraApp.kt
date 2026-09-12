@@ -7047,14 +7047,9 @@ private fun HomeScreen(
         homeAccentStart = Color(palette.start)
         homeAccentEnd = Color(palette.end)
     }
-    val homeScrollInProgress by remember(homeListState) {
-        derivedStateOf { homeListState.isScrollInProgress }
-    }
-    val homeAnimationsEnabled = state.animationsEnabled && !homeScrollInProgress
-
     val animatedHomeAccentStart by animateColorAsState(
         targetValue = homeAccentStart,
-        animationSpec = if (homeAnimationsEnabled) {
+        animationSpec = if (state.animationsEnabled) {
             tween(520, easing = FastOutSlowInEasing)
         } else {
             snap()
@@ -7063,7 +7058,7 @@ private fun HomeScreen(
     )
     val animatedHomeAccentEnd by animateColorAsState(
         targetValue = homeAccentEnd,
-        animationSpec = if (homeAnimationsEnabled) {
+        animationSpec = if (state.animationsEnabled) {
             tween(520, easing = FastOutSlowInEasing)
         } else {
             snap()
@@ -7127,7 +7122,7 @@ private fun HomeScreen(
     }
     val homeBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null,
-        animationsEnabled = homeAnimationsEnabled
+        animationsEnabled = state.animationsEnabled
     )
     val compactHome = state.interfaceSettings.compactHome
     Box(modifier = Modifier.fillMaxSize()) {
@@ -7135,11 +7130,10 @@ private fun HomeScreen(
             accentStart = animatedHomeAccentStart,
             accentEnd = animatedHomeAccentEnd,
             isLight = LevyraIsLight,
-            animationsEnabled = homeAnimationsEnabled,
+            animationsEnabled = state.animationsEnabled,
             modifier = Modifier.fillMaxSize()
         )
-        CompositionLocalProvider(LocalAnimationsEnabled provides homeAnimationsEnabled) {
-            LazyColumn(
+        LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(top = 6.dp, bottom = homeBottomInset + LevyraBottomContentGap),
@@ -7151,7 +7145,7 @@ private fun HomeScreen(
                         GreetingBar(
                             userName = state.userName,
                             isResolving = state.isResolving,
-                            animationsEnabled = homeAnimationsEnabled,
+                            animationsEnabled = state.animationsEnabled,
                             onSearch = viewModel::openSearch,
                             onSettings = viewModel::openSettings
                         )
@@ -7200,7 +7194,7 @@ private fun HomeScreen(
                     item(key = "home-offline-playlists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                         HomeOfflinePlaylistRow(
                             playlists = offlineContent.playlists,
-                            animationsEnabled = homeAnimationsEnabled,
+                            animationsEnabled = state.animationsEnabled,
                             onOpen = { playlist -> viewModel.openPlaylist(playlist.id) }
                         )
                     }
@@ -7368,7 +7362,7 @@ private fun HomeScreen(
                     if (homeAlbums.isNotEmpty()) {
                         HomeAlbumHitRow(
                             albums = homeAlbums,
-                            animationsEnabled = homeAnimationsEnabled,
+                            animationsEnabled = state.animationsEnabled,
                             onOpen = viewModel::openAlbum
                         )
                     } else if (showHomeAlbumShimmer) {
@@ -7402,7 +7396,7 @@ private fun HomeScreen(
                     HomeSectionLead(compactHome) {
                         HomeEditorialCollectionsShelf(
                             collections = visibleEditorialCollections,
-                            animationsEnabled = homeAnimationsEnabled,
+                            animationsEnabled = state.animationsEnabled,
                             onOpen = { collection -> selectedHomeCollectionId = collection.id }
                         )
                     }
@@ -7424,7 +7418,7 @@ private fun HomeScreen(
                     AlbumCardRow(
                         tracks = newReleases.tracks,
                         currentId = state.currentTrack?.id,
-                        animationsEnabled = homeAnimationsEnabled,
+                        animationsEnabled = state.animationsEnabled,
                         onPlay = { viewModel.playFrom(newReleases.tracks, it) }
                     )
                 }
@@ -7535,7 +7529,7 @@ private fun HomeScreen(
                                     AlbumCardGrid(
                                         tracks = section.tracks,
                                         currentId = state.currentTrack?.id,
-                                        animationsEnabled = homeAnimationsEnabled,
+                                        animationsEnabled = state.animationsEnabled,
                                         onPlay = { viewModel.playFrom(section.tracks, it) }
                                     )
                                 }
@@ -7547,7 +7541,7 @@ private fun HomeScreen(
                                     AlbumCardRow(
                                         tracks = section.tracks,
                                         currentId = state.currentTrack?.id,
-                                        animationsEnabled = homeAnimationsEnabled,
+                                        animationsEnabled = state.animationsEnabled,
                                         onPlay = { viewModel.playFrom(section.tracks, it) }
                                     )
                                 }
@@ -7668,7 +7662,6 @@ private fun HomeScreen(
                         HomeSectionInset { StatusBlock(state) }
                     }
                 }
-            }
             }
         }
     }
@@ -19291,12 +19284,18 @@ private fun AlbumArtworkCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .shadow(
-                    elevation = if (isCurrent) 22.dp else 14.dp,
-                    shape = artworkShape,
-                    clip = false,
-                    ambientColor = accentStart.copy(alpha = if (isCurrent) 0.22f else 0.12f),
-                    spotColor = accentEnd.copy(alpha = if (isCurrent) 0.28f else 0.14f)
+                .then(
+                    if (isCurrent) {
+                        Modifier.shadow(
+                            elevation = 10.dp,
+                            shape = artworkShape,
+                            clip = false,
+                            ambientColor = accentStart.copy(alpha = 0.16f),
+                            spotColor = accentEnd.copy(alpha = 0.20f)
+                        )
+                    } else {
+                        Modifier
+                    }
                 )
                 .clip(artworkShape)
                 .background(LevyraPanel)
