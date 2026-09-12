@@ -55,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -86,6 +87,11 @@ import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import java.util.Locale
+
+private val playlistSelectionSaver = listSaver<Set<String>, String>(
+    save = { it.toList() },
+    restore = { it.toSet() }
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -849,8 +855,10 @@ internal fun LevyraPlaylistDetailScreen(
     val playlistProCopy = strings.playlistProCopy()
     var query by rememberSaveable(playlist.id) { mutableStateOf("") }
     var searchActive by rememberSaveable(playlist.id) { mutableStateOf(false) }
-    var selectedKeys by remember(playlist.id) { mutableStateOf(emptySet<String>()) }
-    var selectionMode by remember(playlist.id) { mutableStateOf(false) }
+    var selectedKeys by rememberSaveable(playlist.id, stateSaver = playlistSelectionSaver) {
+        mutableStateOf(emptySet<String>())
+    }
+    var selectionMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var reorderMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var orderedTracks by remember(playlist.id) { mutableStateOf(playlist.tracks) }
     var renameDialog by remember { mutableStateOf(false) }
@@ -934,6 +942,7 @@ internal fun LevyraPlaylistDetailScreen(
                         reorderMode = !reorderMode
                         orderedTracks = playlist.tracks
                         selectedKeys = emptySet()
+                        selectionMode = false
                         query = ""
                     },
                     onSaveOrder = {
