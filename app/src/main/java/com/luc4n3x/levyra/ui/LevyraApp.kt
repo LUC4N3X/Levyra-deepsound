@@ -9592,6 +9592,9 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
     }
 }
 
+private const val HOME_PERSONAL_ORBIT_GRID_LIMIT = 18
+private const val HOME_PERSONAL_ORBIT_PAGE_SIZE = 9
+
 @Composable
 private fun PersonalListeningShelf(
     tracks: List<Track>,
@@ -9607,11 +9610,13 @@ private fun PersonalListeningShelf(
     val shelfTracks = remember(tracks) {
         LevyraPersonalOrbit.distinctWorks(
             LevyraPersonalOrbit.distinctRecordings(tracks)
-        ).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        )
+            .filter(LevyraPersonalOrbit::isEligibleTrack)
+            .take(HOME_PERSONAL_ORBIT_GRID_LIMIT)
     }
     if (shelfTracks.isEmpty()) return
 
-    val pages = remember(shelfTracks) { shelfTracks.chunked(9) }
+    val pages = remember(shelfTracks) { shelfTracks.chunked(HOME_PERSONAL_ORBIT_PAGE_SIZE) }
     val pageState = rememberLazyListState()
     val currentPage by remember(pageState, pages.size) {
         derivedStateOf {
