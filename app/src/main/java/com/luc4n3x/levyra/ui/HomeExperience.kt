@@ -59,14 +59,14 @@ private fun Modifier.homeAtmosphereBackground(
     val blendedAccent = blendHomeAccents(visualPrimary, visualSecondary)
     val heroEdgeAccent = blendHomeAccents(primary, secondary)
     val primaryCenter = if (isLight) Offset(width * 0.12f, -height * 0.10f) else Offset(width * 0.18f, height * 0.02f)
-    val secondaryCenter = if (isLight) Offset(width * 0.98f, height * 0.26f) else Offset(width * 0.92f, height * 0.17f)
-    val centreCenter = if (isLight) Offset(width * 0.52f, height * 0.44f) else Offset(width * 0.50f, height * 0.28f)
+    val secondaryCenter = if (isLight) Offset(width * 0.98f, height * 0.26f) else Offset(width * 0.92f, height * 0.12f)
+    val centreCenter = if (isLight) Offset(width * 0.52f, height * 0.44f) else Offset(width * 0.50f, height * 0.20f)
     val heroBridgeCenter = Offset(width * 0.50f, height * 0.18f)
     val primaryRadius = if (isLight) width * 1.34f else width * 1.10f
-    val secondaryRadius = if (isLight) width * 1.02f else width * 0.92f
-    val centreRadius = if (isLight) width * 1.16f else width * 1.00f
+    val secondaryRadius = if (isLight) width * 1.02f else width * 0.80f
+    val centreRadius = if (isLight) width * 1.16f else width * 0.84f
     val heroBridgeRadius = width * 0.98f
-    val fadeTop = if (isLight) height * 0.34f else height * 0.25f
+    val fadeTop = if (isLight) height * 0.34f else height * 0.21f
 
     val base = homeBaseBrush(isLight)
     val primaryHalo = homeHaloBrush(
@@ -100,7 +100,6 @@ private fun Modifier.homeAtmosphereBackground(
         height = height
     )
     val lowerFade = homeLowerFadeBrush(isLight, fadeTop, height)
-    val persistentTint = homePersistentTintBrush(blendedAccent, height)
     val edgeVignette = homeEdgeVignetteBrush(isLight)
 
     onDrawBehind {
@@ -118,7 +117,6 @@ private fun Modifier.homeAtmosphereBackground(
             topLeft = Offset(0f, fadeTop),
             size = Size(width, height - fadeTop)
         )
-        if (!isLight) drawRect(persistentTint)
     }
 }
 
@@ -219,7 +217,7 @@ private fun homeLowerFadeBrush(isLight: Boolean, fadeTop: Float, height: Float):
     return Brush.verticalGradient(
         colors = colors,
         startY = fadeTop,
-        endY = if (isLight) height * 0.88f else height * 0.64f
+        endY = if (isLight) height * 0.88f else height * 0.50f
     )
 }
 

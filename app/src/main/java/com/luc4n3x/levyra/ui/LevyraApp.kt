@@ -611,19 +611,19 @@ private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
 private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
 private val HOME_DENSE_SHELF_END_PADDING = 38.dp
-private val HOME_COLLECTION_CARD_WIDTH = 154.dp
-private val HOME_COLLECTION_CARD_HEIGHT = 140.dp
-private val HOME_COLLECTION_CARD_CORNER = 18.dp
-private val HOME_COLLECTION_COMPACT_WIDTH = 168.dp
-private val HOME_COLLECTION_ART_SIZE = 58.dp
-private val HOME_COLLECTION_ART_INSET = 10.dp
+private val HOME_COLLECTION_CARD_WIDTH = 148.dp
+private val HOME_COLLECTION_CARD_HEIGHT = 126.dp
+private val HOME_COLLECTION_CARD_CORNER = 16.dp
+private val HOME_COLLECTION_COMPACT_WIDTH = 162.dp
+private val HOME_COLLECTION_ART_SIZE = 52.dp
+private val HOME_COLLECTION_ART_INSET = 9.dp
 private val HOME_COLLECTION_TEXT_END_PADDING = 12.dp
 private val HOME_COLLECTION_ART_TEXT_KEEPOUT =
     HOME_COLLECTION_ART_SIZE + HOME_COLLECTION_ART_INSET - HOME_COLLECTION_TEXT_END_PADDING + 4.dp
-private val HOME_VIDEO_CARD_WIDTH = 218.dp
-private val HOME_ALBUM_CARD_WIDTH = 154.dp
-private val HOME_ARTIST_CARD_WIDTH = 148.dp
-private val HOME_ARTIST_ARTWORK_SIZE = 140.dp
+private val HOME_VIDEO_CARD_WIDTH = 198.dp
+private val HOME_ALBUM_CARD_WIDTH = 138.dp
+private val HOME_ARTIST_CARD_WIDTH = 130.dp
+private val HOME_ARTIST_ARTWORK_SIZE = 122.dp
 private val HOME_COLLECTION_SHELF_END_PADDING = 42.dp
 private val LevyraTabBarHeight = 76.dp
 private val LevyraMiniPlayerHeight = 77.dp
@@ -7968,7 +7968,7 @@ private fun HomeEditorialSpotlight(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(536.dp)
+            .height(472.dp)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -8054,7 +8054,7 @@ private fun HomeEditorialSpotlight(
         modifier = Modifier
             .align(Alignment.BottomStart)
             .fillMaxWidth(0.74f)
-            .padding(start = 22.dp, end = 12.dp, bottom = 56.dp),
+            .padding(start = 22.dp, end = 12.dp, bottom = 48.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Surface(
@@ -8107,8 +8107,8 @@ private fun HomeEditorialSpotlight(
         Text(
             text = soundtrackTitle,
             color = Color.White,
-            fontSize = 40.sp,
-            lineHeight = 44.sp,
+            fontSize = 37.sp,
+            lineHeight = 41.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-1.25).sp,
             maxLines = 2,
@@ -8117,8 +8117,8 @@ private fun HomeEditorialSpotlight(
         Text(
             text = soundtrackLead,
             color = Color.White.copy(alpha = 0.96f),
-            fontSize = 17.sp,
-            lineHeight = 23.sp,
+            fontSize = 16.5.sp,
+            lineHeight = 22.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
@@ -8131,8 +8131,8 @@ private fun HomeEditorialSpotlight(
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .padding(end = 18.dp, bottom = 64.dp)
-            .size(68.dp)
+            .padding(end = 18.dp, bottom = 54.dp)
+            .size(62.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
             when {
@@ -8235,7 +8235,7 @@ private fun HomeEditorialCollectionsShelf(
     val indexedColumns = remember(collections) {
         collections.mapIndexed { index, collection -> index to collection }.chunked(2)
     }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
             subtitle = strings.collectionsSubtitle,
@@ -8259,7 +8259,7 @@ private fun HomeEditorialCollectionsShelf(
                 ) { _, column ->
                     Column(
                         modifier = Modifier.width(cardWidth),
-                        verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         column.forEach { (visualIndex, collection) ->
                             HomeEditorialCollectionCard(
@@ -8359,7 +8359,7 @@ private fun HomeEditorialCollectionCard(
                         .padding(end = HOME_COLLECTION_ART_INSET, bottom = HOME_COLLECTION_ART_INSET)
                         .size(HOME_COLLECTION_ART_SIZE)
                         .graphicsLayer { rotationZ = artworkTilt }
-                        .shadow(9.dp, RoundedCornerShape(9.dp)),
+                        .shadow(5.dp, RoundedCornerShape(9.dp)),
                     highRes = false,
                     zoom = 1.02f
                 )
@@ -8985,7 +8985,7 @@ private fun ArtistHitShelfItem(
     Column(
         modifier = Modifier.width(HOME_ARTIST_CARD_WIDTH).pressable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(9.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         StableRemoteArtwork(
             url = artist.thumbnailUrl,
@@ -8997,8 +8997,8 @@ private fun ArtistHitShelfItem(
         Text(
             text = artist.name,
             color = LevyraText,
-            fontSize = 14.5.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
+            fontSize = 14.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -9284,7 +9284,7 @@ private fun HomeMusicVideoShelf(
             .map(::homeMusicVideoPreviewTrack)
     }
     if (videos.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset { HomeSectionHeader(title) }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val videoCardWidth = rememberShelfItemWidth(maxWidth, HOME_VIDEO_CARD_WIDTH)
@@ -9308,7 +9308,7 @@ private fun HomeMusicVideoShelf(
                             .width(videoCardWidth)
                             .semantics(mergeDescendants = true) { role = Role.Button }
                             .pressable(onClick = { if (active && !isResolving) onToggleCurrent() else onPlay(track) }),
-                        verticalArrangement = Arrangement.spacedBy(9.dp)
+                        verticalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -9366,8 +9366,8 @@ private fun HomeMusicVideoShelf(
                                 shape = CircleShape,
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
-                                    .padding(9.dp)
-                                    .size(38.dp)
+                                    .padding(8.dp)
+                                    .size(34.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     when {
@@ -9620,15 +9620,15 @@ private fun PersonalListeningShelf(
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
             HomeOrbitHeader(onPlayAll = onPlayAll)
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val pagePeek = 28.dp
-            val pageGap = 12.dp
-            val tileGap = 8.dp
+            val pagePeek = 36.dp
+            val pageGap = 10.dp
+            val tileGap = 7.dp
             val pageWidth = (maxWidth - HomeHorizontalInset - pagePeek).coerceAtLeast(258.dp)
             val tileWidth = (pageWidth - tileGap * 2) / 3
 
@@ -9697,7 +9697,7 @@ private fun PersonalListeningShelf(
                     Box(
                         modifier = Modifier
                             .padding(horizontal = 3.dp)
-                            .size(if (index == currentPage) 7.dp else 6.dp)
+                            .size(if (index == currentPage) 6.dp else 5.dp)
                             .background(
                                 if (index == currentPage) LevyraCyan else LevyraMuted.copy(alpha = 0.34f),
                                 CircleShape
@@ -19237,7 +19237,7 @@ private fun AlbumArtworkCard(
         modifier = Modifier
             .width(width)
             .clickable(onClick = onPlay),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         val artworkShape = LevyraHomeDesign.ArtworkShape
         Box(
