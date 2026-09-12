@@ -45,6 +45,11 @@ with its own playback, packaging, versioning, and release lifecycle.
 - Android Auto keeps the classic MediaBrowser surface and may add a templated
   Car App interface, but both surfaces must use the same MediaSession, queue,
   playback service, and browse catalog.
+- Explore exposes Live Radio as a separate Internet-stream mode. It uses the
+  existing MediaSession and service but never enters Song Radio, the durable
+  music queue, seek, repeat, download, lyrics, or video flows.
+- Live Radio playback exposes live state, play/pause, stop, notification and
+  background playback, best-effort ICY metadata, and bounded reconnection.
 
 ### User data and settings
 
@@ -58,6 +63,8 @@ with its own playback, packaging, versioning, and release lifecycle.
   are introduced.
 - Local smart playlists are derived from on-device library and listening data;
   they do not require an account, telemetry, or a second persistent catalog.
+- Live Radio favorites and a bounded recent-station list are stored locally
+  without an account or a Room schema change.
 - Automatic backups are opt-in, atomic, checksum-protected, bounded by an
   explicit retention count, and exclude downloaded audio files.
 
@@ -72,6 +79,8 @@ with its own playback, packaging, versioning, and release lifecycle.
 - Accessibility, RTL behavior, reduced-motion choices, lifecycle, and
   configuration changes are considered for visible changes.
 - Cached usable content remains visible while secondary refresh work runs.
+- Live Radio discovery follows Levyra's selected language, while country and
+  radio-language controls continue to allow worldwide manual exploration.
 
 ### Offline and network behavior
 
@@ -79,6 +88,8 @@ with its own playback, packaging, versioning, and release lifecycle.
 - Retries, timeouts, response sizes, concurrency, caches, storage growth,
   downloads, and prefetch are bounded.
 - Provider-controlled URLs and redirects are treated as untrusted input.
+- Live Radio accepts only validated HTTP or HTTPS station URLs, bounds catalog
+  responses and retries, and bypasses the finite music playback cache.
 - Cancellation is not reported, cached, or counted as an ordinary failure.
 - Users may select system DNS, one of the shipped DNS-over-HTTPS presets, or a
   validated custom HTTPS DNS endpoint. HTTP and SOCKS proxies are explicit,

@@ -24,6 +24,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.DeviceInfo
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Metadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
@@ -49,6 +50,7 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.exoplayer.video.VideoRendererEventListener
+import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
@@ -60,6 +62,7 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
+import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -72,6 +75,8 @@ import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_SOURCE
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackBackendProvider
 import com.luc4n3x.levyra.feature.cast.CastHandoffConverter
 import com.luc4n3x.levyra.feature.cast.LocalPlaybackSnapshot
@@ -186,6 +191,7 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_VIDEO_CACHE_KEY = "levyra.videoCacheKey"
         const val EXTRA_VIDEO_MIME_TYPE = "levyra.videoMimeType"
         const val EXTRA_VIDEO_MODE = "levyra.videoMode"
+        const val EXTRA_LIVE_RADIO = "levyra.liveRadio"
         const val EXTRA_YOUTUBE_LOUDNESS_DB = "levyra.youtubeLoudnessDb"
         const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
         const val ACTION_GET_PLATFORM_TOKEN = "levyra.media.GET_PLATFORM_TOKEN"
@@ -221,6 +227,9 @@ class PlaybackService : MediaLibraryService() {
 
         private val _sleepTimerStateFlow = MutableStateFlow<PlaybackSleepTimerState>(PlaybackSleepTimerState.Disabled)
         val sleepTimerStateFlow: StateFlow<PlaybackSleepTimerState> = _sleepTimerStateFlow.asStateFlow()
+
+        private val _liveRadioMetadataFlow = MutableStateFlow("")
+        val liveRadioMetadataFlow: StateFlow<String> = _liveRadioMetadataFlow.asStateFlow()
 
         @Volatile
         var activePlayer: ExoPlayer? = null
@@ -392,6 +401,15 @@ class PlaybackService : MediaLibraryService() {
                 )
             )
         val upstreamFactory = LevyraYoutubeDataSource.Factory(baseHttpFactory)
+        val liveRadioDataSourceFactory = OkHttpDataSource.Factory(LevyraHttpClientFactory.streaming(this))
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Accept" to "*/*",
+                    "Accept-Encoding" to "identity",
+                    "Icy-MetaData" to "1",
+                    "User-Agent" to "Levyra/${BuildConfig.VERSION_NAME} (Android; Live Radio)"
+                )
+            )
         val cache = LevyraMediaCache.get(this)
         val cacheSinkFactory = CacheDataSink.Factory()
             .setCache(cache)
@@ -410,7 +428,8 @@ class PlaybackService : MediaLibraryService() {
             defaultFactory,
             cacheDataSourceFactory,
             localDataSourceFactory,
-            SabrDataSource.Factory(baseHttpFactory)
+            SabrDataSource.Factory(baseHttpFactory),
+            liveRadioDataSourceFactory
         ).apply {
             setLoadErrorHandlingPolicy(LevyraPlaybackLoadErrorHandlingPolicy)
         }
@@ -470,6 +489,7 @@ class PlaybackService : MediaLibraryService() {
         activePlayer = player
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                _liveRadioMetadataFlow.value = ""
                 RuntimeHooks.player(
                     action = RuntimeSignal.PLAYER_TRANSITION,
                     mode = if (mediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true) {
@@ -496,7 +516,17 @@ class PlaybackService : MediaLibraryService() {
                 normalizationProcessor.setYoutubeLoudness(loudness, perceptual)
                 watchdogPositionMs = C.TIME_UNSET
                 watchdogAdvancedAtMs = SystemClock.elapsedRealtime()
-                if (!isLocalMediaItem(mediaItem)) prefetchServiceQueueNext()
+                if (!isLocalMediaItem(mediaItem) && !isLiveRadioMediaItem(mediaItem)) prefetchServiceQueueNext()
+            }
+
+            override fun onMetadata(metadata: Metadata) {
+                if (!isLiveRadioMediaItem(player.currentMediaItem)) return
+                val title = (0 until metadata.length())
+                    .mapNotNull { index -> (metadata[index] as? IcyInfo)?.title?.trim() }
+                    .firstOrNull(String::isNotBlank)
+                    .orEmpty()
+                    .take(240)
+                if (title.isNotBlank()) _liveRadioMetadataFlow.value = title
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -513,6 +543,11 @@ class PlaybackService : MediaLibraryService() {
                     playbackFailureGuard.onHealthyPlayback()
                 }
                 if (playbackState != Player.STATE_ENDED) return
+                if (isLiveRadioMediaItem(player.currentMediaItem)) {
+                    markPlaybackExpected(false, force = true)
+                    releasePlaybackWakeLock()
+                    return
+                }
                 if (sleepTimer.consumeEndOfTrackBoundary()) {
                     pausePlaybackForSleepTimer()
                     return
@@ -535,7 +570,10 @@ class PlaybackService : MediaLibraryService() {
                     },
                     failure = failureKind.ordinal
                 )
-                if (isTerminalPlaybackFailure(failureKind)) {
+                if (isLiveRadioMediaItem(player.currentMediaItem)) {
+                    markPlaybackExpected(false, force = true)
+                    releasePlaybackWakeLock()
+                } else if (isTerminalPlaybackFailure(failureKind)) {
                     serviceRecoveryExhausted = true
                     markPlaybackExpected(false, force = true)
                     releasePlaybackWakeLock()
@@ -634,6 +672,7 @@ class PlaybackService : MediaLibraryService() {
                         }
                         val snapshot = queueEngine.state.value
                         val track = snapshot.currentTrack ?: error("Nessun brano da ripristinare")
+                        if (track.isLiveRadio()) error("Live radio cannot be resumed as recorded playback")
                         val item = if (isForPlayback) {
                             val resolved = resolveQueueTrack(track)
                             queueEngine.updateTrackAt(snapshot.currentIndex, resolved)
@@ -685,16 +724,24 @@ class PlaybackService : MediaLibraryService() {
                         }
                     }
                     "levyra.queue.shuffle" -> {
-                        queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
+                        if (!isLiveRadioMediaItem(session.player.currentMediaItem)) {
+                            queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
+                        }
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
                     "levyra.favorite.like" -> {
-                        serviceScope.launch(Dispatchers.IO) {
-                            queueEngine.state.value.currentTrack?.let { track ->
-                                favoritesStore.toggleFavorite(track)
+                        if (isLiveRadioMediaItem(session.player.currentMediaItem)) {
+                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                        } else {
+                            serviceScope.launch(Dispatchers.IO) {
+                                queueEngine.state.value.currentTrack?.let { track ->
+                                    if (!track.isLiveRadio()) {
+                                        favoritesStore.toggleFavorite(track)
+                                    }
+                                }
                             }
+                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                         }
-                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
                     else -> super.onCustomCommand(session, controller, customCommand, args)
                 }
@@ -792,6 +839,7 @@ class PlaybackService : MediaLibraryService() {
         })
         val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(sessionPlayer) {
             override fun getDuration(): Long {
+                if (isLiveRadioMediaItem(currentMediaItem)) return androidx.media3.common.C.TIME_UNSET
                 val realDuration = super.getDuration()
                 if (realDuration > 0L) return realDuration
                 val metadataDuration = currentMediaItem?.mediaMetadata?.extras
@@ -801,11 +849,11 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun isCurrentMediaItemSeekable(): Boolean {
-                return getDuration() > 0L && !isCurrentMediaItemLive
+                return !isLiveRadioMediaItem(currentMediaItem) && getDuration() > 0L && !isCurrentMediaItemLive
             }
 
             override fun isCurrentMediaItemLive(): Boolean {
-                return super.isCurrentMediaItemLive()
+                return isLiveRadioMediaItem(currentMediaItem) || super.isCurrentMediaItemLive()
             }
 
             override fun getAvailableCommands(): androidx.media3.common.Player.Commands {
@@ -840,6 +888,11 @@ class PlaybackService : MediaLibraryService() {
 
             override fun hasPreviousMediaItem(): Boolean = canSkipToPreviousTrack()
 
+            override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
+                if (isLiveRadioMediaItem(currentMediaItem)) return
+                super.seekTo(mediaItemIndex, positionMs)
+            }
+
             override fun seekToNext() = seekRemoteOrLocal(forward = true)
 
             override fun seekToNextMediaItem() = seekRemoteOrLocal(forward = true)
@@ -849,6 +902,7 @@ class PlaybackService : MediaLibraryService() {
             override fun seekToPreviousMediaItem() = seekRemoteOrLocal(forward = false, allowRewind = false)
 
             private fun seekRemoteOrLocal(forward: Boolean, allowRewind: Boolean = true) {
+                if (isLiveRadioMediaItem(currentMediaItem)) return
                 if (sessionPlayer.deviceInfo.playbackType != DeviceInfo.PLAYBACK_TYPE_REMOTE) {
                     skipQueue(forward, respectRepeatOne = false, allowRewind = allowRewind)
                     return
@@ -889,9 +943,13 @@ class PlaybackService : MediaLibraryService() {
         return START_STICKY
     }
 
-    private fun canSkipToPreviousTrack(): Boolean = queueEngine.state.value.currentTrack != null
+    private fun canSkipToPreviousTrack(): Boolean {
+        if (isLiveRadioMediaItem(mediaSession?.player?.currentMediaItem ?: activePlayer?.currentMediaItem)) return false
+        return queueEngine.state.value.currentTrack != null
+    }
 
     private fun canSkipToNextTrack(): Boolean {
+        if (isLiveRadioMediaItem(mediaSession?.player?.currentMediaItem ?: activePlayer?.currentMediaItem)) return false
         val snapshot = queueEngine.state.value
         if (snapshot.currentTrack == null) return false
         return snapshot.currentIndex < snapshot.tracks.lastIndex ||
@@ -907,6 +965,8 @@ class PlaybackService : MediaLibraryService() {
         allowRewind: Boolean = true,
         onAdvanced: (() -> Unit)? = null
     ) {
+        val activeMediaItem = activePlayer?.currentMediaItem ?: mediaSession?.player?.currentMediaItem
+        if (isLiveRadioMediaItem(activeMediaItem)) return
         cancelQueueTransition()
         queueSkipJob?.cancel()
         cancelServicePrefetch()
@@ -1014,6 +1074,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun prefetchServiceQueueNext() {
+        if (isLiveRadioMediaItem(mediaSession?.player?.currentMediaItem)) return
         val target = queueEngine.upcoming(1).firstOrNull() ?: return
         prepareQueueNextInternal(target)
     }
@@ -1269,6 +1330,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun maybePrepareQueueTransition(player: ExoPlayer) {
+        if (isLiveRadioMediaItem(player.currentMediaItem)) return
         if (sleepTimer.isEndOfTrackActive()) return
         if (queueTransitionJob?.isActive == true || !player.isPlaying || player.playbackState != Player.STATE_READY) return
         val duration = player.duration.takeIf { it > 0L && it != C.TIME_UNSET } ?: return
@@ -1721,6 +1783,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun skipUnrecoverableTrack() {
         val player = mediaSession?.player ?: return
+        if (isLiveRadioMediaItem(player.currentMediaItem)) return
         val hasQueueItem = player.mediaItemCount > 0
         if (!playbackFailureGuard.shouldSkipAfterUnrecoverableError(
                 enabled = automationSettings.skipUnrecoverableErrors,
@@ -1813,6 +1876,7 @@ class PlaybackService : MediaLibraryService() {
         updateDeviceVolumeReceiver(false)
         sleepTimer.cancel()
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
+        _liveRadioMetadataFlow.value = ""
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
         synchronized(premiumAudioSettingsLock) {
@@ -1916,13 +1980,18 @@ class PlaybackService : MediaLibraryService() {
 
     private fun updatePlaybackProtection(player: Player) {
         (player as? ExoPlayer)?.let { updatePlayerWakeMode(it, it.currentMediaItem) }
+        val isLiveRadio = isLiveRadioMediaItem(player.currentMediaItem)
         val playbackExpected = !serviceRecoveryExhausted &&
             player.mediaItemCount > 0 &&
             player.playWhenReady &&
             player.playbackState != Player.STATE_ENDED
         if (playbackExpected) {
             acquirePlaybackWakeLock()
-            markPlaybackExpected(true)
+            if (isLiveRadio) {
+                markPlaybackExpected(false, force = true)
+            } else {
+                markPlaybackExpected(true)
+            }
         } else if (!shouldPreservePlaybackExpectation(player)) {
             releasePlaybackWakeLock()
             markPlaybackExpected(false)
@@ -1968,6 +2037,7 @@ class PlaybackService : MediaLibraryService() {
     )
 
     private fun discardIncompatiblePlaybackCache(error: PlaybackException) {
+        if (isLiveRadioMediaItem(mediaSession?.player?.currentMediaItem ?: activePlayer?.currentMediaItem)) return
         val reason = playbackFailureReasonOf(error)
         val plan = playbackRecoveryPlanFor(classifyPlaybackFailureReason(reason))
         if (!plan.invalidateCache) return
@@ -2197,6 +2267,7 @@ class PlaybackService : MediaLibraryService() {
 
     private suspend fun restoreCurrentPlayback(positionMs: Long, preferFreshResolution: Boolean): Boolean {
         val player = mediaSession?.player ?: return false
+        if (isLiveRadioMediaItem(player.currentMediaItem)) return false
         if (!playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) return false
         val currentItem = player.currentMediaItem
         val queueSnapshot = queueEngine.state.value
@@ -2275,6 +2346,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun isPlaybackExpected(player: ExoPlayer): Boolean = !serviceRecoveryExhausted &&
+        !isLiveRadioMediaItem(player.currentMediaItem) &&
         player.mediaItemCount > 0 &&
         player.playWhenReady &&
         player.playbackState != Player.STATE_ENDED
@@ -2318,6 +2390,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun scheduleWatchdogRecovery(positionMs: Long) {
         if (serviceRecoveryJob?.isActive == true) return
+        if (isLiveRadioMediaItem(mediaSession?.player?.currentMediaItem)) return
         Timber.w("Playback watchdog detected a stalled player at %d ms", positionMs)
         serviceRecoveryJob = serviceScope.launch {
             val restored = restoreCurrentPlayback(
@@ -2434,12 +2507,22 @@ private object LevyraPlaybackLoadErrorHandlingPolicy : LoadErrorHandlingPolicy {
     override fun getMinimumLoadableRetryCount(dataType: Int): Int = 0
 }
 
+private fun isLiveRadioMediaItem(mediaItem: MediaItem?): Boolean {
+    if (mediaItem == null) return false
+    if (mediaItem.mediaId.startsWith("live-radio:")) return true
+    if (mediaItem.mediaMetadata.mediaType == androidx.media3.common.MediaMetadata.MEDIA_TYPE_RADIO_STATION) return true
+    val extras = mediaItem.mediaMetadata.extras ?: mediaItem.requestMetadata.extras
+    return extras?.getBoolean(PlaybackService.EXTRA_LIVE_RADIO, false) == true ||
+        extras?.getString("levyra.source") == LIVE_RADIO_SOURCE
+}
+
 @UnstableApi
 private class LevyraMediaSourceFactory(
     private val delegate: DefaultMediaSourceFactory,
     private val dataSourceFactory: DataSource.Factory,
     private val localDataSourceFactory: DataSource.Factory,
-    private val sabrDataSourceFactory: DataSource.Factory
+    private val sabrDataSourceFactory: DataSource.Factory,
+    private val liveRadioDataSourceFactory: DataSource.Factory
 ) : MediaSource.Factory {
     private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy = LevyraPlaybackLoadErrorHandlingPolicy
     private var drmSessionManagerProvider: androidx.media3.exoplayer.drm.DrmSessionManagerProvider? = null
@@ -2496,7 +2579,9 @@ private class LevyraMediaSourceFactory(
         val subtitleUris = mediaItem.localConfiguration?.subtitleConfigurations
             .orEmpty()
             .mapTo(hashSetOf()) { it.uri }
-        val factory = DefaultMediaSourceFactory(
+        val routedFactory = if (isLiveRadioMediaItem(mediaItem)) {
+            liveRadioDataSourceFactory
+        } else {
             LevyraRoutingDataSourceFactory(
                 dataSourceFactory = dataSourceFactory,
                 localDataSourceFactory = localDataSourceFactory,
@@ -2504,7 +2589,8 @@ private class LevyraMediaSourceFactory(
                 subtitleDataSourceFactory = subtitleDataSourceFactory,
                 subtitleUris = subtitleUris
             )
-        ).setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+        }
+        val factory = DefaultMediaSourceFactory(routedFactory).setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
         drmSessionManagerProvider?.let { factory.setDrmSessionManagerProvider(it) }
         val localUri = mediaItem.localConfiguration?.uri
         val inferredManifestMimeType = mediaItem.localConfiguration?.mimeType
