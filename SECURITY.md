@@ -18,11 +18,13 @@ Before reporting an issue, please verify whether it still affects the latest ava
 
 **Do not disclose suspected security vulnerabilities in public GitHub Issues, Discussions, pull requests, or other public channels.**
 
-The preferred reporting method is GitHub Private Vulnerability Reporting:
+Levyra does not currently provide a built-in private vulnerability reporting channel.
 
-https://github.com/LUC4N3X/Levyra-deepsound/security/advisories/new
+To report a suspected vulnerability, open a public GitHub issue **only to request a private contact channel**. Do **not** include vulnerability details, proof-of-concept code, exploit steps, credentials, tokens, private URLs, or other sensitive material in the public issue.
 
-If the private reporting option is temporarily unavailable, open a public issue only to request a private contact channel. Do **not** include vulnerability details, proof-of-concept code, exploit steps, credentials, tokens, private URLs, or other sensitive material in that public issue.
+The maintainer will provide an appropriate private contact path when needed.
+
+https://github.com/LUC4N3X/Levyra-deepsound/issues/new/choose
 
 ## What to Include
 
