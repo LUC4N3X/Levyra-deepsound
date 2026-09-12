@@ -556,6 +556,45 @@ class ListeningRecapEngineTest {
         assertEquals(60L, recap.highlights.averageMinutesPerDay)
     }
 
+    @Test
+    fun lifetimeTracksWithEmptyTrackIdDoNotSwapArtwork() {
+        val event1 = event(
+            trackId = "",
+            title = "Song One",
+            artist = "Artist One",
+            thumbnailUrl = "https://example.com/thumb1.jpg",
+            startedAt = now - 1000L
+        )
+        val event2 = event(
+            trackId = "",
+            title = "Song Two",
+            artist = "Artist Two",
+            thumbnailUrl = "https://example.com/thumb2.jpg",
+            startedAt = now - 2000L
+        )
+        val lifetime = LifetimeListening(
+            totalListenMs = 10_000_000L,
+            tracks = listOf(
+                com.luc4n3x.levyra.domain.PulseTrack(trackId = "", title = "Song One", artist = "Artist One", plays = 10, listenedMs = 500_000L),
+                com.luc4n3x.levyra.domain.PulseTrack(trackId = "", title = "Song Two", artist = "Artist Two", plays = 8, listenedMs = 400_000L)
+            )
+        )
+
+        val recap = ListeningRecapEngine.build(
+            events = listOf(event1, event2),
+            period = ListeningRecapPeriod.AllTime,
+            lifetime = lifetime,
+            nowMs = now,
+            zone = zone
+        )
+
+        assertEquals(2, recap.topTracks.size)
+        assertEquals("Song One", recap.topTracks[0].title)
+        assertEquals("https://example.com/thumb1.jpg", recap.topTracks[0].thumbnailUrl)
+        assertEquals("Song Two", recap.topTracks[1].title)
+        assertEquals("https://example.com/thumb2.jpg", recap.topTracks[1].thumbnailUrl)
+    }
+
     private fun hoursAgo(hours: Int): Long = now - hours * 3_600_000L
     private fun daysAgo(days: Int): Long = now - days * 86_400_000L
 

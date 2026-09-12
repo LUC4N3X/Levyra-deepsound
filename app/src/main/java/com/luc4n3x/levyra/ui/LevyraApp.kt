@@ -12682,7 +12682,6 @@ private fun PulseWeekChart(pulse: ListeningPulse, label: String, languageCode: S
                 val dayLabel = day.date.dayOfWeek
                     .getDisplayName(DayTextStyle.SHORT_STANDALONE, locale)
                     .replace(".", "")
-                    .take(3)
                 Text(
                     text = dayLabel,
                     color = LevyraMuted.copy(alpha = 0.8f),

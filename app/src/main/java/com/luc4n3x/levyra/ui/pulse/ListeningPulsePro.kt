@@ -373,7 +373,6 @@ private fun PulseDailyActivityVisualizer(
                 val dayLabel = day.date.dayOfWeek
                     .getDisplayName(DayTextStyle.SHORT_STANDALONE, locale)
                     .replace(".", "")
-                    .take(3)
                 val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL_STANDALONE, locale)
                 val minutes = (day.listenedMs / 60_000L).coerceAtLeast(0L)
                 val durationText = "${number.format(minutes)} ${strings.pulseMinuteShort}"

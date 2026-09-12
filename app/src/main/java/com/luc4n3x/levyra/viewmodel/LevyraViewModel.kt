@@ -10136,11 +10136,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         viewModelScope.launch {
             if (entry.trackId.isNotBlank()) {
-                val dbTrack: Track? = runCatching {
+                val dbTrack = try {
                     withContext(Dispatchers.IO) {
-                        database.listenEventsDao().findLatestByTrackId(entry.trackId)?.toTrack()
+                        database.listenEventsDao()
+                            .findLatestByTrackId(entry.trackId)
+                            ?.toTrack()
                     }
-                }.getOrNull()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    Timber.w(error, "Listening recap DB lookup failed")
+                    null
+                }
                 if (dbTrack != null) {
                     playFrom(listOf(dbTrack), dbTrack)
                     return@launch

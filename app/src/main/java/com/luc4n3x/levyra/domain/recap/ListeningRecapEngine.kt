@@ -176,14 +176,14 @@ object ListeningRecapEngine {
             }
             if ((finalTopTracks.isEmpty() || hasLifetimeOlderHistory) && lifetime.tracks.isNotEmpty()) {
                 val thumbMap = scoped.filter { it.thumbnailUrl.isNotBlank() }
-                    .associate { it.trackId to it.thumbnailUrl }
+                    .associate { ListenIdentity.trackKey(it) to it.thumbnailUrl }
                 finalTopTracks = lifetime.tracks.take(TOP_LIMIT).mapIndexed { idx, t ->
                     TopTrackStat(
                         rank = idx + 1,
                         trackId = t.trackId,
                         title = t.title,
                         artist = t.artist,
-                        thumbnailUrl = thumbMap[t.trackId] ?: "",
+                        thumbnailUrl = thumbMap[ListenIdentity.trackKey(t.trackId, t.title, t.artist)] ?: "",
                         plays = t.plays,
                         listenedMs = t.listenedMs
                     )
