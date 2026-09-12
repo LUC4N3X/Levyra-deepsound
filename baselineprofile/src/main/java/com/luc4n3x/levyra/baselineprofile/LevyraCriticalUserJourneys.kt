@@ -30,7 +30,7 @@ internal fun MacrobenchmarkScope.launchAndExerciseLevyra() {
     device.waitForIdle()
 }
 
-private fun MacrobenchmarkScope.dismissOnboardingIfPresent() {
+internal fun MacrobenchmarkScope.dismissOnboardingIfPresent() {
     val labels = listOf("Continua", "Avanti", "Inizia", "Fatto", "Continue", "Next", "Start", "Done", "Salta", "Skip")
     repeat(6) {
         val button = labels.asSequence()
