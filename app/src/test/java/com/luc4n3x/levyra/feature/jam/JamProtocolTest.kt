@@ -28,6 +28,7 @@ class JamProtocolTest {
     fun everyActionRoundTrips() {
         val actions = listOf(
             JamAction.AddTrack(sampleTrack()),
+            JamAction.AddTracks(listOf(sampleTrack())),
             JamAction.PlayNextTracks(listOf(sampleTrack())),
             JamAction.RemoveTrack("track-1"),
             JamAction.SelectIndex(0),
@@ -44,7 +45,15 @@ class JamProtocolTest {
     }
 
     @Test
-    fun invalidPlayNextBatchesAreRejectedBeforeEncoding() {
+    fun invalidBatchActionsAreRejectedBeforeEncoding() {
+        val emptyAdd = JamMessage.Action("session-1", "guest-1", JamAction.AddTracks(emptyList()))
+        val oversizedAdd = JamMessage.Action(
+            "session-1",
+            "guest-1",
+            JamAction.AddTracks(List(JamSessionState.MAX_QUEUE_SIZE + 1) { index ->
+                JamTrack("add-$index", "Song $index", "Artist", 180_000L, "")
+            })
+        )
         val empty = JamMessage.Action("session-1", "guest-1", JamAction.PlayNextTracks(emptyList()))
         val oversized = JamMessage.Action(
             "session-1",
@@ -54,6 +63,8 @@ class JamProtocolTest {
             })
         )
 
+        assertThrows(IllegalArgumentException::class.java) { JamProtocol.encode(emptyAdd) }
+        assertThrows(IllegalArgumentException::class.java) { JamProtocol.encode(oversizedAdd) }
         assertThrows(IllegalArgumentException::class.java) { JamProtocol.encode(empty) }
         assertThrows(IllegalArgumentException::class.java) { JamProtocol.encode(oversized) }
     }
@@ -144,7 +155,8 @@ class JamProtocolTest {
         shuffle = false,
         repeatMode = 0,
         permission = JamGuestPermission.Collaborative,
-        updatedAtElapsedMs = 0L
+        updatedAtElapsedMs = 0L,
+        capabilities = JamCapabilities.current
     )
 
     private fun sampleTrack() = JamTrack("track-1", "Song", "Artist", 180_000L, "https://example.com/a.jpg")
