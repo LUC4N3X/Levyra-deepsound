@@ -20972,8 +20972,8 @@ private fun ExploreScreen(
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 42.dp, bottom = 190.dp),
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            contentPadding = PaddingValues(top = 20.dp, bottom = 190.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             items(
@@ -21421,7 +21421,7 @@ private fun ExploreLiveRadioEntry(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = radioStrings.subtitle,
+                text = radioStrings.exploreSubtitle,
                 color = LevyraMuted,
                 fontSize = 11.5.sp,
                 maxLines = 1,

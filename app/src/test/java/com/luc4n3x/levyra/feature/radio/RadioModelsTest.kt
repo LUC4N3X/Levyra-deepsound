@@ -29,6 +29,7 @@ class RadioModelsTest {
         LevyraLanguageCatalog.languages.forEach { language ->
             val strings = LevyraLiveRadioCatalog.forCode(language.code)
             assertTrue(strings.subtitle.isNotBlank())
+            assertTrue(strings.exploreSubtitle.isNotBlank())
             assertTrue(strings.searchHint.isNotBlank())
             assertTrue(RadioCategory.entries.map(strings::category).all(String::isNotBlank))
         }
