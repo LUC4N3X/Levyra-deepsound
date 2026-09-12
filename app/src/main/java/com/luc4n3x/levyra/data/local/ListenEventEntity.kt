@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.luc4n3x.levyra.domain.ListenEvent
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.canonicalArtistBrowseIds
 
 @Entity(
     tableName = "listen_events",
@@ -36,7 +37,9 @@ fun ListenEventEntity.toListenEvent(): ListenEvent = ListenEvent(
     trackDurationMs = durationMs,
     completed = completed,
     startedAt = startedAt,
-    artistBrowseIds = artistBrowseIds.split(ARTIST_ID_SEPARATOR).filter(String::isNotBlank)
+    artistBrowseIds = canonicalArtistBrowseIds(artistBrowseIds.split(ARTIST_ID_SEPARATOR)),
+    album = album,
+    thumbnailUrl = largeThumbnailUrl.ifBlank { thumbnailUrl }
 )
 
 fun ListenEventEntity.toTrack(): Track = Track(
@@ -57,7 +60,7 @@ fun ListenEventEntity.toTrack(): Track = Track(
     cacheScore = 50,
     accentStart = 0,
     accentEnd = 0,
-    artistBrowseIds = artistBrowseIds.split(ARTIST_ID_SEPARATOR).filter(String::isNotBlank)
+    artistBrowseIds = canonicalArtistBrowseIds(artistBrowseIds.split(ARTIST_ID_SEPARATOR))
 )
 
 fun Track.toListenEventEntity(listenedMs: Long, completed: Boolean, startedAt: Long): ListenEventEntity = ListenEventEntity(
@@ -70,7 +73,7 @@ fun Track.toListenEventEntity(listenedMs: Long, completed: Boolean, startedAt: L
     thumbnailUrl = thumbnailUrl,
     largeThumbnailUrl = largeThumbnailUrl,
     source = source,
-    artistBrowseIds = artistBrowseIds.filter(String::isNotBlank).joinToString(ARTIST_ID_SEPARATOR),
+    artistBrowseIds = canonicalArtistBrowseIds(artistBrowseIds).joinToString(ARTIST_ID_SEPARATOR),
     listenedMs = listenedMs,
     completed = completed,
     startedAt = startedAt

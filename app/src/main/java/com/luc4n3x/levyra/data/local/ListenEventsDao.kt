@@ -46,6 +46,9 @@ interface ListenEventsDao {
     @Query("SELECT * FROM listen_events ORDER BY startedAt DESC")
     suspend fun all(): List<ListenEventEntity>
 
+    @Query("SELECT * FROM listen_events WHERE trackId = :trackId ORDER BY startedAt DESC LIMIT 1")
+    suspend fun findLatestByTrackId(trackId: String): ListenEventEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(events: List<ListenEventEntity>)
 

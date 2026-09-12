@@ -359,6 +359,39 @@ class LevyraStrings private constructor(
     val pulseWeek: String get() = value("pulseWeek")
     val pulsePeakHour: String get() = value("pulsePeakHour")
     val pulseEmpty: String get() = value("pulseEmpty")
+    val listeningRecap: String get() = value("listeningRecap")
+    val recapSubtitle: String get() = value("recapSubtitle")
+    val recapPeriod7Days: String get() = value("recapPeriod7Days")
+    val recapPeriod30Days: String get() = value("recapPeriod30Days")
+    val recapPeriod365Days: String get() = value("recapPeriod365Days")
+    val recapPeriodAllTime: String get() = value("recapPeriodAllTime")
+    val topTracksTitle: String get() = value("topTracksTitle")
+    val topArtistsTitle: String get() = value("topArtistsTitle")
+    val topAlbumsTitle: String get() = value("topAlbumsTitle")
+    val highlightsTitle: String get() = value("highlightsTitle")
+    val streakHighlight: String get() = value("streakHighlight")
+    val favoriteTimeHighlight: String get() = value("favoriteTimeHighlight")
+    val mostActiveDayHighlight: String get() = value("mostActiveDayHighlight")
+    val replayHighlight: String get() = value("replayHighlight")
+    val discoveryHighlight: String get() = value("discoveryHighlight")
+    val emptyRecapTitle: String get() = value("emptyRecapTitle")
+    val emptyRecapSubtitle: String get() = value("emptyRecapSubtitle")
+    val openRecap: String get() = value("openRecap")
+    val pulseProPeak: String get() = value("pulseProPeak")
+    val pulseProAverage: String get() = value("pulseProAverage")
+    val pulseProActivity: String get() = value("pulseProActivity")
+    val daypartMorning: String get() = value("daypartMorning")
+    val daypartAfternoon: String get() = value("daypartAfternoon")
+    val daypartEvening: String get() = value("daypartEvening")
+    val daypartNight: String get() = value("daypartNight")
+    val recapStreakMax: String get() = value("recapStreakMax")
+    val recapUnitDays: String get() = value("recapUnitDays")
+    val recapUnitHours: String get() = value("recapUnitHours")
+    val recapUnitMinutes: String get() = value("recapUnitMinutes")
+    val recapRecentActivity: String get() = value("recapRecentActivity")
+    val recapActivityLast30Days: String get() = value("recapActivityLast30Days")
+    val recapCompletionRate: String get() = value("recapCompletionRate")
+    val recapRepeatLabel: String get() = value("recapRepeatLabel")
     val listeningHistory: String get() = value("listeningHistory")
     val listeningHistorySubtitle: String get() = value("listeningHistorySubtitle")
     val listeningPrompt: String get() = value("listeningPrompt")
@@ -953,55 +986,58 @@ class LevyraStrings private constructor(
 
     fun formatTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
+        val formattedValue = NumberFormat
+            .getIntegerInstance(Locale.forLanguageTag(code))
+            .format(value)
         return when (code) {
-            "it" -> if (value == 1) "$value brano" else "$value brani"
-            "es" -> if (value == 1) "$value canción" else "$value canciones"
-            "fr" -> if (value == 1) "$value titre" else "$value titres"
-            "de" -> "$value Titel"
-            "pt" -> if (value == 1) "$value música" else "$value músicas"
-            "nl" -> if (value == 1) "$value nummer" else "$value nummers"
+            "it" -> if (value == 1) "$formattedValue brano" else "$formattedValue brani"
+            "es" -> if (value == 1) "$formattedValue canción" else "$formattedValue canciones"
+            "fr" -> if (value == 1) "$formattedValue titre" else "$formattedValue titres"
+            "de" -> "$formattedValue Titel"
+            "pt" -> if (value == 1) "$formattedValue música" else "$formattedValue músicas"
+            "nl" -> if (value == 1) "$formattedValue nummer" else "$formattedValue nummers"
             "pl" -> when {
-                value == 1 -> "$value utwór"
-                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value utwory"
-                else -> "$value utworów"
+                value == 1 -> "$formattedValue utwór"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue utwory"
+                else -> "$formattedValue utworów"
             }
-            "ro" -> if (value == 1) "$value piesă" else "$value piese"
-            "el" -> if (value == 1) "$value τραγούδι" else "$value τραγούδια"
-            "sv" -> if (value == 1) "$value låt" else "$value låtar"
-            "da" -> if (value == 1) "$value sang" else "$value sange"
+            "ro" -> if (value == 1) "$formattedValue piesă" else "$formattedValue piese"
+            "el" -> if (value == 1) "$formattedValue τραγούδι" else "$formattedValue τραγούδια"
+            "sv" -> if (value == 1) "$formattedValue låt" else "$formattedValue låtar"
+            "da" -> if (value == 1) "$formattedValue sang" else "$formattedValue sange"
             "cs" -> when {
-                value == 1 -> "$value skladba"
-                value in 2..4 -> "$value skladby"
-                else -> "$value skladeb"
+                value == 1 -> "$formattedValue skladba"
+                value in 2..4 -> "$formattedValue skladby"
+                else -> "$formattedValue skladeb"
             }
             "uk" -> when {
-                value % 10 == 1 && value % 100 != 11 -> "$value трек"
-                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value треки"
-                else -> "$value треків"
+                value % 10 == 1 && value % 100 != 11 -> "$formattedValue трек"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue треки"
+                else -> "$formattedValue треків"
             }
             "ru" -> when {
-                value % 10 == 1 && value % 100 != 11 -> "$value трек"
-                value % 10 in 2..4 && value % 100 !in 12..14 -> "$value трека"
-                else -> "$value треков"
+                value % 10 == 1 && value % 100 != 11 -> "$formattedValue трек"
+                value % 10 in 2..4 && value % 100 !in 12..14 -> "$formattedValue трека"
+                else -> "$formattedValue треков"
             }
-            "tr" -> "$value şarkı"
+            "tr" -> "$formattedValue şarkı"
             "ar" -> when {
                 value == 0 -> "لا مقاطع"
                 value == 1 -> "مقطع واحد"
                 value == 2 -> "مقطعان"
-                value % 100 in 3..10 -> "$value مقاطع"
-                else -> "$value مقطعًا"
+                value % 100 in 3..10 -> "$formattedValue مقاطع"
+                else -> "$formattedValue مقطعًا"
             }
-            "zh" -> "$value 首歌曲"
-            "ja" -> "$value 曲"
-            "ko" -> "${value}곡"
-            "hi" -> "$value ट्रैक"
-            "id" -> "$value lagu"
-            "vi" -> "$value bài hát"
-            "th" -> "$value เพลง"
-            "fil" -> "$value kanta"
-            "he" -> if (value == 1) "שיר אחד" else "$value שירים"
-            else -> if (value == 1) "$value track" else "$value tracks"
+            "zh" -> "$formattedValue 首歌曲"
+            "ja" -> "$formattedValue 曲"
+            "ko" -> "${formattedValue}곡"
+            "hi" -> "$formattedValue ट्रैक"
+            "id" -> "$formattedValue lagu"
+            "vi" -> "$formattedValue bài hát"
+            "th" -> "$formattedValue เพลง"
+            "fil" -> "$formattedValue kanta"
+            "he" -> if (value == 1) "שיר אחד" else "$formattedValue שירים"
+            else -> if (value == 1) "$formattedValue track" else "$formattedValue tracks"
         }
     }
 
@@ -1478,6 +1514,42 @@ class LevyraStrings private constructor(
             "networkApplied"
         )
 
+        private val recapKeys = setOf(
+            "listeningRecap",
+            "recapSubtitle",
+            "recapPeriod7Days",
+            "recapPeriod30Days",
+            "recapPeriod365Days",
+            "recapPeriodAllTime",
+            "topTracksTitle",
+            "topArtistsTitle",
+            "topAlbumsTitle",
+            "highlightsTitle",
+            "streakHighlight",
+            "favoriteTimeHighlight",
+            "mostActiveDayHighlight",
+            "replayHighlight",
+            "discoveryHighlight",
+            "emptyRecapTitle",
+            "emptyRecapSubtitle",
+            "openRecap",
+            "pulseProPeak",
+            "pulseProAverage",
+            "pulseProActivity",
+            "daypartMorning",
+            "daypartAfternoon",
+            "daypartEvening",
+            "daypartNight",
+            "recapStreakMax",
+            "recapUnitDays",
+            "recapUnitHours",
+            "recapUnitMinutes",
+            "recapRecentActivity",
+            "recapActivityLast30Days",
+            "recapCompletionRate",
+            "recapRepeatLabel"
+        )
+
         private val integrationKeys = setOf(
             "integrations",
             "apiKeyLabel",
@@ -1520,8 +1592,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys + similarSongsKeys + playerVisualKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys + similarSongsKeys + playerVisualKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

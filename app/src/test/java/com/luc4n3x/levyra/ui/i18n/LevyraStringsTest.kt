@@ -25,7 +25,23 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, playerVisualLocalizationCodes())
         assertEquals(catalogCodes, queueSelectionLocalizationCodes())
         assertEquals(catalogCodes, offlineHomeLocalizationCodes())
+        assertEquals(catalogCodes, recapLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
+            assertTrue(strings.listeningRecap.isNotBlank())
+            assertTrue(strings.recapSubtitle.isNotBlank())
+            assertTrue(strings.recapPeriod7Days.isNotBlank())
+            assertTrue(strings.recapPeriod30Days.isNotBlank())
+            assertTrue(strings.recapPeriod365Days.isNotBlank())
+            assertTrue(strings.recapPeriodAllTime.isNotBlank())
+            assertTrue(strings.topTracksTitle.isNotBlank())
+            assertTrue(strings.topArtistsTitle.isNotBlank())
+            assertTrue(strings.topAlbumsTitle.isNotBlank())
+            assertTrue(strings.recapUnitHours.isNotBlank())
+            assertTrue(strings.recapRepeatLabel.isNotBlank())
+            assertTrue(strings.openRecap.isNotBlank())
+            assertTrue(strings.pulseProPeak.isNotBlank())
+            assertTrue(strings.pulseProAverage.isNotBlank())
+            assertTrue(strings.pulseProActivity.isNotBlank())
             assertTrue(strings.moreLikeThis.isNotBlank())
             assertTrue(strings.offlineHomeTitle.isNotBlank())
             assertTrue(strings.offlineHomeMessage.isNotBlank())
@@ -111,6 +127,23 @@ class LevyraStringsTest {
         assertEquals("he", LevyraStrings.forCode("he-IL").code)
         assertEquals("he", LevyraStrings.forCode("iw_IL").code)
         assertEquals("en", LevyraStrings.forCode("xx-YY").code)
+    }
+
+    @Test
+    fun recapPeriod365DaysUsesRollingWindowSemanticsAcrossLocales() {
+        assertEquals("Last 365 Days", LevyraStrings.forCode("en").recapPeriod365Days)
+        assertEquals("Ultimi 365 giorni", LevyraStrings.forCode("it").recapPeriod365Days)
+        assertEquals("Últimos 365 días", LevyraStrings.forCode("es").recapPeriod365Days)
+        assertEquals("Letzte 365 Tage", LevyraStrings.forCode("de").recapPeriod365Days)
+        val calendarYearWords = listOf("This Year", "Quest'anno", "Este año", "Cette année", "Dieses Jahr", "Este ano", "Dit jaar", "Ten rok")
+        LevyraStrings.all().forEach { strings ->
+            calendarYearWords.forEach { banned ->
+                assertFalse(
+                    "recapPeriod365Days for ${strings.code} implies calendar year ($banned)",
+                    strings.recapPeriod365Days.equals(banned, ignoreCase = true)
+                )
+            }
+        }
     }
 
     @Test
@@ -367,11 +400,11 @@ class LevyraStringsTest {
     fun arabicFewPluralUsesModuloOneHundredAcrossFormatters() {
         val strings = LevyraStrings.forCode("ar")
         val cases = listOf(
-            3 to listOf("3 مقاطع", "تم تنزيل 3 مقاطع", "تم حفظ 3 مقاطع", "3 نتائج"),
-            10 to listOf("10 مقاطع", "تم تنزيل 10 مقاطع", "تم حفظ 10 مقاطع", "10 نتائج"),
-            11 to listOf("11 مقطعًا", "تم تنزيل 11 مقطعًا", "تم حفظ 11 مقطعًا", "11 نتيجة"),
-            103 to listOf("103 مقاطع", "تم تنزيل 103 مقاطع", "تم حفظ 103 مقاطع", "103 نتائج"),
-            111 to listOf("111 مقطعًا", "تم تنزيل 111 مقطعًا", "تم حفظ 111 مقطعًا", "111 نتيجة")
+            3 to listOf("٣ مقاطع", "تم تنزيل 3 مقاطع", "تم حفظ 3 مقاطع", "3 نتائج"),
+            10 to listOf("١٠ مقاطع", "تم تنزيل 10 مقاطع", "تم حفظ 10 مقاطع", "10 نتائج"),
+            11 to listOf("١١ مقطعًا", "تم تنزيل 11 مقطعًا", "تم حفظ 11 مقطعًا", "11 نتيجة"),
+            103 to listOf("١٠٣ مقاطع", "تم تنزيل 103 مقاطع", "تم حفظ 103 مقاطع", "103 نتائج"),
+            111 to listOf("١١١ مقطعًا", "تم تنزيل 111 مقطعًا", "تم حفظ 111 مقطعًا", "111 نتيجة")
         )
 
         cases.forEach { (value, expected) ->
@@ -380,6 +413,35 @@ class LevyraStringsTest {
             assertEquals(expected[2], strings.formatSavedTrackCount(value))
             assertEquals(expected[3], strings.formatSearchResults(value))
         }
+    }
+
+    @Test
+    fun formatTrackCountAcrossLocalesRespectsPluralsAndNumberFormat() {
+        val italian = LevyraStrings.forCode("it")
+        assertEquals("1 brano", italian.formatTrackCount(1))
+        assertEquals("5 brani", italian.formatTrackCount(5))
+
+        val polish = LevyraStrings.forCode("pl")
+        assertEquals("1 utwór", polish.formatTrackCount(1))
+        assertEquals("2 utwory", polish.formatTrackCount(2))
+        assertEquals("5 utworów", polish.formatTrackCount(5))
+        assertEquals("22 utwory", polish.formatTrackCount(22))
+        assertEquals("25 utworów", polish.formatTrackCount(25))
+
+        val russian = LevyraStrings.forCode("ru")
+        assertEquals("1 трек", russian.formatTrackCount(1))
+        assertEquals("2 трека", russian.formatTrackCount(2))
+        assertEquals("5 треков", russian.formatTrackCount(5))
+        assertEquals("21 трек", russian.formatTrackCount(21))
+        assertEquals("22 трека", russian.formatTrackCount(22))
+        assertEquals("25 треков", russian.formatTrackCount(25))
+
+        val arabic = LevyraStrings.forCode("ar")
+        assertEquals("لا مقاطع", arabic.formatTrackCount(0))
+        assertEquals("مقطع واحد", arabic.formatTrackCount(1))
+        assertEquals("مقطعان", arabic.formatTrackCount(2))
+        assertEquals("٣ مقاطع", arabic.formatTrackCount(3))
+        assertEquals("١١ مقطعًا", arabic.formatTrackCount(11))
     }
 
     @Test

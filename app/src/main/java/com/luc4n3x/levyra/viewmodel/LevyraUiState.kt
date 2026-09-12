@@ -32,6 +32,8 @@ import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.ListeningDna
 import com.luc4n3x.levyra.domain.ListeningDnaPeriod
+import com.luc4n3x.levyra.domain.recap.ListeningRecapPeriod
+import com.luc4n3x.levyra.domain.recap.ListeningRecapSummary
 import com.luc4n3x.levyra.domain.LevyraMixDefaults
 import com.luc4n3x.levyra.domain.LevyraMixSummary
 import com.luc4n3x.levyra.domain.ListeningPulse
@@ -260,7 +262,11 @@ data class LevyraUiState(
     val showYourSound: Boolean = false,
     val listeningDnaPeriod: ListeningDnaPeriod = ListeningDnaPeriod.Month,
     val listeningDna: ListeningDna = ListeningDna(),
-    val listeningDnaLoading: Boolean = false
+    val listeningDnaLoading: Boolean = false,
+    val showListeningRecap: Boolean = false,
+    val listeningRecapPeriod: ListeningRecapPeriod = ListeningRecapPeriod.Days30,
+    val listeningRecap: ListeningRecapSummary = ListeningRecapSummary(period = ListeningRecapPeriod.Days30),
+    val listeningRecapLoading: Boolean = false
 )
 
 @Immutable

@@ -99,6 +99,51 @@ class ListeningPulseEngineTest {
     }
 
     @Test
+    fun featuringCreditsAreAttributedToPrimaryArtist() {
+        val events = listOf(
+            event(
+                trackId = "feature",
+                artist = "Geolier, Sfera Ebbasta",
+                artistBrowseIds = listOf("UC_GEOLIER", "UC_SFERA"),
+                listenedMs = 60_000L,
+                startedAt = hoursAgo(1)
+            ),
+            event(
+                trackId = "solo",
+                artist = "Geolier",
+                artistBrowseIds = listOf("UC_GEOLIER"),
+                listenedMs = 60_000L,
+                startedAt = hoursAgo(2)
+            )
+        )
+
+        val pulse = engine.build(events, now)
+
+        assertEquals(1, pulse.distinctArtists)
+        assertEquals(1, pulse.topArtists.size)
+        assertEquals("Geolier", pulse.topArtists.single().name)
+        assertEquals(2, pulse.topArtists.single().plays)
+    }
+
+    @Test
+    fun structuredSingleArtistNameWithSeparatorsIsPreserved() {
+        val pulse = engine.build(
+            listOf(
+                event(
+                    trackId = "band",
+                    artist = "Earth, Wind & Fire",
+                    artistBrowseIds = listOf("UC_EWF"),
+                    listenedMs = 60_000L,
+                    startedAt = hoursAgo(1)
+                )
+            ),
+            now
+        )
+
+        assertEquals("Earth, Wind & Fire", pulse.topArtists.single().name)
+    }
+
+    @Test
     fun streakCountsConsecutiveDaysEndingToday() {
         val events = listOf(
             event(trackId = "a", startedAt = daysAgo(0)),
@@ -218,6 +263,7 @@ class ListeningPulseEngineTest {
         trackId: String = "track",
         title: String = "Title",
         artist: String = "Artist",
+        artistBrowseIds: List<String> = emptyList(),
         listenedMs: Long = 30_000L,
         durationMs: Long = 180_000L,
         completed: Boolean = false,
@@ -226,6 +272,7 @@ class ListeningPulseEngineTest {
         trackId = trackId,
         title = title,
         artist = artist,
+        artistBrowseIds = artistBrowseIds,
         listenedMs = listenedMs,
         trackDurationMs = durationMs,
         completed = completed,

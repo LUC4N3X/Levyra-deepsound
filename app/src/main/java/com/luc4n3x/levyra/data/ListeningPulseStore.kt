@@ -13,6 +13,8 @@ import com.luc4n3x.levyra.domain.LifetimeListening
 import com.luc4n3x.levyra.domain.ListenEvent
 import com.luc4n3x.levyra.domain.ListenIdentity
 import com.luc4n3x.levyra.domain.ListenPlayPolicy
+import com.luc4n3x.levyra.domain.canonicalArtistBrowseIds
+import com.luc4n3x.levyra.domain.primaryArtistCredit
 import com.luc4n3x.levyra.domain.PulseTrack
 import com.luc4n3x.levyra.domain.PersonalizedArtistCandidate
 import com.luc4n3x.levyra.domain.SmartPlaylistListen
@@ -29,7 +31,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
-class ListeningPulseStore(context: Context) {
+class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.ListeningPulseDataSource {
     private val database = LevyraDatabase.get(context.applicationContext)
     private val dao = database.listenEventsDao()
     private val lifetimeDao = database.listenLifetimeDao()
@@ -68,19 +70,31 @@ class ListeningPulseStore(context: Context) {
         val durationMs = existing?.durationMs?.takeIf { it > 0L } ?: track.durationMs
         val newMs = maxOf(previousMs, listenedMs)
         val newCompleted = previousCompleted || completed
+        val existingArtistIds = canonicalArtistBrowseIds(
+            existing?.artistBrowseIds.orEmpty().split(ARTIST_ID_SEPARATOR)
+        )
+        val currentArtistIdentity = lifetimeArtistIdentity(
+            artist = track.artist,
+            rawBrowseIds = existingArtistIds + track.artistBrowseIds,
+            preferredPrimaryId = existingArtistIds.firstOrNull().orEmpty()
+        )
+        val persistedTrack = track.copy(artistBrowseIds = currentArtistIdentity.browseIds)
 
         if (existing == null) {
-            dao.insert(track.toListenEventEntity(newMs, newCompleted, startedAt))
+            dao.insert(persistedTrack.toListenEventEntity(newMs, newCompleted, startedAt))
         } else {
             dao.updateSession(
                 trackId = track.id,
                 startedAt = startedAt,
                 listenedMs = newMs,
                 completed = if (newCompleted) 1 else 0,
-                artistBrowseIds = track.artistBrowseIds
-                    .filter(String::isNotBlank)
-                    .joinToString(ARTIST_ID_SEPARATOR)
+                artistBrowseIds = currentArtistIdentity.browseIds.joinToString(ARTIST_ID_SEPARATOR)
             )
+            val previousArtistIdentity = lifetimeArtistIdentity(
+                artist = existing.artist,
+                rawBrowseIds = existingArtistIds
+            )
+            reconcileLifetimeArtistIdentity(previousArtistIdentity, currentArtistIdentity)
         }
 
         val previousCounted = existing != null &&
@@ -90,6 +104,7 @@ class ListeningPulseStore(context: Context) {
             trackId = track.id,
             title = track.title,
             artist = track.artist,
+            artistBrowseIds = currentArtistIdentity.browseIds,
             listenedMsDelta = newMs - previousMs,
             playDelta = if (!previousCounted && newCounted) 1 else 0,
             completionDelta = if (!previousCompleted && newCompleted) 1 else 0,
@@ -102,6 +117,7 @@ class ListeningPulseStore(context: Context) {
         trackId: String,
         title: String,
         artist: String,
+        artistBrowseIds: List<String>,
         listenedMsDelta: Long,
         playDelta: Int,
         completionDelta: Int,
@@ -120,11 +136,11 @@ class ListeningPulseStore(context: Context) {
             eventCount = eventDelta,
             playedAt = playedAt
         )
-        val artistKey = ListenIdentity.artistKey(artist)
-        if (artistKey.isNotEmpty()) {
+        val identity = lifetimeArtistIdentity(artist, artistBrowseIds)
+        if (identity.key.isNotEmpty()) {
             lifetimeDao.addArtistDelta(
-                artistKey = artistKey,
-                name = artist.trim(),
+                artistKey = identity.key,
+                name = identity.name,
                 listenedMs = listenedMsDelta,
                 countedPlays = playDelta,
                 completedCount = completionDelta,
@@ -134,33 +150,59 @@ class ListeningPulseStore(context: Context) {
         }
     }
 
-    suspend fun ensureLifetimeBackfill() {
-        withContext(Dispatchers.IO) {
-            writeLock.withLock {
-                if (preferences.listeningLifetimeBackfillVersion() >= LIFETIME_BACKFILL_VERSION) {
-                    return@withLock
+    private suspend fun reconcileLifetimeArtistIdentity(
+        previous: LifetimeArtistIdentity,
+        current: LifetimeArtistIdentity
+    ) {
+        if (previous.key.isBlank() || current.key.isBlank() || previous.key == current.key) return
+        val old = lifetimeDao.artistByKey(previous.key) ?: return
+
+        lifetimeDao.addArtistDelta(
+            artistKey = current.key,
+            name = current.name,
+            listenedMs = old.listenedMs,
+            countedPlays = old.countedPlays,
+            completedCount = old.completedCount,
+            eventCount = old.eventCount,
+            playedAt = old.firstPlayedAt
+        )
+        if (old.lastPlayedAt > old.firstPlayedAt) {
+            lifetimeDao.addArtistDelta(
+                artistKey = current.key,
+                name = current.name,
+                listenedMs = 0L,
+                countedPlays = 0,
+                completedCount = 0,
+                eventCount = 0,
+                playedAt = old.lastPlayedAt
+            )
+        }
+        lifetimeDao.deleteArtistByKey(previous.key)
+    }
+
+    suspend fun ensureLifetimeBackfill(): Boolean = withContext(Dispatchers.IO) {
+        writeLock.withLock {
+            if (preferences.listeningLifetimeBackfillVersion() >= LIFETIME_BACKFILL_VERSION) {
+                return@withLock false
+            }
+            try {
+                database.withTransaction {
+                    lifetimeDao.clearTracks()
+                    lifetimeDao.clearArtists()
+                    executeLifetimeBackfillPaging(
+                        pageSize = BACKFILL_PAGE_SIZE,
+                        fetchPage = { afterId, limit -> dao.pageAfter(afterId, limit) },
+                        getId = { it.id },
+                        processEvent = { entity -> backfillEvent(entity) }
+                    )
                 }
-                try {
-                    database.withTransaction {
-                        lifetimeDao.clearTracks()
-                        lifetimeDao.clearArtists()
-                        var afterId = 0L
-                        var processed = 0
-                        while (processed < BACKFILL_MAX_EVENTS) {
-                            val page = dao.pageAfter(afterId, BACKFILL_PAGE_SIZE)
-                            if (page.isEmpty()) break
-                            page.forEach { entity -> backfillEvent(entity) }
-                            afterId = page.last().id
-                            processed += page.size
-                            if (page.size < BACKFILL_PAGE_SIZE) break
-                        }
-                    }
-                    preferences.setListeningLifetimeBackfillVersion(LIFETIME_BACKFILL_VERSION)
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (error: Exception) {
-                    Timber.w(error, "Lifetime listening backfill failed")
-                }
+                preferences.setListeningLifetimeBackfillVersion(LIFETIME_BACKFILL_VERSION)
+                true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Lifetime listening backfill failed")
+                false
             }
         }
     }
@@ -172,6 +214,7 @@ class ListeningPulseStore(context: Context) {
             trackId = entity.trackId,
             title = entity.title,
             artist = entity.artist,
+            artistBrowseIds = canonicalArtistBrowseIds(entity.artistBrowseIds.split(ARTIST_ID_SEPARATOR)),
             listenedMsDelta = entity.listenedMs,
             playDelta = if (counted) 1 else 0,
             completionDelta = if (entity.completed) 1 else 0,
@@ -195,7 +238,22 @@ class ListeningPulseStore(context: Context) {
         }
     }
 
-    suspend fun lifetime(): LifetimeListening = withContext(Dispatchers.IO) {
+    override suspend fun firstPlayedByKey(trackKeys: List<String>): Map<String, Long> = withContext(Dispatchers.IO) {
+        val keys = trackKeys.filter(String::isNotEmpty).distinct()
+        if (keys.isEmpty()) return@withContext emptyMap()
+        try {
+            keys.chunked(LAST_PLAYED_QUERY_CHUNK)
+                .flatMap { chunk -> lifetimeDao.firstPlayedFor(chunk) }
+                .associate { it.trackKey to it.firstPlayedAt }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "First played lookup failed")
+            emptyMap()
+        }
+    }
+
+    override suspend fun lifetime(): LifetimeListening = withContext(Dispatchers.IO) {
         try {
             val totals = lifetimeDao.trackTotals()
             LifetimeListening(
@@ -250,7 +308,7 @@ class ListeningPulseStore(context: Context) {
         }.onFailure { Timber.w(it, "Timed out while flushing listen event") }
     }
 
-    suspend fun eventsWindow(days: Int = RETENTION_DAYS): List<ListenEvent> = withContext(Dispatchers.IO) {
+    override suspend fun eventsWindow(days: Int): List<ListenEvent> = withContext(Dispatchers.IO) {
         val since = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong())
         runCatching { dao.since(since).map { it.toListenEvent() } }
             .onFailure { Timber.w(it, "Listen events load failed") }
@@ -331,13 +389,62 @@ class ListeningPulseStore(context: Context) {
         const val PERSONALIZED_ARTIST_LIMIT = 16
         const val OVERSCAN = 4
         const val MAX_LOOPS = 6L
-        const val LIFETIME_BACKFILL_VERSION = 1
+        const val LIFETIME_BACKFILL_VERSION = 3
         const val LIFETIME_TOP_LIMIT = 8
         const val LAST_PLAYED_QUERY_CHUNK = 500
         const val BACKFILL_PAGE_SIZE = 400
-        const val BACKFILL_MAX_EVENTS = 50_000
         val RETENTION_MS = TimeUnit.DAYS.toMillis(RETENTION_DAYS.toLong())
         val PRUNE_INTERVAL_MS = TimeUnit.HOURS.toMillis(24L)
         val RECORD_SYNC_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(2L)
     }
+}
+
+internal data class LifetimeArtistIdentity(
+    val key: String,
+    val name: String,
+    val browseIds: List<String>
+)
+
+internal fun lifetimeArtistIdentity(
+    artist: String,
+    rawBrowseIds: Iterable<String>,
+    preferredPrimaryId: String = ""
+): LifetimeArtistIdentity {
+    val normalized = canonicalArtistBrowseIds(rawBrowseIds)
+    val preferred = preferredPrimaryId.trim()
+    val browseIds = buildList {
+        if (preferred.isNotBlank()) add(preferred)
+        normalized.forEach { id ->
+            if (none { it == id }) add(id)
+        }
+    }
+    val name = primaryArtistCredit(artist, browseIds).ifBlank { artist.trim() }
+    val primaryBrowseId = browseIds.firstOrNull().orEmpty()
+    val key = if (primaryBrowseId.isNotBlank()) {
+        "id:${primaryBrowseId.lowercase(java.util.Locale.ROOT)}"
+    } else {
+        ListenIdentity.artistKey(name)
+    }
+    return LifetimeArtistIdentity(key = key, name = name, browseIds = browseIds)
+}
+
+internal suspend fun <T> executeLifetimeBackfillPaging(
+    pageSize: Int,
+    fetchPage: suspend (afterId: Long, pageSize: Int) -> List<T>,
+    getId: (T) -> Long,
+    processEvent: suspend (T) -> Unit
+): Int {
+    var afterId = 0L
+    var totalProcessed = 0
+    while (true) {
+        val page = fetchPage(afterId, pageSize)
+        if (page.isEmpty()) break
+        for (item in page) {
+            processEvent(item)
+        }
+        afterId = getId(page.last())
+        totalProcessed += page.size
+        if (page.size < pageSize) break
+    }
+    return totalProcessed
 }
