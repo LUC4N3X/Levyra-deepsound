@@ -36,11 +36,6 @@
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki.svg">
     <img src="docs/assets/levyra-wiki.svg" alt="Levyra Documentation">
   </picture></a>
-  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><picture>
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-saashub-light.svg">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-saashub.svg">
-    <img src="docs/assets/levyra-saashub.svg" alt="Approved on SaaSHub">
-  </picture></a>
 </p>
 
 ### ✦ Download
@@ -133,6 +128,12 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 <div align="center">
   <p><b>Keep the file. Keep the history. Keep control.</b></p>
   <sub>Offline playback is not a fallback in Levyra. It is ownership.</sub>
+
+  <br><br>
+
+  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
+    <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" width="150">
+  </a>
 </div>
 
 ---
