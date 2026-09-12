@@ -9,6 +9,13 @@ docs/assets/showcase/03_search_and_artist.webp
 docs/assets/showcase/04_library_and_pulse.webp
 docs/assets/showcase/05_video_and_samples.webp
 docs/assets/showcase/06_collections_and_genres.webp
+docs/assets/showcase/00_levyra_hero_showcase-light.webp
+docs/assets/showcase/01_playback_and_lyrics-light.webp
+docs/assets/showcase/02_home_and_charts-light.webp
+docs/assets/showcase/03_search_and_artist-light.webp
+docs/assets/showcase/04_library_and_pulse-light.webp
+docs/assets/showcase/05_video_and_samples-light.webp
+docs/assets/showcase/06_collections_and_genres-light.webp
 docs/assets/screenshots/artist_bio.webp
 docs/assets/screenshots/artist_discography.webp
 docs/assets/screenshots/explore_genres.webp
