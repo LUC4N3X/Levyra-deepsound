@@ -481,6 +481,15 @@ data class SearchPage<T>(
     val continuation: String = ""
 )
 
+enum class PlaylistCoverMode {
+    AUTO,
+    CUSTOM;
+
+    companion object {
+        fun from(value: String): PlaylistCoverMode = entries.firstOrNull { it.name == value } ?: AUTO
+    }
+}
+
 data class Playlist(
     val id: String,
     val name: String,
@@ -489,7 +498,8 @@ data class Playlist(
     val createdAt: Long,
     val updatedAt: Long,
     val tags: List<PlaylistTag> = emptyList(),
-    val hidden: Boolean = false
+    val hidden: Boolean = false,
+    val coverMode: PlaylistCoverMode = PlaylistCoverMode.AUTO
 ) {
     val size: Int get() = tracks.size
 }

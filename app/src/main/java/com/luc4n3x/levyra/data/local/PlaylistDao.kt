@@ -45,8 +45,17 @@ abstract class PlaylistDao {
     @Query("UPDATE playlists SET name = :name, updatedAt = :updatedAt WHERE id = :playlistId")
     abstract suspend fun rename(playlistId: String, name: String, updatedAt: Long)
 
-    @Query("UPDATE playlists SET coverUrl = :coverUrl, updatedAt = :updatedAt WHERE id = :playlistId")
-    abstract suspend fun updateCover(playlistId: String, coverUrl: String, updatedAt: Long)
+    @Query(
+        "UPDATE playlists SET coverUrl = CASE WHEN coverMode = 'AUTO' THEN :coverUrl ELSE coverUrl END, " +
+            "updatedAt = :updatedAt WHERE id = :playlistId"
+    )
+    abstract suspend fun updateAutomaticCover(playlistId: String, coverUrl: String, updatedAt: Long)
+
+    @Query("UPDATE playlists SET coverUrl = :coverUrl, coverMode = 'CUSTOM', updatedAt = :updatedAt WHERE id = :playlistId")
+    abstract suspend fun updateCustomCover(playlistId: String, coverUrl: String, updatedAt: Long)
+
+    @Query("UPDATE playlists SET coverUrl = :coverUrl, coverMode = 'AUTO', updatedAt = :updatedAt WHERE id = :playlistId")
+    abstract suspend fun resetCover(playlistId: String, coverUrl: String, updatedAt: Long)
 
     @Query("UPDATE playlists SET updatedAt = :updatedAt WHERE id = :playlistId")
     abstract suspend fun touch(playlistId: String, updatedAt: Long)
