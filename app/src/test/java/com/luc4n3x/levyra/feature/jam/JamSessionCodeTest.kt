@@ -11,7 +11,7 @@ class JamSessionCodeTest {
 
     @Test
     fun formattedAndDeepLinkRoundTrip() {
-        val code = JamSessionCode("192.168.1.42", 42_424, "0011223344")
+        val code = JamSessionCode("192.168.1.42", 42_424, "00112233445566778899aabbccddeeff")
 
         assertEquals(code, JamSessionCode.parse(code.formatted()))
         assertEquals(code, JamSessionCode.parse(code.deepLink()))
@@ -20,7 +20,7 @@ class JamSessionCodeTest {
 
     @Test
     fun malformedDecorationsAreRejectedInsteadOfFilteredOut() {
-        val code = JamSessionCode("10.0.0.8", 54_321, "aabbccddee")
+        val code = JamSessionCode("10.0.0.8", 54_321, "aabbccddeeff00112233445566778899")
 
         assertNull(JamSessionCode.parse("#${code.formatted()}!"))
         assertNull(JamSessionCode.parse("levyra://other/${code.encoded()}"))
@@ -29,9 +29,9 @@ class JamSessionCodeTest {
 
     @Test
     fun publicAddressesAndInvalidPortsAreRejected() {
-        assertNull(JamSessionCode.parse(encodeRaw("8.8.8.8", 42_424, "0011223344")))
-        assertNull(JamSessionCode.parse(encodeRaw("192.168.1.42", 80, "0011223344")))
-        assertNull(JamSessionCode.parse(encodeRaw("192.168.1.42", 0, "0011223344")))
+        assertNull(JamSessionCode.parse(encodeRaw("8.8.8.8", 42_424, "00112233445566778899aabbccddeeff")))
+        assertNull(JamSessionCode.parse(encodeRaw("192.168.1.42", 80, "00112233445566778899aabbccddeeff")))
+        assertNull(JamSessionCode.parse(encodeRaw("192.168.1.42", 0, "00112233445566778899aabbccddeeff")))
     }
 
     @Test
@@ -50,9 +50,28 @@ class JamSessionCodeTest {
     fun generatedSecretsUseAllConfiguredEntropyBytes() {
         val generated = List(128) { JamSessionCode.newSecret() }
 
-        assertTrue(generated.all { it.matches(Regex("[0-9a-f]{${JamSessionCode.SECRET_BYTES * 2}}")) })
+        assertEquals(128, JamSessionCode.SECRET_BITS)
+        assertTrue(generated.all(JamSessionCode::isValidSecret))
         assertEquals(generated.size, generated.toSet().size)
         assertNotEquals(generated.first(), generated.last())
+    }
+
+    @Test
+    fun legacyFortyBitSessionCodesAreRejected() {
+        assertNull(JamSessionCode.parse("R2M02A-N5Q001-28HK8G"))
+        assertFalse(JamSessionCode.isValidSecret("0011223344"))
+    }
+
+    @Test
+    fun nonCanonicalGroupingIsRejected() {
+        val code = JamSessionCode(
+            "192.168.1.42",
+            42_424,
+            "00112233445566778899aabbccddeeff"
+        )
+        val malformed = code.encoded().chunked(4).joinToString("-")
+
+        assertNull(JamSessionCode.parse(malformed))
     }
 
     private fun encodeRaw(address: String, port: Int, secret: String): String {
