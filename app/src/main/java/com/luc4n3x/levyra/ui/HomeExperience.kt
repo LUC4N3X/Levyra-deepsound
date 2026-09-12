@@ -221,18 +221,6 @@ private fun homeLowerFadeBrush(isLight: Boolean, fadeTop: Float, height: Float):
     )
 }
 
-private fun homePersistentTintBrush(color: Color, height: Float): Brush = Brush.verticalGradient(
-    colorStops = arrayOf(
-        0f to Color.Transparent,
-        0.26f to color.copy(alpha = 0.008f),
-        0.48f to color.copy(alpha = 0.006f),
-        0.72f to color.copy(alpha = 0.004f),
-        1f to color.copy(alpha = 0.003f)
-    ),
-    startY = 0f,
-    endY = height
-)
-
 private fun homeEdgeVignetteBrush(isLight: Boolean): Brush {
     val colors = if (isLight) {
         listOf(
