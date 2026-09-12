@@ -166,6 +166,12 @@ interface ListenLifetimeDao {
     suspend fun lastPlayedFor(trackKeys: List<String>): List<ListenLifetimeLastPlayed>
 
     @Query(
+        "SELECT trackKey, firstPlayedAt FROM listen_lifetime_tracks " +
+            "WHERE trackKey IN (:trackKeys) AND firstPlayedAt > 0"
+    )
+    suspend fun firstPlayedFor(trackKeys: List<String>): List<ListenLifetimeFirstPlayed>
+
+    @Query(
         "SELECT * FROM listen_lifetime_tracks ORDER BY listenedMs DESC, countedPlays DESC LIMIT :limit"
     )
     suspend fun topTracks(limit: Int): List<ListenLifetimeTrackEntity>
@@ -174,6 +180,12 @@ interface ListenLifetimeDao {
         "SELECT * FROM listen_lifetime_artists ORDER BY listenedMs DESC, countedPlays DESC LIMIT :limit"
     )
     suspend fun topArtists(limit: Int): List<ListenLifetimeArtistEntity>
+
+    @Query("SELECT * FROM listen_lifetime_artists WHERE artistKey = :artistKey LIMIT 1")
+    suspend fun artistByKey(artistKey: String): ListenLifetimeArtistEntity?
+
+    @Query("DELETE FROM listen_lifetime_artists WHERE artistKey = :artistKey")
+    suspend fun deleteArtistByKey(artistKey: String)
 
     @Query("DELETE FROM listen_lifetime_tracks")
     suspend fun clearTracks()

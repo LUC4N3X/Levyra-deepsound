@@ -68,6 +68,7 @@ import com.luc4n3x.levyra.data.RecordingIdentityMatch
 import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.ArtistProfile
@@ -147,6 +148,11 @@ import com.luc4n3x.levyra.domain.mixTrackKey
 import java.util.TimeZone
 import com.luc4n3x.levyra.domain.PulseTrack
 import com.luc4n3x.levyra.domain.ListeningPulseEngine
+import com.luc4n3x.levyra.domain.recap.ListeningRecapPeriod
+import com.luc4n3x.levyra.domain.recap.ListeningRecapSummary
+import com.luc4n3x.levyra.domain.recap.TopTrackStat
+import com.luc4n3x.levyra.domain.recap.TopArtistStat
+import com.luc4n3x.levyra.data.recap.ListeningRecapRepository
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
@@ -716,6 +722,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listOf(lastFmScrobbling, listenBrainzScrobbling)
     )
     private val listeningPulseEngine = ListeningPulseEngine()
+    private val listeningRecapRepository = ListeningRecapRepository(listeningPulseStore)
     private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
     private val vaultRuntimeState = preferences.vaultRuntimeState()
@@ -910,6 +917,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     @Volatile private var pendingLastFmToken: String? = null
     private var listenSessionPersistJob: Job? = null
     private var listeningPulseRefreshJob: Job? = null
+    private var listeningRecapJob: Job? = null
     private var lastPlaybackSaveJob: Job? = null
     private var lastListeningPulseRefreshMs = 0L
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
@@ -1334,9 +1342,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         refreshForgottenFavorites()
         viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
         viewModelScope.launch(Dispatchers.IO) {
-            listeningPulseStore.ensureLifetimeBackfill()
-            if (_state.value.listeningDnaPeriod == ListeningDnaPeriod.AllTime) {
-                refreshListeningDna(ListeningDnaPeriod.AllTime)
+            val backfilled = listeningPulseStore.ensureLifetimeBackfill()
+            if (backfilled) {
+                listeningRecapRepository.invalidateCache()
+                if (_state.value.showListeningRecap) {
+                    withContext(Dispatchers.Main) {
+                        refreshListeningRecap(force = true)
+                    }
+                }
+                if (_state.value.listeningDnaPeriod == ListeningDnaPeriod.AllTime) {
+                    refreshListeningDna(ListeningDnaPeriod.AllTime)
+                }
             }
         }
         refreshListeningPulse(force = true)
@@ -9714,6 +9730,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val recent = listeningPulseStore.recentTracks()
             val mostPlayed = listeningPulseStore.mostPlayedTracks()
             val pulse = listeningPulseEngine.build(events)
+            listeningRecapRepository.invalidateCache()
+            if (_state.value.showListeningRecap) {
+                refreshListeningRecap(force = true)
+            }
             lastListeningPulseRefreshMs = android.os.SystemClock.elapsedRealtime()
             val signalSnapshot = _state.value
             val signals = com.luc4n3x.levyra.domain.ListeningSignalEngine.build(
@@ -10043,6 +10063,147 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             playFrom(listOf(resolved), resolved)
         }
     }
+    fun openListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod) {
+        _state.update { it.copy(showListeningRecap = true, listeningRecapPeriod = period) }
+        refreshListeningRecap(period)
+    }
+
+    fun closeListeningRecap() {
+        if (!_state.value.showListeningRecap) return
+        _state.update { it.copy(showListeningRecap = false) }
+    }
+
+    fun selectListeningRecapPeriod(period: ListeningRecapPeriod) {
+        if (_state.value.listeningRecapPeriod == period && _state.value.listeningRecap.hasSignal) return
+        val cached = listeningRecapRepository.peekCached(period)
+        _state.update { current ->
+            current.copy(
+                listeningRecapPeriod = period,
+                listeningRecap = cached ?: ListeningRecapSummary(period = period),
+                listeningRecapLoading = cached == null
+            )
+        }
+        refreshListeningRecap(period)
+    }
+
+    fun refreshListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod, force: Boolean = false) {
+        listeningRecapJob?.cancel()
+        listeningRecapJob = viewModelScope.launch {
+            _state.update { it.copy(listeningRecapLoading = true) }
+            try {
+                val rawRecap = listeningRecapRepository.getRecap(period, force = force)
+                val recap = enrichListeningRecapArtists(rawRecap)
+                _state.update { current ->
+                    if (current.listeningRecapPeriod != period) {
+                        current.copy(listeningRecapLoading = false)
+                    } else {
+                        current.copy(listeningRecap = recap, listeningRecapLoading = false)
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening recap load failed")
+                _state.update { it.copy(listeningRecapLoading = false) }
+            }
+        }
+    }
+
+    private suspend fun enrichListeningRecapArtists(recap: ListeningRecapSummary): ListeningRecapSummary {
+        if (recap.topArtists.isEmpty()) return recap
+        val enriched = coroutineScope {
+            recap.topArtists.map { artist ->
+                async(Dispatchers.IO) { resolveRecapArtist(artist) }
+            }.awaitAll()
+        }
+        return recap.copy(topArtists = enriched)
+    }
+
+    private suspend fun resolveRecapArtist(artist: TopArtistStat): TopArtistStat {
+        val lookupName = artist.lookupName.ifBlank { artist.name }
+        return try {
+            val hit = if (artist.browseId.isNotBlank()) {
+                artistRepository.artistHit(artist.browseId, lookupName)
+            } else {
+                artistRepository.artistHitFor(artist.name)
+            }
+            if (hit == null || hit.thumbnailUrl.isBlank()) {
+                artist
+            } else {
+                artist.copy(
+                    name = hit.name.ifBlank { artist.name },
+                    browseId = hit.browseId.ifBlank { artist.browseId },
+                    thumbnailUrl = hit.thumbnailUrl
+                )
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Listening recap artist artwork resolve failed for ${artist.name}")
+            artist
+        }
+    }
+
+    fun playListeningRecapTrack(entry: TopTrackStat) {
+        val snapshot = _state.value
+        val inMemoryCandidate = listOf(
+            snapshot.recentListens,
+            snapshot.mostPlayedTracks,
+            snapshot.favorites,
+            snapshot.tracks,
+            snapshot.queue,
+            snapshot.recentSearches,
+            snapshot.forgottenFavorites,
+            snapshot.personalOrbitTracks,
+            snapshot.quickPickSeeds,
+            snapshot.charts,
+            snapshot.exploreTracks,
+            snapshot.exploreFreshTracks
+        ).asSequence().flatten().firstOrNull { candidate ->
+            candidate.id.isNotBlank() && candidate.id == entry.trackId
+        }
+        if (inMemoryCandidate != null) {
+            playFrom(listOf(inMemoryCandidate), inMemoryCandidate)
+            return
+        }
+        val downloaded = snapshot.downloads.firstOrNull { it.trackId == entry.trackId }
+        if (downloaded != null) {
+            playDownloaded(downloaded)
+            return
+        }
+        viewModelScope.launch {
+            if (entry.trackId.isNotBlank()) {
+                val dbTrack = try {
+                    withContext(Dispatchers.IO) {
+                        database.listenEventsDao()
+                            .findLatestByTrackId(entry.trackId)
+                            ?.toTrack()
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    Timber.w(error, "Listening recap DB lookup failed")
+                    null
+                }
+                if (dbTrack != null) {
+                    playFrom(listOf(dbTrack), dbTrack)
+                    return@launch
+                }
+            }
+            val resolved = try {
+                repository.searchSongMatch(entry.title, entry.artist, snapshot.languageCode)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening recap track resolve failed")
+                null
+            }
+            if (resolved != null) {
+                playFrom(listOf(resolved), resolved)
+            }
+        }
+    }
+
     fun openYourSound() {
         _state.update { it.copy(showYourSound = true) }
         refreshListeningDna(_state.value.listeningDnaPeriod)
