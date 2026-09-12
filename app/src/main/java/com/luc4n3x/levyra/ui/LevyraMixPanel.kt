@@ -44,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -211,13 +210,12 @@ private fun RowScope.SecondaryToolCard(
             .clip(cardShape)
             .background(LevyraAdaptiveCardDeep)
             .border(Dp.Hairline, LevyraAdaptiveHairline, cardShape)
-            .semantics(mergeDescendants = true) { role = Role.Button }
+            .semantics(mergeDescendants = true) {}
             .levyraPressable(
                 onClick = onClick,
                 enabled = enabled,
                 pressedScale = LevyraPressScale.Tile,
-                role = Role.Button,
-                onClickLabel = label
+                role = Role.Button
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -274,13 +272,12 @@ private fun MixPrimaryButton(
             .height(46.dp)
             .clip(buttonShape)
             .background(fill)
-            .semantics(mergeDescendants = true) { role = Role.Button }
+            .semantics(mergeDescendants = true) {}
             .levyraPressable(
                 onClick = onClick,
                 enabled = enabled,
                 pressedScale = LevyraPressScale.Surface,
                 role = Role.Button,
-                onClickLabel = label,
                 haptic = LevyraHapticAction.Confirm
             )
             .padding(horizontal = 16.dp),
