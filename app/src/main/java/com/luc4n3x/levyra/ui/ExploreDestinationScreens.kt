@@ -682,18 +682,18 @@ internal fun ExploreMoodsDestinationScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    ExploreDestinationMoodCard(
+                    ExploreMoodCard(
                         zone = pair.first(),
-                        modifier = Modifier.weight(1f),
+                        isSelected = false,
                         onClick = { onOpenZone(pair.first()) }
                     )
                     val trailing = pair.getOrNull(1)
                     if (trailing == null) {
                         Spacer(modifier = Modifier.weight(1f))
                     } else {
-                        ExploreDestinationMoodCard(
+                        ExploreMoodCard(
                             zone = trailing,
-                            modifier = Modifier.weight(1f),
+                            isSelected = false,
                             onClick = { onOpenZone(trailing) }
                         )
                     }
@@ -838,69 +838,5 @@ private fun ExploreDestinationTrackRow(
                 modifier = Modifier.size(if (isPlaying) 20.dp else 21.dp)
             )
         }
-    }
-}
-
-@Composable
-private fun ExploreDestinationMoodCard(
-    zone: ExploreZone,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    val start = Color(zone.accentStart)
-    val end = Color(zone.accentEnd)
-    val shape = RoundedCornerShape(18.dp)
-    Box(
-        modifier = modifier
-            .height(116.dp)
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        start.copy(alpha = 0.98f),
-                        end.copy(alpha = 0.92f),
-                        LevyraPanel.copy(alpha = 0.94f)
-                    )
-                )
-            )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.13f)), shape)
-            .semantics { role = Role.Button }
-            .clickable(onClick = onClick)
-    ) {
-        Text(
-            text = zone.emoji,
-            color = Color.White.copy(alpha = 0.92f),
-            fontSize = 44.sp,
-            lineHeight = 48.sp,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 12.dp, end = 14.dp)
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.20f),
-                            Color.Black.copy(alpha = 0.06f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-        Text(
-            text = zone.label,
-            color = Color.White,
-            fontSize = 16.5.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(16.5.sp),
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth(0.78f)
-                .padding(14.dp)
-        )
     }
 }
