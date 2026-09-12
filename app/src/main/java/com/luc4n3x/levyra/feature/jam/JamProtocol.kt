@@ -66,6 +66,7 @@ object JamProtocol {
 
     private const val TYPE = "t"
     private const val VERSION_FIELD = "v"
+    private const val MAX_CAPABILITIES = 16
 
     fun encode(message: JamMessage): String = when (message) {
         is JamMessage.Challenge -> base("challenge").apply {
@@ -142,6 +143,9 @@ object JamProtocol {
         put("shuffle", state.shuffle)
         put("repeatMode", state.repeatMode)
         put("permission", state.permission.id)
+        put("capabilities", JSONArray().apply {
+            state.capabilities.take(MAX_CAPABILITIES).forEach(::put)
+        })
         put(
             "participants",
             JSONArray().apply {
@@ -174,6 +178,7 @@ object JamProtocol {
         val hostId = boundedIdentifier(payload.optString("hostId")) ?: return null
         val decodedQueue = decodeTracks(payload.optJSONArray("queue")) ?: return null
         val decodedParticipants = decodeParticipants(payload.optJSONArray("participants")) ?: return null
+        val decodedCapabilities = decodeCapabilities(payload.optJSONArray("capabilities")) ?: return null
         if (decodedParticipants.count { it.isHost } != 1 ||
             decodedParticipants.none { it.id == hostId && it.isHost }
         ) return null
@@ -197,7 +202,8 @@ object JamProtocol {
             shuffle = payload.optBoolean("shuffle", false),
             repeatMode = payload.optInt("repeatMode", 0).coerceIn(0, 2),
             permission = JamGuestPermission.fromId(payload.optString("permission")),
-            updatedAtElapsedMs = 0L
+            updatedAtElapsedMs = 0L,
+            capabilities = decodedCapabilities
         )
         return JamMessage.State(
             sessionId = sessionId,
@@ -206,6 +212,17 @@ object JamProtocol {
             timestamp = timestamp,
             state = state
         )
+    }
+
+    private fun decodeCapabilities(array: JSONArray?): Set<String>? {
+        array ?: return emptySet()
+        if (array.length() > MAX_CAPABILITIES) return null
+        val capabilities = linkedSetOf<String>()
+        for (index in 0 until array.length()) {
+            val capability = boundedIdentifier(array.optString(index)) ?: return null
+            capabilities += capability
+        }
+        return capabilities
     }
 
     private fun decodeParticipants(array: JSONArray?): List<JamParticipant>? {
@@ -261,6 +278,15 @@ object JamProtocol {
 
     private fun encodeAction(action: JamAction): JSONObject = when (action) {
         is JamAction.AddTrack -> JSONObject().put("kind", "add").put("track", encodeTrack(action.track))
+        is JamAction.AddTracks -> JSONObject()
+            .also {
+                require(action.tracks.isNotEmpty())
+                require(action.tracks.size <= JamSessionState.MAX_QUEUE_SIZE)
+            }
+            .put("kind", "add_many")
+            .put("tracks", JSONArray().apply {
+                action.tracks.forEach { put(encodeTrack(it)) }
+            })
         is JamAction.PlayNextTracks -> JSONObject()
             .also {
                 require(action.tracks.isNotEmpty())
@@ -284,6 +310,9 @@ object JamProtocol {
         val payload = root.optJSONObject("action") ?: return null
         val action = when (payload.optString("kind")) {
             "add" -> decodeTrack(payload.optJSONObject("track"))?.let(JamAction::AddTrack)
+            "add_many" -> decodeTracks(payload.optJSONArray("tracks"))
+                ?.takeIf { it.isNotEmpty() }
+                ?.let(JamAction::AddTracks)
             "play_next" -> decodeTracks(payload.optJSONArray("tracks"))
                 ?.takeIf { it.isNotEmpty() }
                 ?.let(JamAction::PlayNextTracks)
