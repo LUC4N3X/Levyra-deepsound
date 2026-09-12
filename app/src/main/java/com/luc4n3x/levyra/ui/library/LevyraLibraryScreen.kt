@@ -358,19 +358,12 @@ internal fun LevyraLibraryScreen(
                     item(key = "overview-insights-title") {
                         LibrarySectionTitle(
                             title = strings.pulseTitle,
-                            detail = strings.pulseSubtitle,
-                            action = strings.listeningRecap,
-                            onAction = viewModel::openListeningRecap
+                            detail = strings.pulseSubtitle
                         )
                     }
                     item(key = "overview-insights-card") {
                         LibraryListeningDashboard(
                             pulse = state.listeningPulse,
-                            artistCount = catalog.artists.size,
-                            trackCount = catalog.tracks.size,
-                            playlistCount = state.playlists.size,
-                            offlineCount = state.downloads.size,
-                            onOpenYourSound = viewModel::openYourSound,
                             onOpenRecap = viewModel::openListeningRecap
                         )
                     }

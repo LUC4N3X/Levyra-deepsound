@@ -95,7 +95,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
             totalListenMs = totalListenMs,
             plays = countedPlays(valid),
             distinctTracks = valid.map { trackKey(it) }.toSet().size,
-            distinctArtists = valid.map { artistKey(it.artist) }.filter { it.isNotBlank() }.toSet().size,
+            distinctArtists = valid.map(::artistKey).filter { it.isNotBlank() }.toSet().size,
             completionRate = (completedCount * 100) / valid.size,
             streakDays = streak(activeDates, today),
             longestStreakDays = longestStreak(activeDates),
@@ -115,7 +115,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
 
     private fun period(events: List<ListenEvent>): PulsePeriod {
         if (events.isEmpty()) return PulsePeriod()
-        val artists = events.map { artistKey(it.artist) }.filter { it.isNotBlank() }
+        val artists = events.map(::artistKey).filter { it.isNotBlank() }
         return PulsePeriod(
             totalListenMs = events.sumOf { it.listenedMs },
             plays = countedPlays(events),
@@ -143,11 +143,13 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
             .take(TOP_LIMIT)
 
     private fun topArtists(events: List<ListenEvent>): List<PulseArtist> =
-        events.filter { artistKey(it.artist).isNotBlank() }
-            .groupBy { artistKey(it.artist) }
+        events.filter { artistKey(it).isNotBlank() }
+            .groupBy(::artistKey)
             .map { (_, group) ->
+                val newest = group.maxBy { it.startedAt }
                 PulseArtist(
-                    name = group.maxBy { it.startedAt }.artist.trim(),
+                    name = primaryArtistCredit(newest.artist, newest.artistBrowseIds)
+                        .ifBlank { newest.artist.trim() },
                     plays = countedPlays(group),
                     listenedMs = group.sumOf { it.listenedMs }
                 )
@@ -204,7 +206,12 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
 
     private fun trackKey(event: ListenEvent): String = ListenIdentity.trackKey(event)
 
-    private fun artistKey(artist: String): String = ListenIdentity.artistKey(artist)
+    private fun artistKey(event: ListenEvent): String {
+        val browseId = event.artistBrowseIds.firstOrNull().orEmpty().trim()
+        if (browseId.isNotBlank()) return "id:${browseId.lowercase()}"
+        val primary = primaryArtistCredit(event.artist, event.artistBrowseIds)
+        return ListenIdentity.artistKey(primary)
+    }
 
     private fun countedPlays(events: List<ListenEvent>): Int =
         events.count { ListenPlayPolicy.isCountedPlay(it) }
