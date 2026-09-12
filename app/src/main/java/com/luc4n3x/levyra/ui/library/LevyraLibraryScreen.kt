@@ -927,6 +927,9 @@ internal fun LevyraPlaylistDetailScreen(
                         } else if (reorderMode) {
                             reorderMode = false
                             orderedTracks = playlist.tracks
+                        } else if (searchActive) {
+                            query = ""
+                            searchActive = false
                         } else {
                             viewModel.closePlaylist()
                         }
@@ -943,6 +946,7 @@ internal fun LevyraPlaylistDetailScreen(
                         orderedTracks = playlist.tracks
                         selectedKeys = emptySet()
                         selectionMode = false
+                        searchActive = false
                         query = ""
                     },
                     onSaveOrder = {
