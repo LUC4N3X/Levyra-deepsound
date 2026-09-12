@@ -44,7 +44,7 @@ class JamSecurityTest {
 
     @Test
     fun jamAuthMutualChallengeResponseVerifiesMatchingSecret() {
-        val secret = "0123456789"
+        val secret = "00112233445566778899aabbccddeeff"
         val hostNonce = JamAuth.generateNonce()
         val guestNonce = JamAuth.generateNonce()
 
@@ -61,8 +61,8 @@ class JamSecurityTest {
 
     @Test
     fun jamAuthRejectsMismatchedSecretOrTamperedNonce() {
-        val correctSecret = "0123456789"
-        val wrongSecret = "9876543210"
+        val correctSecret = "00112233445566778899aabbccddeeff"
+        val wrongSecret = "ffeeddccbbaa99887766554433221100"
         val hostNonce = JamAuth.generateNonce()
         val guestNonce = JamAuth.generateNonce()
 
@@ -77,7 +77,7 @@ class JamSecurityTest {
 
     @Test
     fun jamAuthSeparatesGuestAndHostContexts() {
-        val secret = "0123456789"
+        val secret = "00112233445566778899aabbccddeeff"
         val hostNonce = "aabbccddeeff00112233445566778899"
         val guestNonce = "11223344556677889900aabbccddeeff"
 
