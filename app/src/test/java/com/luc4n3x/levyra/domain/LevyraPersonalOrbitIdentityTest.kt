@@ -95,6 +95,24 @@ class LevyraPersonalOrbitIdentityTest {
     }
 
     @Test
+    fun excludesLiveRadioAndSamplesFromOrbitEligibility() {
+        val radio = track(id = "radio000001", title = "Radio Deejay", artist = "Italy")
+            .copy(id = "live-radio:radio000001", source = "Live Radio")
+        val sample = track(id = "sample00001", title = "Sample", artist = "Artist")
+            .copy(
+                source = "YouTube Shorts",
+                videoUrl = "https://www.youtube.com/shorts/sample00001",
+                videoType = "SHORTS",
+                moodTags = setOf("shorts", "video")
+            )
+        val normal = track(id = "normal00001", title = "Normal song", artist = "Artist")
+
+        assertFalse(LevyraPersonalOrbit.isEligibleTrack(radio))
+        assertFalse(LevyraPersonalOrbit.isEligibleTrack(sample))
+        assertTrue(LevyraPersonalOrbit.isEligibleTrack(normal))
+    }
+
+    @Test
     fun xInArtistNameIsNotTreatedAsASeparator() {
         val original = track(id = "xambassador", title = "Renegades", artist = "X Ambassadors")
         val unrelated = track(id = "ambassador1", title = "Renegades", artist = "Ambassadors")
