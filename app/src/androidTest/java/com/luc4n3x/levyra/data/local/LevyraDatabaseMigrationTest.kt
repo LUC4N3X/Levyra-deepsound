@@ -200,6 +200,26 @@ class LevyraDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate20To21KeepsPlaylistsAndDefaultsExistingCoversToAutomatic() {
+        helper.createDatabase(TEST_DB, 20).use { db ->
+            db.execSQL(
+                "INSERT INTO playlists (id, name, coverUrl, createdAt, updatedAt, hidden) " +
+                    "VALUES ('p5', 'Existing mix', 'https://example.test/cover.jpg', 600, 700, 0)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 21, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT name, coverUrl, coverMode FROM playlists WHERE id = 'p5'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Existing mix", cursor.getString(0))
+            assertEquals("https://example.test/cover.jpg", cursor.getString(1))
+            assertEquals("AUTO", cursor.getString(2))
+        }
+        migrated.close()
+    }
+
     private companion object {
         const val TEST_DB = "levyra-migration-test.db"
     }
