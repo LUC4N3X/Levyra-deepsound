@@ -2737,6 +2737,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun applyJamAction(action: JamAction) {
         when (action) {
             is JamAction.AddTrack -> addToQueueLocal(fromJamTrack(action.track))
+            is JamAction.AddTracks -> {
+                val tracks = action.tracks.map(::fromJamTrack)
+                queueEngine.addLast(tracks)
+                refreshQueuePrefetch()
+                val strings = LevyraStrings.forCode(_state.value.languageCode)
+                _state.update {
+                    it.copy(offlineExportMessage = "${strings.addToQueue}: ${strings.formatTrackCount(tracks.size)}")
+                }
+            }
             is JamAction.PlayNextTracks -> {
                 val tracks = action.tracks.map(::fromJamTrack)
                 queueEngine.playNext(tracks)
@@ -2818,14 +2827,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun routeJamAction(action: JamAction): Boolean {
         if (!_state.value.jam.isActive) return false
         viewModelScope.launch { jamController.requestAction(action) }
-        return true
-    }
-
-    private fun routeJamActions(actions: List<JamAction>): Boolean {
-        if (!_state.value.jam.isActive) return false
-        viewModelScope.launch {
-            actions.forEach { action -> jamController.requestAction(action) }
-        }
         return true
     }
 
@@ -4718,7 +4719,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
         if (cleanTracks.isEmpty()) return
         if (_state.value.jam.isActive) {
-            routeJamActions(cleanTracks.map { track -> JamAction.AddTrack(toJamTrack(track)) })
+            val jam = _state.value.jam
+            when {
+                cleanTracks.size == 1 -> routeJamAction(JamAction.AddTrack(toJamTrack(cleanTracks.first())))
+                jam.supportsBatchAddTracks -> routeJamAction(JamAction.AddTracks(cleanTracks.map(::toJamTrack)))
+                else -> {
+                    jamController.rejectGuestLocalMutation()
+                    val strings = LevyraStrings.forCode(_state.value.languageCode)
+                    _state.update { it.copy(offlineExportMessage = strings.jamNotAuthorized) }
+                }
+            }
             return
         }
         queueEngine.addLast(cleanTracks)
