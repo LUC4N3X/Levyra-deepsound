@@ -132,13 +132,13 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ---
 
-## ✦ New in 2.5.7 · Verified High-Quality Audio
+## ✦ JioSaavn · Verified High-Quality Audio
 
 <div align="center">
 
-### 🎧 Higher fidelity, without gambling on the wrong song.
+### 🎧 Higher-quality audio, accepted only when Levyra knows it is the right recording.
 
-<p><sub>Levyra can now verify an alternative high-quality audio source before playback, while keeping the original track identity, metadata, queue state, artwork, lyrics, history, and recommendations untouched.</sub></p>
+<p><sub>When enabled, Levyra can resolve and verify an alternative high-quality JioSaavn audio source before playback while preserving the original track identity, metadata, queue state, artwork, lyrics, listening history, and recommendations.</sub></p>
 
 <table align="center" width="100%">
   <tr valign="top">
@@ -147,12 +147,12 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <p><sub>Levyra can resolve a genuine higher-bitrate stream — up to 320 kbps when available and validated — with automatic 160/96 kbps fallback when the requested tier is not actually usable.</sub></p>
     </td>
     <td width="33%">
-      <h3>🧬 <b>Identity-First Matching</b></h3>
-      <p><sub>Title, primary and featured artists, album, duration, explicit state, ISRC and version markers are checked before an alternative source is accepted. Remix, live, acoustic, sped-up and ambiguous matches are rejected.</sub></p>
+      <h3>🧬 <b>Identity Lock</b></h3>
+      <p><sub>Title, primary and featured artists, album, duration, explicit state, ISRC, and version markers are checked before an alternative source is accepted. Remix, live, acoustic, sped-up, and ambiguous matches are rejected.</sub></p>
     </td>
     <td width="33%">
-      <h3>🛡️ <b>Seamless Fallback</b></h3>
-      <p><sub>If the verified source is unavailable, stale, restricted or not meaningfully better, Levyra keeps the normal playback path. No track identity swap. No forced match. No broken queue.</sub></p>
+      <h3>🛡️ <b>Fail-Safe by Design</b></h3>
+      <p><sub>If the verified source is unavailable, stale, restricted, mismatched, or not meaningfully better, Levyra keeps the normal playback path. No identity swap. No forced match. No broken queue.</sub></p>
     </td>
   </tr>
 </table>
@@ -163,9 +163,12 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
   <code>PREFER 320 KBPS</code>
 </p>
 
-<sub>High-quality alternative audio uses JioSaavn as an external third-party provider when enabled. Levyra is not affiliated with or endorsed by JioSaavn.</sub>
-
 </div>
+
+> [!IMPORTANT]
+> **Levyra implementation & copyright.** The Levyra-specific JioSaavn integration — including its source-resolution flow, identity matching and validation, fallback orchestration, playback integration, and related UI/UX — is an original part of the Levyra project authored and maintained by **LUC4N3X**. The implementation is protected by copyright and distributed under this repository's **[GNU GPL v3.0](LICENSE)**. Copying, modification, and redistribution are permitted **only in compliance with GPL-3.0 and its applicable notice/source obligations**; the public repository grants no separate permission to take this implementation and redistribute it as incompatible closed-source/proprietary code.
+>
+> This notice applies only to Levyra's own implementation. **JioSaavn, its service, trademarks, catalogue, media, metadata, and other third-party property remain the property of their respective owners.** Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected with JioSaavn.
 
 ---
 
