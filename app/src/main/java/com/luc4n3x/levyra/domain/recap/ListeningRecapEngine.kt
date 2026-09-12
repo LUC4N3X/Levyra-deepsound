@@ -109,7 +109,7 @@ object ListeningRecapEngine {
             Daypart.Afternoon to afternoonMs,
             Daypart.Evening to eveningMs,
             Daypart.Night to nightMs
-        ).maxByOrNull { it.second }?.first ?: Daypart.Afternoon
+        ).filter { it.second > 0L }.maxByOrNull { it.second }?.first
 
         val allTrackStats = allTrackStats(scoped)
         val topTracks = allTrackStats

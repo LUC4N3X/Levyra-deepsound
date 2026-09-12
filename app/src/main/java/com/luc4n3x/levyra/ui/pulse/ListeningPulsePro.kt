@@ -225,7 +225,7 @@ private fun PulseActiveContent(
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
-                        text = formatListeningDuration(pulse.totalListenMs, strings),
+                        text = formatListeningDuration(pulse.totalListenMs, strings, number),
                         color = LevyraText,
                         fontSize = 28.sp,
                         lineHeight = LevyraTypeRhythm.lineHeight(28.sp),
@@ -250,13 +250,13 @@ private fun PulseActiveContent(
                 )
                 PulseMiniBadge(
                     icon = Icons.Rounded.LocalFireDepartment,
-                    value = "${pulse.streakDays}${strings.recapUnitDays}",
+                    value = "${number.format(pulse.streakDays)}${strings.recapUnitDays}",
                     label = strings.pulseStreak,
                     accent = LevyraOrange
                 )
                 PulseMiniBadge(
                     icon = Icons.Rounded.Equalizer,
-                    value = "${avgMinutesPerDay}${strings.recapUnitMinutes}",
+                    value = "${number.format(avgMinutesPerDay)}${strings.recapUnitMinutes}",
                     label = strings.pulseProAverage,
                     accent = LevyraViolet
                 )
@@ -299,6 +299,8 @@ private fun PulseDailyActivityVisualizer(
         label = "pulse-pro-reveal"
     )
 
+    val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (selectedDayIndex != null && selectedDayIndex in week.indices) {
             val selectedDay = week[selectedDayIndex]
@@ -320,7 +322,7 @@ private fun PulseDailyActivityVisualizer(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "$minutes ${strings.pulseMinuteShort}",
+                    text = "${number.format(minutes)} ${strings.pulseMinuteShort}",
                     color = LevyraText,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Black
@@ -369,7 +371,7 @@ private fun PulseDailyActivityVisualizer(
 
                 val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL_STANDALONE, locale)
                 val minutes = (day.listenedMs / 60_000L).coerceAtLeast(0L)
-                val durationText = "$minutes ${strings.pulseMinuteShort}"
+                val durationText = "${number.format(minutes)} ${strings.pulseMinuteShort}"
                 val barDescription = "$dayName, $durationText"
 
                 Column(
@@ -423,7 +425,7 @@ private fun PulseDailyActivityVisualizer(
                     .take(3)
                 val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL_STANDALONE, locale)
                 val minutes = (day.listenedMs / 60_000L).coerceAtLeast(0L)
-                val durationText = "$minutes ${strings.pulseMinuteShort}"
+                val durationText = "${number.format(minutes)} ${strings.pulseMinuteShort}"
                 val barDescription = "$dayName, $durationText"
 
                 Text(
@@ -462,6 +464,7 @@ private fun PulseFooterInsights(
     locale: Locale,
     isDark: Boolean
 ) {
+    val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
     val borderCol = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.06f)
     val bgCol = if (isDark) Color.White.copy(alpha = 0.035f) else Color.Black.copy(alpha = 0.03f)
     Row(
@@ -488,7 +491,7 @@ private fun PulseFooterInsights(
                     modifier = Modifier.size(13.dp)
                 )
                 Text(
-                    text = "${strings.pulseProPeak}: $dayName (${minutes}m)",
+                    text = "${strings.pulseProPeak}: $dayName (${number.format(minutes)} ${strings.recapUnitMinutes})",
                     color = LevyraMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
@@ -644,13 +647,13 @@ private fun PulseEmptyState(
     }
 }
 
-private fun formatListeningDuration(listenedMs: Long, strings: LevyraStrings): String {
+private fun formatListeningDuration(listenedMs: Long, strings: LevyraStrings, number: NumberFormat): String {
     val totalMinutes = listenedMs / 60_000L
     val hours = totalMinutes / 60L
     val remainingMinutes = totalMinutes % 60L
     return when {
-        hours > 0 && remainingMinutes > 0 -> "${hours}h ${remainingMinutes}m"
-        hours > 0 -> "${hours}h"
-        else -> "$totalMinutes ${strings.pulseMinuteShort}"
+        hours > 0 && remainingMinutes > 0 -> "${number.format(hours)} ${strings.recapUnitHours} ${number.format(remainingMinutes)} ${strings.recapUnitMinutes}"
+        hours > 0 -> "${number.format(hours)} ${strings.recapUnitHours}"
+        else -> "${number.format(totalMinutes)} ${strings.pulseMinuteShort}"
     }
 }

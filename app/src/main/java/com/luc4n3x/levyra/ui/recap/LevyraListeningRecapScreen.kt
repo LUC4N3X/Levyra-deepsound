@@ -245,6 +245,7 @@ fun LevyraListeningRecapOverlay(
                             position = LevyraConnectedPosition.of(index, recap.topTracks.size),
                             style = style,
                             strings = strings,
+                            number = number,
                             onPlay = { onPlayTrack?.invoke(track) }
                         )
                     }
@@ -264,6 +265,7 @@ fun LevyraListeningRecapOverlay(
                             position = LevyraConnectedPosition.of(index, recap.topArtists.size),
                             style = style,
                             strings = strings,
+                            number = number,
                             onOpen = { onOpenArtist?.invoke(artist.name) }
                         )
                     }
@@ -282,7 +284,8 @@ fun LevyraListeningRecapOverlay(
                             album = album,
                             position = LevyraConnectedPosition.of(index, recap.topAlbums.size),
                             style = style,
-                            strings = strings
+                            strings = strings,
+                            number = number
                         )
                     }
                 }
@@ -404,7 +407,7 @@ private fun RecapHeroCard(
 
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = formatRecapDuration(recap.totalListenMs, strings),
+                        text = formatRecapDuration(recap.totalListenMs, strings, number),
                         color = LevyraText,
                         fontSize = 38.sp,
                         lineHeight = LevyraTypeRhythm.lineHeight(38.sp),
@@ -501,6 +504,11 @@ private fun RecapHighlightsGrid(
     isDark: Boolean
 ) {
     val highlights = recap.highlights
+    val percentFormat = remember(locale) {
+        NumberFormat.getPercentInstance(locale).apply {
+            maximumFractionDigits = 0
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -511,9 +519,9 @@ private fun RecapHighlightsGrid(
                 icon = Icons.Rounded.LocalFireDepartment,
                 accent = LevyraOrange,
                 title = strings.streakHighlight,
-                headline = "${highlights.currentStreakDays} ${strings.recapUnitDays}",
+                headline = "${number.format(highlights.currentStreakDays)} ${strings.recapUnitDays}",
                 subtitle = if (highlights.bestStreakDays > 0) {
-                    strings.recapStreakMax.replace("%s", "${highlights.bestStreakDays}")
+                    strings.recapStreakMax.replace("%s", number.format(highlights.bestStreakDays))
                 } else "",
                 isDark = isDark
             )
@@ -535,7 +543,7 @@ private fun RecapHighlightsGrid(
                     icon = Icons.Rounded.CheckCircle,
                     accent = LevyraViolet,
                     title = strings.recapCompletionRate,
-                    headline = "${recap.completionRate}%",
+                    headline = percentFormat.format(recap.completionRate / 100.0),
                     subtitle = "${number.format(recap.totalPlays)} ${strings.pulsePlays}",
                     isDark = isDark
                 )
@@ -554,7 +562,7 @@ private fun RecapHighlightsGrid(
                 icon = Icons.Rounded.CalendarMonth,
                 accent = LevyraCyan,
                 title = strings.mostActiveDayHighlight,
-                headline = if (highlights.mostActiveDayMinutes > 0) "${highlights.mostActiveDayMinutes} ${strings.recapUnitMinutes}" else "—",
+                headline = if (highlights.mostActiveDayMinutes > 0) "${number.format(highlights.mostActiveDayMinutes)} ${strings.recapUnitMinutes}" else "—",
                 subtitle = mostActiveText,
                 isDark = isDark
             )
@@ -564,8 +572,8 @@ private fun RecapHighlightsGrid(
                     icon = Icons.Rounded.Explore,
                     accent = LevyraPink,
                     title = strings.discoveryHighlight,
-                    headline = "${highlights.discoveryRate}%",
-                    subtitle = "${highlights.repeatRate}% ${strings.pulsePlays}",
+                    headline = percentFormat.format(highlights.discoveryRate / 100.0),
+                    subtitle = "${percentFormat.format(highlights.repeatRate / 100.0)} ${strings.pulsePlays}",
                     isDark = isDark
                 )
             } else {
@@ -574,7 +582,7 @@ private fun RecapHighlightsGrid(
                     icon = Icons.Rounded.Schedule,
                     accent = LevyraPink,
                     title = strings.pulseProAverage,
-                    headline = "${highlights.averageMinutesPerDay} ${strings.recapUnitMinutes}",
+                    headline = "${number.format(highlights.averageMinutesPerDay)} ${strings.recapUnitMinutes}",
                     subtitle = periodLabel(recap.period, strings),
                     isDark = isDark
                 )
@@ -589,7 +597,7 @@ private fun RecapHighlightsGrid(
                 accent = Color(0xFFFFC857),
                 title = strings.replayHighlight,
                 headline = track.title,
-                subtitle = "${track.artist} · ${track.plays} ${strings.pulsePlays}",
+                subtitle = "${track.artist} · ${number.format(track.plays)} ${strings.pulsePlays}",
                 isDark = isDark
             )
         }
@@ -662,6 +670,7 @@ private fun TopTrackRow(
     position: LevyraConnectedPosition,
     style: LevyraConnectedStyle,
     strings: LevyraStrings,
+    number: NumberFormat,
     onPlay: () -> Unit
 ) {
     Row(
@@ -679,7 +688,7 @@ private fun TopTrackRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "#${track.rank}",
+            text = "#${number.format(track.rank)}",
             color = if (track.rank == 1) LevyraCyan else LevyraMuted,
             fontSize = 14.sp,
             fontWeight = FontWeight.Black,
@@ -732,13 +741,13 @@ private fun TopTrackRow(
 
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
-                text = "${track.plays} ${strings.pulsePlays}",
+                text = "${number.format(track.plays)} ${strings.pulsePlays}",
                 color = LevyraCyan,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "${track.totalMinutes} ${strings.recapUnitMinutes}",
+                text = "${number.format(track.totalMinutes)} ${strings.recapUnitMinutes}",
                 color = LevyraMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold
@@ -753,6 +762,7 @@ private fun TopArtistRow(
     position: LevyraConnectedPosition,
     style: LevyraConnectedStyle,
     strings: LevyraStrings,
+    number: NumberFormat,
     onOpen: () -> Unit
 ) {
     val artistAccents = remember(artist.name) { levyraArtistAccent(artist.name) }
@@ -771,7 +781,7 @@ private fun TopArtistRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "#${artist.rank}",
+            text = "#${number.format(artist.rank)}",
             color = if (artist.rank == 1) LevyraPink else LevyraMuted,
             fontSize = 14.sp,
             fontWeight = FontWeight.Black,
@@ -798,7 +808,7 @@ private fun TopArtistRow(
             )
             if (artist.trackCount > 0) {
                 Text(
-                    text = "${artist.trackCount} ${strings.statTracks}",
+                    text = strings.formatTrackCount(artist.trackCount),
                     color = LevyraMuted,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Medium
@@ -808,13 +818,13 @@ private fun TopArtistRow(
 
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
-                text = "${artist.plays} ${strings.pulsePlays}",
+                text = "${number.format(artist.plays)} ${strings.pulsePlays}",
                 color = LevyraPink,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "${artist.totalMinutes} ${strings.recapUnitMinutes}",
+                text = "${number.format(artist.totalMinutes)} ${strings.recapUnitMinutes}",
                 color = LevyraMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold
@@ -828,7 +838,8 @@ private fun TopAlbumRow(
     album: TopAlbumStat,
     position: LevyraConnectedPosition,
     style: LevyraConnectedStyle,
-    strings: LevyraStrings
+    strings: LevyraStrings,
+    number: NumberFormat
 ) {
     Row(
         modifier = Modifier
@@ -839,7 +850,7 @@ private fun TopAlbumRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "#${album.rank}",
+            text = "#${number.format(album.rank)}",
             color = if (album.rank == 1) LevyraOrange else LevyraMuted,
             fontSize = 14.sp,
             fontWeight = FontWeight.Black,
@@ -892,13 +903,13 @@ private fun TopAlbumRow(
 
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
-                text = "${album.plays} ${strings.pulsePlays}",
+                text = "${number.format(album.plays)} ${strings.pulsePlays}",
                 color = LevyraOrange,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "${album.totalMinutes} ${strings.recapUnitMinutes}",
+                text = "${number.format(album.totalMinutes)} ${strings.recapUnitMinutes}",
                 color = LevyraMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold
@@ -1042,14 +1053,14 @@ private fun periodLabel(period: ListeningRecapPeriod, strings: LevyraStrings): S
     ListeningRecapPeriod.AllTime -> strings.recapPeriodAllTime
 }
 
-private fun formatRecapDuration(listenedMs: Long, strings: LevyraStrings): String {
+private fun formatRecapDuration(listenedMs: Long, strings: LevyraStrings, number: NumberFormat): String {
     val totalMinutes = listenedMs / 60_000L
     val hours = totalMinutes / 60L
     val remainingMinutes = totalMinutes % 60L
     return when {
-        hours > 0 && remainingMinutes > 0 -> "${hours}h ${remainingMinutes} ${strings.recapUnitMinutes}"
-        hours > 0 -> "${hours}h"
-        else -> "$totalMinutes ${strings.recapUnitMinutes}"
+        hours > 0 && remainingMinutes > 0 -> "${number.format(hours)} ${strings.recapUnitHours} ${number.format(remainingMinutes)} ${strings.recapUnitMinutes}"
+        hours > 0 -> "${number.format(hours)} ${strings.recapUnitHours}"
+        else -> "${number.format(totalMinutes)} ${strings.recapUnitMinutes}"
     }
 }
 

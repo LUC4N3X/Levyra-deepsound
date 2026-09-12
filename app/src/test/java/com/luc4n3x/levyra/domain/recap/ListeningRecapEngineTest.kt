@@ -26,6 +26,7 @@ class ListeningRecapEngineTest {
         assertEquals(0, recap.uniqueTracks)
         assertEquals(0, recap.uniqueArtists)
         assertEquals(0, recap.uniqueAlbums)
+        assertEquals(null, recap.highlights.favoriteDaypart)
         assertTrue(recap.topTracks.isEmpty())
         assertTrue(recap.topArtists.isEmpty())
         assertTrue(recap.topAlbums.isEmpty())
@@ -280,6 +281,22 @@ class ListeningRecapEngineTest {
         assertEquals(-1, recap.highlights.discoveryRate)
         assertEquals(null, recap.highlights.mostReplayedTrack)
         assertEquals(50, recap.completionRate)
+    }
+
+    @Test
+    fun allTimeLifetimeWithoutHourlyDataHasNullFavoriteDaypart() {
+        val lifetime = LifetimeListening(
+            totalListenMs = 1_000_000L,
+            countedPlays = 20,
+            completedCount = 10,
+            eventCount = 20,
+            distinctTracks = 5,
+            distinctArtists = 2
+        )
+        val recap = ListeningRecapEngine.build(emptyList(), ListeningRecapPeriod.AllTime, lifetime = lifetime, nowMs = now, zone = zone)
+
+        assertEquals(null, recap.highlights.favoriteDaypart)
+        assertEquals(-1, recap.highlights.favoriteHour)
     }
 
     @Test

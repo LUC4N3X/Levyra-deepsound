@@ -386,6 +386,7 @@ class LevyraStrings private constructor(
     val daypartNight: String get() = value("daypartNight")
     val recapStreakMax: String get() = value("recapStreakMax")
     val recapUnitDays: String get() = value("recapUnitDays")
+    val recapUnitHours: String get() = value("recapUnitHours")
     val recapUnitMinutes: String get() = value("recapUnitMinutes")
     val recapRecentActivity: String get() = value("recapRecentActivity")
     val recapActivityLast30Days: String get() = value("recapActivityLast30Days")
@@ -1537,6 +1538,7 @@ class LevyraStrings private constructor(
             "daypartNight",
             "recapStreakMax",
             "recapUnitDays",
+            "recapUnitHours",
             "recapUnitMinutes",
             "recapRecentActivity",
             "recapActivityLast30Days",

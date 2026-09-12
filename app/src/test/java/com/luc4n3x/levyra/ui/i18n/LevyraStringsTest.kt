@@ -36,6 +36,7 @@ class LevyraStringsTest {
             assertTrue(strings.topTracksTitle.isNotBlank())
             assertTrue(strings.topArtistsTitle.isNotBlank())
             assertTrue(strings.topAlbumsTitle.isNotBlank())
+            assertTrue(strings.recapUnitHours.isNotBlank())
             assertTrue(strings.openRecap.isNotBlank())
             assertTrue(strings.pulseProPeak.isNotBlank())
             assertTrue(strings.pulseProAverage.isNotBlank())
