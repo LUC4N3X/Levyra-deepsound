@@ -25,6 +25,17 @@ class JamProtocolTest {
     }
 
     @Test
+    fun capabilitiesRoundTripAndRemainOptionalForLegacyState() {
+        val encoded = JSONObject(JamProtocol.encode(stateMessage()))
+        val decoded = JamProtocol.decode(encoded.toString()) as JamMessage.State
+        assertEquals(JamCapabilities.current, decoded.state.capabilities)
+
+        encoded.getJSONObject("payload").remove("capabilities")
+        val legacyDecoded = JamProtocol.decode(encoded.toString()) as JamMessage.State
+        assertTrue(legacyDecoded.state.capabilities.isEmpty())
+    }
+
+    @Test
     fun everyActionRoundTrips() {
         val actions = listOf(
             JamAction.AddTrack(sampleTrack()),
