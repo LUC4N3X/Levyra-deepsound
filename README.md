@@ -140,6 +140,8 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 <p><sub>When enabled, Levyra can resolve and verify an alternative high-quality JioSaavn audio source before playback while preserving the original track identity, metadata, queue state, artwork, lyrics, listening history, and recommendations.</sub></p>
 
+<p><b>At a verified 320 kbps, the JioSaavn route delivers premium lossy audio in the same general quality class as TIDAL's 320 kbps compressed tier — a level that can sound extremely close in normal listening conditions on phones, Bluetooth headphones, car systems, and everyday speakers. It is not presented as lossless: TIDAL High and Max can still provide technically higher-fidelity FLAC up to Hi-Res 24-bit/192 kHz.</b></p>
+
 <table align="center" width="100%">
   <tr valign="top">
     <td width="33%">
