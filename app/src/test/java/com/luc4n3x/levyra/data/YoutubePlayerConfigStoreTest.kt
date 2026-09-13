@@ -308,6 +308,30 @@ class YoutubePlayerConfigStoreTest {
     }
 
     @Test
+    fun mirrorEtagIsSentOnlyToMirrorAndNotModifiedKeepsLastKnownGood() = runBlocking {
+        val seeding = store(respond(mirror to ok(remoteTable, etag = "\"m1\"")), sources = listOf(upstream, mirror))
+        assertTrue(seeding.refresh(force = true, reason = "seed"))
+        requests.clear()
+        now += 60_000L
+        val store = store(respond(mirror to notModified()), sources = listOf(upstream, mirror))
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+        val epoch = store.epoch
+
+        assertFalse(store.refresh(force = true, reason = "test"))
+
+        assertEquals(listOf(upstream.url, mirror.url), requests.map { it.url.toString() })
+        assertNull(requests[0].header("If-None-Match"))
+        assertEquals("\"m1\"", requests[1].header("If-None-Match"))
+        assertEquals(epoch, store.epoch)
+        assertEquals(20002, store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureTimestamp)
+        assertEquals(remoteTable, remoteFile.readText())
+        val metadata = JSONObject(metadataFile.readText())
+        assertEquals(mirror.id, metadata.getString("sourceId"))
+        assertEquals("\"m1\"", metadata.getString("etag"))
+        assertEquals(now, metadata.getLong("checkedAtMs"))
+    }
+
+    @Test
     fun activeSourcesAreZemerUpstreamThenLevyraVerifiedMirror() {
         assertEquals(
             listOf(YoutubePlayerConfigSources.ZEMER_UPSTREAM, YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR),
