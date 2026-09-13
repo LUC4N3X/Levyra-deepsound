@@ -65,16 +65,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 <div align="center">
   <p><b>Keep the file. Keep the history. Keep control.</b><br><sub>Offline playback is not a fallback in Levyra. It is ownership.</sub></p>
   <p><sub><b>Independent recognition</b></sub></p>
-  <p>
-    <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
-      <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" width="145">
-    </a>
-    &nbsp;&nbsp;&nbsp;
-    <a href="https://www.bestpractices.dev/projects/14606">
-      <img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices passing badge">
-    </a>
-  </p>
-  <p><sub>Approved on SaaSHub &nbsp;·&nbsp; OpenSSF Best Practices — Passing</sub></p>
+  <p><a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="48"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices — Passing" height="48"></a></p>
 </div>
 
 ---
