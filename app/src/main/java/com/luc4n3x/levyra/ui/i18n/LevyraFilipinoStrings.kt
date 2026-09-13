@@ -234,6 +234,7 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "favoritesPlain" to "Mga paborito",
     "offline" to "Offline",
     "more" to "Higit pa",
+    "mix" to "Mix",
     "mixForYou" to "Mix para sa iyo",
     "genres" to "Mga genre",
     "smartMusicProfile" to "Smart Music Profile",
