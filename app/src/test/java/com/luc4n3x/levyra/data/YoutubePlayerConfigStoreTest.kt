@@ -308,13 +308,52 @@ class YoutubePlayerConfigStoreTest {
     }
 
     @Test
-    fun zemerUpstreamRemainsTheOnlyActiveSourceUntilMirrorExists() {
-        assertNull(YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR_URL)
-        assertEquals(listOf(YoutubePlayerConfigSources.ZEMER_UPSTREAM), YoutubePlayerConfigSources.active)
+    fun activeSourcesAreZemerUpstreamThenLevyraVerifiedMirror() {
+        assertEquals(
+            listOf(YoutubePlayerConfigSources.ZEMER_UPSTREAM, YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR),
+            YoutubePlayerConfigSources.active
+        )
         assertEquals(
             "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json",
             YoutubePlayerConfigSources.ZEMER_UPSTREAM.url
         )
+        assertEquals(
+            "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/main/app/src/main/assets/player_configs.json",
+            YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR.url
+        )
+        assertEquals("levyra-verified-mirror", YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR.id)
+    }
+
+    @Test
+    fun defaultSourcesFallBackFromZemerToLevyraMirror() = runBlocking {
+        val zemer = YoutubePlayerConfigSources.ZEMER_UPSTREAM
+        val levyraMirror = YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR
+        val store = store(
+            respond(zemer to ok(remoteTable).copyWithCode(503), levyraMirror to ok(remoteTable, etag = "\"m1\"")),
+            sources = YoutubePlayerConfigSources.active
+        )
+
+        assertTrue(store.refresh(force = true, reason = "test"))
+
+        assertEquals(listOf(zemer.url, levyraMirror.url), requests.map { it.url.toString() })
+        assertEquals(20002, store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureTimestamp)
+        assertEquals(levyraMirror.id, JSONObject(metadataFile.readText()).getString("sourceId"))
+    }
+
+    @Test
+    fun defaultSourcesPreferZemerWithoutContactingLevyraMirror() = runBlocking {
+        val zemer = YoutubePlayerConfigSources.ZEMER_UPSTREAM
+        val levyraMirror = YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR
+        val store = store(
+            respond(zemer to ok(remoteTable), levyraMirror to ok(newerRemoteTable)),
+            sources = YoutubePlayerConfigSources.active
+        )
+
+        assertTrue(store.refresh(force = true, reason = "test"))
+
+        assertEquals(listOf(zemer.url), requests.map { it.url.toString() })
+        assertNull(store.configFor(NEWER_HASH, refreshUnknown = false))
+        assertEquals(zemer.id, JSONObject(metadataFile.readText()).getString("sourceId"))
     }
 
     @Test(expected = IllegalArgumentException::class)

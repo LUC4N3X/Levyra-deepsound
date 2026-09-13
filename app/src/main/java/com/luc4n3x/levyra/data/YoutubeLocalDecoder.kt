@@ -876,11 +876,17 @@ internal object YoutubePlayerConfigSources {
     )
 
     const val LEVYRA_VERIFIED_MIRROR_ID = "levyra-verified-mirror"
-    val LEVYRA_VERIFIED_MIRROR_URL: String? = null
+    const val LEVYRA_VERIFIED_MIRROR_URL =
+        "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/main/app/src/main/assets/player_configs.json"
 
-    val active: List<YoutubePlayerConfigSource> = listOfNotNull(
+    val LEVYRA_VERIFIED_MIRROR = YoutubePlayerConfigSource(
+        id = LEVYRA_VERIFIED_MIRROR_ID,
+        url = LEVYRA_VERIFIED_MIRROR_URL
+    )
+
+    val active: List<YoutubePlayerConfigSource> = listOf(
         ZEMER_UPSTREAM,
-        LEVYRA_VERIFIED_MIRROR_URL?.let { YoutubePlayerConfigSource(LEVYRA_VERIFIED_MIRROR_ID, it) }
+        LEVYRA_VERIFIED_MIRROR
     )
 }
 
