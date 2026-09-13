@@ -404,6 +404,8 @@ import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.buildPersonalizedHomeAlbumShelf
 import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
+import com.luc4n3x.levyra.data.findVerifiedTopResultArtist
+import com.luc4n3x.levyra.data.deduplicateSearchSongs
 import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
@@ -500,6 +502,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
+import com.luc4n3x.levyra.ui.theme.LevyraIsPureBlack
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
@@ -11170,12 +11173,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                         }
                         if (filter == SearchFilter.All && topResultTracks.isNotEmpty()) {
                             val heroTrack = topResultTracks.firstOrNull()
-                            val matchedArtist = data.artists.firstOrNull { it.name.equals(heroTrack?.artist, ignoreCase = true) }
-                                ?: data.artists.firstOrNull { it.name.equals(data.topTrack?.artist, ignoreCase = true) }
-                                ?: data.artists.firstOrNull { it.name.equals(queryClean, ignoreCase = true) }
-                                ?: data.artists.firstOrNull { it.name.startsWith(queryClean, ignoreCase = true) || queryClean.startsWith(it.name, ignoreCase = true) }
-                                ?: data.artists.firstOrNull { it.name.contains(queryClean, ignoreCase = true) }
-                                ?: data.artists.firstOrNull()
+                            val matchedArtist = findVerifiedTopResultArtist(data.artists, heroTrack, queryClean)
                             item {
                                 TopResultCard(
                                     tracks = topResultTracks,
@@ -11187,7 +11185,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     onPlay = { track ->
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
-                                        viewModel.playFrom(data.songs, track)
+                                        val playbackContext = deduplicateSearchSongs(listOf(track) + data.songs)
+                                        viewModel.playFrom(playbackContext, track)
                                     },
                                     onFavorite = viewModel::toggleFavorite,
                                     onAddToPlaylist = { track -> addTarget = track },
@@ -11206,8 +11205,9 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
                                         val artistName = matchedArtist?.name ?: heroTrack?.artist
+                                        val candidatePool = deduplicateSearchSongs(topResultTracks + data.songs)
                                         val pool = if (!artistName.isNullOrBlank()) {
-                                            data.songs.filter { it.artist.contains(artistName, ignoreCase = true) }.ifEmpty { topResultTracks }
+                                            candidatePool.filter { it.artist.contains(artistName, ignoreCase = true) }.ifEmpty { topResultTracks }
                                         } else {
                                             topResultTracks
                                         }
@@ -11219,9 +11219,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     onMix = {
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
-                                        heroTrack?.let { first ->
-                                            viewModel.playFrom(data.songs, first)
-                                            viewModel.startSongRadio()
+                                        heroTrack?.let { track ->
+                                            viewModel.startSongRadioFrom(track, data.songs)
                                         }
                                     }
                                 )
@@ -19884,11 +19883,15 @@ private fun TopResultCard(
     val hero = tracks.firstOrNull() ?: return
     val strings = LocalLevyraStrings.current
 
+    val cardBg = if (LevyraIsLight) LevyraPanel else if (LevyraIsPureBlack) Color(0xFF101114) else LevyraPanel
+    val cardBorder = if (LevyraIsLight) LevyraAdaptiveHairline else Color.White.copy(alpha = 0.06f)
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF212121))
+            .background(cardBg)
+            .border(1.dp, cardBorder, RoundedCornerShape(16.dp))
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
         Column {
@@ -19900,17 +19903,22 @@ private fun TopResultCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val avatarUrl = artist?.thumbnailUrl?.ifBlank { null } ?: hero.thumbnailUrl
+                val artistDisplayName = artist?.name?.ifBlank { null } ?: hero.artist
+                val artistSubtitle = remember(artist?.subscribers, strings.artistLabel) {
+                    artist?.subscribers?.trim()?.takeIf(String::isNotBlank) ?: strings.artistLabel
+                }
+
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(avatarUrl)
                         .crossfade(true)
                         .build(),
-                    contentDescription = artist?.name ?: hero.artist,
+                    contentDescription = artistDisplayName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF2E2E2E))
+                        .background(LevyraPanelSoft)
                 )
 
                 Spacer(modifier = Modifier.width(14.dp))
@@ -19920,31 +19928,17 @@ private fun TopResultCard(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = artist?.name ?: hero.artist,
-                        color = Color.White,
+                        text = artistDisplayName,
+                        color = LevyraText,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    val subtitle = when {
-                        !artist?.subscribers.isNullOrBlank() -> {
-                            val subs = artist.subscribers
-                            if (subs.contains("iscritt", ignoreCase = true) ||
-                                subs.contains("ascoltator", ignoreCase = true) ||
-                                subs.contains("sub", ignoreCase = true)
-                            ) {
-                                subs
-                            } else {
-                                "$subs ${if (strings.code == "it") "iscritti" else "subscribers"}"
-                            }
-                        }
-                        else -> strings.artistLabel
-                    }
                     Text(
-                        text = subtitle,
-                        color = Color(0xFFAAAAAA),
+                        text = artistSubtitle,
+                        color = LevyraMuted,
                         fontSize = 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -19953,8 +19947,8 @@ private fun TopResultCard(
 
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = Color(0xFFAAAAAA),
+                    contentDescription = strings.openArtist,
+                    tint = LevyraMuted,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -19965,8 +19959,11 @@ private fun TopResultCard(
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                val shuffleBg = if (LevyraIsLight) LevyraText else Color.White
+                val shuffleFg = if (LevyraIsLight) LevyraPanel else LevyraBlack
+
                 Surface(
-                    color = Color.White,
+                    color = shuffleBg,
                     shape = RoundedCornerShape(99.dp),
                     modifier = Modifier
                         .weight(1f)
@@ -19980,22 +19977,29 @@ private fun TopResultCard(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Shuffle,
-                            contentDescription = null,
-                            tint = Color.Black,
+                            contentDescription = strings.shuffle,
+                            tint = shuffleFg,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (strings.code == "it") "Casuale" else "Shuffle",
-                            color = Color.Black,
+                            text = strings.shuffle,
+                            color = shuffleFg,
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
+                val mixBg = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f)
+                val mixFg = LevyraText
+                val mixBorder = if (LevyraIsLight) BorderStroke(1.dp, LevyraAdaptiveHairline) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+
                 Surface(
-                    color = Color(0xFF333333),
+                    color = mixBg,
+                    border = mixBorder,
                     shape = RoundedCornerShape(99.dp),
                     modifier = Modifier
                         .weight(1f)
@@ -20010,15 +20014,16 @@ private fun TopResultCard(
                         Icon(
                             imageVector = Icons.Rounded.Radio,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = mixFg,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Mix",
-                            color = Color.White,
+                            color = mixFg,
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
                         )
                     }
                 }
@@ -20074,7 +20079,7 @@ private fun TopResultTrackRow(
             CoverImage(track, Modifier.fillMaxSize())
             if (isPlaying || isResolving) {
                 Surface(
-                    color = Color.Black.copy(alpha = 0.50f),
+                    color = Color.Black.copy(alpha = 0.52f),
                     modifier = Modifier.matchParentSize()
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -20082,13 +20087,13 @@ private fun TopResultTrackRow(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
-                                color = Color.White
+                                color = LevyraCyan
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Rounded.Equalizer,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = LevyraCyan,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -20105,7 +20110,7 @@ private fun TopResultTrackRow(
         ) {
             Text(
                 text = track.title,
-                color = if (isCurrent) LevyraCyan else Color.White,
+                color = if (isCurrent) LevyraCyan else LevyraText,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -20118,14 +20123,14 @@ private fun TopResultTrackRow(
             ) {
                 if (track.explicit) {
                     Surface(
-                        color = Color(0xFF383838),
+                        color = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f),
                         shape = RoundedCornerShape(3.dp),
                         modifier = Modifier.size(width = 14.dp, height = 14.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = "E",
-                                color = Color(0xFFAAAAAA),
+                                color = LevyraMuted,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                                 lineHeight = 9.sp
@@ -20136,12 +20141,9 @@ private fun TopResultTrackRow(
 
                 val subtitle = remember(track.youtubeViewCount, track.durationMs, strings.code) {
                     val plays = formatSearchViewCount(track.youtubeViewCount, strings.code)
-                    val songLabel = if (strings.code == "it") "Brano" else "Song"
+                    val songLabel = strings.song
                     when {
-                        plays.isNotBlank() -> {
-                            val repSuffix = if (strings.code == "it") "riproduzioni" else "views"
-                            "$songLabel • $plays $repSuffix"
-                        }
+                        plays.isNotBlank() -> "$songLabel • $plays ${strings.pulsePlays}"
                         track.durationMs > 0L -> "$songLabel • ${formatDuration(track.durationMs)}"
                         else -> songLabel
                     }
@@ -20149,7 +20151,7 @@ private fun TopResultTrackRow(
 
                 Text(
                     text = subtitle,
-                    color = Color(0xFFAAAAAA),
+                    color = LevyraMuted,
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -20165,23 +20167,25 @@ private fun TopResultTrackRow(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = "Menu",
-                    tint = Color(0xFFAAAAAA),
+                    contentDescription = strings.more,
+                    tint = LevyraMuted,
                     modifier = Modifier.size(20.dp)
                 )
             }
             DropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
-                modifier = Modifier.background(Color(0xFF282828))
+                modifier = Modifier
+                    .background(LevyraPanel)
+                    .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(8.dp))
             ) {
                 DropdownMenuItem(
-                    text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites, color = Color.White) },
+                    text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites, color = LevyraText) },
                     leadingIcon = {
                         Icon(
                             if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                             null,
-                            tint = if (isFavorite) LevyraPink else Color.White
+                            tint = if (isFavorite) LevyraPink else LevyraText
                         )
                     },
                     onClick = {
@@ -20190,32 +20194,32 @@ private fun TopResultTrackRow(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(strings.playNext, color = Color.White) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = Color.White) },
+                    text = { Text(strings.playNext, color = LevyraText) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraText) },
                     onClick = {
                         menuExpanded = false
                         onPlayNext()
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(strings.addToQueue, color = Color.White) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = Color.White) },
+                    text = { Text(strings.addToQueue, color = LevyraText) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraText) },
                     onClick = {
                         menuExpanded = false
                         onAddToQueue()
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(strings.addToPlaylist, color = Color.White) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = Color.White) },
+                    text = { Text(strings.addToPlaylist, color = LevyraText) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = LevyraText) },
                     onClick = {
                         menuExpanded = false
                         onAddToPlaylist()
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(strings.openArtist, color = Color.White) },
-                    leadingIcon = { Icon(Icons.Rounded.Person, null, tint = Color.White) },
+                    text = { Text(strings.openArtist, color = LevyraText) },
+                    leadingIcon = { Icon(Icons.Rounded.Person, null, tint = LevyraText) },
                     onClick = {
                         menuExpanded = false
                         onArtist()

@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
+import com.luc4n3x.levyra.data.deduplicateSearchSongs
 import com.luc4n3x.levyra.data.areAllFavoriteTracks
 import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
@@ -4951,6 +4952,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!queueEngine.state.value.radioEnabled) queueEngine.setRadioEnabled(true)
         radioJob?.cancel()
         ensureRadioTail(force = true, insertAfterCurrent = true)
+    }
+
+    fun startSongRadioFrom(track: Track, context: List<Track> = emptyList()) {
+        val playbackContext = deduplicateSearchSongs(listOf(track) + context)
+        playFrom(playbackContext, track)
+        startSongRadio()
     }
 
     fun playSimilarSong(track: Track) {
