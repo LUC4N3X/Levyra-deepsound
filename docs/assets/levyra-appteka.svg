@@ -1,22 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="144" height="44" viewBox="0 0 144 44" role="img" aria-label="GET IT ON Appteka">
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="48" viewBox="0 0 160 48" role="img" aria-label="GET IT ON Appteka">
   <title>GET IT ON Appteka</title>
-  <rect x=".75" y=".75" width="142.5" height="42.5" rx="9" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
-  <rect x=".75" y="11" width="3" height="22" rx="1.5" fill="#2F9B04"/>
-  <rect x="5.5" y="5" width="34" height="34" rx="7.5" fill="#161B22" stroke="#30363D" stroke-width="1"/>
-  <g transform="translate(9 9) scale(0.2407)">
+  <rect x=".75" y=".75" width="158.5" height="46.5" rx="10" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
+  <rect x=".75" y="12" width="3.5" height="24" rx="1.75" fill="#2F9B04"/>
+  <g transform="translate(10 10) scale(0.259)">
     <rect width="108" height="108" rx="24" fill="#2F9B04"/>
     <g transform="translate(33.48 33.48) scale(0.14657143)">
       <path fill="#F2FFED" d="M25.768,129.575L129.575,25.768C164.08,-8.589 219.727,-8.589 254.232,25.768C288.589,60.126 288.589,115.92 254.232,150.425L150.425,254.232C115.92,288.589 60.126,288.589 25.768,254.232C-8.589,219.727 -8.589,164.08 25.768,129.575ZM46.618,150.425C31.201,165.695 26.062,187.572 31.348,207.1L119.297,119.297L181.552,181.552L233.382,129.575C256.434,106.67 256.434,69.523 233.382,46.618C210.477,23.566 173.33,23.566 150.425,46.618L46.618,150.425Z"/>
     </g>
   </g>
-  <g transform="translate(30.5 7.5)" fill="none" stroke="#8B949E" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M0 4.5 L4.5 0 M1.5 0 H4.5 V3"/>
-  </g>
-  <text x="45" y="16.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="6.8" font-weight="700" letter-spacing=".75">GET IT ON</text>
-  <text x="45" y="31.5" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="13" font-weight="750">Appteka</text>
-  <g transform="translate(126 16)" fill="#2F9B04" opacity="0.40">
-    <rect x="0" y="3" width="1.8" height="7" rx="0.9"/>
-    <rect x="3.4" y="0" width="1.8" height="13" rx="0.9"/>
-    <rect x="6.8" y="2" width="1.8" height="9" rx="0.9"/>
-  </g>
+  <text x="48" y="18" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">GET IT ON</text>
+  <text x="48" y="34.5" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="14" font-weight="750">Appteka</text>
+  <path d="M147 21l3 3-3 3" fill="none" stroke="#8B949E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
