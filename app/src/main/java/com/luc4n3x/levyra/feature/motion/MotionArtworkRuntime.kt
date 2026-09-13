@@ -9,7 +9,7 @@ data class MotionArtworkConfig(
         "apple-motion",
         "tidal-video-cover"
     ),
-    val minimumConfidence: Int = 84,
+    val minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE,
     val requestTimeoutMs: Long = 6_500L,
     val positiveTtlMs: Long = MOTION_ARTWORK_POSITIVE_TTL_MS,
     val negativeTtlMs: Long = MOTION_ARTWORK_NEGATIVE_TTL_MS
@@ -36,4 +36,5 @@ object MotionArtworkRuntime {
     )
 }
 
-internal const val MOTION_ARTWORK_CACHE_SCHEMA_EPOCH = 6L
+internal const val MOTION_ARTWORK_CACHE_SCHEMA_EPOCH = 8L
+internal const val DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE = 84

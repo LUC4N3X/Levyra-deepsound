@@ -41,6 +41,38 @@ class MotionArtworkVerificationPlanTest {
         assertFalse(plan.exhaustive)
     }
 
+    @Test
+    fun transientProviderOrVerifierFailuresNeverBecomeGlobalNegativeCacheEntries() {
+        assertTrue(
+            shouldNegativeCacheMotionArtwork(
+                providerFailed = false,
+                verifierFailed = false,
+                verificationExhaustive = true
+            )
+        )
+        assertFalse(
+            shouldNegativeCacheMotionArtwork(
+                providerFailed = true,
+                verifierFailed = false,
+                verificationExhaustive = true
+            )
+        )
+        assertFalse(
+            shouldNegativeCacheMotionArtwork(
+                providerFailed = false,
+                verifierFailed = true,
+                verificationExhaustive = true
+            )
+        )
+        assertFalse(
+            shouldNegativeCacheMotionArtwork(
+                providerFailed = false,
+                verifierFailed = false,
+                verificationExhaustive = false
+            )
+        )
+    }
+
     private fun rankedCandidate(url: String, providerRank: Int): MotionArtworkRankedCandidate =
         MotionArtworkRankedCandidate(
             candidate = MotionArtworkCandidate(

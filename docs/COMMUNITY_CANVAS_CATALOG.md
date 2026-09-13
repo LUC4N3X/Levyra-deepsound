@@ -21,9 +21,8 @@ If one shard fails but another relevant shard produces a valid exact match, Levy
 Identities that cannot produce an index key also use the legacy catalog path instead of being treated
 as a conclusive indexed miss.
 
-In automatic mode, provider priority is strict: Levyra's Spotify Canvas catalog, Apple Music motion
-artwork, then Tidal `videoCover`. If none produces a verified match, the player keeps Levyra's normal
-artwork and its local decorative motion treatment. The historical internal ID `community-canvas`
+In automatic mode, provider priority is strict: Apple Music motion artwork, then Tidal `videoCover`,
+then Levyra's Spotify Canvas catalog, then static/local fallback. The historical internal ID `community-canvas`
 now represents only the Spotify catalog published and sanitized by Levyra.
 
 Android never reads a third-party catalog directly. Levyra consumes only the sanitized Spotify

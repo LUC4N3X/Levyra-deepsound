@@ -482,7 +482,7 @@ internal fun communityCanvasCandidates(
                 provider = CommunityCanvasProvider.PROVIDER_ID,
                 scope = entry.scope,
                 identity = MotionTrackIdentity(
-                    title = entry.song,
+                    title = if (entry.scope == MotionArtworkScope.TRACK) entry.song else "",
                     artists = splitArtists(entry.artist),
                     album = entry.album,
                     durationMs = 0L,
