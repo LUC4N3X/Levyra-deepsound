@@ -1,0 +1,38 @@
+version = 1
+
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 LUC4N3X and Levyra contributors"
+SPDX-License-Identifier = "GPL-3.0-only"
+
+[[annotations]]
+path = [
+  "gradlew",
+  "gradlew.bat",
+  "gradle/wrapper/**",
+  "desktop/gradlew",
+  "desktop/gradlew.bat",
+  "desktop/gradle/wrapper/**",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2015 the original authors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "app/src/main/res/values/font_certs.xml"
+precedence = "override"
+SPDX-FileCopyrightText = "2017 The Android Open Source Project"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = [
+  "app/src/main/java/com/luc4n3x/levyra/ui/components/LevyraIonicons.kt",
+  "app/src/main/assets/licenses/ionicons.txt",
+]
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "2015-present Ionic",
+  "2026 LUC4N3X",
+]
+SPDX-License-Identifier = "MIT"
