@@ -63,23 +63,25 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 **No analytics profile. No cookies. No mandatory Levyra account.**
 
 <div align="center">
-  <p><b>Keep the file. Keep the history. Keep control.</b><br><sub>Offline playback is not a fallback in Levyra. It is ownership.</sub></p>
-  <p><sub><b>Independent recognition</b></sub></p>
+  <p>
+    <b>Keep the file. Keep the history. Keep control.</b><br>
+    <sub>Offline playback is not a fallback in Levyra. It is ownership.</sub>
+  </p>
+
+  <br>
+
+  <p><sub><b>INDEPENDENT RECOGNITION</b></sub></p>
   <p>
     <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
-      <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="52">
+      <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="48">
     </a>
   </p>
+
+  <p><sub><b>OPEN-SOURCE TRUST &amp; COMPLIANCE</b></sub></p>
   <p>
-    <a href="https://www.bestpractices.dev/projects/14606">
-      <img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices — Passing">
-    </a>
+    <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices — Passing"></a> <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
   </p>
-  <p>
-    <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound">
-      <img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant">
-    </a>
-  </p>
+  <p><sub>Security best practices · licensing compliance · independently verifiable</sub></p>
 </div>
 
 ---
@@ -190,7 +192,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 <div align="center">
   <h3>🎧 <b>Everything in the signal path. Nothing in the way.</b></h3>
-  <p><sub>Playback, discovery, lyrics, offline ownership, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
+  <p><sub>Playback, discovery, live radio, lyrics, offline ownership, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
   <p>
     <code>12 CORE SYSTEMS</code> &nbsp;·&nbsp;
     <code>ANDROID + WINDOWS</code> &nbsp;·&nbsp;
@@ -238,6 +240,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
         <li><b>Strict Match Guard:</b> Artist credits, album, duration, explicit state, ISRC and recording/version markers prevent remixes, live cuts, covers and ambiguous candidates from replacing the requested track.</li>
         <li><b>Queue Prefetch:</b> Upcoming tracks buffer quietly before the skip.</li>
         <li><b>Discovery Engine:</b> Global Top 50, Smart Orbit recommendations, and Samples feed.</li>
+        <li><b>Live Radio:</b> Real worldwide stations with country, language, category and station-name discovery, local favorites and recents, ICY now-playing metadata, background playback, bounded reconnect, and a live Media3 path kept separate from Song Radio and the persistent music queue.</li>
       </ul>
     </td>
     <td width="50%">
