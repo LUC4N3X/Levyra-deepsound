@@ -17,7 +17,7 @@ internal suspend fun awaitMotionArtworkResponse(call: Call): Response =
             }
 
             override fun onResponse(call: Call, response: Response) {
-                if (continuation.isActive) continuation.resume(response) else response.close()
+                continuation.resume(response) { _, value, _ -> value.close() }
             }
         })
     }
