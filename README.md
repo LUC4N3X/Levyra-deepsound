@@ -63,23 +63,31 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 **No analytics profile. No cookies. No mandatory Levyra account.**
 
 <div align="center">
-  <p><b>Keep the file. Keep the history. Keep control.</b><br><sub>Offline playback is not a fallback in Levyra. It is ownership.</sub></p>
-  <p><sub><b>Independent recognition</b></sub></p>
+  <p>
+    <b>Keep the file. Keep the history. Keep control.</b><br>
+    <sub>Offline playback is not a fallback in Levyra. It is ownership.</sub>
+  </p>
+
+  <br>
+
+  <p><sub><b>INDEPENDENT RECOGNITION</b></sub></p>
   <p>
     <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
-      <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="52">
+      <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="48">
     </a>
   </p>
+
+  <p><sub><b>OPEN-SOURCE TRUST &amp; COMPLIANCE</b></sub></p>
   <p>
     <a href="https://www.bestpractices.dev/projects/14606">
       <img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices — Passing">
     </a>
-  </p>
-  <p>
+    &nbsp;&nbsp;
     <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound">
       <img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant">
     </a>
   </p>
+  <p><sub>Security best practices · licensing compliance · independently verifiable</sub></p>
 </div>
 
 ---
