@@ -4,12 +4,15 @@ import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -18,38 +21,68 @@ import org.junit.Test
 class MotionArtworkRequestCoordinatorTest {
 
     @Test
-    fun inFlightKeyStaysStableAcrossMetadataEnrichment() {
-        val raw = track(
-            id = "queue-id",
+    fun requestKeyStaysStableAcrossProviderIdsAfterMetadataPreparation() {
+        val prepared = track(
+            id = "catalog-id",
             title = "Same Song",
             artist = "Artist feat. Guest",
-            album = "YouTube Music"
-        )
-        val enriched = raw.copy(
-            id = "resolved-id",
             album = "Real Album",
-            isrc = "ITABC2600001",
-            upc = "123456789012",
-            year = "2026",
-            albumBrowseId = "MPREb_real"
+            isrc = "ITABC2600001"
         )
-        val differentRecording = raw.copy(
-            id = "other-id",
-            durationMs = raw.durationMs + 5_000L
-        )
+        val sameRecordingFromPlayback = prepared.copy(id = "youtube-id")
 
         assertEquals(
-            motionArtworkInFlightKey(raw, LevyraCanvasSource.Auto),
-            motionArtworkInFlightKey(enriched, LevyraCanvasSource.Auto)
+            motionArtworkRequestKey(prepared, LevyraCanvasSource.Auto),
+            motionArtworkRequestKey(sameRecordingFromPlayback, LevyraCanvasSource.Auto)
         )
         assertNotEquals(
-            motionArtworkInFlightKey(raw, LevyraCanvasSource.Auto),
-            motionArtworkInFlightKey(differentRecording, LevyraCanvasSource.Auto)
+            motionArtworkRequestKey(prepared, LevyraCanvasSource.Auto),
+            motionArtworkRequestKey(prepared, LevyraCanvasSource.Apple)
         )
+    }
+
+    @Test
+    fun requestKeySeparatesSameVisibleMetadataWhenIsrcDiffers() {
+        val first = track(
+            id = "one",
+            title = "Same Song",
+            artist = "Same Artist",
+            album = "Same Album",
+            isrc = "ITABC2600001"
+        )
+        val second = first.copy(id = "two", isrc = "ITABC2600002")
+
         assertNotEquals(
-            motionArtworkInFlightKey(raw, LevyraCanvasSource.Auto),
-            motionArtworkInFlightKey(raw, LevyraCanvasSource.Apple)
+            motionArtworkRequestKey(first, LevyraCanvasSource.Auto),
+            motionArtworkRequestKey(second, LevyraCanvasSource.Auto)
         )
+    }
+
+    @Test
+    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {
+        val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val coordinator = MotionArtworkRequestCoordinator(coordinatorScope)
+            val started = CompletableDeferred<Unit>()
+            val cancelled = CompletableDeferred<Unit>()
+
+            val collector = launch {
+                coordinator.share("cancel-request") {
+                    started.complete(Unit)
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        cancelled.complete(Unit)
+                    }
+                }.collect {}
+            }
+
+            started.await()
+            collector.cancelAndJoin()
+            withTimeout(1_000L) { cancelled.await() }
+        } finally {
+            coordinatorScope.cancel()
+        }
     }
 
     @Test
@@ -116,7 +149,8 @@ class MotionArtworkRequestCoordinatorTest {
         id: String,
         title: String,
         artist: String,
-        album: String
+        album: String,
+        isrc: String = ""
     ) = Track(
         id = id,
         title = title,
@@ -135,6 +169,7 @@ class MotionArtworkRequestCoordinatorTest {
         cacheScore = 0,
         accentStart = 0,
         accentEnd = 0,
-        explicit = false
+        explicit = false,
+        isrc = isrc
     )
 }
