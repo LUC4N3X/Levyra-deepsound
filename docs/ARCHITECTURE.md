@@ -784,7 +784,8 @@ host snapshot -> bounded LAN protocol -> guest JamController -> existing queue/p
 ```
 
 `LanJamHostTransport` binds only to a private IPv4 interface. Session codes
-carry the private address, ephemeral port, and random join secret. The host
+carry the private address, ephemeral port, and a 128-bit SecureRandom join secret. Weak legacy
+40-bit session codes are rejected at parse and transport boundaries. The host
 binds authenticated sockets to participant identities, validates guest
 permissions, publishes monotonic revisions, and closes authenticated and
 pre-authentication sockets on release. Guests ignore stale revisions and use
