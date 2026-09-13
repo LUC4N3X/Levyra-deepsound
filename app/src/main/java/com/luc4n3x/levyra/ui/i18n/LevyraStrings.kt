@@ -539,6 +539,7 @@ class LevyraStrings private constructor(
     val homeRemoteUnavailable: String get() = value("homeRemoteUnavailable")
     val homeRemoteEmpty: String get() = value("homeRemoteEmpty")
     val more: String get() = value("more")
+    val mix: String get() = value("mix")
     val mixForYou: String get() = value("mixForYou")
     val genres: String get() = value("genres")
     val smartMusicProfile: String get() = value("smartMusicProfile")
@@ -1385,7 +1386,7 @@ class LevyraStrings private constructor(
     fun formatPauseDownload(title: String): String = "$pauseDownload ${directionalValue(title)}"
 
     companion object {
-        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
+        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mix", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
         private val motionArtworkKeys = setOf("motionArtwork", "motionArtworkSubtitle")
         private val audioKeys = setOf(
             "audioSectionQuality",
@@ -1840,6 +1841,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favorites",
             "offline" to "Offline",
             "more" to "More",
+            "mix" to "Mix",
             "mixForYou" to "Mix for you",
             "genres" to "Genres",
             "smartMusicProfile" to "Smart Music Profile",
@@ -2236,6 +2238,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Preferiti",
             "offline" to "Offline",
             "more" to "Altro",
+            "mix" to "Mix",
             "mixForYou" to "Mix per te",
             "genres" to "Generi",
             "smartMusicProfile" to "Profilo musicale intelligente",
@@ -2632,6 +2635,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favoritos",
             "offline" to "Sin conexión",
             "more" to "Más",
+            "mix" to "Mix",
             "mixForYou" to "Mix para ti",
             "genres" to "Géneros",
             "smartMusicProfile" to "Perfil musical inteligente",
@@ -3028,6 +3032,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favoris",
             "offline" to "Hors connexion",
             "more" to "Plus",
+            "mix" to "Mix",
             "mixForYou" to "Mix pour vous",
             "genres" to "Genres",
             "smartMusicProfile" to "Profil musical intelligent",
@@ -3424,6 +3429,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favoriten",
             "offline" to "Offline",
             "more" to "Mehr",
+            "mix" to "Mix",
             "mixForYou" to "Mix für dich",
             "genres" to "Genres",
             "smartMusicProfile" to "Intelligentes Musikprofil",
@@ -3820,6 +3826,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favoritos",
             "offline" to "Offline",
             "more" to "Mais",
+            "mix" to "Mix",
             "mixForYou" to "Mix para ti",
             "genres" to "Géneros",
             "smartMusicProfile" to "Perfil musical inteligente",
@@ -4216,6 +4223,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favorieten",
             "offline" to "Offline",
             "more" to "Meer",
+            "mix" to "Mix",
             "mixForYou" to "Mix voor jou",
             "genres" to "Genres",
             "smartMusicProfile" to "Slim muziekprofiel",
@@ -4612,6 +4620,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Ulubione",
             "offline" to "Offline",
             "more" to "Więcej",
+            "mix" to "Mix",
             "mixForYou" to "Mix dla Ciebie",
             "genres" to "Gatunki",
             "smartMusicProfile" to "Inteligentny profil muzyczny",
@@ -5008,6 +5017,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favorite",
             "offline" to "Offline",
             "more" to "Mai multe",
+            "mix" to "Mix",
             "mixForYou" to "Mix pentru tine",
             "genres" to "Genuri",
             "smartMusicProfile" to "Profil muzical inteligent",
@@ -5404,6 +5414,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Αγαπημένα",
             "offline" to "Offline",
             "more" to "Περισσότερα",
+            "mix" to "Mix",
             "mixForYou" to "Mix για σένα",
             "genres" to "Είδη",
             "smartMusicProfile" to "Έξυπνο μουσικό προφίλ",
@@ -5800,6 +5811,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favoriter",
             "offline" to "Offline",
             "more" to "Mer",
+            "mix" to "Mix",
             "mixForYou" to "Mix för dig",
             "genres" to "Genrer",
             "smartMusicProfile" to "Smart musikprofil",
@@ -6196,6 +6208,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favoritter",
             "offline" to "Offline",
             "more" to "Mere",
+            "mix" to "Mix",
             "mixForYou" to "Mix til dig",
             "genres" to "Genrer",
             "smartMusicProfile" to "Smart musikprofil",
@@ -6592,6 +6605,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Oblíbené",
             "offline" to "Offline",
             "more" to "Více",
+            "mix" to "Mix",
             "mixForYou" to "Mix pro tebe",
             "genres" to "Žánry",
             "smartMusicProfile" to "Chytrý hudební profil",
@@ -6988,6 +7002,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Обране",
             "offline" to "Офлайн",
             "more" to "Більше",
+            "mix" to "Мікс",
             "mixForYou" to "Мікс для тебе",
             "genres" to "Жанри",
             "smartMusicProfile" to "Розумний музичний профіль",
@@ -7384,6 +7399,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Избранное",
             "offline" to "Офлайн",
             "more" to "Ещё",
+            "mix" to "Микс",
             "mixForYou" to "Микс для тебя",
             "genres" to "Жанры",
             "smartMusicProfile" to "Умный музыкальный профиль",
@@ -7780,6 +7796,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "Favoriler",
             "offline" to "Çevrimdışı",
             "more" to "Daha fazla",
+            "mix" to "Mix",
             "mixForYou" to "Senin için mix",
             "genres" to "Türler",
             "smartMusicProfile" to "Akıllı müzik profili",
@@ -8176,6 +8193,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "المفضلة",
             "offline" to "بلا إنترنت",
             "more" to "المزيد",
+            "mix" to "مزيج",
             "mixForYou" to "مزيج لك",
             "genres" to "الأنواع الموسيقية",
             "smartMusicProfile" to "ملف موسيقي ذكي",
@@ -8572,6 +8590,7 @@ class LevyraStrings private constructor(
             "favoritesPlain" to "收藏",
             "offline" to "离线",
             "more" to "更多",
+            "mix" to "混音",
             "mixForYou" to "为你混音",
             "genres" to "音乐流派",
             "smartMusicProfile" to "智能音乐画像",

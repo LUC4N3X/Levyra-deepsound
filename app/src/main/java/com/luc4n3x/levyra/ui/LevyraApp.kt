@@ -20013,13 +20013,13 @@ private fun TopResultCard(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Radio,
-                            contentDescription = null,
+                            contentDescription = strings.mix,
                             tint = mixFg,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Mix",
+                            text = strings.mix,
                             color = mixFg,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -20159,7 +20159,7 @@ private fun TopResultTrackRow(
             }
         }
 
-        var menuExpanded by remember { mutableStateOf(false) }
+        var menuExpanded by remember(track.id) { mutableStateOf(false) }
         Box {
             IconButton(
                 onClick = { menuExpanded = true },
