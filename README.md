@@ -79,13 +79,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
   <p><sub><b>OPEN-SOURCE TRUST &amp; COMPLIANCE</b></sub></p>
   <p>
-    <a href="https://www.bestpractices.dev/projects/14606">
-      <img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices — Passing">
-    </a>
-    &nbsp;&nbsp;
-    <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound">
-      <img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant">
-    </a>
+    <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices — Passing"></a> <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
   </p>
   <p><sub>Security best practices · licensing compliance · independently verifiable</sub></p>
 </div>
