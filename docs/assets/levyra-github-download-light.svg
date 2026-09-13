@@ -1,16 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="360" height="108" viewBox="0 0 360 108" role="img" aria-label="Download Levyra from GitHub Releases">
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="132" viewBox="0 0 430 132" role="img" aria-label="Download Levyra from GitHub Releases">
   <title>Download Levyra from GitHub Releases</title>
-  <rect x="1" y="1" width="358" height="106" rx="16" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="2"/>
-  <rect x="1" y="16" width="4" height="76" rx="2" fill="#8250DF"/>
-  <rect x="18" y="24" width="60" height="60" rx="14" fill="#F6F8FA" stroke="#D8DEE4"/>
-  <g transform="translate(4 15.5) scale(.5)">
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.12"/>
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#A855F7" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="428" height="130" rx="23" fill="#FFFFFF" stroke="#D8E0EC" stroke-width="2"/>
+  <rect x="1" y="1" width="428" height="130" rx="23" fill="url(#surface)"/>
+  <path d="M2 30v72" stroke="#A855F7" stroke-width="4" stroke-linecap="round"/>
+  <path d="M23 128c45-27 84-27 127 0 47-29 92-29 138 0 49-31 91-28 140 0" fill="none" stroke="#A855F7" stroke-opacity=".15" stroke-width="3"/>
+  <rect x="22" y="23" width="90" height="86" rx="20" fill="#F7F9FC" stroke="#A855F7" stroke-opacity=".40" stroke-width="1.6"/>
+  <circle cx="67" cy="66" r="34" fill="#A855F7" opacity=".08"/>
+  <g transform="translate(11 4) scale(1.48)">
+    <g transform="translate(4 15.5) scale(.5)">
 <g transform="translate(53 44) scale(2.75)">
-    <path fill="#1F2328" d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"/>
+    <path fill="#1F2937" d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"/>
   </g>
   </g>
-  <text x="94" y="37" fill="#6E7781" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.35">DOWNLOAD FROM</text>
-  <text x="94" y="63" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="22" font-weight="700">GitHub</text>
-  <circle cx="96" cy="82.5" r="2.5" fill="#8250DF"/>
-  <text x="105" y="86" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="500">Latest Android release</text>
-  <path d="M334 48l7 6-7 6" fill="none" stroke="#57606A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <line x1="128" y1="34" x2="128" y2="98" stroke="#E4EAF2" stroke-width="1.5"/>
+  <text x="146" y="43" fill="#667085" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" letter-spacing="1.55">DOWNLOAD FROM</text>
+  <text x="146" y="74" fill="#101828" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="25" font-weight="800">GitHub</text>
+  <circle cx="149" cy="99" r="2.6" fill="#A855F7"/>
+  <text x="159" y="103" fill="#667085" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="500">Latest Android release</text>
+  <g transform="translate(305 18)" fill="#A855F7" opacity=".16">
+    <rect x="0" y="19" width="3" height="10" rx="1.5"/><rect x="8" y="15" width="3" height="18" rx="1.5"/><rect x="16" y="10" width="3" height="28" rx="1.5"/><rect x="24" y="16" width="3" height="16" rx="1.5"/><rect x="32" y="7" width="3" height="34" rx="1.5"/><rect x="40" y="13" width="3" height="22" rx="1.5"/><rect x="48" y="9" width="3" height="30" rx="1.5"/><rect x="56" y="17" width="3" height="14" rx="1.5"/><rect x="64" y="12" width="3" height="24" rx="1.5"/><rect x="72" y="18" width="3" height="12" rx="1.5"/>
+  </g>
+  <circle cx="394" cy="66" r="19" fill="#F7F9FC" stroke="#A855F7" stroke-opacity=".34"/>
+  <path d="m390 59 7 7-7 7" fill="none" stroke="#101828" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

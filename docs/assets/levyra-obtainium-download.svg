@@ -1,18 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="360" height="108" viewBox="0 0 360 108" role="img" aria-label="Install Levyra with Obtainium">
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="132" viewBox="0 0 430 132" role="img" aria-label="Install Levyra with Obtainium">
   <title>Install Levyra with Obtainium</title>
-  <rect x="1" y="1" width="358" height="106" rx="16" fill="#0D1117" stroke="#30363D" stroke-width="2"/>
-  <rect x="1" y="16" width="4" height="76" rx="2" fill="#7C3AED"/>
-  <rect x="18" y="24" width="60" height="60" rx="14" fill="#161B22" stroke="#30363D"/>
-  <g transform="translate(4 15.5) scale(.5)">
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.20"/>
+      <stop offset="45%" stop-color="#0B111B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0.10"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="428" height="130" rx="23" fill="#0B111B" stroke="#2B3546" stroke-width="2"/>
+  <rect x="1" y="1" width="428" height="130" rx="23" fill="url(#surface)"/>
+  <path d="M2 30v72" stroke="#8B5CF6" stroke-width="4" stroke-linecap="round"/>
+  <path d="M23 128c45-27 84-27 127 0 47-29 92-29 138 0 49-31 91-28 140 0" fill="none" stroke="#8B5CF6" stroke-opacity=".24" stroke-width="3"/>
+  <rect x="22" y="23" width="90" height="86" rx="20" fill="#121B2A" stroke="#8B5CF6" stroke-opacity=".62" stroke-width="1.6"/>
+  <circle cx="67" cy="66" r="34" fill="#8B5CF6" opacity=".12"/>
+  <g transform="translate(11 4) scale(1.48)">
+    <g transform="translate(4 15.5) scale(.5)">
 <g transform="translate(17.15 4.68)">
     <g transform="translate(-30.394373,-54.680428)">
       <path fill="#7C3AED" stroke="#7C3AED" stroke-width="0.139" d="m 109.8808,153.22596 c -0.73146,-0.38777 -5.00657,-2.75679 -25.032416,-13.87149 -5.57273,-3.09297 -10.93823,-6.06723 -11.92332,-6.60948 -2.23728,-1.23152 -2.58105,-1.53456 -2.58105,-2.27528 0,-0.3879 0.89293,-2.87231 2.98561,-8.30689 1.64209,-4.2644 3.09426,-8.0014 3.22705,-8.30444 0.3024,-0.69008 0.78972,-1.27621 1.26573,-1.52236 0.44558,-0.23042 11.58052,-4.29685 12.14814,-4.43644 0.61355,-0.1509 1.1428,0.13977 1.45487,0.79901 0.14976,0.31638 0.77213,1.94934 1.38303,3.6288 0.6109,1.67945 1.52036,4.16275 2.02104,5.51844 1.14709,3.10604 1.18992,3.54589 0.3912,4.01771 -0.2117,0.12505 -1.58874,0.66539 -3.06009,1.20075 -1.47136,0.53536 -2.87533,1.08982 -3.11993,1.23213 -0.56422,0.32826 -0.64913,0.83523 -0.20815,1.24273 0.17523,0.16193 3.00434,1.77571 6.28691,3.58618 9.174936,5.06035 8.665596,4.83136 9.277626,4.17097 0.29987,-0.32356 5.78141,-14.266 6.09596,-15.50521 0.1344,-0.5295 0.11969,-0.60308 -0.16695,-0.83519 -0.39165,-0.31714 -0.335,-0.33071 -3.93797,0.9431 -3.56937,1.26192 -3.90926,1.28864 -4.38744,0.34488 -0.25108,-0.49556 -4.095796,-11.05481 -4.334456,-11.90432 -0.15438,-0.5495 0.0344,-1.0717 0.49701,-1.37482 0.19228,-0.12598 2.990116,-1.19935 6.217406,-2.38526 4.78924,-1.75986 6.0081,-2.15842 6.63117,-2.16837 0.8037,-0.0128 0.90917,0.0424 15.64514,8.19599 1.02104,0.56495 1.56579,1.15961 1.56579,1.70925 0,0.21814 -3.6538,9.91011 -8.11957,21.53771 -6.2982,16.39877 -8.19916,21.21114 -8.4744,21.45338 -0.46789,0.41179 -0.8512,0.39392 -1.74794,-0.0815 z"/>
     </g>
   </g>
   </g>
-  <text x="94" y="37" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.35">INSTALL WITH</text>
-  <text x="94" y="63" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="22" font-weight="700">Obtainium</text>
-  <circle cx="96" cy="82.5" r="2.5" fill="#7C3AED"/>
-  <text x="105" y="86" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="500">Updates direct from GitHub</text>
-  <path d="M334 48l7 6-7 6" fill="none" stroke="#8B949E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <line x1="128" y1="34" x2="128" y2="98" stroke="#263244" stroke-width="1.5"/>
+  <text x="146" y="43" fill="#98A7BD" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" letter-spacing="1.55">INSTALL WITH</text>
+  <text x="146" y="74" fill="#F7F9FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="25" font-weight="800">Obtainium</text>
+  <circle cx="149" cy="99" r="2.6" fill="#8B5CF6"/>
+  <text x="159" y="103" fill="#98A7BD" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="500">Updates direct from GitHub</text>
+  <g transform="translate(305 18)" fill="#8B5CF6" opacity=".22">
+    <rect x="0" y="19" width="3" height="10" rx="1.5"/><rect x="8" y="15" width="3" height="18" rx="1.5"/><rect x="16" y="10" width="3" height="28" rx="1.5"/><rect x="24" y="16" width="3" height="16" rx="1.5"/><rect x="32" y="7" width="3" height="34" rx="1.5"/><rect x="40" y="13" width="3" height="22" rx="1.5"/><rect x="48" y="9" width="3" height="30" rx="1.5"/><rect x="56" y="17" width="3" height="14" rx="1.5"/><rect x="64" y="12" width="3" height="24" rx="1.5"/><rect x="72" y="18" width="3" height="12" rx="1.5"/>
+  </g>
+  <circle cx="394" cy="66" r="19" fill="#121B2A" stroke="#8B5CF6" stroke-opacity=".46"/>
+  <path d="m390 59 7 7-7 7" fill="none" stroke="#F7F9FC" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
