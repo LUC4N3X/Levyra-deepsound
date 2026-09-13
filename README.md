@@ -80,6 +80,13 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant">
     </a>
   </p>
+  <p>
+    <a href="https://f-droid.org/packages/com.luc4n3x.levyra/">
+      <img src="https://f-droid.org/badge/get-it-on.svg" alt="Get Levyra on F-Droid" height="52">
+    </a>
+    <br>
+    <sub><b>F-Droid verified distribution</b> · Developer-signed APK verified to correspond to the public source build.</sub>
+  </p>
 </div>
 
 ---
