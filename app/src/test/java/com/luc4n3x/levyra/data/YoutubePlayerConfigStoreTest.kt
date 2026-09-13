@@ -206,6 +206,25 @@ class YoutubePlayerConfigStoreTest {
     }
 
     @Test
+    fun newBodyWithoutEtagClearsPreviousEtag() = runBlocking {
+        seedLastKnownGood(etag = "\"v1\"")
+        val store = store(respond(upstream to ok(newerRemoteTable)))
+
+        assertTrue(store.refresh(force = true, reason = "test"))
+
+        assertEquals(newerRemoteTable, remoteFile.readText())
+        assertNotNull(store.configFor(NEWER_HASH, refreshUnknown = false))
+        val metadata = JSONObject(metadataFile.readText())
+        assertEquals("", metadata.getString("etag"))
+        assertEquals(upstream.id, metadata.getString("sourceId"))
+
+        assertFalse(store.refresh(force = true, reason = "test"))
+
+        assertEquals(2, requests.size)
+        assertNull(requests[1].header("If-None-Match"))
+    }
+
+    @Test
     fun missingLastKnownGoodNeverSendsStaleEtag() = runBlocking {
         seedLastKnownGood(etag = "\"v1\"")
         remoteFile.delete()

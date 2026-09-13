@@ -1013,7 +1013,7 @@ internal class YoutubePlayerConfigStore(
                     return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
                 }
                 is YoutubeConfigFetchResult.Accepted -> {
-                    val changed = publishLastKnownGood(source, result, metadata, now, reason)
+                    val changed = publishLastKnownGood(source, result, now, reason)
                     return YoutubeConfigRefreshOutcome(changed = changed, reachedServer = true)
                 }
             }
@@ -1076,7 +1076,6 @@ internal class YoutubePlayerConfigStore(
     private suspend fun publishLastKnownGood(
         source: YoutubePlayerConfigSource,
         accepted: YoutubeConfigFetchResult.Accepted,
-        previous: YoutubeConfigMetadata,
         now: Long,
         reason: String
     ): Boolean {
@@ -1087,15 +1086,12 @@ internal class YoutubePlayerConfigStore(
         mergedConfigs = nextMerged
         if (changed) epochCounter.incrementAndGet()
 
-        val etag = accepted.etag.ifBlank {
-            previous.etag.takeIf { previous.effectiveSourceId == source.id }.orEmpty()
-        }
         withContext(Dispatchers.IO) {
             runCatching {
                 writeAtomic(remoteFile, accepted.body)
                 writeMetadata(
                     YoutubeConfigMetadata(
-                        etag = etag,
+                        etag = accepted.etag,
                         checkedAtMs = now,
                         contentSha256 = sha256(accepted.body),
                         sourceId = source.id
