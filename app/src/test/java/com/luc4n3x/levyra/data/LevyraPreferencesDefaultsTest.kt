@@ -60,6 +60,7 @@ class LevyraPreferencesDefaultsTest {
         val original = LevyraInterfaceSettings(
             canvasQuality = LevyraCanvasQuality.High,
             canvasSource = LevyraCanvasSource.Tidal,
+            motionArtworkWifiOnly = true,
             enhanceVideoMetadata = true,
             playerVisualMode = PlayerVisualMode.CanvasCard,
             playerBackground = PlayerBackgroundMode.Blur
@@ -71,6 +72,7 @@ class LevyraPreferencesDefaultsTest {
 
         assertEquals(LevyraCanvasQuality.High, restored.canvasQuality)
         assertEquals(LevyraCanvasSource.Tidal, restored.canvasSource)
+        assertTrue(restored.motionArtworkWifiOnly)
         assertTrue(restored.enhanceVideoMetadata)
         assertEquals(PlayerVisualMode.CanvasCard, restored.playerVisualMode)
         assertEquals(PlayerBackgroundMode.Blur, restored.playerBackground)
@@ -85,6 +87,12 @@ class LevyraPreferencesDefaultsTest {
     @Test
     fun defaultPlayerVisualModeIsCanvasImmersive() {
         assertEquals(PlayerVisualMode.CanvasImmersive, LevyraInterfaceSettings().playerVisualMode)
+        assertFalse(LevyraInterfaceSettings().motionArtworkWifiOnly)
+    }
+
+    @Test
+    fun legacyBackupWithoutMotionArtworkWifiOnlyDefaultsToFalse() {
+        assertFalse(backupInterfaceSettingsFromJson(JSONObject()).motionArtworkWifiOnly)
     }
 
     @Test

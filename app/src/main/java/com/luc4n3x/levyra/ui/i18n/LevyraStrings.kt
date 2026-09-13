@@ -120,6 +120,8 @@ class LevyraStrings private constructor(
     val canvasSourceAuto: String get() = value("audioQualityAuto")
     val canvasSourceApple: String get() = "Apple Music"
     val canvasSourceTidal: String get() = "TIDAL"
+    val motionArtworkWifiOnly: String get() = value("motionArtworkWifiOnly")
+    val motionArtworkWifiOnlySubtitle: String get() = value("motionArtworkWifiOnlySubtitle")
     val sharePlaylist: String get() = value("sharePlaylist")
     val enhanceVideoMetadata: String get() = value("enhanceVideoMetadata")
     val enhanceVideoMetadataSubtitle: String get() = value("enhanceVideoMetadataSubtitle")
@@ -1424,6 +1426,8 @@ class LevyraStrings private constructor(
             "canvasSource",
             "canvasSourceSubtitle",
             "canvasSourceCommunity",
+            "motionArtworkWifiOnly",
+            "motionArtworkWifiOnlySubtitle",
             "sharePlaylist",
             "enhanceVideoMetadata",
             "enhanceVideoMetadataSubtitle",

@@ -1499,6 +1499,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("longPressSpeed", value.longPressSpeed.toDouble())
     .put("canvasQuality", value.canvasQuality.name)
     .put("canvasSource", value.canvasSource.name)
+    .put("motionArtworkWifiOnly", value.motionArtworkWifiOnly)
     .put("enhanceVideoMetadata", value.enhanceVideoMetadata)
     .put("pureBlack", value.pureBlack)
     .put("hapticFeedback", value.hapticFeedback)
@@ -1536,6 +1537,7 @@ internal fun backupInterfaceSettingsFromJson(
         longPressSpeed = json.optDouble("longPressSpeed", 2.0).toFloat(),
         canvasQuality = LevyraCanvasQuality.from(json.optString("canvasQuality")),
         canvasSource = LevyraCanvasSource.from(json.optString("canvasSource")),
+        motionArtworkWifiOnly = json.optBoolean("motionArtworkWifiOnly", false),
         enhanceVideoMetadata = json.optBoolean("enhanceVideoMetadata", false),
         pureBlack = json.optBoolean("pureBlack", false),
         hapticFeedback = json.optBoolean("hapticFeedback", true),

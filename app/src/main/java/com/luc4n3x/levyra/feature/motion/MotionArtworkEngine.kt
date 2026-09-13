@@ -7,7 +7,9 @@ import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -33,10 +35,10 @@ class MotionArtworkEngine(context: Context) {
     private val networkPolicy = MotionArtworkNetworkPolicy(appContext)
     private val urlVerifier = MotionArtworkUrlVerifier(appContext)
     private val metadataResolver = ChartOfficialArtworkResolver(appContext)
-    private val providerFactories: Map<String, () -> MotionArtworkProvider> = mapOf(
-        "community-canvas" to { CommunityCanvasProvider(appContext) },
-        "apple-motion" to { AppleMotionArtworkProvider(appContext) },
-        "tidal-video-cover" to { TidalVideoCoverProvider(appContext) }
+    private val providerFactories: Map<String, (MotionArtworkConfig) -> MotionArtworkProvider> = mapOf(
+        "community-canvas" to { _: MotionArtworkConfig -> CommunityCanvasProvider(appContext) },
+        "apple-motion" to { _: MotionArtworkConfig -> AppleMotionArtworkProvider(appContext) },
+        "tidal-video-cover" to { config -> TidalVideoCoverProvider(appContext, config.minimumConfidence) }
     )
     private val runtimeLock = Any()
     private var activeEpoch = -1L
@@ -61,11 +63,12 @@ class MotionArtworkEngine(context: Context) {
     ): Flow<MotionArtwork> = flow {
         if (!networkPolicy.canResolveCurrent()) return@flow
         val runtime = MotionArtworkRuntime.snapshot()
-        val requestKey = "${runtime.epoch}:${motionArtworkInFlightKey(track, source)}"
+        val lookupTrack = prepareLookupTrack(track)
+        if (!networkPolicy.canResolveCurrent()) return@flow
+        val identityKey = motionArtworkRequestKey(lookupTrack, source)
+        val requestKey = "${runtime.epoch}:$identityKey"
         emitAll(
             sharedProgressive(requestKey) { emit ->
-                val lookupTrack = prepareLookupTrack(track)
-                val identityKey = motionArtworkCacheKey(MotionArtworkIdentityKey.create(lookupTrack), source)
                 resolveFreshProgressive(lookupTrack, identityKey, runtime.epoch, runtime.value, source).collect { artwork ->
                     emit(artwork)
                 }
@@ -163,6 +166,8 @@ class MotionArtworkEngine(context: Context) {
                 }
             }
         }
+
+        if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) return null
 
         if (verified == null) {
             if (!lookupFailed) {
@@ -278,8 +283,8 @@ class MotionArtworkEngine(context: Context) {
                         identity.album
                     )
                     if (outcome is MotionArtworkProviderResult.Failed) providerFailed = true
-                    val candidates = (outcome as? MotionArtworkProviderResult.Found)?.candidates.orEmpty()
-                    if (candidates.isEmpty()) continue
+                    if (shouldContinueMotionArtworkFallback(outcome)) continue
+                    val candidates = (outcome as MotionArtworkProviderResult.Found).candidates
                     val providerRank = providerRanks[provider.id] ?: Int.MAX_VALUE
                     if (
                         !shouldPublishMotionUpgrade(
@@ -333,6 +338,10 @@ class MotionArtworkEngine(context: Context) {
                         }
                     }
                     val accepted = selected ?: continue
+                    if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) {
+                        cancelMotionArtworkLookups(lookups)
+                        return@supervisorScope
+                    }
                     if (publishedCandidate != null) upgradesUsed++
                     publishedCandidate = accepted
                     val artwork = motionArtworkFrom(accepted, identityKey, configEpoch, config)
@@ -343,9 +352,15 @@ class MotionArtworkEngine(context: Context) {
             }
         }
 
+        if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) return@flow
+
         val stabilized = publishedArtwork
         if (stabilized == null) {
-            val conclusive = !providerFailed && !verifierFailed && verificationExhaustive
+            val conclusive = shouldNegativeCacheMotionArtwork(
+                providerFailed = providerFailed,
+                verifierFailed = verifierFailed,
+                verificationExhaustive = verificationExhaustive
+            )
             if (conclusive) {
                 Timber.d("motion resolve conclusive miss; saving negative cache title=%s source=%s", identity.title, source)
                 repository.saveNegative(
@@ -457,7 +472,7 @@ class MotionArtworkEngine(context: Context) {
 
     private fun providersFor(epoch: Long, config: MotionArtworkConfig): List<MotionArtworkProvider> = synchronized(runtimeLock) {
         if (activeEpoch != epoch) {
-            activeProviders = config.providerOrder.mapNotNull { providerFactories[it]?.invoke() }
+            activeProviders = config.providerOrder.mapNotNull { providerFactories[it]?.invoke(config) }
             activeEpoch = epoch
         }
         activeProviders
@@ -486,22 +501,8 @@ internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeou
 internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =
     if (source == LevyraCanvasSource.Auto) identityKey else "$identityKey#${source.name.lowercase()}"
 
-internal fun motionArtworkInFlightKey(track: Track, source: LevyraCanvasSource): String {
-    val title = normalizeMotionText(track.title)
-    val artists = splitArtists(track.artist)
-        .map(::normalizeMotionText)
-        .filter(String::isNotBlank)
-        .sorted()
-        .joinToString(",")
-    val durationSeconds = track.durationMs.coerceAtLeast(0L) / 1000L
-    val identity = when {
-        title.isNotBlank() && artists.isNotBlank() && durationSeconds > 0L ->
-            "recording:$title|$artists|duration:$durationSeconds|explicit:${track.explicit}"
-        track.id.isNotBlank() -> "track:${track.id.trim().lowercase(Locale.ROOT)}"
-        else -> "fallback:$title|$artists|${normalizeMotionText(track.album)}|explicit:${track.explicit}"
-    }
-    return "$identity#${source.name.lowercase(Locale.ROOT)}"
-}
+internal fun motionArtworkRequestKey(track: Track, source: LevyraCanvasSource): String =
+    motionArtworkCacheKey(MotionArtworkIdentityKey.create(track), source)
 
 internal fun motionArtworkProviderOrder(
     configuredOrder: List<String>,
@@ -548,7 +549,22 @@ internal fun buildMotionArtworkVerificationPlan(
     )
 }
 
-internal const val MAX_MOTION_ARTWORK_UPGRADES = 1
+internal fun shouldNegativeCacheMotionArtwork(
+    providerFailed: Boolean,
+    verifierFailed: Boolean,
+    verificationExhaustive: Boolean
+): Boolean = !providerFailed && !verifierFailed && verificationExhaustive
+
+internal fun shouldContinueMotionArtworkFallback(result: MotionArtworkProviderResult): Boolean =
+    result !is MotionArtworkProviderResult.Found || result.candidates.isEmpty()
+
+internal fun shouldPublishMotionArtwork(policyAllowsRemote: Boolean): Boolean = policyAllowsRemote
+
+internal fun cancelMotionArtworkLookups(lookups: Iterable<Job>) {
+    lookups.forEach { lookup -> lookup.cancel() }
+}
+
+internal const val MAX_MOTION_ARTWORK_UPGRADES = 2
 
 internal fun shouldPublishMotionUpgrade(
     publishedProviderRank: Int?,
@@ -571,55 +587,83 @@ internal class MotionArtworkRequestCoordinator(
     fun share(
         requestKey: String,
         block: suspend (emit: suspend (MotionArtwork) -> Unit) -> Unit
-    ): Flow<MotionArtwork> {
-        val session = synchronized(sessions) {
-            sessions.getOrPut(requestKey) {
-                MotionProgressiveSession().also { newSession ->
-                    scope.launch {
-                        try {
-                            block { artwork ->
-                                newSession.emit(artwork)
-                            }
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (error: Throwable) {
-                            Timber.d(error, "Motion artwork resolution failed")
-                        } finally {
-                            withContext(NonCancellable) {
-                                synchronized(sessions) {
-                                    if (sessions[requestKey] === newSession) {
-                                        sessions.remove(requestKey)
-                                    }
+    ): Flow<MotionArtwork> = flow {
+        while (true) {
+            val session = synchronized(sessions) {
+                sessions.getOrPut(requestKey) {
+                    MotionProgressiveSession().also { newSession ->
+                        val worker = scope.launch(start = CoroutineStart.LAZY) {
+                            try {
+                                block { artwork ->
+                                    newSession.emit(artwork)
                                 }
-                                newSession.complete()
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (error: Throwable) {
+                                Timber.d(error, "Motion artwork resolution failed")
+                            } finally {
+                                withContext(NonCancellable) {
+                                    synchronized(sessions) {
+                                        if (sessions[requestKey] === newSession) {
+                                            sessions.remove(requestKey)
+                                        }
+                                    }
+                                    newSession.complete()
+                                }
                             }
                         }
+                        newSession.attachWorker(worker)
                     }
                 }
             }
+            if (session.collectInto { artwork -> emit(artwork) }) return@flow
+            synchronized(sessions) {
+                if (sessions[requestKey] === session) {
+                    sessions.remove(requestKey)
+                }
+            }
+            if (scope.coroutineContext[Job]?.isActive != true) return@flow
         }
-        return session.openSubscription()
     }
 }
 
 internal class MotionProgressiveSession {
-    private val mutex = Mutex()
+    private val stateLock = Any()
     private val collectors = mutableListOf<Channel<MotionArtwork>>()
+    @Volatile
+    private var worker: Job? = null
+    private var workerStarted = false
     private var currentArtwork: MotionArtwork? = null
     private var isCompleted = false
+    private var acceptingSubscriptions = true
 
-    suspend fun emit(artwork: MotionArtwork) {
-        val targets = mutex.withLock {
-            currentArtwork = artwork
-            collectors.toList()
+    fun attachWorker(job: Job) {
+        synchronized(stateLock) {
+            worker = job
         }
-        for (target in targets) {
-            target.send(artwork)
+        job.invokeOnCompletion {
+            complete()
         }
     }
 
-    suspend fun complete() {
-        val targets = mutex.withLock {
+    suspend fun emit(artwork: MotionArtwork) {
+        val targets = synchronized(stateLock) {
+            if (isCompleted) {
+                emptyList()
+            } else {
+                currentArtwork = artwork
+                collectors.toList()
+            }
+        }
+        for (target in targets) {
+            target.trySend(artwork)
+        }
+    }
+
+    fun complete() {
+        val targets = synchronized(stateLock) {
+            if (isCompleted) return
+            acceptingSubscriptions = false
             isCompleted = true
             collectors.toList()
         }
@@ -628,26 +672,27 @@ internal class MotionProgressiveSession {
         }
     }
 
-    fun openSubscription(): Flow<MotionArtwork> = flow {
+    suspend fun collectInto(emit: suspend (MotionArtwork) -> Unit): Boolean {
         val channel = Channel<MotionArtwork>(Channel.UNLIMITED)
         val initialArtwork: MotionArtwork?
-        val alreadyCompleted: Boolean
-        mutex.withLock {
-            alreadyCompleted = isCompleted
+        val workerToStart: Job?
+        synchronized(stateLock) {
+            if (!acceptingSubscriptions || isCompleted) return false
             initialArtwork = currentArtwork
-            if (!isCompleted) {
-                collectors.add(channel)
-            }
+            collectors.add(channel)
+            workerToStart = if (!workerStarted) worker else null
+            if (workerToStart != null) workerStarted = true
         }
-        var lastEmitted: MotionArtwork? = null
-        if (initialArtwork != null) {
-            lastEmitted = initialArtwork
-            emit(initialArtwork)
-        }
-        if (alreadyCompleted) {
-            return@flow
-        }
+
         try {
+            if (workerToStart != null && !workerToStart.start()) {
+                complete()
+            }
+            var lastEmitted: MotionArtwork? = null
+            if (initialArtwork != null) {
+                lastEmitted = initialArtwork
+                emit(initialArtwork)
+            }
             for (artwork in channel) {
                 if (artwork != lastEmitted) {
                     lastEmitted = artwork
@@ -655,9 +700,14 @@ internal class MotionProgressiveSession {
                 }
             }
         } finally {
-            mutex.withLock {
+            val cancelWorker = synchronized(stateLock) {
                 collectors.remove(channel)
+                val shouldCancel = collectors.isEmpty() && !isCompleted
+                if (shouldCancel) acceptingSubscriptions = false
+                shouldCancel
             }
+            if (cancelWorker) worker?.cancel()
         }
+        return true
     }
 }

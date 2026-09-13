@@ -380,6 +380,12 @@ private const val DEARROW_CONCURRENCY = 4
 
 internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
 
+internal fun shouldRefreshMotionArtworkOwnership(
+    previous: LevyraInterfaceSettings,
+    next: LevyraInterfaceSettings
+): Boolean = previous.canvasSource != next.canvasSource ||
+    previous.motionArtworkWifiOnly != next.motionArtworkWifiOnly
+
 /**
  * Saved position a restored track should start from, or 0 when there is nothing to resume.
  *
@@ -1083,6 +1089,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val playerController get() = player.controller
 
     init {
+        com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
+            startupSettings.interfaceSettings.motionArtworkWifiOnly
+        )
         viewModelScope.launch(Dispatchers.IO) {
             applyAutomationSettings(startupSettings.automationSettings, persist = false)
         }
@@ -4269,6 +4278,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val normalized = value.normalized()
         val previous = _state.value.interfaceSettings
         preferences.setInterfaceSettings(normalized)
+        com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
+            normalized.motionArtworkWifiOnly
+        )
         LevyraTypographyController.apply(normalized.fontPreset)
         _state.update { it.copy(interfaceSettings = normalized) }
         if (previous.showResonance && !normalized.showResonance) {
@@ -4277,7 +4289,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeResonanceCommentsRequestIds = emptyList()
             homeResonanceCommentsGeneration.incrementAndGet()
         }
-        if (previous.canvasSource != normalized.canvasSource) {
+        if (shouldRefreshMotionArtworkOwnership(previous, normalized)) {
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             motionArtworkPrefetchJob?.cancel()
@@ -4561,6 +4573,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = null
         motionArtworkPrefetchJob?.cancel()
+        com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
+            snapshot.interfaceSettings.motionArtworkWifiOnly
+        )
         _state.update {
             it.copy(
                 favorites = favorites,

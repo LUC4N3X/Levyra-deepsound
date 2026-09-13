@@ -225,6 +225,7 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Source
+import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Speed
@@ -17011,6 +17012,19 @@ private fun SettingsOverlay(
                                         onSelect = { value ->
                                             onInterfaceSettings(
                                                 interfaceSettings.copy(canvasSource = LevyraCanvasSource.from(value))
+                                            )
+                                        }
+                                    )
+                                }
+                                item {
+                                    SettingsToggle(
+                                        icon = Icons.Rounded.Wifi,
+                                        title = strings.motionArtworkWifiOnly,
+                                        subtitle = strings.motionArtworkWifiOnlySubtitle,
+                                        checked = interfaceSettings.motionArtworkWifiOnly,
+                                        onCheckedChange = { value ->
+                                            onInterfaceSettings(
+                                                interfaceSettings.copy(motionArtworkWifiOnly = value)
                                             )
                                         }
                                     )
