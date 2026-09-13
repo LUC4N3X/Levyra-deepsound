@@ -234,6 +234,7 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "favoritesPlain" to "מועדפים",
     "offline" to "אופליין",
     "more" to "עוד",
+    "mix" to "מיקס",
     "mixForYou" to "מיקס בשבילך",
     "genres" to "סגנונות",
     "smartMusicProfile" to "פרופיל מוזיקלי חכם",

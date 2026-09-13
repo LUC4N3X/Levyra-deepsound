@@ -43,6 +43,7 @@ class LevyraStringsTest {
             assertTrue(strings.pulseProAverage.isNotBlank())
             assertTrue(strings.pulseProActivity.isNotBlank())
             assertTrue(strings.moreLikeThis.isNotBlank())
+            assertTrue(strings.mix.isNotBlank())
             assertTrue(strings.offlineHomeTitle.isNotBlank())
             assertTrue(strings.offlineHomeMessage.isNotBlank())
             assertTrue(strings.offlineHomeRetry.isNotBlank())

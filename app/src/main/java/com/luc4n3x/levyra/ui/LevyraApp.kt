@@ -404,6 +404,8 @@ import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.buildPersonalizedHomeAlbumShelf
 import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
+import com.luc4n3x.levyra.data.findVerifiedTopResultArtist
+import com.luc4n3x.levyra.data.deduplicateSearchSongs
 import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
@@ -500,6 +502,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
+import com.luc4n3x.levyra.ui.theme.LevyraIsPureBlack
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
@@ -11169,9 +11172,12 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             )
                         }
                         if (filter == SearchFilter.All && topResultTracks.isNotEmpty()) {
+                            val heroTrack = topResultTracks.firstOrNull()
+                            val matchedArtist = findVerifiedTopResultArtist(data.artists, heroTrack, queryClean)
                             item {
                                 TopResultCard(
                                     tracks = topResultTracks,
+                                    artist = matchedArtist,
                                     currentTrackId = state.currentTrack?.id,
                                     isPlaying = state.isPlaying,
                                     isResolving = state.isResolving,
@@ -11179,11 +11185,44 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     onPlay = { track ->
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
-                                        viewModel.playFrom(data.songs, track)
+                                        val playbackContext = deduplicateSearchSongs(listOf(track) + data.songs)
+                                        viewModel.playFrom(playbackContext, track)
                                     },
                                     onFavorite = viewModel::toggleFavorite,
                                     onAddToPlaylist = { track -> addTarget = track },
-                                    onArtist = viewModel::openArtist
+                                    onPlayNext = viewModel::playNext,
+                                    onAddToQueue = viewModel::addToQueue,
+                                    onArtist = {
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        if (matchedArtist != null) {
+                                            viewModel.openArtistFromHit(matchedArtist)
+                                        } else if (heroTrack != null) {
+                                            viewModel.openArtist(heroTrack)
+                                        }
+                                    },
+                                    onShuffle = {
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        val artistName = matchedArtist?.name ?: heroTrack?.artist
+                                        val candidatePool = deduplicateSearchSongs(topResultTracks + data.songs)
+                                        val pool = if (!artistName.isNullOrBlank()) {
+                                            candidatePool.filter { it.artist.contains(artistName, ignoreCase = true) }.ifEmpty { topResultTracks }
+                                        } else {
+                                            topResultTracks
+                                        }
+                                        val shuffled = pool.shuffled()
+                                        shuffled.firstOrNull()?.let { first ->
+                                            viewModel.playFrom(shuffled, first)
+                                        }
+                                    },
+                                    onMix = {
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        heroTrack?.let { track ->
+                                            viewModel.startSongRadioFrom(track, data.songs)
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -19827,6 +19866,7 @@ private fun SearchFilterChips(
 @Composable
 private fun TopResultCard(
     tracks: List<Track>,
+    artist: ArtistHit?,
     currentTrackId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
@@ -19834,117 +19874,175 @@ private fun TopResultCard(
     onPlay: (Track) -> Unit,
     onFavorite: (Track) -> Unit,
     onAddToPlaylist: (Track) -> Unit,
-    onArtist: (Track) -> Unit
+    onPlayNext: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onArtist: () -> Unit,
+    onShuffle: () -> Unit,
+    onMix: () -> Unit
 ) {
     val hero = tracks.firstOrNull() ?: return
-    val heroIsCurrent = hero.id == currentTrackId
-    val heroIsPlaying = isPlaying && heroIsCurrent
-    val heroIsResolving = isResolving && heroIsCurrent
-    val heroIsFavorite = hero.id in favoriteIds
+    val strings = LocalLevyraStrings.current
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(LocalLevyraStrings.current.topResult, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            Color(hero.accentStart).copy(alpha = 0.30f),
-                            Color(hero.accentEnd).copy(alpha = 0.14f),
-                            Color.White.copy(alpha = 0.04f)
-                        )
-                    )
+    val cardBg = if (LevyraIsLight) LevyraPanel else if (LevyraIsPureBlack) Color(0xFF101114) else LevyraPanel
+    val cardBorder = if (LevyraIsLight) LevyraAdaptiveHairline else Color.White.copy(alpha = 0.06f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBg)
+            .border(1.dp, cardBorder, RoundedCornerShape(16.dp))
+            .padding(top = 16.dp, bottom = 8.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onArtist)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val avatarUrl = artist?.thumbnailUrl?.ifBlank { null } ?: hero.thumbnailUrl
+                val artistDisplayName = artist?.name?.ifBlank { null } ?: hero.artist
+                val artistSubtitle = remember(artist?.subscribers, strings.artistLabel) {
+                    artist?.subscribers?.trim()?.takeIf(String::isNotBlank) ?: strings.artistLabel
+                }
+
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(avatarUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = artistDisplayName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(LevyraPanelSoft)
                 )
-                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
-                .padding(16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().pressable(onClick = { onPlay(hero) }),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Box {
-                        CoverImage(hero, Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)), highRes = true)
-                        if (heroIsPlaying || heroIsResolving) {
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.48f),
-                                shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier.matchParentSize()
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (heroIsResolving) {
-                                        CircularProgressIndicator(modifier = Modifier.size(21.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                                    } else {
-                                        Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(hero.title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        displayableArtistCredit(hero.artist)?.let { credit ->
-                            Text(
-                                credit,
-                                color = LevyraMuted,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.clickable { onArtist(hero) }
-                            )
-                        }
-                        SearchTrackPlayCount(hero)
-                    }
-                }
 
-                tracks.drop(1).take(2).forEach { track ->
-                    Box(modifier = Modifier.fillMaxWidth().height(Dp.Hairline).background(Color.White.copy(alpha = 0.07f)))
-                    TopResultTrackRow(
-                        track = track,
-                        isCurrent = track.id == currentTrackId,
-                        isPlaying = isPlaying && track.id == currentTrackId,
-                        isResolving = isResolving && track.id == currentTrackId,
-                        onPlay = { onPlay(track) }
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = artistDisplayName,
+                        color = LevyraText,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = artistSubtitle,
+                        color = LevyraMuted,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Surface(
-                        color = LevyraText,
-                        shape = RoundedCornerShape(99.dp),
-                        modifier = Modifier.weight(1f).pressable(onClick = { onPlay(hero) })
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = strings.openArtist,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                val shuffleBg = if (LevyraIsLight) LevyraText else Color.White
+                val shuffleFg = if (LevyraIsLight) LevyraPanel else LevyraBlack
+
+                Surface(
+                    color = shuffleBg,
+                    shape = RoundedCornerShape(99.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clickable(onClick = onShuffle)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (heroIsResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraBlack)
-                            else Icon(if (heroIsPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (heroIsPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play, color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                        }
-                    }
-                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onAddToPlaylist(hero) }) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = LevyraText, modifier = Modifier.size(22.dp))
-                        }
-                    }
-                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onFavorite(hero) }) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                if (heroIsFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                null,
-                                tint = if (heroIsFavorite) LevyraPink else LevyraText,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Rounded.Shuffle,
+                            contentDescription = strings.shuffle,
+                            tint = shuffleFg,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = strings.shuffle,
+                            color = shuffleFg,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
+
+                val mixBg = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f)
+                val mixFg = LevyraText
+                val mixBorder = if (LevyraIsLight) BorderStroke(1.dp, LevyraAdaptiveHairline) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+
+                Surface(
+                    color = mixBg,
+                    border = mixBorder,
+                    shape = RoundedCornerShape(99.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clickable(onClick = onMix)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Radio,
+                            contentDescription = strings.mix,
+                            tint = mixFg,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = strings.mix,
+                            color = mixFg,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            tracks.take(3).forEach { track ->
+                TopResultTrackRow(
+                    track = track,
+                    isCurrent = track.id == currentTrackId,
+                    isPlaying = isPlaying && track.id == currentTrackId,
+                    isResolving = isResolving && track.id == currentTrackId,
+                    isFavorite = track.id in favoriteIds,
+                    onPlay = { onPlay(track) },
+                    onFavorite = { onFavorite(track) },
+                    onAddToPlaylist = { onAddToPlaylist(track) },
+                    onPlayNext = { onPlayNext(track) },
+                    onAddToQueue = { onAddToQueue(track) },
+                    onArtist = onArtist
+                )
             }
         }
     }
@@ -19956,36 +20054,179 @@ private fun TopResultTrackRow(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
-    onPlay: () -> Unit
+    isFavorite: Boolean,
+    onPlay: () -> Unit,
+    onFavorite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onPlayNext: () -> Unit,
+    onAddToQueue: () -> Unit,
+    onArtist: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
+
     Row(
-        modifier = Modifier.fillMaxWidth().pressable(onClick = onPlay).padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onPlay)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box {
-            CoverImage(track, Modifier.size(46.dp).clip(RoundedCornerShape(9.dp)))
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(6.dp))
+        ) {
+            CoverImage(track, Modifier.fillMaxSize())
             if (isPlaying || isResolving) {
-                Surface(color = Color.Black.copy(alpha = 0.48f), shape = RoundedCornerShape(9.dp), modifier = Modifier.matchParentSize()) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.52f),
+                    modifier = Modifier.matchParentSize()
+                ) {
                     Box(contentAlignment = Alignment.Center) {
-                        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                        else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+                        if (isResolving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = LevyraCyan
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Equalizer,
+                                contentDescription = null,
+                                tint = LevyraCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
             Text(
-                track.title,
+                text = track.title,
                 color = if (isCurrent) LevyraCyan else LevyraText,
-                fontSize = 14.5.sp,
-                fontWeight = FontWeight.Black,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            SearchTrackPlayCount(track)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                if (track.explicit) {
+                    Surface(
+                        color = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(3.dp),
+                        modifier = Modifier.size(width = 14.dp, height = 14.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "E",
+                                color = LevyraMuted,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = 9.sp
+                            )
+                        }
+                    }
+                }
+
+                val subtitle = remember(track.youtubeViewCount, track.durationMs, strings.code) {
+                    val plays = formatSearchViewCount(track.youtubeViewCount, strings.code)
+                    val songLabel = strings.song
+                    when {
+                        plays.isNotBlank() -> "$songLabel • $plays ${strings.pulsePlays}"
+                        track.durationMs > 0L -> "$songLabel • ${formatDuration(track.durationMs)}"
+                        else -> songLabel
+                    }
+                }
+
+                Text(
+                    text = subtitle,
+                    color = LevyraMuted,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
-        Icon(Icons.Rounded.PlayArrow, null, tint = if (isCurrent) LevyraCyan else LevyraMuted, modifier = Modifier.size(20.dp))
+
+        var menuExpanded by remember(track.id) { mutableStateOf(false) }
+        Box {
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = strings.more,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+                modifier = Modifier
+                    .background(LevyraPanel)
+                    .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(8.dp))
+            ) {
+                DropdownMenuItem(
+                    text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites, color = LevyraText) },
+                    leadingIcon = {
+                        Icon(
+                            if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            null,
+                            tint = if (isFavorite) LevyraPink else LevyraText
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onFavorite()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(strings.playNext, color = LevyraText) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraText) },
+                    onClick = {
+                        menuExpanded = false
+                        onPlayNext()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(strings.addToQueue, color = LevyraText) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraText) },
+                    onClick = {
+                        menuExpanded = false
+                        onAddToQueue()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(strings.addToPlaylist, color = LevyraText) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = LevyraText) },
+                    onClick = {
+                        menuExpanded = false
+                        onAddToPlaylist()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(strings.openArtist, color = LevyraText) },
+                    leadingIcon = { Icon(Icons.Rounded.Person, null, tint = LevyraText) },
+                    onClick = {
+                        menuExpanded = false
+                        onArtist()
+                    }
+                )
+            }
+        }
     }
 }
 
