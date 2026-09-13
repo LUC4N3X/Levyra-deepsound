@@ -5,9 +5,9 @@ import com.luc4n3x.levyra.core.config.VersionedRuntimeConfig
 
 data class MotionArtworkConfig(
     val providerOrder: List<String> = listOf(
+        "community-canvas",
         "apple-motion",
-        "tidal-video-cover",
-        "community-canvas"
+        "tidal-video-cover"
     ),
     val minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE,
     val requestTimeoutMs: Long = 6_500L,
@@ -36,5 +36,5 @@ object MotionArtworkRuntime {
     )
 }
 
-internal const val MOTION_ARTWORK_CACHE_SCHEMA_EPOCH = 7L
+internal const val MOTION_ARTWORK_CACHE_SCHEMA_EPOCH = 8L
 internal const val DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE = 84

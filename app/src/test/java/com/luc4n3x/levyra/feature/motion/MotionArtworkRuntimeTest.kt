@@ -24,13 +24,13 @@ class MotionArtworkRuntimeTest {
     }
 
     @Test
-    fun autoProviderOrderPrefersAppleThenTidalThenCommunity() {
+    fun autoProviderOrderPrefersSpotifyThenAppleThenTidal() {
         assertEquals(
-            listOf("apple-motion", "tidal-video-cover", "community-canvas"),
+            listOf("community-canvas", "apple-motion", "tidal-video-cover"),
             MotionArtworkConfig().providerOrder
         )
         assertEquals(
-            listOf("apple-motion", "tidal-video-cover", "community-canvas"),
+            listOf("community-canvas", "apple-motion", "tidal-video-cover"),
             motionArtworkProviderOrder(MotionArtworkConfig().providerOrder, LevyraCanvasSource.Auto)
         )
         assertEquals(
