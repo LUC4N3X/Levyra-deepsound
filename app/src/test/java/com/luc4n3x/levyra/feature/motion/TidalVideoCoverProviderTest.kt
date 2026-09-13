@@ -181,7 +181,7 @@ class TidalVideoCoverProviderTest {
         val result = provider(transport).find(identity())
 
         assertEquals("album-ok", (result as MotionArtworkProviderResult.Found).candidates.single().identity.albumId)
-        assertEquals(listOf("TRACKS", "TRACKS", "ALBUMS"), transport.searches.map { it.second })
+        assertEquals(listOf("TRACKS", "TRACKS", "ALBUMS", "ALBUMS"), transport.searches.map { it.second })
     }
 
     @Test
