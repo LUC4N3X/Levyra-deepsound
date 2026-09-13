@@ -128,42 +128,6 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ---
 
-## ✦ Levyra Live Radio
-
-<div align="center">
-
-### 📻 Live stations from around the world, built directly into Levyra.
-
-<p><sub>Explore → Live Radio adds a dedicated radio experience with locale-aware discovery, search by country, language, category or station name, local favorites and recent stations, plus a transient Media3 live-playback mode that stays separate from Song Radio and the normal music queue.</sub></p>
-
-<table align="center" width="100%">
-  <tr valign="top">
-    <td width="33%">
-      <h3>🌍 <b>Worldwide Discovery</b></h3>
-      <p><sub>Browse live stations by country, language and category, with search and region-aware results.</sub></p>
-    </td>
-    <td width="33%">
-      <h3>📡 <b>Native Live Playback</b></h3>
-      <p><sub>Background playback, notification controls, best-effort ICY now-playing metadata, and bounded reconnect behavior.</sub></p>
-    </td>
-    <td width="33%">
-      <h3>🧭 <b>Local by Design</b></h3>
-      <p><sub>Favorites, recent stations, and cached discovery stay local, while the normal queue and Song Radio remain untouched.</sub></p>
-    </td>
-  </tr>
-</table>
-
-<p>
-  <code>LIVE STATIONS</code> &nbsp;·&nbsp;
-  <code>LOCAL FAVORITES</code> &nbsp;·&nbsp;
-  <code>ICY METADATA</code> &nbsp;·&nbsp;
-  <code>BACKGROUND PLAYBACK</code>
-</p>
-
-</div>
-
----
-
 ## ✦ Interface & Experience Showcase
 
 <div align="center">
@@ -276,6 +240,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
         <li><b>Strict Match Guard:</b> Artist credits, album, duration, explicit state, ISRC and recording/version markers prevent remixes, live cuts, covers and ambiguous candidates from replacing the requested track.</li>
         <li><b>Queue Prefetch:</b> Upcoming tracks buffer quietly before the skip.</li>
         <li><b>Discovery Engine:</b> Global Top 50, Smart Orbit recommendations, and Samples feed.</li>
+        <li><b>Live Radio:</b> Real worldwide stations with country, language, category and station-name discovery, local favorites and recents, ICY now-playing metadata, background playback, bounded reconnect, and a live Media3 path kept separate from Song Radio and the persistent music queue.</li>
       </ul>
     </td>
     <td width="50%">
