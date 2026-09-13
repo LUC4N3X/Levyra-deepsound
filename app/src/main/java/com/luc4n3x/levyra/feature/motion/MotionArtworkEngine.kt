@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -591,7 +592,7 @@ internal class MotionArtworkRequestCoordinator(
             val session = synchronized(sessions) {
                 sessions.getOrPut(requestKey) {
                     MotionProgressiveSession().also { newSession ->
-                        val worker = scope.launch {
+                        val worker = scope.launch(start = CoroutineStart.LAZY) {
                             try {
                                 block { artwork ->
                                     newSession.emit(artwork)
@@ -667,6 +668,7 @@ internal class MotionProgressiveSession {
             initialArtwork = currentArtwork
             collectors.add(channel)
         }
+        worker?.start()
 
         var lastEmitted: MotionArtwork? = null
         if (initialArtwork != null) {
