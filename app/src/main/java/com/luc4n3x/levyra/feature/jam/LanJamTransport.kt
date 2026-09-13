@@ -71,6 +71,7 @@ class LanJamHostTransport : JamHostTransport {
     private var acceptJob: Job? = null
 
     override suspend fun start(secret: String): JamSessionCode? = withContext(Dispatchers.IO) {
+        if (!JamSessionCode.isValidSecret(secret)) return@withContext null
         stop()
         val address = localJamAddress() ?: return@withContext null
         val socket = runCatching { ServerSocket() }.getOrNull() ?: return@withContext null
@@ -222,6 +223,10 @@ class LanJamGuestTransport : JamGuestTransport {
     private var readJob: Job? = null
 
     override suspend fun connect(code: JamSessionCode, name: String): Boolean = withContext(Dispatchers.IO) {
+        if (!JamSessionCode.isValidSecret(code.secret)) {
+            _events.tryEmit(JamGuestEvent.Failed(JamFailure.InvalidCode))
+            return@withContext false
+        }
         stop()
         val socket = Socket()
         val opened = runCatching {

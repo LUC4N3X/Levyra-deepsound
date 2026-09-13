@@ -11,7 +11,7 @@ data class JamSessionCode(
     fun encoded(): String {
         require(isPrivateIpv4(hostAddress))
         require(port in MIN_PORT..MAX_PORT)
-        require(secret.matches(Regex("[0-9a-fA-F]{${SECRET_BYTES * 2}}")))
+        require(isValidSecret(secret))
         val octets = hostAddress.split('.').map(String::toInt)
         val bytes = ByteArray(TOTAL_BYTES)
         octets.take(ADDRESS_BYTES).forEachIndexed { index, value -> bytes[index] = value.toByte() }
@@ -26,17 +26,21 @@ data class JamSessionCode(
     fun deepLink(): String = "$DEEP_LINK_PREFIX${encoded()}"
 
     companion object {
-        const val SECRET_BYTES = 5
+        const val SECRET_BYTES = 16
+        const val SECRET_BITS = SECRET_BYTES * 8
         const val ADDRESS_BYTES = 4
         const val PORT_BYTES = 2
         const val TOTAL_BYTES = ADDRESS_BYTES + PORT_BYTES + SECRET_BYTES
-        const val ENCODED_LENGTH = 18
+        const val ENCODED_LENGTH = (TOTAL_BYTES * 8 + 4) / 5
         const val GROUP_SIZE = 6
         const val DEEP_LINK_PREFIX = "levyra://jam/"
         const val MIN_PORT = 1024
         const val MAX_PORT = 65_535
 
         private const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+        private const val PADDING_BITS = ENCODED_LENGTH * 5 - TOTAL_BYTES * 8
+        private const val PADDING_MASK = (1 shl PADDING_BITS) - 1
+        private val secretPattern = Regex("[0-9a-fA-F]{${SECRET_BYTES * 2}}")
         private val random = SecureRandom()
 
         fun newSecret(): String {
@@ -45,6 +49,8 @@ data class JamSessionCode(
             return bytes.joinToString("") { "%02x".format(it) }
         }
 
+        fun isValidSecret(value: String): Boolean = secretPattern.matches(value)
+
         fun parse(raw: String): JamSessionCode? {
             val trimmed = raw.trim()
             val body = if (trimmed.startsWith(DEEP_LINK_PREFIX, ignoreCase = true)) {
@@ -52,15 +58,14 @@ data class JamSessionCode(
             } else {
                 trimmed
             }
-            val normalized = when {
-                body.length == ENCODED_LENGTH && body.all { it.uppercaseChar() in ALPHABET } -> body
-                body.length == ENCODED_LENGTH + 2 &&
-                    body[GROUP_SIZE] == '-' && body[GROUP_SIZE * 2 + 1] == '-' &&
-                    body.filterNot { it == '-' }.all { it.uppercaseChar() in ALPHABET } -> body.filterNot { it == '-' }
-                else -> return null
-            }.uppercase(Locale.ROOT)
-            if (normalized.length != ENCODED_LENGTH) return null
-            if (ALPHABET.indexOf(normalized.last()) and 0x03 != 0) return null
+            val compact = body.filterNot { it == '-' }
+            if (compact.length != ENCODED_LENGTH || compact.any { it.uppercaseChar() !in ALPHABET }) return null
+            val canonicalFormatted = compact.chunked(GROUP_SIZE).joinToString("-")
+            if (!body.equals(compact, ignoreCase = true) && !body.equals(canonicalFormatted, ignoreCase = true)) {
+                return null
+            }
+            val normalized = compact.uppercase(Locale.ROOT)
+            if (PADDING_BITS > 0 && ALPHABET.indexOf(normalized.last()) and PADDING_MASK != 0) return null
             val bytes = decodeBase32(normalized) ?: return null
             if (bytes.size < TOTAL_BYTES) return null
 
