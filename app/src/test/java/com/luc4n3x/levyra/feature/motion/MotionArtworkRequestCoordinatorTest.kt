@@ -89,6 +89,61 @@ class MotionArtworkRequestCoordinatorTest {
     }
 
     @Test
+    fun cancellationDuringInitialReplayDoesNotLeakSubscriber() = runBlocking {
+        val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val coordinator = MotionArtworkRequestCoordinator(coordinatorScope)
+            val firstArtwork = artwork("track-replay", "community-canvas")
+            val firstPublished = CompletableDeferred<Unit>()
+            val workerCancelled = CompletableDeferred<Unit>()
+
+            val firstCollector = launch {
+                coordinator.share("replay-cancel") { emit ->
+                    emit(firstArtwork)
+                    firstPublished.complete(Unit)
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        workerCancelled.complete(Unit)
+                    }
+                }.collect {}
+            }
+
+            firstPublished.await()
+
+            val lateCollector = launch {
+                try {
+                    coordinator.share("replay-cancel") {
+                        error("duplicate in-flight block started")
+                    }.collect {
+                        throw CancellationException("stop during replay")
+                    }
+                } catch (_: CancellationException) {
+                }
+            }
+
+            lateCollector.join()
+            firstCollector.cancelAndJoin()
+            withTimeout(1_000L) { workerCancelled.await() }
+        } finally {
+            coordinatorScope.cancel()
+        }
+    }
+
+    @Test
+    fun cancelledCoordinatorScopeDoesNotLeaveCollectorWaiting() = runBlocking {
+        val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val coordinator = MotionArtworkRequestCoordinator(coordinatorScope)
+        coordinatorScope.cancel()
+
+        withTimeout(1_000L) {
+            coordinator.share("cancelled-scope") {
+                error("worker should not execute")
+            }.collect {}
+        }
+    }
+
+    @Test
     fun subscriberArrivingDuringLastCollectorShutdownStartsFreshSession() = runBlocking {
         val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
