@@ -266,6 +266,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun exportPlaylistHit(playlist: PlaylistHit) = root.exportPlaylistHit(playlist)
     fun exportAlbumHit(album: AlbumHit) = root.exportAlbumHit(album)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun startSongRadio() = root.startSongRadio()
 }
 
 class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::exploreProjection) {
