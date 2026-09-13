@@ -2,7 +2,7 @@
   <title>GET IT ON F-Droid</title>
   <rect x=".75" y=".75" width="158.5" height="46.5" rx="10" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
   <rect x=".75" y="12" width="3.5" height="24" rx="1.75" fill="#1976D2"/>
-  <g transform="translate(10 -533.5) scale(0.53)">
+  <g transform="translate(10.6 -551.5) scale(0.56)">
       <g transform="matrix(-1 0 0 1 47.999779 0)">
         <path fill="#8AB000" stroke="#769616" stroke-width="2.5" stroke-linecap="round" d="m2.5889342 1006.8622 4.25 5.5"/>
         <path fill="#8AB000" d="m2.3378905 1005.8443c-.438175 0-.959862.1416-.8242183.7986.103561.5016 4.6608262 6.0744 4.6608262 6.0744 1.0195329 1.319 2.4934721.6763 1.4739391-.6425l-4.234375-5.4727c-.2602394-.29-.6085188-.7436-1.076172-.7578z"/>
