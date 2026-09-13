@@ -19,7 +19,7 @@ class HomeDesignTest {
         assertTrue(LevyraHomeDesign.HeroCorner > LevyraHomeDesign.ShelfCorner)
         assertTrue(LevyraHomeDesign.HeroHeight.value >= 240f)
         assertTrue(LevyraHomeDesign.SectionGap > LevyraHomeDesign.SectionGapCompact)
-        assertEquals(18f, LevyraHomeDesign.HorizontalInset.value, 0f)
+        assertEquals(16f, LevyraHomeDesign.HorizontalInset.value, 0f)
     }
 
     @Test
