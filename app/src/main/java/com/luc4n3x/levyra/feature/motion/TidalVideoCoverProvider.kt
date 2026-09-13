@@ -126,15 +126,20 @@ class TidalVideoCoverProvider internal constructor(
             var releaseDate = entry.releaseDate
 
             if (videoCover.isBlank()) {
-                val details = lookup.hydrate(entry.albumId, hydrationCeiling) { albumId ->
-                    fetchAlbum(albumId, country)
-                }
-                if (details != null) {
-                    videoCover = details.videoCover
-                    albumTitle = details.title.ifBlank { albumTitle }
-                    albumArtistNames = details.artists.ifEmpty { albumArtistNames }
-                    upc = details.upc.ifBlank { upc }
-                    releaseDate = details.releaseDate.ifBlank { releaseDate }
+                val hydrationAllowed = type != "TRACKS" ||
+                    tidalCandidatePriority(identity, type, entry.title, entry.albumTitle, entry.isrc) >=
+                    MIN_TIDAL_TRACK_HYDRATION_PRIORITY
+                if (hydrationAllowed) {
+                    val details = lookup.hydrate(entry.albumId, hydrationCeiling) { albumId ->
+                        fetchAlbum(albumId, country)
+                    }
+                    if (details != null) {
+                        videoCover = details.videoCover
+                        albumTitle = details.title.ifBlank { albumTitle }
+                        albumArtistNames = details.artists.ifEmpty { albumArtistNames }
+                        upc = details.upc.ifBlank { upc }
+                        releaseDate = details.releaseDate.ifBlank { releaseDate }
+                    }
                 }
             }
 
@@ -468,6 +473,7 @@ private const val MAX_TIDAL_SEARCH_QUERIES = 2
 private const val MAX_TIDAL_VERIFICATION_CANDIDATES = 3
 private const val MAX_TIDAL_ALBUM_HYDRATIONS = 3
 private const val TIDAL_ALBUM_FALLBACK_HYDRATION_RESERVE = 1
+private const val MIN_TIDAL_TRACK_HYDRATION_PRIORITY = 60
 
 private fun tidalTextMayMatch(reference: String, candidate: String): Boolean {
     val referenceTokens = tidalTextTokens(reference)
