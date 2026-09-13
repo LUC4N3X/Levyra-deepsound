@@ -33,10 +33,10 @@ class MotionArtworkEngine(context: Context) {
     private val networkPolicy = MotionArtworkNetworkPolicy(appContext)
     private val urlVerifier = MotionArtworkUrlVerifier(appContext)
     private val metadataResolver = ChartOfficialArtworkResolver(appContext)
-    private val providerFactories: Map<String, () -> MotionArtworkProvider> = mapOf(
-        "community-canvas" to { CommunityCanvasProvider(appContext) },
-        "apple-motion" to { AppleMotionArtworkProvider(appContext) },
-        "tidal-video-cover" to { TidalVideoCoverProvider(appContext) }
+    private val providerFactories: Map<String, (MotionArtworkConfig) -> MotionArtworkProvider> = mapOf(
+        "community-canvas" to { _: MotionArtworkConfig -> CommunityCanvasProvider(appContext) },
+        "apple-motion" to { _: MotionArtworkConfig -> AppleMotionArtworkProvider(appContext) },
+        "tidal-video-cover" to { config -> TidalVideoCoverProvider(appContext, config.minimumConfidence) }
     )
     private val runtimeLock = Any()
     private var activeEpoch = -1L
@@ -164,6 +164,8 @@ class MotionArtworkEngine(context: Context) {
             }
         }
 
+        if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) return null
+
         if (verified == null) {
             if (!lookupFailed) {
                 Timber.d("Artist motion saving negative cache artist=%s", artistName)
@@ -278,8 +280,8 @@ class MotionArtworkEngine(context: Context) {
                         identity.album
                     )
                     if (outcome is MotionArtworkProviderResult.Failed) providerFailed = true
-                    val candidates = (outcome as? MotionArtworkProviderResult.Found)?.candidates.orEmpty()
-                    if (candidates.isEmpty()) continue
+                    if (shouldContinueMotionArtworkFallback(outcome)) continue
+                    val candidates = (outcome as MotionArtworkProviderResult.Found).candidates
                     val providerRank = providerRanks[provider.id] ?: Int.MAX_VALUE
                     if (
                         !shouldPublishMotionUpgrade(
@@ -333,6 +335,7 @@ class MotionArtworkEngine(context: Context) {
                         }
                     }
                     val accepted = selected ?: continue
+                    if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) return@supervisorScope
                     if (publishedCandidate != null) upgradesUsed++
                     publishedCandidate = accepted
                     val artwork = motionArtworkFrom(accepted, identityKey, configEpoch, config)
@@ -343,9 +346,15 @@ class MotionArtworkEngine(context: Context) {
             }
         }
 
+        if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) return@flow
+
         val stabilized = publishedArtwork
         if (stabilized == null) {
-            val conclusive = !providerFailed && !verifierFailed && verificationExhaustive
+            val conclusive = shouldNegativeCacheMotionArtwork(
+                providerFailed = providerFailed,
+                verifierFailed = verifierFailed,
+                verificationExhaustive = verificationExhaustive
+            )
             if (conclusive) {
                 Timber.d("motion resolve conclusive miss; saving negative cache title=%s source=%s", identity.title, source)
                 repository.saveNegative(
@@ -457,7 +466,7 @@ class MotionArtworkEngine(context: Context) {
 
     private fun providersFor(epoch: Long, config: MotionArtworkConfig): List<MotionArtworkProvider> = synchronized(runtimeLock) {
         if (activeEpoch != epoch) {
-            activeProviders = config.providerOrder.mapNotNull { providerFactories[it]?.invoke() }
+            activeProviders = config.providerOrder.mapNotNull { providerFactories[it]?.invoke(config) }
             activeEpoch = epoch
         }
         activeProviders
@@ -548,7 +557,18 @@ internal fun buildMotionArtworkVerificationPlan(
     )
 }
 
-internal const val MAX_MOTION_ARTWORK_UPGRADES = 1
+internal fun shouldNegativeCacheMotionArtwork(
+    providerFailed: Boolean,
+    verifierFailed: Boolean,
+    verificationExhaustive: Boolean
+): Boolean = !providerFailed && !verifierFailed && verificationExhaustive
+
+internal fun shouldContinueMotionArtworkFallback(result: MotionArtworkProviderResult): Boolean =
+    result !is MotionArtworkProviderResult.Found || result.candidates.isEmpty()
+
+internal fun shouldPublishMotionArtwork(policyAllowsRemote: Boolean): Boolean = policyAllowsRemote
+
+internal const val MAX_MOTION_ARTWORK_UPGRADES = 2
 
 internal fun shouldPublishMotionUpgrade(
     publishedProviderRank: Int?,

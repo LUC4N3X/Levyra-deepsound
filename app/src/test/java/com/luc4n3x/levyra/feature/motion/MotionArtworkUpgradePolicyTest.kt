@@ -59,13 +59,25 @@ class MotionArtworkUpgradePolicyTest {
     }
 
     @Test
-    fun secondUpgradeIsRejected() {
-        assertFalse(
+    fun twoPriorityUpgradesAreAllowed() {
+        assertTrue(
             shouldPublishMotionUpgrade(
                 publishedProviderRank = 1,
                 candidateProviderRank = 0,
                 forcedSource = false,
                 upgradesUsed = 1
+            )
+        )
+    }
+
+    @Test
+    fun thirdUpgradeIsRejected() {
+        assertFalse(
+            shouldPublishMotionUpgrade(
+                publishedProviderRank = 1,
+                candidateProviderRank = 0,
+                forcedSource = false,
+                upgradesUsed = 2
             )
         )
     }
@@ -83,10 +95,10 @@ class MotionArtworkUpgradePolicyTest {
     }
 
     @Test
-    fun tidalThenAppleThenCommunityArrivalKeepsAtMostOneUpgrade() {
+    fun communityThenTidalThenAppleArrivalEndsAtHighestPriorityProvider() {
         val published = simulatePublications(listOf(2, 1, 0), forcedSource = false)
 
-        assertEquals(listOf(2, 1), published)
+        assertEquals(listOf(2, 1, 0), published)
     }
 
     @Test

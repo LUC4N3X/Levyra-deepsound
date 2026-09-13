@@ -15,7 +15,10 @@ import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
+class TidalVideoCoverProvider(
+    context: Context,
+    private val minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
+) : MotionArtworkProvider {
     override val id: String = "tidal-video-cover"
 
     private val client: OkHttpClient = LevyraHttpClientFactory.media(context).newBuilder()
@@ -26,14 +29,15 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
 
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
-            val fromTracks = search(identity, "TRACKS")
-            if (fromTracks.isNotEmpty()) {
+            val hydrationBudget = TidalAlbumHydrationBudget()
+            val fromTracks = search(identity, "TRACKS", hydrationBudget)
+            if (hasEffectiveTidalCandidate(identity, fromTracks, minimumConfidence)) {
                 MotionArtworkProviderResult.Found(fromTracks)
             } else if (identity.album.isBlank()) {
                 MotionArtworkProviderResult.NoMatch
             } else {
-                val fromAlbums = search(identity, "ALBUMS")
-                if (fromAlbums.isNotEmpty()) {
+                val fromAlbums = search(identity, "ALBUMS", hydrationBudget)
+                if (hasEffectiveTidalCandidate(identity, fromAlbums, minimumConfidence)) {
                     MotionArtworkProviderResult.Found(fromAlbums)
                 } else {
                     MotionArtworkProviderResult.NoMatch
@@ -47,14 +51,31 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
         }
     }
 
-    private suspend fun search(identity: MotionTrackIdentity, type: String): List<MotionArtworkCandidate> {
-        val query = if (type == "TRACKS") {
-            listOf(identity.title, identity.artists.joinToString(" "), identity.album)
-        } else {
-            listOf(identity.album, identity.artists.joinToString(" "))
-        }.filter { it.isNotBlank() }.joinToString(" ")
-        if (query.isBlank()) return emptyList()
+    private suspend fun search(
+        identity: MotionTrackIdentity,
+        type: String,
+        hydrationBudget: TidalAlbumHydrationBudget
+    ): List<MotionArtworkCandidate> {
+        val queries = tidalSearchQueries(identity, type)
+        if (queries.isEmpty()) return emptyList()
         val country = countryCode()
+        val candidates = ArrayList<MotionArtworkCandidate>()
+        for (query in queries) {
+            candidates += searchQuery(identity, type, query, country, hydrationBudget)
+            if (hasEffectiveTidalCandidate(identity, candidates, minimumConfidence)) break
+        }
+        return candidates.distinctBy { candidate ->
+            listOf(candidate.url, candidate.identity.trackId, candidate.identity.albumId).joinToString("|")
+        }
+    }
+
+    private suspend fun searchQuery(
+        identity: MotionTrackIdentity,
+        type: String,
+        query: String,
+        country: String,
+        hydrationBudget: TidalAlbumHydrationBudget
+    ): List<MotionArtworkCandidate> {
         val url = "$BASE_URL/search".toHttpUrl().newBuilder()
             .addQueryParameter("query", query)
             .addQueryParameter("limit", "10")
@@ -81,11 +102,7 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
                             ?.trim()
                             ?.takeIf { it.isNotBlank() }
                     )
-                }
-            if (!artistsCompatible(identity.artists, artists)) continue
-            if (type == "TRACKS" && normalizeMotionText(resultTitle) != normalizeMotionText(identity.title)) continue
-            if (type == "ALBUMS" && normalizeMotionText(resultTitle) != normalizeMotionText(identity.album)) continue
-
+            }
             val albumObject = if (type == "TRACKS") item.optJSONObject("album") else item
             val albumId = albumObject?.optString("id").orEmpty().trim()
             var albumTitle = albumObject?.optString("title").orEmpty().trim()
@@ -94,7 +111,11 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
             var upc = albumObject?.optString("upc").orEmpty().trim()
             var releaseDate = albumObject?.optString("releaseDate").orEmpty().trim()
 
-            if (videoCover.isBlank() && albumId.isNotBlank()) {
+            val resultIsrc = item.optString("isrc").uppercase(Locale.ROOT)
+            val rawArtists = albumArtistNames.ifEmpty { artists }
+            if (!tidalRawTrackMetadataCouldMatch(identity, type, resultTitle, rawArtists, albumTitle, albumId, resultIsrc)) continue
+
+            if (videoCover.isBlank() && hydrationBudget.reserve(albumId)) {
                 val details = fetchAlbum(albumId, country)
                 if (details != null) {
                     videoCover = details.videoCover
@@ -105,7 +126,7 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
                 }
             }
 
-            if (albumTitle.isBlank() || normalizeMotionText(albumTitle) != normalizeMotionText(identity.album)) continue
+            if (albumTitle.isBlank()) continue
             val effectiveArtists = albumArtistNames.ifEmpty { artists }
             if (!artistsCompatible(identity.artists, effectiveArtists)) continue
             if (isUnsafeResult(albumTitle)) continue
@@ -114,11 +135,11 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
                 provider = id,
                 scope = MotionArtworkScope.ALBUM,
                 identity = MotionTrackIdentity(
-                    title = identity.title,
+                    title = if (type == "TRACKS") resultTitle else "",
                     artists = effectiveArtists,
                     album = albumTitle,
                     durationMs = item.optLong("duration", 0L) * 1000L,
-                    isrc = item.optString("isrc").uppercase(Locale.ROOT),
+                    isrc = resultIsrc,
                     upc = upc,
                     year = releaseDate.take(4),
                     trackId = item.optString("id"),
@@ -236,10 +257,87 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
     }
 }
 
+internal fun tidalSearchQueries(identity: MotionTrackIdentity, type: String): List<String> {
+    val artist = identity.artists.joinToString(" ")
+    val values = when (type) {
+        "TRACKS" -> listOf(
+            listOf(identity.album, artist, identity.title),
+            listOf(identity.title, artist)
+        )
+        "ALBUMS" -> listOf(
+            listOf(identity.album, artist),
+            listOf(artist, identity.album)
+        )
+        else -> emptyList()
+    }
+    return values
+        .map { parts -> parts.filter(String::isNotBlank).joinToString(" ") }
+        .filter(String::isNotBlank)
+        .distinct()
+        .take(MAX_TIDAL_SEARCH_QUERIES)
+}
+
 internal fun tidalArtistsCompatible(requested: List<String>, returned: List<String>): Boolean =
     primaryMotionArtistMatches(requested, returned)
 
+internal fun hasEffectiveTidalCandidate(
+    identity: MotionTrackIdentity,
+    candidates: List<MotionArtworkCandidate>,
+    minimumConfidence: Int
+): Boolean = candidates.any { candidate ->
+    CanonicalTrackMatcher.match(identity, candidate).let { match ->
+        match.accepted && match.score >= minimumConfidence
+    }
+}
+
+internal fun shouldSearchTidalAlbumsAfterTracks(
+    identity: MotionTrackIdentity,
+    candidates: List<MotionArtworkCandidate>,
+    minimumConfidence: Int
+): Boolean = !hasEffectiveTidalCandidate(identity, candidates, minimumConfidence)
+
+internal fun tidalRawTrackMetadataCouldMatch(
+    identity: MotionTrackIdentity,
+    type: String,
+    title: String,
+    artists: List<String>,
+    album: String,
+    albumId: String,
+    isrc: String
+): Boolean {
+    if (!tidalArtistsCompatible(identity.artists, artists)) return false
+    val exactIsrc = identity.isrc.isNotBlank() && isrc.isNotBlank() && identity.isrc == isrc
+    if (identity.isrc.isNotBlank() && isrc.isNotBlank() && !exactIsrc) return false
+    if (type != "TRACKS") return true
+    if (!exactIsrc && !tidalTextMayMatch(identity.title, title)) return false
+    return albumId.isNotBlank() ||
+        exactIsrc ||
+        isUnusableMotionAlbum(identity.album) ||
+        tidalTextMayMatch(identity.album, album)
+}
+
+internal class TidalAlbumHydrationBudget(
+    private val maximum: Int = MAX_TIDAL_ALBUM_HYDRATIONS
+) {
+    private val albumIds = linkedSetOf<String>()
+
+    fun reserve(albumId: String): Boolean {
+        if (albumId.isBlank() || albumId in albumIds || albumIds.size >= maximum) return false
+        albumIds += albumId
+        return true
+    }
+}
+
 private class TidalRequestException(message: String, cause: Throwable? = null) : IOException(message, cause)
+
+private const val MAX_TIDAL_SEARCH_QUERIES = 2
+private const val MAX_TIDAL_ALBUM_HYDRATIONS = 3
+
+private fun tidalTextMayMatch(reference: String, candidate: String): Boolean {
+    val referenceTokens = normalizeMotionText(reference).split(' ').filter(String::isNotBlank).toSet()
+    val candidateTokens = normalizeMotionText(candidate).split(' ').filter(String::isNotBlank).toSet()
+    return referenceTokens.isEmpty() || candidateTokens.isEmpty() || referenceTokens.intersect(candidateTokens).isNotEmpty()
+}
 
 private fun JSONArray?.toStringList(key: String): List<String> {
     if (this == null) return emptyList()

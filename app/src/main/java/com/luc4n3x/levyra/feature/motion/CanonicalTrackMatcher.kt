@@ -39,12 +39,19 @@ object CanonicalTrackMatcher {
         if (candidate.url.isBlank() || !candidate.url.startsWith("https://")) return MotionArtworkMatch(false, 0)
         if (containsUnexpectedUnsafeTerm(reference, source)) return MotionArtworkMatch(false, 0)
         if (!artistsCompatible(reference.artists, source.artists, candidate.scope)) return MotionArtworkMatch(false, 0)
-        if (!editionsCompatible(reference, source, candidate.scope)) return MotionArtworkMatch(false, 0)
-
-        var score = 30
         val exactIsrc = reference.isrc.isNotBlank() && source.isrc.isNotBlank() && reference.isrc == source.isrc
         val conflictingIsrc = reference.isrc.isNotBlank() && source.isrc.isNotBlank() && reference.isrc != source.isrc
         if (conflictingIsrc) return MotionArtworkMatch(false, 0)
+        if (!editionsCompatible(reference, source, candidate.scope) && !exactIsrc) return MotionArtworkMatch(false, 0)
+        if (
+            candidate.scope == MotionArtworkScope.ALBUM &&
+            source.title.isNotBlank() &&
+            !trackTitleCompatible(reference.title, source.title, exactIsrc)
+        ) {
+            return MotionArtworkMatch(false, 0)
+        }
+
+        var score = 30
         if (exactIsrc) score += 38
 
         val artistCoverage = artistCoverage(reference.artists, source.artists)
@@ -89,7 +96,9 @@ object CanonicalTrackMatcher {
             }
         } else {
             if (hasUsableAlbum(reference)) {
-                if (albumSimilarity < 0.82) return MotionArtworkMatch(false, 0)
+                if (albumSimilarity < 0.82 && !sameRecordingReleaseVariant(reference, source, exactIsrc)) {
+                    return MotionArtworkMatch(false, 0)
+                }
                 score += when {
                     albumSimilarity >= 1.0 -> 30
                     albumSimilarity >= 0.9 -> 25
@@ -165,6 +174,24 @@ object CanonicalTrackMatcher {
 
     private fun hasUsableAlbum(reference: MotionTrackIdentity): Boolean =
         !isUnusableMotionAlbum(reference.album)
+
+    private fun trackTitleCompatible(reference: String, candidate: String, exactIsrc: Boolean): Boolean {
+        if (exactIsrc) return true
+        if (textSimilarity(reference, candidate) < 0.72) return false
+        return editionsCompatible(
+            MotionTrackIdentity(reference, emptyList(), "", 0L, "", "", "", "", ""),
+            MotionTrackIdentity(candidate, emptyList(), "", 0L, "", "", "", "", ""),
+            MotionArtworkScope.TRACK
+        )
+    }
+
+    private fun sameRecordingReleaseVariant(
+        reference: MotionTrackIdentity,
+        candidate: MotionTrackIdentity,
+        exactIsrc: Boolean
+    ): Boolean = exactIsrc &&
+        releaseCoreName(reference.album) == releaseCoreName(candidate.album) &&
+        releaseCoreName(reference.album).isNotBlank()
 
     private fun releaseMatchesTrackTitle(trackTitle: String, candidateAlbum: String): Boolean {
         val title = releaseCoreName(trackTitle)

@@ -172,6 +172,58 @@ class CanonicalTrackMatcherTest {
     }
 
     @Test
+    fun albumVideoCoverFromWrongTrackIsRejected() {
+        val reference = identity("Blinding Lights", "The Weeknd", "After Hours")
+        val candidate = albumCandidate("Save Your Tears", "The Weeknd", "After Hours")
+
+        assertFalse(CanonicalTrackMatcher.match(reference, candidate).accepted)
+    }
+
+    @Test
+    fun exactIsrcAllowsOnlyHarmlessSingleReleaseSuffixDifference() {
+        val reference = identity(
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            album = "Blinding Lights",
+            isrc = "USUG11904278"
+        )
+        val candidate = albumCandidate(
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            album = "Blinding Lights - Single"
+        ).copy(identity = identity(
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            album = "Blinding Lights - Single",
+            isrc = "USUG11904278"
+        ))
+
+        assertTrue(CanonicalTrackMatcher.match(reference, candidate).accepted)
+    }
+
+    @Test
+    fun exactIsrcDoesNotAllowASeparateDeluxeRelease() {
+        val reference = identity(
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            album = "After Hours",
+            isrc = "USUG11904278"
+        )
+        val candidate = albumCandidate(
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            album = "After Hours Deluxe"
+        ).copy(identity = identity(
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            album = "After Hours Deluxe",
+            isrc = "USUG11904278"
+        ))
+
+        assertFalse(CanonicalTrackMatcher.match(reference, candidate).accepted)
+    }
+
+    @Test
     fun exactIsrcTrackMotionIsAccepted() {
         val reference = identity(
             title = "Sinceramente",

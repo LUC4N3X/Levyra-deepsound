@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.feature.motion
 
+import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +21,30 @@ class MotionArtworkRuntimeTest {
         assertEquals(2_500L, normalized.requestTimeoutMs)
         assertTrue(normalized.positiveTtlMs <= 7L * 24L * 60L * 60L * 1000L)
         assertEquals(10L * 60L * 1000L, normalized.negativeTtlMs)
+    }
+
+    @Test
+    fun autoProviderOrderPrefersAppleThenTidalThenCommunity() {
+        assertEquals(
+            listOf("apple-motion", "tidal-video-cover", "community-canvas"),
+            MotionArtworkConfig().providerOrder
+        )
+        assertEquals(
+            listOf("apple-motion", "tidal-video-cover", "community-canvas"),
+            motionArtworkProviderOrder(MotionArtworkConfig().providerOrder, LevyraCanvasSource.Auto)
+        )
+        assertEquals(
+            listOf("apple-motion"),
+            motionArtworkProviderOrder(MotionArtworkConfig().providerOrder, LevyraCanvasSource.Apple)
+        )
+        assertEquals(
+            listOf("tidal-video-cover"),
+            motionArtworkProviderOrder(MotionArtworkConfig().providerOrder, LevyraCanvasSource.Tidal)
+        )
+        assertEquals(
+            listOf("community-canvas"),
+            motionArtworkProviderOrder(MotionArtworkConfig().providerOrder, LevyraCanvasSource.Community)
+        )
     }
 
     @Test
