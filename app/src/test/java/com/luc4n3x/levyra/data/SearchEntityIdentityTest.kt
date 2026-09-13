@@ -7,6 +7,8 @@ import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -295,6 +297,123 @@ class SearchEntityIdentityTest {
         assertTrue(deduplicateSearchSongs(emptyList()).isEmpty())
     }
 
+    @Test
+    fun `findVerifiedTopResultArtist matches exact artist name`() {
+        val hero = track(id = "s1", title = "Tran Tran", artist = "Sfera Ebbasta")
+        val candidates = listOf(
+            artist(name = "Sfera Ebbasta", browseId = "UC_sfera"),
+            artist(name = "Baby Gang", browseId = "UC_baby")
+        )
+
+        val result = findVerifiedTopResultArtist(candidates, hero, query = "Sfera Ebbasta")
+
+        assertNotNull(result)
+        assertEquals("UC_sfera", result?.browseId)
+        assertEquals("Sfera Ebbasta", result?.name)
+    }
+
+    @Test
+    fun `findVerifiedTopResultArtist matches when query is prefix and candidate matches hero track`() {
+        val hero = track(id = "s1", title = "Tran Tran", artist = "Sfera Ebbasta")
+        val candidates = listOf(
+            artist(name = "Sfera Ebbasta", browseId = "UC_sfera")
+        )
+
+        val result = findVerifiedTopResultArtist(candidates, hero, query = "sfera")
+
+        assertNotNull(result)
+        assertEquals("Sfera Ebbasta", result?.name)
+    }
+
+    @Test
+    fun `findVerifiedTopResultArtist matches featured artist when query explicitly targets candidate`() {
+        val hero = track(id = "s1", title = "Calcolatrici", artist = "Geolier feat. Sfera Ebbasta & Guè")
+        val candidates = listOf(
+            artist(name = "Geolier", browseId = "UC_geolier"),
+            artist(name = "Sfera Ebbasta", browseId = "UC_sfera")
+        )
+
+        val result = findVerifiedTopResultArtist(candidates, hero, query = "sfera")
+
+        assertNotNull(result)
+        assertEquals("UC_sfera", result?.browseId)
+        assertEquals("Sfera Ebbasta", result?.name)
+    }
+
+    @Test
+    fun `findVerifiedTopResultArtist returns null when query is song title and candidate is not connected to hero track`() {
+        val hero = track(id = "s1", title = "Tran Tran", artist = "Sfera Ebbasta")
+        val candidates = listOf(
+            artist(name = "Tran Tran", browseId = "UC_other_band")
+        )
+
+        val result = findVerifiedTopResultArtist(candidates, hero, query = "Tran Tran")
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `findVerifiedTopResultArtist returns null when no candidate matches hero track and never falls back to first`() {
+        val hero = track(id = "s1", title = "Tran Tran", artist = "Sfera Ebbasta")
+        val candidates = listOf(
+            artist(name = "Baby Gang", browseId = "UC_baby"),
+            artist(name = "Tedua", browseId = "UC_tedua")
+        )
+
+        val result = findVerifiedTopResultArtist(candidates, hero, query = "sfera")
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `findVerifiedTopResultArtist matches on browse id even if artist name has alias`() {
+        val hero = track(
+            id = "s1",
+            title = "Song",
+            artist = "Gionata Boschetti",
+            artistBrowseIds = listOf("UC_sfera")
+        )
+        val candidates = listOf(
+            artist(name = "Sfera Ebbasta", browseId = "UC_sfera")
+        )
+
+        val result = findVerifiedTopResultArtist(candidates, hero, query = "sfera")
+
+        assertNotNull(result)
+        assertEquals("UC_sfera", result?.browseId)
+    }
+
+    @Test
+    fun `deduplicateSearchSongs guarantees hero track is present in playback context for mix`() {
+        val hero = track(id = "hero_1", title = "Hero Song", artist = "Artist A")
+        val otherSongs = listOf(
+            track(id = "song_2", title = "Song Two", artist = "Artist B"),
+            track(id = "song_3", title = "Song Three", artist = "Artist C")
+        )
+
+        val playbackContext = deduplicateSearchSongs(listOf(hero) + otherSongs)
+
+        assertEquals(3, playbackContext.size)
+        assertEquals("hero_1", playbackContext.first().id)
+        val heroIndex = playbackContext.indexOfFirst { it.id == hero.id }
+        assertEquals(0, heroIndex)
+    }
+
+    @Test
+    fun `deduplicateSearchSongs collapses duplicates when hero is already in song list`() {
+        val hero = track(id = "hero_1", title = "Hero Song", artist = "Artist A", durationMs = 210_000L)
+        val otherSongs = listOf(
+            track(id = "hero_1", title = "Hero Song", artist = "Artist A", durationMs = 0L),
+            track(id = "song_2", title = "Song Two", artist = "Artist B")
+        )
+
+        val playbackContext = deduplicateSearchSongs(listOf(hero) + otherSongs)
+
+        assertEquals(2, playbackContext.size)
+        assertEquals("hero_1", playbackContext.first().id)
+        assertEquals(210_000L, playbackContext.first().durationMs)
+    }
+
     private fun album(
         title: String,
         artist: String,
@@ -342,7 +461,8 @@ class SearchEntityIdentityTest {
         album: String = "Album",
         durationMs: Long = 0L,
         artist: String = "Coldplay",
-        youtubeViewCount: Long = -1L
+        youtubeViewCount: Long = -1L,
+        artistBrowseIds: List<String> = emptyList()
     ) = Track(
         id = id,
         title = title,
@@ -361,6 +481,7 @@ class SearchEntityIdentityTest {
         cacheScore = 0,
         accentStart = 0,
         accentEnd = 0,
-        youtubeViewCount = youtubeViewCount
+        youtubeViewCount = youtubeViewCount,
+        artistBrowseIds = artistBrowseIds
     )
 }
