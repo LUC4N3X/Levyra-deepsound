@@ -45,17 +45,20 @@ class TidalVideoCoverProvider internal constructor(
     private suspend fun resolve(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         val lookup = TidalMotionLookup()
         val albumFallbackAvailable = identity.album.isNotBlank()
-        val fromTracks = search(identity, "TRACKS", lookup, albumFallbackPending = albumFallbackAvailable)
-        if (hasEffectiveTidalCandidate(identity, fromTracks, minimumConfidence)) {
-            return MotionArtworkProviderResult.Found(fromTracks)
+        val candidates = ArrayList<MotionArtworkCandidate>()
+        candidates += search(identity, "TRACKS", lookup, albumFallbackPending = albumFallbackAvailable)
+
+        val trackMatches = effectiveTidalCandidates(identity, candidates, minimumConfidence)
+        if (albumFallbackAvailable && trackMatches.size < MAX_TIDAL_VERIFICATION_CANDIDATES) {
+            candidates += search(identity, "ALBUMS", lookup, albumFallbackPending = false)
         }
-        if (albumFallbackAvailable) {
-            val fromAlbums = search(identity, "ALBUMS", lookup, albumFallbackPending = false)
-            if (hasEffectiveTidalCandidate(identity, fromAlbums, minimumConfidence)) {
-                return MotionArtworkProviderResult.Found(fromAlbums)
-            }
+
+        val effective = effectiveTidalCandidates(identity, candidates, minimumConfidence)
+        return if (effective.isNotEmpty()) {
+            MotionArtworkProviderResult.Found(effective)
+        } else {
+            lookup.missResult()
         }
-        return lookup.missResult()
     }
 
     private suspend fun search(
@@ -83,7 +86,6 @@ class TidalVideoCoverProvider internal constructor(
                 continue
             }
             candidates += found
-            if (hasEffectiveTidalCandidate(identity, candidates, minimumConfidence)) break
         }
         return candidates.distinctBy { candidate ->
             listOf(candidate.url, candidate.identity.trackId, candidate.identity.albumId).joinToString("|")
@@ -259,7 +261,7 @@ private class OkHttpTidalMotionTransport(context: Context) : TidalMotionTranspor
             .header("User-Agent", USER_AGENT)
             .build()
         try {
-            client.newCall(request).execute().use { response ->
+            awaitMotionArtworkResponse(client.newCall(request)).use { response ->
                 if (!response.isSuccessful) {
                     throw TidalRequestException("Tidal HTTP ${response.code}")
                 }
@@ -310,10 +312,26 @@ internal fun hasEffectiveTidalCandidate(
     identity: MotionTrackIdentity,
     candidates: List<MotionArtworkCandidate>,
     minimumConfidence: Int
-): Boolean = candidates.any { candidate ->
-    CanonicalTrackMatcher.match(identity, candidate).let { match ->
-        match.accepted && match.score >= minimumConfidence
-    }
+): Boolean = effectiveTidalCandidates(identity, candidates, minimumConfidence).isNotEmpty()
+
+internal fun effectiveTidalCandidates(
+    identity: MotionTrackIdentity,
+    candidates: List<MotionArtworkCandidate>,
+    minimumConfidence: Int,
+    limit: Int = MAX_TIDAL_VERIFICATION_CANDIDATES
+): List<MotionArtworkCandidate> {
+    require(limit > 0)
+    return candidates
+        .distinctBy { candidate ->
+            listOf(candidate.url, candidate.identity.trackId, candidate.identity.albumId).joinToString("|")
+        }
+        .mapNotNull { candidate ->
+            val match = CanonicalTrackMatcher.match(identity, candidate)
+            if (match.accepted && match.score >= minimumConfidence) candidate to match.score else null
+        }
+        .sortedByDescending { (_, score) -> score }
+        .take(limit)
+        .map { (candidate, _) -> candidate }
 }
 
 internal fun shouldSearchTidalAlbumsAfterTracks(
@@ -447,6 +465,7 @@ private fun tidalSearchEntry(item: JSONObject, type: String): TidalSearchEntry {
 private class TidalRequestException(message: String, cause: Throwable? = null) : IOException(message, cause)
 
 private const val MAX_TIDAL_SEARCH_QUERIES = 2
+private const val MAX_TIDAL_VERIFICATION_CANDIDATES = 3
 private const val MAX_TIDAL_ALBUM_HYDRATIONS = 3
 private const val TIDAL_ALBUM_FALLBACK_HYDRATION_RESERVE = 1
 
