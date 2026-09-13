@@ -8296,8 +8296,8 @@ private fun HomeEditorialSpotlight(
     val heroBlend = remember(canvasColor) {
         Brush.verticalGradient(
             colorStops = arrayOf(
-                0f to canvasColor.copy(alpha = 0.78f),
-                0.11f to Color.Transparent,
+                0f to canvasColor,
+                0.16f to Color.Transparent,
                 0.48f to Color.Transparent,
                 0.68f to Color.Black.copy(alpha = 0.28f),
                 0.94f to Color.Black.copy(alpha = 0.68f),
