@@ -335,7 +335,10 @@ class MotionArtworkEngine(context: Context) {
                         }
                     }
                     val accepted = selected ?: continue
-                    if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) return@supervisorScope
+                    if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) {
+                        lookups.forEach { it.cancel() }
+                        return@supervisorScope
+                    }
                     if (publishedCandidate != null) upgradesUsed++
                     publishedCandidate = accepted
                     val artwork = motionArtworkFrom(accepted, identityKey, configEpoch, config)
