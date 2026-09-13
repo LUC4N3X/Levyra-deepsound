@@ -675,17 +675,17 @@ internal class MotionProgressiveSession {
     suspend fun collectInto(emit: suspend (MotionArtwork) -> Unit): Boolean {
         val channel = Channel<MotionArtwork>(Channel.UNLIMITED)
         val initialArtwork: MotionArtwork?
-        val startWorker: Boolean
+        val workerToStart: Job?
         synchronized(stateLock) {
             if (!acceptingSubscriptions || isCompleted) return false
             initialArtwork = currentArtwork
             collectors.add(channel)
-            startWorker = !workerStarted
-            if (startWorker) workerStarted = true
+            workerToStart = if (!workerStarted) worker else null
+            if (workerToStart != null) workerStarted = true
         }
 
         try {
-            if (startWorker && worker?.start() != true) {
+            if (workerToStart != null && !workerToStart.start()) {
                 complete()
             }
             var lastEmitted: MotionArtwork? = null
