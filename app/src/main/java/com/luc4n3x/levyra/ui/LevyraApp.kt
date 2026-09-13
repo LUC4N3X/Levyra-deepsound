@@ -59,7 +59,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import android.app.Activity
 import android.content.ClipData
@@ -1271,6 +1270,15 @@ private fun CoverImage(
     }
     var modelIndex by remember(models) { mutableStateOf(0) }
     val model = models.getOrNull(modelIndex)
+    val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
+    var artworkLoaded by remember(track.id, highRes, model) { mutableStateOf(false) }
+    var artworkSucceeded by remember(track.id, highRes, model) { mutableStateOf(false) }
+    LaunchedEffect(artworkSucceeded, crossfadeMs) {
+        if (artworkSucceeded) {
+            if (crossfadeMs > 0) delay(crossfadeMs.toLong())
+            artworkLoaded = true
+        }
+    }
     val artworkKey = remember(track.id, highRes) { "${track.id}:${if (highRes) "large" else "small"}" }
     val modelIdentity = remember(model) {
         when (model) {
@@ -1296,12 +1304,13 @@ private fun CoverImage(
         Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
     }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        InstantArtworkPlaceholder(
-            track = track,
-            modifier = Modifier.fillMaxSize().background(background)
-        )
+        if (!artworkLoaded) {
+            InstantArtworkPlaceholder(
+                track = track,
+                modifier = Modifier.fillMaxSize().background(background)
+            )
+        }
         if (model != null) {
-            val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
             val request = remember(context, model, crossfadeMs) {
                 ImageRequest.Builder(context)
                     .data(model)
@@ -1318,6 +1327,7 @@ private fun CoverImage(
                 alignment = alignment,
                 onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
                 onSuccess = { state ->
+                    artworkSucceeded = true
                     LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey)
                     onImageLoaded?.invoke(state.result.image)
                 },
@@ -7603,7 +7613,7 @@ private fun HomeScreen(
 
 
             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
-                item(key = "home-personal", contentType = "home-shelf") {
+                item(key = "home-personal", contentType = "home-personal-orbit") {
                     HomeSectionLead(compactHome) {
                         PersonalListeningShelf(
                             tracks = visiblePersonalTracks,
@@ -7680,7 +7690,7 @@ private fun HomeScreen(
                 showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
                 (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
             ) {
-                item(key = "home-trending-artists", contentType = "home-shelf") {
+                item(key = "home-trending-artists", contentType = "home-trending-artists") {
                     HomeSectionLead(compactHome) {
                         TrendingArtistsShelf(
                             artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
@@ -7861,7 +7871,7 @@ private fun HomeScreen(
                 showDeferredHomeSections && state.interfaceSettings.showResonance &&
                 resonanceTracks.isNotEmpty()
             ) {
-                item(key = "home-resonance", contentType = "home-shelf") {
+                item(key = "home-resonance", contentType = "home-resonance") {
                     HomeSectionLead(compactHome) {
                         ResonanceShelf(
                             tracks = resonanceTracks,
@@ -8282,6 +8292,19 @@ private fun HomeEditorialSpotlight(
     }
     val soundtrackTitle = homeSoundtrackTitle(strings)
     val soundtrackLead = homeSoundtrackLead(strings, soundtrackArtists)
+    val canvasColor = homeCanvasColor(LevyraIsLight)
+    val heroBlend = remember(canvasColor) {
+        Brush.verticalGradient(
+            colorStops = arrayOf(
+                0f to canvasColor.copy(alpha = 0.78f),
+                0.11f to Color.Transparent,
+                0.48f to Color.Transparent,
+                0.68f to Color.Black.copy(alpha = 0.28f),
+                0.94f to Color.Black.copy(alpha = 0.68f),
+                1f to canvasColor
+            )
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -8306,19 +8329,7 @@ private fun HomeEditorialSpotlight(
     Box(
         modifier = Modifier
             .matchParentSize()
-            .background(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to Color.Transparent,
-                        0.42f to Color.Transparent,
-                        0.62f to Color.Black.copy(alpha = 0.20f),
-                        0.77f to Color.Black.copy(alpha = 0.52f),
-                        0.88f to Color.Black.copy(alpha = 0.46f),
-                        0.96f to Color.Black.copy(alpha = 0.16f),
-                        1f to Color.Transparent
-                    )
-                )
-            )
+            .background(heroBlend)
     )
     Box(
         modifier = Modifier
@@ -9880,6 +9891,9 @@ private fun PersonalListeningShelf(
     val pages = remember(shelfTracks) {
         shelfTracks.chunked(LevyraHomeDesign.SPEED_DIAL_PAGE_SIZE)
     }
+    val pageRows = remember(pages) {
+        pages.map { page -> page.chunked(LevyraHomeDesign.SPEED_DIAL_COLUMNS) }
+    }
     val pagerState = rememberPagerState(pageCount = { pages.size })
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -9888,18 +9902,16 @@ private fun PersonalListeningShelf(
         }
         HorizontalPager(
             state = pagerState,
-            beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxWidth(),
             key = { pageIndex -> "orbit-speed-dial-page-$pageIndex" }
         ) { pageIndex ->
-            val pageTracks = pages[pageIndex]
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = LevyraHomeDesign.HorizontalInset),
                 verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.SpeedDialGap)
             ) {
-                pageTracks.chunked(LevyraHomeDesign.SPEED_DIAL_COLUMNS).forEach { rowTracks ->
+                pageRows[pageIndex].forEach { rowTracks ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.SpeedDialGap)
@@ -9911,7 +9923,8 @@ private fun PersonalListeningShelf(
                                     isCurrent = track.id == currentId,
                                     isPlaying = isPlaying && track.id == currentId,
                                     isResolving = isResolving && track.id == currentId,
-                                    onPlay = { onPlay(track) }
+                                    onPlay = { onPlay(track) },
+                                    onLongClick = { onTrackActions(track) }
                                 )
                             }
                         }
@@ -9952,18 +9965,28 @@ private fun PersonalOrbitSpeedDialCard(
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(10.dp)
+    val strings = LocalLevyraStrings.current
+    val haptics = LocalLevyraHaptics.current
+    val interaction = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(shape)
-            .pressable(
-                onClick = onPlay,
-                pressedScale = LevyraPressScale.Tile
+            .combinedClickable(
+                interactionSource = interaction,
+                indication = null,
+                onLongClickLabel = strings.songOptions,
+                onLongClick = {
+                    haptics.perform(LevyraHapticAction.TrackSwipe)
+                    onLongClick()
+                },
+                onClick = onPlay
             )
     ) {
         CoverImage(
