@@ -224,3 +224,99 @@ private fun richerPlaylist(current: PlaylistHit, candidate: PlaylistHit): Playli
 )
 
 private const val MUSIC_VIDEO_TYPE_AUDIO = "MUSIC_VIDEO_TYPE_ATV"
+
+internal fun findVerifiedTopResultArtist(
+    candidates: List<ArtistHit>,
+    heroTrack: Track?,
+    query: String = ""
+): ArtistHit? {
+    if (candidates.isEmpty()) return null
+    val verified = candidates.filter { candidate ->
+        isVerifiedArtistCandidate(candidate, heroTrack, query)
+    }
+    if (verified.isEmpty()) return null
+    if (verified.size == 1) return verified.first()
+
+    val cleanQuery = query.trim()
+    if (cleanQuery.isNotBlank()) {
+        val qKey = artistIdentityKey(cleanQuery)
+        val queryMatch = verified.firstOrNull { candidate ->
+            val cKey = artistIdentityKey(candidate.name)
+            cKey == qKey || cKey.startsWith("$qKey ") || artistIdentityMatches(candidate.name, cleanQuery)
+        }
+        if (queryMatch != null) return queryMatch
+    }
+
+    val heroPrimary = heroTrack?.artist?.let { primaryArtistSegment(it).ifBlank { it.trim() } }.orEmpty()
+    if (heroPrimary.isNotBlank()) {
+        val primaryMatch = verified.firstOrNull { candidate ->
+            candidate.name.equals(heroPrimary, ignoreCase = true) || artistIdentityMatches(candidate.name, heroPrimary)
+        }
+        if (primaryMatch != null) return primaryMatch
+    }
+
+    return verified.first()
+}
+
+internal fun isVerifiedArtistCandidate(
+    candidate: ArtistHit,
+    heroTrack: Track?,
+    query: String = ""
+): Boolean {
+    val candidateName = candidate.name.trim()
+    if (candidateName.isBlank()) return false
+    val candidateBrowseId = candidate.browseId.trim().lowercase(Locale.ROOT)
+
+    if (heroTrack != null && candidateBrowseId.isNotBlank()) {
+        val heroBrowseIds = heroTrack.artistBrowseIds
+            .asSequence()
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter(String::isNotBlank)
+            .toSet()
+        if (candidateBrowseId in heroBrowseIds) return true
+    }
+
+    val heroArtist = heroTrack?.artist?.trim().orEmpty()
+    val heroPrimary = if (heroArtist.isNotBlank()) {
+        primaryArtistSegment(heroArtist).ifBlank { heroArtist }
+    } else ""
+
+    if (heroPrimary.isNotBlank()) {
+        if (candidateName.equals(heroPrimary, ignoreCase = true) || artistIdentityMatches(candidateName, heroPrimary)) {
+            return true
+        }
+    }
+    if (heroArtist.isNotBlank()) {
+        if (candidateName.equals(heroArtist, ignoreCase = true) || artistIdentityMatches(candidateName, heroArtist)) {
+            return true
+        }
+    }
+
+    val cleanQuery = query.trim()
+    if (cleanQuery.isNotBlank()) {
+        val cKey = artistIdentityKey(candidateName)
+        val qKey = artistIdentityKey(cleanQuery)
+        val queryPrimary = primaryArtistSegment(cleanQuery).ifBlank { cleanQuery }
+        val matchesQuery = candidateName.equals(cleanQuery, ignoreCase = true) ||
+            candidateName.equals(queryPrimary, ignoreCase = true) ||
+            artistIdentityMatches(candidateName, cleanQuery) ||
+            artistIdentityMatches(candidateName, queryPrimary) ||
+            (qKey.isNotBlank() && (cKey == qKey || cKey.startsWith("$qKey ") || qKey.startsWith("$cKey ")))
+
+        if (matchesQuery) {
+            if (heroArtist.isBlank()) {
+                return true
+            }
+            val hKey = artistIdentityKey(heroPrimary)
+            if (heroArtist.contains(candidateName, ignoreCase = true) ||
+                artistIdentityMatches(candidateName, heroPrimary) ||
+                artistIdentityMatches(candidateName, heroArtist) ||
+                (hKey.isNotBlank() && (cKey == hKey || cKey.startsWith("$hKey ") || hKey.startsWith("$cKey ")))
+            ) {
+                return true
+            }
+        }
+    }
+
+    return false
+}
