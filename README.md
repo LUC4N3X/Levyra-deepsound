@@ -11,14 +11,14 @@
 **A native music player, stream extractor, and private offline vault for Android & Windows.**
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release.svg"><img src="docs/assets/levyra-release.svg" alt="Latest release" width="152"></picture></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-downloads-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-downloads.svg"><img src="docs/assets/levyra-downloads.svg" alt="Total downloads" width="152"></picture></a>
-  <a href="LICENSE"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-license-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-license.svg"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License" width="152"></picture></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-stars-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-stars.svg"><img src="docs/assets/levyra-stars.svg" alt="GitHub Stars" width="152"></picture></a>
-  <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki.svg"><img src="docs/assets/levyra-wiki.svg" alt="Levyra Documentation" width="152"></picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release.svg"><img src="docs/assets/levyra-release.svg" alt="Latest release" width="122"></picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-downloads-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-downloads.svg"><img src="docs/assets/levyra-downloads.svg" alt="Total downloads" width="122"></picture></a>
+  <a href="LICENSE"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-license-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-license.svg"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License" width="122"></picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-stars-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-stars.svg"><img src="docs/assets/levyra-stars.svg" alt="GitHub Stars" width="122"></picture></a>
+  <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki.svg"><img src="docs/assets/levyra-wiki.svg" alt="Levyra Documentation" width="122"></picture></a>
 </p>
 
-### Download
+<p align="center"><sub><b>DOWNLOAD LEVYRA</b></sub></p>
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-download-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-github-download.svg"><img src="docs/assets/levyra-github-download.svg" alt="Download Levyra from GitHub Releases" width="132"></picture></a>
