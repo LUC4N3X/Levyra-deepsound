@@ -622,35 +622,47 @@ internal class MotionArtworkRequestCoordinator(
                     sessions.remove(requestKey)
                 }
             }
+            if (scope.coroutineContext[Job]?.isActive != true) return@flow
         }
     }
 }
 
 internal class MotionProgressiveSession {
-    private val mutex = Mutex()
+    private val stateLock = Any()
     private val collectors = mutableListOf<Channel<MotionArtwork>>()
     @Volatile
     private var worker: Job? = null
+    private var workerStarted = false
     private var currentArtwork: MotionArtwork? = null
     private var isCompleted = false
     private var acceptingSubscriptions = true
 
     fun attachWorker(job: Job) {
-        worker = job
+        synchronized(stateLock) {
+            worker = job
+        }
+        job.invokeOnCompletion {
+            complete()
+        }
     }
 
     suspend fun emit(artwork: MotionArtwork) {
-        val targets = mutex.withLock {
-            currentArtwork = artwork
-            collectors.toList()
+        val targets = synchronized(stateLock) {
+            if (isCompleted) {
+                emptyList()
+            } else {
+                currentArtwork = artwork
+                collectors.toList()
+            }
         }
         for (target in targets) {
-            target.send(artwork)
+            target.trySend(artwork)
         }
     }
 
-    suspend fun complete() {
-        val targets = mutex.withLock {
+    fun complete() {
+        val targets = synchronized(stateLock) {
+            if (isCompleted) return
             acceptingSubscriptions = false
             isCompleted = true
             collectors.toList()
@@ -663,19 +675,24 @@ internal class MotionProgressiveSession {
     suspend fun collectInto(emit: suspend (MotionArtwork) -> Unit): Boolean {
         val channel = Channel<MotionArtwork>(Channel.UNLIMITED)
         val initialArtwork: MotionArtwork?
-        mutex.withLock {
+        val startWorker: Boolean
+        synchronized(stateLock) {
             if (!acceptingSubscriptions || isCompleted) return false
             initialArtwork = currentArtwork
             collectors.add(channel)
+            startWorker = !workerStarted
+            if (startWorker) workerStarted = true
         }
-        worker?.start()
 
-        var lastEmitted: MotionArtwork? = null
-        if (initialArtwork != null) {
-            lastEmitted = initialArtwork
-            emit(initialArtwork)
-        }
         try {
+            if (startWorker && worker?.start() != true) {
+                complete()
+            }
+            var lastEmitted: MotionArtwork? = null
+            if (initialArtwork != null) {
+                lastEmitted = initialArtwork
+                emit(initialArtwork)
+            }
             for (artwork in channel) {
                 if (artwork != lastEmitted) {
                     lastEmitted = artwork
@@ -683,7 +700,7 @@ internal class MotionProgressiveSession {
                 }
             }
         } finally {
-            val cancelWorker = mutex.withLock {
+            val cancelWorker = synchronized(stateLock) {
                 collectors.remove(channel)
                 val shouldCancel = collectors.isEmpty() && !isCompleted
                 if (shouldCancel) acceptingSubscriptions = false
