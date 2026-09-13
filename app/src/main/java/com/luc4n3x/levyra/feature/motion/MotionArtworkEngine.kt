@@ -586,35 +586,42 @@ internal class MotionArtworkRequestCoordinator(
     fun share(
         requestKey: String,
         block: suspend (emit: suspend (MotionArtwork) -> Unit) -> Unit
-    ): Flow<MotionArtwork> {
-        val session = synchronized(sessions) {
-            sessions.getOrPut(requestKey) {
-                MotionProgressiveSession().also { newSession ->
-                    val worker = scope.launch {
-                        try {
-                            block { artwork ->
-                                newSession.emit(artwork)
-                            }
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (error: Throwable) {
-                            Timber.d(error, "Motion artwork resolution failed")
-                        } finally {
-                            withContext(NonCancellable) {
-                                synchronized(sessions) {
-                                    if (sessions[requestKey] === newSession) {
-                                        sessions.remove(requestKey)
-                                    }
+    ): Flow<MotionArtwork> = flow {
+        while (true) {
+            val session = synchronized(sessions) {
+                sessions.getOrPut(requestKey) {
+                    MotionProgressiveSession().also { newSession ->
+                        val worker = scope.launch {
+                            try {
+                                block { artwork ->
+                                    newSession.emit(artwork)
                                 }
-                                newSession.complete()
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (error: Throwable) {
+                                Timber.d(error, "Motion artwork resolution failed")
+                            } finally {
+                                withContext(NonCancellable) {
+                                    synchronized(sessions) {
+                                        if (sessions[requestKey] === newSession) {
+                                            sessions.remove(requestKey)
+                                        }
+                                    }
+                                    newSession.complete()
+                                }
                             }
                         }
+                        newSession.attachWorker(worker)
                     }
-                    newSession.attachWorker(worker)
+                }
+            }
+            if (session.collectInto { artwork -> emit(artwork) }) return@flow
+            synchronized(sessions) {
+                if (sessions[requestKey] === session) {
+                    sessions.remove(requestKey)
                 }
             }
         }
-        return session.openSubscription()
     }
 }
 
@@ -625,6 +632,7 @@ internal class MotionProgressiveSession {
     private var worker: Job? = null
     private var currentArtwork: MotionArtwork? = null
     private var isCompleted = false
+    private var acceptingSubscriptions = true
 
     fun attachWorker(job: Job) {
         worker = job
@@ -642,6 +650,7 @@ internal class MotionProgressiveSession {
 
     suspend fun complete() {
         val targets = mutex.withLock {
+            acceptingSubscriptions = false
             isCompleted = true
             collectors.toList()
         }
@@ -650,24 +659,19 @@ internal class MotionProgressiveSession {
         }
     }
 
-    fun openSubscription(): Flow<MotionArtwork> = flow {
+    suspend fun collectInto(emit: suspend (MotionArtwork) -> Unit): Boolean {
         val channel = Channel<MotionArtwork>(Channel.UNLIMITED)
         val initialArtwork: MotionArtwork?
-        val alreadyCompleted: Boolean
         mutex.withLock {
-            alreadyCompleted = isCompleted
+            if (!acceptingSubscriptions || isCompleted) return false
             initialArtwork = currentArtwork
-            if (!isCompleted) {
-                collectors.add(channel)
-            }
+            collectors.add(channel)
         }
+
         var lastEmitted: MotionArtwork? = null
         if (initialArtwork != null) {
             lastEmitted = initialArtwork
             emit(initialArtwork)
-        }
-        if (alreadyCompleted) {
-            return@flow
         }
         try {
             for (artwork in channel) {
@@ -679,9 +683,12 @@ internal class MotionProgressiveSession {
         } finally {
             val cancelWorker = mutex.withLock {
                 collectors.remove(channel)
-                collectors.isEmpty() && !isCompleted
+                val shouldCancel = collectors.isEmpty() && !isCompleted
+                if (shouldCancel) acceptingSubscriptions = false
+                shouldCancel
             }
             if (cancelWorker) worker?.cancel()
         }
+        return true
     }
 }
