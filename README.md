@@ -10,26 +10,24 @@
 
 **A native music player, stream extractor, and private offline vault for Android & Windows.**
 
-<p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg#gh-dark-mode-only" alt="Latest release" width="130"><img src="docs/assets/levyra-release-light.svg#gh-light-mode-only" alt="Latest release" width="130"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg#gh-dark-mode-only" alt="Total downloads" width="130"><img src="docs/assets/levyra-downloads-light.svg#gh-light-mode-only" alt="Total downloads" width="130"></a>
-  <a href="LICENSE"><img src="docs/assets/levyra-license.svg#gh-dark-mode-only" alt="GPL-3.0 License" width="130"><img src="docs/assets/levyra-license-light.svg#gh-light-mode-only" alt="GPL-3.0 License" width="130"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg#gh-dark-mode-only" alt="GitHub Stars" width="130"><img src="docs/assets/levyra-stars-light.svg#gh-light-mode-only" alt="GitHub Stars" width="130"></a>
-  <a href="https://luc4n3x.github.io/Levyra-deepsound/"><img src="docs/assets/levyra-wiki.svg#gh-dark-mode-only" alt="Levyra Documentation" width="130"><img src="docs/assets/levyra-wiki-light.svg#gh-light-mode-only" alt="Levyra Documentation" width="130"></a>
-</p>
+<div align="center">
+
+[![Latest release](docs/assets/levyra-release.svg#gh-dark-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest)[![Latest release](docs/assets/levyra-release-light.svg#gh-light-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest) [![Total downloads](docs/assets/levyra-downloads.svg#gh-dark-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/releases)[![Total downloads](docs/assets/levyra-downloads-light.svg#gh-light-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/releases) [![GPL-3.0 License](docs/assets/levyra-license.svg#gh-dark-mode-only)](LICENSE)[![GPL-3.0 License](docs/assets/levyra-license-light.svg#gh-light-mode-only)](LICENSE) [![GitHub Stars](docs/assets/levyra-stars.svg#gh-dark-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/stargazers)[![GitHub Stars](docs/assets/levyra-stars-light.svg#gh-light-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/stargazers) [![Levyra Documentation](docs/assets/levyra-wiki.svg#gh-dark-mode-only)](https://luc4n3x.github.io/Levyra-deepsound/)[![Levyra Documentation](docs/assets/levyra-wiki-light.svg#gh-light-mode-only)](https://luc4n3x.github.io/Levyra-deepsound/)
+
+</div>
 
 <p align="center"><sub><b>DOWNLOAD LEVYRA</b></sub></p>
 
-<p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg#gh-dark-mode-only" alt="Download Levyra from GitHub Releases" width="160"><img src="docs/assets/levyra-github-download-light.svg#gh-light-mode-only" alt="Download Levyra from GitHub Releases" width="160"></a>
-  <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="docs/assets/levyra-fdroid.svg#gh-dark-mode-only" alt="Get Levyra on F-Droid" width="160"><img src="docs/assets/levyra-fdroid-light.svg#gh-light-mode-only" alt="Get Levyra on F-Droid" width="160"></a>
-  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg#gh-dark-mode-only" alt="Get Levyra on IzzyOnDroid" width="160"><img src="docs/assets/levyra-izzyondroid-light.svg#gh-light-mode-only" alt="Get Levyra on IzzyOnDroid" width="160"></a>
-</p>
-<p align="center">
-  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg#gh-dark-mode-only" alt="Install Levyra with Obtainium" width="160"><img src="docs/assets/levyra-obtainium-download-light.svg#gh-light-mode-only" alt="Install Levyra with Obtainium" width="160"></a>
-  <a href="https://appteka.store/apps/b5br313609"><img src="docs/assets/levyra-appteka.svg#gh-dark-mode-only" alt="Get Levyra on Appteka" width="160"><img src="docs/assets/levyra-appteka-light.svg#gh-light-mode-only" alt="Get Levyra on Appteka" width="160"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg#gh-dark-mode-only" alt="Download Levyra for Windows" width="160"><img src="docs/assets/levyra-windows-download-light.svg#gh-light-mode-only" alt="Download Levyra for Windows" width="160"></a>
-</p>
+<div align="center">
+
+[![Download Levyra from GitHub Releases](docs/assets/levyra-github-download.svg#gh-dark-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest)[![Download Levyra from GitHub Releases](docs/assets/levyra-github-download-light.svg#gh-light-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest) [![Get Levyra on F-Droid](docs/assets/levyra-fdroid.svg#gh-dark-mode-only)](https://f-droid.org/packages/com.luc4n3x.levyra/)[![Get Levyra on F-Droid](docs/assets/levyra-fdroid-light.svg#gh-light-mode-only)](https://f-droid.org/packages/com.luc4n3x.levyra/) [![Get Levyra on IzzyOnDroid](docs/assets/levyra-izzyondroid.svg#gh-dark-mode-only)](https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main)[![Get Levyra on IzzyOnDroid](docs/assets/levyra-izzyondroid-light.svg#gh-light-mode-only)](https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main)
+
+</div>
+<div align="center">
+
+[![Install Levyra with Obtainium](docs/assets/levyra-obtainium-download.svg#gh-dark-mode-only)](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound)[![Install Levyra with Obtainium](docs/assets/levyra-obtainium-download-light.svg#gh-light-mode-only)](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound) [![Get Levyra on Appteka](docs/assets/levyra-appteka.svg#gh-dark-mode-only)](https://appteka.store/apps/b5br313609)[![Get Levyra on Appteka](docs/assets/levyra-appteka-light.svg#gh-light-mode-only)](https://appteka.store/apps/b5br313609) [![Download Levyra for Windows](docs/assets/levyra-windows-download.svg#gh-dark-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true)[![Download Levyra for Windows](docs/assets/levyra-windows-download-light.svg#gh-light-mode-only)](https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true)
+
+</div>
 
 <p align="center">
   <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
