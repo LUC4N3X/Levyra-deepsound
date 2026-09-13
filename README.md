@@ -91,7 +91,9 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
     </a>
   </p>
   <p>
-    <a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-devglobe-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-devglobe.svg"><img src="docs/assets/levyra-devglobe.svg" alt="Discover Levyra on DevGlobe" width="176"></picture></a>
+    <a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
+      <img src="https://devglobe.app/badges/launched-on-devglobe-dark.svg" alt="Launched on DevGlobe" width="250" height="54">
+    </a>
   </p>
 
   <p><sub><b>OPEN-SOURCE TRUST &amp; COMPLIANCE</b></sub></p>
