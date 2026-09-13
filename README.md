@@ -90,6 +90,11 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="48">
     </a>
   </p>
+  <p>
+    <a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
+      <img src="https://devglobe.app/badges/launched-on-devglobe-dark.svg" alt="Launched on DevGlobe" width="250" height="54">
+    </a>
+  </p>
 
   <p><sub><b>OPEN-SOURCE TRUST &amp; COMPLIANCE</b></sub></p>
   <p>
