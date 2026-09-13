@@ -8232,10 +8232,14 @@ private fun HomeEditorialCollectionsShelf(
     animationsEnabled: Boolean,
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
+    if (collections.isEmpty()) return
+
     val strings = LocalLevyraStrings.current
-    val indexedColumns = remember(collections) {
-        collections.mapIndexed { index, collection -> index to collection }.chunked(5)
+    val pages = remember(collections) {
+        collections.mapIndexed { index, collection -> index to collection }.chunked(4)
     }
+    val pageState = rememberLazyListState()
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
@@ -8243,33 +8247,51 @@ private fun HomeEditorialCollectionsShelf(
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val cardWidth = ((maxWidth - (HomeHorizontalInset * 2) - LevyraHomeDesign.ShelfItemGap) / 2f)
-                .coerceIn(HOME_COLLECTION_CARD_WIDTH, 188.dp)
+            val cardGap = 10.dp
+            val pageGap = 12.dp
+            val pagePeek = 24.dp
+            val pageWidth = (maxWidth - HomeHorizontalInset - pagePeek).coerceAtLeast(280.dp)
+            val cardWidth = (pageWidth - cardGap) / 2f
+
             LazyRow(
+                state = pageState,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
+                flingBehavior = rememberSnapFlingBehavior(pageState),
+                horizontalArrangement = Arrangement.spacedBy(pageGap),
                 contentPadding = PaddingValues(
                     start = HomeHorizontalInset,
                     end = HOME_COLLECTION_SHELF_END_PADDING
                 )
             ) {
                 itemsIndexed(
-                    items = indexedColumns,
-                    key = { _, column -> column.joinToString(prefix = "home-collection-column-") { it.second.id } },
-                    contentType = { _, _ -> "home-collection-column" }
-                ) { _, column ->
+                    items = pages,
+                    key = { pageIndex, page ->
+                        "home-collection-page-$pageIndex-${page.joinToString("|") { it.second.id }}"
+                    },
+                    contentType = { _, _ -> "home-collection-page" }
+                ) { _, page ->
                     Column(
-                        modifier = Modifier.width(cardWidth),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.width(pageWidth),
+                        verticalArrangement = Arrangement.spacedBy(cardGap)
                     ) {
-                        column.forEach { (visualIndex, collection) ->
-                            HomeEditorialCollectionCard(
-                                collection = collection,
-                                visualIndex = visualIndex,
-                                cardWidth = cardWidth,
-                                animationsEnabled = animationsEnabled,
-                                onOpen = { onOpen(collection) }
-                            )
+                        page.chunked(2).forEach { row ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(cardGap)
+                            ) {
+                                row.forEach { (visualIndex, collection) ->
+                                    HomeEditorialCollectionCard(
+                                        collection = collection,
+                                        visualIndex = visualIndex,
+                                        cardWidth = cardWidth,
+                                        animationsEnabled = animationsEnabled,
+                                        onOpen = { onOpen(collection) }
+                                    )
+                                }
+                                if (row.size == 1) {
+                                    Spacer(modifier = Modifier.width(cardWidth))
+                                }
+                            }
                         }
                     }
                 }
@@ -8278,6 +8300,7 @@ private fun HomeEditorialCollectionsShelf(
     }
 }
 
+@Composable
 @Composable
 private fun HomeEditorialCollectionCard(
     collection: HomeEditorialCollection,
