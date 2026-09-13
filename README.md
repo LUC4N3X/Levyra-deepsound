@@ -80,6 +80,12 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant">
     </a>
   </p>
+  <p><sub><b>Build verification</b></sub></p>
+  <p>
+    <a href="https://github.com/LUC4N3X/Levyra-deepsound/actions/workflows/pr-check.yml?query=branch%3Amain">
+      <img src="https://github.com/LUC4N3X/Levyra-deepsound/actions/workflows/pr-check.yml/badge.svg?branch=main" alt="PR Check">
+    </a>
+  </p>
 </div>
 
 ---
