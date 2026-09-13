@@ -20,6 +20,7 @@ These instructions extend the root `AGENTS.md` for documentation under `docs/`.
 - `docs/project/` contains durable requirements, the engineering roadmap, and the active task phase.
 - `docs/ai/` contains ChatGPT, Codex, Claude Code, and OpenClaw collaboration guidance.
 - `docs/assets/` contains documentation media, README badges, and previews.
+- `docs/site/` contains the public MkDocs documentation published with GitHub Pages.
 - Keep this `docs/AGENTS.md` file at the documentation root so its scoped instructions apply to every documentation subdirectory.
 
 ## Planning and AI documentation
