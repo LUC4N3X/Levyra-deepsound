@@ -9,15 +9,9 @@ import android.os.PowerManager
 class MotionArtworkNetworkPolicy(context: Context) {
     private val appContext = context.applicationContext
 
-    fun canResolveCurrent(): Boolean = canUseMotionArtwork(appContext)
+    fun canResolveCurrent(): Boolean = currentNetworkState(appContext)?.let(::canResolve) == true
 
-    fun canPrefetchNext(): Boolean {
-        if (!canUseMotionArtwork(appContext)) return false
-        val connectivity = appContext.getSystemService(ConnectivityManager::class.java) ?: return false
-        val network = connectivity.activeNetwork ?: return false
-        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-    }
+    fun canPrefetchNext(): Boolean = currentNetworkState(appContext)?.let(::canPrefetch) == true
 
     companion object {
         @Volatile
@@ -49,21 +43,26 @@ class MotionArtworkNetworkPolicy(context: Context) {
             )
         }
 
-        fun canUseMotionArtwork(context: Context): Boolean {
+        fun canUseMotionArtwork(context: Context): Boolean =
+            currentNetworkState(context)?.let(::canResolve) == true
+
+        internal fun canResolve(network: MotionArtworkNetworkState): Boolean =
+            canResolve(wifiOnly = wifiOnly, network = network)
+
+        internal fun canPrefetch(network: MotionArtworkNetworkState): Boolean = canResolve(network)
+
+        private fun currentNetworkState(context: Context): MotionArtworkNetworkState? {
             val appContext = context.applicationContext
-            val connectivity = appContext.getSystemService(ConnectivityManager::class.java) ?: return false
-            val network = connectivity.activeNetwork ?: return false
-            val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
-            return canResolve(
-                wifiOnly = wifiOnly,
-                network = MotionArtworkNetworkState(
-                    localAllowed = canAnimateLocally(appContext),
-                    dataSaverActive = connectivity.restrictBackgroundStatus ==
-                        ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
-                    internet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
-                    validated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
-                    unmetered = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-                )
+            val connectivity = appContext.getSystemService(ConnectivityManager::class.java) ?: return null
+            val network = connectivity.activeNetwork ?: return null
+            val capabilities = connectivity.getNetworkCapabilities(network) ?: return null
+            return MotionArtworkNetworkState(
+                localAllowed = canAnimateLocally(appContext),
+                dataSaverActive = connectivity.restrictBackgroundStatus ==
+                    ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
+                internet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
+                validated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+                unmetered = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
             )
         }
 

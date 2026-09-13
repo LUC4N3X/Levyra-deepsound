@@ -4573,6 +4573,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = null
         motionArtworkPrefetchJob?.cancel()
+        com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
+            snapshot.interfaceSettings.motionArtworkWifiOnly
+        )
         _state.update {
             it.copy(
                 favorites = favorites,
