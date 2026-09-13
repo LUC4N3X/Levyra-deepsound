@@ -35,32 +35,31 @@ const escapeXml = value => String(value)
   .replaceAll("'", '&apos;')
 
 const icons = {
-  latest: 'M7.73 2.5a1.5 1.5 0 0 0-1.06.44L2.44 7.17a1.5 1.5 0 0 0 0 2.12l4.27 4.27a1.5 1.5 0 0 0 2.12 0l4.23-4.23a1.5 1.5 0 0 0 .44-1.06V4A1.5 1.5 0 0 0 12 2.5H7.73Zm0 1.5H12v4.27L7.77 12.5 3.5 8.23 7.73 4ZM9 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z',
-  downloads: 'M8 2.25a.75.75 0 0 1 .75.75v5.69l1.97-1.97a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.78a.75.75 0 0 1 1.06-1.06l1.97 1.97V3A.75.75 0 0 1 8 2.25Zm-4.75 10a.75.75 0 0 1 .75-.75h8a.75.75 0 0 1 0 1.5H4a.75.75 0 0 1-.75-.75Z',
-  license: 'M8 1.25 2.5 3.2v4.16c0 3.42 2.29 6.55 5.5 7.39 3.21-.84 5.5-3.97 5.5-7.39V3.2L8 1.25Zm0 1.59 4 1.42v3.1c0 2.6-1.64 5.05-4 5.82-2.36-.77-4-3.22-4-5.82v-3.1l4-1.42Z',
-  stars: 'M8 .75a.75.75 0 0 1 .673.418L10.52 4.9l4.12.599a.75.75 0 0 1 .416 1.279l-2.98 2.905.704 4.103a.75.75 0 0 1-1.088.79L8 12.61l-3.694 1.943a.75.75 0 0 1-1.088-.79l.704-4.103-2.98-2.905a.75.75 0 0 1 .416-1.279l4.12-.599L7.327 1.168A.75.75 0 0 1 8 .75Z'
+  latest: '<path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>',
+  downloads: '<path d="M0 -6 v11 m0 0 l4 -4 m-4 4 l-4 -4 M-6 8 h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
+  license: '<path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  stars: '<path d="M0 -8 l2.5 5 5.5 .8 -4 3.8 1 5.4 -5 -2.6 -5 2.6 1 -5.4 -4 -3.8 5.5 -.8 Z" fill="currentColor"/>'
 }
 
-const makeBadge = ({ key, label, value, width, pillX, pillWidth, accentStart, accentEnd, valueColor = '#07111A' }) => {
-  const title = `${label}: ${value}`
-  const pillCenter = pillX + pillWidth / 2
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="40" viewBox="0 0 ${width} 40" role="img" aria-label="${escapeXml(title)}">
-<title>${escapeXml(title)}</title>
-<defs>
-  <linearGradient id="${key}-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111A2B"/><stop offset=".58" stop-color="#0B1220"/><stop offset="1" stop-color="#080D18"/></linearGradient>
-  <linearGradient id="${key}-accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${accentStart}"/><stop offset="1" stop-color="${accentEnd}"/></linearGradient>
-</defs>
-<rect x=".5" y=".5" width="${width - 1}" height="39" rx="12" fill="url(#${key}-bg)" stroke="#2B3850"/>
-<path d="M13 1h${width - 26}" stroke="#FFFFFF" stroke-opacity=".055" stroke-linecap="round"/>
-<rect x="2" y="9" width="3" height="22" rx="1.5" fill="url(#${key}-accent)"/>
-<circle cx="22" cy="20" r="11" fill="${accentStart}" fill-opacity=".075" stroke="${accentStart}" stroke-opacity=".3"/>
-<g transform="translate(14 12)" fill="url(#${key}-accent)"><path d="${icons[key]}"/></g>
-<text x="42" y="24.1" fill="#F8FAFC" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11.4" font-weight="800" letter-spacing=".12">${escapeXml(label)}</text>
-<rect x="${pillX}" y="6" width="${pillWidth}" height="28" rx="9" fill="url(#${key}-accent)"/>
-<rect x="${pillX + .5}" y="6.5" width="${pillWidth - 1}" height="27" rx="8.5" fill="none" stroke="#FFFFFF" stroke-opacity=".18"/>
-<text x="${pillCenter}" y="24.2" text-anchor="middle" fill="${valueColor}" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11" font-weight="900">${escapeXml(value)}</text>
-</svg>
-`
+const makePill = ({ label, value, icon, isDark, accentColor }) => {
+  const bg = isDark ? '#0D1117' : '#FFFFFF'
+  const border = isDark ? '#30363D' : '#D0D7DE'
+  const tileBg = isDark ? '#161B22' : '#F6F8FA'
+  const tileBorder = isDark ? '#30363D' : '#D0D7DE'
+  const textSub = '#8B949E'
+  const textMain = isDark ? '#F0F6FC' : '#1F2328'
+  const title = `${label} ${value}`
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="130" height="32" viewBox="0 0 130 32" role="img" aria-label="${escapeXml(title)}">
+  <title>${escapeXml(title)}</title>
+  <rect x=".75" y=".75" width="128.5" height="30.5" rx="8" fill="${bg}" stroke="${border}" stroke-width="1.5"/>
+  <rect x="4" y="4" width="24" height="24" rx="6" fill="${tileBg}" stroke="${tileBorder}" stroke-width="1"/>
+  <g transform="translate(16 16)" style="color:${accentColor};">
+    ${icon}
+  </g>
+  <text x="35" y="12.5" fill="${textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.2" font-weight="700" letter-spacing=".75">${escapeXml(label)}</text>
+  <text x="35" y="24.5" fill="${textMain}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700">${escapeXml(value)}</text>
+</svg>`
 }
 
 const repositoryData = await requestJson(`https://api.github.com/repos/${repository}`)
@@ -77,8 +76,14 @@ const starsValue = new Intl.NumberFormat('en-US').format(repositoryData.stargaze
 
 await mkdir('docs/assets', { recursive: true })
 await Promise.all([
-  writeFile('docs/assets/levyra-release.svg', makeBadge({ key: 'latest', label: 'Latest', value: releaseValue, width: 172, pillX: 103, pillWidth: 62, accentStart: '#A78BFA', accentEnd: '#7C3AED', valueColor: '#FFFFFF' }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads.svg', makeBadge({ key: 'downloads', label: 'Downloads', value: downloadsValue, width: 174, pillX: 127, pillWidth: 40, accentStart: '#60A5FA', accentEnd: '#22D3EE' }), 'utf8'),
-  writeFile('docs/assets/levyra-license.svg', makeBadge({ key: 'license', label: 'License', value: 'GPL-3.0', width: 176, pillX: 104, pillWidth: 65, accentStart: '#34D399', accentEnd: '#22C55E', valueColor: '#07130B' }), 'utf8'),
-  writeFile('docs/assets/levyra-stars.svg', makeBadge({ key: 'stars', label: 'Stars', value: starsValue, width: 142, pillX: 105, pillWidth: 30, accentStart: '#FBBF24', accentEnd: '#F59E0B', valueColor: '#15110A' }), 'utf8')
+  // Dark
+  writeFile('docs/assets/levyra-release.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: true, accentColor: '#A855F7' }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: true, accentColor: '#10B981' }), 'utf8'),
+  writeFile('docs/assets/levyra-license.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: true, accentColor: '#38BDF8' }), 'utf8'),
+  writeFile('docs/assets/levyra-stars.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: true, accentColor: '#FBBF24' }), 'utf8'),
+  // Light
+  writeFile('docs/assets/levyra-release-light.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: false, accentColor: '#7C3AED' }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads-light.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: false, accentColor: '#059669' }), 'utf8'),
+  writeFile('docs/assets/levyra-license-light.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: false, accentColor: '#0284C7' }), 'utf8'),
+  writeFile('docs/assets/levyra-stars-light.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: false, accentColor: '#D97706' }), 'utf8')
 ])
