@@ -125,7 +125,7 @@ class MotionArtworkUrlVerifier(context: Context) {
         }
     }
 
-    private fun executeProbe(
+    private suspend fun executeProbe(
         candidate: MotionArtworkCandidate,
         initialUrl: HttpUrl,
         head: Boolean
@@ -144,7 +144,7 @@ class MotionArtworkUrlVerifier(context: Context) {
             } else {
                 requestBuilder.get().header("Range", "bytes=0-1023")
             }
-            val response = client.newCall(requestBuilder.build()).execute()
+            val response = awaitMotionArtworkResponse(client.newCall(requestBuilder.build()))
             try {
                 if (response.code in REDIRECT_CODES) {
                     if (redirects >= MAX_REDIRECTS) return ProbeResult.Invalid

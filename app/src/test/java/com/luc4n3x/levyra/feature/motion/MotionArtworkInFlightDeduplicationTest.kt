@@ -2,11 +2,11 @@ package com.luc4n3x.levyra.feature.motion
 
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class MotionArtworkInFlightDeduplicationTest {
@@ -35,10 +35,10 @@ class MotionArtworkInFlightDeduplicationTest {
 
         coroutineScope {
             val job1 = launch {
-                session.openSubscription().collect { sub1Events.add(it) }
+                session.collectInto { artwork -> sub1Events.add(artwork) }
             }
             val job2 = launch {
-                session.openSubscription().collect { sub2Events.add(it) }
+                session.collectInto { artwork -> sub2Events.add(artwork) }
             }
 
             yield()
@@ -71,7 +71,7 @@ class MotionArtworkInFlightDeduplicationTest {
         val lateEvents = mutableListOf<MotionArtwork>()
         coroutineScope {
             val jobLate = launch {
-                session.openSubscription().collect { lateEvents.add(it) }
+                session.collectInto { artwork -> lateEvents.add(artwork) }
             }
             yield()
 
@@ -100,10 +100,10 @@ class MotionArtworkInFlightDeduplicationTest {
 
         coroutineScope {
             val job1 = launch {
-                session.openSubscription().collect { sub1Events.add(it) }
+                session.collectInto { artwork -> sub1Events.add(artwork) }
             }
             val job2 = launch {
-                session.openSubscription().collect { sub2Events.add(it) }
+                session.collectInto { artwork -> sub2Events.add(artwork) }
             }
             yield()
 
@@ -126,14 +126,17 @@ class MotionArtworkInFlightDeduplicationTest {
     }
 
     @Test
-    fun subscriberAfterCompletionReceivesFinalArtworkImmediately() = runBlocking {
+    fun subscriberAfterCompletionIsRejectedSoCoordinatorCanStartFreshSession() = runBlocking {
         val session = MotionProgressiveSession()
         val art1 = testArtwork("track-1", "apple")
 
         session.emit(art1)
         session.complete()
 
-        val events = session.openSubscription().toList()
-        assertEquals(listOf(art1), events)
+        val events = mutableListOf<MotionArtwork>()
+        val accepted = session.collectInto { artwork -> events.add(artwork) }
+
+        assertFalse(accepted)
+        assertEquals(emptyList<MotionArtwork>(), events)
     }
 }

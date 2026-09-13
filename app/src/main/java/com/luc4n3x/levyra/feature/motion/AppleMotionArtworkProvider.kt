@@ -479,7 +479,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                     .url(currentUrl)
                     .header("User-Agent", USER_AGENT)
                     .build()
-                val response = scriptClient.newCall(request).execute()
+                val response = awaitMotionArtworkResponse(scriptClient.newCall(request))
                 try {
                     if (response.code in SCRIPT_REDIRECT_CODES) {
                         if (redirects >= MAX_TOKEN_SCRIPT_REDIRECTS) {
@@ -527,7 +527,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
     private suspend fun executeText(request: Request): String = withContext(Dispatchers.IO) {
         val safePath = request.url.encodedPath
         try {
-            client.newCall(request).execute().use { response ->
+            awaitMotionArtworkResponse(client.newCall(request)).use { response ->
                 if (!response.isSuccessful) {
                     Timber.d(
                         "Apple motion HTTP failure host=%s path=%s status=%d",

@@ -9,13 +9,17 @@ private fun canvasStrings(
     sharePlaylist: String,
     enhanceVideoMetadata: String,
     enhanceVideoMetadataSubtitle: String,
-    recognizeMusic: String
+    recognizeMusic: String,
+    motionArtworkWifiOnly: String = "Load Canvas on Wi-Fi only",
+    motionArtworkWifiOnlySubtitle: String = "Limit Canvas animation loading to Wi-Fi networks."
 ): Map<String, String> = mapOf(
     "canvasQuality" to quality,
     "canvasQualitySubtitle" to qualitySubtitle,
     "canvasSource" to source,
     "canvasSourceSubtitle" to sourceSubtitle,
     "canvasSourceCommunity" to community,
+    "motionArtworkWifiOnly" to motionArtworkWifiOnly,
+    "motionArtworkWifiOnlySubtitle" to motionArtworkWifiOnlySubtitle,
     "sharePlaylist" to sharePlaylist,
     "enhanceVideoMetadata" to enhanceVideoMetadata,
     "enhanceVideoMetadataSubtitle" to enhanceVideoMetadataSubtitle,
@@ -24,7 +28,7 @@ private fun canvasStrings(
 
 private val canvasBundles: Map<String, Map<String, String>> = mapOf(
     "en" to canvasStrings("Canvas quality", "Auto follows network, battery and screen; High keeps the sharpest canvas", "Canvas source", "Choose which provider supplies motion artwork", "Community", "Share Levyra playlist", "Better video titles", "Use community titles and thumbnails on videos only", "Recognize music"),
-    "it" to canvasStrings("Qualità Canvas", "Auto si adatta a rete, batteria e schermo; Alta mantiene il Canvas più nitido", "Sorgente Canvas", "Scegli quale provider fornisce il motion artwork", "Community", "Condividi playlist Levyra", "Titoli video migliori", "Usa titoli e miniature della community solo sui video", "Riconosci musica"),
+    "it" to canvasStrings("Qualità Canvas", "Auto si adatta a rete, batteria e schermo; Alta mantiene il Canvas più nitido", "Sorgente Canvas", "Scegli quale provider fornisce il motion artwork", "Community", "Condividi playlist Levyra", "Titoli video migliori", "Usa titoli e miniature della community solo sui video", "Riconosci musica", "Carica Canvas solo su Wi-Fi", "Limita il caricamento delle animazioni Canvas alle reti Wi-Fi."),
     "es" to canvasStrings("Calidad del Canvas", "Auto se adapta a la red, la batería y la pantalla; Alta mantiene el Canvas más nítido", "Fuente del Canvas", "Elige qué proveedor suministra el motion artwork", "Comunidad", "Compartir playlist de Levyra", "Mejores títulos de vídeo", "Usa títulos y miniaturas de la comunidad solo en vídeos", "Reconocer música"),
     "fr" to canvasStrings("Qualité du Canvas", "Auto s'adapte au réseau, à la batterie et à l'écran ; Élevée garde le Canvas le plus net", "Source du Canvas", "Choisissez le fournisseur du motion artwork", "Communauté", "Partager la playlist Levyra", "Meilleurs titres vidéo", "Utilise les titres et miniatures de la communauté, vidéos uniquement", "Reconnaître la musique"),
     "de" to canvasStrings("Canvas-Qualität", "Auto passt sich Netz, Akku und Display an; Hoch behält das schärfste Canvas", "Canvas-Quelle", "Wähle den Anbieter für Motion Artwork", "Community", "Levyra-Playlist teilen", "Bessere Videotitel", "Community-Titel und -Vorschaubilder nur für Videos verwenden", "Musik erkennen"),
