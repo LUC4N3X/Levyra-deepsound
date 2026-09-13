@@ -1,31 +1,32 @@
 package com.luc4n3x.levyra.feature.motion
 
-import java.nio.file.Files
-import java.nio.file.Path
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MotionArtworkEngineCancellationContractTest {
     @Test
-    fun `network policy block cancels pending provider lookups before leaving the scope`() {
-        val engine = readSource("feature/motion/MotionArtworkEngine.kt").filterNot(Char::isWhitespace)
+    fun networkPolicyCancellationStopsPendingProviderJobs() = runBlocking {
+        val started = CompletableDeferred<Unit>()
+        val cancelled = CompletableDeferred<Unit>()
+        val lookup = launch {
+            started.complete(Unit)
+            try {
+                awaitCancellation()
+            } finally {
+                cancelled.complete(Unit)
+            }
+        }
 
-        assertTrue(
-            engine.contains(
-                "if(!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())){" +
-                    "lookups.forEach{it.cancel()}" +
-                    "return@supervisorScope" +
-                    "}"
-            )
-        )
-        assertTrue(!engine.contains("canResolveCurrent()))return@supervisorScope"))
+        started.await()
+        cancelMotionArtworkLookups(listOf(lookup))
+
+        withTimeout(1_000L) { cancelled.await() }
+        lookup.join()
+        assertTrue(lookup.isCancelled)
     }
-
-    private fun readSource(relativePath: String): String =
-        Files.readString(sourceFile(relativePath)).replace("\r\n", "\n")
-
-    private fun sourceFile(relativePath: String): Path = sequenceOf(
-        Path.of("app/src/main/java/com/luc4n3x/levyra/$relativePath"),
-        Path.of("src/main/java/com/luc4n3x/levyra/$relativePath")
-    ).firstOrNull(Files::exists) ?: error("Source file not found: $relativePath")
 }
