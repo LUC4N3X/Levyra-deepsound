@@ -159,6 +159,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_LONG_PRESS_SPEED] = normalizedInterface.longPressSpeed
             mutable[KEY_UI_CANVAS_QUALITY] = normalizedInterface.canvasQuality.name
             mutable[KEY_UI_CANVAS_SOURCE] = normalizedInterface.canvasSource.name
+            mutable[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalizedInterface.motionArtworkWifiOnly
             mutable[KEY_UI_ENHANCE_VIDEO_METADATA] = normalizedInterface.enhanceVideoMetadata
             mutable[KEY_UI_PURE_BLACK] = normalizedInterface.pureBlack
             mutable[KEY_UI_HAPTIC_FEEDBACK] = normalizedInterface.hapticFeedback
@@ -295,6 +296,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_LONG_PRESS_SPEED] = normalized.longPressSpeed
             it[KEY_UI_CANVAS_QUALITY] = normalized.canvasQuality.name
             it[KEY_UI_CANVAS_SOURCE] = normalized.canvasSource.name
+            it[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalized.motionArtworkWifiOnly
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
             it[KEY_UI_PURE_BLACK] = normalized.pureBlack
             it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
@@ -627,6 +629,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             longPressSpeed = preferences[KEY_UI_LONG_PRESS_SPEED] ?: 2f,
             canvasQuality = LevyraCanvasQuality.from(preferences[KEY_UI_CANVAS_QUALITY].orEmpty()),
             canvasSource = LevyraCanvasSource.from(preferences[KEY_UI_CANVAS_SOURCE].orEmpty()),
+            motionArtworkWifiOnly = preferences[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] ?: false,
             enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
             pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
             hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true,
@@ -904,6 +907,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_LONG_PRESS_SPEED = floatPreferencesKey("ui_long_press_speed")
         val KEY_UI_CANVAS_QUALITY = stringPreferencesKey("ui_canvas_quality")
         val KEY_UI_CANVAS_SOURCE = stringPreferencesKey("ui_canvas_source")
+        val KEY_UI_MOTION_ARTWORK_WIFI_ONLY = booleanPreferencesKey("ui_motion_artwork_wifi_only")
         val KEY_UI_ENHANCE_VIDEO_METADATA = booleanPreferencesKey("ui_enhance_video_metadata")
         val KEY_UI_PLAYER_VISUAL_MODE = stringPreferencesKey("ui_player_visual_mode")
         val KEY_UI_PLAYER_BACKGROUND = stringPreferencesKey("ui_player_background")
