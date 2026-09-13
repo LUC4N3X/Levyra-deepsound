@@ -1,44 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-label="Get Levyra on F-Droid">
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="108" viewBox="0 0 360 108" role="img" aria-label="Get Levyra on F-Droid">
   <title>Get Levyra on F-Droid</title>
-  <defs>
-    <linearGradient id="fd-bg-light" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="60%" stop-color="#F8FAFC"/>
-      <stop offset="100%" stop-color="#F1F5F9"/>
-    </linearGradient>
-    <linearGradient id="fd-border-light" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#CBD5E1" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#E2E8F0" stop-opacity="0.6"/>
-    </linearGradient>
-    <linearGradient id="fd-accent-light" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#AEEA00"/>
-      <stop offset="45%" stop-color="#29B6F6"/>
-      <stop offset="100%" stop-color="#1976D2"/>
-    </linearGradient>
-    <linearGradient id="fd-btn-grad-light" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1976D2"/>
-      <stop offset="100%" stop-color="#0D47A1"/>
-    </linearGradient>
-    <radialGradient id="fd-glow-light" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#1976D2" stop-opacity="0.52"/>
-      <stop offset="62%" stop-color="#0288D1" stop-opacity="0.17"/>
-      <stop offset="100%" stop-color="#1976D2" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-
-  <!-- Base Card -->
-  <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#fd-bg-light)" stroke="url(#fd-border-light)" stroke-width="1.5"/>
-  <path d="M28 7h704" stroke="#0F172A" stroke-opacity="0.05" stroke-linecap="round"/>
-
-  <!-- Left Accent Pillar -->
-  <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#fd-accent-light)"/>
-
-  <!-- Left Icon Container (kept dark so official mascot colors stay legible) -->
-  <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
-  <circle cx="86" cy="77" r="44" fill="url(#fd-glow-light)"/>
-
-  <!-- Official F-Droid mascot geometry from f-droid/artwork -->
-  <g transform="translate(86 77) scale(1.36) translate(-24 -24)">
+  <rect x="1" y="1" width="358" height="106" rx="16" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="2"/>
+  <rect x="1" y="16" width="4" height="76" rx="2" fill="#8AB000"/>
+  <rect x="18" y="24" width="60" height="60" rx="14" fill="#F6F8FA" stroke="#D8DEE4"/>
+  <g transform="translate(4 15.5) scale(.5)">
+<g transform="translate(86 77) scale(1.36) translate(-24 -24)">
     <g transform="translate(0 -1004.3622)">
       <!-- Antennas -->
       <g transform="matrix(-1 0 0 1 47.999779 0)">
@@ -87,36 +53,10 @@
       </g>
     </g>
   </g>
-
-  <!-- Eyebrow Tag -->
-  <g transform="translate(156 30)">
-    <rect width="222" height="22" rx="6" fill="#1976D2" fill-opacity="0.12" stroke="#1D4ED8" stroke-opacity="0.3"/>
-    <circle cx="10" cy="11" r="3" fill="#65A30D"/>
-    <text x="20" y="15" fill="#1D4ED8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.15">F-DROID · OPEN SOURCE REPOSITORY</text>
   </g>
-
-  <!-- Title -->
-  <text x="156" y="80" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Get Levyra on F-Droid</text>
-
-  <!-- Subtitle / Meta -->
-  <text x="156" y="106" fill="#475569" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">FOSS repository · Reproducible build · Automatic updates</text>
-
-  <!-- Musical Equalizer Spectrum -->
-  <g transform="translate(156 118)" fill="#1976D2" fill-opacity="0.5">
-    <rect x="0" y="7" width="4" height="9" rx="2"/>
-    <rect x="8" y="2" width="4" height="14" rx="2"/>
-    <rect x="16" y="5" width="4" height="11" rx="2"/>
-    <rect x="24" y="0" width="4" height="16" rx="2"/>
-    <rect x="32" y="6" width="4" height="10" rx="2"/>
-    <rect x="40" y="3" width="4" height="13" rx="2"/>
-    <rect x="48" y="9" width="4" height="7" rx="2"/>
-  </g>
-
-  <!-- Right CTA Button -->
-  <g transform="translate(548 50)">
-    <rect width="176" height="54" rx="16" fill="url(#fd-btn-grad-light)"/>
-    <rect width="176" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.28"/>
-    <text x="58" y="34" text-anchor="middle" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14.5" font-weight="800" letter-spacing="0.2">Open F-Droid</text>
-    <path d="M142 27h-16M136 21l6 6-6 6" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
+  <text x="94" y="37" fill="#6E7781" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.35">GET IT ON</text>
+  <text x="94" y="63" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="22" font-weight="700">F-Droid</text>
+  <circle cx="96" cy="82.5" r="2.5" fill="#8AB000"/>
+  <text x="105" y="86" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="500">Open-source repository</text>
+  <path d="M334 48l7 6-7 6" fill="none" stroke="#57606A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
