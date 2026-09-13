@@ -1,18 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="142" height="46" viewBox="0 0 142 46" role="img" aria-label="Download Levyra from GitHub Releases">
-  <title>Download Levyra from GitHub Releases</title>
-  <rect x=".75" y=".75" width="140.5" height="44.5" rx="8" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
-  <g transform="translate(-7 -11) scale(.47)">
-    <g transform="translate(-4 -1) scale(.52)">
-    <g transform="translate(11 4) scale(1.48)">
-    <g transform="translate(4 15.5) scale(.5)">
-<g transform="translate(53 44) scale(2.75)">
-    <path fill="#1F2328" d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"/>
-  </g>
-  </g>
-  </g>
-  </g>
-  </g>
-  <line x1="44" y1="9" x2="44" y2="37" stroke="#D0D7DE" stroke-width="1"/>
-  <text x="52" y="17" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="6.6" font-weight="700" letter-spacing=".85">DOWNLOAD FROM</text>
-  <text x="52" y="31.5" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12.6" font-weight="700">GitHub</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="190" height="58" viewBox="0 0 190 58" role="img" aria-label="DOWNLOAD FROM GitHub">
+  <title>DOWNLOAD FROM GitHub</title>
+  <rect x="1" y="1" width="188" height="56" rx="13" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
+  <rect x="1" y="14" width="3.5" height="30" rx="1.75" fill="#8250DF"/>
+  <rect x="11" y="7" width="44" height="44" rx="10" fill="#F6F8FA" stroke="#E1E4E8" stroke-width="1"/>
+  <g transform="translate(16 12) scale(1.42)"><path fill="#1F2328" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></g>
+  <text x="64" y="22" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.8" font-weight="700" letter-spacing="1">DOWNLOAD FROM</text>
+  <text x="64" y="42.5" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="17.5" font-weight="750">GitHub</text>
+  <path d="M174 25l4 4-4 4" fill="none" stroke="#8C959F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

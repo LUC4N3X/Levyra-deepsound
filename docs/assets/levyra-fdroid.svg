@@ -1,64 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="142" height="46" viewBox="0 0 142 46" role="img" aria-label="Get Levyra on F-Droid">
-  <title>Get Levyra on F-Droid</title>
-  <rect x=".75" y=".75" width="140.5" height="44.5" rx="8" fill="#050505" stroke="#3D444D" stroke-width="1.5"/>
-  <g transform="translate(-7 -11) scale(.47)">
-    <g transform="translate(-4 -1) scale(.52)">
-    <g transform="translate(11 4) scale(1.48)">
-    <g transform="translate(4 15.5) scale(.5)">
-<g transform="translate(86 77) scale(1.36) translate(-24 -24)">
-    <g transform="translate(0 -1004.3622)">
-      <!-- Antennas -->
+<svg xmlns="http://www.w3.org/2000/svg" width="190" height="58" viewBox="0 0 190 58" role="img" aria-label="GET IT ON F-Droid">
+  <title>GET IT ON F-Droid</title>
+  <rect x="1" y="1" width="188" height="56" rx="13" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
+  <rect x="1" y="14" width="3.5" height="30" rx="1.75" fill="#1976D2"/>
+  <rect x="11" y="7" width="44" height="44" rx="10" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <g transform="translate(17.5 -677.5) scale(0.6875)">
       <g transform="matrix(-1 0 0 1 47.999779 0)">
         <path fill="#8AB000" stroke="#769616" stroke-width="2.5" stroke-linecap="round" d="m2.5889342 1006.8622 4.25 5.5"/>
-        <path fill="#FFFFFF" fill-opacity="0.3" d="m2.6113281 1005.6094c-.4534623.012-.7616975.189-.9807462.4486 2.0269314 2.4089 2.368401 2.7916 5.1354735 6.2214 1.0195329 1.319 2.0816026.6373 1.0620696-.6817l-4.25-5.5c-.2289894-.3056-.5850813-.478-.9667969-.4883z"/>
-        <path fill="#263238" fill-opacity="0.2" d="m1.6220992 1006.0705c-.1238933.1479-.561176.8046-.02249 1.5562l4.25 5.5c1.0195329 1.319 1.1498748-.6123 1.1498748-.6123s-3.7344514-4.51-5.3773848-6.4439z"/>
         <path fill="#8AB000" d="m2.3378905 1005.8443c-.438175 0-.959862.1416-.8242183.7986.103561.5016 4.6608262 6.0744 4.6608262 6.0744 1.0195329 1.319 2.4934721.6763 1.4739391-.6425l-4.234375-5.4727c-.2602394-.29-.6085188-.7436-1.076172-.7578z"/>
       </g>
       <g>
         <path fill="#8AB000" stroke="#769616" stroke-width="2.5" stroke-linecap="round" d="m2.5889342 1006.8622 4.25 5.5"/>
-        <path fill="#FFFFFF" fill-opacity="0.3" d="m2.6113281 1005.6094c-.4534623.012-.7616975.189-.9807462.4486 2.0269314 2.4089 2.368401 2.7916 5.1354735 6.2214 1.0195329 1.319 2.0816026.6373 1.0620696-.6817l-4.25-5.5c-.2289894-.3056-.5850813-.478-.9667969-.4883z"/>
-        <path fill="#263238" fill-opacity="0.2" d="m1.6220992 1006.0705c-.1238933.1479-.561176.8046-.02249 1.5562l4.25 5.5c1.0195329 1.319 1.1498748-.6123 1.1498748-.6123s-3.7344514-4.51-5.3773848-6.4439z"/>
         <path fill="#8AB000" d="m2.3378905 1005.8443c-.438175 0-.959862.1416-.8242183.7986.103561.5016 4.6608262 6.0744 4.6608262 6.0744 1.0195329 1.319 2.4934721.6763 1.4739391-.6425l-4.234375-5.4727c-.2602394-.29-.6085188-.7436-1.076172-.7578z"/>
       </g>
-
-      <!-- Head -->
-      <g transform="translate(42 0)">
-        <rect fill="#AEEA00" width="38" height="13" x="-37" y="1010.3622" rx="3" ry="3"/>
-        <rect fill="#263238" fill-opacity="0.2" width="38" height="10" x="-37" y="1013.3622" rx="3" ry="3"/>
-        <rect fill="#FFFFFF" fill-opacity="0.3" width="38" height="10" x="-37" y="1010.3622" rx="3" ry="3"/>
-        <rect fill="#AEEA00" width="38" height="11" x="-37" y="1011.3622" rx="3" ry="2.54"/>
-      </g>
-
-      <!-- Body -->
-      <g>
-        <rect fill="#1976D2" width="38" height="26" x="5" y="1024.3622" rx="3" ry="3"/>
-        <rect fill="#263238" fill-opacity="0.2" width="38" height="13" x="5" y="1037.3622" rx="3" ry="3"/>
-        <rect fill="#FFFFFF" fill-opacity="0.2" width="38" height="13" x="5" y="1024.3622" rx="3" ry="3"/>
-        <rect fill="#1976D2" width="38" height="24" x="5" y="1025.3622" rx="3" ry="2.77"/>
-      </g>
-
-      <!-- Inner loop -->
-      <g transform="translate(0 1013.3622)">
-        <path fill="#0D47A1" d="m24 17.75c-2.880662 0-5.319789 1.984685-6.033203 4.650391h3.212891C21.734004 21.415044 22.774798 20.75 24 20.75c1.812692 0 3.25 1.437308 3.25 3.25S25.812692 27.25 24 27.25c-1.307381 0-2.411251-.75269-2.929688-1.849609h-3.154296C18.558263 28.166146 21.04791 30.25 24 30.25c3.434013 0 6.25-2.815987 6.25-6.25S27.434013 17.75 24 17.75z"/>
-        <circle fill="none" stroke="#0D47A1" stroke-width="1.9" cx="24" cy="24" r="9.55"/>
-      </g>
-
-      <!-- Eyes -->
-      <g transform="translate(0 .5)">
-        <ellipse fill="#263238" fill-opacity="0.2" cx="14.375" cy="1016.4872" rx="3.375" ry="3.875"/>
-        <circle fill="#FFFFFF" cx="14.375" cy="1016.9872" r="3.375"/>
-      </g>
-      <g transform="translate(19.5 .5)">
-        <ellipse fill="#263238" fill-opacity="0.2" cx="14.375" cy="1016.4872" rx="3.375" ry="3.875"/>
-        <circle fill="#FFFFFF" cx="14.375" cy="1016.9872" r="3.375"/>
-      </g>
+      <rect fill="#AEEA00" width="38" height="12" x="5" y="1010.5" rx="3" ry="3"/>
+      <rect fill="#1976D2" width="38" height="25" x="5" y="1024.5" rx="3" ry="3"/>
+      <circle fill="#FFFFFF" cx="14.5" cy="1017" r="3.2"/>
+      <circle fill="#FFFFFF" cx="33.5" cy="1017" r="3.2"/>
     </g>
-  </g>
-  </g>
-  </g>
-  </g>
-  </g>
-  <line x1="44" y1="9" x2="44" y2="37" stroke="#30363D" stroke-width="1"/>
-  <text x="52" y="17" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="6.6" font-weight="700" letter-spacing=".85">GET IT ON</text>
-  <text x="52" y="31.5" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12.6" font-weight="700">F-Droid</text>
+  <text x="64" y="22" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.8" font-weight="700" letter-spacing="1">GET IT ON</text>
+  <text x="64" y="42.5" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="17.5" font-weight="750">F-Droid</text>
+  <path d="M174 25l4 4-4 4" fill="none" stroke="#8B949E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
