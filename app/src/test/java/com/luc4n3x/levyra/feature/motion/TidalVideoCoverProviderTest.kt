@@ -123,6 +123,28 @@ class TidalVideoCoverProviderTest {
     }
 
     @Test
+    fun matchingFirstCandidateDoesNotSuppressLaterTidalAlternativeForVerifier() = runBlocking {
+        val transport = FakeTidalTransport(
+            search = { query, type ->
+                when {
+                    type != "TRACKS" -> albumsPage(emptyList())
+                    query.startsWith("After Hours") ->
+                        tracksPage(listOf(trackItem("stale", "Blinding Lights", "After Hours", VIDEO_COVER)))
+                    else ->
+                        tracksPage(listOf(trackItem("valid", "Blinding Lights", "After Hours", ALT_VIDEO_COVER)))
+                }
+            },
+            album = { error("hydration not expected") }
+        )
+
+        val result = provider(transport).find(identity())
+        val found = result as MotionArtworkProviderResult.Found
+
+        assertEquals(listOf("stale", "valid"), found.candidates.map { it.identity.albumId })
+        assertEquals(2, found.candidates.size)
+    }
+
+    @Test
     fun albumHydrationFailureOnOneCandidateDoesNotFailTheProvider() = runBlocking {
         val transport = FakeTidalTransport(
             search = { _, type ->
@@ -241,12 +263,23 @@ class TidalVideoCoverProviderTest {
 
     private fun artists(): JSONArray = JSONArray().put(JSONObject().put("name", "The Weeknd"))
 
-    private fun trackItem(albumId: String, title: String, albumTitle: String): JSONObject = JSONObject()
+    private fun trackItem(
+        albumId: String,
+        title: String,
+        albumTitle: String,
+        videoCover: String = ""
+    ): JSONObject = JSONObject()
         .put("id", "track-$albumId")
         .put("title", title)
         .put("duration", 200)
         .put("artists", artists())
-        .put("album", JSONObject().put("id", albumId).put("title", albumTitle))
+        .put(
+            "album",
+            JSONObject()
+                .put("id", albumId)
+                .put("title", albumTitle)
+                .put("videoCover", videoCover)
+        )
 
     private fun albumItem(id: String, title: String, videoCover: String = ""): JSONObject = JSONObject()
         .put("id", id)
@@ -291,5 +324,6 @@ class TidalVideoCoverProviderTest {
 
     private companion object {
         const val VIDEO_COVER = "11111111-2222-3333-4444-555555555555"
+        const val ALT_VIDEO_COVER = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     }
 }
