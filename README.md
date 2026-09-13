@@ -30,6 +30,7 @@
   <a href="https://appteka.store/apps/b5br313609"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-appteka-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-appteka.svg"><img src="docs/assets/levyra-appteka.svg" alt="Get Levyra on Appteka" width="160"></picture></a>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-windows-download-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-windows-download.svg"><img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra for Windows" width="160"></picture></a>
 </p>
+
 <p align="center">
   <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
 </p>
