@@ -1,0 +1,17 @@
+version = 1
+
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Contributors to NewPipeExtractor, PipePipeExtractor, and LevyraExtractor"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = [
+  "gradlew",
+  "gradlew.bat",
+  "gradle/wrapper/**",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2015 the original authors"
+SPDX-License-Identifier = "Apache-2.0"
