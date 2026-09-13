@@ -8301,7 +8301,6 @@ private fun HomeEditorialCollectionsShelf(
 }
 
 @Composable
-@Composable
 private fun HomeEditorialCollectionCard(
     collection: HomeEditorialCollection,
     visualIndex: Int,
