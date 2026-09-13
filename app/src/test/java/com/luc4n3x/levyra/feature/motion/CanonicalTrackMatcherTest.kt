@@ -224,6 +224,29 @@ class CanonicalTrackMatcherTest {
     }
 
     @Test
+    fun exactIsrcDoesNotAllowALongTitleDeluxeReleaseAboveTheSimilarityThreshold() {
+        val album = "The Original Motion Picture Soundtrack Volume One"
+        val reference = identity(
+            title = "Main Theme",
+            artist = "Composer",
+            album = album,
+            isrc = "USUG11904278"
+        )
+        val candidate = albumCandidate(
+            title = "Main Theme",
+            artist = "Composer",
+            album = "$album Deluxe"
+        ).copy(identity = identity(
+            title = "Main Theme",
+            artist = "Composer",
+            album = "$album Deluxe",
+            isrc = "USUG11904278"
+        ))
+
+        assertFalse(CanonicalTrackMatcher.match(reference, candidate).accepted)
+    }
+
+    @Test
     fun exactIsrcTrackMotionIsAccepted() {
         val reference = identity(
             title = "Sinceramente",

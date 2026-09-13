@@ -96,7 +96,10 @@ object CanonicalTrackMatcher {
             }
         } else {
             if (hasUsableAlbum(reference)) {
-                if (albumSimilarity < 0.82 && !sameRecordingReleaseVariant(reference, source, exactIsrc)) {
+                if (
+                    (albumSimilarity < 0.82 || !editionsCompatible(reference, source, candidate.scope)) &&
+                    !sameRecordingReleaseVariant(reference, source, exactIsrc)
+                ) {
                     return MotionArtworkMatch(false, 0)
                 }
                 score += when {
