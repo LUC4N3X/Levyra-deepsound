@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.feature.motion
 
 import java.io.IOException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -11,17 +13,11 @@ internal suspend fun awaitMotionArtworkResponse(call: Call): Response =
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) {
-                val token = continuation.tryResumeWithException(error)
-                if (token != null) continuation.completeResume(token)
+                if (continuation.isActive) continuation.resumeWithException(error)
             }
 
             override fun onResponse(call: Call, response: Response) {
-                val token = continuation.tryResume(response)
-                if (token != null) {
-                    continuation.completeResume(token)
-                } else {
-                    response.close()
-                }
+                if (continuation.isActive) continuation.resume(response) else response.close()
             }
         })
     }
