@@ -7,12 +7,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
@@ -81,6 +83,49 @@ class MotionArtworkRequestCoordinatorTest {
             started.await()
             collector.cancelAndJoin()
             withTimeout(1_000L) { cancelled.await() }
+        } finally {
+            coordinatorScope.cancel()
+        }
+    }
+
+    @Test
+    fun subscriberArrivingDuringLastCollectorShutdownStartsFreshSession() = runBlocking {
+        val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val coordinator = MotionArtworkRequestCoordinator(coordinatorScope)
+            val firstStarted = CompletableDeferred<Unit>()
+            val firstCleanupStarted = CompletableDeferred<Unit>()
+            val releaseFirstCleanup = CompletableDeferred<Unit>()
+            val secondStarted = CompletableDeferred<Unit>()
+
+            val firstCollector = launch {
+                coordinator.share("shutdown-race") {
+                    firstStarted.complete(Unit)
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        withContext(NonCancellable) {
+                            firstCleanupStarted.complete(Unit)
+                            releaseFirstCleanup.await()
+                        }
+                    }
+                }.collect {}
+            }
+
+            firstStarted.await()
+            firstCollector.cancel()
+            withTimeout(1_000L) { firstCleanupStarted.await() }
+
+            val secondCollector = launch {
+                coordinator.share("shutdown-race") {
+                    secondStarted.complete(Unit)
+                }.collect {}
+            }
+
+            withTimeout(1_000L) { secondStarted.await() }
+            releaseFirstCleanup.complete(Unit)
+            firstCollector.join()
+            secondCollector.join()
         } finally {
             coordinatorScope.cancel()
         }
