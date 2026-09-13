@@ -859,12 +859,69 @@ private data class YoutubeConfigRefreshOutcome(
     val reachedServer: Boolean
 )
 
-internal class YoutubePlayerConfigStore(
-    private val context: Context,
-    private val httpClient: OkHttpClient
+internal data class YoutubePlayerConfigSource(
+    val id: String,
+    val url: String
 ) {
+    init {
+        require(id.isNotBlank()) { "Player config source id is blank" }
+        require(url.startsWith("https://")) { "Player config source $id must use https" }
+    }
+}
+
+internal object YoutubePlayerConfigSources {
+    val ZEMER_UPSTREAM = YoutubePlayerConfigSource(
+        id = "zemer-upstream",
+        url = "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json"
+    )
+
+    const val LEVYRA_VERIFIED_MIRROR_ID = "levyra-verified-mirror"
+    const val LEVYRA_VERIFIED_MIRROR_URL =
+        "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/main/app/src/main/assets/player_configs.json"
+
+    val LEVYRA_VERIFIED_MIRROR = YoutubePlayerConfigSource(
+        id = LEVYRA_VERIFIED_MIRROR_ID,
+        url = LEVYRA_VERIFIED_MIRROR_URL
+    )
+
+    val active: List<YoutubePlayerConfigSource> = listOf(
+        ZEMER_UPSTREAM,
+        LEVYRA_VERIFIED_MIRROR
+    )
+}
+
+private sealed class YoutubeConfigFetchResult {
+    data object Unreachable : YoutubeConfigFetchResult()
+    data object NotModified : YoutubeConfigFetchResult()
+    data object Rejected : YoutubeConfigFetchResult()
+    data class Accepted(
+        val body: String,
+        val etag: String,
+        val parsed: YoutubePlayerConfigParseResult.Success
+    ) : YoutubeConfigFetchResult()
+}
+
+internal class YoutubePlayerConfigStore(
+    private val httpClient: OkHttpClient,
+    private val cacheDir: File,
+    private val bundledConfigText: () -> String,
+    private val sources: List<YoutubePlayerConfigSource> = YoutubePlayerConfigSources.active,
+    private val clock: () -> Long = System::currentTimeMillis
+) {
+    constructor(context: Context, httpClient: OkHttpClient) : this(
+        httpClient = httpClient,
+        cacheDir = File(context.filesDir, "youtube_decoder"),
+        bundledConfigText = {
+            context.assets.open(BUNDLED_CONFIG_ASSET).bufferedReader().use { it.readText() }
+        }
+    )
+
+    init {
+        require(sources.isNotEmpty()) { "At least one player config source is required" }
+        require(sources.map { it.id }.toSet().size == sources.size) { "Duplicate player config source id" }
+    }
+
     private val mutex = Mutex()
-    private val cacheDir = File(context.filesDir, "youtube_decoder")
     private val remoteFile = File(cacheDir, "player_configs_remote.json")
     private val metadataFile = File(cacheDir, "player_configs_meta.json")
     private val cooldowns = YoutubeRefreshCooldowns(
@@ -895,7 +952,7 @@ internal class YoutubePlayerConfigStore(
     suspend fun refreshAfterStreamRejection(): YoutubeStreamRefreshResult {
         ensureInitialized()
         return mutex.withLock {
-            val now = System.currentTimeMillis()
+            val now = clock()
             if (!cooldowns.claimRejection(now)) return@withLock YoutubeStreamRefreshResult.SKIPPED
             val outcome = refreshLocked(force = true, reason = "stream-rejected")
             if (!outcome.reachedServer) {
@@ -914,7 +971,7 @@ internal class YoutubePlayerConfigStore(
     private suspend fun refreshUnknownPlayer(hash: String): Boolean {
         return mutex.withLock {
             if (mergedConfigs.containsKey(hash)) return@withLock true
-            val now = System.currentTimeMillis()
+            val now = clock()
             if (!cooldowns.claimUnknown(now)) return@withLock false
             val outcome = refreshLocked(force = true, reason = "unknown-player-$hash")
             if (!outcome.reachedServer) cooldowns.resetUnknown()
@@ -938,19 +995,46 @@ internal class YoutubePlayerConfigStore(
 
     private suspend fun refreshLocked(force: Boolean, reason: String): YoutubeConfigRefreshOutcome {
         val metadata = withContext(Dispatchers.IO) { readMetadata() }
-        val now = System.currentTimeMillis()
+        val now = clock()
         if (!force && withinWindow(now, metadata.checkedAtMs, CONFIG_TTL_MS)) {
             return YoutubeConfigRefreshOutcome(changed = false, reachedServer = false)
         }
 
+        var reachedServer = false
+        for (source in sources) {
+            when (val result = fetchValidated(source, metadata, reason)) {
+                YoutubeConfigFetchResult.Unreachable -> Unit
+                YoutubeConfigFetchResult.Rejected -> reachedServer = true
+                YoutubeConfigFetchResult.NotModified -> {
+                    withContext(Dispatchers.IO) {
+                        runCatching { writeMetadata(metadata.copy(checkedAtMs = now)) }
+                            .onFailure { Timber.w(it, "Player config metadata persistence failed") }
+                    }
+                    return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+                }
+                is YoutubeConfigFetchResult.Accepted -> {
+                    val changed = publishLastKnownGood(source, result, now, reason)
+                    return YoutubeConfigRefreshOutcome(changed = changed, reachedServer = true)
+                }
+            }
+        }
+        return YoutubeConfigRefreshOutcome(changed = false, reachedServer = reachedServer)
+    }
+
+    private suspend fun fetchValidated(
+        source: YoutubePlayerConfigSource,
+        metadata: YoutubeConfigMetadata,
+        reason: String
+    ): YoutubeConfigFetchResult {
+        val conditionalEtag = metadata.etag.takeIf {
+            it.isNotBlank() && remoteConfigs.isNotEmpty() && metadata.effectiveSourceId == source.id
+        }
         val request = Request.Builder()
-            .url(REMOTE_CONFIG_URL)
+            .url(source.url)
             .get()
             .header("Accept", "application/json")
             .header("User-Agent", USER_AGENT)
-            .apply {
-                metadata.etag.takeIf { it.isNotBlank() }?.let { header("If-None-Match", it) }
-            }
+            .apply { conditionalEtag?.let { header("If-None-Match", it) } }
             .build()
 
         val response = try {
@@ -958,38 +1042,44 @@ internal class YoutubePlayerConfigStore(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            Timber.w(error, "Player config refresh failed reason=%s", reason)
-            return YoutubeConfigRefreshOutcome(changed = false, reachedServer = false)
+            Timber.w(error, "Player config refresh failed source=%s reason=%s", source.id, reason)
+            return YoutubeConfigFetchResult.Unreachable
         }
 
         if (response.code == 304) {
-            withContext(Dispatchers.IO) {
-                runCatching { writeMetadata(metadata.copy(checkedAtMs = now)) }
-                    .onFailure { Timber.w(it, "Player config metadata persistence failed") }
-            }
-            return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+            if (conditionalEtag != null) return YoutubeConfigFetchResult.NotModified
+            Timber.w("Player config refresh rejected unsolicited 304 source=%s reason=%s", source.id, reason)
+            return YoutubeConfigFetchResult.Rejected
         }
         if (response.code !in 200..299) {
-            Timber.w("Player config refresh failed HTTP %s reason=%s", response.code, reason)
-            return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+            Timber.w("Player config refresh failed HTTP %s source=%s reason=%s", response.code, source.id, reason)
+            return YoutubeConfigFetchResult.Rejected
         }
         val body = response.body
         if (body.length !in 32..MAX_CONFIG_BYTES) {
-            Timber.w("Player config refresh rejected size=%s reason=%s", body.length, reason)
-            return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+            Timber.w("Player config refresh rejected size=%s source=%s reason=%s", body.length, source.id, reason)
+            return YoutubeConfigFetchResult.Rejected
         }
         val parsed = YoutubePlayerConfigParser.parse(body)
         if (parsed !is YoutubePlayerConfigParseResult.Success) {
             val failure = parsed as YoutubePlayerConfigParseResult.Failure
-            Timber.w("Player config refresh rejected: %s", failure.reason)
-            return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+            Timber.w("Player config refresh rejected source=%s: %s", source.id, failure.reason)
+            return YoutubeConfigFetchResult.Rejected
         }
         if (parsed.configs.isEmpty()) {
-            Timber.w("Player config refresh rejected empty table reason=%s", reason)
-            return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+            Timber.w("Player config refresh rejected empty table source=%s reason=%s", source.id, reason)
+            return YoutubeConfigFetchResult.Rejected
         }
+        return YoutubeConfigFetchResult.Accepted(body, response.etag, parsed)
+    }
 
-        val nextRemote = parsed.configs
+    private suspend fun publishLastKnownGood(
+        source: YoutubePlayerConfigSource,
+        accepted: YoutubeConfigFetchResult.Accepted,
+        now: Long,
+        reason: String
+    ): Boolean {
+        val nextRemote = accepted.parsed.configs
         val nextMerged = YoutubePlayerConfigParser.merge(bundledConfigs, nextRemote)
         val changed = fingerprint(mergedConfigs) != fingerprint(nextMerged)
         remoteConfigs = nextRemote
@@ -998,29 +1088,31 @@ internal class YoutubePlayerConfigStore(
 
         withContext(Dispatchers.IO) {
             runCatching {
-                writeAtomic(remoteFile, body)
+                writeAtomic(remoteFile, accepted.body)
                 writeMetadata(
                     YoutubeConfigMetadata(
-                        etag = response.etag.ifBlank { metadata.etag },
+                        etag = accepted.etag,
                         checkedAtMs = now,
-                        contentSha256 = sha256(body)
+                        contentSha256 = sha256(accepted.body),
+                        sourceId = source.id
                     )
                 )
             }.onFailure { Timber.w(it, "Player config persistence failed after in-memory update") }
         }
         Timber.d(
-            "Player config refresh completed changed=%s epoch=%s entries=%s skipped=%s reason=%s",
+            "Player config refresh completed changed=%s epoch=%s entries=%s skipped=%s source=%s reason=%s",
             changed,
             epoch,
-            parsed.configs.size,
-            parsed.skippedEntries.size,
+            nextRemote.size,
+            accepted.parsed.skippedEntries.size,
+            source.id,
             reason
         )
-        return YoutubeConfigRefreshOutcome(changed = changed, reachedServer = true)
+        return changed
     }
 
     private fun loadBundled(): Map<String, YoutubePlayerCipherConfig> {
-        val text = context.assets.open(BUNDLED_CONFIG_ASSET).bufferedReader().use { it.readText() }
+        val text = bundledConfigText()
         return when (val parsed = YoutubePlayerConfigParser.parse(text)) {
             is YoutubePlayerConfigParseResult.Success -> parsed.configs.takeIf { it.isNotEmpty() }
                 ?: throw IllegalStateException("Bundled player config is empty")
@@ -1055,7 +1147,8 @@ internal class YoutubePlayerConfigStore(
             YoutubeConfigMetadata(
                 etag = json.optString("etag"),
                 checkedAtMs = json.optLong("checkedAtMs"),
-                contentSha256 = json.optString("contentSha256")
+                contentSha256 = json.optString("contentSha256"),
+                sourceId = json.optString("sourceId")
             )
         }.getOrDefault(YoutubeConfigMetadata())
     }
@@ -1065,6 +1158,7 @@ internal class YoutubePlayerConfigStore(
             .put("etag", metadata.etag)
             .put("checkedAtMs", metadata.checkedAtMs)
             .put("contentSha256", metadata.contentSha256)
+            .put("sourceId", metadata.sourceId)
         writeAtomic(metadataFile, json.toString())
     }
 
@@ -1076,7 +1170,6 @@ internal class YoutubePlayerConfigStore(
 
     companion object {
         private const val BUNDLED_CONFIG_ASSET = "player_configs.json"
-        private const val REMOTE_CONFIG_URL = "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json"
         private const val USER_AGENT = "Levyra/2.3.20 Android local-decoder"
         private const val CONFIG_TTL_MS = 6L * 60L * 60L * 1000L
         private const val UNKNOWN_REFRESH_COOLDOWN_MS = 60_000L
@@ -1120,8 +1213,12 @@ internal class YoutubePlayerConfigStore(
 private data class YoutubeConfigMetadata(
     val etag: String = "",
     val checkedAtMs: Long = 0L,
-    val contentSha256: String = ""
-)
+    val contentSha256: String = "",
+    val sourceId: String = ""
+) {
+    val effectiveSourceId: String
+        get() = sourceId.ifBlank { YoutubePlayerConfigSources.ZEMER_UPSTREAM.id }
+}
 
 private data class YoutubePlayerScript(
     val hash: String,
