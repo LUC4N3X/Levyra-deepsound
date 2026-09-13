@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="190" height="58" viewBox="0 0 190 58" role="img" aria-label="GET IT ON F-Droid">
+<svg xmlns="http://www.w3.org/2000/svg" width="210" height="60" viewBox="0 0 210 60" role="img" aria-label="GET IT ON F-Droid">
   <title>GET IT ON F-Droid</title>
-  <rect x="1" y="1" width="188" height="56" rx="13" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
-  <rect x="1" y="14" width="3.5" height="30" rx="1.75" fill="#1976D2"/>
-  <rect x="11" y="7" width="44" height="44" rx="10" fill="#161B22" stroke="#30363D" stroke-width="1"/>
-  <g transform="translate(17.5 -677.5) scale(0.6875)">
+  <rect x="1" y="1" width="208" height="58" rx="14" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
+  <rect x="1" y="15" width="4" height="30" rx="2" fill="#1976D2"/>
+  <rect x="12" y="7.5" width="45" height="45" rx="11" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <g transform="translate(19 -676.5) scale(0.708)">
       <g transform="matrix(-1 0 0 1 47.999779 0)">
         <path fill="#8AB000" stroke="#769616" stroke-width="2.5" stroke-linecap="round" d="m2.5889342 1006.8622 4.25 5.5"/>
         <path fill="#8AB000" d="m2.3378905 1005.8443c-.438175 0-.959862.1416-.8242183.7986.103561.5016 4.6608262 6.0744 4.6608262 6.0744 1.0195329 1.319 2.4934721.6763 1.4739391-.6425l-4.234375-5.4727c-.2602394-.29-.6085188-.7436-1.076172-.7578z"/>
@@ -17,7 +17,15 @@
       <circle fill="#FFFFFF" cx="14.5" cy="1017" r="3.2"/>
       <circle fill="#FFFFFF" cx="33.5" cy="1017" r="3.2"/>
     </g>
-  <text x="64" y="22" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.8" font-weight="700" letter-spacing="1">GET IT ON</text>
-  <text x="64" y="42.5" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="17.5" font-weight="750">F-Droid</text>
-  <path d="M174 25l4 4-4 4" fill="none" stroke="#8B949E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="67" y="23" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.8" font-weight="700" letter-spacing="1">GET IT ON</text>
+  <text x="67" y="44" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="17.5" font-weight="750">F-Droid</text>
+  <g transform="translate(150 18)" fill="#1976D2" opacity="0.35">
+    <rect x="0" y="8" width="2.4" height="10" rx="1.2"/>
+    <rect x="5.5" y="4" width="2.4" height="14" rx="1.2"/>
+    <rect x="11" y="9" width="2.4" height="9" rx="1.2"/>
+    <rect x="16.5" y="2" width="2.4" height="16" rx="1.2"/>
+    <rect x="22" y="6" width="2.4" height="12" rx="1.2"/>
+    <rect x="27.5" y="10" width="2.4" height="8" rx="1.2"/>
+  </g>
+  <path d="M194 26l4 4-4 4" fill="none" stroke="#8B949E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
