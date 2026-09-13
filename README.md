@@ -128,6 +128,42 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ---
 
+## ✦ Levyra Live Radio
+
+<div align="center">
+
+### 📻 Live stations from around the world, built directly into Levyra.
+
+<p><sub>Explore → Live Radio adds a dedicated radio experience with locale-aware discovery, search by country, language, category or station name, local favorites and recent stations, plus a transient Media3 live-playback mode that stays separate from Song Radio and the normal music queue.</sub></p>
+
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="33%">
+      <h3>🌍 <b>Worldwide Discovery</b></h3>
+      <p><sub>Browse live stations by country, language and category, with search and region-aware results.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>📡 <b>Native Live Playback</b></h3>
+      <p><sub>Background playback, notification controls, best-effort ICY now-playing metadata, and bounded reconnect behavior.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>🧭 <b>Local by Design</b></h3>
+      <p><sub>Favorites, recent stations, and cached discovery stay local, while the normal queue and Song Radio remain untouched.</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p>
+  <code>LIVE STATIONS</code> &nbsp;·&nbsp;
+  <code>LOCAL FAVORITES</code> &nbsp;·&nbsp;
+  <code>ICY METADATA</code> &nbsp;·&nbsp;
+  <code>BACKGROUND PLAYBACK</code>
+</p>
+
+</div>
+
+---
+
 ## ✦ Interface & Experience Showcase
 
 <div align="center">
@@ -192,7 +228,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 <div align="center">
   <h3>🎧 <b>Everything in the signal path. Nothing in the way.</b></h3>
-  <p><sub>Playback, discovery, lyrics, offline ownership, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
+  <p><sub>Playback, discovery, live radio, lyrics, offline ownership, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
   <p>
     <code>12 CORE SYSTEMS</code> &nbsp;·&nbsp;
     <code>ANDROID + WINDOWS</code> &nbsp;·&nbsp;
