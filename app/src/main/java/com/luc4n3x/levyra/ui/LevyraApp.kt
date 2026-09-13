@@ -9948,7 +9948,7 @@ private fun PersonalListeningShelf(
                             .padding(horizontal = 3.dp)
                             .size(if (isSelected) 6.dp else 5.dp)
                             .background(
-                                if (isSelected) Color.White else Color.White.copy(alpha = 0.28f),
+                                if (isSelected) LevyraText else LevyraText.copy(alpha = 0.28f),
                                 CircleShape
                             )
                     )
