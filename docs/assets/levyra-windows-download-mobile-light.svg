@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="42" viewBox="0 0 160 48" role="img" aria-label="DOWNLOAD FOR Windows">
+  <title>DOWNLOAD FOR Windows</title>
+  <rect x=".75" y=".75" width="158.5" height="46.5" rx="10" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
+  <rect x=".75" y="12" width="3.5" height="24" rx="1.75" fill="#0078D4"/>
+  <g transform="translate(10.5 10.5) scale(0.50)" fill="#0078D4">
+    <rect x="0" y="0" width="25" height="25" rx="2.5"/>
+    <rect x="29" y="0" width="25" height="25" rx="2.5"/>
+    <rect x="0" y="29" width="25" height="25" rx="2.5"/>
+    <rect x="29" y="29" width="25" height="25" rx="2.5"/>
+  </g>
+  <text x="48" y="18" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">DOWNLOAD FOR</text>
+  <text x="48" y="34.5" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="14" font-weight="750">Windows</text>
+  <path d="M147 21l3 3-3 3" fill="none" stroke="#8C959F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
