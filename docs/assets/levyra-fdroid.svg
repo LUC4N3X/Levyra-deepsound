@@ -19,12 +19,8 @@
     </g>
   <text x="45" y="16.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="6.8" font-weight="700" letter-spacing=".75">GET IT ON</text>
   <text x="45" y="31.5" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="13" font-weight="750">F-Droid</text>
-  <g transform="translate(108 17)" fill="#1976D2" opacity="0.32">
-    <rect x="0" y="5" width="1.8" height="7" rx="0.9"/>
-    <rect x="4" y="2" width="1.8" height="10" rx="0.9"/>
-    <rect x="8" y="6" width="1.8" height="6" rx="0.9"/>
-    <rect x="12" y="1" width="1.8" height="11" rx="0.9"/>
-    <rect x="16" y="4" width="1.8" height="8" rx="0.9"/>
+  <g transform="translate(116 14) scale(0.85)" fill="#1976D2" opacity="0.55">
+    <path d="M12 3v10.55A3 3 0 1 0 14 16V7l6-1.5v5.05A3 3 0 1 0 22 13V3l-10 1.5z"/>
   </g>
-  <path d="M133 19l3 3-3 3" fill="none" stroke="#8B949E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M135 19l3 3-3 3" fill="none" stroke="#8B949E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
