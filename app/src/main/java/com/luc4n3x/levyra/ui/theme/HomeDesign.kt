@@ -27,8 +27,8 @@ object LevyraHomeDesign {
     val SectionStrideCompact: Dp = 20.dp
     val HeaderCorner: Dp = 20.dp
     val HeaderPadding: Dp = 12.dp
-    val SettingsControlHeight: Dp = 44.dp
-    val MoodChipHeight: Dp = 42.dp
+    val SettingsControlHeight: Dp = 48.dp
+    val MoodChipHeight: Dp = 48.dp
     val MoodChipCorner: Dp = 12.dp
     val HeroCorner: Dp = 20.dp
     val HeroHeight: Dp = 240.dp
