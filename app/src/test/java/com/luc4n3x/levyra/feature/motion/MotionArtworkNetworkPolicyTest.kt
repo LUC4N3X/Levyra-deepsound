@@ -59,11 +59,22 @@ class MotionArtworkNetworkPolicyTest {
         }
     }
 
+    @Test
+    fun wifiOnlyRejectsUnmeteredCellularButAllowsUnmeteredWifiOrEthernet() {
+        val unmeteredCellular = online(unmetered = true, wifiOrEthernet = false)
+
+        assertFalse(MotionArtworkNetworkPolicy.canResolve(wifiOnly = true, network = unmeteredCellular))
+        assertTrue(MotionArtworkNetworkPolicy.canResolve(wifiOnly = false, network = unmeteredCellular))
+        assertTrue(MotionArtworkNetworkPolicy.canResolve(wifiOnly = true, network = online(unmetered = true, wifiOrEthernet = true)))
+        assertFalse(MotionArtworkNetworkPolicy.canResolve(wifiOnly = true, network = online(unmetered = false, wifiOrEthernet = true)))
+    }
+
     private fun online(
         localAllowed: Boolean = true,
         dataSaverActive: Boolean = false,
         internet: Boolean = true,
         validated: Boolean = true,
-        unmetered: Boolean = false
-    ) = MotionArtworkNetworkState(localAllowed, dataSaverActive, internet, validated, unmetered)
+        unmetered: Boolean = false,
+        wifiOrEthernet: Boolean = true
+    ) = MotionArtworkNetworkState(localAllowed, dataSaverActive, internet, validated, unmetered, wifiOrEthernet)
 }

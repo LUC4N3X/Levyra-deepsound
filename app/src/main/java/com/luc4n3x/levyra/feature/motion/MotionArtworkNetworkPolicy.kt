@@ -62,7 +62,9 @@ class MotionArtworkNetworkPolicy(context: Context) {
                     ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
                 internet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
                 validated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
-                unmetered = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                unmetered = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED),
+                wifiOrEthernet = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
             )
         }
 
@@ -73,7 +75,7 @@ class MotionArtworkNetworkPolicy(context: Context) {
             !network.dataSaverActive &&
             network.internet &&
             network.validated &&
-            (!wifiOnly || network.unmetered)
+            (!wifiOnly || (network.unmetered && network.wifiOrEthernet))
     }
 }
 
@@ -82,5 +84,6 @@ internal data class MotionArtworkNetworkState(
     val dataSaverActive: Boolean,
     val internet: Boolean,
     val validated: Boolean,
-    val unmetered: Boolean
+    val unmetered: Boolean,
+    val wifiOrEthernet: Boolean
 )
