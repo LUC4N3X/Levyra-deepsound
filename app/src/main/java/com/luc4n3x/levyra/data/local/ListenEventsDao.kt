@@ -210,7 +210,7 @@ interface ListenEventsDao {
         SELECT * FROM listen_events
         WHERE startedAt >= :fromMs AND startedAt < :toMs
             AND listenedMs >= :minimumEventMs
-            AND (:query = '' OR title LIKE '%' || :query || '%' COLLATE NOCASE OR artist LIKE '%' || :query || '%' COLLATE NOCASE OR album LIKE '%' || :query || '%' COLLATE NOCASE)
+            AND (:query = '' OR instr(lower(title), lower(:query)) > 0 OR instr(lower(artist), lower(:query)) > 0 OR instr(lower(album), lower(:query)) > 0)
             AND (startedAt < :beforeStartedAt OR (startedAt = :beforeStartedAt AND id < :beforeId))
         ORDER BY startedAt DESC, id DESC
         LIMIT :limit

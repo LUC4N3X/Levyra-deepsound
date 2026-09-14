@@ -89,6 +89,37 @@ class ListeningInsightsDaoTest {
         assertEquals(1L, timeline[1].countedPlays)
     }
 
+    @Test
+    fun historySearchTreatsPercentAndUnderscoreLiterally() = runBlocking {
+        dao.insert(event("1", "Artist", 30_000L, startedAt = 3_000L, title = "100% Pure"))
+        dao.insert(event("2", "Artist_One", 30_000L, startedAt = 2_000L, title = "Normal Track"))
+        dao.insert(event("3", "Artist Two", 30_000L, startedAt = 1_000L, title = "Other Track"))
+
+        val percentResults = dao.insightsHistoryPage(
+            fromMs = 0L,
+            toMs = Long.MAX_VALUE,
+            query = "%",
+            beforeStartedAt = Long.MAX_VALUE,
+            beforeId = Long.MAX_VALUE,
+            limit = 10,
+            minimumEventMs = ListenPlayPolicy.MIN_EVENT_MS
+        )
+        assertEquals(1, percentResults.size)
+        assertEquals("1", percentResults.single().trackId)
+
+        val underscoreResults = dao.insightsHistoryPage(
+            fromMs = 0L,
+            toMs = Long.MAX_VALUE,
+            query = "_",
+            beforeStartedAt = Long.MAX_VALUE,
+            beforeId = Long.MAX_VALUE,
+            limit = 10,
+            minimumEventMs = ListenPlayPolicy.MIN_EVENT_MS
+        )
+        assertEquals(1, underscoreResults.size)
+        assertEquals("2", underscoreResults.single().trackId)
+    }
+
     private suspend fun historyPage(beforeStartedAt: Long, beforeId: Long, limit: Int) =
         dao.insightsHistoryPage(
             fromMs = 0L,
@@ -106,10 +137,11 @@ class ListeningInsightsDaoTest {
         listenedMs: Long,
         durationMs: Long = 180_000L,
         completed: Boolean = false,
-        startedAt: Long
+        startedAt: Long,
+        title: String = "Track $trackId"
     ) = ListenEventEntity(
         trackId = trackId,
-        title = "Track $trackId",
+        title = title,
         artist = artist,
         album = "Album",
         durationMs = durationMs,

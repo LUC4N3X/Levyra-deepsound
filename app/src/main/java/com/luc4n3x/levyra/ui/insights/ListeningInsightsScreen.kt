@@ -424,15 +424,6 @@ private fun InsightsPeriodSelector(
     accent: Color,
     onSelect: (ListeningInsightsPeriod) -> Unit
 ) {
-    val labels = remember(strings.code) {
-        listOf(
-            strings.insightsPeriod24h,
-            strings.insightsPeriod7d,
-            strings.insightsPeriod30d,
-            strings.insightsPeriod6m,
-            strings.insightsPeriodAll
-        )
-    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -444,8 +435,9 @@ private fun InsightsPeriodSelector(
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        InsightsPeriods.forEachIndexed { index, period ->
+        InsightsPeriods.forEach { period ->
             val active = period == selected
+            val label = periodLongLabel(period, strings)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -460,7 +452,7 @@ private fun InsightsPeriodSelector(
                         onClick = { onSelect(period) },
                         pressedScale = LevyraPressScale.Control,
                         role = Role.Tab,
-                        onClickLabel = labels[index]
+                        onClickLabel = label
                     )
                     .semantics {
                         this.selected = active
@@ -468,7 +460,7 @@ private fun InsightsPeriodSelector(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    labels[index],
+                    label,
                     color = if (active) accent else LevyraMuted,
                     fontSize = 11.5.sp,
                     fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
@@ -959,7 +951,6 @@ private fun ArtistAvatar(
             )
         } else {
             val palette = remember(artist.name) {
-                val hash = kotlin.math.abs(artist.name.hashCode())
                 val gradientPairs = listOf(
                     listOf(LevyraViolet, LevyraCyan),
                     listOf(LevyraPink, LevyraViolet),
@@ -968,7 +959,7 @@ private fun ArtistAvatar(
                     listOf(Color(0xFF0070F3), Color(0xFF00DFD8)),
                     listOf(Color(0xFFFF416C), Color(0xFFFF4B2B))
                 )
-                gradientPairs[hash % gradientPairs.size]
+                gradientPairs[Math.floorMod(artist.name.hashCode(), gradientPairs.size)]
             }
             val initials = remember(artist.name) { artistInitials(artist.name) }
             Box(
