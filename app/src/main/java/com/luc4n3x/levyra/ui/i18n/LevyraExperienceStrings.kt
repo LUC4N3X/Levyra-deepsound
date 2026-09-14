@@ -59,6 +59,6 @@ private val experienceBundles: Map<String, Map<String, String>> = mapOf(
     "he" to experience("Levyra Mix", "יצירת מיקס", "הפעלת רדיו", "מוכר", "גילוי", "הפתיעו אותי", "שמירת הבחירה הזו", "לא ניתן ליצור מיקס כרגע.", "הצליל שלכם", "איך אתם באמת מאזינים", "7 ימים", "30 ימים", "6 חודשים", "כל הזמנים", "מוזיקה חדשה", "קצב ההאזנה", "האזינו לכמה רצועות והצליל שלכם יופיע כאן.", "לגלות עוד")
 )
 
-internal fun experienceLocalizationEntries(code: String): Map<String, String> = experienceBundles.getValue(code)
+internal fun experienceLocalizationEntries(code: String): Map<String, String> = (experienceBundles[code] ?: experienceBundles.getValue("en"))
 
-internal fun experienceLocalizationCodes(): Set<String> = experienceBundles.keys
+internal fun experienceLocalizationCodes(): Set<String> = supportedLocalizationCodes()
