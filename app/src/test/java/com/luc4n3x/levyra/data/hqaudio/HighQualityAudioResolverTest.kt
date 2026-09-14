@@ -104,12 +104,51 @@ class HighQualityAudioResolverTest {
     }
 
     @Test
-    fun providerLookupFailureInvalidatesMappingAndFallsBack() {
+    fun providerLookupFailureKeepsMappingAndFallsBack() {
         resolver(exactProvider()).resolveNow()
+        val stored = storage.values.toMap()
         val provider = exactProvider().apply { lookupOutcome = { ProviderLookupOutcome.Failed(ProviderFailure.TIMEOUT) } }
         val result = resolver(provider).resolveNow()
         assertEquals(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, (result as HighQualityResolution.Fallback).reason)
+        assertEquals(stored, storage.values.toMap())
+        assertTrue(provider.searches.isEmpty())
+        assertTrue(provider.streamRequests.isEmpty())
+        val recovered = exactProvider()
+        assertTrue(resolver(recovered).resolveNow() is HighQualityResolution.Selected)
+        assertTrue(recovered.searches.isEmpty())
+    }
+
+    @Test
+    fun missingProviderTrackInvalidatesMapping() {
+        resolver(exactProvider()).resolveNow()
+        val provider = FakeHighQualityProvider(
+            searchOutcome = { ProviderSearchOutcome.Failed(ProviderFailure.NETWORK) },
+            lookupOutcome = { ProviderLookupOutcome.Missing }
+        )
+        resolver(provider).resolveNow()
         assertTrue(storage.values.isEmpty())
+    }
+
+    @Test
+    fun retainedMappingStillExpiresWithItsOriginalTtl() {
+        var nowMs = 1_800_000_000_000L
+        fun timedResolver(provider: FakeHighQualityProvider) = HighQualityAudioResolver(
+            provider = provider,
+            mappingStore = HighQualityMappingStore(storage, clock = { nowMs }),
+            scope = scope,
+            clock = { nowMs },
+            lookupBudgetMs = 5_000L
+        ).apply { mode = HighQualityAudioMode.AUTOMATIC }
+        timedResolver(exactProvider()).resolveNow()
+        val failing = exactProvider().apply { lookupOutcome = { ProviderLookupOutcome.Failed(ProviderFailure.TIMEOUT) } }
+        nowMs += 24L * 60L * 60L * 1_000L
+        timedResolver(failing).resolveNow()
+        assertEquals(1, storage.values.size)
+        nowMs += HighQualityMappingStore.DEFAULT_TTL_MS
+        val expired = exactProvider().apply { lookupOutcome = { ProviderLookupOutcome.Failed(ProviderFailure.TIMEOUT) } }
+        assertTrue(timedResolver(expired).resolveNow() is HighQualityResolution.Selected)
+        assertTrue(expired.lookups.isEmpty())
+        assertTrue(expired.searches.isNotEmpty())
     }
 
     @Test
