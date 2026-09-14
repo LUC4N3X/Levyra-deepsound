@@ -736,4 +736,4 @@ internal val listeningInsightsKeys: Set<String> = listeningInsightsBundles.getVa
 internal fun listeningInsightsLocalizationEntries(code: String): Map<String, String> =
     listeningInsightsBundles[code] ?: listeningInsightsBundles.getValue("en")
 
-internal fun listeningInsightsLocalizationCodes(): Set<String> = listeningInsightsBundles.keys
+internal fun listeningInsightsLocalizationCodes(): Set<String> = supportedLocalizationCodes()
