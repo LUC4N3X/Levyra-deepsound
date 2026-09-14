@@ -7,9 +7,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.ParcelFileDescriptor
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import androidx.media3.datasource.cache.CacheSpan
+import com.luc4n3x.levyra.data.DownloadFolderAccess
 import com.luc4n3x.levyra.data.LyricsMatcher
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
@@ -1251,7 +1253,112 @@ class OfflineAudioExporter(
     }
 
     private suspend fun saveToMusicCollection(input: File, track: Track, container: AudioContainer): SavedAudioDestination {
+        val customTree = settings.destinationTreeUri
+        if (customTree.isNotBlank() && DownloadFolderAccess.canWrite(context, customTree)) {
+            return saveToDocumentTree(input, track, container, customTree)
+        }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) saveScoped(input, track, container) else saveLegacy(input, track, container)
+    }
+
+    private suspend fun saveToDocumentTree(
+        input: File,
+        track: Track,
+        container: AudioContainer,
+        rawTreeUri: String
+    ): SavedAudioDestination {
+        val treeUri = DownloadFolderAccess.parseTreeUri(rawTreeUri)
+            ?: throw IOException("Cartella download personalizzata non valida")
+        var directoryUri = DownloadFolderAccess.documentUri(treeUri)
+            ?: throw IOException("Cartella download personalizzata non disponibile")
+        relativeFolderSegments(track).forEach { segment ->
+            directoryUri = findOrCreateTreeDirectory(treeUri, directoryUri, segment)
+        }
+        val displayName = uniqueTreeDocumentName(
+            treeUri = treeUri,
+            parentUri = directoryUri,
+            requestedName = buildFileName(track, container.extension)
+        )
+        val fileUri = DocumentsContract.createDocument(
+            context.contentResolver,
+            directoryUri,
+            container.mimeType,
+            displayName
+        ) ?: throw IOException("Impossibile creare il file nella cartella selezionata")
+        try {
+            copyIntoContentUri(fileUri, input)
+            currentCoroutineContext().ensureActive()
+        } catch (error: Throwable) {
+            runCatching { DocumentsContract.deleteDocument(context.contentResolver, fileUri) }
+            throw error
+        }
+        val rootLabel = DownloadFolderAccess.displayName(context, rawTreeUri)
+            ?: Uri.decode(treeUri.lastPathSegment.orEmpty()).substringAfterLast(':').ifBlank { "Levyra" }
+        val destinationLabel = listOf(rootLabel, relativeFolderSuffix(track))
+            .filter(String::isNotBlank)
+            .joinToString("/")
+        return SavedAudioDestination(fileUri, destinationLabel)
+    }
+
+    private fun findOrCreateTreeDirectory(treeUri: Uri, parentUri: Uri, name: String): Uri {
+        val existing = findTreeChild(treeUri, parentUri, name, DocumentsContract.Document.MIME_TYPE_DIR)
+        if (existing != null) return existing
+        return DocumentsContract.createDocument(
+            context.contentResolver,
+            parentUri,
+            DocumentsContract.Document.MIME_TYPE_DIR,
+            name
+        ) ?: throw IOException("Impossibile creare la sottocartella $name")
+    }
+
+    private fun findTreeChild(treeUri: Uri, parentUri: Uri, name: String, mimeType: String? = null): Uri? {
+        val parentId = runCatching { DocumentsContract.getDocumentId(parentUri) }.getOrNull() ?: return null
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId)
+        val projection = arrayOf(
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE
+        )
+        return context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val displayName = cursor.getString(1).orEmpty()
+                val childMimeType = cursor.getString(2).orEmpty()
+                if (displayName == name && (mimeType == null || childMimeType == mimeType)) {
+                    return@use DocumentsContract.buildDocumentUriUsingTree(treeUri, cursor.getString(0))
+                }
+            }
+            null
+        }
+    }
+
+    private fun uniqueTreeDocumentName(treeUri: Uri, parentUri: Uri, requestedName: String): String {
+        val existingNames = treeChildNames(treeUri, parentUri)
+        if (requestedName !in existingNames) return requestedName
+        val base = requestedName.substringBeforeLast('.', requestedName)
+        val extension = requestedName.substringAfterLast('.', "")
+        var index = 2
+        while (true) {
+            val candidate = if (extension.isBlank()) "$base ($index)" else "$base ($index).$extension"
+            if (candidate !in existingNames) return candidate
+            index++
+        }
+    }
+
+    private fun treeChildNames(treeUri: Uri, parentUri: Uri): Set<String> {
+        val parentId = runCatching { DocumentsContract.getDocumentId(parentUri) }.getOrNull() ?: return emptySet()
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId)
+        return context.contentResolver.query(
+            childrenUri,
+            arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            buildSet {
+                while (cursor.moveToNext()) {
+                    cursor.getString(0)?.takeIf(String::isNotBlank)?.let(::add)
+                }
+            }
+        }.orEmpty()
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -1280,7 +1387,7 @@ class OfflineAudioExporter(
         val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val uri = resolver.insert(collection, values) ?: throw IOException("MediaStore non ha creato il file")
         try {
-            copyIntoMediaStore(uri, input)
+            copyIntoContentUri(uri, input)
             currentCoroutineContext().ensureActive()
             values.clear()
             values.put(MediaStore.MediaColumns.IS_PENDING, 0)
@@ -1292,10 +1399,10 @@ class OfflineAudioExporter(
         }
     }
 
-    private suspend fun copyIntoMediaStore(uri: Uri, input: File) {
+    private suspend fun copyIntoContentUri(uri: Uri, input: File) {
         val coroutineContext = currentCoroutineContext()
         val channelCopySucceeded = try {
-            val descriptor = context.contentResolver.openFileDescriptor(uri, "w") ?: return copyIntoMediaStoreWithStreams(uri, input, coroutineContext)
+            val descriptor = context.contentResolver.openFileDescriptor(uri, "w") ?: return copyIntoContentUriWithStreams(uri, input, coroutineContext)
             ParcelFileDescriptor.AutoCloseOutputStream(descriptor).use { output ->
                 FileInputStream(input).use { sourceStream ->
                     val source = sourceStream.channel
@@ -1305,23 +1412,23 @@ class OfflineAudioExporter(
                     while (position < length) {
                         coroutineContext.ensureActive()
                         val transferred = source.transferTo(position, minOf(FILE_CHANNEL_CHUNK_BYTES, length - position), target)
-                        if (transferred <= 0L) throw IOException("Copia MediaStore interrotta")
+                        if (transferred <= 0L) throw IOException("Copia del file interrotta")
                         position += transferred
                     }
-                    if (position != length) throw IOException("Copia MediaStore incompleta")
+                    if (position != length) throw IOException("Copia del file incompleta")
                 }
             }
             true
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            Timber.w(error, "Fast MediaStore copy failed")
+            Timber.w(error, "Fast content copy failed")
             false
         }
-        if (!channelCopySucceeded) copyIntoMediaStoreWithStreams(uri, input, coroutineContext)
+        if (!channelCopySucceeded) copyIntoContentUriWithStreams(uri, input, coroutineContext)
     }
 
-    private fun copyIntoMediaStoreWithStreams(uri: Uri, input: File, coroutineContext: CoroutineContext) {
+    private fun copyIntoContentUriWithStreams(uri: Uri, input: File, coroutineContext: CoroutineContext) {
         context.contentResolver.openOutputStream(uri, "w")?.use { output ->
             input.inputStream().use { source ->
                 val buffer = ByteArray(COPY_BUFFER_BYTES)
@@ -1472,6 +1579,9 @@ class OfflineAudioExporter(
         val suffix = relativeFolderSuffix(track)
         return listOf("Levyra", suffix).filter { it.isNotBlank() }.joinToString(File.separator)
     }
+
+    private fun relativeFolderSegments(track: Track): List<String> =
+        relativeFolderSuffix(track).split('/').filter(String::isNotBlank)
 
     private fun relativeFolderSuffix(track: Track): String {
         val artist = sanitize(track.artist).ifBlank { "Unknown Artist" }
