@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Mini player, mabilis na paborito, daily Flow, offline, at mga liriko</string>
+    <string name="widget_description">Mini player, mabilisang paborito, Daily Flow, offline mix, at mga liriko</string>
     <string name="widget_idle_subtitle">I-tap para makinig</string>
     <string name="widget_toggle">I-play/I-pause</string>
     <string name="widget_next">Susunod</string>
-    <string name="widget_previous">Nakaraan</string>
+    <string name="widget_previous">Nakaraang kanta</string>
     <string name="widget_favorites">Mga paborito</string>
     <string name="widget_flow">Daily Flow</string>
     <string name="widget_offline">Offline mix</string>
     <string name="widget_lyrics">Mga liriko</string>
     <string name="radar_channel_name">Release Radar</string>
-    <string name="radar_channel_description">Mga bagong release mula sa mga artist na fina-follow mo</string>
+    <string name="radar_channel_description">Mga bagong release mula sa mga artist na sinusundan mo</string>
     <string name="radar_new_release_title">Bagong release mula kay %1$s</string>
+    <string name="automatic_backups">Awtomatikong backup</string>
+    <string name="car_home">Home</string>
+    <string name="car_downloads">Mga download</string>
+    <string name="car_favorites">Mga paborito</string>
+    <string name="car_playlists">Mga playlist</string>
+    <string name="car_no_content">Walang content</string>
+    <string name="car_content_unavailable">Hindi available ang content</string>
+    <string name="car_search_tracks">Maghanap ng mga kanta</string>
+    <string name="car_no_results">Walang resulta</string>
+    <string name="car_connecting_player">Kumokonekta sa player</string>
+    <string name="car_now_playing">Tumutugtog ngayon</string>
+    <string name="car_queue">Queue</string>
+    <string name="notification_shuffle">Shuffle</string>
+    <string name="notification_favorite">Paborito</string>
     <string name="tile_recognize_music">Kilalanin ang musika</string>
     <string name="shortcut_search">Maghanap</string>
     <string name="shortcut_library">Library</string>
