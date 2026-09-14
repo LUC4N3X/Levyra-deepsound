@@ -837,7 +837,8 @@ private fun ActivityLabels(period: ListeningInsightsPeriod, points: List<Listeni
         positions.forEach { index ->
             val label = if (period == ListeningInsightsPeriod.Day) {
                 val hour = Instant.ofEpochMilli(points[index].epochMs).atZone(ZoneId.systemDefault()).hour
-                LocalTime.of(hour, 0)\n                    .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
+                LocalTime.of(hour, 0)
+                    .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
             } else {
                 val date = Instant.ofEpochMilli(points[index].epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
                 date.format(DateTimeFormatter.ofPattern(if (period == ListeningInsightsPeriod.AllTime) "MMM yy" else "d MMM", locale))
