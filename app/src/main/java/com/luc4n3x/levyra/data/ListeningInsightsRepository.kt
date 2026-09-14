@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.ListeningInsightsAggregateRow
 import com.luc4n3x.levyra.domain.ListenPlayPolicy
@@ -38,40 +39,42 @@ class ListeningInsightsRepository(context: Context) {
         nowMs: Long = System.currentTimeMillis(),
         zone: ZoneId = ZoneId.systemDefault()
     ): ListeningInsightsSnapshot = withContext(Dispatchers.IO) {
-        val range = ListeningInsightsRanges.current(period, nowMs, zone)
-        val isAllTime = period == ListeningInsightsPeriod.AllTime
-
-        val aggregate = resolveWindowAggregate(isAllTime, range)
-        val previousMs = resolvePreviousMs(isAllTime, range)
-        val days = resolveDailyActivityDays(period, range, zone)
-        val activityPoints = resolveActivityPoints(period, range, days, zone)
-        val hourBuckets = resolveHourBuckets(range)
-        val topTracks = resolveTopTracks(isAllTime, range)
-        val topArtists = resolveTopArtists(isAllTime, range)
-        val metrics = resolveMetrics(
-            period = period,
-            range = range,
-            nowMs = nowMs,
-            aggregate = aggregate,
-            previousMs = previousMs,
-            hourBuckets = hourBuckets,
-            activityPoints = activityPoints,
-            days = days
-        )
-
-        ListeningInsightsSnapshot(
-            period = period,
-            metrics = metrics,
-            activity = activityPoints,
-            hourBuckets = hourBuckets,
-            topTracks = topTracks,
-            topArtists = topArtists,
-            detailedFromMs = if (isAllTime) {
-                days.firstOrNull()?.epochMs ?: range.fromMs
-            } else {
-                range.fromMs
-            }
-        )
+        database.withTransaction {
+            val range = ListeningInsightsRanges.current(period, nowMs, zone)
+            val isAllTime = period == ListeningInsightsPeriod.AllTime
+    
+            val aggregate = resolveWindowAggregate(isAllTime, range)
+            val previousMs = resolvePreviousMs(isAllTime, range)
+            val days = resolveDailyActivityDays(period, range, zone)
+            val activityPoints = resolveActivityPoints(period, range, days, zone)
+            val hourBuckets = resolveHourBuckets(range)
+            val topTracks = resolveTopTracks(isAllTime, range)
+            val topArtists = resolveTopArtists(isAllTime, range)
+            val metrics = resolveMetrics(
+                period = period,
+                range = range,
+                nowMs = nowMs,
+                aggregate = aggregate,
+                previousMs = previousMs,
+                hourBuckets = hourBuckets,
+                activityPoints = activityPoints,
+                days = days
+            )
+    
+            ListeningInsightsSnapshot(
+                period = period,
+                metrics = metrics,
+                activity = activityPoints,
+                hourBuckets = hourBuckets,
+                topTracks = topTracks,
+                topArtists = topArtists,
+                detailedFromMs = if (isAllTime) {
+                    days.firstOrNull()?.epochMs ?: range.fromMs
+                } else {
+                    range.fromMs
+                }
+            )
+        }
     }
 
     private suspend fun resolveWindowAggregate(
