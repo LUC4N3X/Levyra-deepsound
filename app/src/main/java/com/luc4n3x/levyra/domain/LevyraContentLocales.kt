@@ -93,7 +93,7 @@ object LevyraContentLocales {
             "fi" -> listOf("KUUMAA", "Käärijä", "BEHM", "Portion Boys", "BESS", "Gettomasa", "JVG", "Ellinoora", "Vesala", "Averagekidluke")
             "nb" -> listOf("Karpe", "Astrid S", "Kygo", "Ramon", "Sigrid", "Gabrielle", "Arif", "Ballinciaga", "Dagny", "Undergrunn")
             "ca" -> listOf("The Tyets", "Mushkaa", "Oques Grasses", "Julieta", "Figa Flawas", "Ginestà", "Buhos", "Els Catarres", "31 FAM", "Stay Homas")
-            "hr" -> listOf("Grše", "Hiljson Mandela", "Miach", "Baby Lasagna", "Vojko V", "Matija Cvek", "Miach", "Silente", "Toma", "Pocket Palma")
+            "hr" -> listOf("Grše", "Hiljson Mandela", "Miach", "Baby Lasagna", "Vojko V", "Matija Cvek", "Vatra", "Silente", "Toma", "Pocket Palma")
             "sk" -> listOf("Separ", "Kali", "SIMA", "Ego", "Pil C", "Samey", "Majk Spirit", "Richard Müller", "Dara Rolins", "Para")
             "ms" -> listOf("Siti Nurhaliza", "Aina Abdul", "Hael Husaini", "Naim Daniel", "Yuna", "Insomniacks", "Dolla", "Masdo", "Noh Salleh", "Ernie Zakri")
             "fa" -> listOf("محسن یگانه", "شادمهر عقیلی", "گوگوش", "همایون شجریان", "محسن چاوشی", "ابی", "داریوش", "رضا بهرام", "علیرضا قربانی", "سیروان خسروی")
