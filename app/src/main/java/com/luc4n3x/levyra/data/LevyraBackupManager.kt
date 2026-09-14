@@ -66,6 +66,14 @@ import timber.log.Timber
 
 internal val LevyraVaultOperationMutex: Mutex = Mutex()
 
+internal fun restorableDownloadDestinationTreeUri(
+    value: String,
+    canWrite: (String) -> Boolean
+): String {
+    val normalized = value.trim()
+    return normalized.takeIf { it.isNotBlank() && canWrite(it) }.orEmpty()
+}
+
 class LevyraBackupManager(private val context: Context) {
     private val appContext = context.applicationContext
     private val database = LevyraDatabase.get(appContext)
@@ -585,7 +593,14 @@ class LevyraBackupManager(private val context: Context) {
     }
 
     private suspend fun applySnapshot(payload: VaultSnapshot, downloads: List<DownloadEntity>) {
-        preferences.restoreSnapshot(payload.settings)
+        val restoredSettings = payload.settings.copy(
+            downloadSettings = payload.settings.downloadSettings.copy(
+                destinationTreeUri = restorableDownloadDestinationTreeUri(
+                    payload.settings.downloadSettings.destinationTreeUri
+                ) { rawUri -> DownloadFolderAccess.canWrite(appContext, rawUri) }
+            )
+        )
+        preferences.restoreSnapshot(restoredSettings)
         followedArtistsStore.saveDurable(payload.followedArtists)
         excludedArtistsStore.replaceAll(payload.excludedArtists)
         val now = System.currentTimeMillis()
@@ -602,7 +617,7 @@ class LevyraBackupManager(private val context: Context) {
             invalidateFavoriteTimestampSnapshots()
         }
         playlistCoverStore.prune(restoredCoverReferences)
-        AutomaticBackupScheduler.schedule(appContext, payload.settings.backupSettings)
+        AutomaticBackupScheduler.schedule(appContext, restoredSettings.backupSettings)
     }
 
     private fun scanLevyraDownloads(): List<DownloadEntity> {
@@ -1030,6 +1045,7 @@ class LevyraBackupManager(private val context: Context) {
         .put("chargingOnly", value.chargingOnly)
         .put("resumable", value.resumable)
         .put("maxConcurrentDownloads", value.maxConcurrentDownloads)
+        .put("destinationTreeUri", value.destinationTreeUri)
 
     private fun parseDownloadSettings(json: JSONObject?): LevyraDownloadSettings {
         if (json == null) return LevyraDownloadSettings()
@@ -1037,7 +1053,8 @@ class LevyraBackupManager(private val context: Context) {
             wifiOnly = json.optBoolean("wifiOnly"),
             chargingOnly = json.optBoolean("chargingOnly"),
             resumable = json.optBoolean("resumable", true),
-            maxConcurrentDownloads = json.optInt("maxConcurrentDownloads", 2)
+            maxConcurrentDownloads = json.optInt("maxConcurrentDownloads", 2),
+            destinationTreeUri = json.optString("destinationTreeUri")
         ).normalized()
     }
 
