@@ -25,6 +25,7 @@ import com.luc4n3x.levyra.data.local.PlaylistTagLinkEntity
 import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.PLAYLIST_TAG_MAX_PER_PLAYLIST
 import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.PlaylistCoverMode
@@ -960,7 +961,7 @@ class LevyraBackupManager(private val context: Context) {
             dynamicColor = json.optBoolean("dynamicColor", true),
             sponsorBlock = json.optBoolean("sponsorBlock", true),
             skipSilence = json.optBoolean("skipSilence", false),
-            audioQuality = json.optString("audioQuality", "Auto"),
+            audioQuality = backupAudioQualityFromJson(json),
             highQualityAudioMode = HighQualityAudioMode.fromStorage(
                 json.optString("highQualityAudioMode", HighQualityAudioMode.PREFER_320.storageValue)
             ),
@@ -1469,6 +1470,9 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("pitch", value.pitch.toDouble())
     .put("gaplessEnabled", value.gaplessEnabled)
     .put("customPresets", JSONArray().apply { value.customPresets.forEach { put(customPresetToJson(it)) } })
+
+internal fun backupAudioQualityFromJson(settings: JSONObject): String =
+    LevyraAudioQuality.normalize(settings.optString("audioQuality"))
 
 internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings {
     if (json == null) return LevyraAudioSettings()

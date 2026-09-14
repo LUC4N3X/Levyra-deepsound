@@ -162,7 +162,7 @@ class HighQualityAudioResolver(
                 null
             }
             is ProviderLookupOutcome.Failed -> {
-                mappingStore.remove(identityKey)
+                HighQualityAudioDiagnostics.mappingRetained(provider.id, mapping.providerTrackId, outcome.failure.name)
                 HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
             }
         }
