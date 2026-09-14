@@ -64,6 +64,6 @@ private val offlineHomeBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun offlineHomeLocalizationEntries(code: String): Map<String, String> =
-    offlineHomeBundles.getValue(code)
+    (offlineHomeBundles[code] ?: offlineHomeBundles.getValue("en"))
 
-internal fun offlineHomeLocalizationCodes(): Set<String> = offlineHomeBundles.keys
+internal fun offlineHomeLocalizationCodes(): Set<String> = supportedLocalizationCodes()
