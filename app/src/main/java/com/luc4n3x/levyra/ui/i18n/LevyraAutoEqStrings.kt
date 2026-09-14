@@ -311,6 +311,318 @@ private val autoEqBundles: Map<String, Map<String, String>> = mapOf(
     )
 )
 
-internal fun autoEqLocalizationEntries(code: String): Map<String, String> = autoEqBundles.getValue(code)
+private fun autoEqCatalogStrings(
+    title: String,
+    hint: String,
+    search: String,
+    loading: String,
+    empty: String,
+    unavailable: String,
+    profileFailed: String,
+    retry: String,
+    attribution: String
+): Map<String, String> = mapOf(
+    "autoEqCatalog" to title,
+    "autoEqCatalogHint" to hint,
+    "autoEqCatalogSearch" to search,
+    "autoEqCatalogLoading" to loading,
+    "autoEqCatalogEmpty" to empty,
+    "autoEqCatalogUnavailable" to unavailable,
+    "autoEqCatalogProfileFailed" to profileFailed,
+    "autoEqCatalogRetry" to retry,
+    "autoEqCatalogAttribution" to attribution
+)
+
+private val autoEqCatalogBundles: Map<String, Map<String, String>> = mapOf(
+    "en" to autoEqCatalogStrings(
+        "Headphone catalog",
+        "Find your headphones and load their AutoEQ correction",
+        "Search brand or model",
+        "Loading catalog…",
+        "No matching headphones",
+        "Catalog unavailable. Check your connection.",
+        "Profile download failed",
+        "Retry",
+        "Measurements from the AutoEq project (MIT)"
+    ),
+    "it" to autoEqCatalogStrings(
+        "Catalogo cuffie",
+        "Trova le tue cuffie e carica la loro correzione AutoEQ",
+        "Cerca marca o modello",
+        "Caricamento catalogo…",
+        "Nessuna cuffia trovata",
+        "Catalogo non disponibile. Controlla la connessione.",
+        "Download del profilo non riuscito",
+        "Riprova",
+        "Misure dal progetto AutoEq (MIT)"
+    ),
+    "es" to autoEqCatalogStrings(
+        "Catálogo de auriculares",
+        "Busca tus auriculares y carga su corrección AutoEQ",
+        "Buscar marca o modelo",
+        "Cargando catálogo…",
+        "No se encontraron auriculares",
+        "Catálogo no disponible. Comprueba tu conexión.",
+        "No se pudo descargar el perfil",
+        "Reintentar",
+        "Mediciones del proyecto AutoEq (MIT)"
+    ),
+    "fr" to autoEqCatalogStrings(
+        "Catalogue de casques",
+        "Trouvez votre casque et chargez sa correction AutoEQ",
+        "Rechercher une marque ou un modèle",
+        "Chargement du catalogue…",
+        "Aucun casque correspondant",
+        "Catalogue indisponible. Vérifiez votre connexion.",
+        "Échec du téléchargement du profil",
+        "Réessayer",
+        "Mesures issues du projet AutoEq (MIT)"
+    ),
+    "de" to autoEqCatalogStrings(
+        "Kopfhörerkatalog",
+        "Finde deine Kopfhörer und lade ihre AutoEQ-Korrektur",
+        "Marke oder Modell suchen",
+        "Katalog wird geladen…",
+        "Keine passenden Kopfhörer",
+        "Katalog nicht verfügbar. Prüfe deine Verbindung.",
+        "Profil konnte nicht geladen werden",
+        "Erneut versuchen",
+        "Messungen aus dem AutoEq-Projekt (MIT)"
+    ),
+    "pt" to autoEqCatalogStrings(
+        "Catálogo de fones",
+        "Encontre seus fones e carregue a correção AutoEQ deles",
+        "Pesquisar marca ou modelo",
+        "Carregando catálogo…",
+        "Nenhum fone encontrado",
+        "Catálogo indisponível. Verifique sua conexão.",
+        "Falha ao baixar o perfil",
+        "Tentar novamente",
+        "Medições do projeto AutoEq (MIT)"
+    ),
+    "nl" to autoEqCatalogStrings(
+        "Koptelefooncatalogus",
+        "Zoek je koptelefoon en laad de AutoEQ-correctie",
+        "Zoek merk of model",
+        "Catalogus laden…",
+        "Geen koptelefoons gevonden",
+        "Catalogus niet beschikbaar. Controleer je verbinding.",
+        "Profiel downloaden mislukt",
+        "Opnieuw proberen",
+        "Metingen van het AutoEq-project (MIT)"
+    ),
+    "pl" to autoEqCatalogStrings(
+        "Katalog słuchawek",
+        "Znajdź swoje słuchawki i wczytaj ich korekcję AutoEQ",
+        "Szukaj marki lub modelu",
+        "Wczytywanie katalogu…",
+        "Nie znaleziono słuchawek",
+        "Katalog niedostępny. Sprawdź połączenie.",
+        "Nie udało się pobrać profilu",
+        "Spróbuj ponownie",
+        "Pomiary z projektu AutoEq (MIT)"
+    ),
+    "ro" to autoEqCatalogStrings(
+        "Catalog de căști",
+        "Găsește-ți căștile și încarcă corecția lor AutoEQ",
+        "Caută marcă sau model",
+        "Se încarcă catalogul…",
+        "Nu s-au găsit căști",
+        "Catalog indisponibil. Verifică conexiunea.",
+        "Descărcarea profilului a eșuat",
+        "Reîncearcă",
+        "Măsurători din proiectul AutoEq (MIT)"
+    ),
+    "el" to autoEqCatalogStrings(
+        "Κατάλογος ακουστικών",
+        "Βρείτε τα ακουστικά σας και φορτώστε τη διόρθωση AutoEQ",
+        "Αναζήτηση μάρκας ή μοντέλου",
+        "Φόρτωση καταλόγου…",
+        "Δεν βρέθηκαν ακουστικά",
+        "Ο κατάλογος δεν είναι διαθέσιμος. Ελέγξτε τη σύνδεσή σας.",
+        "Η λήψη του προφίλ απέτυχε",
+        "Επανάληψη",
+        "Μετρήσεις από το έργο AutoEq (MIT)"
+    ),
+    "sv" to autoEqCatalogStrings(
+        "Hörlurskatalog",
+        "Hitta dina hörlurar och läs in deras AutoEQ-korrigering",
+        "Sök märke eller modell",
+        "Läser in katalog…",
+        "Inga matchande hörlurar",
+        "Katalogen är inte tillgänglig. Kontrollera anslutningen.",
+        "Det gick inte att hämta profilen",
+        "Försök igen",
+        "Mätningar från AutoEq-projektet (MIT)"
+    ),
+    "da" to autoEqCatalogStrings(
+        "Hovedtelefonkatalog",
+        "Find dine hovedtelefoner og indlæs deres AutoEQ-korrektion",
+        "Søg efter mærke eller model",
+        "Indlæser katalog…",
+        "Ingen matchende hovedtelefoner",
+        "Kataloget er ikke tilgængeligt. Tjek din forbindelse.",
+        "Download af profil mislykkedes",
+        "Prøv igen",
+        "Målinger fra AutoEq-projektet (MIT)"
+    ),
+    "cs" to autoEqCatalogStrings(
+        "Katalog sluchátek",
+        "Najděte svá sluchátka a načtěte jejich korekci AutoEQ",
+        "Hledat značku nebo model",
+        "Načítání katalogu…",
+        "Žádná odpovídající sluchátka",
+        "Katalog není dostupný. Zkontrolujte připojení.",
+        "Stažení profilu se nezdařilo",
+        "Zkusit znovu",
+        "Měření z projektu AutoEq (MIT)"
+    ),
+    "uk" to autoEqCatalogStrings(
+        "Каталог навушників",
+        "Знайдіть свої навушники та завантажте їхню корекцію AutoEQ",
+        "Пошук бренду або моделі",
+        "Завантаження каталогу…",
+        "Навушників не знайдено",
+        "Каталог недоступний. Перевірте з’єднання.",
+        "Не вдалося завантажити профіль",
+        "Повторити",
+        "Вимірювання з проєкту AutoEq (MIT)"
+    ),
+    "ru" to autoEqCatalogStrings(
+        "Каталог наушников",
+        "Найдите свои наушники и загрузите их коррекцию AutoEQ",
+        "Поиск бренда или модели",
+        "Загрузка каталога…",
+        "Наушники не найдены",
+        "Каталог недоступен. Проверьте подключение.",
+        "Не удалось загрузить профиль",
+        "Повторить",
+        "Измерения из проекта AutoEq (MIT)"
+    ),
+    "tr" to autoEqCatalogStrings(
+        "Kulaklık kataloğu",
+        "Kulaklığınızı bulun ve AutoEQ düzeltmesini yükleyin",
+        "Marka veya model ara",
+        "Katalog yükleniyor…",
+        "Eşleşen kulaklık yok",
+        "Katalog kullanılamıyor. Bağlantınızı kontrol edin.",
+        "Profil indirilemedi",
+        "Yeniden dene",
+        "AutoEq projesinden ölçümler (MIT)"
+    ),
+    "ar" to autoEqCatalogStrings(
+        "كتالوج سماعات الرأس",
+        "اعثر على سماعاتك وحمّل تصحيح AutoEQ الخاص بها",
+        "ابحث عن علامة تجارية أو طراز",
+        "جارٍ تحميل الكتالوج…",
+        "لا توجد سماعات مطابقة",
+        "الكتالوج غير متاح. تحقق من اتصالك.",
+        "تعذّر تنزيل الملف الشخصي",
+        "إعادة المحاولة",
+        "قياسات من مشروع AutoEq (MIT)"
+    ),
+    "zh" to autoEqCatalogStrings(
+        "耳机目录",
+        "找到你的耳机并加载其 AutoEQ 校正",
+        "搜索品牌或型号",
+        "正在加载目录…",
+        "没有匹配的耳机",
+        "目录不可用。请检查网络连接。",
+        "配置文件下载失败",
+        "重试",
+        "测量数据来自 AutoEq 项目（MIT）"
+    ),
+    "ja" to autoEqCatalogStrings(
+        "ヘッドホンカタログ",
+        "お使いのヘッドホンを探して AutoEQ 補正を読み込みます",
+        "ブランドまたはモデルを検索",
+        "カタログを読み込み中…",
+        "一致するヘッドホンがありません",
+        "カタログを利用できません。接続を確認してください。",
+        "プロファイルをダウンロードできませんでした",
+        "再試行",
+        "AutoEq プロジェクトの測定データ（MIT）"
+    ),
+    "ko" to autoEqCatalogStrings(
+        "헤드폰 카탈로그",
+        "헤드폰을 찾아 AutoEQ 보정을 불러오세요",
+        "브랜드 또는 모델 검색",
+        "카탈로그 불러오는 중…",
+        "일치하는 헤드폰이 없습니다",
+        "카탈로그를 사용할 수 없습니다. 연결을 확인하세요.",
+        "프로필 다운로드 실패",
+        "다시 시도",
+        "AutoEq 프로젝트 측정 데이터(MIT)"
+    ),
+    "hi" to autoEqCatalogStrings(
+        "हेडफ़ोन कैटलॉग",
+        "अपने हेडफ़ोन खोजें और उनका AutoEQ सुधार लोड करें",
+        "ब्रांड या मॉडल खोजें",
+        "कैटलॉग लोड हो रहा है…",
+        "कोई मेल खाता हेडफ़ोन नहीं मिला",
+        "कैटलॉग उपलब्ध नहीं है। अपना कनेक्शन जाँचें।",
+        "प्रोफ़ाइल डाउनलोड विफल",
+        "फिर से कोशिश करें",
+        "AutoEq प्रोजेक्ट के माप (MIT)"
+    ),
+    "id" to autoEqCatalogStrings(
+        "Katalog headphone",
+        "Temukan headphone Anda dan muat koreksi AutoEQ-nya",
+        "Cari merek atau model",
+        "Memuat katalog…",
+        "Tidak ada headphone yang cocok",
+        "Katalog tidak tersedia. Periksa koneksi Anda.",
+        "Gagal mengunduh profil",
+        "Coba lagi",
+        "Pengukuran dari proyek AutoEq (MIT)"
+    ),
+    "vi" to autoEqCatalogStrings(
+        "Danh mục tai nghe",
+        "Tìm tai nghe của bạn và tải hiệu chỉnh AutoEQ",
+        "Tìm thương hiệu hoặc mẫu",
+        "Đang tải danh mục…",
+        "Không tìm thấy tai nghe phù hợp",
+        "Danh mục không khả dụng. Hãy kiểm tra kết nối.",
+        "Tải hồ sơ thất bại",
+        "Thử lại",
+        "Số đo từ dự án AutoEq (MIT)"
+    ),
+    "th" to autoEqCatalogStrings(
+        "แคตตาล็อกหูฟัง",
+        "ค้นหาหูฟังของคุณและโหลดการแก้ไข AutoEQ",
+        "ค้นหาแบรนด์หรือรุ่น",
+        "กำลังโหลดแคตตาล็อก…",
+        "ไม่พบหูฟังที่ตรงกัน",
+        "แคตตาล็อกไม่พร้อมใช้งาน โปรดตรวจสอบการเชื่อมต่อ",
+        "ดาวน์โหลดโปรไฟล์ไม่สำเร็จ",
+        "ลองอีกครั้ง",
+        "ค่าการวัดจากโครงการ AutoEq (MIT)"
+    ),
+    "fil" to autoEqCatalogStrings(
+        "Katalogo ng headphone",
+        "Hanapin ang iyong headphone at i-load ang AutoEQ correction nito",
+        "Maghanap ng brand o model",
+        "Nilo-load ang katalogo…",
+        "Walang tugmang headphone",
+        "Hindi available ang katalogo. Tingnan ang iyong koneksyon.",
+        "Nabigo ang pag-download ng profile",
+        "Subukan muli",
+        "Mga sukat mula sa proyektong AutoEq (MIT)"
+    ),
+    "he" to autoEqCatalogStrings(
+        "קטלוג אוזניות",
+        "מצאו את האוזניות שלכם וטענו את תיקון ה-AutoEQ שלהן",
+        "חיפוש מותג או דגם",
+        "טוען קטלוג…",
+        "לא נמצאו אוזניות תואמות",
+        "הקטלוג אינו זמין. בדקו את החיבור.",
+        "הורדת הפרופיל נכשלה",
+        "ניסיון חוזר",
+        "מדידות מפרויקט AutoEq (MIT)"
+    )
+)
+
+internal fun autoEqLocalizationEntries(code: String): Map<String, String> =
+    autoEqBundles.getValue(code) + autoEqCatalogBundles.getValue(code)
 
 internal fun autoEqLocalizationCodes(): Set<String> = autoEqBundles.keys

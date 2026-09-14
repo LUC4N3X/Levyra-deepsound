@@ -291,6 +291,15 @@ class LevyraStrings private constructor(
     val autoEqInvalidProfile: String get() = value("autoEqInvalidProfile")
     val autoEqInputTooLarge: String get() = value("autoEqInputTooLarge")
     val autoEqAdjustedNotice: String get() = value("autoEqAdjustedNotice")
+    val autoEqCatalog: String get() = value("autoEqCatalog")
+    val autoEqCatalogHint: String get() = value("autoEqCatalogHint")
+    val autoEqCatalogSearch: String get() = value("autoEqCatalogSearch")
+    val autoEqCatalogLoading: String get() = value("autoEqCatalogLoading")
+    val autoEqCatalogEmpty: String get() = value("autoEqCatalogEmpty")
+    val autoEqCatalogUnavailable: String get() = value("autoEqCatalogUnavailable")
+    val autoEqCatalogProfileFailed: String get() = value("autoEqCatalogProfileFailed")
+    val autoEqCatalogRetry: String get() = value("autoEqCatalogRetry")
+    val autoEqCatalogAttribution: String get() = value("autoEqCatalogAttribution")
     val audioEngine: String get() = value("audioEngine")
     val audioEngineSubtitle: String get() = value("audioEngineSubtitle")
     val equalizer: String get() = value("equalizer")
@@ -1440,7 +1449,16 @@ class LevyraStrings private constructor(
             "autoEqPresetName",
             "autoEqInvalidProfile",
             "autoEqInputTooLarge",
-            "autoEqAdjustedNotice"
+            "autoEqAdjustedNotice",
+            "autoEqCatalog",
+            "autoEqCatalogHint",
+            "autoEqCatalogSearch",
+            "autoEqCatalogLoading",
+            "autoEqCatalogEmpty",
+            "autoEqCatalogUnavailable",
+            "autoEqCatalogProfileFailed",
+            "autoEqCatalogRetry",
+            "autoEqCatalogAttribution"
         )
         private val insightKeys = setOf(
             "artworkPreview",
