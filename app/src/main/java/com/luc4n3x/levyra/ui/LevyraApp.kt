@@ -390,6 +390,7 @@ import coil3.request.allowHardware
 import coil3.request.bitmapConfig
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.ArtworkPalette
+import com.luc4n3x.levyra.data.DownloadFolderAccess
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.ArtworkRequestSource
 import com.luc4n3x.levyra.data.areAllFavoriteTracks
@@ -1754,6 +1755,21 @@ fun LevyraApp(
     val backupLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let(viewModel::setBackupLocation)
     }
+    val downloadLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            if (DownloadFolderAccess.persist(toastContext, uri)) {
+                viewModel.setDownloadSettings(
+                    viewModel.state.value.downloadSettings.copy(destinationTreeUri = uri.toString())
+                )
+            } else {
+                Toast.makeText(
+                    toastContext,
+                    currentStrings.downloadLocationPermissionFailed,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
     val accent = if (state.dynamicColor) state.currentTrack ?: state.tracks.firstOrNull() else null
     val overlayEnter = if (state.animationsEnabled) fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) else EnterTransition.None
     val overlayExit = if (state.animationsEnabled) fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing)) else ExitTransition.None
@@ -2288,6 +2304,12 @@ fun LevyraApp(
                     },
                     onIncludeArtist = viewModel::includeArtist,
                     onDownloadSettings = viewModel::setDownloadSettings,
+                    onSelectDownloadLocation = { downloadLocationLauncher.launch(null) },
+                    onClearDownloadLocation = {
+                        viewModel.setDownloadSettings(
+                            viewModel.state.value.downloadSettings.copy(destinationTreeUri = "")
+                        )
+                    },
                     onBackupSettings = viewModel::setBackupSettings,
                     onAutomationSettings = viewModel::setAutomationSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
@@ -16679,6 +16701,8 @@ private fun SettingsOverlay(
     onOpenAmbient: () -> Unit,
     onIncludeArtist: (ExcludedArtist) -> Unit,
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
+    onSelectDownloadLocation: () -> Unit,
+    onClearDownloadLocation: () -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
     onAutomationSettings: (LevyraAutomationSettings) -> Unit,
     onAnimations: (Boolean) -> Unit,
@@ -16722,6 +16746,9 @@ private fun SettingsOverlay(
         batteryContext.getSystemService(PowerManager::class.java)
         ?.isIgnoringBatteryOptimizations(batteryContext.packageName) == true
     }
+    val selectedDownloadFolderName = remember(downloadSettings.destinationTreeUri, batteryCheckToken) {
+        DownloadFolderAccess.displayName(batteryContext, downloadSettings.destinationTreeUri)
+    }
     DisposableEffect(batteryLifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) batteryCheckToken++
@@ -16761,6 +16788,7 @@ private fun SettingsOverlay(
                 SettingsSearchEntry(strings.advancedGestures, strings.advancedGesturesSubtitle, strings.player, "player", categoryTitle(strings.player)),
                 SettingsSearchEntry(strings.sponsorBlock, strings.sponsorBlockSubtitle, "segments", "player", categoryTitle(strings.player)),
                 SettingsSearchEntry(strings.skipSilence, strings.skipSilenceSubtitle, "silence", "player", categoryTitle(strings.player)),
+                SettingsSearchEntry(strings.downloadLocation, strings.downloadLocationSubtitle, "folder sd card storage", "downloads", categoryTitle(strings.downloads)),
                 SettingsSearchEntry(strings.wifiOnly, strings.wifiOnlySubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
                 SettingsSearchEntry(strings.simultaneousDownloads, strings.simultaneousDownloadsSubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
                 SettingsSearchEntry(strings.lyricsAnalysisSection, strings.lyricsAnalysisCompactSubtitle, strings.lyrics, "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
@@ -17380,6 +17408,28 @@ private fun SettingsOverlay(
                                     selected = downloadSettings.preset.name,
                                     onSelect = { value -> onDownloadSettings(downloadSettings.copy(preset = LevyraDownloadPreset.valueOf(value))) }
                                 )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Source,
+                                    title = strings.downloadLocation,
+                                    subtitle = when {
+                                        downloadSettings.destinationTreeUri.isBlank() -> strings.downloadLocationDefault
+                                        selectedDownloadFolderName != null -> selectedDownloadFolderName
+                                        else -> strings.downloadLocationUnavailable
+                                    },
+                                    onClick = onSelectDownloadLocation
+                                )
+                            }
+                            if (downloadSettings.destinationTreeUri.isNotBlank()) {
+                                item {
+                                    SettingsButton(
+                                        icon = Icons.Rounded.History,
+                                        title = strings.downloadLocationReset,
+                                        subtitle = strings.downloadLocationResetSubtitle,
+                                        onClick = onClearDownloadLocation
+                                    )
+                                }
                             }
                             item {
                                 SettingsChoiceRow(
