@@ -116,7 +116,15 @@ object ChartsCatalog {
         ChartRegion("vn", "Việt Nam", "🇻🇳", "vn"),
         ChartRegion("th", "ประเทศไทย", "🇹🇭", "th"),
         ChartRegion("ph", "Pilipinas", "🇵🇭", "ph"),
-        ChartRegion("il", "ישראל", "🇮🇱", "il")
+        ChartRegion("il", "ישראל", "🇮🇱", "il"),
+        ChartRegion("tw", "台灣", "🇹🇼", "tw"),
+        ChartRegion("hu", "Magyarország", "🇭🇺", "hu"),
+        ChartRegion("bg", "България", "🇧🇬", "bg"),
+        ChartRegion("fi", "Suomi", "🇫🇮", "fi"),
+        ChartRegion("no", "Norge", "🇳🇴", "no"),
+        ChartRegion("hr", "Hrvatska", "🇭🇷", "hr"),
+        ChartRegion("sk", "Slovensko", "🇸🇰", "sk"),
+        ChartRegion("my", "Malaysia", "🇲🇾", "my")
     )
 
     fun region(id: String): ChartRegion = regions.firstOrNull { it.id == id } ?: regions.first()
