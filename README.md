@@ -54,7 +54,7 @@ Levyra is built around a simple promise: the music you save, the way you listen,
 
 ### 💿 01 · Keep the music
 
-Downloads are standard, high-bitrate M4A files saved directly to <code>Music/Levyra</code>, with artwork, artist, album, and lyrics embedded inside the file.
+Downloads are standard, high-bitrate M4A files saved to <code>Music/Levyra</code> by default, or to a folder you choose in Settings, including supported SD card locations. Artwork, artist, album, and lyrics can stay embedded inside the file.
 
 **No proprietary vault required.** Your music remains usable in the car, on a DAP, through a hi-fi system, or in any compatible media player.
 
@@ -243,7 +243,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <p><b>Your library stays yours.</b><br><sub>Portable audio files and versioned local backups without a Levyra account.</sub></p>
       <ul>
         <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics embedded directly in the file.</li>
-        <li><b>Local-First Playback:</b> Existing offline files play instantly from <code>Music/Levyra</code>.</li>
+        <li><b>Local-First Playback:</b> Existing offline files play instantly from <code>Music/Levyra</code> or your configured download folder.</li>
         <li><b>Levyra Vault:</b> Versioned <code>.levyra</code> backups protect settings, favorites, playlists, followed artists, history, and queue without an online account.</li>
         <li><b>Verified Restore:</b> Manifest validation, SHA-256 checksums, compatibility preview, required-section checks, and rollback protection before local data is replaced.</li>
         <li><b>Automatic Protection:</b> Manual, scheduled, and pre-update backups with 3/5/10 retention and optional Android SAF destinations; internal storage remains the safe fallback.</li>

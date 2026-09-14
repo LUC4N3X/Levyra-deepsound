@@ -8,6 +8,15 @@ import org.junit.Test
 
 class BackupDownloadedTracksTest {
     @Test
+    fun restoredDownloadDestinationRequiresCurrentWriteAccess() {
+        val uri = "content://com.android.externalstorage.documents/tree/1234-5678%3AMusic"
+
+        assertEquals(uri, restorableDownloadDestinationTreeUri(uri) { it == uri })
+        assertEquals("", restorableDownloadDestinationTreeUri(uri) { false })
+        assertEquals("", restorableDownloadDestinationTreeUri("   ") { true })
+    }
+
+    @Test
     fun downloadMetadataRoundTripPreservesOfflineIdentity() {
         val download = download(
             trackId = "track-1",
