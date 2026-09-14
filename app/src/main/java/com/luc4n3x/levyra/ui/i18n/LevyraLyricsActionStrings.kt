@@ -45,6 +45,6 @@ private val lyricsActionBundles: Map<String, Map<String, String>> = mapOf(
     "he" to lyricsActions("שינוי מילות השיר", "אוטומטי", "בחירת שורות", "העתקה", "שיתוף", "גרסאות של מילות השיר")
 )
 
-internal fun lyricsActionLocalizationEntries(code: String): Map<String, String> = lyricsActionBundles.getValue(code)
+internal fun lyricsActionLocalizationEntries(code: String): Map<String, String> = (lyricsActionBundles[code] ?: lyricsActionBundles.getValue("en"))
 
-internal fun lyricsActionLocalizationCodes(): Set<String> = lyricsActionBundles.keys
+internal fun lyricsActionLocalizationCodes(): Set<String> = supportedLocalizationCodes()

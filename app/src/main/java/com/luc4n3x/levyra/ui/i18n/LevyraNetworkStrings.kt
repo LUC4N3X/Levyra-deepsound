@@ -809,4 +809,4 @@ private val networkBundles: Map<String, Map<String, String>> = mapOf(
     )
 )
 
-internal fun networkLocalizationEntries(code: String): Map<String, String> = networkBundles.getValue(code)
+internal fun networkLocalizationEntries(code: String): Map<String, String> = (networkBundles[code] ?: networkBundles.getValue("en"))
