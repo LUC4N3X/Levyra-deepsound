@@ -148,6 +148,7 @@ data class LevyraDownloadSettings(
     val maxConcurrentDownloads: Int = 2,
     val preset: LevyraDownloadPreset = LevyraDownloadPreset.Automatic,
     val folderMode: LevyraDownloadFolderMode = LevyraDownloadFolderMode.ArtistAlbum,
+    val destinationTreeUri: String = "",
     val maxRateKbps: Int = 0,
     val embedMetadata: Boolean = true,
     val embedArtwork: Boolean = true,
@@ -156,6 +157,7 @@ data class LevyraDownloadSettings(
 ) {
     fun normalized(): LevyraDownloadSettings = copy(
         maxConcurrentDownloads = maxConcurrentDownloads.coerceIn(1, 4),
+        destinationTreeUri = destinationTreeUri.trim(),
         maxRateKbps = maxRateKbps.takeIf { it in setOf(0, 512, 1024, 2048, 4096, 8192) } ?: 0
     )
 
