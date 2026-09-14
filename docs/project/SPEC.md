@@ -65,6 +65,9 @@ with its own playback, packaging, versioning, and release lifecycle.
   they do not require an account, telemetry, or a second persistent catalog.
 - Live Radio favorites and a bounded recent-station list are stored locally
   without an account or a Room schema change.
+- Listening Insights is an on-device projection of the existing listening
+  event and lifetime stores. It uses `ListenPlayPolicy` for counted plays,
+  remains useful without an account, and does not introduce parallel tracking.
 - Automatic backups are opt-in, atomic, checksum-protected, bounded by an
   explicit retention count, and exclude downloaded audio files.
 
@@ -81,6 +84,11 @@ with its own playback, packaging, versioning, and release lifecycle.
 - Cached usable content remains visible while secondary refresh work runs.
 - Live Radio discovery follows Levyra's selected language, while country and
   radio-language controls continue to allow worldwide manual exploration.
+- Listening Insights presents 24-hour, 7-day, 30-day, 6-month, and all-time
+  listening periods with aggregate metrics, activity, rhythm, discovery, top
+  music, and paginated searchable history. It must remain responsive with a
+  large local event store and keep existing Library, Pulse, Recap, and playback
+  behavior intact.
 
 ### Offline and network behavior
 

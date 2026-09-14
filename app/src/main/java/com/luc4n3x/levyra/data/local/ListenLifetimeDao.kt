@@ -160,6 +160,11 @@ interface ListenLifetimeDao {
     suspend fun artistCount(): Int
 
     @Query(
+        "SELECT COUNT(*) FROM listen_lifetime_tracks WHERE firstPlayedAt >= :fromMs AND firstPlayedAt < :toMs"
+    )
+    suspend fun discoveredTrackCount(fromMs: Long, toMs: Long): Int
+
+    @Query(
         "SELECT trackKey, lastPlayedAt FROM listen_lifetime_tracks " +
             "WHERE trackKey IN (:trackKeys) AND lastPlayedAt > 0"
     )

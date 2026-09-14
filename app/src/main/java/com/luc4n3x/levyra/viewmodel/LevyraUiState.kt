@@ -268,6 +268,7 @@ data class LevyraUiState(
     val listeningDnaPeriod: ListeningDnaPeriod = ListeningDnaPeriod.Month,
     val listeningDna: ListeningDna = ListeningDna(),
     val listeningDnaLoading: Boolean = false,
+    val showListeningInsights: Boolean = false,
     val showListeningRecap: Boolean = false,
     val listeningRecapPeriod: ListeningRecapPeriod = ListeningRecapPeriod.Days30,
     val listeningRecap: ListeningRecapSummary = ListeningRecapSummary(period = ListeningRecapPeriod.Days30),
