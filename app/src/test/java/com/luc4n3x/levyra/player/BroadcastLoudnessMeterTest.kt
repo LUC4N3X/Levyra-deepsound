@@ -58,6 +58,30 @@ class BroadcastLoudnessMeterTest {
     }
 
     @Test
+    fun surroundLayoutsExcludeLfeAndWeightSurroundChannels() {
+        listOf(6, 8).forEach { channels ->
+            assertEquals(1.0, BroadcastLoudnessMeter.channelWeight(channels, 0), 0.0)
+            assertEquals(1.0, BroadcastLoudnessMeter.channelWeight(channels, 2), 0.0)
+            assertEquals(0.0, BroadcastLoudnessMeter.channelWeight(channels, 3), 0.0)
+            assertEquals(1.41, BroadcastLoudnessMeter.channelWeight(channels, channels - 1), 0.0)
+        }
+        assertEquals(1.0, BroadcastLoudnessMeter.channelWeight(2, 1), 0.0)
+    }
+
+    @Test
+    fun lfeOnlyContentIsNotMeasuredOnSevenPointOne() {
+        val meter = BroadcastLoudnessMeter().apply { configure(48_000, 8) }
+        var phase = 0.0
+        repeat(48_000 * 3) {
+            val sample = 0.5 * sin(phase)
+            phase += 2.0 * PI * 60.0 / 48_000
+            for (channel in 0 until 8) meter.push(if (channel == 3) sample else 0.0, channel)
+        }
+
+        assertEquals(0, meter.measuredBlocks)
+    }
+
+    @Test
     fun digitalSilenceIsRemovedByAbsoluteGate() {
         val meter = BroadcastLoudnessMeter().apply { configure(48_000, 2) }
 

@@ -129,6 +129,7 @@ internal class BroadcastLoudnessMeter {
         private val HISTOGRAM_BINS = ((HISTOGRAM_CEILING_LUFS - HISTOGRAM_FLOOR_LUFS) * BINS_PER_LU).toInt()
         private val ABSOLUTE_GATE_ENERGY = 10.0.pow((ABSOLUTE_GATE_LUFS - LOUDNESS_OFFSET_LU) / 10.0)
         private const val SURROUND_WEIGHT = 1.41
+        private const val LFE_CHANNEL = 3
         private const val SHELF_FREQUENCY_HZ = 1681.974450955533
         private const val SHELF_GAIN_DB = 3.999843853973347
         private const val SHELF_Q = 0.7071752369554196
@@ -162,10 +163,10 @@ internal class BroadcastLoudnessMeter {
             return arrayOf(shelf, highPass)
         }
 
-        private fun channelWeight(channelCount: Int, channel: Int): Double = when {
-            channelCount != 6 -> 1.0
-            channel == 3 -> 0.0
-            channel >= 4 -> SURROUND_WEIGHT
+        internal fun channelWeight(channelCount: Int, channel: Int): Double = when {
+            channelCount != 6 && channelCount != 8 -> 1.0
+            channel == LFE_CHANNEL -> 0.0
+            channel > LFE_CHANNEL -> SURROUND_WEIGHT
             else -> 1.0
         }
 
