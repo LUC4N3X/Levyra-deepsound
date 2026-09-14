@@ -11,7 +11,13 @@ import com.luc4n3x.levyra.domain.ListeningInsightsPeriod
 import com.luc4n3x.levyra.domain.ListeningInsightsRanges
 import com.luc4n3x.levyra.domain.ListeningInsightsSnapshot
 import com.luc4n3x.levyra.domain.ListeningInsightsTrack
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
@@ -205,13 +211,7 @@ class ListeningInsightsRepository(context: Context) {
             }
         }
 
-        val topArtists = baseArtists.map { artist ->
-            val portrait = if (artist.name.isNotBlank()) {
-                val spotify = spotifyArtwork.resolveArtistPortrait(artist.name)
-                if (spotify.isNotBlank()) spotify else appleArtwork.resolveArtistPortrait(artist.name)
-            } else ""
-            artist.copy(artworkUrl = portrait)
-        }
+        val topArtists = baseArtists
 
         val listenedMs = lifetime?.listenedMs ?: aggregate?.listenedMs ?: 0L
         val eventCount = lifetime?.eventCount ?: aggregate?.eventCount?.toInt() ?: 0
@@ -315,6 +315,38 @@ class ListeningInsightsRepository(context: Context) {
                 listenedMs = event.listenedMs,
                 completed = event.completed
             )
+        }
+    }
+
+    suspend fun resolveArtistPortraits(
+        artists: List<ListeningInsightsArtist>
+    ): List<ListeningInsightsArtist> = withContext(Dispatchers.IO) {
+        if (artists.isEmpty()) return@withContext emptyList()
+        val semaphore = Semaphore(4)
+        coroutineScope {
+            artists.map { artist ->
+                async {
+                    if (artist.name.isBlank() || artist.artworkUrl.isNotBlank()) {
+                        artist
+                    } else {
+                        val portrait = try {
+                            semaphore.withPermit {
+                                val spotify = spotifyArtwork.resolveArtistPortrait(artist.name)
+                                if (spotify.isNotBlank()) spotify else appleArtwork.resolveArtistPortrait(artist.name)
+                            }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            ""
+                        }
+                        if (portrait.isNotBlank()) {
+                            artist.copy(artworkUrl = portrait)
+                        } else {
+                            artist
+                        }
+                    }
+                }
+            }.awaitAll()
         }
     }
 

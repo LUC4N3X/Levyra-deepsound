@@ -497,7 +497,7 @@ private fun InsightsHero(
                         border = BorderStroke(1.dp, accent.copy(alpha = 0.28f))
                     ) {
                         Text(
-                            text = "LIFETIME",
+                            text = strings.insightsLifetime,
                             color = accent,
                             fontSize = 8.5.sp,
                             fontWeight = FontWeight.Black,
@@ -653,7 +653,7 @@ private fun InsightsActivityChart(
                     border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.25f))
                 ) {
                     Text(
-                        text = "DETAILED TIMELINE",
+                        text = strings.insightsDetailedTimeline,
                         color = LevyraViolet,
                         fontSize = 8.5.sp,
                         fontWeight = FontWeight.Black,
@@ -687,16 +687,37 @@ private fun InsightsActivityChart(
             if (points.isEmpty()) return@Canvas
             if (isDay) {
                 val slot = size.width / points.size
-                val barWidth = slot * 0.52f
+                val barWidth = (slot * 0.48f).coerceAtLeast(3f)
                 points.forEachIndexed { index, point ->
-                    val fraction = point.listenedMs.toFloat() / maxValue.toFloat()
-                    val height = max(barWidth, size.height * fraction) * reveal
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(listOf(accent, LevyraViolet.copy(alpha = 0.45f))),
-                        topLeft = Offset(index * slot + (slot - barWidth) / 2f, size.height - height),
-                        size = Size(barWidth, height),
-                        cornerRadius = CornerRadius(barWidth / 2f)
-                    )
+                    val fraction = (point.listenedMs.toFloat() / maxValue.toFloat()).coerceIn(0f, 1f)
+                    val hasActivity = fraction > 0f
+                    val minHeight = 3.dp.toPx()
+                    val barHeight = if (hasActivity) {
+                        max(barWidth * 1.1f, size.height * fraction) * reveal
+                    } else {
+                        minHeight * reveal
+                    }
+                    val barX = index * slot + (slot - barWidth) / 2f
+                    val barY = size.height - barHeight
+                    if (hasActivity) {
+                        drawRoundRect(
+                            brush = Brush.verticalGradient(
+                                listOf(accent, LevyraViolet.copy(alpha = 0.55f)),
+                                startY = barY,
+                                endY = size.height
+                            ),
+                            topLeft = Offset(barX, barY),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = CornerRadius(barWidth / 2f)
+                        )
+                    } else {
+                        drawRoundRect(
+                            color = LevyraViolet.copy(alpha = 0.16f),
+                            topLeft = Offset(barX, barY),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = CornerRadius(barWidth / 2f)
+                        )
+                    }
                 }
             } else {
                 val step = if (points.size <= 1) size.width else size.width / (points.size - 1)
@@ -732,7 +753,7 @@ private fun ActivityLabels(period: ListeningInsightsPeriod, points: List<Listeni
         positions.forEach { index ->
             val label = if (period == ListeningInsightsPeriod.Day) {
                 val hour = Instant.ofEpochMilli(points[index].epochMs).atZone(ZoneId.systemDefault()).hour
-                hour.toString().padStart(2, '0')
+                "${hour.toString().padStart(2, '0')}:00"
             } else {
                 val date = Instant.ofEpochMilli(points[index].epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
                 date.format(DateTimeFormatter.ofPattern(if (period == ListeningInsightsPeriod.AllTime) "MMM yy" else "d MMM", locale))

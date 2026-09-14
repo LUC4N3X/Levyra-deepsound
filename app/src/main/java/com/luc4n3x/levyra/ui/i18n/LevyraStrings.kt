@@ -416,6 +416,8 @@ class LevyraStrings private constructor(
     val insightsDetailAvailable: String get() = value("insightsDetailAvailable")
     val insightsError: String get() = value("insightsError")
     val insightsEmpty: String get() = value("insightsEmpty")
+    val insightsLifetime: String get() = value("insightsLifetime")
+    val insightsDetailedTimeline: String get() = value("insightsDetailedTimeline")
     val listeningHistory: String get() = value("listeningHistory")
     val listeningHistorySubtitle: String get() = value("listeningHistorySubtitle")
     val listeningPrompt: String get() = value("listeningPrompt")

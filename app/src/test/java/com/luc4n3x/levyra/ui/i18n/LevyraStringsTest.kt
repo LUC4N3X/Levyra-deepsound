@@ -31,6 +31,8 @@ class LevyraStringsTest {
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.listeningInsights.isNotBlank())
             assertTrue(strings.listeningInsightsSubtitle.isNotBlank())
+            assertTrue(strings.insightsLifetime.isNotBlank())
+            assertTrue(strings.insightsDetailedTimeline.isNotBlank())
             assertTrue(strings.listeningRecap.isNotBlank())
             assertTrue(strings.recapSubtitle.isNotBlank())
             assertTrue(strings.recapPeriod7Days.isNotBlank())

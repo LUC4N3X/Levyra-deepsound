@@ -37,6 +37,7 @@ class ListeningInsightsViewModel(application: Application) : AndroidViewModel(ap
     val state: StateFlow<ListeningInsightsUiState> = _state.asStateFlow()
 
     private var snapshotJob: Job? = null
+    private var portraitJob: Job? = null
     private var historyJob: Job? = null
     private var searchJob: Job? = null
 
@@ -44,6 +45,7 @@ class ListeningInsightsViewModel(application: Application) : AndroidViewModel(ap
         if (_state.value.period == period) return
         searchJob?.cancel()
         historyJob?.cancel()
+        portraitJob?.cancel()
         _state.update {
             it.copy(
                 period = period,
@@ -61,6 +63,7 @@ class ListeningInsightsViewModel(application: Application) : AndroidViewModel(ap
     fun refresh() {
         val period = _state.value.period
         snapshotJob?.cancel()
+        portraitJob?.cancel()
         snapshotJob = viewModelScope.launch {
             _state.update { it.copy(loading = true, failed = false) }
             try {
@@ -69,6 +72,7 @@ class ListeningInsightsViewModel(application: Application) : AndroidViewModel(ap
                     if (current.period == period) current.copy(snapshot = snapshot, loading = false) else current
                 }
                 loadFirstHistoryPage(period, _state.value.query)
+                loadArtistPortraits(period, snapshot.topArtists)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -76,6 +80,32 @@ class ListeningInsightsViewModel(application: Application) : AndroidViewModel(ap
                 _state.update { current ->
                     if (current.period == period) current.copy(loading = false, failed = true) else current
                 }
+            }
+        }
+    }
+
+    private fun loadArtistPortraits(period: ListeningInsightsPeriod, artists: List<ListeningInsightsArtist>) {
+        if (artists.isEmpty() || artists.all { it.artworkUrl.isNotBlank() }) return
+        portraitJob?.cancel()
+        portraitJob = viewModelScope.launch {
+            try {
+                val resolved = repository.resolveArtistPortraits(artists)
+                val hasNewArtworks = resolved.zip(artists).any { (newA, oldA) -> newA.artworkUrl != oldA.artworkUrl }
+                if (hasNewArtworks) {
+                    _state.update { current ->
+                        if (current.period == period) {
+                            current.copy(
+                                snapshot = current.snapshot.copy(topArtists = resolved)
+                            )
+                        } else {
+                            current
+                        }
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening insights artist portraits resolution failed")
             }
         }
     }

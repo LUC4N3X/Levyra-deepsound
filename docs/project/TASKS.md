@@ -6,7 +6,7 @@
 
 **Roadmap tracks:** Track 2 - Persistence; Track 3 - Responsive, accessible interface
 
-**Status:** Implemented locally with second quality and visual pass (24H chronological timeline, Coil 3 and artist artwork pipelines, All-time SQL optimization, and complete 26-language localization). CI verification in progress on PR #622.
+**Status:** Implemented and refined with final fix pass (non-blocking snapshot with bounded coroutine portrait loading, fully localized badges across all 26 catalog languages, and 24H activity bar chart polish). CI validation active on PR #622.
 
 **Scope:** Add a premium full-screen Listening Insights experience from Library/Pulse. It projects existing `listen_events` and `listen_lifetime_*` data into period metrics, activity, rhythm, discovery, top music, and a paginated searchable history without creating another tracker or requiring an account.
 
