@@ -24,6 +24,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.R
+import com.luc4n3x.levyra.data.DownloadFolderAccess
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -106,7 +107,7 @@ class OfflineExportWorker(
                         KEY_EMBEDDED_METADATA to existing.embeddedMetadata,
                         KEY_MIME_TYPE to existing.mimeType,
                         KEY_URI to existing.uri,
-                        KEY_DESTINATION_LABEL to "Music/Levyra"
+                        KEY_DESTINATION_LABEL to currentDownloadDestinationLabel(settings.destinationTreeUri)
                     )
                 )
             }
@@ -206,6 +207,12 @@ class OfflineExportWorker(
     }
 
     private fun errorData(message: String): Data = workDataOf(KEY_ERROR to message)
+
+    private fun currentDownloadDestinationLabel(destinationTreeUri: String): String {
+        if (destinationTreeUri.isBlank()) return "Music/Levyra"
+        return DownloadFolderAccess.displayName(applicationContext, destinationTreeUri)
+            ?: "Music/Levyra"
+    }
 
     private fun isStoredDownloadReadable(rawUri: String): Boolean {
         if (rawUri.isBlank()) return false
