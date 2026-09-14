@@ -1478,7 +1478,7 @@ private fun AudioLevelSlider(
                 }
             }
             .pointerInput(range, rtl) {
-                detectTapGestures(onPress = { offset -> onValue(valueAt(offset.x, size.width)) })
+                detectTapGestures(onTap = { offset -> onValue(valueAt(offset.x, size.width)) })
             }
             .pointerInput(range, rtl) {
                 detectHorizontalDragGestures { change, _ ->

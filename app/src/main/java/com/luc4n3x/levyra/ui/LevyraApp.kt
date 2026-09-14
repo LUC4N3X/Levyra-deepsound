@@ -20071,17 +20071,17 @@ private fun TopResultCard(
                     shape = RoundedCornerShape(99.dp),
                     modifier = Modifier
                         .weight(1f)
-                        .height(38.dp)
+                        .heightIn(min = 38.dp)
                         .clickable(onClick = onShuffle)
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Shuffle,
-                            contentDescription = strings.shuffle,
+                            contentDescription = null,
                             tint = shuffleFg,
                             modifier = Modifier.size(18.dp)
                         )
@@ -20090,8 +20090,10 @@ private fun TopResultCard(
                             text = strings.shuffle,
                             color = shuffleFg,
                             fontSize = 14.sp,
+                            lineHeight = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -20106,18 +20108,17 @@ private fun TopResultCard(
                     border = mixBorder,
                     shape = RoundedCornerShape(99.dp),
                     modifier = Modifier
-                        .weight(1f)
-                        .height(38.dp)
+                        .heightIn(min = 38.dp)
                         .clickable(onClick = onMix)
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Radio,
-                            contentDescription = strings.mix,
+                            contentDescription = null,
                             tint = mixFg,
                             modifier = Modifier.size(18.dp)
                         )
@@ -20126,6 +20127,7 @@ private fun TopResultCard(
                             text = strings.mix,
                             color = mixFg,
                             fontSize = 14.sp,
+                            lineHeight = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1
                         )
