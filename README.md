@@ -243,6 +243,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <p><b>Your library stays yours.</b><br><sub>Portable audio files and versioned local backups without a Levyra account.</sub></p>
       <ul>
         <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics embedded directly in the file.</li>
+        <li><b>Configurable Download Storage:</b> Choose where Levyra saves offline music, including supported SD card locations, while keeping Artist / Album organization relative to the selected folder.</li>
         <li><b>Local-First Playback:</b> Existing offline files play instantly from <code>Music/Levyra</code> or your configured download folder.</li>
         <li><b>Levyra Vault:</b> Versioned <code>.levyra</code> backups protect settings, favorites, playlists, followed artists, history, and queue without an online account.</li>
         <li><b>Verified Restore:</b> Manifest validation, SHA-256 checksums, compatibility preview, required-section checks, and rollback protection before local data is replaced.</li>
