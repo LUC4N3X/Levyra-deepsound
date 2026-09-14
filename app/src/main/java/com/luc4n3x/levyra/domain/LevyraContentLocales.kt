@@ -46,6 +46,16 @@ object LevyraContentLocales {
             "th" -> listOf("พีพี กฤษฏ์", "บิวกิ้น", "Tilly Birds", "Three Man Down", "เพลงไทย 2026", "แรปไทย", "เพลงขับรถกลางคืน", "เพลงออกกำลังกาย")
             "fil" -> listOf("Cup of Joe", "BINI", "SB19", "Ben&Ben", "OPM hits 2026", "Pinoy rap", "kantang pang-night drive", "musikang pang-workout")
             "he" -> listOf("עומר אדם", "נועה קירל", "אושר כהן", "עדן חסון", "להיטים ישראליים 2026", "היפ הופ ישראלי", "מוזיקה לנסיעה בלילה", "מוזיקה לאימון")
+            "zh-Hant" -> listOf("周杰倫", "鄧紫棋", "告五人", "蔡依林", "2026 華語熱門歌曲", "華語嘻哈", "夜間駕駛歌單", "健身音樂")
+            "hu" -> listOf("Azahriah", "DESH", "Dzsúdló", "Krúbi", "magyar slágerek 2026", "magyar rap", "éjszakai vezetés", "edzés zene")
+            "bg" -> listOf("DARA", "Криско", "Графа", "Михаела Филева", "български хитове 2026", "български рап", "нощно шофиране", "музика за тренировка")
+            "fi" -> listOf("KUUMAA", "Käärijä", "BEHM", "Portion Boys", "suomalaiset hitit 2026", "suomirap", "yöajo", "treenimusiikki")
+            "nb" -> listOf("Karpe", "Astrid S", "Kygo", "Ramon", "norske hits 2026", "norsk rap", "nattkjøring", "treningsmusikk")
+            "ca" -> listOf("The Tyets", "Mushkaa", "Oques Grasses", "Julieta", "èxits catalans 2026", "rap català", "conducció nocturna", "música d'entrenament")
+            "hr" -> listOf("Grše", "Hiljson Mandela", "Miach", "Baby Lasagna", "hrvatski hitovi 2026", "hrvatski rap", "noćna vožnja", "glazba za trening")
+            "sk" -> listOf("Separ", "Kali", "SIMA", "Ego", "slovenské hity 2026", "slovenský rap", "nočná jazda", "hudba na tréning")
+            "ms" -> listOf("Siti Nurhaliza", "Aina Abdul", "Hael Husaini", "Naim Daniel", "lagu Malaysia 2026", "rap Malaysia", "muzik pemanduan malam", "muzik senaman")
+            "fa" -> listOf("محسن یگانه", "شادمهر عقیلی", "گوگوش", "همایون شجریان", "آهنگ‌های فارسی ۲۰۲۶", "رپ فارسی", "موسیقی رانندگی شب", "موسیقی تمرین")
             else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "top hits", "rap hits", "night drive", "gym bass")
         }
     }
@@ -77,6 +87,16 @@ object LevyraContentLocales {
             "th" -> listOf("พีพี กฤษฏ์", "บิวกิ้น", "Tilly Birds", "Three Man Down", "4EVE", "MILLI", "Jeff Satur", "NONT TANONT", "Ink Waruntorn", "Slot Machine")
             "fil" -> listOf("Cup of Joe", "BINI", "SB19", "Ben&Ben", "Arthur Nery", "Dionela", "TJ Monterde", "December Avenue", "fitterkarma", "Earl Agustin")
             "he" -> listOf("עומר אדם", "נועה קירל", "אושר כהן", "עדן חסון", "נס וסטילה", "טונה", "רביב כנר", "ישי ריבו", "אנה זק", "פאר טסי")
+            "zh-Hant" -> listOf("周杰倫", "鄧紫棋", "告五人", "蔡依林", "陳奕迅", "徐佳瑩", "韋禮安", "田馥甄", "盧廣仲", "ØZI")
+            "hu" -> listOf("Azahriah", "DESH", "Dzsúdló", "Krúbi", "Beton.Hofi", "Pogány Induló", "Manuel", "T. Danny", "Carson Coma", "VALMAR")
+            "bg" -> listOf("DARA", "Криско", "Графа", "Михаела Филева", "Молец", "Любо Киров", "Tino", "FYRE", "V:RGO", "Миро")
+            "fi" -> listOf("KUUMAA", "Käärijä", "BEHM", "Portion Boys", "BESS", "Gettomasa", "JVG", "Ellinoora", "Vesala", "Averagekidluke")
+            "nb" -> listOf("Karpe", "Astrid S", "Kygo", "Ramon", "Sigrid", "Gabrielle", "Arif", "Ballinciaga", "Dagny", "Undergrunn")
+            "ca" -> listOf("The Tyets", "Mushkaa", "Oques Grasses", "Julieta", "Figa Flawas", "Ginestà", "Buhos", "Els Catarres", "31 FAM", "Stay Homas")
+            "hr" -> listOf("Grše", "Hiljson Mandela", "Miach", "Baby Lasagna", "Vojko V", "Matija Cvek", "Miach", "Silente", "Toma", "Pocket Palma")
+            "sk" -> listOf("Separ", "Kali", "SIMA", "Ego", "Pil C", "Samey", "Majk Spirit", "Richard Müller", "Dara Rolins", "Para")
+            "ms" -> listOf("Siti Nurhaliza", "Aina Abdul", "Hael Husaini", "Naim Daniel", "Yuna", "Insomniacks", "Dolla", "Masdo", "Noh Salleh", "Ernie Zakri")
+            "fa" -> listOf("محسن یگانه", "شادمهر عقیلی", "گوگوش", "همایون شجریان", "محسن چاوشی", "ابی", "داریوش", "رضا بهرام", "علیرضا قربانی", "سیروان خسروی")
             else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "SZA", "Travis Scott", "Dua Lipa", "Post Malone", "Ariana Grande", "Kendrick Lamar")
         }
     }
@@ -119,6 +139,16 @@ object LevyraContentLocales {
             "th" -> "สำรวจศิลปิน"
             "fil" -> "Tuklasin ang mga artist"
             "he" -> "גילוי אמנים"
+            "zh-Hant" -> "探索藝人"
+            "hu" -> "Előadók felfedezése"
+            "bg" -> "Открий изпълнители"
+            "fi" -> "Tutustu artisteihin"
+            "nb" -> "Utforsk artister"
+            "ca" -> "Explora artistes"
+            "hr" -> "Istraži izvođače"
+            "sk" -> "Objavuj interpretov"
+            "ms" -> "Terokai artis"
+            "fa" -> "کشف هنرمندان"
             else -> "Explore artists"
         }
     }
@@ -150,6 +180,16 @@ object LevyraContentLocales {
             "th" -> "คำแนะนำ"
             "fil" -> "Mga mungkahi"
             "he" -> "הצעות"
+            "zh-Hant" -> "建議"
+            "hu" -> "Javaslatok"
+            "bg" -> "Предложения"
+            "fi" -> "Ehdotukset"
+            "nb" -> "Forslag"
+            "ca" -> "Suggeriments"
+            "hr" -> "Prijedlozi"
+            "sk" -> "Návrhy"
+            "ms" -> "Cadangan"
+            "fa" -> "پیشنهادها"
             else -> "Suggestions"
         }
     }
@@ -630,6 +670,156 @@ object LevyraContentLocales {
                 pop = "פופ ישראלי 2026",
                 party = "מוזיקה ישראלית למסיבה 2026",
                 sad = "שירים ישראליים עצובים"
+            )
+            "zh-Hant" -> compact(
+                languageCode = "zh-Hant",
+                hl = "zh-TW",
+                gl = "TW",
+                chartRegionId = "tw",
+                chartCountry = "tw",
+                quick = "快速精選",
+                local = "你身邊的華語音樂",
+                energy = "立即能量",
+                localMusic = "2026 華語熱門歌曲",
+                rap = "華語嘻哈 2026",
+                pop = "華語流行音樂 2026",
+                party = "華語派對歌曲 2026",
+                sad = "華語傷感歌曲"
+            )
+            "hu" -> compact(
+                languageCode = "hu",
+                hl = "hu",
+                gl = "HU",
+                chartRegionId = "hu",
+                chartCountry = "hu",
+                quick = "Gyors választások",
+                local = "Magyarország a körödben",
+                energy = "Azonnali energia",
+                localMusic = "magyar slágerek 2026",
+                rap = "magyar rap 2026",
+                pop = "magyar pop 2026",
+                party = "magyar party slágerek 2026",
+                sad = "magyar szomorú dalok"
+            )
+            "bg" -> compact(
+                languageCode = "bg",
+                hl = "bg",
+                gl = "BG",
+                chartRegionId = "bg",
+                chartCountry = "bg",
+                quick = "Бързи избори",
+                local = "България в твоята орбита",
+                energy = "Моментална енергия",
+                localMusic = "български хитове 2026",
+                rap = "български рап 2026",
+                pop = "български поп 2026",
+                party = "български парти хитове 2026",
+                sad = "български тъжни песни"
+            )
+            "fi" -> compact(
+                languageCode = "fi",
+                hl = "fi",
+                gl = "FI",
+                chartRegionId = "fi",
+                chartCountry = "fi",
+                quick = "Pikavalinnat",
+                local = "Suomi sinun kiertoradallasi",
+                energy = "Välitön energia",
+                localMusic = "suomalaiset hitit 2026",
+                rap = "suomirap 2026",
+                pop = "suomipop 2026",
+                party = "suomalaiset bilehitit 2026",
+                sad = "suomalaiset surulliset laulut"
+            )
+            "nb" -> compact(
+                languageCode = "nb",
+                hl = "nb",
+                gl = "NO",
+                chartRegionId = "no",
+                chartCountry = "no",
+                quick = "Hurtigvalg",
+                local = "Norge i din bane",
+                energy = "Umiddelbar energi",
+                localMusic = "norske hits 2026",
+                rap = "norsk rap 2026",
+                pop = "norsk pop 2026",
+                party = "norske partyhits 2026",
+                sad = "norske triste sanger"
+            )
+            "ca" -> compact(
+                languageCode = "ca",
+                hl = "ca",
+                gl = "ES",
+                chartRegionId = "es",
+                chartCountry = "es",
+                quick = "Seleccions ràpides",
+                local = "Catalunya a la teva òrbita",
+                energy = "Energia immediata",
+                localMusic = "èxits catalans 2026",
+                rap = "rap català 2026",
+                pop = "pop català 2026",
+                party = "música de festa catalana 2026",
+                sad = "cançons catalanes tristes"
+            )
+            "hr" -> compact(
+                languageCode = "hr",
+                hl = "hr",
+                gl = "HR",
+                chartRegionId = "hr",
+                chartCountry = "hr",
+                quick = "Brzi odabiri",
+                local = "Hrvatska u tvojoj orbiti",
+                energy = "Trenutačna energija",
+                localMusic = "hrvatski hitovi 2026",
+                rap = "hrvatski rap 2026",
+                pop = "hrvatski pop 2026",
+                party = "hrvatski party hitovi 2026",
+                sad = "hrvatske tužne pjesme"
+            )
+            "sk" -> compact(
+                languageCode = "sk",
+                hl = "sk",
+                gl = "SK",
+                chartRegionId = "sk",
+                chartCountry = "sk",
+                quick = "Rýchle výbery",
+                local = "Slovensko v tvojej orbite",
+                energy = "Okamžitá energia",
+                localMusic = "slovenské hity 2026",
+                rap = "slovenský rap 2026",
+                pop = "slovenský pop 2026",
+                party = "slovenské párty hity 2026",
+                sad = "slovenské smutné piesne"
+            )
+            "ms" -> compact(
+                languageCode = "ms",
+                hl = "ms",
+                gl = "MY",
+                chartRegionId = "my",
+                chartCountry = "my",
+                quick = "Pilihan pantas",
+                local = "Malaysia dalam orbit anda",
+                energy = "Tenaga segera",
+                localMusic = "lagu Malaysia 2026",
+                rap = "rap Malaysia 2026",
+                pop = "pop Malaysia 2026",
+                party = "lagu parti Malaysia 2026",
+                sad = "lagu sedih Malaysia"
+            )
+            "fa" -> compact(
+                languageCode = "fa",
+                hl = "fa",
+                gl = "US",
+                chartRegionId = "us",
+                chartCountry = "us",
+                quick = "انتخاب‌های سریع",
+                local = "موسیقی فارسی در مدار شما",
+                energy = "انرژی فوری",
+                localMusic = "آهنگ‌های فارسی ۲۰۲۶",
+                rap = "رپ فارسی ۲۰۲۶",
+                pop = "پاپ فارسی ۲۰۲۶",
+                party = "آهنگ‌های مهمانی فارسی ۲۰۲۶",
+                sad = "آهنگ‌های غمگین فارسی"
             )
             else -> locale(
                 languageCode = "en",
