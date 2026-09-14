@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minireproductor, favorits ràpids, selecció diària, mix sense connexió i lletres</string>
+    <string name="widget_idle_subtitle">Toca per escoltar</string>
+    <string name="widget_toggle">Reprodueix/Pausa</string>
+    <string name="widget_next">Següent</string>
+    <string name="widget_previous">Anterior</string>
+    <string name="widget_favorites">Preferits</string>
+    <string name="widget_flow">Selecció diària</string>
+    <string name="widget_offline">Mix sense connexió</string>
+    <string name="widget_lyrics">Lletres</string>
+    <string name="radar_channel_name">Radar de llançaments</string>
+    <string name="radar_channel_description">Nous llançaments dels artistes que segueixes</string>
+    <string name="radar_new_release_title">Nou llançament de %1$s</string>
+    <string name="automatic_backups">Còpies de seguretat automàtiques</string>
+    <string name="car_home">Inici</string>
+    <string name="car_downloads">Baixades</string>
+    <string name="car_favorites">Preferits</string>
+    <string name="car_playlists">Llistes de reproducció</string>
+    <string name="car_no_content">Sense contingut</string>
+    <string name="car_content_unavailable">Contingut no disponible</string>
+    <string name="car_search_tracks">Cerca cançons</string>
+    <string name="car_no_results">Cap resultat</string>
+    <string name="car_connecting_player">Connectant amb el reproductor</string>
+    <string name="car_now_playing">S'està reproduint</string>
+    <string name="car_queue">Cua</string>
+    <string name="notification_shuffle">Aleatori</string>
+    <string name="notification_favorite">Preferit</string>
+    <string name="tile_recognize_music">Reconeix música</string>
+    <string name="shortcut_search">Cerca</string>
+    <string name="shortcut_library">Biblioteca</string>
+    <string name="shortcut_recognition">Reconeix música</string>
+</resources>
