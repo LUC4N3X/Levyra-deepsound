@@ -517,7 +517,7 @@ levyraDesktopVersion=1.2.0
 
 ---
 
-## ✦ Translation Pulse
+## ✦ Translations
 
 <div align="center">
 
@@ -527,11 +527,11 @@ levyraDesktopVersion=1.2.0
     <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg">
-    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra Translation Pulse — live language progress from Weblate" width="100%">
+    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra translation progress on Weblate" width="920">
   </picture>
 </a>
 
-<sub>Live from Weblate · <a href="https://hosted.weblate.org/engage/levyra/"><b>Help translate Levyra →</b></a></sub>
+<sub><a href="https://hosted.weblate.org/engage/levyra/"><b>Help translate Levyra on Weblate →</b></a></sub>
 
 </div>
 
