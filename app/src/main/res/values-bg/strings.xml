@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Миниплейър, бързи любими, дневен микс, офлайн микс и текстове</string>
+    <string name="widget_description">Миниплейър, бърз достъп до любими, дневен микс, офлайн микс и текстове</string>
     <string name="widget_idle_subtitle">Докоснете, за да слушате</string>
     <string name="widget_toggle">Възпроизвеждане/Пауза</string>
     <string name="widget_next">Следваща</string>
