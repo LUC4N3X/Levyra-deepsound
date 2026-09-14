@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="168" height="50" viewBox="0 0 168 50" role="img" aria-label="DOWNLOAD FOR Windows">
+<svg xmlns="http://www.w3.org/2000/svg" width="198" height="58" viewBox="0 0 168 50" role="img" aria-label="DOWNLOAD FOR Windows">
   <title>DOWNLOAD FOR Windows</title>
   <rect x=".75" y=".75" width="166.5" height="48.5" rx="10" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
   <rect x=".75" y="13" width="3.5" height="24" rx="1.75" fill="#0078D4"/>
-  <g transform="translate(10 11) scale(0.5185)" fill="#0078D4">
+  <g transform="translate(11 12) scale(0.48)" fill="#0078D4">
     <rect x="0" y="0" width="25" height="25" rx="2.5"/>
     <rect x="29" y="0" width="25" height="25" rx="2.5"/>
     <rect x="0" y="29" width="25" height="25" rx="2.5"/>
