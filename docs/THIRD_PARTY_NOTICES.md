@@ -21,6 +21,7 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 | NewPipeExtractor | https://github.com/TeamNewPipe/NewPipeExtractor | Upstream extractor ecosystem reference | Original copyright and license notices remain with upstream authors |
 | Return YouTube Dislike | https://returnyoutubedislike.com | Read-only estimated dislike metadata | Counts are estimates, not official YouTube statistics; attribution and API rate limits must be preserved |
 | PipePipeExtractor | https://github.com/InfinityLoop1308/PipePipeExtractor | Upstream base for LevyraExtractor | Original copyright and license notices remain with upstream authors |
+| AutoEq | https://github.com/jaakkopasanen/AutoEq | Headphone measurement index and GraphicEQ profiles fetched on demand by the AutoEQ headphone catalog | MIT; profiles are downloaded at runtime and not bundled in the APK |
 
 ## Local YouTube Decoder Attribution
 

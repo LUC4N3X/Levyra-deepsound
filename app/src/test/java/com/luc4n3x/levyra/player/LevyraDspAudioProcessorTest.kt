@@ -6,6 +6,7 @@ import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
+import kotlin.math.pow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -46,6 +47,37 @@ class LevyraDspAudioProcessorTest {
         val average = output.sum() / output.size * 32_768f
 
         assertTrue(abs(average - 8_000f) < 100f)
+    }
+
+    @Test
+    fun negativePreampCountsTowardEqualizerHeadroomInsteadOfDoublingIt() {
+        assertEquals(-6.3f, equalizerInputGainDb(preampDb = -6.3f, programHeadroomDb = 6.3f), 1e-5f)
+        assertEquals(-6f, equalizerInputGainDb(preampDb = -2f, programHeadroomDb = 6f), 1e-5f)
+        assertEquals(-12f, equalizerInputGainDb(preampDb = -12f, programHeadroomDb = 6f), 1e-5f)
+    }
+
+    @Test
+    fun neutralOrPositivePreampKeepsAutomaticHeadroom() {
+        assertEquals(-6f, equalizerInputGainDb(preampDb = 0f, programHeadroomDb = 6f), 1e-5f)
+        assertEquals(-3f, equalizerInputGainDb(preampDb = 3f, programHeadroomDb = 6f), 1e-5f)
+        assertEquals(0f, equalizerInputGainDb(preampDb = 0f, programHeadroomDb = 0f), 1e-5f)
+        assertEquals(-12f, equalizerInputGainDb(preampDb = -40f, programHeadroomDb = 0f), 1e-5f)
+    }
+
+    @Test
+    fun autoEqStylePreampAndBoostDoNotAttenuateTwice() {
+        val processor = LevyraEqualizerAudioProcessor().apply {
+            outputProfile = LevyraEqualizerAudioProcessor.OutputProfile.USB
+            preampDb = -6f
+            enabled = true
+            setBandLevels(listOf(0, 0, 0, 0, 0, 50, 0, 0, 0, 0))
+        }
+        processor.configure(AudioFormat(48_000, 1, C.ENCODING_PCM_16BIT))
+
+        processor.queueInput(pcm16(*IntArray(4_800) { 16_384 }))
+        val settled = readFloat(processor.output).takeLast(256).average()
+
+        assertEquals(0.5 * 10.0.pow(-6.0 / 20.0), settled, 0.01)
     }
 
     @Test

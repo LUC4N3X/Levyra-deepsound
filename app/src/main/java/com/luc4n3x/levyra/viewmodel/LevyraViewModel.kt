@@ -129,6 +129,7 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
@@ -157,6 +158,7 @@ import com.luc4n3x.levyra.domain.recap.TopTrackStat
 import com.luc4n3x.levyra.domain.ListeningInsightsTrack
 import com.luc4n3x.levyra.domain.recap.TopArtistStat
 import com.luc4n3x.levyra.data.recap.ListeningRecapRepository
+import com.luc4n3x.levyra.data.AutoEqCatalogRepository
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
@@ -691,6 +693,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         get() = LevyraRecognitionCenter.get(levyraContext)
     private val recognitionCatalogMatcher by lazy { RecognitionCatalogMatcher(repository) }
     private val networkStore by lazy { LevyraNetworkStore(levyraContext) }
+    private val autoEqCatalogDelegate = lazy {
+        AutoEqCatalogController(viewModelScope, AutoEqCatalogRepository(levyraContext))
+    }
+    private val autoEqCatalogController by autoEqCatalogDelegate
+    val autoEqCatalog: StateFlow<AutoEqCatalogUiState> get() = autoEqCatalogController.state
     private val jamBridge = object : JamPlayerBridge {
         override fun snapshot(): JamPlaybackSnapshot = jamPlaybackSnapshot()
 
@@ -3436,6 +3443,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    fun openAutoEqCatalog() {
+        autoEqCatalogController.open()
+    }
+
+    fun updateAutoEqCatalogQuery(query: String) {
+        autoEqCatalogController.updateQuery(query)
+    }
+
+    fun selectAutoEqCatalogEntry(entry: AutoEqCatalogEntry) {
+        autoEqCatalogController.select(entry)
+    }
+
+    fun dismissAutoEqCatalogProfile() {
+        autoEqCatalogController.dismissSelection()
+    }
+
+    fun closeAutoEqCatalog() {
+        if (autoEqCatalogDelegate.isInitialized()) autoEqCatalogController.close()
+    }
+
     fun saveAutoEqCustomPreset(name: String, profile: AutoEqImporter.ImportedProfile) {
         val cleanName = name.trim()
         if (cleanName.isBlank()) return
@@ -3547,6 +3574,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun closeAudioQualityPanel() {
+        closeAutoEqCatalog()
         _state.update { it.copy(showAudioQualityPanel = false) }
     }
 

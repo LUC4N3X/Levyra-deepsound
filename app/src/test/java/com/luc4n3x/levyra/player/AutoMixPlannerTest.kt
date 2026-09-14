@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -48,6 +49,97 @@ class AutoMixPlannerTest {
     }
 
     @Test
+    fun consecutiveTracksOfSameCatalogReleaseSkipCrossfade() {
+        val current = albumTrack("a", track = 3)
+        val next = albumTrack("b", track = 4)
+
+        assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun discBoundaryOfSameReleaseStaysContinuous() {
+        val current = albumTrack("a", track = 12, disc = 1)
+        val next = albumTrack("b", track = 1, disc = 2)
+
+        assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun sameReleaseOutOfRunningOrderStillCrossfades() {
+        val current = albumTrack("a", track = 3)
+        val next = albumTrack("b", track = 7)
+
+        assertNotNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun leavingAlbumIntoRadioStillCrossfades() {
+        val current = albumTrack("a", track = 10)
+        val next = albumTrack("b", track = 11).copy(albumBrowseId = "MPREb_other")
+
+        assertNotNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun catalogIdentityWithoutTrackNumbersDependsOnShuffle() {
+        val current = albumTrack("a", track = 0)
+        val next = albumTrack("b", track = 0)
+
+        assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false, shuffleEnabled = false))
+        assertNotNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false, shuffleEnabled = true))
+    }
+
+    @Test
+    fun upcIdentifiesReleaseWhenBrowseIdIsMissing() {
+        val current = albumTrack("a", track = 5).copy(albumBrowseId = "", upc = "0602435000000")
+        val next = albumTrack("b", track = 6).copy(albumBrowseId = "", upc = "0602435000000")
+
+        assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun conflictingUpcOverridesMatchingTitles() {
+        val current = track("a").copy(album = "Album", artist = "Artist", upc = "111", trackNumber = 4)
+        val next = track("b").copy(album = "Album", artist = "Artist", upc = "222", trackNumber = 5)
+
+        assertNotNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun albumTitleAloneIsNotTrustedWithoutRunningOrder() {
+        val current = track("a").copy(album = "Greatest Hits", artist = "Band")
+        val next = track("b").copy(album = "Greatest Hits", artist = "Band")
+
+        assertNotNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun albumTitleArtistAndRunningOrderIdentifyReleaseWithoutCatalogId() {
+        val current = track("a").copy(album = "Live at Wembley", artist = "Band", trackNumber = 2)
+        val next = track("b").copy(album = " live at wembley ", artist = "BAND", trackNumber = 3)
+
+        assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun sameTitleByDifferentArtistStillCrossfades() {
+        val current = track("a").copy(album = "Greatest Hits", artist = "Band", trackNumber = 2)
+        val next = track("b").copy(album = "Greatest Hits", artist = "Other Band", trackNumber = 3)
+
+        assertNotNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = false))
+    }
+
+    @Test
+    fun existingGuardsStillWinForSameReleasePairs() {
+        val current = albumTrack("a", track = 3)
+        val next = albumTrack("b", track = 7)
+
+        assertNull(planAutoMix(current, next, crossfade, RepeatMode.One, videoMode = false, lowRam = false))
+        assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = true, lowRam = false))
+        assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = true))
+    }
+
+    @Test
     fun handoffResyncOnlyWhenPlayersDriftPastTolerance() {
         assertFalse(crossfadeHandoffNeedsResync(10_000L, 10_180L, toleranceMs = 250L))
         assertTrue(crossfadeHandoffNeedsResync(10_000L, 10_400L, toleranceMs = 250L))
@@ -75,6 +167,14 @@ class AutoMixPlannerTest {
         assertEquals(50L, crossfadeStepWallClockMs(50L, Float.NaN))
         assertEquals(50L, crossfadeStepWallClockMs(50L, Float.POSITIVE_INFINITY))
     }
+
+    private val crossfade = LevyraAudioSettings(crossfadeSeconds = 6)
+
+    private fun albumTrack(id: String, track: Int, disc: Int = 1) = track(id).copy(
+        albumBrowseId = "MPREb_release",
+        trackNumber = track,
+        discNumber = disc
+    )
 
     private fun track(id: String = "current") = Track(
         id = id,
