@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-13T20:53:35Z",
+  "generatedAt": "2026-09-14T05:01:48Z",
   "items": [
     {
       "song": "PER NOI (feat. Achille Lauro)",
@@ -320,7 +320,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -348,7 +348,7 @@
     {
       "song": "Dreams - 2004 Remaster",
       "artist": "Fleetwood Mac",
-      "album": "Rumours",
+      "album": "Rumours (Super Deluxe)",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
@@ -535,13 +535,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Great Expectation",
       "artist": "SIENNA SPIRO",
       "album": "Visitor",
@@ -581,13 +574,6 @@
       "artist": "RAYE",
       "album": "THIS MUSIC MAY CONTAIN HOPE.",
       "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/f3a17ad81c6143de8e1967de8c799b1d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Dreams - 2004 Remaster",
-      "artist": "Fleetwood Mac",
-      "album": "Rumours (Super Deluxe)",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2460,6 +2446,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "STÖRD",
       "artist": "KYPARN, DIREKTÖREN, OKVH",
       "album": "STÖRD",
@@ -3233,7 +3226,7 @@
       "song": "Yes! 東京",
       "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, 原因は自分にある。, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
       "album": "Yes! 東京",
-      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/34a93e0c2d15402bb4e34f9b48a46f47.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/1a7259caea4b41d28d87f63d9074fdd4.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4438,13 +4431,6 @@
       "artist": "Kyle Raphael",
       "album": "Libu-Libong Buwan (Uuwian)",
       "url": "https://canvaz.scdn.co/upload/artist/4N9XMzF4fPBDnbYVniN6Tp/video/1bffae89994f4543905204aade49ba99.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "TMA",
-      "artist": "groundZERO Records, Tyler, Primera, ODP",
-      "album": "TMA",
-      "url": "https://canvaz.scdn.co/upload/artist/4LsXG0tI52IkUbQmWJwRc1/video/c14e267bc8a045a1b5c95925cf69d281.cnvs.mp4",
       "scope": "track"
     },
     {
