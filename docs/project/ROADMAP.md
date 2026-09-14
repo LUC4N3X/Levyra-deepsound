@@ -58,6 +58,8 @@ provider changes, hidden fallback latency, and duplicated playback state.
   WorkManager, and pruned to a bounded retention count.
 - Live Radio favorites, recent stations, and a modest locale catalog cache stay
   bounded and require no account.
+- Detailed listening history remains queryable through bounded, indexed pages;
+  all-time totals continue to come from the existing lifetime aggregates.
 
 ### Exit criteria for a phase
 
@@ -83,6 +85,9 @@ writes, stale cache publication, and backup incompatibility.
 - Optional motion and artwork never become correctness dependencies.
 - Explore includes a locale-aware, accessible Live Radio surface with graceful
   artwork fallbacks and explicit country, language, category and search paths.
+- Library exposes a premium full-screen Listening Insights experience whose
+  charts and history are local-first, accessible, responsive, and consistent
+  with Levyra's visual language.
 
 ### Exit criteria for a phase
 

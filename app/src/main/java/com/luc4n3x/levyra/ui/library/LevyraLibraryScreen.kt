@@ -364,7 +364,7 @@ internal fun LevyraLibraryScreen(
                     item(key = "overview-insights-card") {
                         LibraryListeningDashboard(
                             pulse = state.listeningPulse,
-                            onOpenRecap = viewModel::openListeningRecap
+                            onOpenInsights = viewModel::openListeningInsights
                         )
                     }
                     if (visiblePlaylists.isNotEmpty()) {
