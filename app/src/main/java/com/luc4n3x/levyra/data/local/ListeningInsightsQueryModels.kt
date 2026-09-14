@@ -38,3 +38,9 @@ data class ListeningInsightsTopArtistRow(
     val countedPlays: Long,
     val trackCount: Long
 )
+
+data class ListeningInsightsTimelineEventRow(
+    val startedAt: Long,
+    val listenedMs: Long,
+    val countedPlays: Long
+)

@@ -94,4 +94,32 @@ class ListeningInsightsRangesTest {
         assertEquals(3, result.size)
         assertEquals(listOf(0L, 0L, 30L), result.map { it.listenedMs })
     }
+
+    @Test
+    fun hourlyActivityFillsChronological24HourTimeline() {
+        val start = LocalDateTime.of(2026, 9, 13, 15, 30).atZone(zone).toInstant().toEpochMilli()
+        val end = LocalDateTime.of(2026, 9, 14, 15, 30).atZone(zone).toInstant().toEpochMilli()
+
+        val event1 = LocalDateTime.of(2026, 9, 13, 16, 10).atZone(zone).toInstant().toEpochMilli()
+        val event2 = LocalDateTime.of(2026, 9, 14, 14, 45).atZone(zone).toInstant().toEpochMilli()
+
+        val result = ListeningInsightsRanges.fillHourlyActivity(
+            fromMs = start,
+            toMs = end + 1L,
+            hourly = listOf(
+                ListeningInsightsActivityPoint(event1, 100L, 1),
+                ListeningInsightsActivityPoint(event2, 200L, 2)
+            ),
+            zone = zone
+        )
+
+        assertEquals(25, result.size)
+        val firstHour = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(result.first().epochMs), zone).hour
+        val lastHour = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(result.last().epochMs), zone).hour
+        assertEquals(15, firstHour)
+        assertEquals(15, lastHour)
+        assertEquals(100L, result[1].listenedMs)
+        assertEquals(200L, result[23].listenedMs)
+        assertEquals(0L, result[0].listenedMs)
+    }
 }

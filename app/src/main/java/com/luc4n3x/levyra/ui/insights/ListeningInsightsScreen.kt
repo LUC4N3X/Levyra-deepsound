@@ -10,15 +10,18 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +42,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Equalizer
@@ -46,7 +50,6 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,6 +76,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
@@ -85,11 +89,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.ListeningInsightsActivityPoint
 import com.luc4n3x.levyra.domain.ListeningInsightsArtist
 import com.luc4n3x.levyra.domain.ListeningInsightsHistoryItem
@@ -106,6 +114,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
+import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPink
@@ -193,7 +202,7 @@ internal fun ListeningInsightsScreen(
                         targetState = state.snapshot,
                         transitionSpec = {
                             if (animationsEnabled) {
-                                fadeIn(tween(280)) togetherWith fadeOut(tween(180))
+                                fadeIn(tween(260)) togetherWith fadeOut(tween(160))
                             } else {
                                 fadeIn(snap()) togetherWith fadeOut(snap())
                             }
@@ -223,7 +232,7 @@ internal fun ListeningInsightsScreen(
                         InsightsSectionTitle(strings.topArtistsTitle, Icons.Rounded.AutoAwesome, LevyraPink)
                     }
                     item(key = "insights-artists", contentType = "artists") {
-                        TopArtistsRail(state.snapshot.topArtists, strings, locale, onOpenArtist)
+                        TopArtistsRail(state.snapshot.topArtists, strings, locale, accent, onOpenArtist)
                     }
                 }
                 item(key = "insights-discovery", contentType = "discovery") {
@@ -306,7 +315,10 @@ internal fun ListeningInsightsScreen(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(22.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.loadMoreHistory() }
+                                .padding(22.dp)
                         )
                     }
                 }
@@ -322,7 +334,7 @@ private fun InsightsHeader(
     onClose: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onClose) {
@@ -332,8 +344,8 @@ private fun InsightsHeader(
             Text(
                 strings.listeningInsights,
                 color = LevyraText,
-                fontSize = 24.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(24.sp),
+                fontSize = 23.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
                 fontWeight = FontWeight.Black
             )
             Text(strings.listeningInsightsSubtitle, color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
@@ -363,21 +375,26 @@ private fun InsightsPeriodSelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 4.dp)
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .height(48.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(LevyraPanel.copy(alpha = 0.72f))
-            .border(1.dp, LevyraGlassBorder, RoundedCornerShape(16.dp))
+            .background(LevyraPanel.copy(alpha = 0.68f))
+            .border(BorderStroke(1.dp, LevyraGlassBorder), RoundedCornerShape(16.dp))
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         InsightsPeriods.forEachIndexed { index, period ->
             val active = period == selected
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (active) accent.copy(alpha = 0.18f) else Color.Transparent)
+                    .background(if (active) accent.copy(alpha = 0.20f) else Color.Transparent)
+                    .then(
+                        if (active) Modifier.border(BorderStroke(1.dp, accent.copy(alpha = 0.38f)), RoundedCornerShape(12.dp))
+                        else Modifier
+                    )
                     .levyraPressable(
                         onClick = { onSelect(period) },
                         pressedScale = LevyraPressScale.Control,
@@ -392,9 +409,10 @@ private fun InsightsPeriodSelector(
                 Text(
                     labels[index],
                     color = if (active) accent else LevyraMuted,
-                    fontSize = 11.sp,
+                    fontSize = 11.5.sp,
                     fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
-                    letterSpacing = 0.3.sp
+                    letterSpacing = 0.4.sp,
+                    maxLines = 1
                 )
             }
         }
@@ -408,65 +426,95 @@ private fun InsightsHero(
     locale: Locale,
     accent: Color
 ) {
+    val context = LocalContext.current
     val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
     val artwork = snapshot.topTracks.map { it.artworkUrl }.filter(String::isNotBlank).distinct().take(3)
     val fontScale = LocalDensity.current.fontScale
-    val heroHeight = (250f + ((fontScale - 1f).coerceAtLeast(0f) * 76f)).dp
+    val heroHeight = (244f + ((fontScale - 1f).coerceAtLeast(0f) * 72f)).dp
+    val isAllTime = snapshot.period == ListeningInsightsPeriod.AllTime
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .padding(horizontal = 20.dp, vertical = 14.dp)
             .height(heroHeight)
-            .clip(RoundedCornerShape(30.dp))
+            .clip(RoundedCornerShape(28.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(accent.copy(alpha = 0.42f), LevyraViolet.copy(alpha = 0.18f), LevyraPanel)
+                    colors = listOf(accent.copy(alpha = 0.38f), LevyraViolet.copy(alpha = 0.16f), LevyraPanel)
                 )
             )
-            .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(30.dp))
+            .border(1.dp, accent.copy(alpha = 0.24f), RoundedCornerShape(28.dp))
     ) {
         artwork.forEachIndexed { index, url ->
+            val heroArtworkRequest = remember(context, url) {
+                ImageRequest.Builder(context)
+                    .data(LevyraArtworkCache.large(url))
+                    .crossfade(true)
+                    .build()
+            }
             AsyncImage(
-                model = url,
+                model = heroArtworkRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .offset(x = (26 - index * 34).dp, y = (index * 14 - 14).dp)
-                    .rotate((index - 1) * 7f)
-                    .size((154 - index * 14).dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(24.dp))
+                    .offset(x = (24 - index * 32).dp, y = (index * 12 - 12).dp)
+                    .rotate((index - 1) * 6f)
+                    .size((148 - index * 14).dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(22.dp))
             )
         }
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.horizontalGradient(
                     0f to LevyraPanel.copy(alpha = 0.98f),
-                    0.55f to LevyraPanel.copy(alpha = 0.68f),
+                    0.56f to LevyraPanel.copy(alpha = 0.72f),
                     1f to Color.Transparent
                 )
             )
         )
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 23.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                periodLongLabel(snapshot.period, strings),
-                color = accent,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.2.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    periodLongLabel(snapshot.period, strings).uppercase(locale),
+                    color = accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.3.sp
+                )
+                if (isAllTime) {
+                    Surface(
+                        color = accent.copy(alpha = 0.14f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, accent.copy(alpha = 0.28f))
+                    ) {
+                        Text(
+                            text = "LIFETIME",
+                            color = accent,
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.8.sp,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     formatHeroDuration(snapshot.metrics.listenedMs, number, strings),
                     color = LevyraText,
-                    fontSize = 45.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(45.sp),
+                    fontSize = 44.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(44.sp),
                     fontWeight = FontWeight.Black,
-                    letterSpacing = (-1.6).sp,
+                    letterSpacing = (-1.5).sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -475,7 +523,7 @@ private fun InsightsHero(
                     color = LevyraMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp
+                    letterSpacing = 1.4.sp
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -530,21 +578,21 @@ private fun InsightsMetricRibbon(
 
 @Composable
 private fun RibbonMetric(value: String, label: String, color: Color, modifier: Modifier) {
-    Column(modifier = modifier.padding(vertical = 13.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, color = color, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1)
-        Text(label, color = LevyraMuted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, color = LevyraMuted, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
 private fun RibbonDivider() {
-    Box(Modifier.width(1.dp).height(30.dp).background(LevyraGlassBorder))
+    Box(Modifier.width(1.dp).height(28.dp).background(LevyraGlassBorder))
 }
 
 @Composable
 private fun InsightsSectionTitle(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, accent: Color) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 34.dp, bottom = 13.dp).semantics { heading() },
+        modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 32.dp, bottom = 12.dp).semantics { heading() },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
@@ -560,30 +608,68 @@ private fun InsightsActivityChart(
     locale: Locale,
     accent: Color
 ) {
-    val points = if (snapshot.period == ListeningInsightsPeriod.Day) {
-        snapshot.hourBuckets.mapIndexed { hour, value -> ListeningInsightsActivityPoint(hour.toLong(), value, 0) }
-    } else {
-        snapshot.activity
-    }
+    val points = snapshot.activity
     val animations = LocalAnimationsEnabled.current
-    var target by remember(snapshot.period, points) { mutableFloatStateOf(0f) }
-    LaunchedEffect(snapshot.period, points) { target = 1f }
+    var target by remember(snapshot.period) { mutableFloatStateOf(0f) }
+    LaunchedEffect(snapshot.period) { target = 1f }
     val reveal by animateFloatAsState(
         targetValue = target,
-        animationSpec = if (animations) tween(650, easing = FastOutSlowInEasing) else snap(),
+        animationSpec = if (animations) tween(600, easing = FastOutSlowInEasing) else snap(),
         label = "insights-activity-reveal"
     )
     val maxValue = remember(points) { points.maxOfOrNull { it.listenedMs }?.coerceAtLeast(1L) ?: 1L }
+    val isAllTime = snapshot.period == ListeningInsightsPeriod.AllTime
+    val isDay = snapshot.period == ListeningInsightsPeriod.Day
+
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).clip(RoundedCornerShape(24.dp))
-            .background(LevyraPanel.copy(alpha = 0.58f)).border(1.dp, LevyraGlassBorder, RoundedCornerShape(24.dp))
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(LevyraPanel.copy(alpha = 0.58f))
+            .border(BorderStroke(1.dp, LevyraGlassBorder), RoundedCornerShape(24.dp))
             .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (snapshot.metrics.peakDayEpochMs > 0L) {
-            val peakDate = remember(snapshot.metrics.peakDayEpochMs, locale) {
-                Instant.ofEpochMilli(snapshot.metrics.peakDayEpochMs).atZone(ZoneId.systemDefault()).toLocalDate()
+        if (isAllTime && snapshot.detailedFromMs > 0L) {
+            val detailedFrom = remember(snapshot.detailedFromMs, locale) {
+                Instant.ofEpochMilli(snapshot.detailedFromMs).atZone(ZoneId.systemDefault()).toLocalDate()
                     .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    strings.insightsDetailAvailable.format(detailedFrom),
+                    color = LevyraMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Surface(
+                    color = LevyraViolet.copy(alpha = 0.12f),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.25f))
+                ) {
+                    Text(
+                        text = "DETAILED TIMELINE",
+                        color = LevyraViolet,
+                        fontSize = 8.5.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+        } else if (snapshot.metrics.peakDayEpochMs > 0L) {
+            val peakDate = remember(snapshot.metrics.peakDayEpochMs, locale, isDay) {
+                if (isDay) {
+                    val time = Instant.ofEpochMilli(snapshot.metrics.peakDayEpochMs).atZone(ZoneId.systemDefault()).toLocalTime()
+                    time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
+                } else {
+                    Instant.ofEpochMilli(snapshot.metrics.peakDayEpochMs).atZone(ZoneId.systemDefault()).toLocalDate()
+                        .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+                }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(strings.pulseProPeak, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
@@ -591,19 +677,22 @@ private fun InsightsActivityChart(
             }
         }
         Canvas(
-            modifier = Modifier.fillMaxWidth().height(142.dp).semantics {
-                contentDescription = strings.insightsActivity
-            }
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(144.dp)
+                .semantics {
+                    contentDescription = strings.insightsActivity
+                }
         ) {
             if (points.isEmpty()) return@Canvas
-            if (snapshot.period == ListeningInsightsPeriod.Day) {
+            if (isDay) {
                 val slot = size.width / points.size
-                val barWidth = slot * 0.48f
+                val barWidth = slot * 0.52f
                 points.forEachIndexed { index, point ->
                     val fraction = point.listenedMs.toFloat() / maxValue.toFloat()
                     val height = max(barWidth, size.height * fraction) * reveal
                     drawRoundRect(
-                        brush = Brush.verticalGradient(listOf(accent, LevyraViolet.copy(alpha = 0.42f))),
+                        brush = Brush.verticalGradient(listOf(accent, LevyraViolet.copy(alpha = 0.45f))),
                         topLeft = Offset(index * slot + (slot - barWidth) / 2f, size.height - height),
                         size = Size(barWidth, height),
                         cornerRadius = CornerRadius(barWidth / 2f)
@@ -632,29 +721,18 @@ private fun InsightsActivityChart(
             }
         }
         ActivityLabels(snapshot.period, points, locale)
-        if (snapshot.period == ListeningInsightsPeriod.AllTime && snapshot.detailedFromMs > 0L) {
-            val detailedFrom = remember(snapshot.detailedFromMs, locale) {
-                Instant.ofEpochMilli(snapshot.detailedFromMs).atZone(ZoneId.systemDefault()).toLocalDate()
-                    .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
-            }
-            Text(
-                strings.insightsDetailAvailable.format(detailedFrom),
-                color = LevyraMuted,
-                fontSize = 9.5.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
     }
 }
 
 @Composable
 private fun ActivityLabels(period: ListeningInsightsPeriod, points: List<ListeningInsightsActivityPoint>, locale: Locale) {
     if (points.isEmpty()) return
-    val positions = listOf(0, points.lastIndex / 3, points.lastIndex * 2 / 3, points.lastIndex).distinct()
+    val positions = listOf(0, points.lastIndex / 4, points.lastIndex / 2, points.lastIndex * 3 / 4, points.lastIndex).distinct()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         positions.forEach { index ->
             val label = if (period == ListeningInsightsPeriod.Day) {
-                index.toString().padStart(2, '0')
+                val hour = Instant.ofEpochMilli(points[index].epochMs).atZone(ZoneId.systemDefault()).hour
+                hour.toString().padStart(2, '0')
             } else {
                 val date = Instant.ofEpochMilli(points[index].epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
                 date.format(DateTimeFormatter.ofPattern(if (period == ListeningInsightsPeriod.AllTime) "MMM yy" else "d MMM", locale))
@@ -675,7 +753,7 @@ private fun InsightsRhythm(snapshot: ListeningInsightsSnapshot, strings: LevyraS
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).clip(RoundedCornerShape(24.dp))
             .background(Brush.linearGradient(listOf(LevyraViolet.copy(alpha = 0.13f), LevyraPanel.copy(alpha = 0.72f))))
-            .border(1.dp, LevyraViolet.copy(alpha = 0.18f), RoundedCornerShape(24.dp))
+            .border(BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.18f)), RoundedCornerShape(24.dp))
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
@@ -685,7 +763,7 @@ private fun InsightsRhythm(snapshot: ListeningInsightsSnapshot, strings: LevyraS
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
-        RhythmCanvas(snapshot.hourBuckets, peak, accent)
+        RhythmCanvas(snapshot.hourBuckets, peak, accent, snapshot.period)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf(0, 6, 12, 18, 23).forEach { hour ->
                 Text(hour.toString().padStart(2, '0'), color = if (hour == peak) accent else LevyraMuted, fontSize = 9.sp)
@@ -695,24 +773,105 @@ private fun InsightsRhythm(snapshot: ListeningInsightsSnapshot, strings: LevyraS
 }
 
 @Composable
-private fun RhythmCanvas(values: List<Long>, peakHour: Int, accent: Color) {
+private fun RhythmCanvas(values: List<Long>, peakHour: Int, accent: Color, period: ListeningInsightsPeriod) {
     val animations = LocalAnimationsEnabled.current
-    var target by remember(values) { mutableFloatStateOf(0f) }
-    LaunchedEffect(values) { target = 1f }
-    val reveal by animateFloatAsState(target, if (animations) tween(520) else snap(), label = "insights-rhythm-reveal")
-    val peak = values.maxOrNull()?.coerceAtLeast(1L) ?: 1L
-    Canvas(Modifier.fillMaxWidth().height(72.dp)) {
-        val slot = size.width / 24f
-        val bar = slot * 0.42f
-        repeat(24) { hour ->
-            val fraction = ((values.getOrNull(hour) ?: 0L).toFloat() / peak.toFloat()).coerceAtLeast(0.08f)
-            val height = size.height * fraction * reveal
+    var target by remember(period) { mutableFloatStateOf(0f) }
+    LaunchedEffect(period) { target = 1f }
+    val reveal by animateFloatAsState(
+        targetValue = target,
+        animationSpec = if (animations) tween(600, easing = FastOutSlowInEasing) else snap(),
+        label = "insights-rhythm-reveal"
+    )
+    val maxVal = remember(values) { values.maxOrNull()?.coerceAtLeast(1L) ?: 1L }
+    Canvas(modifier = Modifier.fillMaxWidth().height(68.dp)) {
+        if (values.isEmpty()) return@Canvas
+        val slot = size.width / values.size
+        val barWidth = slot * 0.44f
+        values.forEachIndexed { hour, value ->
+            val fraction = value.toFloat() / maxVal.toFloat()
+            val height = max(3f, size.height * fraction) * reveal
+            val isPeak = hour == peakHour
             drawRoundRect(
-                color = if (hour == peakHour) accent else accent.copy(alpha = 0.25f + fraction * 0.28f),
-                topLeft = Offset(hour * slot + (slot - bar) / 2f, (size.height - height) / 2f),
-                size = Size(bar, height),
-                cornerRadius = CornerRadius(bar / 2f)
+                color = if (isPeak) accent else LevyraViolet.copy(alpha = if (fraction > 0f) 0.52f else 0.16f),
+                topLeft = Offset(hour * slot + (slot - barWidth) / 2f, size.height - height),
+                size = Size(barWidth, height),
+                cornerRadius = CornerRadius(barWidth / 2f)
             )
+        }
+    }
+}
+
+private fun artistInitials(name: String): String {
+    val clean = name.trim()
+    if (clean.isBlank()) return "♪"
+    val words = clean.split("\\s+".toRegex()).filter { it.isNotBlank() }
+    return when {
+        words.size >= 2 -> "${words[0].first()}${words[1].first()}".uppercase(Locale.ROOT)
+        clean.length >= 2 -> clean.take(2).uppercase(Locale.ROOT)
+        else -> clean.uppercase(Locale.ROOT)
+    }
+}
+
+@Composable
+private fun ArtistAvatar(
+    artist: ListeningInsightsArtist,
+    size: Dp,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val shape = CircleShape
+    val imageRequest = remember(context, artist.artworkUrl) {
+        if (artist.artworkUrl.isNotBlank()) {
+            ImageRequest.Builder(context)
+                .data(LevyraArtworkCache.large(artist.artworkUrl))
+                .crossfade(true)
+                .build()
+        } else null
+    }
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(shape)
+            .background(LevyraPanelSoft)
+            .border(BorderStroke(1.5.dp, Color.White.copy(alpha = 0.12f)), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageRequest != null) {
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = artist.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            val palette = remember(artist.name) {
+                val hash = kotlin.math.abs(artist.name.hashCode())
+                val gradientPairs = listOf(
+                    listOf(LevyraViolet, LevyraCyan),
+                    listOf(LevyraPink, LevyraViolet),
+                    listOf(LevyraCyan, LevyraPink),
+                    listOf(Color(0xFF7928CA), Color(0xFFFF0080)),
+                    listOf(Color(0xFF0070F3), Color(0xFF00DFD8)),
+                    listOf(Color(0xFFFF416C), Color(0xFFFF4B2B))
+                )
+                gradientPairs[hash % gradientPairs.size]
+            }
+            val initials = remember(artist.name) { artistInitials(artist.name) }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(palette.map { it.copy(alpha = 0.45f) })),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initials,
+                    color = Color.White,
+                    fontSize = (size.value * 0.32f).sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.5).sp
+                )
+            }
         }
     }
 }
@@ -722,45 +881,64 @@ private fun TopArtistsRail(
     artists: List<ListeningInsightsArtist>,
     strings: LevyraStrings,
     locale: Locale,
+    accent: Color,
     onOpenArtist: (ListeningInsightsArtist) -> Unit
 ) {
     val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         itemsIndexed(artists, key = { _, artist -> "artist-${artist.name.lowercase(Locale.ROOT)}" }) { index, artist ->
             Column(
-                modifier = Modifier.width(if (index == 0) 174.dp else 146.dp)
+                modifier = Modifier
+                    .width(if (index == 0) 124.dp else 108.dp)
                     .levyraPressable(
                         onClick = { onOpenArtist(artist) },
                         pressedScale = LevyraPressScale.Tile,
                         role = Role.Button,
                         onClickLabel = artist.name
                     ),
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(if (index == 0) 28.dp else 24.dp))
-                        .background(LevyraPanelSoft)
-                ) {
-                    AsyncImage(
-                        model = artist.artworkUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    ArtistAvatar(
+                        artist = artist,
+                        size = if (index == 0) 120.dp else 104.dp
                     )
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f)))))
-                    Text(
-                        text = number.format(index + 1),
-                        color = Color.White,
-                        fontSize = if (index == 0) 34.sp else 27.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.align(Alignment.BottomStart).padding(13.dp)
-                    )
+                    Surface(
+                        color = if (index < 3) accent else LevyraPanel,
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, LevyraGlassBorder),
+                        modifier = Modifier.offset(x = 4.dp, y = 4.dp)
+                    ) {
+                        Text(
+                            text = "${index + 1}",
+                            color = if (index < 3) LevyraOnAccent else LevyraText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
                 }
-                Text(artist.name, color = LevyraText, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${number.format(artist.plays)} ${strings.statPlays}", color = LevyraMuted, fontSize = 10.sp, maxLines = 1)
+                Text(
+                    artist.name,
+                    color = LevyraText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    "${number.format(artist.plays)} ${strings.statPlays}",
+                    color = LevyraMuted,
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }
@@ -773,9 +951,9 @@ private fun DiscoveryStory(snapshot: ListeningInsightsSnapshot, strings: LevyraS
     val discoveryDetail = strings.insightsNewTracks.format(number.format(count)) +
         if (snapshot.period == ListeningInsightsPeriod.AllTime) " - ${strings.recapActivityLast30Days}" else ""
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 34.dp).clip(RoundedCornerShape(28.dp))
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 32.dp).clip(RoundedCornerShape(28.dp))
             .background(Brush.linearGradient(listOf(LevyraPink.copy(alpha = 0.18f), accent.copy(alpha = 0.11f), LevyraPanel)))
-            .border(1.dp, LevyraPink.copy(alpha = 0.2f), RoundedCornerShape(28.dp))
+            .border(BorderStroke(1.dp, LevyraPink.copy(alpha = 0.2f)), RoundedCornerShape(28.dp))
             .padding(horizontal = 21.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -798,33 +976,82 @@ private fun TopTrackRow(
     onClick: (ListeningInsightsTrack) -> Unit
 ) {
     val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
+    val context = LocalContext.current
+    val imageRequest = remember(context, track.artworkUrl) {
+        if (track.artworkUrl.isNotBlank()) {
+            ImageRequest.Builder(context)
+                .data(LevyraArtworkCache.small(track.artworkUrl))
+                .crossfade(true)
+                .build()
+        } else null
+    }
+
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 3.dp).clip(RoundedCornerShape(17.dp))
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(16.dp))
             .levyraPressable(
                 onClick = { onClick(track) },
                 pressedScale = LevyraPressScale.Row,
                 role = Role.Button,
                 onClickLabel = track.title
-            ).padding(horizontal = 10.dp, vertical = 8.dp),
+            )
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             number.format(index + 1),
             color = if (index < 3) accent else LevyraMuted,
-            fontSize = 20.sp,
+            fontSize = 17.sp,
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center,
-            modifier = Modifier.width(32.dp)
+            modifier = Modifier.width(28.dp)
         )
-        AsyncImage(
-            model = track.artworkUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(50.dp).clip(RoundedCornerShape(13.dp)).background(LevyraPanelSoft)
-        )
-        Column(modifier = Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = LevyraText, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(LevyraPanelSoft),
+            contentAlignment = Alignment.Center
+        ) {
+            if (imageRequest != null) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Equalizer,
+                    contentDescription = null,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp, end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                track.title,
+                color = LevyraText,
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                track.artist,
+                color = LevyraMuted,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
@@ -833,7 +1060,11 @@ private fun TopTrackRow(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
-            Text("${number.format(track.plays)} ${strings.statPlays}", color = LevyraMuted, fontSize = 9.sp)
+            Text(
+                "${number.format(track.plays)} ${strings.statPlays}",
+                color = LevyraMuted,
+                fontSize = 9.sp
+            )
         }
     }
 }
@@ -841,7 +1072,7 @@ private fun TopTrackRow(
 @Composable
 private fun HistoryHeading(strings: LevyraStrings, searchVisible: Boolean, onSearch: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 12.dp, top = 34.dp, bottom = 8.dp).semantics { heading() },
+        modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 12.dp, top = 32.dp, bottom = 8.dp).semantics { heading() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(strings.insightsHistory, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
@@ -871,9 +1102,14 @@ private fun HistorySearch(
         textStyle = TextStyle(color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Medium),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).height(50.dp)
-            .clip(RoundedCornerShape(16.dp)).background(LevyraPanel.copy(alpha = 0.78f))
-            .border(1.dp, LevyraCyan.copy(alpha = 0.32f), RoundedCornerShape(16.dp)).focusRequester(focus),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .height(50.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(LevyraPanel.copy(alpha = 0.78f))
+            .border(BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.32f)), RoundedCornerShape(16.dp))
+            .focusRequester(focus),
         decorationBox = { inner ->
             Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, contentDescription = null, tint = LevyraMuted, modifier = Modifier.size(18.dp))
@@ -898,29 +1134,78 @@ private fun HistoryTrackRow(
     drawDivider: Boolean,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val time = remember(item.startedAt, locale) {
         Instant.ofEpochMilli(item.startedAt).atZone(ZoneId.systemDefault()).toLocalTime()
             .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
     }
+    val imageRequest = remember(context, item.track.artworkUrl) {
+        if (item.track.artworkUrl.isNotBlank()) {
+            ImageRequest.Builder(context)
+                .data(LevyraArtworkCache.small(item.track.artworkUrl))
+                .crossfade(true)
+                .build()
+        } else null
+    }
+
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).levyraPressable(
-                onClick = onClick,
-                pressedScale = LevyraPressScale.Row,
-                role = Role.Button,
-                onClickLabel = item.track.title
-            ).padding(vertical = 7.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .levyraPressable(
+                    onClick = onClick,
+                    pressedScale = LevyraPressScale.Row,
+                    role = Role.Button,
+                    onClickLabel = item.track.title
+                )
+                .padding(vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = item.track.artworkUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(LevyraPanelSoft)
-            )
-            Column(modifier = Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(item.track.title, color = LevyraText, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(item.track.artist, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(LevyraPanelSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                if (imageRequest != null) {
+                    AsyncImage(
+                        model = imageRequest,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Equalizer,
+                        contentDescription = null,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp, end = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    item.track.title,
+                    color = LevyraText,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    item.track.artist,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(time, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
@@ -932,7 +1217,7 @@ private fun HistoryTrackRow(
                 )
             }
         }
-        if (drawDivider) Box(Modifier.fillMaxWidth().padding(start = 60.dp).height(1.dp).background(LevyraGlassBorder))
+        if (drawDivider) Box(Modifier.fillMaxWidth().padding(start = 58.dp).height(1.dp).background(LevyraGlassBorder))
     }
 }
 
@@ -956,7 +1241,14 @@ private fun InsightsEmpty(message: String, accent: Color) {
         Box(Modifier.size(86.dp).clip(CircleShape).background(accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Equalizer, contentDescription = null, tint = accent, modifier = Modifier.size(34.dp))
         }
-        Text(message, color = LevyraText, fontSize = 19.sp, lineHeight = LevyraTypeRhythm.lineHeight(19.sp), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(
+            message,
+            color = LevyraText,
+            fontSize = 19.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(19.sp),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
 }
 

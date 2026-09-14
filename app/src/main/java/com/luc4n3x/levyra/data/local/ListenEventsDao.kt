@@ -183,6 +183,30 @@ interface ListenEventsDao {
 
     @Query(
         """
+        SELECT
+            startedAt,
+            listenedMs,
+            CASE
+                WHEN listenedMs >= :countedPlayMs THEN 1
+                WHEN completed = 1 AND durationMs > 0 AND durationMs < :countedPlayMs
+                    AND listenedMs * :completionDenominator >= durationMs * :completionNumerator THEN 1
+                ELSE 0 END AS countedPlays
+        FROM listen_events
+        WHERE startedAt >= :fromMs AND startedAt < :toMs AND listenedMs >= :minimumEventMs
+        ORDER BY startedAt ASC
+        """
+    )
+    suspend fun insightsTimelineEvents(
+        fromMs: Long,
+        toMs: Long,
+        minimumEventMs: Long,
+        countedPlayMs: Long,
+        completionNumerator: Long,
+        completionDenominator: Long
+    ): List<ListeningInsightsTimelineEventRow>
+
+    @Query(
+        """
         SELECT * FROM listen_events
         WHERE startedAt >= :fromMs AND startedAt < :toMs
             AND listenedMs >= :minimumEventMs

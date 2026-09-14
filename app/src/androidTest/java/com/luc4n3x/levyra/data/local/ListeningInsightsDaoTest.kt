@@ -68,6 +68,27 @@ class ListeningInsightsDaoTest {
         assertEquals("c", second.single().trackId)
     }
 
+    @Test
+    fun timelineEventsOrderedChronologically() = runBlocking {
+        dao.insert(event("b", "Artist B", 35_000L, startedAt = 2_000L))
+        dao.insert(event("a", "Artist A", 10_000L, startedAt = 1_000L))
+
+        val timeline = dao.insightsTimelineEvents(
+            fromMs = 0L,
+            toMs = 3_000L,
+            minimumEventMs = ListenPlayPolicy.MIN_EVENT_MS,
+            countedPlayMs = ListenPlayPolicy.COUNTED_PLAY_MS,
+            completionNumerator = ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
+            completionDenominator = ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
+        )
+
+        assertEquals(2, timeline.size)
+        assertEquals(1_000L, timeline[0].startedAt)
+        assertEquals(2_000L, timeline[1].startedAt)
+        assertEquals(0L, timeline[0].countedPlays)
+        assertEquals(1L, timeline[1].countedPlays)
+    }
+
     private suspend fun historyPage(beforeStartedAt: Long, beforeId: Long, limit: Int) =
         dao.insightsHistoryPage(
             fromMs = 0L,

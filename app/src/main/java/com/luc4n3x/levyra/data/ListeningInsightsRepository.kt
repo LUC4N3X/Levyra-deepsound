@@ -13,12 +13,17 @@ import com.luc4n3x.levyra.domain.ListeningInsightsSnapshot
 import com.luc4n3x.levyra.domain.ListeningInsightsTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 class ListeningInsightsRepository(context: Context) {
-    private val database = LevyraDatabase.get(context.applicationContext)
+    private val appContext = context.applicationContext
+    private val database = LevyraDatabase.get(appContext)
     private val eventsDao = database.listenEventsDao()
     private val lifetimeDao = database.listenLifetimeDao()
+    private val spotifyArtwork = SpotifyArtistArtworkRepository.get(appContext)
+    private val appleArtwork = AppleArtistArtworkRepository.get(appContext)
 
     suspend fun snapshot(
         period: ListeningInsightsPeriod,
@@ -26,15 +31,22 @@ class ListeningInsightsRepository(context: Context) {
         zone: ZoneId = ZoneId.systemDefault()
     ): ListeningInsightsSnapshot = withContext(Dispatchers.IO) {
         val range = ListeningInsightsRanges.current(period, nowMs, zone)
-        val aggregate = eventsDao.insightsAggregate(
-            range.fromMs,
-            range.toMs,
-            ListenPlayPolicy.MIN_EVENT_MS,
-            ListenPlayPolicy.COUNTED_PLAY_MS,
-            ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
-            ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
-        )
-        val previousMs = if (range.previousFromMs != null && range.previousToMs != null) {
+        val isAllTime = period == ListeningInsightsPeriod.AllTime
+
+        val aggregate = if (isAllTime) {
+            null
+        } else {
+            eventsDao.insightsAggregate(
+                range.fromMs,
+                range.toMs,
+                ListenPlayPolicy.MIN_EVENT_MS,
+                ListenPlayPolicy.COUNTED_PLAY_MS,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
+            )
+        }
+
+        val previousMs = if (!isAllTime && range.previousFromMs != null && range.previousToMs != null) {
             eventsDao.insightsAggregate(
                 range.previousFromMs,
                 range.previousToMs,
@@ -46,52 +58,91 @@ class ListeningInsightsRepository(context: Context) {
         } else {
             0L
         }
-        val days = eventsDao.insightsDays(
-            range.fromMs,
-            range.toMs,
-            ListenPlayPolicy.MIN_EVENT_MS,
-            ListenPlayPolicy.COUNTED_PLAY_MS,
-            ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
-            ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
-        ).map { row ->
-            ListeningInsightsActivityPoint(
-                epochMs = ListeningInsightsRanges.dayEpoch(row.dayKey, zone),
-                listenedMs = row.listenedMs,
-                plays = row.countedPlays.toInt()
-            )
+
+        val days = if (period != ListeningInsightsPeriod.Day) {
+            eventsDao.insightsDays(
+                range.fromMs,
+                range.toMs,
+                ListenPlayPolicy.MIN_EVENT_MS,
+                ListenPlayPolicy.COUNTED_PLAY_MS,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
+            ).map { row ->
+                ListeningInsightsActivityPoint(
+                    epochMs = ListeningInsightsRanges.dayEpoch(row.dayKey, zone),
+                    listenedMs = row.listenedMs,
+                    plays = row.countedPlays.toInt()
+                )
+            }
+        } else {
+            emptyList()
         }
-        val filledDays = ListeningInsightsRanges.fillDailyActivity(
-            fromMs = if (period == ListeningInsightsPeriod.AllTime) {
-                days.firstOrNull()?.epochMs ?: range.fromMs
-            } else {
-                range.fromMs
-            },
-            toMs = range.toMs,
-            daily = days,
-            zone = zone
-        )
+
+        val activityPoints = if (period == ListeningInsightsPeriod.Day) {
+            val hourlyEvents = eventsDao.insightsTimelineEvents(
+                range.fromMs,
+                range.toMs,
+                ListenPlayPolicy.MIN_EVENT_MS,
+                ListenPlayPolicy.COUNTED_PLAY_MS,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
+            ).groupBy { event ->
+                Instant.ofEpochMilli(event.startedAt).atZone(zone).truncatedTo(ChronoUnit.HOURS).toInstant().toEpochMilli()
+            }.map { (epochMs, events) ->
+                ListeningInsightsActivityPoint(
+                    epochMs = epochMs,
+                    listenedMs = events.sumOf { it.listenedMs },
+                    plays = events.sumOf { it.countedPlays.toInt() }
+                )
+            }
+            ListeningInsightsRanges.fillHourlyActivity(range.fromMs, range.toMs, hourlyEvents, zone)
+        } else {
+            val filledDays = ListeningInsightsRanges.fillDailyActivity(
+                fromMs = if (isAllTime) {
+                    days.firstOrNull()?.epochMs ?: range.fromMs
+                } else {
+                    range.fromMs
+                },
+                toMs = range.toMs,
+                daily = days,
+                zone = zone
+            )
+            ListeningInsightsRanges.aggregateActivity(period, filledDays, zone)
+        }
+
         val hours = LongArray(24)
         eventsDao.insightsHours(range.fromMs, range.toMs, ListenPlayPolicy.MIN_EVENT_MS)
             .forEach { row -> if (row.hour in 0..23) hours[row.hour] = row.listenedMs }
-        val windowTracks = eventsDao.insightsTopTracks(
-            range.fromMs,
-            range.toMs,
-            TOP_LIMIT,
-            ListenPlayPolicy.MIN_EVENT_MS,
-            ListenPlayPolicy.COUNTED_PLAY_MS,
-            ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
-            ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
-        )
-        val windowArtists = eventsDao.insightsTopArtists(
-            range.fromMs,
-            range.toMs,
-            TOP_LIMIT,
-            ListenPlayPolicy.MIN_EVENT_MS,
-            ListenPlayPolicy.COUNTED_PLAY_MS,
-            ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
-            ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
-        )
-        val lifetime = if (period == ListeningInsightsPeriod.AllTime) {
+
+        val windowTracks = if (isAllTime) {
+            emptyList()
+        } else {
+            eventsDao.insightsTopTracks(
+                range.fromMs,
+                range.toMs,
+                TOP_LIMIT,
+                ListenPlayPolicy.MIN_EVENT_MS,
+                ListenPlayPolicy.COUNTED_PLAY_MS,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
+            )
+        }
+
+        val windowArtists = if (isAllTime) {
+            emptyList()
+        } else {
+            eventsDao.insightsTopArtists(
+                range.fromMs,
+                range.toMs,
+                TOP_LIMIT,
+                ListenPlayPolicy.MIN_EVENT_MS,
+                ListenPlayPolicy.COUNTED_PLAY_MS,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_NUMERATOR,
+                ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
+            )
+        }
+
+        val lifetime = if (isAllTime) {
             val totals = lifetimeDao.trackTotals()
             LifetimeSnapshot(
                 listenedMs = totals.listenedMs,
@@ -104,7 +155,8 @@ class ListeningInsightsRepository(context: Context) {
         } else {
             null
         }
-        val topTracks = if (period == ListeningInsightsPeriod.AllTime) {
+
+        val topTracks = if (isAllTime) {
             lifetimeDao.topTracks(TOP_LIMIT).map { row ->
                 val event = row.trackId.takeIf(String::isNotBlank)?.let { eventsDao.findLatestByTrackId(it) }
                 ListeningInsightsTrack(
@@ -130,37 +182,50 @@ class ListeningInsightsRepository(context: Context) {
                 )
             }
         }
-        val topArtists = if (period == ListeningInsightsPeriod.AllTime) {
+
+        val baseArtists = if (isAllTime) {
             lifetimeDao.topArtists(TOP_LIMIT).map { row ->
-                val event = eventsDao.findLatestByArtist(row.name)
                 ListeningInsightsArtist(
                     name = row.name,
-                    artworkUrl = event?.let { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } }.orEmpty(),
+                    artworkUrl = "",
                     listenedMs = row.listenedMs,
-                    plays = row.countedPlays
+                    plays = row.countedPlays,
+                    trackCount = 0
                 )
             }
         } else {
             windowArtists.map { row ->
                 ListeningInsightsArtist(
                     name = row.name,
-                    artworkUrl = row.thumbnailUrl,
+                    artworkUrl = "",
                     listenedMs = row.listenedMs,
                     plays = row.countedPlays.toInt(),
                     trackCount = row.trackCount.toInt()
                 )
             }
         }
-        val listenedMs = lifetime?.listenedMs ?: aggregate.listenedMs
-        val eventCount = lifetime?.eventCount ?: aggregate.eventCount.toInt()
-        val completedCount = lifetime?.completedCount ?: aggregate.completedCount.toInt()
-        val discoveryRangeFrom = if (period == ListeningInsightsPeriod.AllTime) {
+
+        val topArtists = baseArtists.map { artist ->
+            val portrait = if (artist.name.isNotBlank()) {
+                val spotify = spotifyArtwork.resolveArtistPortrait(artist.name)
+                if (spotify.isNotBlank()) spotify else appleArtwork.resolveArtistPortrait(artist.name)
+            } else ""
+            artist.copy(artworkUrl = portrait)
+        }
+
+        val listenedMs = lifetime?.listenedMs ?: aggregate?.listenedMs ?: 0L
+        val eventCount = lifetime?.eventCount ?: aggregate?.eventCount?.toInt() ?: 0
+        val completedCount = lifetime?.completedCount ?: aggregate?.completedCount?.toInt() ?: 0
+        val distinctTracks = lifetime?.distinctTracks ?: aggregate?.distinctTracks?.toInt() ?: 0
+        val distinctArtists = lifetime?.distinctArtists ?: aggregate?.distinctArtists?.toInt() ?: 0
+
+        val discoveryRangeFrom = if (isAllTime) {
             (nowMs - DISCOVERY_REFERENCE_MS).coerceAtLeast(0L)
         } else {
             range.fromMs
         }
         val discovered = lifetimeDao.discoveredTrackCount(discoveryRangeFrom, range.toMs)
-        val discoveryTrackCount = if (period == ListeningInsightsPeriod.AllTime) {
+        val discoveryTrackCount = if (isAllTime) {
             eventsDao.insightsAggregate(
                 discoveryRangeFrom,
                 range.toMs,
@@ -170,18 +235,23 @@ class ListeningInsightsRepository(context: Context) {
                 ListenPlayPolicy.SHORT_TRACK_COMPLETION_DENOMINATOR
             ).distinctTracks.toInt()
         } else {
-            lifetime?.distinctTracks ?: aggregate.distinctTracks.toInt()
+            distinctTracks
         }
-        val distinctTracks = lifetime?.distinctTracks ?: aggregate.distinctTracks.toInt()
+
         val peakHour = hours.indices.maxByOrNull { hours[it] }?.takeIf { hours[it] > 0L } ?: -1
-        val peakDay = days.maxByOrNull { it.listenedMs }?.epochMs ?: 0L
+        val peakDay = if (period == ListeningInsightsPeriod.Day) {
+            activityPoints.maxByOrNull { it.listenedMs }?.epochMs ?: 0L
+        } else {
+            days.maxByOrNull { it.listenedMs }?.epochMs ?: 0L
+        }
+
         ListeningInsightsSnapshot(
             period = period,
             metrics = ListeningInsightsMetrics(
                 listenedMs = listenedMs,
-                countedPlays = lifetime?.countedPlays ?: aggregate.countedPlays.toInt(),
+                countedPlays = lifetime?.countedPlays ?: aggregate?.countedPlays?.toInt() ?: 0,
                 distinctTracks = distinctTracks,
-                distinctArtists = lifetime?.distinctArtists ?: aggregate.distinctArtists.toInt(),
+                distinctArtists = distinctArtists,
                 completionRate = if (eventCount > 0) {
                     (completedCount.toLong() * 100L / eventCount.toLong()).coerceIn(0L, 100L).toInt()
                 } else {
@@ -195,15 +265,19 @@ class ListeningInsightsRepository(context: Context) {
                 },
                 peakHour = peakHour,
                 peakDayEpochMs = peakDay,
-                trendPercent = if (period == ListeningInsightsPeriod.AllTime) null else {
+                trendPercent = if (isAllTime) null else {
                     ListeningInsightsRanges.trendPercent(listenedMs, previousMs)
                 }
             ),
-            activity = ListeningInsightsRanges.aggregateActivity(period, filledDays, zone),
+            activity = activityPoints,
             hourBuckets = hours.toList(),
             topTracks = topTracks,
             topArtists = topArtists,
-            detailedFromMs = days.firstOrNull()?.epochMs ?: range.fromMs
+            detailedFromMs = if (isAllTime) {
+                days.firstOrNull()?.epochMs ?: range.fromMs
+            } else {
+                range.fromMs
+            }
         )
     }
 

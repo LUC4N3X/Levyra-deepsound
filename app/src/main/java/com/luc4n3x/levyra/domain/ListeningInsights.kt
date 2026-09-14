@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 enum class ListeningInsightsPeriod {
     Day,
@@ -156,6 +157,29 @@ object ListeningInsightsRanges {
                 )
             }
             .toList()
+    }
+
+    fun fillHourlyActivity(
+        fromMs: Long,
+        toMs: Long,
+        hourly: List<ListeningInsightsActivityPoint>,
+        zone: ZoneId
+    ): List<ListeningInsightsActivityPoint> {
+        val start = Instant.ofEpochMilli(fromMs).atZone(zone).truncatedTo(ChronoUnit.HOURS)
+        val end = Instant.ofEpochMilli((toMs - 1L).coerceAtLeast(fromMs)).atZone(zone).truncatedTo(ChronoUnit.HOURS)
+        val byHourEpoch = hourly.associateBy { point ->
+            Instant.ofEpochMilli(point.epochMs).atZone(zone).truncatedTo(ChronoUnit.HOURS).toInstant().toEpochMilli()
+        }
+        return generateSequence(start) { time ->
+            time.plusHours(1).takeIf { !it.isAfter(end) }
+        }.map { hourTime ->
+            val epochMs = hourTime.toInstant().toEpochMilli()
+            byHourEpoch[epochMs] ?: ListeningInsightsActivityPoint(
+                epochMs = epochMs,
+                listenedMs = 0L,
+                plays = 0
+            )
+        }.toList()
     }
 
     fun dayEpoch(dayKey: String, zone: ZoneId): Long =

@@ -27,7 +27,10 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, queueSelectionLocalizationCodes())
         assertEquals(catalogCodes, offlineHomeLocalizationCodes())
         assertEquals(catalogCodes, recapLocalizationCodes())
+        assertEquals(catalogCodes, listeningInsightsLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
+            assertTrue(strings.listeningInsights.isNotBlank())
+            assertTrue(strings.listeningInsightsSubtitle.isNotBlank())
             assertTrue(strings.listeningRecap.isNotBlank())
             assertTrue(strings.recapSubtitle.isNotBlank())
             assertTrue(strings.recapPeriod7Days.isNotBlank())
