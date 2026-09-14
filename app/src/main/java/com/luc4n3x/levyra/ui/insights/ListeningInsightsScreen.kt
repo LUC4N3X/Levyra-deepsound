@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -74,6 +75,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -182,147 +184,206 @@ internal fun ListeningInsightsScreen(
                     onSelect = viewModel::selectPeriod
                 )
             }
-            if (state.failed && !state.snapshot.hasSignal) {
-                item(key = "insights-error", contentType = "state") {
-                    InsightsMessage(strings.insightsError, onRetry = viewModel::refresh)
-                }
-            } else if (state.loading && !state.snapshot.hasSignal) {
-                item(key = "insights-loading", contentType = "state") {
-                    Box(Modifier.fillMaxWidth().height(280.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = accent, strokeWidth = 2.dp, modifier = Modifier.size(30.dp))
-                    }
-                }
-            } else if (!state.snapshot.hasSignal) {
-                item(key = "insights-empty", contentType = "state") {
-                    InsightsEmpty(strings.insightsEmpty, accent)
-                }
+            if (!state.snapshot.hasSignal) {
+                insightsStateItems(state, strings, accent, onRetry = viewModel::refresh)
             } else {
-                item(key = "insights-hero", contentType = "hero") {
-                    AnimatedContent(
-                        targetState = state.snapshot,
-                        transitionSpec = {
-                            if (animationsEnabled) {
-                                fadeIn(tween(260)) togetherWith fadeOut(tween(160))
-                            } else {
-                                fadeIn(snap()) togetherWith fadeOut(snap())
-                            }
-                        },
-                        label = "insights-period-content"
-                    ) { snapshot ->
-                        InsightsHero(snapshot, strings, locale, accent)
-                    }
-                }
-                item(key = "insights-metrics", contentType = "metrics") {
-                    InsightsMetricRibbon(state.snapshot, strings, locale, accent)
-                }
-                item(key = "insights-activity-title", contentType = "section-title") {
-                    InsightsSectionTitle(strings.insightsActivity, Icons.Rounded.BarChart, accent)
-                }
-                item(key = "insights-activity", contentType = "chart") {
-                    InsightsActivityChart(state.snapshot, strings, locale, accent)
-                }
-                item(key = "insights-rhythm-title", contentType = "section-title") {
-                    InsightsSectionTitle(strings.insightsRhythm, Icons.Rounded.Equalizer, LevyraViolet)
-                }
-                item(key = "insights-rhythm", contentType = "rhythm") {
-                    InsightsRhythm(state.snapshot, strings, locale, accent)
-                }
-                if (state.snapshot.topArtists.isNotEmpty()) {
-                    item(key = "insights-artists-title", contentType = "section-title") {
-                        InsightsSectionTitle(strings.topArtistsTitle, Icons.Rounded.AutoAwesome, LevyraPink)
-                    }
-                    item(key = "insights-artists", contentType = "artists") {
-                        TopArtistsRail(state.snapshot.topArtists, strings, locale, accent, onOpenArtist)
-                    }
-                }
-                item(key = "insights-discovery", contentType = "discovery") {
-                    DiscoveryStory(state.snapshot, strings, locale, accent)
-                }
-                if (state.snapshot.topTracks.isNotEmpty()) {
-                    item(key = "insights-tracks-title", contentType = "section-title") {
-                        InsightsSectionTitle(strings.topTracksTitle, Icons.Rounded.ArrowUpward, accent)
-                    }
-                    itemsIndexed(
-                        items = state.snapshot.topTracks,
-                        key = { _, track -> "top-${track.trackId.ifBlank { "${track.title}|${track.artist}" }}" },
-                        contentType = { _, _ -> "top-track" }
-                    ) { index, track ->
-                        TopTrackRow(index, track, strings, locale, accent, onPlayTrack)
-                    }
-                }
-                item(key = "insights-history-title", contentType = "section-title") {
-                    HistoryHeading(
-                        strings = strings,
-                        searchVisible = state.searchVisible,
-                        onSearch = { viewModel.setSearchVisible(true) }
-                    )
-                }
-                item(key = "insights-history-search", contentType = "search") {
-                    AnimatedVisibility(
-                        visible = state.searchVisible,
-                        enter = fadeIn(if (animationsEnabled) tween() else snap()),
-                        exit = fadeOut(if (animationsEnabled) tween() else snap())
-                    ) {
-                        HistorySearch(
-                            value = state.query,
-                            hint = strings.insightsSearchHistory,
-                            closeLabel = strings.close,
-                            onValueChange = viewModel::setQuery,
-                            onClose = {
-                                keyboard?.hide()
-                                viewModel.setSearchVisible(false)
-                            }
-                        )
-                    }
-                }
-                historyGroups.forEach { group ->
-                    item(key = "history-group-${group.key}", contentType = "history-group") {
-                        Text(
-                            text = group.label,
-                            color = LevyraMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 18.dp, bottom = 8.dp)
-                        )
-                    }
-                    itemsIndexed(
-                        items = group.items,
-                        key = { _, item -> "history-${item.id}" },
-                        contentType = { _, _ -> "history-track" }
-                    ) { index, item ->
-                        HistoryTrackRow(
-                            item = item,
-                            locale = locale,
-                            strings = strings,
-                            accent = accent,
-                            drawDivider = index < group.items.lastIndex,
-                            onClick = { onPlayTrack(item.track) }
-                        )
-                    }
-                }
-                if (state.historyLoading) {
-                    item(key = "history-loading", contentType = "history-loading") {
-                        Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = accent, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
-                        }
-                    }
-                } else if (state.hasMoreHistory) {
-                    item(key = "history-more", contentType = "history-more") {
-                        LaunchedEffect(state.history.size) { viewModel.loadMoreHistory() }
-                        Text(
-                            text = strings.insightsLoadMore,
-                            color = accent,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.loadMoreHistory() }
-                                .padding(22.dp)
-                        )
-                    }
-                }
+                insightsSignalContent(
+                    snapshot = state.snapshot,
+                    strings = strings,
+                    locale = locale,
+                    accent = accent,
+                    animationsEnabled = animationsEnabled,
+                    onPlayTrack = onPlayTrack,
+                    onOpenArtist = onOpenArtist
+                )
+                insightsHistoryItems(
+                    state = state,
+                    historyGroups = historyGroups,
+                    strings = strings,
+                    locale = locale,
+                    accent = accent,
+                    animationsEnabled = animationsEnabled,
+                    onOpenSearch = { viewModel.setSearchVisible(true) },
+                    onCloseSearch = {
+                        keyboard?.hide()
+                        viewModel.setSearchVisible(false)
+                    },
+                    onQueryChange = viewModel::setQuery,
+                    onPlayTrack = onPlayTrack,
+                    onLoadMore = viewModel::loadMoreHistory
+                )
             }
+        }
+    }
+}
+
+private fun LazyListScope.insightsStateItems(
+    state: ListeningInsightsUiState,
+    strings: LevyraStrings,
+    accent: Color,
+    onRetry: () -> Unit
+) {
+    if (state.failed && !state.snapshot.hasSignal) {
+        item(key = "insights-error", contentType = "state") {
+            InsightsMessage(strings.insightsError, onRetry = onRetry)
+        }
+    } else if (state.loading && !state.snapshot.hasSignal) {
+        item(key = "insights-loading", contentType = "state") {
+            Box(Modifier.fillMaxWidth().height(280.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = accent, strokeWidth = 2.dp, modifier = Modifier.size(30.dp))
+            }
+        }
+    } else if (!state.snapshot.hasSignal) {
+        item(key = "insights-empty", contentType = "state") {
+            InsightsEmpty(strings.insightsEmpty, accent)
+        }
+    }
+}
+
+private fun LazyListScope.insightsSignalContent(
+    snapshot: ListeningInsightsSnapshot,
+    strings: LevyraStrings,
+    locale: Locale,
+    accent: Color,
+    animationsEnabled: Boolean,
+    onPlayTrack: (ListeningInsightsTrack) -> Unit,
+    onOpenArtist: (ListeningInsightsArtist) -> Unit
+) {
+    item(key = "insights-hero", contentType = "hero") {
+        AnimatedContent(
+            targetState = snapshot,
+            transitionSpec = {
+                if (animationsEnabled) {
+                    fadeIn(tween(260)) togetherWith fadeOut(tween(160))
+                } else {
+                    fadeIn(snap()) togetherWith fadeOut(snap())
+                }
+            },
+            label = "insights-period-content"
+        ) { currentSnapshot ->
+            InsightsHero(currentSnapshot, strings, locale, accent)
+        }
+    }
+    item(key = "insights-metrics", contentType = "metrics") {
+        InsightsMetricRibbon(snapshot, strings, locale, accent)
+    }
+    item(key = "insights-activity-title", contentType = "section-title") {
+        InsightsSectionTitle(strings.insightsActivity, Icons.Rounded.BarChart, accent)
+    }
+    item(key = "insights-activity", contentType = "chart") {
+        InsightsActivityChart(snapshot, strings, locale, accent)
+    }
+    item(key = "insights-rhythm-title", contentType = "section-title") {
+        InsightsSectionTitle(strings.insightsRhythm, Icons.Rounded.Equalizer, LevyraViolet)
+    }
+    item(key = "insights-rhythm", contentType = "rhythm") {
+        InsightsRhythm(snapshot, strings, locale, accent)
+    }
+    if (snapshot.topArtists.isNotEmpty()) {
+        item(key = "insights-artists-title", contentType = "section-title") {
+            InsightsSectionTitle(strings.topArtistsTitle, Icons.Rounded.AutoAwesome, LevyraPink)
+        }
+        item(key = "insights-artists", contentType = "artists") {
+            TopArtistsRail(snapshot.topArtists, strings, locale, accent, onOpenArtist)
+        }
+    }
+    item(key = "insights-discovery", contentType = "discovery") {
+        DiscoveryStory(snapshot, strings, locale, accent)
+    }
+    if (snapshot.topTracks.isNotEmpty()) {
+        item(key = "insights-tracks-title", contentType = "section-title") {
+            InsightsSectionTitle(strings.topTracksTitle, Icons.Rounded.ArrowUpward, accent)
+        }
+        itemsIndexed(
+            items = snapshot.topTracks,
+            key = { _, track -> "top-${track.trackId.ifBlank { "${track.title}|${track.artist}" }}" },
+            contentType = { _, _ -> "top-track" }
+        ) { index, track ->
+            TopTrackRow(index, track, strings, locale, accent, onPlayTrack)
+        }
+    }
+}
+
+private fun LazyListScope.insightsHistoryItems(
+    state: ListeningInsightsUiState,
+    historyGroups: List<HistoryGroup>,
+    strings: LevyraStrings,
+    locale: Locale,
+    accent: Color,
+    animationsEnabled: Boolean,
+    onOpenSearch: () -> Unit,
+    onCloseSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onPlayTrack: (ListeningInsightsTrack) -> Unit,
+    onLoadMore: () -> Unit
+) {
+    item(key = "insights-history-title", contentType = "section-title") {
+        HistoryHeading(
+            strings = strings,
+            searchVisible = state.searchVisible,
+            onSearch = onOpenSearch
+        )
+    }
+    item(key = "insights-history-search", contentType = "search") {
+        AnimatedVisibility(
+            visible = state.searchVisible,
+            enter = fadeIn(if (animationsEnabled) tween() else snap()),
+            exit = fadeOut(if (animationsEnabled) tween() else snap())
+        ) {
+            HistorySearch(
+                value = state.query,
+                hint = strings.insightsSearchHistory,
+                closeLabel = strings.close,
+                onValueChange = onQueryChange,
+                onClose = onCloseSearch
+            )
+        }
+    }
+    historyGroups.forEach { group ->
+        item(key = "history-group-${group.key}", contentType = "history-group") {
+            Text(
+                text = group.label,
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 18.dp, bottom = 8.dp)
+            )
+        }
+        itemsIndexed(
+            items = group.items,
+            key = { _, item -> "history-${item.id}" },
+            contentType = { _, _ -> "history-track" }
+        ) { index, item ->
+            HistoryTrackRow(
+                item = item,
+                locale = locale,
+                strings = strings,
+                accent = accent,
+                drawDivider = index < group.items.lastIndex,
+                onClick = { onPlayTrack(item.track) }
+            )
+        }
+    }
+    if (state.historyLoading) {
+        item(key = "history-loading", contentType = "history-loading") {
+            Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = accent, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+            }
+        }
+    } else if (state.hasMoreHistory) {
+        item(key = "history-more", contentType = "history-more") {
+            LaunchedEffect(state.history.size) { onLoadMore() }
+            Text(
+                text = strings.insightsLoadMore,
+                color = accent,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onLoadMore() }
+                    .padding(22.dp)
+            )
         }
     }
 }
@@ -618,7 +679,6 @@ private fun InsightsActivityChart(
         label = "insights-activity-reveal"
     )
     val maxValue = remember(points) { points.maxOfOrNull { it.listenedMs }?.coerceAtLeast(1L) ?: 1L }
-    val isAllTime = snapshot.period == ListeningInsightsPeriod.AllTime
     val isDay = snapshot.period == ListeningInsightsPeriod.Day
 
     Column(
@@ -631,51 +691,7 @@ private fun InsightsActivityChart(
             .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (isAllTime && snapshot.detailedFromMs > 0L) {
-            val detailedFrom = remember(snapshot.detailedFromMs, locale) {
-                Instant.ofEpochMilli(snapshot.detailedFromMs).atZone(ZoneId.systemDefault()).toLocalDate()
-                    .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
-            }
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    strings.insightsDetailAvailable.format(detailedFrom),
-                    color = LevyraMuted,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Surface(
-                    color = LevyraViolet.copy(alpha = 0.12f),
-                    shape = CircleShape,
-                    border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.25f))
-                ) {
-                    Text(
-                        text = strings.insightsDetailedTimeline,
-                        color = LevyraViolet,
-                        fontSize = 8.5.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-            }
-        } else if (snapshot.metrics.peakDayEpochMs > 0L) {
-            val peakDate = remember(snapshot.metrics.peakDayEpochMs, locale, isDay) {
-                if (isDay) {
-                    val time = Instant.ofEpochMilli(snapshot.metrics.peakDayEpochMs).atZone(ZoneId.systemDefault()).toLocalTime()
-                    time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
-                } else {
-                    Instant.ofEpochMilli(snapshot.metrics.peakDayEpochMs).atZone(ZoneId.systemDefault()).toLocalDate()
-                        .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(strings.pulseProPeak, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                Text(peakDate, color = accent, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+        ActivityChartHeader(snapshot, strings, locale, accent)
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -686,64 +702,139 @@ private fun InsightsActivityChart(
         ) {
             if (points.isEmpty()) return@Canvas
             if (isDay) {
-                val slot = size.width / points.size
-                val barWidth = (slot * 0.48f).coerceAtLeast(3f)
-                points.forEachIndexed { index, point ->
-                    val fraction = (point.listenedMs.toFloat() / maxValue.toFloat()).coerceIn(0f, 1f)
-                    val hasActivity = fraction > 0f
-                    val minHeight = 3.dp.toPx()
-                    val barHeight = if (hasActivity) {
-                        max(barWidth * 1.1f, size.height * fraction) * reveal
-                    } else {
-                        minHeight * reveal
-                    }
-                    val barX = index * slot + (slot - barWidth) / 2f
-                    val barY = size.height - barHeight
-                    if (hasActivity) {
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                listOf(accent, LevyraViolet.copy(alpha = 0.55f)),
-                                startY = barY,
-                                endY = size.height
-                            ),
-                            topLeft = Offset(barX, barY),
-                            size = Size(barWidth, barHeight),
-                            cornerRadius = CornerRadius(barWidth / 2f)
-                        )
-                    } else {
-                        drawRoundRect(
-                            color = LevyraViolet.copy(alpha = 0.16f),
-                            topLeft = Offset(barX, barY),
-                            size = Size(barWidth, barHeight),
-                            cornerRadius = CornerRadius(barWidth / 2f)
-                        )
-                    }
-                }
+                drawHourlyBars(points, maxValue, reveal, accent)
             } else {
-                val step = if (points.size <= 1) size.width else size.width / (points.size - 1)
-                val line = Path()
-                val area = Path()
-                points.forEachIndexed { index, point ->
-                    val x = index * step
-                    val fraction = point.listenedMs.toFloat() / maxValue.toFloat()
-                    val y = size.height - fraction * size.height * 0.86f * reveal
-                    if (index == 0) {
-                        line.moveTo(x, y)
-                        area.moveTo(x, size.height)
-                        area.lineTo(x, y)
-                    } else {
-                        line.lineTo(x, y)
-                        area.lineTo(x, y)
-                    }
-                }
-                area.lineTo(size.width, size.height)
-                area.close()
-                drawPath(area, Brush.verticalGradient(listOf(accent.copy(alpha = 0.28f), Color.Transparent)))
-                drawPath(line, color = accent, style = Stroke(width = 3.2f, cap = StrokeCap.Round))
+                drawTrendLine(points, maxValue, reveal, accent)
             }
         }
         ActivityLabels(snapshot.period, points, locale)
     }
+}
+
+@Composable
+private fun ActivityChartHeader(
+    snapshot: ListeningInsightsSnapshot,
+    strings: LevyraStrings,
+    locale: Locale,
+    accent: Color
+) {
+    val isAllTime = snapshot.period == ListeningInsightsPeriod.AllTime
+    val isDay = snapshot.period == ListeningInsightsPeriod.Day
+
+    if (isAllTime && snapshot.detailedFromMs > 0L) {
+        val detailedFrom = remember(snapshot.detailedFromMs, locale) {
+            Instant.ofEpochMilli(snapshot.detailedFromMs).atZone(ZoneId.systemDefault()).toLocalDate()
+                .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                strings.insightsDetailAvailable.format(detailedFrom),
+                color = LevyraMuted,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Surface(
+                color = LevyraViolet.copy(alpha = 0.12f),
+                shape = CircleShape,
+                border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.25f))
+            ) {
+                Text(
+                    text = strings.insightsDetailedTimeline,
+                    color = LevyraViolet,
+                    fontSize = 8.5.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+    } else if (snapshot.metrics.peakDayEpochMs > 0L) {
+        val peakDate = remember(snapshot.metrics.peakDayEpochMs, locale, isDay) {
+            if (isDay) {
+                val time = Instant.ofEpochMilli(snapshot.metrics.peakDayEpochMs).atZone(ZoneId.systemDefault()).toLocalTime()
+                time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
+            } else {
+                Instant.ofEpochMilli(snapshot.metrics.peakDayEpochMs).atZone(ZoneId.systemDefault()).toLocalDate()
+                    .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(strings.pulseProPeak, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text(peakDate, color = accent, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+private fun DrawScope.drawHourlyBars(
+    points: List<ListeningInsightsActivityPoint>,
+    maxValue: Long,
+    reveal: Float,
+    accent: Color
+) {
+    val slot = size.width / points.size
+    val barWidth = (slot * 0.48f).coerceAtLeast(3f)
+    points.forEachIndexed { index, point ->
+        val fraction = (point.listenedMs.toFloat() / maxValue.toFloat()).coerceIn(0f, 1f)
+        val hasActivity = fraction > 0f
+        val minHeight = 3.dp.toPx()
+        val barHeight = if (hasActivity) {
+            max(barWidth * 1.1f, size.height * fraction) * reveal
+        } else {
+            minHeight * reveal
+        }
+        val barX = index * slot + (slot - barWidth) / 2f
+        val barY = size.height - barHeight
+        if (hasActivity) {
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    listOf(accent, LevyraViolet.copy(alpha = 0.55f)),
+                    startY = barY,
+                    endY = size.height
+                ),
+                topLeft = Offset(barX, barY),
+                size = Size(barWidth, barHeight),
+                cornerRadius = CornerRadius(barWidth / 2f)
+            )
+        } else {
+            drawRoundRect(
+                color = LevyraViolet.copy(alpha = 0.16f),
+                topLeft = Offset(barX, barY),
+                size = Size(barWidth, barHeight),
+                cornerRadius = CornerRadius(barWidth / 2f)
+            )
+        }
+    }
+}
+
+private fun DrawScope.drawTrendLine(
+    points: List<ListeningInsightsActivityPoint>,
+    maxValue: Long,
+    reveal: Float,
+    accent: Color
+) {
+    val step = if (points.size <= 1) size.width else size.width / (points.size - 1)
+    val line = Path()
+    val area = Path()
+    points.forEachIndexed { index, point ->
+        val x = index * step
+        val fraction = point.listenedMs.toFloat() / maxValue.toFloat()
+        val y = size.height - fraction * size.height * 0.86f * reveal
+        if (index == 0) {
+            line.moveTo(x, y)
+            area.moveTo(x, size.height)
+            area.lineTo(x, y)
+        } else {
+            line.lineTo(x, y)
+            area.lineTo(x, y)
+        }
+    }
+    area.lineTo(size.width, size.height)
+    area.close()
+    drawPath(area, Brush.verticalGradient(listOf(accent.copy(alpha = 0.28f), Color.Transparent)))
+    drawPath(line, color = accent, style = Stroke(width = 3.2f, cap = StrokeCap.Round))
 }
 
 @Composable

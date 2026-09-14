@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luc4n3x.levyra.data.ListeningInsightsRepository
+import com.luc4n3x.levyra.domain.ListeningInsightsArtist
 import com.luc4n3x.levyra.domain.ListeningInsightsHistoryItem
 import com.luc4n3x.levyra.domain.ListeningInsightsPeriod
 import com.luc4n3x.levyra.domain.ListeningInsightsSnapshot
