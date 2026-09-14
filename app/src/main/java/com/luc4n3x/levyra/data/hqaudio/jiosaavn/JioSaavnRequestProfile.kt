@@ -29,6 +29,9 @@ internal class JioSaavnRequestProfile(
     val maskedAddress: String
         get() = forwardedAddress.split('.').take(2).joinToString(".") + ".x.x"
 
+    val block: IndianAddressBlock?
+        get() = addressBlocks.firstOrNull { it.contains(forwardedAddress) }
+
     fun apiHeaders(): Map<String, String> = linkedMapOf(
         "User-Agent" to userAgent,
         "Accept" to "application/json, text/plain, */*",
@@ -59,8 +62,12 @@ internal class JioSaavnRequestProfile(
             IndianAddressBlock("117.96.0.0", 14, "Bharti Airtel")
         )
 
-        fun create(random: Random = SecureRandom().asKotlinRandom()): JioSaavnRequestProfile {
-            val block = addressBlocks[random.nextInt(addressBlocks.size)]
+        fun create(
+            random: Random = SecureRandom().asKotlinRandom(),
+            excluded: Set<IndianAddressBlock> = emptySet()
+        ): JioSaavnRequestProfile {
+            val eligible = addressBlocks.filterNot { it in excluded }.ifEmpty { addressBlocks }
+            val block = eligible[random.nextInt(eligible.size)]
             val network = block.firstAddress + random.nextLong(block.size)
             val host = (network and 0xFFFFFF00L) or (FIRST_HOST_OCTET + random.nextInt(HOST_OCTET_RANGE)).toLong()
             return JioSaavnRequestProfile(forwardedAddress = longToIpv4(host), operator = block.operator)

@@ -54,6 +54,16 @@ internal data class JioSaavnMediaLocation(
 
     companion object {
         private val mediaFile = Regex("^(.+)_(\\d{2,3})\\.(mp4|m4a)$", RegexOption.IGNORE_CASE)
+        private val openPathPart = Regex("^[A-Za-z0-9_-]+$")
+
+        fun fromMediaToken(mediaToken: String): JioSaavnMediaLocation? {
+            val decoded = JioSaavnMediaToken.decode(mediaToken) ?: return null
+            if (decoded.toHttpUrlOrNull()?.host != JioSaavnEndpoints.OPEN_MEDIA_HOST) return null
+            val location = parse(decoded) ?: return null
+            val pathParts = location.directory.split('/').filter { it.isNotEmpty() } + location.stem
+            if (location.directory.isEmpty() || !pathParts.all(openPathPart::matches)) return null
+            return location.copy(authorizedUrl = "", authorizedTier = null, authorizedExpiresAtMs = null)
+        }
 
         fun parse(authorizedUrl: String): JioSaavnMediaLocation? {
             val url = authorizedUrl.toHttpUrlOrNull() ?: return null

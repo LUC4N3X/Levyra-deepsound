@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.data.hqaudio.jiosaavn
 
 import com.luc4n3x.levyra.data.hqaudio.AudioQualityTier
+import java.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -47,5 +50,47 @@ class JioSaavnEndpointsTest {
         assertNull(JioSaavnMediaLocation.parse("http://web.saavncdn.com/820/a_320.mp4"))
         assertNull(JioSaavnMediaLocation.parse("https://web.saavncdn.com/820/a.mp4"))
         assertNull(JioSaavnMediaLocation.parse("false"))
+    }
+
+    @Test
+    fun realMediaTokenDecodesToAnOpenLocationForEveryTier() {
+        val location = JioSaavnMediaLocation.fromMediaToken(
+            "ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDy8IXxuTNJ1oLbvDGDneZj5h25kdaKPCof228ruhJnw7PIr7uKBnaPmxw7tS9a8Gtq"
+        )!!
+        assertEquals("", location.authorizedUrl)
+        assertNull(location.authorizedTier)
+        assertNull(location.authorizedExpiresAtMs)
+        assertEquals(
+            "https://aac.saavncdn.com/396/eca27e31e93211051fa0de18160ea825_320.mp4",
+            location.openUrl(AudioQualityTier.KBPS_320)
+        )
+        assertEquals(
+            "https://aac.saavncdn.com/396/eca27e31e93211051fa0de18160ea825_96.mp4",
+            location.openUrl(AudioQualityTier.KBPS_96)
+        )
+    }
+
+    @Test
+    fun mediaTokenRoundTripKeepsTheOpenPath() {
+        val location = JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/820/5ddb9a79_96.mp4"))!!
+        assertEquals("https://aac.saavncdn.com/820/5ddb9a79_160.mp4", location.openUrl(AudioQualityTier.KBPS_160))
+    }
+
+    @Test
+    fun untrustedOrMalformedMediaTokensAreRejected() {
+        assertNull(JioSaavnMediaLocation.fromMediaToken(""))
+        assertNull(JioSaavnMediaLocation.fromMediaToken("token-pW-kkdqr"))
+        assertNull(JioSaavnMediaLocation.fromMediaToken("ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDy"))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://evil.example/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("http://aac.saavncdn.com/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/820/a%3Fb_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/820/5ddb9a79.mp4")))
+    }
+
+    private fun encrypt(plain: String): String {
+        val cipher = Cipher.getInstance("DES/ECB/PKCS5Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec("38346591".toByteArray(Charsets.US_ASCII), "DES"))
+        return Base64.getEncoder().encodeToString(cipher.doFinal(plain.toByteArray(Charsets.UTF_8)))
     }
 }

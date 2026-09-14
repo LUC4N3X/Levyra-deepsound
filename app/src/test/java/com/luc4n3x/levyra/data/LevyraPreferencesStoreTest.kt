@@ -98,11 +98,34 @@ class LevyraPreferencesStoreTest {
         assertTrue(snapshot.animationsEnabled)
         assertTrue(snapshot.dynamicColor)
         assertEquals(DEFAULT_SPONSORBLOCK_ENABLED, snapshot.sponsorBlock)
-        assertEquals("Auto", snapshot.audioQuality)
+        assertEquals("High", snapshot.audioQuality)
         assertEquals(LevyraAudioSettings().normalized(), preferences.audioSettings())
         assertEquals(PlayerVisualMode.CanvasImmersive, preferences.interfaceSettings().playerVisualMode)
         assertNull(snapshot.lastTrack)
         assertEquals(LevyraAutomationSettings().normalized(), runBlocking { preferences.automationSettingsFlow.first() })
+    }
+
+    @Test
+    fun storedAudioQualityChoicesSurviveTheHighDefault() {
+        mapOf("High" to "High", "Auto" to "Auto", "Low" to "Low", "" to "High", "Medium" to "High").forEach { (stored, expected) ->
+            runBlocking { disk.edit { it[stringPreferencesKey("audio_quality")] = stored } }
+            val (_, preferences) = open()
+
+            assertEquals("stored=\"$stored\"", expected, preferences.audioQuality())
+            assertEquals("stored=\"$stored\"", expected, preferences.snapshot().audioQuality)
+        }
+    }
+
+    @Test
+    fun restoringASnapshotKeepsAnExplicitAudioQualityChoice() {
+        listOf("Auto", "High", "Low").forEach { choice ->
+            val (store, preferences) = open()
+            runBlocking { preferences.restoreSnapshot(preferences.snapshot().copy(audioQuality = choice)) }
+            flush(store)
+
+            assertEquals(choice, preferences.audioQuality())
+            assertEquals(choice, reopen().audioQuality())
+        }
     }
 
     @Test

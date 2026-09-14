@@ -33,6 +33,20 @@ class JioSaavnRequestProfileTest {
     }
 
     @Test
+    fun excludedBlocksAreSkippedUnlessEveryBlockIsExcluded() {
+        val random = Random(5)
+        val blocks = JioSaavnRequestProfile.addressBlocks
+        val excluded = blocks.dropLast(1).toSet()
+        repeat(200) {
+            assertEquals(blocks.last(), JioSaavnRequestProfile.create(random, excluded).block)
+        }
+        repeat(50) {
+            val profile = JioSaavnRequestProfile.create(random, blocks.toSet())
+            assertTrue(profile.block in blocks)
+        }
+    }
+
+    @Test
     fun mediaHeadersNeverCarryTheIndiaProfile() {
         val headers = JioSaavnRequestProfile.create(Random(3)).mediaHeaders()
         assertFalse(headers.containsKey("X-Forwarded-For"))

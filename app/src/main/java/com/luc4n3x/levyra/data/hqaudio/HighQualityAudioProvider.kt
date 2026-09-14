@@ -16,7 +16,8 @@ enum class ProviderFailure {
     FORBIDDEN,
     NOT_FOUND,
     HTTP_ERROR,
-    MALFORMED_RESPONSE
+    MALFORMED_RESPONSE,
+    CIRCUIT_OPEN
 }
 
 sealed interface ProviderSearchOutcome {
