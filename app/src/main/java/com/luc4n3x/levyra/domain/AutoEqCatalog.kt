@@ -94,7 +94,7 @@ class AutoEqCatalog private constructor(
         var low = 0
         var high = keyStarts.size - 1
         while (low < high) {
-            val middle = (low + high + 1) ushr 1
+            val middle = (low + high + 1) / 2
             if (keyStarts[middle] <= position) low = middle else high = middle - 1
         }
         return low

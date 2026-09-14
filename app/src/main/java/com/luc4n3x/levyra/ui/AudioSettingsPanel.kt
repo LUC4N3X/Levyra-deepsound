@@ -1600,7 +1600,7 @@ private fun DrawScope.drawEqualizerCurve(
 
     val points = levels.mapIndexed { index, level ->
         val x = slot * index + slot / 2f
-        val y = zeroY - (level / 100f) * amplitude
+        val y = zeroY - level / 100f * amplitude
         Offset(x, y)
     }
     val curve = Path().apply {
