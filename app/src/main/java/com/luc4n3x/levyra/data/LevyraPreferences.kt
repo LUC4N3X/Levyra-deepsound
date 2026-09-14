@@ -748,9 +748,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
     }
 
     private fun normalizeAudioQuality(value: String): String = when (value.lowercase()) {
-        "high" -> "High"
+        "auto" -> "Auto"
         "low" -> "Low"
-        else -> "Auto"
+        else -> "High"
     }
 
     private fun audioSettingsFrom(preferences: Preferences): LevyraAudioSettings {

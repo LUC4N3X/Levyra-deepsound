@@ -179,7 +179,7 @@ data class LevyraUiState(
     val repeatMode: RepeatMode = RepeatMode.Off,
     val shuffleEnabled: Boolean = false,
     val playbackSpeed: Float = 1f,
-    val audioQuality: String = "Auto",
+    val audioQuality: String = "High",
     val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
     val showAudioQualityPanel: Boolean = false,
     val audioNormalization: Boolean = false,

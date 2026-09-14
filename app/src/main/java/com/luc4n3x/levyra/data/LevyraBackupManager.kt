@@ -960,7 +960,7 @@ class LevyraBackupManager(private val context: Context) {
             dynamicColor = json.optBoolean("dynamicColor", true),
             sponsorBlock = json.optBoolean("sponsorBlock", true),
             skipSilence = json.optBoolean("skipSilence", false),
-            audioQuality = json.optString("audioQuality", "Auto"),
+            audioQuality = json.optString("audioQuality", "High"),
             highQualityAudioMode = HighQualityAudioMode.fromStorage(
                 json.optString("highQualityAudioMode", HighQualityAudioMode.PREFER_320.storageValue)
             ),

@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio.jiosaavn
 
 import com.luc4n3x.levyra.data.hqaudio.AudioQualityTier
+import com.luc4n3x.levyra.data.hqaudio.ProviderCircuitBreaker
 import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpRequest
@@ -16,18 +17,28 @@ import com.luc4n3x.levyra.data.hqaudio.jsonResponse
 import com.luc4n3x.levyra.data.hqaudio.probeResponse
 import com.luc4n3x.levyra.data.hqaudio.saavnSong
 import com.luc4n3x.levyra.data.hqaudio.searchBody
+import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.random.Random
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class JioSaavnAudioProviderTest {
     private class ScriptedExchange(
-        private val handler: (ProviderHttpRequest) -> ProviderHttpResponse
+        @Volatile var handler: suspend (ProviderHttpRequest) -> ProviderHttpResponse
     ) : ProviderHttpExchange {
         val requests = CopyOnWriteArrayList<ProviderHttpRequest>()
 
@@ -40,16 +51,27 @@ class JioSaavnAudioProviderTest {
     private val signedUrl = "https://web.saavncdn.com/820/abcdef_320.mp4?Expires=4102444800&Signature=abc&Key-Pair-Id=key"
     private val authBody = JSONObject().put("auth_url", signedUrl).put("type", "mp4").put("status", "success").toString()
     private val tierPattern = Regex("_(\\d+)\\.mp4$")
-    private var profilesCreated = 0
-    private val now = 1_800_000_000_000L
+    private val profileRandom = Random(11)
+    private val createdProfiles = CopyOnWriteArrayList<JioSaavnRequestProfile>()
+    private val exclusions = CopyOnWriteArrayList<Set<IndianAddressBlock>>()
 
-    private fun provider(exchange: ProviderHttpExchange) = JioSaavnAudioProvider(
+    @Volatile
+    private var clockMs = 1_800_000_000_000L
+
+    private val songBody = searchBody(saavnSong("pW-kkdqr", "Blinding Lights", listOf("The Weeknd"), "Blinding Lights", 204))
+    private val localCandidate = candidate(duration = 200).copy(mediaToken = REAL_MEDIA_TOKEN)
+
+    private fun breaker(threshold: Int = ProviderCircuitBreaker.DEFAULT_FAILURE_THRESHOLD) =
+        ProviderCircuitBreaker("jiosaavn", { clockMs }, failureThreshold = threshold)
+
+    private fun provider(exchange: ProviderHttpExchange, circuitBreaker: ProviderCircuitBreaker = breaker()) = JioSaavnAudioProvider(
         exchange = exchange,
-        profileFactory = {
-            profilesCreated += 1
-            JioSaavnRequestProfile("49.40.10.${20 + profilesCreated}", "Reliance Jio")
+        profileFactory = { excluded ->
+            exclusions += excluded
+            JioSaavnRequestProfile.create(profileRandom, excluded).also { createdProfiles += it }
         },
-        clock = { now }
+        clock = { clockMs },
+        circuitBreaker = circuitBreaker
     )
 
     private fun streamExchange(
@@ -67,6 +89,20 @@ class JioSaavnAudioProviderTest {
     }
 
     private fun validFor(tier: Int, actualKbps: Int = tier) = probeResponse(bytesFor(actualKbps, 200))
+
+    private fun forwardedFor(request: ProviderHttpRequest): String? = request.headers["X-Forwarded-For"]
+
+    private fun ScriptedExchange.apiRequests() = requests.filter { it.url.startsWith("https://www.jiosaavn.com/") }
+
+    private fun ScriptedExchange.authorizations() = requests.count { it.url.contains("song.generateAuthToken") }
+
+    private fun openCircuitWithTimeouts(exchange: ScriptedExchange, provider: JioSaavnAudioProvider) {
+        exchange.handler = { throw SocketTimeoutException("timeout") }
+        runBlocking {
+            provider.search("one")
+            provider.search("two")
+        }
+    }
 
     @Test
     fun genuine320IsResolvedFromOpenCdnWhenSignedCdnRejectsTheRealAddress() {
@@ -128,9 +164,78 @@ class JioSaavnAudioProviderTest {
     }
 
     @Test
+    fun undecodableMediaTokenKeepsTheAuthorizedPath() {
+        val exchange = streamExchange { tier -> if (tier == 320) validFor(320) else htmlResponse(404) }
+        runBlocking { provider(exchange).resolveStream(candidate(duration = 200)) }
+        assertEquals(1, exchange.authorizations())
+    }
+
+    @Test
+    fun localMediaTokenResolves320WithoutAuthorization() {
+        val exchange = streamExchange { tier -> if (tier == 320) validFor(320) else htmlResponse(404) }
+        val outcome = runBlocking { provider(exchange).resolveStream(localCandidate) }
+        val stream = (outcome as ProviderStreamOutcome.Resolved).stream
+        assertEquals("https://aac.saavncdn.com/396/$REAL_MEDIA_STEM" + "_320.mp4", stream.url)
+        assertEquals(AudioQualityTier.KBPS_320, stream.tier)
+        assertEquals(320, stream.estimatedKbps)
+        assertEquals("mp4a", stream.codec)
+        assertEquals(clockMs + JioSaavnAudioProvider.OPEN_MEDIA_TTL_MS, stream.expiresAtMs)
+        assertEquals(1, exchange.requests.size)
+        assertTrue(exchange.apiRequests().isEmpty())
+    }
+
+    @Test
+    fun invalidLocalMediaFallsBackToTheAuthorizedSignedStream() {
+        val exchange = streamExchange(signedResponse = validFor(320)) { htmlResponse(404) }
+        val outcome = runBlocking { provider(exchange).resolveStream(localCandidate) }
+        assertEquals(signedUrl, (outcome as ProviderStreamOutcome.Resolved).stream.url)
+        assertEquals(1, exchange.authorizations())
+    }
+
+    @Test
+    fun localMediaIsValidatedBeforeUse() {
+        val exchange = streamExchange(signedResponse = validFor(320)) { validFor(320, actualKbps = 96) }
+        val outcome = runBlocking { provider(exchange).resolveStream(localCandidate) }
+        assertEquals(signedUrl, (outcome as ProviderStreamOutcome.Resolved).stream.url)
+        assertEquals(1, exchange.authorizations())
+    }
+
+    @Test
+    fun localLowerTierServesWhenAuthorizationIsUnavailable() {
+        val exchange = ScriptedExchange { request ->
+            when {
+                request.url.contains("song.generateAuthToken") -> throw SocketTimeoutException("timeout")
+                request.url.endsWith("_160.mp4") -> validFor(160)
+                else -> htmlResponse(404)
+            }
+        }
+        val stream = (runBlocking { provider(exchange).resolveStream(localCandidate) } as ProviderStreamOutcome.Resolved).stream
+        assertEquals("https://aac.saavncdn.com/396/$REAL_MEDIA_STEM" + "_160.mp4", stream.url)
+        assertEquals(AudioQualityTier.KBPS_160, stream.tier)
+    }
+
+    @Test
+    fun localMissAndAuthorizationOutageIsATransientFailure() {
+        val exchange = ScriptedExchange { request ->
+            if (request.url.contains("song.generateAuthToken")) throw SocketTimeoutException("timeout") else htmlResponse(404)
+        }
+        val outcome = runBlocking { provider(exchange).resolveStream(localCandidate) }
+        assertEquals(ProviderFailure.TIMEOUT, (outcome as ProviderStreamOutcome.Failed).failure)
+    }
+
+    @Test
+    fun sharedMediaLocationIsNotProbedTwice() {
+        val sameLocation = "https://web.saavncdn.com/396/$REAL_MEDIA_STEM" + "_320.mp4?Expires=4102444800&Signature=s&Key-Pair-Id=k"
+        val authorization = JSONObject().put("auth_url", sameLocation).put("status", "success").toString()
+        val exchange = streamExchange(authorization = authorization) { htmlResponse(404) }
+        val outcome = runBlocking { provider(exchange).resolveStream(localCandidate) }
+        assertTrue(outcome is ProviderStreamOutcome.Unavailable)
+        assertEquals(1, exchange.requests.count { it.url == "https://aac.saavncdn.com/396/$REAL_MEDIA_STEM" + "_320.mp4" })
+    }
+
+    @Test
     fun searchReturnsParsedCandidates() {
-        val body = searchBody(saavnSong("pW-kkdqr", "Blinding Lights", listOf("The Weeknd"), "Blinding Lights", 204))
-        val outcome = runBlocking { provider(ScriptedExchange { jsonResponse(body) }).search("blinding lights") }
+        val outcome = runBlocking { provider(ScriptedExchange { jsonResponse(songBody) }).search("blinding lights") }
         val found = (outcome as ProviderSearchOutcome.Found).candidates
         assertEquals("pW-kkdqr", found.single().providerTrackId)
         assertEquals(204, found.single().durationSeconds)
@@ -149,14 +254,96 @@ class JioSaavnAudioProviderTest {
     }
 
     @Test
-    fun forbiddenResponseRotatesTheRequestProfile() {
+    fun forbiddenProfileIsReplacedAndTheRequestRetriedOnce() {
+        val exchange = ScriptedExchange { request ->
+            if (forwardedFor(request) == createdProfiles.first().forwardedAddress) htmlResponse(403) else jsonResponse(songBody)
+        }
+        val outcome = runBlocking { provider(exchange).search("song") }
+        assertTrue(outcome is ProviderSearchOutcome.Found)
+        assertEquals(2, exchange.requests.size)
+        assertEquals(2, createdProfiles.size)
+        assertNotEquals(createdProfiles[0].block, createdProfiles[1].block)
+        assertEquals(setOf(createdProfiles[0].block!!), exclusions.last())
+    }
+
+    @Test
+    fun forbiddenRetryFailureStopsAfterTheAttemptBudget() {
         val exchange = ScriptedExchange { htmlResponse(403) }
-        val provider = provider(exchange)
-        val outcome = runBlocking { provider.search("song") }
+        val outcome = runBlocking { provider(exchange).search("song") }
         assertEquals(ProviderFailure.FORBIDDEN, (outcome as ProviderSearchOutcome.Failed).failure)
-        assertEquals(1, exchange.requests.size)
-        runBlocking { provider.search("song") }
-        assertEquals(2, profilesCreated)
+        assertEquals(JioSaavnAudioProvider.MAX_API_ATTEMPTS, exchange.requests.size)
+        assertEquals(2, exchange.requests.map(::forwardedFor).distinct().size)
+    }
+
+    @Test
+    fun rateLimitedProfileCoolsDownItsBlockAndRotates() {
+        val exchange = ScriptedExchange { request ->
+            if (forwardedFor(request) == createdProfiles.first().forwardedAddress) htmlResponse(429) else jsonResponse(songBody)
+        }
+        val outcome = runBlocking { provider(exchange).search("song") }
+        assertTrue(outcome is ProviderSearchOutcome.Found)
+        assertEquals(setOf(createdProfiles[0].block!!), exclusions.last())
+        assertNotEquals(createdProfiles[0].block, createdProfiles[1].block)
+    }
+
+    @Test
+    fun cooledBlockBecomesEligibleAgainAfterItsCooldown() {
+        val rejected = CopyOnWriteArrayList<String>()
+        val exchange = ScriptedExchange { request ->
+            if (forwardedFor(request) in rejected) htmlResponse(403) else jsonResponse(songBody)
+        }
+        val provider = provider(exchange)
+        runBlocking { provider.currentProfile() }
+        rejected += createdProfiles[0].forwardedAddress
+        runBlocking { provider.search("first") }
+        clockMs += JioSaavnAudioProvider.BLOCK_COOLDOWN_MS + 1
+        rejected += createdProfiles[1].forwardedAddress
+        runBlocking { provider.search("second") }
+        assertEquals(setOf(createdProfiles[1].block!!), exclusions.last())
+    }
+
+    @Test
+    fun whenEveryBlockIsCoolingDownTheSoonestToRecoverIsReused() {
+        val exchange = ScriptedExchange {
+            clockMs += 1_000L
+            htmlResponse(403)
+        }
+        val provider = provider(exchange, breaker(threshold = 100))
+        runBlocking {
+            provider.search("one")
+            provider.search("two")
+            provider.currentProfile()
+        }
+        val blocks = createdProfiles.map { it.block!! }
+        assertEquals(JioSaavnRequestProfile.addressBlocks.toSet(), blocks.take(4).toSet())
+        assertEquals(JioSaavnRequestProfile.addressBlocks.toSet() - blocks[0], exclusions[4])
+        assertEquals(blocks[0], blocks[4])
+    }
+
+    @Test
+    fun concurrentRejectionsOfOneProfileRotateItOnlyOnce() {
+        val concurrency = 4
+        val arrived = AtomicInteger()
+        val allArrived = CompletableDeferred<Unit>()
+        val exchange = ScriptedExchange { request ->
+            if (forwardedFor(request) == createdProfiles.first().forwardedAddress) {
+                if (arrived.incrementAndGet() == concurrency) allArrived.complete(Unit)
+                allArrived.await()
+                htmlResponse(403)
+            } else {
+                jsonResponse(songBody)
+            }
+        }
+        val breaker = breaker()
+        val provider = provider(exchange, breaker)
+        val outcomes = runBlocking {
+            withTimeout(5_000L) {
+                (1..concurrency).map { async(Dispatchers.Default) { provider.search("song $it") } }.awaitAll()
+            }
+        }
+        assertTrue(outcomes.all { it is ProviderSearchOutcome.Found })
+        assertEquals(2, createdProfiles.size)
+        assertEquals(ProviderCircuitBreaker.State.CLOSED, breaker.currentState)
     }
 
     @Test
@@ -166,11 +353,21 @@ class JioSaavnAudioProviderTest {
     }
 
     @Test
-    fun timeoutRetriesOnceThenFails() {
+    fun timeoutRetriesOnceWithoutTreatingTheBlockAsBanned() {
         val exchange = ScriptedExchange { throw SocketTimeoutException("timeout") }
         val outcome = runBlocking { provider(exchange).search("song") }
         assertEquals(ProviderFailure.TIMEOUT, (outcome as ProviderSearchOutcome.Failed).failure)
         assertEquals(JioSaavnAudioProvider.MAX_API_ATTEMPTS, exchange.requests.size)
+        assertEquals(1, createdProfiles.size)
+    }
+
+    @Test
+    fun networkFailureRetriesOnceWithoutRotatingTheProfile() {
+        val exchange = ScriptedExchange { throw IOException("connection reset") }
+        val outcome = runBlocking { provider(exchange).search("song") }
+        assertEquals(ProviderFailure.NETWORK, (outcome as ProviderSearchOutcome.Failed).failure)
+        assertEquals(JioSaavnAudioProvider.MAX_API_ATTEMPTS, exchange.requests.size)
+        assertEquals(1, createdProfiles.size)
     }
 
     @Test
@@ -179,13 +376,95 @@ class JioSaavnAudioProviderTest {
         val outcome = runBlocking { provider(exchange).search("song") }
         assertEquals(ProviderFailure.HTTP_ERROR, (outcome as ProviderSearchOutcome.Failed).failure)
         assertEquals(2, exchange.requests.size)
+        assertEquals(1, createdProfiles.size)
+    }
+
+    @Test
+    fun repeatedFailuresOpenTheCircuitAndLaterCallsSkipHttp() {
+        val exchange = ScriptedExchange { jsonResponse(songBody) }
+        val breaker = breaker()
+        val provider = provider(exchange, breaker)
+        openCircuitWithTimeouts(exchange, provider)
+        assertEquals(ProviderCircuitBreaker.DEFAULT_FAILURE_THRESHOLD, exchange.requests.size)
+        assertEquals(ProviderCircuitBreaker.State.OPEN, breaker.currentState)
+        val outcome = runBlocking { provider.search("three") }
+        assertEquals(ProviderFailure.CIRCUIT_OPEN, (outcome as ProviderSearchOutcome.Failed).failure)
+        val lookup = runBlocking { provider.lookup("pW-kkdqr") }
+        assertEquals(ProviderFailure.CIRCUIT_OPEN, (lookup as ProviderLookupOutcome.Failed).failure)
+        assertEquals(ProviderCircuitBreaker.DEFAULT_FAILURE_THRESHOLD, exchange.requests.size)
+    }
+
+    @Test
+    fun openCircuitStillServesLocalMediaWithoutApiTraffic() {
+        val exchange = ScriptedExchange { jsonResponse(songBody) }
+        val provider = provider(exchange)
+        openCircuitWithTimeouts(exchange, provider)
+        val before = exchange.requests.size
+        exchange.handler = { request -> if (request.url.endsWith("_320.mp4")) validFor(320) else htmlResponse(404) }
+        val outcome = runBlocking { provider.resolveStream(localCandidate) }
+        assertTrue(outcome is ProviderStreamOutcome.Resolved)
+        assertEquals(before + 1, exchange.requests.size)
+    }
+
+    @Test
+    fun halfOpenProbeRecoversTheCircuit() {
+        val exchange = ScriptedExchange { jsonResponse(songBody) }
+        val breaker = breaker()
+        val provider = provider(exchange, breaker)
+        openCircuitWithTimeouts(exchange, provider)
+        val before = exchange.requests.size
+        exchange.handler = { jsonResponse(songBody) }
+        clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+        val outcome = runBlocking { provider.search("again") }
+        assertTrue(outcome is ProviderSearchOutcome.Found)
+        assertEquals(before + 1, exchange.requests.size)
+        assertEquals(ProviderCircuitBreaker.State.CLOSED, breaker.currentState)
+    }
+
+    @Test
+    fun failedHalfOpenProbeIsNotRetried() {
+        val exchange = ScriptedExchange { jsonResponse(songBody) }
+        val breaker = breaker()
+        val provider = provider(exchange, breaker)
+        openCircuitWithTimeouts(exchange, provider)
+        val before = exchange.requests.size
+        clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+        val outcome = runBlocking { provider.search("again") }
+        assertEquals(ProviderFailure.TIMEOUT, (outcome as ProviderSearchOutcome.Failed).failure)
+        assertEquals(before + 1, exchange.requests.size)
+        assertEquals(ProviderCircuitBreaker.State.OPEN, breaker.currentState)
+    }
+
+    @Test
+    fun halfOpenLetsOnlyOneConcurrentRequestReachTheNetwork() {
+        val exchange = ScriptedExchange { jsonResponse(songBody) }
+        val provider = provider(exchange)
+        openCircuitWithTimeouts(exchange, provider)
+        val before = exchange.requests.size
+        val release = CompletableDeferred<Unit>()
+        exchange.handler = {
+            release.await()
+            jsonResponse(songBody)
+        }
+        clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+        runBlocking {
+            withTimeout(5_000L) {
+                val probe = async(Dispatchers.Default) { provider.search("probe") }
+                while (exchange.requests.size == before) delay(5L)
+                val others = (1..5).map { async(Dispatchers.Default) { provider.search("other $it") } }.awaitAll()
+                assertTrue(others.all { (it as ProviderSearchOutcome.Failed).failure == ProviderFailure.CIRCUIT_OPEN })
+                release.complete(Unit)
+                assertTrue(probe.await() is ProviderSearchOutcome.Found)
+            }
+        }
+        assertEquals(before + 1, exchange.requests.size)
     }
 
     @Test
     fun indiaProfileIsSentOnlyToProviderApi() {
         val exchange = streamExchange { tier -> if (tier == 320) validFor(320) else htmlResponse(404) }
         runBlocking { provider(exchange).resolveStream(candidate(duration = 200)) }
-        val apiRequests = exchange.requests.filter { it.url.startsWith("https://www.jiosaavn.com/") }
+        val apiRequests = exchange.apiRequests()
         val mediaRequests = exchange.requests.filterNot { it.url.startsWith("https://www.jiosaavn.com/") }
         assertTrue(apiRequests.isNotEmpty())
         assertTrue(mediaRequests.isNotEmpty())
@@ -201,5 +480,10 @@ class JioSaavnAudioProviderTest {
             assertFalse(request.headers.containsKey("Accept-Language"))
             assertEquals("bytes=0-8191", request.headers["Range"])
         }
+    }
+
+    private companion object {
+        const val REAL_MEDIA_TOKEN = "ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDy8IXxuTNJ1oLbvDGDneZj5h25kdaKPCof228ruhJnw7PIr7uKBnaPmxw7tS9a8Gtq"
+        const val REAL_MEDIA_STEM = "eca27e31e93211051fa0de18160ea825"
     }
 }

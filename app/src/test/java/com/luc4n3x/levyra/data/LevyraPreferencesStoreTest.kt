@@ -98,11 +98,19 @@ class LevyraPreferencesStoreTest {
         assertTrue(snapshot.animationsEnabled)
         assertTrue(snapshot.dynamicColor)
         assertEquals(DEFAULT_SPONSORBLOCK_ENABLED, snapshot.sponsorBlock)
-        assertEquals("Auto", snapshot.audioQuality)
+        assertEquals("High", snapshot.audioQuality)
         assertEquals(LevyraAudioSettings().normalized(), preferences.audioSettings())
         assertEquals(PlayerVisualMode.CanvasImmersive, preferences.interfaceSettings().playerVisualMode)
         assertNull(snapshot.lastTrack)
         assertEquals(LevyraAutomationSettings().normalized(), runBlocking { preferences.automationSettingsFlow.first() })
+    }
+
+    @Test
+    fun explicitAutomaticAudioQualityChoiceIsKept() {
+        runBlocking { disk.edit { it[stringPreferencesKey("audio_quality")] = "Auto" } }
+        val (_, preferences) = open()
+
+        assertEquals("Auto", preferences.audioQuality())
     }
 
     @Test

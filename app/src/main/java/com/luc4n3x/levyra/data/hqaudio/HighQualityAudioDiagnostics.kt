@@ -15,6 +15,29 @@ internal object HighQualityAudioDiagnostics {
         )
     }
 
+    fun profileRejected(providerId: String, operator: String, maskedAddress: String, statusCode: Int, cooldownMs: Long) {
+        Timber.d(
+            "HQ_PROVIDER_PROFILE_REJECTED provider=%s operator=%s address=%s status=%d blockCooldownMs=%d",
+            providerId,
+            operator,
+            maskedAddress,
+            statusCode,
+            cooldownMs
+        )
+    }
+
+    fun circuit(providerId: String, state: String, detail: String) {
+        Timber.d("HQ_PROVIDER_CIRCUIT provider=%s state=%s detail=%s", providerId, state, detail)
+    }
+
+    fun mediaRoute(providerId: String, providerTrackId: String, route: String) {
+        Timber.d("HQ_PROVIDER_MEDIA_ROUTE provider=%s id=%s route=%s", providerId, providerTrackId, route)
+    }
+
+    fun mappingRetained(providerId: String, providerTrackId: String, cause: String) {
+        Timber.d("HQ_PROVIDER_MAPPING_RETAINED provider=%s id=%s cause=%s", providerId, providerTrackId, cause)
+    }
+
     fun search(providerId: String, pass: Int, query: String, results: Int) {
         Timber.d(
             "HQ_PROVIDER_SEARCH provider=%s pass=%d results=%d query=\"%s\"",
