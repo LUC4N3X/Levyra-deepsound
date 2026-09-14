@@ -43,11 +43,29 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: |
-          if git diff --quiet -- README.md docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg docs/assets/levyra-license.svg docs/assets/levyra-stars.svg docs/assets/levyra-release-light.svg docs/assets/levyra-downloads-light.svg docs/assets/levyra-license-light.svg docs/assets/levyra-stars-light.svg; then
+          badge_files=(
+            docs/assets/levyra-release.svg
+            docs/assets/levyra-downloads.svg
+            docs/assets/levyra-license.svg
+            docs/assets/levyra-stars.svg
+            docs/assets/levyra-release-light.svg
+            docs/assets/levyra-downloads-light.svg
+            docs/assets/levyra-license-light.svg
+            docs/assets/levyra-stars-light.svg
+            docs/assets/levyra-release-mobile.svg
+            docs/assets/levyra-downloads-mobile.svg
+            docs/assets/levyra-license-mobile.svg
+            docs/assets/levyra-stars-mobile.svg
+            docs/assets/levyra-release-mobile-light.svg
+            docs/assets/levyra-downloads-mobile-light.svg
+            docs/assets/levyra-license-mobile-light.svg
+            docs/assets/levyra-stars-mobile-light.svg
+          )
+          if git diff --quiet -- README.md "${badge_files[@]}"; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg docs/assets/levyra-license.svg docs/assets/levyra-stars.svg docs/assets/levyra-release-light.svg docs/assets/levyra-downloads-light.svg docs/assets/levyra-license-light.svg docs/assets/levyra-stars-light.svg
+          git add README.md "${badge_files[@]}"
           git commit -m "chore: update README badges"
           git push origin HEAD:main
