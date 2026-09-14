@@ -42,7 +42,7 @@ class ListeningInsightsRepository(context: Context) {
         database.withTransaction {
             val range = ListeningInsightsRanges.current(period, nowMs, zone)
             val isAllTime = period == ListeningInsightsPeriod.AllTime
-    
+
             val aggregate = resolveWindowAggregate(isAllTime, range)
             val previousMs = resolvePreviousMs(isAllTime, range)
             val days = resolveDailyActivityDays(period, range, zone)
@@ -60,7 +60,7 @@ class ListeningInsightsRepository(context: Context) {
                 activityPoints = activityPoints,
                 days = days
             )
-    
+
             ListeningInsightsSnapshot(
                 period = period,
                 metrics = metrics,
