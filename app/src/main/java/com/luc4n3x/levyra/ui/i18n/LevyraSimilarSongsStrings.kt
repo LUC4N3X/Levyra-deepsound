@@ -36,6 +36,6 @@ private val similarSongsBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun similarSongsLocalizationEntries(code: String): Map<String, String> =
-    similarSongsBundles.getValue(code)
+    (similarSongsBundles[code] ?: similarSongsBundles.getValue("en"))
 
-internal fun similarSongsLocalizationCodes(): Set<String> = similarSongsBundles.keys
+internal fun similarSongsLocalizationCodes(): Set<String> = supportedLocalizationCodes()

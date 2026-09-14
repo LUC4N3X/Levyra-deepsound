@@ -193,7 +193,7 @@ internal val resonanceKeys: Set<String> = setOf(
     "commentsDisabled"
 )
 
-internal fun resonanceLocalizationCodes(): Set<String> = resonanceBundles.keys
+internal fun resonanceLocalizationCodes(): Set<String> = supportedLocalizationCodes()
 
 internal fun resonanceLocalizationEntries(code: String): Map<String, String> {
     return resonanceBundles[code] ?: resonanceBundles.getValue("en")
