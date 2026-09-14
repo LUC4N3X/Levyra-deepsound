@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Minispiller, hurtigfavoritter, daglig miks, miks uten nett og sangtekster</string>
+    <string name="widget_description">Minispiller, raske favoritter, daglig miks, miks uten nett og sangtekster</string>
     <string name="widget_idle_subtitle">Trykk for å lytte</string>
     <string name="widget_toggle">Spill av/Pause</string>
     <string name="widget_next">Neste</string>
