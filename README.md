@@ -517,6 +517,44 @@ levyraDesktopVersion=1.2.0
 
 ---
 
+## ✦ Translation Pulse
+
+<div align="center">
+
+### 🌍 Help Levyra speak your language.
+
+**Community localization is moving to Weblate — with a Levyra-native progress view instead of a generic translation widget.**
+
+<table width="100%">
+  <tr>
+    <td width="33%" align="center">
+      <b>LIVE PROGRESS</b><br>
+      <sub>Real completion data for every available language.</sub>
+    </td>
+    <td width="34%" align="center">
+      <b>LANGUAGE PULSE</b><br>
+      <sub>A music-inspired equalizer view built for Levyra.</sub>
+    </td>
+    <td width="33%" align="center">
+      <b>COMMUNITY POWERED</b><br>
+      <sub>Translations contributed and improved by listeners worldwide.</sub>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<code>WEBLATE</code> &nbsp;·&nbsp; <code>LIVE LANGUAGE STATS</code> &nbsp;·&nbsp; <code>OPEN CONTRIBUTIONS</code>
+
+<br><br>
+
+<sub>The live Translation Pulse will appear here as soon as Levyra's public Weblate project is connected.</sub>
+
+</div>
+
+
+---
+
 ## ✦ Contributing
 We welcome community contributions, bug fixes, localization, and performance enhancements.
 
