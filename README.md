@@ -521,37 +521,19 @@ levyraDesktopVersion=1.2.0
 
 <div align="center">
 
-### 🌍 Help Levyra speak your language.
+<a href="https://hosted.weblate.org/engage/levyra/">
+  <picture>
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg">
+    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra Translation Pulse — live language progress from Weblate" width="100%">
+  </picture>
+</a>
 
-**Community localization is moving to Weblate — with a Levyra-native progress view instead of a generic translation widget.**
-
-<table width="100%">
-  <tr>
-    <td width="33%" align="center">
-      <b>LIVE PROGRESS</b><br>
-      <sub>Real completion data for every available language.</sub>
-    </td>
-    <td width="34%" align="center">
-      <b>LANGUAGE PULSE</b><br>
-      <sub>A music-inspired equalizer view built for Levyra.</sub>
-    </td>
-    <td width="33%" align="center">
-      <b>COMMUNITY POWERED</b><br>
-      <sub>Translations contributed and improved by listeners worldwide.</sub>
-    </td>
-  </tr>
-</table>
-
-<br>
-
-<code>WEBLATE</code> &nbsp;·&nbsp; <code>LIVE LANGUAGE STATS</code> &nbsp;·&nbsp; <code>OPEN CONTRIBUTIONS</code>
-
-<br><br>
-
-<sub>The live Translation Pulse will appear here as soon as Levyra's public Weblate project is connected.</sub>
+<sub>Live from Weblate · <a href="https://hosted.weblate.org/engage/levyra/"><b>Help translate Levyra →</b></a></sub>
 
 </div>
-
 
 ---
 
