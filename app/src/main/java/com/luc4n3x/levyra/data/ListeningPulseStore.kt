@@ -382,7 +382,7 @@ class ListeningPulseStore(context: Context) : com.luc4n3x.levyra.data.recap.List
     }
 
     private companion object {
-        const val RETENTION_DAYS = 365
+        const val RETENTION_DAYS = 1_095
         const val RECENT_LIMIT = 40
         const val MOST_PLAYED_DAYS = 30
         const val PERSONALIZED_ARTIST_DAYS = 180
