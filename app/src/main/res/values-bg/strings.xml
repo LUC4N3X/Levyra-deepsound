@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Миниплейър, бързи любими, дневен микс, офлайн микс и текстове</string>
+    <string name="widget_idle_subtitle">Докоснете, за да слушате</string>
+    <string name="widget_toggle">Възпроизвеждане/Пауза</string>
+    <string name="widget_next">Следваща</string>
+    <string name="widget_previous">Предишна</string>
+    <string name="widget_favorites">Любими</string>
+    <string name="widget_flow">Дневен микс</string>
+    <string name="widget_offline">Офлайн микс</string>
+    <string name="widget_lyrics">Текстове</string>
+    <string name="radar_channel_name">Радар за нови издания</string>
+    <string name="radar_channel_description">Нови издания от изпълнители, които следвате</string>
+    <string name="radar_new_release_title">Ново издание от %1$s</string>
+    <string name="automatic_backups">Автоматични резервни копия</string>
+    <string name="car_home">Начало</string>
+    <string name="car_downloads">Изтегляния</string>
+    <string name="car_favorites">Любими</string>
+    <string name="car_playlists">Плейлисти</string>
+    <string name="car_no_content">Няма съдържание</string>
+    <string name="car_content_unavailable">Съдържанието не е достъпно</string>
+    <string name="car_search_tracks">Търсене на песни</string>
+    <string name="car_no_results">Няма резултати</string>
+    <string name="car_connecting_player">Свързване с плейъра</string>
+    <string name="car_now_playing">Сега звучи</string>
+    <string name="car_queue">Опашка</string>
+    <string name="notification_shuffle">Разбъркване</string>
+    <string name="notification_favorite">Любимо</string>
+    <string name="tile_recognize_music">Разпознаване на музика</string>
+    <string name="shortcut_search">Търсене</string>
+    <string name="shortcut_library">Библиотека</string>
+    <string name="shortcut_recognition">Разпознаване на музика</string>
+</resources>
