@@ -30,6 +30,14 @@
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><picture><source media="(max-width: 480px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-windows-download-mobile-light.svg"><source media="(max-width: 480px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-windows-download-mobile.svg"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-windows-download-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-windows-download.svg"><img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra for Windows"></picture></a>
 </p>
 
+<p align="center"><sub><b>DISCOVER LEVYRA</b></sub></p>
+
+<p align="center">
+  <a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
+    <img src="https://devglobe.app/badges/launched-on-devglobe-dark.svg" alt="Launched on DevGlobe" width="250" height="54">
+  </a>
+</p>
+
 <p align="center">
   <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
 </p>
@@ -90,12 +98,6 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="48">
     </a>
   </p>
-  <p>
-    <a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
-      <img src="https://devglobe.app/badges/launched-on-devglobe-dark.svg" alt="Launched on DevGlobe" width="250" height="54">
-    </a>
-  </p>
-
   <p><sub><b>OPEN-SOURCE TRUST &amp; COMPLIANCE</b></sub></p>
   <p>
     <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices — Passing"></a> <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
