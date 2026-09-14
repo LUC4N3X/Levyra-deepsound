@@ -49,8 +49,8 @@ const makePill = ({ label, value, icon, isDark, accentColor, mobile = false }) =
   const textSub = '#8B949E'
   const textMain = isDark ? '#F0F6FC' : '#1F2328'
   const title = `${label} ${value}`
-  const width = mobile ? 126 : 130
-  const height = mobile ? 31.0154 : 32
+  const width = mobile ? 126 : 162.5
+  const height = mobile ? 31.0154 : 40
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 130 32" role="img" aria-label="${escapeXml(title)}">
   <title>${escapeXml(title)}</title>
