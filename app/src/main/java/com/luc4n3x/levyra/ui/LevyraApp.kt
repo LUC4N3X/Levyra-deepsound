@@ -1713,6 +1713,7 @@ fun LevyraApp(
         return
     }
     val toastContext = LocalContext.current
+    val downloadLocationScope = rememberCoroutineScope()
     LaunchedEffect(viewModel) {
         viewModel.integrationAuthorizationUrls.collect { url ->
             openExternalUrl(toastContext, url, currentStrings)
@@ -1757,16 +1758,21 @@ fun LevyraApp(
     }
     val downloadLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
-            if (DownloadFolderAccess.persist(toastContext, uri)) {
-                viewModel.setDownloadSettings(
-                    viewModel.state.value.downloadSettings.copy(destinationTreeUri = uri.toString())
-                )
-            } else {
-                Toast.makeText(
-                    toastContext,
-                    currentStrings.downloadLocationPermissionFailed,
-                    Toast.LENGTH_LONG
-                ).show()
+            downloadLocationScope.launch {
+                val persisted = withContext(Dispatchers.IO) {
+                    DownloadFolderAccess.persist(toastContext, uri)
+                }
+                if (persisted) {
+                    viewModel.setDownloadSettings(
+                        viewModel.state.value.downloadSettings.copy(destinationTreeUri = uri.toString())
+                    )
+                } else {
+                    Toast.makeText(
+                        toastContext,
+                        currentStrings.downloadLocationPermissionFailed,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }
@@ -16746,8 +16752,15 @@ private fun SettingsOverlay(
         batteryContext.getSystemService(PowerManager::class.java)
         ?.isIgnoringBatteryOptimizations(batteryContext.packageName) == true
     }
-    val selectedDownloadFolderName = remember(downloadSettings.destinationTreeUri, batteryCheckToken) {
-        DownloadFolderAccess.displayName(batteryContext, downloadSettings.destinationTreeUri)
+    var selectedDownloadFolderName by remember(downloadSettings.destinationTreeUri) { mutableStateOf<String?>(null) }
+    LaunchedEffect(downloadSettings.destinationTreeUri, batteryCheckToken) {
+        selectedDownloadFolderName = if (downloadSettings.destinationTreeUri.isBlank()) {
+            null
+        } else {
+            withContext(Dispatchers.IO) {
+                DownloadFolderAccess.displayName(batteryContext, downloadSettings.destinationTreeUri)
+            }
+        }
     }
     DisposableEffect(batteryLifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
