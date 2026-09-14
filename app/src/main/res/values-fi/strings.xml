@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Pienoissoitin, pikasuosikit, päivän miksaus, offline-miksaus ja sanoitukset</string>
+    <string name="widget_idle_subtitle">Napauta kuunnellaksesi</string>
+    <string name="widget_toggle">Toista/Tauko</string>
+    <string name="widget_next">Seuraava</string>
+    <string name="widget_previous">Edellinen</string>
+    <string name="widget_favorites">Suosikit</string>
+    <string name="widget_flow">Päivän miksaus</string>
+    <string name="widget_offline">Offline-miksaus</string>
+    <string name="widget_lyrics">Sanoitukset</string>
+    <string name="radar_channel_name">Julkaisututka</string>
+    <string name="radar_channel_description">Uusia julkaisuja seuraamiltasi artisteilta</string>
+    <string name="radar_new_release_title">Uusi julkaisu artistilta %1$s</string>
+    <string name="automatic_backups">Automaattiset varmuuskopiot</string>
+    <string name="car_home">Koti</string>
+    <string name="car_downloads">Lataukset</string>
+    <string name="car_favorites">Suosikit</string>
+    <string name="car_playlists">Soittolistat</string>
+    <string name="car_no_content">Ei sisältöä</string>
+    <string name="car_content_unavailable">Sisältö ei ole saatavilla</string>
+    <string name="car_search_tracks">Hae kappaleita</string>
+    <string name="car_no_results">Ei tuloksia</string>
+    <string name="car_connecting_player">Yhdistetään soittimeen</string>
+    <string name="car_now_playing">Nyt soi</string>
+    <string name="car_queue">Jono</string>
+    <string name="notification_shuffle">Satunnaistoisto</string>
+    <string name="notification_favorite">Suosikki</string>
+    <string name="tile_recognize_music">Tunnista musiikki</string>
+    <string name="shortcut_search">Haku</string>
+    <string name="shortcut_library">Kirjasto</string>
+    <string name="shortcut_recognition">Tunnista musiikki</string>
+</resources>
