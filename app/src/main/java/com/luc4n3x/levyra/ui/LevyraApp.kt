@@ -17428,7 +17428,7 @@ private fun SettingsOverlay(
                                     title = strings.downloadLocation,
                                     subtitle = when {
                                         downloadSettings.destinationTreeUri.isBlank() -> strings.downloadLocationDefault
-                                        selectedDownloadFolderName != null -> selectedDownloadFolderName
+                                        !selectedDownloadFolderName.isNullOrBlank() -> selectedDownloadFolderName.orEmpty()
                                         else -> strings.downloadLocationUnavailable
                                     },
                                     onClick = onSelectDownloadLocation
