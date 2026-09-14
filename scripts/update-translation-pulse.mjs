@@ -63,103 +63,90 @@ const displayCode = code => {
     'zh-hans': 'ZH',
     'zh-hant': 'ZH-TW',
     'pt-br': 'PT-BR',
-    'fil': 'FIL'
+    fil: 'FIL'
   }
   return aliases[normalized] || normalized.split('-')[0].slice(0, 3).toUpperCase()
 }
 
 const statusColor = (percent, isDark) => {
   if (percent >= 99.5) return isDark ? '#2DD4BF' : '#0F766E'
-  if (percent >= 85) return isDark ? '#60A5FA' : '#2563EB'
-  if (percent >= 60) return isDark ? '#A78BFA' : '#7C3AED'
+  if (percent >= 80) return isDark ? '#60A5FA' : '#2563EB'
+  if (percent >= 50) return isDark ? '#A78BFA' : '#7C3AED'
   return isDark ? '#FB7185' : '#E11D48'
 }
 
-const makeBarGrid = ({ languages, columns, x, y, width, chartHeight, rowHeight, isDark, codeSize, percentSize }) => {
+const makeBars = ({ languages, columns, startX, startY, width, chartHeight, rowGap, isDark }) => {
   const rows = Math.ceil(languages.length / columns)
   const step = width / columns
-  const trackWidth = Math.min(26, step * 0.48)
-  const track = isDark ? '#21262D' : '#EAEFF4'
-  const codeColor = isDark ? '#C9D1D9' : '#39414D'
-  const percentColor = isDark ? '#8B949E' : '#6E7781'
-  const groups = languages.map((language, index) => {
-    const row = Math.floor(index / columns)
-    const column = index % columns
-    const center = x + step * column + step / 2
-    const baseline = y + row * rowHeight + chartHeight
-    const height = Math.max(7, chartHeight * language.percent / 100)
-    const top = baseline - height
-    const code = displayCode(language.code)
-    return [
-      '<g>',
-      '<title>' + escapeXml(language.name) + ' — ' + Math.round(language.percent) + '%</title>',
-      '<rect x="' + (center - trackWidth / 2).toFixed(1) + '" y="' + (baseline - chartHeight).toFixed(1) + '" width="' + trackWidth.toFixed(1) + '" height="' + chartHeight.toFixed(1) + '" rx="' + (trackWidth / 2).toFixed(1) + '" fill="' + track + '"/>',
-      '<rect x="' + (center - trackWidth / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + trackWidth.toFixed(1) + '" height="' + height.toFixed(1) + '" rx="' + (trackWidth / 2).toFixed(1) + '" fill="' + statusColor(language.percent, isDark) + '"/>',
-      '<text x="' + center.toFixed(1) + '" y="' + (top - 10).toFixed(1) + '" text-anchor="middle" fill="' + percentColor + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + percentSize + '" font-weight="700">' + Math.round(language.percent) + '</text>',
-      '<text x="' + center.toFixed(1) + '" y="' + (baseline + 25).toFixed(1) + '" text-anchor="middle" fill="' + codeColor + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + codeSize + '" font-weight="800" letter-spacing=".6">' + escapeXml(code) + '</text>',
-      '</g>'
-    ].join('\n')
-  }).join('\n')
-  return { groups, rows }
+  const barWidth = Math.max(8, Math.min(14, step * 0.34))
+  const track = isDark ? '#242B35' : '#E7EBF0'
+  const label = isDark ? '#A7B0BD' : '#57606A'
+  const percent = isDark ? '#778191' : '#8C959F'
+  return {
+    rows,
+    content: languages.map((language, index) => {
+      const row = Math.floor(index / columns)
+      const col = index % columns
+      const center = startX + step * col + step / 2
+      const baseline = startY + row * rowGap + chartHeight
+      const fillHeight = Math.max(5, chartHeight * language.percent / 100)
+      const fillTop = baseline - fillHeight
+      return [
+        '<g>',
+        '<title>' + escapeXml(language.name) + ' — ' + Math.round(language.percent) + '%</title>',
+        '<rect x="' + (center - barWidth / 2).toFixed(1) + '" y="' + (baseline - chartHeight).toFixed(1) + '" width="' + barWidth.toFixed(1) + '" height="' + chartHeight.toFixed(1) + '" rx="' + (barWidth / 2).toFixed(1) + '" fill="' + track + '"/>',
+        '<rect x="' + (center - barWidth / 2).toFixed(1) + '" y="' + fillTop.toFixed(1) + '" width="' + barWidth.toFixed(1) + '" height="' + fillHeight.toFixed(1) + '" rx="' + (barWidth / 2).toFixed(1) + '" fill="' + statusColor(language.percent, isDark) + '"/>',
+        '<text x="' + center.toFixed(1) + '" y="' + (fillTop - 8).toFixed(1) + '" text-anchor="middle" fill="' + percent + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">' + Math.round(language.percent) + '</text>',
+        '<text x="' + center.toFixed(1) + '" y="' + (baseline + 20).toFixed(1) + '" text-anchor="middle" fill="' + label + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">' + escapeXml(displayCode(language.code)) + '</text>',
+        '</g>'
+      ].join('\n')
+    }).join('\n')
+  }
 }
 
 const makePulse = ({ languages, globalPercent, stringCount, generatedAt, isDark, mobile }) => {
   const width = mobile ? 720 : 1200
-  const columns = mobile ? 7 : 13
-  const chartHeight = mobile ? 118 : 132
-  const rowHeight = mobile ? 176 : 192
-  const gridX = mobile ? 38 : 58
-  const gridWidth = width - gridX * 2
-  const gridY = mobile ? 292 : 265
-  const grid = makeBarGrid({
+  const columns = mobile ? 13 : Math.max(1, languages.length)
+  const chartHeight = mobile ? 64 : 112
+  const rowGap = mobile ? 116 : 0
+  const chartStartY = mobile ? 135 : 124
+  const chart = makeBars({
     languages,
     columns,
-    x: gridX,
-    y: gridY,
-    width: gridWidth,
+    startX: mobile ? 34 : 42,
+    startY: chartStartY,
+    width: width - (mobile ? 68 : 84),
     chartHeight,
-    rowHeight,
-    isDark,
-    codeSize: mobile ? 11 : 11,
-    percentSize: mobile ? 10 : 10
+    rowGap,
+    isDark
   })
-  const height = gridY + grid.rows * rowHeight + (mobile ? 64 : 58)
+  const height = mobile ? 410 : 320
   const bg = isDark ? '#0D1117' : '#FFFFFF'
   const border = isDark ? '#30363D' : '#D0D7DE'
   const text = isDark ? '#F0F6FC' : '#1F2328'
   const sub = isDark ? '#8B949E' : '#57606A'
-  const track = isDark ? '#21262D' : '#EAEFF4'
   const accent = isDark ? '#A78BFA' : '#7C3AED'
-  const complete = isDark ? '#2DD4BF' : '#0F766E'
-  const translatedWidth = Math.max(0, Math.min(width - 116, (width - 116) * globalPercent / 100))
-  const titleSize = mobile ? 17 : 18
-  const percentSize = mobile ? 56 : 64
+  const line = isDark ? '#242B35' : '#E7EBF0'
   const languageCount = languages.length
   const aria = 'Levyra Translation Pulse: ' + Math.round(globalPercent) + '% translated across ' + languageCount + ' languages and ' + stringCount + ' strings'
-  const metricY = mobile ? 190 : 134
-  const progressY = mobile ? 235 : 178
-  const gridLabelY = mobile ? 270 : 239
+  const footerY = height - 27
 
   return [
     '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeXml(aria) + '" data-generated-at="' + escapeXml(generatedAt) + '">',
     '<title>' + escapeXml(aria) + '</title>',
-    '<rect x="1" y="1" width="' + (width - 2) + '" height="' + (height - 2) + '" rx="26" fill="' + bg + '" stroke="' + border + '" stroke-width="2"/>',
-    '<rect x="28" y="30" width="4" height="46" rx="2" fill="' + accent + '"/>',
-    '<text x="48" y="51" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + titleSize + '" font-weight="800" letter-spacing="2.2">TRANSLATION PULSE</text>',
-    '<text x="48" y="' + (mobile ? 126 : 126) + '" fill="' + text + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + percentSize + '" font-weight="800">' + Math.round(globalPercent) + '%</text>',
-    '<text x="50" y="' + (mobile ? 151 : 153) + '" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="1.7">GLOBAL TRANSLATED</text>',
-    '<text x="' + (mobile ? 48 : 760) + '" y="' + metricY + '" fill="' + text + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + (mobile ? 20 : 22) + '" font-weight="800">' + languageCount + '</text>',
-    '<text x="' + (mobile ? 78 : 797) + '" y="' + metricY + '" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.2">LANGUAGES</text>',
-    '<text x="' + (mobile ? 250 : 925) + '" y="' + metricY + '" fill="' + text + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + (mobile ? 20 : 22) + '" font-weight="800">' + stringCount + '</text>',
-    '<text x="' + (mobile ? 286 : 968) + '" y="' + metricY + '" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.2">STRINGS</text>',
-    '<circle cx="' + (mobile ? 492 : 1080) + '" cy="' + (metricY - 7) + '" r="5" fill="' + complete + '"/>',
-    '<text x="' + (mobile ? 507 : 1094) + '" y="' + metricY + '" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.2">LIVE WEBLATE</text>',
-    '<rect x="58" y="' + progressY + '" width="' + (width - 116) + '" height="8" rx="4" fill="' + track + '"/>',
-    '<rect x="58" y="' + progressY + '" width="' + translatedWidth.toFixed(1) + '" height="8" rx="4" fill="' + accent + '"/>',
-    '<text x="58" y="' + gridLabelY + '" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.3">COMPLETION BY LANGUAGE</text>',
-    '<text x="' + (width - 58) + '" y="' + gridLabelY + '" text-anchor="end" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10">TEAL 100 · BLUE 85+ · VIOLET 60+ · CORAL &lt;60</text>',
-    grid.groups,
-    '<text x="' + (width / 2) + '" y="' + (height - 28) + '" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11">Live community translation status · hosted.weblate.org/engage/levyra</text>',
+    '<rect x="1" y="1" width="' + (width - 2) + '" height="' + (height - 2) + '" rx="18" fill="' + bg + '" stroke="' + border + '" stroke-width="1.5"/>',
+    '<rect x="32" y="28" width="3" height="30" rx="1.5" fill="' + accent + '"/>',
+    '<text x="48" y="45" fill="' + text + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14" font-weight="800" letter-spacing="1.7">TRANSLATION PULSE</text>',
+    '<text x="48" y="69" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11">Help Levyra speak your language.</text>',
+    '<rect x="' + (width - (mobile ? 194 : 208)) + '" y="27" width="' + (mobile ? 162 : 176) + '" height="38" rx="9" fill="' + (isDark ? '#161B22' : '#F6F8FA') + '" stroke="' + border + '"/>',
+    '<text x="' + (width - (mobile ? 180 : 194)) + '" y="51" fill="' + accent + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="19" font-weight="800">' + Math.round(globalPercent) + '%</text>',
+    '<text x="' + (width - (mobile ? 128 : 142)) + '" y="50" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing="1">TRANSLATED</text>',
+    '<text x="48" y="100" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing="1">LANGUAGES ' + languageCount + '   ·   STRINGS ' + stringCount + '   ·   LIVE WEBLATE</text>',
+    '<line x1="32" y1="111" x2="' + (width - 32) + '" y2="111" stroke="' + line + '" stroke-width="1"/>',
+    chart.content,
+    '<line x1="32" y1="' + (footerY - 17) + '" x2="' + (width - 32) + '" y2="' + (footerY - 17) + '" stroke="' + line + '" stroke-width="1"/>',
+    '<text x="32" y="' + footerY + '" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5">Every translation brings Levyra closer to someone, somewhere.</text>',
+    '<text x="' + (width - 32) + '" y="' + footerY + '" text-anchor="end" fill="' + accent + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800">HELP TRANSLATE →</text>',
     '</svg>'
   ].join('\n')
 }
@@ -171,7 +158,8 @@ const updateTranslationPulse = async () => {
       requestJson('/api/projects/' + PROJECT + '/statistics/'),
       requestJson('/api/projects/' + PROJECT + '/languages/?page_size=100')
     ])
-    const languages = (languageResponse.results ?? [])
+    const rows = Array.isArray(languageResponse) ? languageResponse : languageResponse.results ?? []
+    const languages = rows
       .map(normalizeLanguage)
       .filter(language => language.code)
       .sort((a, b) => b.percent - a.percent || a.name.localeCompare(b.name))

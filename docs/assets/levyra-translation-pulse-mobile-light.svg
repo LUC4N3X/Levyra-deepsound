@@ -1,201 +1,197 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1060" viewBox="0 0 720 1060" role="img" aria-label="Levyra Translation Pulse: 63% translated across 26 languages and 35 strings" data-generated-at="1970-01-01T00:00:00.000Z">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="410" viewBox="0 0 720 410" role="img" aria-label="Levyra Translation Pulse: 63% translated across 26 languages and 35 strings" data-generated-at="1970-01-01T00:00:00.000Z">
 <title>Levyra Translation Pulse: 63% translated across 26 languages and 35 strings</title>
-<rect x="1" y="1" width="718" height="1058" rx="26" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="2"/>
-<rect x="28" y="30" width="4" height="46" rx="2" fill="#7C3AED"/>
-<text x="48" y="51" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="17" font-weight="800" letter-spacing="2.2">TRANSLATION PULSE</text>
-<text x="48" y="126" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="56" font-weight="800">63%</text>
-<text x="50" y="151" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="1.7">GLOBAL TRANSLATED</text>
-<text x="48" y="190" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="20" font-weight="800">26</text>
-<text x="78" y="190" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.2">LANGUAGES</text>
-<text x="250" y="190" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="20" font-weight="800">35</text>
-<text x="286" y="190" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.2">STRINGS</text>
-<circle cx="492" cy="183" r="5" fill="#0F766E"/>
-<text x="507" y="190" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.2">LIVE WEBLATE</text>
-<rect x="58" y="235" width="604" height="8" rx="4" fill="#EAEFF4"/>
-<rect x="58" y="235" width="380.5" height="8" rx="4" fill="#7C3AED"/>
-<text x="58" y="270" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.3">COMPLETION BY LANGUAGE</text>
-<text x="662" y="270" text-anchor="end" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10">TEAL 100 · BLUE 85+ · VIOLET 60+ · CORAL &lt;60</text>
+<rect x="1" y="1" width="718" height="408" rx="18" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
+<rect x="32" y="28" width="3" height="30" rx="1.5" fill="#7C3AED"/>
+<text x="48" y="45" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14" font-weight="800" letter-spacing="1.7">TRANSLATION PULSE</text>
+<text x="48" y="69" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11">Help Levyra speak your language.</text>
+<rect x="526" y="27" width="162" height="38" rx="9" fill="#F6F8FA" stroke="#D0D7DE"/>
+<text x="540" y="51" fill="#7C3AED" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="19" font-weight="800">63%</text>
+<text x="592" y="50" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing="1">TRANSLATED</text>
+<text x="48" y="100" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing="1">LANGUAGES 26   ·   STRINGS 35   ·   LIVE WEBLATE</text>
+<line x1="32" y1="111" x2="688" y2="111" stroke="#E7EBF0" stroke-width="1"/>
 <g>
 <title>English — 100%</title>
-<rect x="71.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="71.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#0F766E"/>
-<text x="84.0" y="282.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">100</text>
-<text x="84.0" y="435.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">EN</text>
+<rect x="52.1" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="52.1" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#0F766E"/>
+<text x="59.1" y="127.0" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">100</text>
+<text x="59.1" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">EN</text>
 </g>
 <g>
 <title>Italian — 100%</title>
-<rect x="163.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="163.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#0F766E"/>
-<text x="176.0" y="282.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">100</text>
-<text x="176.0" y="435.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">IT</text>
+<rect x="102.2" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="102.2" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#0F766E"/>
+<text x="109.2" y="127.0" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">100</text>
+<text x="109.2" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">IT</text>
 </g>
 <g>
 <title>Arabic — 60%</title>
-<rect x="255.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="255.0" y="339.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="268.0" y="329.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="268.0" y="435.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">AR</text>
+<rect x="152.4" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="152.4" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="159.4" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="159.4" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">AR</text>
 </g>
 <g>
-<title>Chinese (Simplified) — 60%</title>
-<rect x="347.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="347.0" y="339.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="360.0" y="329.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="360.0" y="435.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">ZH</text>
+<title>Chinese — 60%</title>
+<rect x="202.5" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="202.5" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="209.5" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="209.5" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">ZH</text>
 </g>
 <g>
 <title>Czech — 60%</title>
-<rect x="439.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="439.0" y="339.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="452.0" y="329.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="452.0" y="435.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">CS</text>
+<rect x="252.7" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="252.7" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="259.7" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="259.7" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">CS</text>
 </g>
 <g>
 <title>Danish — 60%</title>
-<rect x="531.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="531.0" y="339.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="544.0" y="329.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="544.0" y="435.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">DA</text>
+<rect x="302.8" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="302.8" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="309.8" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="309.8" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">DA</text>
 </g>
 <g>
 <title>Dutch — 60%</title>
-<rect x="623.0" y="292.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="623.0" y="339.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="636.0" y="329.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="636.0" y="435.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">NL</text>
+<rect x="353.0" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="353.0" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="360.0" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="360.0" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">NL</text>
 </g>
 <g>
 <title>Filipino — 60%</title>
-<rect x="71.0" y="468.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="71.0" y="515.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="84.0" y="505.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="84.0" y="611.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">FIL</text>
+<rect x="403.2" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="403.2" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="410.2" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="410.2" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">FIL</text>
 </g>
 <g>
 <title>French — 60%</title>
-<rect x="163.0" y="468.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="163.0" y="515.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="176.0" y="505.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="176.0" y="611.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">FR</text>
+<rect x="453.3" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="453.3" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="460.3" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="460.3" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">FR</text>
 </g>
 <g>
 <title>German — 60%</title>
-<rect x="255.0" y="468.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="255.0" y="515.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="268.0" y="505.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="268.0" y="611.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">DE</text>
+<rect x="503.5" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="503.5" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="510.5" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="510.5" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">DE</text>
 </g>
 <g>
 <title>Greek — 60%</title>
-<rect x="347.0" y="468.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="347.0" y="515.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="360.0" y="505.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="360.0" y="611.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">EL</text>
+<rect x="553.6" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="553.6" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="560.6" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="560.6" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">EL</text>
 </g>
 <g>
 <title>Hebrew — 60%</title>
-<rect x="439.0" y="468.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="439.0" y="515.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="452.0" y="505.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="452.0" y="611.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">HE</text>
+<rect x="603.8" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="603.8" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="610.8" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="610.8" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">HE</text>
 </g>
 <g>
 <title>Hindi — 60%</title>
-<rect x="531.0" y="468.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="531.0" y="515.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="544.0" y="505.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="544.0" y="611.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">HI</text>
+<rect x="653.9" y="135.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="653.9" y="160.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="660.9" y="152.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="660.9" y="219.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">HI</text>
 </g>
 <g>
 <title>Indonesian — 60%</title>
-<rect x="623.0" y="468.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="623.0" y="515.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="636.0" y="505.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="636.0" y="611.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">ID</text>
+<rect x="52.1" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="52.1" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="59.1" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="59.1" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">ID</text>
 </g>
 <g>
 <title>Japanese — 60%</title>
-<rect x="71.0" y="644.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="71.0" y="691.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="84.0" y="681.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="84.0" y="787.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">JA</text>
+<rect x="102.2" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="102.2" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="109.2" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="109.2" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">JA</text>
 </g>
 <g>
 <title>Korean — 60%</title>
-<rect x="163.0" y="644.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="163.0" y="691.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="176.0" y="681.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="176.0" y="787.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">KO</text>
+<rect x="152.4" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="152.4" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="159.4" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="159.4" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">KO</text>
 </g>
 <g>
 <title>Polish — 60%</title>
-<rect x="255.0" y="644.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="255.0" y="691.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="268.0" y="681.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="268.0" y="787.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">PL</text>
+<rect x="202.5" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="202.5" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="209.5" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="209.5" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">PL</text>
 </g>
 <g>
 <title>Portuguese — 60%</title>
-<rect x="347.0" y="644.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="347.0" y="691.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="360.0" y="681.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="360.0" y="787.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">PT</text>
+<rect x="252.7" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="252.7" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="259.7" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="259.7" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">PT</text>
 </g>
 <g>
 <title>Romanian — 60%</title>
-<rect x="439.0" y="644.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="439.0" y="691.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="452.0" y="681.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="452.0" y="787.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">RO</text>
+<rect x="302.8" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="302.8" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="309.8" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="309.8" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">RO</text>
 </g>
 <g>
 <title>Russian — 60%</title>
-<rect x="531.0" y="644.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="531.0" y="691.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="544.0" y="681.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="544.0" y="787.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">RU</text>
+<rect x="353.0" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="353.0" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="360.0" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="360.0" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">RU</text>
 </g>
 <g>
 <title>Spanish — 60%</title>
-<rect x="623.0" y="644.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="623.0" y="691.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="636.0" y="681.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="636.0" y="787.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">ES</text>
+<rect x="403.2" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="403.2" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="410.2" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="410.2" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">ES</text>
 </g>
 <g>
 <title>Swedish — 60%</title>
-<rect x="71.0" y="820.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="71.0" y="867.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="84.0" y="857.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="84.0" y="963.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">SV</text>
+<rect x="453.3" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="453.3" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="460.3" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="460.3" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">SV</text>
 </g>
 <g>
 <title>Thai — 60%</title>
-<rect x="163.0" y="820.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="163.0" y="867.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="176.0" y="857.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="176.0" y="963.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">TH</text>
+<rect x="503.5" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="503.5" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="510.5" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="510.5" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">TH</text>
 </g>
 <g>
 <title>Turkish — 60%</title>
-<rect x="255.0" y="820.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="255.0" y="867.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="268.0" y="857.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="268.0" y="963.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">TR</text>
+<rect x="553.6" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="553.6" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="560.6" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="560.6" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">TR</text>
 </g>
 <g>
 <title>Ukrainian — 60%</title>
-<rect x="347.0" y="820.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="347.0" y="867.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="360.0" y="857.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="360.0" y="963.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">UK</text>
+<rect x="603.8" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="603.8" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="610.8" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="610.8" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">UK</text>
 </g>
 <g>
 <title>Vietnamese — 60%</title>
-<rect x="439.0" y="820.0" width="26.0" height="118.0" rx="13.0" fill="#EAEFF4"/>
-<rect x="439.0" y="867.2" width="26.0" height="70.8" rx="13.0" fill="#7C3AED"/>
-<text x="452.0" y="857.2" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700">60</text>
-<text x="452.0" y="963.0" text-anchor="middle" fill="#39414D" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing=".6">VI</text>
+<rect x="653.9" y="251.0" width="14.0" height="64.0" rx="7.0" fill="#E7EBF0"/>
+<rect x="653.9" y="276.6" width="14.0" height="38.4" rx="7.0" fill="#7C3AED"/>
+<text x="660.9" y="268.6" text-anchor="middle" fill="#8C959F" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700">60</text>
+<text x="660.9" y="335.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800" letter-spacing=".5">VI</text>
 </g>
-<text x="360" y="1032" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11">Live community translation status · hosted.weblate.org/engage/levyra</text>
+<line x1="32" y1="366" x2="688" y2="366" stroke="#E7EBF0" stroke-width="1"/>
+<text x="32" y="383" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5">Every translation brings Levyra closer to someone, somewhere.</text>
+<text x="688" y="383" text-anchor="end" fill="#7C3AED" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.5" font-weight="800">HELP TRANSLATE →</text>
 </svg>
