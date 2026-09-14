@@ -1,0 +1,14 @@
+preserve_hierarchy: true
+pull_request_title: "chore(l10n): update translations from Crowdin"
+
+files:
+  - source: /app/src/main/res/values/strings.xml
+    translation: /app/src/main/res/values-%android_code%/strings.xml
+    type: android
+    update_option: update_as_unapproved
+    languages_mapping:
+      android_code:
+        fil: b+fil
+        he: b+he
+        id: b+id
+        zh-CN: b+zh+Hans
