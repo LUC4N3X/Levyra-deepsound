@@ -2423,6 +2423,7 @@ fun LevyraApp(
             }
 
             AnimatedVisibility(visible = state.showAudioQualityPanel, enter = miniEnter, exit = miniExit) {
+                val autoEqCatalog by viewModel.autoEqCatalog.collectAsStateWithLifecycle()
                 AudioSettingsPanel(
                     selected = state.audioQuality,
                     volumePercent = 33,
@@ -2446,6 +2447,12 @@ fun LevyraApp(
                     onResetEqualizer = viewModel::resetEqualizer,
                     onApplyAutoEq = viewModel::applyAutoEqImport,
                     onSaveAutoEqPreset = viewModel::saveAutoEqCustomPreset,
+                    autoEqCatalog = autoEqCatalog,
+                    onOpenAutoEqCatalog = viewModel::openAutoEqCatalog,
+                    onAutoEqCatalogQuery = viewModel::updateAutoEqCatalogQuery,
+                    onSelectAutoEqCatalogEntry = viewModel::selectAutoEqCatalogEntry,
+                    onDismissAutoEqCatalogProfile = viewModel::dismissAutoEqCatalogProfile,
+                    onCloseAutoEqCatalog = viewModel::closeAutoEqCatalog,
                     onClose = viewModel::closeAudioQualityPanel
                 )
             }

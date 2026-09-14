@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -34,19 +35,24 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SurroundSound
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -58,6 +64,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,8 +74,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -79,6 +89,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
@@ -86,6 +97,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.luc4n3x.levyra.domain.AutoEqCatalog
+import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -98,6 +111,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraOrange
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.viewmodel.AutoEqCatalogStatus
+import com.luc4n3x.levyra.viewmodel.AutoEqCatalogUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -134,6 +149,12 @@ internal fun AudioSettingsPanel(
     onResetEqualizer: () -> Unit,
     onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
     onSaveAutoEqPreset: (String, AutoEqImporter.ImportedProfile) -> Unit,
+    autoEqCatalog: AutoEqCatalogUiState,
+    onOpenAutoEqCatalog: () -> Unit,
+    onAutoEqCatalogQuery: (String) -> Unit,
+    onSelectAutoEqCatalogEntry: (AutoEqCatalogEntry) -> Unit,
+    onDismissAutoEqCatalogProfile: () -> Unit,
+    onCloseAutoEqCatalog: () -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -252,18 +273,26 @@ internal fun AudioSettingsPanel(
                                 levels = audioSettings.bandLevels,
                                 enabled = equalizerEnabled,
                                 bandsLabel = strings.audioBands,
-                                onBandLevel = onBandLevel
+                                resetLabel = strings.audioResetEqualizer,
+                                onBandLevel = onBandLevel,
+                                onReset = onResetEqualizer
                             )
-                            AudioTextAction(
-                                label = strings.autoEqImport,
-                                enabled = equalizerEnabled,
-                                onClick = { showAutoEqImport = true }
-                            )
-                            AudioTextAction(
-                                label = strings.audioResetEqualizer,
-                                enabled = equalizerEnabled,
-                                onClick = onResetEqualizer
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                AudioActionButton(
+                                    label = strings.autoEqCatalog,
+                                    icon = Icons.Rounded.Headphones,
+                                    primary = true,
+                                    enabled = equalizerEnabled,
+                                    onClick = onOpenAutoEqCatalog
+                                )
+                                AudioActionButton(
+                                    label = strings.autoEqImport,
+                                    icon = Icons.Rounded.FileOpen,
+                                    primary = false,
+                                    enabled = equalizerEnabled,
+                                    onClick = { showAutoEqImport = true }
+                                )
+                            }
                         }
                     }
                 }
@@ -393,19 +422,211 @@ internal fun AudioSettingsPanel(
             }
         )
     }
+
+    val catalogSelection = autoEqCatalog.selection
+    if (catalogSelection != null) {
+        AutoEqImportDialog(
+            initialText = catalogSelection.profileText,
+            initialPresetName = catalogSelection.name,
+            catalogDetail = catalogSelection.detail,
+            onDismiss = onDismissAutoEqCatalogProfile,
+            onApply = { profile ->
+                onApplyAutoEq(profile)
+                onCloseAutoEqCatalog()
+            },
+            onSavePreset = { name, profile ->
+                onSaveAutoEqPreset(name, profile)
+                onCloseAutoEqCatalog()
+            }
+        )
+    } else if (autoEqCatalog.visible) {
+        AutoEqCatalogDialog(
+            state = autoEqCatalog,
+            onQuery = onAutoEqCatalogQuery,
+            onSelect = onSelectAutoEqCatalogEntry,
+            onRetry = onOpenAutoEqCatalog,
+            onDismiss = onCloseAutoEqCatalog
+        )
+    }
+}
+
+@Composable
+private fun AutoEqCatalogDialog(
+    state: AutoEqCatalogUiState,
+    onQuery: (String) -> Unit,
+    onSelect: (AutoEqCatalogEntry) -> Unit,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    var query by rememberSaveable { mutableStateOf(state.query) }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            color = LevyraPanel,
+            shape = CardShape,
+            border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .heightIn(max = 620.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    strings.autoEqCatalog,
+                    color = LevyraText,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.4).sp
+                )
+                Text(
+                    strings.autoEqCatalogHint,
+                    color = LevyraMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { candidate ->
+                        query = candidate.take(AutoEqCatalog.MAX_QUERY_CHARS)
+                        onQuery(query)
+                    },
+                    enabled = state.status == AutoEqCatalogStatus.READY,
+                    singleLine = true,
+                    placeholder = { Text(strings.autoEqCatalogSearch, color = LevyraMuted, fontSize = 13.sp) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = LevyraMuted) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = LevyraText,
+                        unfocusedTextColor = LevyraText,
+                        disabledTextColor = LevyraMuted,
+                        focusedBorderColor = LevyraCyan.copy(alpha = 0.7f),
+                        unfocusedBorderColor = LevyraAdaptiveHairline,
+                        disabledBorderColor = LevyraAdaptiveHairline,
+                        cursorColor = LevyraCyan
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                when {
+                    state.status == AutoEqCatalogStatus.LOADING -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                        Text(strings.autoEqCatalogLoading, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
+                    state.status == AutoEqCatalogStatus.UNAVAILABLE -> {
+                        Text(strings.autoEqCatalogUnavailable, color = LevyraOrange, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        AudioTextAction(label = strings.autoEqCatalogRetry, enabled = true, onClick = onRetry)
+                    }
+                    state.results.isNotEmpty() && query.isNotBlank() -> LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 360.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.results, key = { it.key }) { entry ->
+                            AutoEqCatalogRow(
+                                entry = entry,
+                                loading = state.loadingKey == entry.key,
+                                failed = state.failedKey == entry.key,
+                                enabled = state.loadingKey == null,
+                                onClick = { onSelect(entry) }
+                            )
+                        }
+                    }
+                    query.isNotBlank() && state.resultsQuery == state.query -> Text(
+                        strings.autoEqCatalogEmpty,
+                        color = LevyraMuted,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Text(
+                    strings.autoEqCatalogAttribution,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                AutoEqDialogButton(
+                    label = strings.cancel,
+                    primary = false,
+                    enabled = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onDismiss
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AutoEqCatalogRow(
+    entry: AutoEqCatalogEntry,
+    loading: Boolean,
+    failed: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = LevyraAdaptiveCard,
+        shape = ChipShape,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    entry.name,
+                    color = LevyraText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    if (failed) strings.autoEqCatalogProfileFailed else "${entry.source} · ${entry.variant}",
+                    color = if (failed) LevyraOrange else LevyraMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+            }
+        }
+    }
 }
 
 @Composable
 private fun AutoEqImportDialog(
     onDismiss: () -> Unit,
     onApply: (AutoEqImporter.ImportedProfile) -> Unit,
-    onSavePreset: (String, AutoEqImporter.ImportedProfile) -> Unit
+    onSavePreset: (String, AutoEqImporter.ImportedProfile) -> Unit,
+    initialText: String = "",
+    initialPresetName: String = "",
+    catalogDetail: String? = null
 ) {
+    val fromCatalog = catalogDetail != null
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
-    var rawText by remember { mutableStateOf("") }
-    var presetName by remember { mutableStateOf("") }
-    var presetNameDirty by remember { mutableStateOf(false) }
+    var rawText by remember(initialText) { mutableStateOf(initialText) }
+    var presetName by remember(initialPresetName) { mutableStateOf(initialPresetName.take(48)) }
+    var presetNameDirty by remember(initialPresetName) { mutableStateOf(initialPresetName.isNotBlank()) }
     var readError by remember { mutableStateOf<String?>(null) }
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -456,19 +677,19 @@ private fun AutoEqImportDialog(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    strings.autoEqImport,
+                    if (fromCatalog) initialPresetName else strings.autoEqImport,
                     color = LevyraText,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-0.4).sp
                 )
                 Text(
-                    strings.autoEqImportHint,
+                    catalogDetail ?: strings.autoEqImportHint,
                     color = LevyraMuted,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
-                OutlinedTextField(
+                if (!fromCatalog) OutlinedTextField(
                     value = rawText,
                     onValueChange = { candidate ->
                         if (candidate.length > AutoEqImporter.MAX_INPUT_CHARS) {
@@ -491,11 +712,13 @@ private fun AutoEqImportDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                AudioTextAction(
-                    label = strings.autoEqPickFile,
-                    enabled = true,
-                    onClick = { picker.launch(AutoEqDocumentMimeTypes) }
-                )
+                if (!fromCatalog) {
+                    AudioTextAction(
+                        label = strings.autoEqPickFile,
+                        enabled = true,
+                        onClick = { picker.launch(AutoEqDocumentMimeTypes) }
+                    )
+                }
 
                 val errorMessage = readError ?: if (parsed is AutoEqImporter.ParseResult.Error) {
                     if (parsed.error == AutoEqImporter.ParseError.TOO_LARGE) {
@@ -511,7 +734,14 @@ private fun AutoEqImportDialog(
                 }
 
                 if (profile != null) {
-                    AutoEqProfilePreview(profile = profile)
+                    AutoEqProfilePreview(
+                        profile = profile,
+                        title = if (fromCatalog) {
+                            strings.audioBands
+                        } else {
+                            presetName.ifBlank { profile.name ?: strings.audioPresetCustom }
+                        }
+                    )
                     OutlinedTextField(
                         value = presetName,
                         onValueChange = {
@@ -537,13 +767,6 @@ private fun AutoEqImportDialog(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     AutoEqDialogButton(
-                        label = strings.cancel,
-                        primary = false,
-                        enabled = true,
-                        modifier = Modifier.weight(1f),
-                        onClick = onDismiss
-                    )
-                    AutoEqDialogButton(
                         label = strings.autoEqSavePreset,
                         primary = false,
                         enabled = profile != null && presetName.isNotBlank(),
@@ -558,14 +781,26 @@ private fun AutoEqImportDialog(
                         onClick = { profile?.let(onApply) }
                     )
                 }
+                AutoEqDialogButton(
+                    label = strings.cancel,
+                    primary = false,
+                    enabled = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onDismiss
+                )
             }
         }
     }
 }
 
 @Composable
-private fun AutoEqProfilePreview(profile: AutoEqImporter.ImportedProfile) {
+private fun AutoEqProfilePreview(profile: AutoEqImporter.ImportedProfile, title: String) {
     val strings = LocalLevyraStrings.current
+    val bandSummary = remember(profile) {
+        LevyraAudioPresets.bandFrequencyLabels.mapIndexed { index, label ->
+            "$label Hz ${decibels(profile.bandGainDb.getOrElse(index) { 0f })}"
+        }.joinToString(", ")
+    }
     Surface(
         color = LevyraAdaptiveCard,
         shape = CardShape,
@@ -574,26 +809,13 @@ private fun AutoEqProfilePreview(profile: AutoEqImporter.ImportedProfile) {
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             AudioCardHeader(
-                title = profile.name ?: strings.audioPresetCustom,
+                title = title,
                 trailing = "${strings.preamp} ${decibels(profile.preampDb)}"
             )
-            LevyraAudioPresets.bandFrequencyLabels.forEachIndexed { index, label ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("$label Hz", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    Text(
-                        decibels(profile.bandGainDb.getOrElse(index) { 0f }),
-                        color = LevyraText,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            EqualizerCurvePreview(levels = profile.bandLevels, description = bandSummary)
             if (profile.clamped || profile.interpolated || profile.skippedPoints > 0) {
                 Text(
                     strings.autoEqAdjustedNotice,
@@ -899,16 +1121,12 @@ private fun AudioSliderRow(
                 }
                 Text(valueLabel, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
             }
-            Slider(
-                value = value.coerceIn(range.start, range.endInclusive),
-                onValueChange = onValue,
-                valueRange = range,
-                colors = SliderDefaults.colors(
-                    thumbColor = LevyraCyan,
-                    activeTrackColor = LevyraCyan,
-                    inactiveTrackColor = LevyraAdaptiveTrack
-                ),
-                modifier = Modifier.semantics { contentDescription = title }
+            AudioLevelSlider(
+                value = value,
+                range = range,
+                label = title,
+                valueLabel = valueLabel,
+                onValue = onValue
             )
         }
     }
@@ -1053,7 +1271,9 @@ private fun EqualizerCurve(
     levels: List<Int>,
     enabled: Boolean,
     bandsLabel: String,
-    onBandLevel: (Int, Int) -> Unit
+    resetLabel: String,
+    onBandLevel: (Int, Int) -> Unit,
+    onReset: () -> Unit
 ) {
     val bandCount = LevyraAudioPresets.bandCount
     val safeLevels = remember(levels) {
@@ -1067,19 +1287,31 @@ private fun EqualizerCurve(
     val density = LocalDensity.current
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        AudioCardHeader(
-            title = bandsLabel,
-            trailing = if (activeBand in 0 until bandCount) {
-                "${LevyraAudioPresets.bandFrequencyLabels[activeBand]} Hz · " +
-                    decibels(LevyraAudioPresets.bandDb(safeLevels[activeBand]))
-            } else {
-                "±${LevyraAudioPresets.maxBandDb.roundToInt()} dB"
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.weight(1f)) {
+                AudioCardHeader(
+                    title = bandsLabel,
+                    trailing = if (activeBand in 0 until bandCount) {
+                        "${LevyraAudioPresets.bandFrequencyLabels[activeBand]} Hz · " +
+                            decibels(LevyraAudioPresets.bandDb(safeLevels[activeBand]))
+                    } else {
+                        "±${LevyraAudioPresets.maxBandDb.roundToInt()} dB"
+                    }
+                )
             }
-        )
+            IconButton(onClick = onReset, enabled = enabled, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.Rounded.RestartAlt,
+                    contentDescription = resetLabel,
+                    tint = if (enabled) LevyraMuted else LevyraMuted.copy(alpha = DISABLED_ALPHA),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(168.dp)
+                .height(196.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(if (LevyraIsLight) LevyraBlack.copy(alpha = 0.05f) else LevyraBlack.copy(alpha = 0.35f))
                 .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(16.dp))
@@ -1163,6 +1395,172 @@ private fun EqualizerCurve(
     }
 }
 
+@Composable
+private fun EqualizerCurvePreview(levels: List<Int>, description: String) {
+    val handleRadiusPx = with(LocalDensity.current) { 4.dp.toPx() }
+    val strokeWidthPx = with(LocalDensity.current) { 2.dp.toPx() }
+    val curveColor = LevyraCyan
+    val gridColor = LevyraMuted.copy(alpha = 0.28f)
+    val handleFill = LevyraAdaptiveCard
+    Column(
+        modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = description },
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(112.dp)
+        ) {
+            drawEqualizerCurve(
+                levels = levels,
+                curveColor = curveColor,
+                gridColor = gridColor,
+                handleFill = handleFill,
+                activeBand = -1,
+                handleRadius = handleRadiusPx,
+                strokeWidth = strokeWidthPx
+            )
+        }
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                LevyraAudioPresets.bandFrequencyLabels.forEach { frequency ->
+                    Text(
+                        frequency,
+                        color = LevyraMuted,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioLevelSlider(
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    label: String,
+    valueLabel: String,
+    onValue: (Float) -> Unit
+) {
+    val span = (range.endInclusive - range.start).takeIf { it > 0f } ?: 1f
+    val bounded = value.coerceIn(range.start, range.endInclusive)
+    val origin = 0f.coerceIn(range.start, range.endInclusive)
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val density = LocalDensity.current
+    val thumbRadius = with(density) { 9.dp.toPx() }
+    val trackHeight = with(density) { 4.dp.toPx() }
+    val ringWidth = with(density) { 3.dp.toPx() }
+    val activeColor = LevyraCyan
+    val inactiveColor = LevyraAdaptiveTrack
+    val ringColor = LevyraAdaptiveCard
+    fun valueAt(x: Float, width: Int): Float {
+        val usable = (width - thumbRadius * 2f).coerceAtLeast(1f)
+        val raw = ((x - thumbRadius) / usable).coerceIn(0f, 1f)
+        val fraction = if (rtl) 1f - raw else raw
+        return range.start + fraction * span
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .progressSemantics(bounded, range, 0)
+            .semantics {
+                contentDescription = label
+                stateDescription = valueLabel
+                setProgress { target ->
+                    onValue(target.coerceIn(range.start, range.endInclusive))
+                    true
+                }
+            }
+            .pointerInput(range, rtl) {
+                detectTapGestures(onPress = { offset -> onValue(valueAt(offset.x, size.width)) })
+            }
+            .pointerInput(range, rtl) {
+                detectHorizontalDragGestures { change, _ ->
+                    onValue(valueAt(change.position.x, size.width))
+                    change.consume()
+                }
+            }
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val usable = size.width - thumbRadius * 2f
+            fun xOf(level: Float): Float {
+                val fraction = (level - range.start) / span
+                return thumbRadius + usable * if (rtl) 1f - fraction else fraction
+            }
+            val centerY = size.height / 2f
+            drawLine(
+                color = inactiveColor,
+                start = Offset(thumbRadius, centerY),
+                end = Offset(size.width - thumbRadius, centerY),
+                strokeWidth = trackHeight,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = activeColor,
+                start = Offset(xOf(origin), centerY),
+                end = Offset(xOf(bounded), centerY),
+                strokeWidth = trackHeight,
+                cap = StrokeCap.Round
+            )
+            if (origin > range.start) {
+                drawCircle(inactiveColor, trackHeight, Offset(xOf(origin), centerY))
+            }
+            drawCircle(ringColor, thumbRadius + ringWidth / 2f, Offset(xOf(bounded), centerY))
+            drawCircle(activeColor, thumbRadius - ringWidth / 2f, Offset(xOf(bounded), centerY))
+        }
+    }
+}
+
+@Composable
+private fun AudioActionButton(
+    label: String,
+    icon: ImageVector,
+    primary: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val contentColor = if (primary) LevyraCyan else LevyraText
+    Surface(
+        color = if (primary) LevyraCyan.copy(alpha = 0.14f) else LevyraAdaptiveChip,
+        shape = ChipShape,
+        border = BorderStroke(1.dp, if (primary) LevyraCyan.copy(alpha = 0.45f) else LevyraAdaptiveHairline),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .alpha(if (enabled) 1f else DISABLED_ALPHA)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(20.dp))
+            Text(
+                label,
+                color = contentColor,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = contentColor.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
 private fun bandLevelAt(y: Float, height: Float, handleRadius: Float): Int {
     val half = height / 2f
     val usable = (half - handleRadius * 2f).coerceAtLeast(1f)
@@ -1187,11 +1585,22 @@ private fun DrawScope.drawEqualizerCurve(
 ) {
     val slot = size.width / levels.size
     val zeroY = size.height / 2f
+    val amplitude = size.height / 2f - handleRadius * 2f
+    val guideColor = gridColor.copy(alpha = gridColor.alpha * 0.45f)
+    val dash = PathEffect.dashPathEffect(floatArrayOf(strokeWidth * 2f, strokeWidth * 3f))
+    EQUALIZER_GRID_FRACTIONS.forEach { fraction ->
+        val y = zeroY - fraction * amplitude
+        drawLine(guideColor, Offset(0f, y), Offset(size.width, y), strokeWidth = strokeWidth / 2f, pathEffect = dash)
+    }
+    repeat(levels.size) { index ->
+        val x = slot * index + slot / 2f
+        drawLine(guideColor, Offset(x, handleRadius), Offset(x, size.height - handleRadius), strokeWidth = strokeWidth / 2f)
+    }
     drawLine(gridColor, Offset(0f, zeroY), Offset(size.width, zeroY), strokeWidth = strokeWidth / 2f)
 
     val points = levels.mapIndexed { index, level ->
         val x = slot * index + slot / 2f
-        val y = zeroY - (level / 100f) * (size.height / 2f - handleRadius * 2f)
+        val y = zeroY - (level / 100f) * amplitude
         Offset(x, y)
     }
     val curve = Path().apply {
@@ -1212,16 +1621,21 @@ private fun DrawScope.drawEqualizerCurve(
     drawPath(
         path = fill,
         brush = Brush.verticalGradient(
-            listOf(curveColor.copy(alpha = 0.22f), curveColor.copy(alpha = 0.04f))
+            0f to curveColor.copy(alpha = 0.30f),
+            0.5f to curveColor.copy(alpha = 0.05f),
+            1f to curveColor.copy(alpha = 0.30f)
         )
     )
-    drawPath(path = curve, color = curveColor, style = Stroke(width = strokeWidth))
+    drawPath(path = curve, color = curveColor.copy(alpha = 0.22f), style = Stroke(width = strokeWidth * 4f, cap = StrokeCap.Round))
+    drawPath(path = curve, color = curveColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
     points.forEachIndexed { index, point ->
-        val radius = if (index == activeBand) handleRadius * 1.4f else handleRadius
-        drawCircle(handleFill, radius, point)
-        drawCircle(curveColor, radius, point, style = Stroke(width = strokeWidth))
+        if (index == activeBand) drawCircle(curveColor.copy(alpha = 0.22f), handleRadius * 2.6f, point)
+        drawCircle(handleFill, handleRadius + strokeWidth, point)
+        drawCircle(curveColor, if (index == activeBand) handleRadius * 1.25f else handleRadius, point)
     }
 }
+
+private val EQUALIZER_GRID_FRACTIONS = floatArrayOf(-1f, -0.5f, 0.5f, 1f)
 
 private fun decibels(value: Float): String = String.format(Locale.US, "%+.1f dB", value)
 
