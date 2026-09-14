@@ -1641,7 +1641,17 @@ class LevyraStrings private constructor(
                 "vi" to bundle("vi", viLocalizationEntries()),
                 "th" to bundle("th", thLocalizationEntries()),
                 "fil" to bundle("fil", filLocalizationEntries()),
-                "he" to bundle("he", heLocalizationEntries())
+                "he" to bundle("he", heLocalizationEntries()),
+                "zh-Hant" to bundle("zh-Hant", enEntries() + newLocaleCoreOverrides("zh-Hant")),
+                "hu" to bundle("hu", enEntries() + newLocaleCoreOverrides("hu")),
+                "bg" to bundle("bg", enEntries() + newLocaleCoreOverrides("bg")),
+                "fi" to bundle("fi", enEntries() + newLocaleCoreOverrides("fi")),
+                "nb" to bundle("nb", enEntries() + newLocaleCoreOverrides("nb")),
+                "ca" to bundle("ca", enEntries() + newLocaleCoreOverrides("ca")),
+                "hr" to bundle("hr", enEntries() + newLocaleCoreOverrides("hr")),
+                "sk" to bundle("sk", enEntries() + newLocaleCoreOverrides("sk")),
+                "ms" to bundle("ms", enEntries() + newLocaleCoreOverrides("ms")),
+                "fa" to bundle("fa", enEntries() + newLocaleCoreOverrides("fa"))
             )
         }
 
