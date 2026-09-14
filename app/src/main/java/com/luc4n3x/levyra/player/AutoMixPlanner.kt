@@ -17,11 +17,13 @@ internal fun planAutoMix(
     settings: LevyraAudioSettings,
     repeatMode: RepeatMode,
     videoMode: Boolean,
-    lowRam: Boolean
+    lowRam: Boolean,
+    shuffleEnabled: Boolean = false
 ): AutoMixPlan? {
     val normalized = settings.normalized()
     if (!normalized.gaplessEnabled || normalized.crossfadeSeconds <= 0 || next == null) return null
     if (repeatMode == RepeatMode.One || videoMode || lowRam || current.durationMs <= MIN_TRACK_MS) return null
+    if (continuesSameRelease(current, next, shuffleEnabled)) return null
     val base = normalized.crossfadeSeconds * 1_000L
     val adaptive = if (normalized.djSoftMode) {
         val energyDistance = abs(current.energy - next.energy)
@@ -39,6 +41,34 @@ internal fun planAutoMix(
         transitionMs = transition,
         preloadLeadMs = (transition + PRELOAD_MARGIN_MS).coerceAtMost(MAX_PRELOAD_LEAD_MS)
     )
+}
+
+internal fun continuesSameRelease(current: Track, next: Track, shuffleEnabled: Boolean): Boolean {
+    val runningOrderKnown = current.trackNumber > 0 && next.trackNumber > 0
+    val sameRelease = catalogIdentityMatch(current.albumBrowseId, next.albumBrowseId)
+        ?: catalogIdentityMatch(current.upc, next.upc)
+        ?: (runningOrderKnown && sameTitledRelease(current, next))
+    if (!sameRelease) return false
+    return if (runningOrderKnown) followsInRunningOrder(current, next) else !shuffleEnabled
+}
+
+private fun catalogIdentityMatch(first: String, second: String): Boolean? {
+    val left = first.trim()
+    val right = second.trim()
+    if (left.isEmpty() || right.isEmpty()) return null
+    return left.equals(right, ignoreCase = true)
+}
+
+private fun sameTitledRelease(current: Track, next: Track): Boolean =
+    catalogIdentityMatch(current.album, next.album) == true &&
+        catalogIdentityMatch(current.artist, next.artist) == true
+
+private fun followsInRunningOrder(current: Track, next: Track): Boolean {
+    val currentDisc = current.discNumber
+    val nextDisc = next.discNumber
+    val sameDisc = currentDisc == nextDisc || currentDisc <= 0 || nextDisc <= 0
+    if (sameDisc && next.trackNumber == current.trackNumber + 1) return true
+    return currentDisc > 0 && nextDisc == currentDisc + 1 && next.trackNumber == 1
 }
 
 internal fun equalPowerCrossfade(progress: Float): CrossfadeGains {
