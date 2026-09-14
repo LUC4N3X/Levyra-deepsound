@@ -133,6 +133,19 @@ class LevyraStringsTest {
         assertEquals("fil", LevyraStrings.forCode("tl_PH").code)
         assertEquals("he", LevyraStrings.forCode("he-IL").code)
         assertEquals("he", LevyraStrings.forCode("iw_IL").code)
+        assertEquals("zh", LevyraStrings.forCode("zh-Hans-CN").code)
+        assertEquals("zh-Hant", LevyraStrings.forCode("zh-Hant-TW").code)
+        assertEquals("zh-Hant", LevyraStrings.forCode("zh-TW").code)
+        assertEquals("zh-Hant", LevyraStrings.forCode("zh-HK").code)
+        assertEquals("hu", LevyraStrings.forCode("hu-HU").code)
+        assertEquals("bg", LevyraStrings.forCode("bg-BG").code)
+        assertEquals("fi", LevyraStrings.forCode("fi-FI").code)
+        assertEquals("nb", LevyraStrings.forCode("nb-NO").code)
+        assertEquals("ca", LevyraStrings.forCode("ca-ES").code)
+        assertEquals("hr", LevyraStrings.forCode("hr-HR").code)
+        assertEquals("sk", LevyraStrings.forCode("sk-SK").code)
+        assertEquals("ms", LevyraStrings.forCode("ms-MY").code)
+        assertEquals("fa", LevyraStrings.forCode("fa-IR").code)
         assertEquals("en", LevyraStrings.forCode("xx-YY").code)
     }
 
@@ -250,51 +263,65 @@ class LevyraStringsTest {
     }
 
     @Test
-    fun newAndroidResourceBundlesMatchTheBaseTranslatableKeys() {
+    fun androidResourcesLocaleConfigAndSelectorCatalogStayInSync() {
         val resourceRoot = sequenceOf(
             Path.of("app/src/main/res"),
             Path.of("src/main/res")
         ).firstOrNull(Files::exists) ?: error("Android resources not found")
-        val expected = setOf(
-            "widget_description",
-            "widget_idle_subtitle",
-            "widget_toggle",
-            "widget_next",
-            "widget_previous",
-            "widget_favorites",
-            "widget_flow",
-            "widget_offline",
-            "widget_lyrics",
-            "radar_channel_name",
-            "radar_channel_description",
-            "radar_new_release_title",
-            "tile_recognize_music",
-            "shortcut_search",
-            "shortcut_library",
-            "shortcut_recognition"
-        )
-        val qualifiers = listOf(
-            "values-ja",
-            "values-ko",
-            "values-hi",
-            "values-b+id",
-            "values-vi",
-            "values-th",
-            "values-b+fil",
-            "values-b+he",
-            "values-b+zh+Hans",
-            "values-cs",
-            "values-da",
-            "values-tr",
-            "values-uk"
-        )
-        val namePattern = Regex("""<string name="([^"]+)"""")
 
-        qualifiers.forEach { qualifier ->
-            val file = resourceRoot.resolve(qualifier).resolve("strings.xml")
-            assertTrue("Missing resource bundle: $qualifier", Files.exists(file))
-            val names = namePattern.findAll(Files.readString(file)).map { it.groupValues[1] }.toSet()
-            assertEquals("Invalid resource keys in $qualifier", expected, names)
+        val baseFile = resourceRoot.resolve("values").resolve("strings.xml")
+        val stringPattern = Regex("""<string\s+name="([^"]+)"([^>]*)>""")
+        val expectedKeys = stringPattern.findAll(Files.readString(baseFile))
+            .filterNot { it.groupValues[2].contains("translatable=\"false\"") }
+            .map { it.groupValues[1] }
+            .toSet()
+
+        assertEquals(30, expectedKeys.size)
+
+        val localizedDirs = Files.list(resourceRoot).use { stream ->
+            stream.filter { Files.isDirectory(it) }
+                .filter { it.fileName.toString().startsWith("values-") }
+                .filter { Files.exists(it.resolve("strings.xml")) }
+                .toList()
+        }
+
+        localizedDirs.forEach { directory ->
+            val file = directory.resolve("strings.xml")
+            val names = stringPattern.findAll(Files.readString(file)).map { it.groupValues[1] }.toSet()
+            assertEquals("Invalid resource keys in ${directory.fileName}", expectedKeys, names)
+        }
+
+        fun qualifierToTag(name: String): String {
+            val suffix = name.removePrefix("values-")
+            return if (suffix.startsWith("b+")) {
+                suffix.removePrefix("b+").replace('+', '-')
+            } else {
+                suffix
+            }
+        }
+
+        val resourceCodes = localizedDirs
+            .map { LevyraLanguageCatalog.normalize(qualifierToTag(it.fileName.toString())) }
+            .toSet()
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(catalogCodes - "en", resourceCodes)
+
+        val localeConfig = resourceRoot.resolve("xml").resolve("locales_config.xml")
+        val localePattern = Regex("""<locale\s+android:name="([^"]+)"\s*/>""")
+        val configCodes = localePattern.findAll(Files.readString(localeConfig))
+            .map { LevyraLanguageCatalog.normalize(it.groupValues[1]) }
+            .toSet()
+        assertEquals(catalogCodes, configCodes)
+    }
+
+    @Test
+    fun newlySelectableLocalesResolveWithoutFallingBackToEnglish() {
+        val codes = listOf("zh-Hant", "hu", "bg", "fi", "nb", "ca", "hr", "sk", "ms", "fa")
+        codes.forEach { code ->
+            val strings = LevyraStrings.forCode(code)
+            assertEquals(code, strings.code)
+            assertFalse("Core language label fell back to English for $code", strings.language == "Language")
+            assertFalse("Core settings label fell back to English for $code", strings.settings == "Settings")
         }
     }
 
@@ -378,12 +405,13 @@ class LevyraStringsTest {
         assertTrue(LevyraLanguageCatalog.isRtl("ar-SA"))
         assertTrue(LevyraLanguageCatalog.isRtl("he-IL"))
         assertTrue(LevyraLanguageCatalog.isRtl("iw_IL"))
+        assertTrue(LevyraLanguageCatalog.isRtl("fa-IR"))
         assertFalse(LevyraLanguageCatalog.isRtl("en-US"))
     }
 
     @Test
     fun rtlDynamicLatinTextUsesBidiIsolation() {
-        listOf("he", "ar").forEach { code ->
+        listOf("he", "ar", "fa").forEach { code ->
             val strings = LevyraStrings.forCode(code)
             assertTrue(strings.formatGreeting("Luca 96", 9).contains("\u2068Luca 96\u2069"))
             assertTrue(strings.formatArtists("The Weeknd").contains("\u2068The Weeknd\u2069"))
