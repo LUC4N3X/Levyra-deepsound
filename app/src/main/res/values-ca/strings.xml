@@ -22,7 +22,7 @@
     <string name="car_search_tracks">Cerca cançons</string>
     <string name="car_no_results">Cap resultat</string>
     <string name="car_connecting_player">Connectant amb el reproductor</string>
-    <string name="car_now_playing">S'està reproduint</string>
+    <string name="car_now_playing">En reproducció</string>
     <string name="car_queue">Cua</string>
     <string name="notification_shuffle">Aleatori</string>
     <string name="notification_favorite">Preferit</string>
