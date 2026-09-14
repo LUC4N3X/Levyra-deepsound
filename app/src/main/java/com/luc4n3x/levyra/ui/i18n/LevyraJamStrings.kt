@@ -653,4 +653,4 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     )
 )
 
-internal fun jamLocalizationEntries(code: String): Map<String, String> = jamBundles.getValue(code)
+internal fun jamLocalizationEntries(code: String): Map<String, String> = (jamBundles[code] ?: jamBundles.getValue("en"))
