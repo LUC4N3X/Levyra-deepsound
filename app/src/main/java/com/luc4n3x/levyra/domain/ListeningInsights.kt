@@ -110,7 +110,7 @@ object ListeningInsightsRanges {
 
     fun trendPercent(currentMs: Long, previousMs: Long): Int? {
         if (previousMs <= 0L) return null
-        return (((currentMs - previousMs) * 100.0) / previousMs.toDouble())
+        return ((currentMs - previousMs) * 100.0 / previousMs.toDouble())
             .toInt()
             .coerceIn(-999, 999)
     }

@@ -725,7 +725,8 @@ private fun InsightsActivityChart(
                 val area = Path()
                 points.forEachIndexed { index, point ->
                     val x = index * step
-                    val y = size.height - (point.listenedMs.toFloat() / maxValue.toFloat()) * size.height * 0.86f * reveal
+                    val fraction = point.listenedMs.toFloat() / maxValue.toFloat()
+                    val y = size.height - fraction * size.height * 0.86f * reveal
                     if (index == 0) {
                         line.moveTo(x, y)
                         area.moveTo(x, size.height)
