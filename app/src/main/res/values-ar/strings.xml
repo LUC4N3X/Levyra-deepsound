@@ -11,7 +11,7 @@
     <string name="widget_lyrics">كلمات الأغاني</string>
     <string name="radar_channel_name">رادار الإصدارات</string>
     <string name="radar_channel_description">إصدارات جديدة من الفنانين الذين تتابعهم</string>
-    <string name="radar_new_release_title">إصدار جديد من %1$s</string>
+    <string name="radar_new_release_title">إصدار جديد من &#x2068;%1$s&#x2069;</string>
     <string name="automatic_backups">نسخ احتياطية تلقائية</string>
     <string name="car_home">الرئيسية</string>
     <string name="car_downloads">التنزيلات</string>

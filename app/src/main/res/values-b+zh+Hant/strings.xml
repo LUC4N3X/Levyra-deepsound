@@ -9,7 +9,7 @@
     <string name="widget_flow">每日精選</string>
     <string name="widget_offline">離線混音</string>
     <string name="widget_lyrics">歌詞</string>
-    <string name="radar_channel_name">新作雷達</string>
+    <string name="radar_channel_name">新歌雷達</string>
     <string name="radar_channel_description">你追蹤的藝人最新發行作品</string>
     <string name="radar_new_release_title">%1$s 發布了新作品</string>
     <string name="automatic_backups">自動備份</string>
