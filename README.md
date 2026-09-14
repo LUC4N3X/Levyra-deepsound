@@ -30,14 +30,6 @@
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><picture><source media="(max-width: 480px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-windows-download-mobile-light.svg"><source media="(max-width: 480px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-windows-download-mobile.svg"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-windows-download-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-windows-download.svg"><img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra for Windows"></picture></a>
 </p>
 
-<p align="center"><sub><b>DISCOVER LEVYRA</b></sub></p>
-
-<p align="center">
-  <a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
-    <img src="https://devglobe.app/badges/launched-on-devglobe-dark.svg" alt="Launched on DevGlobe" width="250" height="54">
-  </a>
-</p>
-
 <p align="center">
   <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
 </p>
@@ -587,6 +579,16 @@ For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.g
 * **[NewPipe & PipePipe Communities](https://github.com/TeamNewPipe/NewPipeExtractor)** — Foundational extractor architecture, service implementations, parser protocols, and downstream ecosystem work retained in LevyraExtractor.
 * **[zemer-cipher](https://github.com/ZemerTeam/zemer-cipher)** — Special thanks to the Zemer team for its open-source work on YouTube cipher deobfuscation and PoToken generation.
 * **[LRCLIB](https://lrclib.net/)** — Community synchronized lyric database and open API powering real-time karaoke synchronization.
+
+<div align="center">
+
+### Discover Levyra
+
+<a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
+  <img src="https://devglobe.app/badges/launched-on-devglobe-dark.svg" alt="Launched on DevGlobe" width="250" height="54">
+</a>
+
+</div>
 
 ---
 
