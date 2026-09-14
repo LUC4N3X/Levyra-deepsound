@@ -32,7 +32,7 @@ internal object DownloadFolderAccess {
             )?.use { cursor ->
                 cursor.moveToFirst() &&
                     cursor.getString(0) == DocumentsContract.Document.MIME_TYPE_DIR &&
-                    cursor.getInt(1) and DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE != 0
+                    (cursor.getInt(1) and DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE) != 0
             } == true
         }.getOrDefault(false)
     }
