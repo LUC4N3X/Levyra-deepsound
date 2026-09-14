@@ -9,7 +9,7 @@
     <string name="widget_flow">Napi válogatás</string>
     <string name="widget_offline">Offline mix</string>
     <string name="widget_lyrics">Dalszöveg</string>
-    <string name="radar_channel_name">Megjelenési radar</string>
+    <string name="radar_channel_name">Zeneradar</string>
     <string name="radar_channel_description">Új megjelenések az általad követett előadóktól</string>
     <string name="radar_new_release_title">Új megjelenés %1$s előadótól</string>
     <string name="automatic_backups">Automatikus biztonsági mentések</string>
@@ -22,7 +22,7 @@
     <string name="car_search_tracks">Zeneszámok keresése</string>
     <string name="car_no_results">Nincs találat</string>
     <string name="car_connecting_player">Csatlakozás a lejátszóhoz</string>
-    <string name="car_now_playing">Most játszott</string>
+    <string name="car_now_playing">Most szól</string>
     <string name="car_queue">Lejátszási sor</string>
     <string name="notification_shuffle">Véletlenszerű lejátszás</string>
     <string name="notification_favorite">Kedvenc</string>
