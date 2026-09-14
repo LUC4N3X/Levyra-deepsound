@@ -115,9 +115,9 @@ internal object LevyraLiveRadioCatalog {
         check(values.values.all { it.exploreSubtitle.isNotBlank() })
     }
 
-    fun forCode(code: String): LevyraLiveRadioStrings = values.getValue(LevyraLanguageCatalog.normalize(code))
+    fun forCode(code: String): LevyraLiveRadioStrings = values[LevyraLanguageCatalog.normalize(code)] ?: values.getValue("en")
 
-    fun streamUnavailable(code: String): String = unavailableValues.getValue(LevyraLanguageCatalog.normalize(code))
+    fun streamUnavailable(code: String): String = unavailableValues[LevyraLanguageCatalog.normalize(code)] ?: unavailableValues.getValue("en")
 
     private fun radio(
         subtitle: String,
