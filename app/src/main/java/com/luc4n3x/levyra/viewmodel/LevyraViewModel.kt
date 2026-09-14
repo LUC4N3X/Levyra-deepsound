@@ -154,6 +154,7 @@ import com.luc4n3x.levyra.domain.ListeningPulseEngine
 import com.luc4n3x.levyra.domain.recap.ListeningRecapPeriod
 import com.luc4n3x.levyra.domain.recap.ListeningRecapSummary
 import com.luc4n3x.levyra.domain.recap.TopTrackStat
+import com.luc4n3x.levyra.domain.ListeningInsightsTrack
 import com.luc4n3x.levyra.domain.recap.TopArtistStat
 import com.luc4n3x.levyra.data.recap.ListeningRecapRepository
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
@@ -10325,6 +10326,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod) {
         _state.update { it.copy(showListeningRecap = true, listeningRecapPeriod = period) }
         refreshListeningRecap(period)
+    }
+
+    fun openListeningInsights() {
+        _state.update { it.copy(showListeningInsights = true) }
+    }
+
+    fun closeListeningInsights() {
+        if (!_state.value.showListeningInsights) return
+        _state.update { it.copy(showListeningInsights = false) }
+    }
+
+    fun playListeningInsightsTrack(entry: ListeningInsightsTrack) {
+        playListeningRecapTrack(
+            TopTrackStat(
+                rank = 0,
+                trackId = entry.trackId,
+                title = entry.title,
+                artist = entry.artist,
+                album = entry.album,
+                thumbnailUrl = entry.artworkUrl,
+                plays = entry.plays,
+                listenedMs = entry.listenedMs
+            )
+        )
     }
 
     fun closeListeningRecap() {

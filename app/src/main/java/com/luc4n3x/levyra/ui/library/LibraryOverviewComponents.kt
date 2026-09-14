@@ -681,7 +681,7 @@ private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modi
 @Composable
 internal fun LibraryListeningDashboard(
     pulse: ListeningPulse,
-    onOpenRecap: (() -> Unit)? = null
+    onOpenInsights: (() -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
@@ -697,12 +697,12 @@ internal fun LibraryListeningDashboard(
     }
     val topArtist = pulse.topArtists.firstOrNull()?.name.orEmpty().ifBlank { "—" }
 
-    val openSurface = if (onOpenRecap != null) {
+    val openSurface = if (onOpenInsights != null) {
         Modifier.levyraPressable(
-            onClick = onOpenRecap,
+            onClick = onOpenInsights,
             pressedScale = LevyraPressScale.Surface,
             role = Role.Button,
-            onClickLabel = strings.listeningRecap
+            onClickLabel = strings.listeningInsights
         )
     } else {
         Modifier

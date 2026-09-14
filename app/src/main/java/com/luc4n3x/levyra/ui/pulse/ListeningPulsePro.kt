@@ -77,7 +77,7 @@ fun ListeningPulseProCard(
     pulse: ListeningPulse,
     modifier: Modifier = Modifier,
     strings: LevyraStrings = LocalLevyraStrings.current,
-    onOpenRecap: (() -> Unit)? = null
+    onOpenInsights: (() -> Unit)? = null
 ) {
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
     val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
@@ -109,7 +109,7 @@ fun ListeningPulseProCard(
                 .padding(20.dp)
         ) {
             if (!pulse.hasSignal) {
-                PulseEmptyState(strings = strings, onOpenRecap = onOpenRecap, isDark = isDark)
+                PulseEmptyState(strings = strings, onOpenInsights = onOpenInsights, isDark = isDark)
             } else {
                 PulseActiveContent(
                     pulse = pulse,
@@ -117,7 +117,7 @@ fun ListeningPulseProCard(
                     number = number,
                     locale = locale,
                     isDark = isDark,
-                    onOpenRecap = onOpenRecap
+                    onOpenInsights = onOpenInsights
                 )
             }
         }
@@ -131,7 +131,7 @@ private fun PulseActiveContent(
     number: NumberFormat,
     locale: Locale,
     isDark: Boolean,
-    onOpenRecap: (() -> Unit)?
+    onOpenInsights: (() -> Unit)?
 ) {
     val week = pulse.week.takeLast(7)
     val weekMinutes = week.sumOf { it.listenedMs } / 60_000L
@@ -182,9 +182,9 @@ private fun PulseActiveContent(
                 }
             }
 
-            if (onOpenRecap != null) {
+            if (onOpenInsights != null) {
                 Surface(
-                    onClick = onOpenRecap,
+                    onClick = onOpenInsights,
                     shape = RoundedCornerShape(999.dp),
                     color = LevyraViolet.copy(alpha = 0.14f),
                     border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.28f))
@@ -201,7 +201,7 @@ private fun PulseActiveContent(
                             modifier = Modifier.size(13.dp)
                         )
                         Text(
-                            text = strings.listeningRecap,
+                            text = strings.listeningInsights,
                             color = LevyraText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
@@ -538,7 +538,7 @@ private fun PulseMiniBadge(
 @Composable
 private fun PulseEmptyState(
     strings: LevyraStrings,
-    onOpenRecap: (() -> Unit)?,
+    onOpenInsights: (() -> Unit)?,
     isDark: Boolean
 ) {
     val ghostBarColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f)
@@ -604,9 +604,9 @@ private fun PulseEmptyState(
             }
         }
 
-        if (onOpenRecap != null) {
+        if (onOpenInsights != null) {
             Surface(
-                onClick = onOpenRecap,
+                onClick = onOpenInsights,
                 shape = RoundedCornerShape(999.dp),
                 color = LevyraCyan.copy(alpha = 0.12f),
                 border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.22f))
@@ -623,7 +623,7 @@ private fun PulseEmptyState(
                         modifier = Modifier.size(13.dp)
                     )
                     Text(
-                        text = strings.openRecap,
+                        text = strings.listeningInsights,
                         color = LevyraText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
