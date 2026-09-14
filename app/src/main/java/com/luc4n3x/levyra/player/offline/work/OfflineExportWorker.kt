@@ -10,6 +10,8 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.SystemClock
+import android.provider.DocumentsContract
+import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -24,7 +26,6 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.R
-import com.luc4n3x.levyra.data.DownloadFolderAccess
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -107,7 +108,7 @@ class OfflineExportWorker(
                         KEY_EMBEDDED_METADATA to existing.embeddedMetadata,
                         KEY_MIME_TYPE to existing.mimeType,
                         KEY_URI to existing.uri,
-                        KEY_DESTINATION_LABEL to currentDownloadDestinationLabel(settings.destinationTreeUri)
+                        KEY_DESTINATION_LABEL to existingDownloadDestinationLabel(existing.uri)
                     )
                 )
             }
@@ -208,10 +209,21 @@ class OfflineExportWorker(
 
     private fun errorData(message: String): Data = workDataOf(KEY_ERROR to message)
 
-    private fun currentDownloadDestinationLabel(destinationTreeUri: String): String {
-        if (destinationTreeUri.isBlank()) return "Music/Levyra"
-        return DownloadFolderAccess.displayName(applicationContext, destinationTreeUri)
-            ?: "Music/Levyra"
+    private fun existingDownloadDestinationLabel(rawUri: String): String {
+        val uri = runCatching { android.net.Uri.parse(rawUri) }.getOrNull() ?: return "Music/Levyra"
+        if (uri.authority == MediaStore.AUTHORITY) return "Music/Levyra"
+        val documentId = runCatching {
+            if (DocumentsContract.isDocumentUri(applicationContext, uri)) {
+                DocumentsContract.getDocumentId(uri)
+            } else {
+                ""
+            }
+        }.getOrDefault("")
+        val relativePath = documentId
+            .substringAfter(':', "")
+            .substringBeforeLast('/', "")
+            .trim('/')
+        return relativePath.ifBlank { "Music/Levyra" }
     }
 
     private fun isStoredDownloadReadable(rawUri: String): Boolean {
