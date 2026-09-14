@@ -47,14 +47,22 @@ internal class ProviderCircuitBreaker(
         return permit
     }
 
-    fun onSuccess() {
+    fun onSuccess(permit: Permit) {
         val recovered = synchronized(lock) {
-            val wasOpen = state != State.CLOSED
-            state = State.CLOSED
-            consecutiveFailures = 0
-            openDurationMs = baseOpenMs
-            probeInFlight = false
-            wasOpen
+            when {
+                permit == Permit.PROBE && state == State.HALF_OPEN -> {
+                    state = State.CLOSED
+                    consecutiveFailures = 0
+                    openDurationMs = baseOpenMs
+                    probeInFlight = false
+                    true
+                }
+                state == State.CLOSED -> {
+                    consecutiveFailures = 0
+                    false
+                }
+                else -> false
+            }
         }
         if (recovered) HighQualityAudioDiagnostics.circuit(providerId, State.CLOSED.name, "recovered")
     }

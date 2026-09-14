@@ -106,11 +106,26 @@ class LevyraPreferencesStoreTest {
     }
 
     @Test
-    fun explicitAutomaticAudioQualityChoiceIsKept() {
-        runBlocking { disk.edit { it[stringPreferencesKey("audio_quality")] = "Auto" } }
-        val (_, preferences) = open()
+    fun storedAudioQualityChoicesSurviveTheHighDefault() {
+        mapOf("High" to "High", "Auto" to "Auto", "Low" to "Low", "" to "High", "Medium" to "High").forEach { (stored, expected) ->
+            runBlocking { disk.edit { it[stringPreferencesKey("audio_quality")] = stored } }
+            val (_, preferences) = open()
 
-        assertEquals("Auto", preferences.audioQuality())
+            assertEquals("stored=\"$stored\"", expected, preferences.audioQuality())
+            assertEquals("stored=\"$stored\"", expected, preferences.snapshot().audioQuality)
+        }
+    }
+
+    @Test
+    fun restoringASnapshotKeepsAnExplicitAudioQualityChoice() {
+        listOf("Auto", "High", "Low").forEach { choice ->
+            val (store, preferences) = open()
+            runBlocking { preferences.restoreSnapshot(preferences.snapshot().copy(audioQuality = choice)) }
+            flush(store)
+
+            assertEquals(choice, preferences.audioQuality())
+            assertEquals(choice, reopen().audioQuality())
+        }
     }
 
     @Test

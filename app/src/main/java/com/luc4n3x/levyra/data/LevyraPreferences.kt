@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -747,11 +748,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         }.onFailure { Timber.w(it, "Home albums restore failed") }.getOrDefault(emptyList())
     }
 
-    private fun normalizeAudioQuality(value: String): String = when (value.lowercase()) {
-        "auto" -> "Auto"
-        "low" -> "Low"
-        else -> "High"
-    }
+    private fun normalizeAudioQuality(value: String): String = LevyraAudioQuality.normalize(value)
 
     private fun audioSettingsFrom(preferences: Preferences): LevyraAudioSettings {
         val customPresets = customPresetsFromJson(preferences[KEY_AUDIO_CUSTOM_PRESETS].orEmpty())

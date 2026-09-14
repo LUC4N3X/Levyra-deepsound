@@ -19,6 +19,7 @@ import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
@@ -446,13 +447,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun normalizeAudioQuality(value: String): String {
-        return when (value.lowercase()) {
-            "high" -> "High"
-            "low" -> "Low"
-            else -> "Auto"
-        }
-    }
+    private fun normalizeAudioQuality(value: String): String = LevyraAudioQuality.normalize(value)
 
     fun warmNetwork() {
         if (!hasInternetCapableNetwork()) return

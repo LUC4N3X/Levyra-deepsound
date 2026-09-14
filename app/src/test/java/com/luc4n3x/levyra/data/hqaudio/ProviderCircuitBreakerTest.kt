@@ -30,7 +30,7 @@ class ProviderCircuitBreakerTest {
     @Test
     fun successResetsTheConsecutiveFailureCount() {
         repeat(ProviderCircuitBreaker.DEFAULT_FAILURE_THRESHOLD - 1) { breaker.onFailure(breaker.acquire()) }
-        breaker.onSuccess()
+        breaker.onSuccess(breaker.acquire())
         repeat(ProviderCircuitBreaker.DEFAULT_FAILURE_THRESHOLD - 1) { breaker.onFailure(breaker.acquire()) }
         assertEquals(State.CLOSED, breaker.currentState)
     }
@@ -55,10 +55,41 @@ class ProviderCircuitBreakerTest {
     fun successfulProbeClosesTheCircuit() {
         open()
         clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
-        assertEquals(Permit.PROBE, breaker.acquire())
-        breaker.onSuccess()
+        val probe = breaker.acquire()
+        assertEquals(Permit.PROBE, probe)
+        breaker.onSuccess(probe)
         assertEquals(State.CLOSED, breaker.currentState)
         assertEquals(Permit.NORMAL, breaker.acquire())
+    }
+
+    @Test
+    fun lateSuccessOfAnOlderRequestDoesNotCloseAnOpenCircuit() {
+        val older = breaker.acquire()
+        open()
+        breaker.onSuccess(older)
+        assertEquals(State.OPEN, breaker.currentState)
+        assertEquals(Permit.REJECTED, breaker.acquire())
+        clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+        val probe = breaker.acquire()
+        assertEquals(Permit.PROBE, probe)
+        breaker.onSuccess(older)
+        assertEquals(State.HALF_OPEN, breaker.currentState)
+        assertEquals(Permit.REJECTED, breaker.acquire())
+        breaker.onSuccess(probe)
+        assertEquals(State.CLOSED, breaker.currentState)
+    }
+
+    @Test
+    fun lateSuccessDoesNotResetTheRepeatedOpenBackoff() {
+        val older = breaker.acquire()
+        open()
+        clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+        breaker.onFailure(breaker.acquire())
+        breaker.onSuccess(older)
+        clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+        assertEquals(Permit.REJECTED, breaker.acquire())
+        clockMs += ProviderCircuitBreaker.DEFAULT_OPEN_MS
+        assertEquals(Permit.PROBE, breaker.acquire())
     }
 
     @Test

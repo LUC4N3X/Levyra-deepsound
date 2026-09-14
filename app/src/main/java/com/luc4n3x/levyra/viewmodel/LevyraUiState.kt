@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.domain.ChartRegion
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
@@ -179,7 +180,7 @@ data class LevyraUiState(
     val repeatMode: RepeatMode = RepeatMode.Off,
     val shuffleEnabled: Boolean = false,
     val playbackSpeed: Float = 1f,
-    val audioQuality: String = "High",
+    val audioQuality: String = LevyraAudioQuality.DEFAULT,
     val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
     val showAudioQualityPanel: Boolean = false,
     val audioNormalization: Boolean = false,
