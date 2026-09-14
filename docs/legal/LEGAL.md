@@ -77,7 +77,7 @@ Any rights a user may have in relation to third-party content or services arise 
 
 ## 10. Open-Source Licence
 
-Levyra is distributed under the **[GNU General Public License v3.0](LICENSE)**.
+Levyra is distributed under the **[GNU General Public License v3.0](../../LICENSE)**.
 
 The GPL governs the copying, modification, and redistribution of Levyra's source code. It does not grant rights to third-party trademarks, services, APIs, media, metadata, copyrighted works, or other third-party material accessed, referenced, retrieved, processed, or stored through the software.
 

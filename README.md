@@ -599,7 +599,7 @@ For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.g
 >
 > Levyra is provided **"AS IS"** under the **[GNU GPL v3.0](LICENSE)**, to the maximum extent permitted by applicable law. Third-party trademarks, services, APIs, media, metadata, and copyrighted works remain subject to their respective owners, licences, terms, and applicable law.
 >
-> **Read the complete [Legal Notice](LEGAL.md)** for no-affiliation terms, third-party rights, user responsibility, warranty and liability limitations, rights-holder notices, and mandatory-law provisions.
+> **Read the complete [Legal Notice](docs/legal/LEGAL.md)** for no-affiliation terms, third-party rights, user responsibility, warranty and liability limitations, rights-holder notices, and mandatory-law provisions.
 
 <div align="center">
   <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>

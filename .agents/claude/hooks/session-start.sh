@@ -97,7 +97,7 @@ if [ -x desktop/gradlew ]; then
 fi
 
 if [ -f local.properties ]; then
-  lines+=("local.properties exists. Never read, echo, or commit it; see local.properties.example for the key names only.")
+  lines+=("local.properties exists. Never read, echo, or commit it; see config/local.properties.example for the key names only.")
 fi
 
 if branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"; then
