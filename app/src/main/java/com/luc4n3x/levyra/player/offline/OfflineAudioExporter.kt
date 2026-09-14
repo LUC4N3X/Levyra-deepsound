@@ -1255,7 +1255,13 @@ class OfflineAudioExporter(
     private suspend fun saveToMusicCollection(input: File, track: Track, container: AudioContainer): SavedAudioDestination {
         val customTree = settings.destinationTreeUri
         if (customTree.isNotBlank() && DownloadFolderAccess.canWrite(context, customTree)) {
-            return saveToDocumentTree(input, track, container, customTree)
+            try {
+                return saveToDocumentTree(input, track, container, customTree)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "Custom download folder unavailable, falling back to default")
+            }
         }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) saveScoped(input, track, container) else saveLegacy(input, track, container)
     }
