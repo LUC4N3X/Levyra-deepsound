@@ -24,6 +24,19 @@ class LevyraExperienceSettingsTest {
     }
 
     @Test
+    fun downloadSettingsNormalizeDestinationTreeUri() {
+        val normalized = LevyraDownloadSettings(
+            destinationTreeUri = "  content://com.android.externalstorage.documents/tree/1234-5678%3AMusic  "
+        ).normalized()
+
+        assertEquals(
+            "content://com.android.externalstorage.documents/tree/1234-5678%3AMusic",
+            normalized.destinationTreeUri
+        )
+        assertEquals("", LevyraDownloadSettings().normalized().destinationTreeUri)
+    }
+
+    @Test
     fun downloadPresetsSelectIndependentOfflineQuality() {
         assertEquals("High", LevyraDownloadSettings(preset = LevyraDownloadPreset.HighQuality).resolverAudioQuality)
         assertEquals("Low", LevyraDownloadSettings(preset = LevyraDownloadPreset.DataSaver).resolverAudioQuality)
