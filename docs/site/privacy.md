@@ -68,7 +68,7 @@ Supported exported music is designed to remain standard user-owned media. Removi
 
 You can inspect the current permission surface directly in [AndroidManifest.xml](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/AndroidManifest.xml).
 
-For legal, third-party and liability information, read [LEGAL.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/LEGAL.md).
+For legal, third-party and liability information, read [LEGAL.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/legal/LEGAL.md).
 
 !!! warning "Security reports"
     Never post secrets, tokens, private credentials or other sensitive information in a public GitHub issue.
