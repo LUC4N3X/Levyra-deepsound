@@ -62,7 +62,7 @@ Downloads are standard, high-bitrate M4A files saved to <code>Music/Levyra</code
 
 Android uses Media3 / ExoPlayer; Windows uses its own libvlc core. Playback stays native to the platform instead of living inside a web wrapper.
 
-<code>GAPLESS PLAYBACK</code> &nbsp;·&nbsp; <code>VOLUME NORMALIZATION</code> &nbsp;·&nbsp; <code>LOW-OVERHEAD AUDIO</code>
+<code>GAPLESS PLAYBACK</code> &nbsp;·&nbsp; <code>LOUDNESS-AWARE NORMALIZATION</code> &nbsp;·&nbsp; <code>AUTOEQ HEADPHONE CATALOG</code> &nbsp;·&nbsp; <code>LOW-OVERHEAD AUDIO</code>
 
 ### 🎙️ 03 · Remove everything between you and the song
 
@@ -138,6 +138,44 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 > **Levyra implementation & copyright.** The Levyra-specific JioSaavn integration — including its source-resolution flow, identity matching and validation, fallback orchestration, playback integration, and related UI/UX — is an original part of the Levyra project authored and maintained by **LUC4N3X**. The implementation is protected by copyright and distributed under this repository's **[GNU GPL v3.0](LICENSE)**. Copying, modification, and redistribution are permitted **only in compliance with GPL-3.0 and its applicable notice/source obligations**; the public repository grants no separate permission to take this implementation and redistribute it as incompatible closed-source/proprietary code.
 >
 > This notice applies only to Levyra's own implementation. **JioSaavn, its service, trademarks, catalogue, media, metadata, and other third-party property remain the property of their respective owners.** Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected with JioSaavn.
+
+---
+
+## ✦ Audio Intelligence 3.0
+
+<div align="center">
+
+### 🧠 The engine listens before it changes anything.
+
+<p><sub>Loudness, transitions, and headphone correction live inside Levyra's single native DSP chain — one path from decoder to true-peak limiter, with no second processor stacked on top.</sub></p>
+
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="33%">
+      <h3>🔊 <b>Honest Loudness</b></h3>
+      <p><sub>Every song is brought to a consistent streaming reference using the track's own loudness data. Tracks without it are measured in real time with a gated, broadcast-style loudness meter. Levyra only turns loud tracks down — it never pumps quiet ones up — and a −1 dBTP true-peak limiter guards the output.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>💿 <b>Album Continuity</b></h3>
+      <p><sub>Consecutive tracks from the same release play straight through, even with crossfade on, so live albums, DJ mixes, and concept records stay continuous. The release is identified by its catalog ID and running order, not by the album title alone. Leaving the album still crossfades.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>🎧 <b>AutoEQ Headphone Catalog</b></h3>
+      <p><sub>Search more than 8,800 headphone and earphone profiles by brand or model, preview the correction curve, and apply it in one tap through the built-in 10-band equalizer. Profiles download on demand — nothing is bundled into the APK — and preamp headroom is respected, never doubled.</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p>
+  <code>BS.1770-4 GATED METER</code> &nbsp;·&nbsp;
+  <code>ATTENUATION-ONLY</code> &nbsp;·&nbsp;
+  <code>−1 dBTP LIMITER</code> &nbsp;·&nbsp;
+  <code>8,800+ HEADPHONE PROFILES</code>
+</p>
+
+<p><sub>The loudness meter follows the ITU-R BS.1770-4 method (K-weighting, 400 ms gated blocks) as a real-time estimate for playback. It is not presented as a certified EBU R128 measurement tool.</sub></p>
+
+</div>
 
 ---
 
@@ -224,10 +262,11 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <ul>
         <li><b>Native Engines:</b> Media3 / ExoPlayer on Android and isolated libvlc on Windows.</li>
         <li><b>Verified HQ Audio:</b> Android can route to a validated alternative source up to 320 kbps while preserving the original Levyra/YouTube track identity and falling back safely when verification fails.</li>
-        <li><b>Gapless & Queue:</b> Seamless track transitions, shuffle/repeat, and queue Undo.</li>
+        <li><b>Gapless & Queue:</b> Seamless track transitions, shuffle/repeat, queue Undo, and album continuity that skips the crossfade between consecutive tracks of the same release.</li>
         <li><b>Tempo & Timing:</b> Speed/pitch controls plus a built-in sleep timer.</li>
         <li><b>Android Auto:</b> Playback integrates with the car-focused Android media experience.</li>
-        <li><b>Volume Normalization:</b> Keeps perceived loudness more consistent between tracks.</li>
+        <li><b>Loudness Normalization:</b> Attenuation-only leveling from track loudness data, with a gated BS.1770-4-style meter for tracks that carry none.</li>
+        <li><b>Equalizer & AutoEQ:</b> 10-band equalizer with presets, bass boost, virtualizer, preamp, and a searchable headphone correction catalog.</li>
         <li><b>SponsorBlock:</b> Automatically skips supported non-musical segments during playback.</li>
         <li><b>Audio / Video Mode:</b> Switch between listening and native-video playback when available.</li>
       </ul>

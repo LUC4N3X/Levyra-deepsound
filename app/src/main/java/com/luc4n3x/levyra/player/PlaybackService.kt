@@ -134,6 +134,7 @@ class PlaybackService : MediaLibraryService() {
     private var memoryGuardHighSamples = 0
     private var lastMemoryRecycleElapsedMs = 0L
     private var transitionPlayer: ExoPlayer? = null
+    private var transitionNormalization: NormalizationAudioProcessor? = null
     private var currentAudioSettings = LevyraAudioSettings()
     private var currentAudioNormalization = false
     private val normalizationProcessor = NormalizationAudioProcessor()
@@ -1350,7 +1351,8 @@ class PlaybackService : MediaLibraryService() {
             settings = currentAudioSettings,
             repeatMode = snapshot.repeatMode,
             videoMode = videoMode,
-            lowRam = adaptivePlaybackPolicy.current(videoMode = false).lowRam
+            lowRam = adaptivePlaybackPolicy.current(videoMode = false).lowRam,
+            shuffleEnabled = snapshot.shuffleEnabled
         ) ?: return
         if (remaining > plan.preloadLeadMs) return
         queueTransitionJob = serviceScope.launch {
@@ -1416,6 +1418,7 @@ class PlaybackService : MediaLibraryService() {
             }
             consumePreparedQueueNextInternal(target.id.ifBlank { resolved.id })
 
+            transitionNormalization?.let { normalizationProcessor.continueFromGain(it.appliedGain) }
             primary.volume = 0f
             primary.setMediaItem(
                 LevyraMediaItemFactory.build(resolved),
@@ -1528,6 +1531,7 @@ class PlaybackService : MediaLibraryService() {
             enabled = currentAudioNormalization || currentAudioSettings.replayGainEnabled
             setYoutubeLoudness(track.youtubeLoudnessDb, track.youtubePerceptualLoudnessDb)
         }
+        transitionNormalization = normalization
         val equalizer = LevyraEqualizerAudioProcessor().apply {
             enabled = currentAudioSettings.equalizerEnabled
             setBandLevels(currentAudioSettings.bandLevels)
@@ -1831,6 +1835,7 @@ class PlaybackService : MediaLibraryService() {
         val player = transitionPlayer ?: return
         if (expected != null && player !== expected) return
         transitionPlayer = null
+        transitionNormalization = null
         runCatching { player.pause() }
             .onFailure { Timber.w(it, "Queue crossfade secondary pause failed") }
         runCatching { player.clearMediaItems() }

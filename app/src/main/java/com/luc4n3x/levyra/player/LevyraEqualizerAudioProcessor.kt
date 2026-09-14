@@ -11,6 +11,12 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 
+internal fun equalizerInputGainDb(preampDb: Float, programHeadroomDb: Float): Float {
+    val preamp = preampDb.coerceIn(-12f, 3f)
+    val headroomReservedByPreamp = (-preamp).coerceAtLeast(0f)
+    return preamp - (programHeadroomDb - headroomReservedByPreamp).coerceAtLeast(0f)
+}
+
 class LevyraEqualizerAudioProcessor : AudioProcessor {
     enum class OutputProfile { SPEAKER, WIRED, BLUETOOTH, USB }
 
@@ -131,7 +137,7 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
         } else {
             currentHeadroomDb + (highestProgramBoost - currentHeadroomDb) * COEFFICIENT_SMOOTHING
         }
-        preampLinear = dbToLinear(preampDb.coerceIn(-12f, 3f) - currentHeadroomDb)
+        preampLinear = dbToLinear(equalizerInputGainDb(preampDb, currentHeadroomDb))
     }
 
     private fun updatePeakingFilter(filter: Biquad, sampleRate: Int, frequency: Float, q: Float, gainDb: Float) {

@@ -179,12 +179,21 @@ class LevyraPlayerTest {
     )
 
     @Test
-    fun normalizationUsesPerceptualLoudnessBeforeStandardLoudness() {
+    fun normalizationPrefersRelativeLoudnessOverAbsolutePerceptualLoudness() {
         val processor = NormalizationAudioProcessor()
 
-        processor.setYoutubeLoudness(6.0f, 3.0f)
+        processor.setYoutubeLoudness(0.98f, -13.01f)
 
-        assertEquals(0.7079f, processor.metadataGain() ?: 0.0f, 0.001f)
+        assertEquals(0.8934f, processor.metadataGain() ?: 0.0f, 0.001f)
+    }
+
+    @Test
+    fun normalizationReadsPerceptualLoudnessAgainstStreamingReference() {
+        val processor = NormalizationAudioProcessor()
+
+        processor.setYoutubeLoudness(null, -8.0f)
+
+        assertEquals(0.5012f, processor.metadataGain() ?: 0.0f, 0.001f)
     }
 
     @Test
