@@ -110,9 +110,10 @@ object ListeningInsightsRanges {
 
     fun trendPercent(currentMs: Long, previousMs: Long): Int? {
         if (previousMs <= 0L) return null
-        return ((currentMs - previousMs) * 100.0 / previousMs.toDouble())
-            .toInt()
-            .coerceIn(-999, 999)
+        val percent = (currentMs - previousMs) * 100.0 / previousMs.toDouble()
+        val truncated = percent.toInt()
+        val adjusted = if (currentMs < previousMs && truncated == 0) -1 else truncated
+        return adjusted.coerceIn(-999, 999)
     }
 
     fun aggregateActivity(

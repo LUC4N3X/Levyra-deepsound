@@ -34,6 +34,7 @@ class ListeningInsightsRangesTest {
     fun trendIsBoundedAndUnavailableWithoutBaseline() {
         assertEquals(25, ListeningInsightsRanges.trendPercent(125L, 100L))
         assertEquals(-50, ListeningInsightsRanges.trendPercent(50L, 100L))
+        assertEquals(-1, ListeningInsightsRanges.trendPercent(999L, 1_000L))
         assertEquals(999, ListeningInsightsRanges.trendPercent(10_000L, 1L))
         assertNull(ListeningInsightsRanges.trendPercent(100L, 0L))
     }
