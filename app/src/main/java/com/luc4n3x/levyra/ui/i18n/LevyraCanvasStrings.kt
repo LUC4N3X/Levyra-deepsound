@@ -55,6 +55,6 @@ private val canvasBundles: Map<String, Map<String, String>> = mapOf(
     "he" to canvasStrings("איכות Canvas", "מצב אוטומטי מתאים את עצמו לרשת, לסוללה ולמסך; גבוהה שומרת על ה-Canvas החד ביותר", "מקור Canvas", "בחר איזה ספק יספק את המוטיון ארטוורק", "קהילה", "שיתוף פלייליסט של Levyra", "כותרות וידאו טובות יותר", "שימוש בכותרות ובתמונות ממוזערות של הקהילה בסרטונים בלבד", "זיהוי מוזיקה")
 )
 
-internal fun canvasLocalizationEntries(code: String): Map<String, String> = canvasBundles.getValue(code)
+internal fun canvasLocalizationEntries(code: String): Map<String, String> = (canvasBundles[code] ?: canvasBundles.getValue("en"))
 
-internal fun canvasLocalizationCodes(): Set<String> = canvasBundles.keys
+internal fun canvasLocalizationCodes(): Set<String> = supportedLocalizationCodes()
