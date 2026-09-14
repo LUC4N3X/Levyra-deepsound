@@ -66,6 +66,6 @@ internal object DownloadFolderAccess {
 
     private fun hasPersistedWritePermission(context: Context, treeUri: Uri): Boolean =
         context.contentResolver.persistedUriPermissions.any { permission ->
-            permission.isWritePermission && permission.uri == treeUri
+            permission.isReadPermission && permission.isWritePermission && permission.uri == treeUri
         }
 }
