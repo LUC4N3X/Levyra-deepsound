@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Pemain mini, kegemaran pantas, campuran harian, campuran luar talian dan lirik</string>
+    <string name="widget_idle_subtitle">Ketik untuk mendengar</string>
+    <string name="widget_toggle">Main/Jeda</string>
+    <string name="widget_next">Seterusnya</string>
+    <string name="widget_previous">Sebelumnya</string>
+    <string name="widget_favorites">Kegemaran</string>
+    <string name="widget_flow">Campuran harian</string>
+    <string name="widget_offline">Campuran luar talian</string>
+    <string name="widget_lyrics">Lirik</string>
+    <string name="radar_channel_name">Radar Keluaran</string>
+    <string name="radar_channel_description">Keluaran baharu daripada artis yang anda ikuti</string>
+    <string name="radar_new_release_title">Keluaran baharu daripada %1$s</string>
+    <string name="automatic_backups">Sandaran automatik</string>
+    <string name="car_home">Laman utama</string>
+    <string name="car_downloads">Muat turun</string>
+    <string name="car_favorites">Kegemaran</string>
+    <string name="car_playlists">Senarai main</string>
+    <string name="car_no_content">Tiada kandungan</string>
+    <string name="car_content_unavailable">Kandungan tidak tersedia</string>
+    <string name="car_search_tracks">Cari lagu</string>
+    <string name="car_no_results">Tiada hasil</string>
+    <string name="car_connecting_player">Menyambung ke pemain</string>
+    <string name="car_now_playing">Sedang dimainkan</string>
+    <string name="car_queue">Baris gilir</string>
+    <string name="notification_shuffle">Rawak</string>
+    <string name="notification_favorite">Kegemaran</string>
+    <string name="tile_recognize_music">Kenal pasti muzik</string>
+    <string name="shortcut_search">Cari</string>
+    <string name="shortcut_library">Pustaka</string>
+    <string name="shortcut_recognition">Kenal pasti muzik</string>
+</resources>

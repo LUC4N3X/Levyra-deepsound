@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Mini reproduktor, brzi favoriti, dnevni miks, offline miks i tekstovi pjesama</string>
+    <string name="widget_idle_subtitle">Za slušanje dodirnite</string>
+    <string name="widget_toggle">Reproduciraj/Pauziraj</string>
+    <string name="widget_next">Sljedeća</string>
+    <string name="widget_previous">Prethodna</string>
+    <string name="widget_favorites">Favoriti</string>
+    <string name="widget_flow">Dnevni miks</string>
+    <string name="widget_offline">Offline miks</string>
+    <string name="widget_lyrics">Tekstovi pjesama</string>
+    <string name="radar_channel_name">Radar izdanja</string>
+    <string name="radar_channel_description">Nova izdanja izvođača koje pratite</string>
+    <string name="radar_new_release_title">Novo izdanje izvođača %1$s</string>
+    <string name="automatic_backups">Automatske sigurnosne kopije</string>
+    <string name="car_home">Početna</string>
+    <string name="car_downloads">Preuzimanja</string>
+    <string name="car_favorites">Favoriti</string>
+    <string name="car_playlists">Popisi za reprodukciju</string>
+    <string name="car_no_content">Nema sadržaja</string>
+    <string name="car_content_unavailable">Sadržaj nije dostupan</string>
+    <string name="car_search_tracks">Pretraži pjesme</string>
+    <string name="car_no_results">Nema rezultata</string>
+    <string name="car_connecting_player">Povezivanje s reproduktorom</string>
+    <string name="car_now_playing">Trenutno svira</string>
+    <string name="car_queue">Red čekanja</string>
+    <string name="notification_shuffle">Nasumično</string>
+    <string name="notification_favorite">Favorit</string>
+    <string name="tile_recognize_music">Prepoznaj glazbu</string>
+    <string name="shortcut_search">Pretraži</string>
+    <string name="shortcut_library">Medijateka</string>
+    <string name="shortcut_recognition">Prepoznaj glazbu</string>
+</resources>
