@@ -21,11 +21,11 @@
     <string name="car_content_unavailable">Contenuto non disponibile</string>
     <string name="car_search_tracks">Cerca brani</string>
     <string name="car_no_results">Nessun risultato</string>
-    <string name="car_connecting_player">Connessione al player</string>
+    <string name="car_connecting_player">Connessione al lettore</string>
     <string name="car_now_playing">In riproduzione</string>
     <string name="car_queue">Coda</string>
-    <string name="notification_shuffle">Casuale</string>
-    <string name="notification_favorite">Mi piace</string>
+    <string name="notification_shuffle">Riproduzione casuale</string>
+    <string name="notification_favorite">Preferito</string>
     <string name="tile_recognize_music">Riconosci la musica</string>
     <string name="shortcut_search">Cerca</string>
     <string name="shortcut_library">Libreria</string>
