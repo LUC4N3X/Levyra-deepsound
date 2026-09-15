@@ -117,7 +117,7 @@ const collectRepositoryCoverage = async () => {
 const makeBars = ({ languages, columns, startX, startY, width, chartHeight, rowGap, isDark }) => {
   const step = width / columns
   const barWidth = Math.max(5, Math.min(7, step * 0.22))
-  const trackBg = isDark ? '#20262E' : '#E7EBF0'
+  const trackBg = isDark ? '#252B33' : '#E6E8EC'
 
   return languages.map((language, index) => {
     const row = Math.floor(index / columns)
@@ -127,13 +127,13 @@ const makeBars = ({ languages, columns, startX, startY, width, chartHeight, rowG
     const fillHeight = Math.max(4, (chartHeight * language.percent) / 100)
     const fillTop = baseline - fillHeight
     const fill = language.percent >= 99.5
-      ? (isDark ? '#2DD4BF' : '#0F766E')
+      ? (isDark ? '#8B7CF6' : '#6758D9')
       : language.percent >= 80
-        ? (isDark ? '#60A5FA' : '#2563EB')
+        ? (isDark ? '#7C86D9' : '#5D66B8')
         : language.percent >= 50
-          ? (isDark ? '#818CF8' : '#6366F1')
-          : (isDark ? '#FB7185' : '#E11D48')
-    const label = isDark ? '#8B949E' : '#57606A'
+          ? (isDark ? '#747B8A' : '#7A808A')
+          : (isDark ? '#8A6671' : '#9B6672')
+    const label = isDark ? '#8B949E' : '#66707A'
 
     return [
       '<g>',
@@ -157,10 +157,10 @@ const makePulse = ({ languages, globalPercent, stringCount, isDark, mobile }) =>
   const chartWidth = width - chartStartX * 2
   const lastBaseline = chartStartY + (rows - 1) * rowGap + chartHeight
   const height = lastBaseline + 66
-  const text = isDark ? '#F0F6FC' : '#1F2328'
-  const sub = isDark ? '#8B949E' : '#57606A'
-  const border = isDark ? '#30363D' : '#D0D7DE'
-  const accent = isDark ? '#2DD4BF' : '#0F766E'
+  const text = isDark ? '#E6EDF3' : '#24292F'
+  const sub = isDark ? '#8B949E' : '#66707A'
+  const border = isDark ? '#30363D' : '#D8DEE4'
+  const accent = isDark ? '#8B7CF6' : '#6758D9'
   const languageCount = languages.length
   const roundedPercent = Math.round(globalPercent)
   const aria = 'Levyra Android translations: ' + roundedPercent + '% coverage across ' + languageCount + ' supported languages and ' + stringCount + ' translatable strings'
@@ -180,12 +180,12 @@ const makePulse = ({ languages, globalPercent, stringCount, isDark, mobile }) =>
     '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeXml(aria) + '">',
     '<title>' + escapeXml(aria) + '</title>',
     '<line x1="24" y1="16" x2="' + (width - 24) + '" y2="16" stroke="' + border + '" stroke-width="1"/>',
-    '<rect x="' + (width / 2 - 62) + '" y="30" width="124" height="28" rx="7" fill="' + accent + '" opacity=".14"/>',
-    '<text x="' + (width / 2) + '" y="49" text-anchor="middle" fill="' + accent + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4">TRANSLATED ' + roundedPercent + '%</text>',
-    '<text x="' + (width / 2) + '" y="83" text-anchor="middle" fill="' + text + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + (mobile ? 18 : 20) + '" font-weight="800">Help Levyra speak your language.</text>',
-    '<text x="' + (width / 2) + '" y="103" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5">' + languageCount + ' languages · Android coverage complete</text>',
+    '<rect x="' + (width / 2 - 58) + '" y="30" width="116" height="26" rx="13" fill="' + accent + '" opacity=".10"/>',
+    '<text x="' + (width / 2) + '" y="47.5" text-anchor="middle" fill="' + accent + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.15">' + roundedPercent + '% TRANSLATED</text>',
+    '<text x="' + (width / 2) + '" y="82" text-anchor="middle" fill="' + text + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + (mobile ? 17 : 19) + '" font-weight="700">Help Levyra speak your language.</text>',
+    '<text x="' + (width / 2) + '" y="102" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10">' + languageCount + ' languages · complete Android string coverage</text>',
     chart,
-    '<text x="' + (width / 2) + '" y="' + (height - 16) + '" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5">Weblate stays open for reviews, improvements and future strings.</text>',
+    '<text x="' + (width / 2) + '" y="' + (height - 16) + '" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10">Translations remain open on Weblate for review and future strings.</text>',
     '</svg>'
   ].join('\n')
 }

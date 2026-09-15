@@ -566,13 +566,11 @@ levyraDesktopVersion=1.2.0
     <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg">
-    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra translation progress on Weblate" width="920">
+    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra Android translation coverage" width="920">
   </picture>
 </a>
 
-<sub><b>35 localized translations + English · 30/30 Android strings per locale</b></sub>
-<br>
-<sub><a href="https://hosted.weblate.org/engage/levyra/"><b>Help translate Levyra on Weblate →</b></a></sub>
+<sub><a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute translations on Weblate →</b></a></sub>
 
 </div>
 
