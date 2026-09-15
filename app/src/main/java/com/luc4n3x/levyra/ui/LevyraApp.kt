@@ -11126,16 +11126,27 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             }
         )
 
+        val queryClean = state.query.trim()
+        val data = state.searchData
+        val filter = state.searchFilter
+        val topResultTracks = remember(data.topTrack, data.songs, filter) {
+            if (filter == SearchFilter.All) selectSearchTopResultTracks(data.topTrack, data.songs) else emptyList()
+        }
+        val topResultArtist = remember(data.artists, topResultTracks, queryClean) {
+            findVerifiedTopResultArtist(data.artists, topResultTracks.firstOrNull(), queryClean)
+        }
+        val visibleSongs = remember(data.songs, topResultTracks, filter) {
+            if (filter == SearchFilter.All) filterSearchSongsExcludingTopResult(data.songs, topResultTracks) else data.songs
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 188.dp else 100.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val queryClean = state.query.trim()
-
             if (queryClean.isEmpty()) {
                 if (state.recentSearches.isNotEmpty()) {
-                    item {
+                    item(key = "search-recent", contentType = "search-recent") {
                         RecentSearchesRow(
                             tracks = state.recentSearches,
                             favoriteIds = state.favoriteIds,
@@ -11156,7 +11167,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                     }
                 }
 
-                item {
+                item(key = "search-artist-suggestions", contentType = "search-artist-suggestions") {
                     val fallbackSuggestions = LevyraContentLocales.artistSuggestions(state.languageCode)
                     SearchArtistSuggestions(
                         title = LevyraContentLocales.artistSuggestionsTitle(state.languageCode),
@@ -11176,48 +11187,23 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                         }
                     )
                 }
-            } else if (state.searchSuggestions.isNotEmpty() && !state.isSearching && state.searchResults.isEmpty() && state.searchError == null) {
-                item {
-                    SuggestionsList(
-                        title = LevyraContentLocales.searchSuggestionsTitle(state.languageCode),
-                        suggestions = state.searchSuggestions,
-                        onSuggestionClick = { suggestion ->
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                            viewModel.setQuery(suggestion)
-                            viewModel.searchNow(suggestion)
-                        }
-                    )
-                }
-            } else if (state.searchResults.isEmpty() && !state.isSearching && state.searchError == null) {
-                item {
-                    QuickChips(
-                        languageCode = state.languageCode,
-                        onClick = { query ->
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                            viewModel.setQuery(query)
-                            viewModel.searchNow(query)
-                        }
-                    )
-                }
-            }
-
-            if (queryClean.isNotEmpty()) {
-                when {
-                    state.isSearching -> item {
-                        SearchLoadingSkeleton()
+            } else {
+                if (state.searchSuggestions.isNotEmpty()) {
+                    item(key = "search-query-suggestions", contentType = "search-query-suggestions") {
+                        SearchQueryChips(
+                            suggestions = state.searchSuggestions,
+                            onClick = { suggestion ->
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                viewModel.setQuery(suggestion)
+                                viewModel.searchNow(suggestion)
+                            }
+                        )
                     }
-                    state.searchError != null -> item { GlassMessage(state.searchError, LevyraOrange) }
-                    !state.searchData.isEmpty -> {
-                        val data = state.searchData
-                        val filter = state.searchFilter
-                        val topResultTracks = if (filter == SearchFilter.All) {
-                            selectSearchTopResultTracks(data.topTrack, data.songs)
-                        } else {
-                            emptyList()
-                        }
-                        item {
+                }
+                when {
+                    !data.isEmpty -> {
+                        item(key = "search-filters", contentType = "search-filters") {
                             SearchFilterChips(
                                 selected = filter,
                                 hasArtists = data.artists.isNotEmpty(),
@@ -11229,8 +11215,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                         }
                         if (filter == SearchFilter.All && topResultTracks.isNotEmpty()) {
                             val heroTrack = topResultTracks.firstOrNull()
-                            val matchedArtist = findVerifiedTopResultArtist(data.artists, heroTrack, queryClean)
-                            item {
+                            val matchedArtist = topResultArtist
+                            item(key = "search-top-result", contentType = "search-top-result") {
                                 TopResultCard(
                                     tracks = topResultTracks,
                                     artist = matchedArtist,
@@ -11283,14 +11269,14 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if ((filter == SearchFilter.All || filter == SearchFilter.Artists) && data.artists.isNotEmpty()) {
-                            item {
+                            item(key = "search-artists-header", contentType = "search-section-header") {
                                 SearchSectionHeader(
                                     title = strings.artists,
                                     showAll = filter == SearchFilter.All,
                                     onShowAll = { viewModel.setSearchFilter(SearchFilter.Artists) }
                                 )
                             }
-                            item {
+                            item(key = "search-artists", contentType = "search-artists") {
                                 ArtistHitRow(
                                     artists = data.artists,
                                     onClick = { hit ->
@@ -11302,14 +11288,14 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if ((filter == SearchFilter.All || filter == SearchFilter.Albums) && data.albums.isNotEmpty()) {
-                            item {
+                            item(key = "search-albums-header", contentType = "search-section-header") {
                                 SearchSectionHeader(
                                     title = strings.albumsPlain,
                                     showAll = filter == SearchFilter.All,
                                     onShowAll = { viewModel.setSearchFilter(SearchFilter.Albums) }
                                 )
                             }
-                            item {
+                            item(key = "search-albums", contentType = "search-albums") {
                                 AlbumHitRow(
                                     albums = data.albums,
                                     onClick = { album ->
@@ -11322,14 +11308,14 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if ((filter == SearchFilter.All || filter == SearchFilter.Playlists) && data.playlists.isNotEmpty()) {
-                            item {
+                            item(key = "search-playlists-header", contentType = "search-section-header") {
                                 SearchSectionHeader(
                                     title = strings.playlistsPlain,
                                     showAll = filter == SearchFilter.All,
                                     onShowAll = { viewModel.setSearchFilter(SearchFilter.Playlists) }
                                 )
                             }
-                            item {
+                            item(key = "search-playlists", contentType = "search-playlists") {
                                 PlaylistHitRow(
                                     playlists = data.playlists,
                                     onClick = { playlist ->
@@ -11342,14 +11328,14 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if ((filter == SearchFilter.All || filter == SearchFilter.Videos) && data.videos.isNotEmpty()) {
-                            item {
+                            item(key = "search-videos-header", contentType = "search-section-header") {
                                 SearchSectionHeader(
                                     title = strings.video,
                                     showAll = filter == SearchFilter.All,
                                     onShowAll = { viewModel.setSearchFilter(SearchFilter.Videos) }
                                 )
                             }
-                            items(data.videos, key = { "search-video-${it.id}" }) { track ->
+                            items(data.videos, key = { "search-video-${it.id}" }, contentType = { "search-track" }) { track ->
                                 SearchTrackCard(
                                     track = track,
                                     isCurrent = track.id == state.currentTrack?.id,
@@ -11372,20 +11358,16 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if (filter == SearchFilter.All || filter == SearchFilter.Songs) {
-                            val songs = if (filter == SearchFilter.All) {
-                                filterSearchSongsExcludingTopResult(data.songs, topResultTracks)
-                            } else {
-                                data.songs
-                            }
+                            val songs = visibleSongs
                             if (songs.isNotEmpty()) {
-                                item {
+                                item(key = "search-songs-header", contentType = "search-section-header") {
                                     SearchSectionHeader(
                                         title = strings.songs,
                                         showAll = filter == SearchFilter.All,
                                         onShowAll = { viewModel.setSearchFilter(SearchFilter.Songs) }
                                     )
                                 }
-                                items(songs, key = { "search-song-${it.id}" }) { track ->
+                                items(songs, key = { "search-song-${it.id}" }, contentType = { "search-track" }) { track ->
                                     SearchTrackCard(
                                         track = track,
                                         isCurrent = track.id == state.currentTrack?.id,
@@ -11409,7 +11391,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if (filter != SearchFilter.All) {
-                            item(key = "search-section-footer") {
+                            item(key = "search-section-footer", contentType = "search-section-footer") {
                                 SearchSectionFooter(
                                     loading = filter in state.searchSectionLoading,
                                     failed = filter in data.failedSections,
@@ -11418,6 +11400,23 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 )
                             }
                         }
+                    }
+                    state.searchError != null -> item(key = "search-error", contentType = "search-message") {
+                        GlassMessage(state.searchError, LevyraOrange)
+                    }
+                    state.isSearching || state.searchPending -> item(key = "search-skeleton", contentType = "search-skeleton") {
+                        SearchLoadingSkeleton()
+                    }
+                    else -> item(key = "search-quick-chips", contentType = "search-quick-chips") {
+                        QuickChips(
+                            languageCode = state.languageCode,
+                            onClick = { query ->
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                viewModel.setQuery(query)
+                                viewModel.searchNow(query)
+                            }
+                        )
                     }
                 }
             }
@@ -11841,116 +11840,42 @@ private fun RecentSearchesRow(
 }
 
 @Composable
-private fun SuggestionsList(
-    title: String,
+private fun SearchQueryChips(
     suggestions: List<String>,
-    onSuggestionClick: (String) -> Unit
+    onClick: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        if (title.isNotEmpty()) {
-            Text(
-                text = title,
-                color = LevyraText,
-                fontSize = 24.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(24.sp),
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.018f),
-                            LevyraCyan.copy(alpha = 0.018f),
-                            Color.Transparent
-                        )
-                    ),
-                    RoundedCornerShape(24.dp)
-                )
-                .padding(vertical = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            suggestions.forEachIndexed { index, suggestion ->
-                val accent = if (index % 2 == 0) LevyraCyan else LevyraViolet
+        suggestions.forEach { suggestion ->
+            Surface(
+                color = CinematicGlass.copy(alpha = 0.72f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                shape = CircleShape,
+                modifier = Modifier.pressable(onClick = { onClick(suggestion) })
+            ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable { onSuggestionClick(suggestion) }
-                        .padding(horizontal = 2.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.padding(start = 10.dp, end = 13.dp, top = 9.dp, bottom = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.White.copy(alpha = 0.012f), RoundedCornerShape(18.dp))
-                            .padding(horizontal = 14.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .background(
-                                    Brush.linearGradient(
-                                        listOf(
-                                            LevyraCyan.copy(alpha = 0.18f),
-                                            LevyraViolet.copy(alpha = 0.14f)
-                                        )
-                                    ),
-                                    CircleShape
-                                )
-                                .border(1.dp, accent.copy(alpha = 0.34f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Search,
-                                contentDescription = null,
-                                tint = accent,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Text(
-                            text = suggestion,
-                            color = LevyraText,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = LocalLevyraStrings.current.complete,
-                            tint = accent.copy(alpha = 0.78f),
-                            modifier = Modifier
-                                .size(20.dp)
-                                .graphicsLayer { rotationZ = 45f }
-                        )
-                    }
-                }
-                if (index != suggestions.lastIndex) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 64.dp, end = 14.dp)
-                            .height(1.dp)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.06f),
-                                        Color.White.copy(alpha = 0.018f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = LevyraCyan,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = suggestion,
+                        color = LevyraText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
