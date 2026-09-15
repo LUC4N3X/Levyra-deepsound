@@ -560,13 +560,68 @@ levyraDesktopVersion=1.2.0
 
 <div align="center">
 
-<a href="https://hosted.weblate.org/engage/levyra/">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translations-overview-light.svg">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translations-overview.svg">
-    <img src="docs/assets/levyra-translations-overview.svg" alt="Levyra translations — 36 supported languages, 100% Android coverage" width="920">
-  </picture>
-</a>
+### 100% translated on Android
+
+**36 supported languages**
+
+<sub>Translations are managed on <a href="https://hosted.weblate.org/engage/levyra/">Weblate</a> and remain open for review, improvements, and future strings.</sub>
+
+<br><br>
+
+<table>
+  <tr>
+    <td align="center"><b>EN</b><br><sub>English</sub></td>
+    <td align="center"><b>IT</b><br><sub>Italiano</sub></td>
+    <td align="center"><b>ES</b><br><sub>Español</sub></td>
+    <td align="center"><b>FR</b><br><sub>Français</sub></td>
+    <td align="center"><b>DE</b><br><sub>Deutsch</sub></td>
+    <td align="center"><b>PT</b><br><sub>Português</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>NL</b><br><sub>Nederlands</sub></td>
+    <td align="center"><b>PL</b><br><sub>Polski</sub></td>
+    <td align="center"><b>RO</b><br><sub>Română</sub></td>
+    <td align="center"><b>EL</b><br><sub>Ελληνικά</sub></td>
+    <td align="center"><b>SV</b><br><sub>Svenska</sub></td>
+    <td align="center"><b>DA</b><br><sub>Dansk</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>CS</b><br><sub>Čeština</sub></td>
+    <td align="center"><b>SK</b><br><sub>Slovenčina</sub></td>
+    <td align="center"><b>HR</b><br><sub>Hrvatski</sub></td>
+    <td align="center"><b>BG</b><br><sub>Български</sub></td>
+    <td align="center"><b>HU</b><br><sub>Magyar</sub></td>
+    <td align="center"><b>FI</b><br><sub>Suomi</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>NB</b><br><sub>Norsk bokmål</sub></td>
+    <td align="center"><b>CA</b><br><sub>Català</sub></td>
+    <td align="center"><b>UK</b><br><sub>Українська</sub></td>
+    <td align="center"><b>RU</b><br><sub>Русский</sub></td>
+    <td align="center"><b>TR</b><br><sub>Türkçe</sub></td>
+    <td align="center"><b>AR</b><br><sub>العربية</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>FA</b><br><sub>فارسی</sub></td>
+    <td align="center"><b>ZH</b><br><sub>简体中文</sub></td>
+    <td align="center"><b>ZH-TW</b><br><sub>繁體中文</sub></td>
+    <td align="center"><b>JA</b><br><sub>日本語</sub></td>
+    <td align="center"><b>KO</b><br><sub>한국어</sub></td>
+    <td align="center"><b>HI</b><br><sub>हिन्दी</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>ID</b><br><sub>Bahasa Indonesia</sub></td>
+    <td align="center"><b>MS</b><br><sub>Bahasa Melayu</sub></td>
+    <td align="center"><b>VI</b><br><sub>Tiếng Việt</sub></td>
+    <td align="center"><b>TH</b><br><sub>ไทย</sub></td>
+    <td align="center"><b>FIL</b><br><sub>Filipino</sub></td>
+    <td align="center"><b>HE</b><br><sub>עברית</sub></td>
+  </tr>
+</table>
+
+<br>
+
+<a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute or review translations on Weblate →</b></a>
 
 </div>
 
