@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -131,8 +132,6 @@ internal fun PlayerCinematicStage(
         animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-cinematic-bloom"
     )
-    val chromeScrimHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
-        PlayerCinematicChromeScrim
 
     Box(modifier = modifier) {
         if (colorField) {
@@ -140,50 +139,14 @@ internal fun PlayerCinematicStage(
                 modifier = Modifier
                     .fillMaxSize()
                     .drawBehind {
-                        val color = bloom.value
                         if (stacked) {
-                            val heroBottom = geometry.heroHeight.toPx().coerceAtMost(size.height)
-                            val start = heroBottom * (1f - PlayerCinematicStackedFade)
-                            val end = (heroBottom * (1f + PlayerCinematicBloomReach)).coerceAtMost(size.height)
-                            if (end > start) {
-                                val edge = ((heroBottom - start) / (end - start)).coerceIn(0f, 1f)
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        0f to color.copy(alpha = PlayerCinematicBloomAlpha),
-                                        edge to color.copy(alpha = PlayerCinematicBloomEdgeAlpha),
-                                        1f to Color.Transparent,
-                                        startY = start,
-                                        endY = end
-                                    ),
-                                    topLeft = Offset(0f, start),
-                                    size = Size(size.width, end - start)
-                                )
-                            }
+                            drawStackedCinematicBloom(bloom.value, geometry.heroHeight.toPx())
                         } else {
-                            val heroEnd = geometry.heroWidth.toPx().coerceAtMost(size.width)
-                            val start = heroEnd * (1f - PlayerCinematicSideFade)
-                            val end = (heroEnd * (1f + PlayerCinematicBloomReach)).coerceAtMost(size.width)
-                            if (end > start) {
-                                val edge = ((heroEnd - start) / (end - start)).coerceIn(0f, 1f)
-                                val rtl = layoutDirection == LayoutDirection.Rtl
-                                val left = if (rtl) size.width - end else start
-                                drawRect(
-                                    brush = Brush.horizontalGradient(
-                                        0f to color.copy(alpha = PlayerCinematicBloomAlpha),
-                                        edge to color.copy(alpha = PlayerCinematicBloomEdgeAlpha),
-                                        1f to Color.Transparent,
-                                        startX = if (rtl) size.width - start else start,
-                                        endX = if (rtl) size.width - end else end
-                                    ),
-                                    topLeft = Offset(left, 0f),
-                                    size = Size(end - start, size.height)
-                                )
-                            }
+                            drawSideCinematicBloom(bloom.value, geometry.heroWidth.toPx())
                         }
                     }
             )
         }
-
         Box(
             modifier = Modifier
                 .align(if (stacked) Alignment.TopCenter else Alignment.TopStart)
@@ -208,27 +171,67 @@ internal fun PlayerCinematicStage(
                 livingArtwork = livingArtwork,
                 modifier = Modifier.fillMaxSize()
             ) {
-                SeamlessArtworkImage(
-                    url = artworkUrl,
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
                     InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
                 }
             }
         }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(chromeScrimHeight)
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Black.copy(alpha = 0.52f),
-                        0.55f to Color.Black.copy(alpha = 0.22f),
-                        1f to Color.Transparent
-                    )
-                )
-        )
+        PlayerCinematicChromeScrim(modifier = Modifier.align(Alignment.TopCenter))
     }
+}
+
+@Composable
+private fun PlayerCinematicChromeScrim(modifier: Modifier = Modifier) {
+    val height = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + PlayerCinematicChromeScrim
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.52f),
+                    0.55f to Color.Black.copy(alpha = 0.22f),
+                    1f to Color.Transparent
+                )
+            )
+    )
+}
+
+private fun DrawScope.drawStackedCinematicBloom(color: Color, heroHeightPx: Float) {
+    val heroBottom = heroHeightPx.coerceAtMost(size.height)
+    val start = heroBottom * (1f - PlayerCinematicStackedFade)
+    val end = (heroBottom * (1f + PlayerCinematicBloomReach)).coerceAtMost(size.height)
+    if (end <= start) return
+    val edge = ((heroBottom - start) / (end - start)).coerceIn(0f, 1f)
+    drawRect(
+        brush = Brush.verticalGradient(
+            0f to color.copy(alpha = PlayerCinematicBloomAlpha),
+            edge to color.copy(alpha = PlayerCinematicBloomEdgeAlpha),
+            1f to Color.Transparent,
+            startY = start,
+            endY = end
+        ),
+        topLeft = Offset(0f, start),
+        size = Size(size.width, end - start)
+    )
+}
+
+private fun DrawScope.drawSideCinematicBloom(color: Color, heroWidthPx: Float) {
+    val heroEnd = heroWidthPx.coerceAtMost(size.width)
+    val start = heroEnd * (1f - PlayerCinematicSideFade)
+    val end = (heroEnd * (1f + PlayerCinematicBloomReach)).coerceAtMost(size.width)
+    if (end <= start) return
+    val edge = ((heroEnd - start) / (end - start)).coerceIn(0f, 1f)
+    val rtl = layoutDirection == LayoutDirection.Rtl
+    drawRect(
+        brush = Brush.horizontalGradient(
+            0f to color.copy(alpha = PlayerCinematicBloomAlpha),
+            edge to color.copy(alpha = PlayerCinematicBloomEdgeAlpha),
+            1f to Color.Transparent,
+            startX = if (rtl) size.width - start else start,
+            endX = if (rtl) size.width - end else end
+        ),
+        topLeft = Offset(if (rtl) size.width - end else start, 0f),
+        size = Size(end - start, size.height)
+    )
 }

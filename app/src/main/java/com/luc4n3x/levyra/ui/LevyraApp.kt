@@ -4374,8 +4374,6 @@ private fun AlbumTrackRow(
     onArtist: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     val strings = LocalLevyraStrings.current
     val showArtist = remember(track.artist, albumArtist) {
         track.artist.isNotBlank() && !track.artist.trim().equals(albumArtist.trim(), ignoreCase = true)
@@ -4401,19 +4399,7 @@ private fun AlbumTrackRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
         ) {
-            Box(modifier = Modifier.width(ALBUM_TRACK_INDEX_WIDTH), contentAlignment = Alignment.Center) {
-                if (isCurrent) {
-                    ActiveTrackEqualizer(color = stage.accent, isPlaying = isPlaying, width = 18.dp, height = 14.dp)
-                } else {
-                    Text(
-                        text = "${index + 1}",
-                        color = stage.contentMuted,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = (-0.3).sp
-                    )
-                }
-            }
+            AlbumTrackIndex(index = index, isCurrent = isCurrent, isPlaying = isPlaying, stage = stage)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = track.title,
@@ -4447,31 +4433,16 @@ private fun AlbumTrackRow(
                     maxLines = 1
                 )
             }
-            Box {
-                IconButton(onClick = { expanded = true }) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = strings.options, tint = stage.contentMuted)
-                }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    DropdownMenuItem(text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) }, leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) }, onClick = { expanded = false; onFavorite() })
-                    DropdownMenuItem(text = { Text(strings.addToPlaylist) }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) }, onClick = { expanded = false; onAddToPlaylist() })
-                    DropdownMenuItem(text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) }, leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) }, onClick = { expanded = false; if (!isDownloaded) onDownload() })
-                    DropdownMenuItem(text = { Text(strings.openArtist) }, leadingIcon = { Icon(Icons.Rounded.Person, null) }, onClick = { expanded = false; onArtist() })
-                    DropdownMenuItem(text = { Text(strings.share) }, leadingIcon = { Icon(Icons.Rounded.Share, null) }, onClick = {
-                        expanded = false
-                        val shareText = buildString {
-                            append(track.title)
-                            if (track.artist.isNotBlank()) append(" - ").append(track.artist)
-                            val link = track.videoUrl.ifBlank { track.streamUrl }
-                            if (link.isNotBlank()) append("\n").append(link)
-                        }
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, shareText)
-                        }
-                        context.startActivity(Intent.createChooser(intent, strings.shareSong))
-                    })
-                }
-            }
+            AlbumTrackMenu(
+                track = track,
+                isFavorite = isFavorite,
+                isDownloaded = isDownloaded,
+                tint = stage.contentMuted,
+                onFavorite = onFavorite,
+                onDownload = onDownload,
+                onAddToPlaylist = onAddToPlaylist,
+                onArtist = onArtist
+            )
         }
         if (showDivider) {
             Box(
@@ -4481,6 +4452,64 @@ private fun AlbumTrackRow(
                     .height(LevyraPlayerDesign.Hairline)
                     .background(stage.hairline)
             )
+        }
+    }
+}
+
+@Composable
+private fun AlbumTrackIndex(index: Int, isCurrent: Boolean, isPlaying: Boolean, stage: AlbumStageColors) {
+    Box(modifier = Modifier.width(ALBUM_TRACK_INDEX_WIDTH), contentAlignment = Alignment.Center) {
+        if (isCurrent) {
+            ActiveTrackEqualizer(color = stage.accent, isPlaying = isPlaying, width = 18.dp, height = 14.dp)
+        } else {
+            Text(
+                text = "${index + 1}",
+                color = stage.contentMuted,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = (-0.3).sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlbumTrackMenu(
+    track: Track,
+    isFavorite: Boolean,
+    isDownloaded: Boolean,
+    tint: Color,
+    onFavorite: () -> Unit,
+    onDownload: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onArtist: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Rounded.MoreVert, contentDescription = strings.options, tint = tint)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) }, leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) }, onClick = { expanded = false; onFavorite() })
+            DropdownMenuItem(text = { Text(strings.addToPlaylist) }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) }, onClick = { expanded = false; onAddToPlaylist() })
+            DropdownMenuItem(text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) }, leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) }, onClick = { expanded = false; if (!isDownloaded) onDownload() })
+            DropdownMenuItem(text = { Text(strings.openArtist) }, leadingIcon = { Icon(Icons.Rounded.Person, null) }, onClick = { expanded = false; onArtist() })
+            DropdownMenuItem(text = { Text(strings.share) }, leadingIcon = { Icon(Icons.Rounded.Share, null) }, onClick = {
+                expanded = false
+                val shareText = buildString {
+                    append(track.title)
+                    if (track.artist.isNotBlank()) append(" - ").append(track.artist)
+                    val link = track.videoUrl.ifBlank { track.streamUrl }
+                    if (link.isNotBlank()) append("\n").append(link)
+                }
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                context.startActivity(Intent.createChooser(intent, strings.shareSong))
+            })
         }
     }
 }

@@ -43,7 +43,7 @@ internal fun artworkDissolveStops(fadeFraction: Float): Array<Pair<Float, Color>
         } else {
             val step = (index - 1).toFloat() / ARTWORK_DISSOLVE_STEPS
             val eased = step * step * (3f - 2f * step)
-            (start + fade * step) to Color.Black.copy(alpha = 1f - eased)
+            start + fade * step to Color.Black.copy(alpha = 1f - eased)
         }
     }
 }
