@@ -156,13 +156,13 @@
 <text x="61.2" y="331.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".35">FA</text>
 </g>
 <g>
-<title>Chinese (Simplified) — 100%</title>
+<title>Simplified Chinese — 100%</title>
 <rect x="112.0" y="270.0" width="7.0" height="44.0" rx="3.5" fill="#E7EBF0"/>
 <rect x="112.0" y="270.0" width="7.0" height="44.0" rx="3.5" fill="#0F766E"/>
 <text x="115.5" y="331.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".35">ZH</text>
 </g>
 <g>
-<title>Chinese (Traditional) — 100%</title>
+<title>Traditional Chinese — 100%</title>
 <rect x="166.3" y="270.0" width="7.0" height="44.0" rx="3.5" fill="#E7EBF0"/>
 <rect x="166.3" y="270.0" width="7.0" height="44.0" rx="3.5" fill="#0F766E"/>
 <text x="169.8" y="331.0" text-anchor="middle" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".35">ZH-TW</text>
