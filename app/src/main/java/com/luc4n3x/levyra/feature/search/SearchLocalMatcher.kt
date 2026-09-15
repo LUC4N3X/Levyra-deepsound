@@ -74,13 +74,6 @@ internal fun matchLocalSearchTracks(
         .take(limit.coerceAtLeast(0))
 }
 
-internal fun searchTokensMatch(tokens: List<String>, vararg texts: String): Boolean {
-    if (tokens.isEmpty()) return false
-    val words = texts.flatMap { text -> searchQueryKey(text).split(' ').filter(String::isNotEmpty) }
-    if (words.isEmpty()) return false
-    return tokens.all { token -> words.any { word -> word.startsWith(token) } }
-}
-
 private fun localTrackScore(queryKey: String, tokens: List<String>, track: Track): Int? {
     val title = searchQueryKey(track.title)
     if (title.isEmpty()) return null

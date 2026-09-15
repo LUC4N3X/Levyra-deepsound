@@ -41,8 +41,6 @@ internal class SearchLatencyTrace(private val clock: () -> Long) {
         if (results.albums.isNotEmpty()) mark(SearchLatencyMark.ALBUM_VISIBLE)
     }
 
-    fun elapsed(mark: SearchLatencyMark): Long? = marks[mark]
-
     fun report(queryLength: Int, cacheHit: Boolean): SearchLatencyReport =
         SearchLatencyReport(HashMap(marks), queryLength, cacheHit)
 }

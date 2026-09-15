@@ -44,9 +44,5 @@ internal class SearchMemoCache<V : Any>(
         best?.value
     }
 
-    fun clear() {
-        synchronized(lock) { entries.clear() }
-    }
-
     private fun isExpired(entry: Entry<V>): Boolean = clock() - entry.storedAtMs >= ttlMs
 }
