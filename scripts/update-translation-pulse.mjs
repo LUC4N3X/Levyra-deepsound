@@ -39,44 +39,44 @@ const readLocalizedKeys = xml => {
   return new Set(Array.from(xml.matchAll(pattern), match => match[1]))
 }
 
-// Curated native names and display tags
+// Curated clean display names & codes
 const LOCALE_META = {
-  'en': { name: 'English', tag: 'EN' },
-  'it': { name: 'Italiano', tag: 'IT' },
-  'es': { name: 'Español', tag: 'ES' },
-  'fr': { name: 'Français', tag: 'FR' },
-  'de': { name: 'Deutsch', tag: 'DE' },
-  'pt': { name: 'Português', tag: 'PT' },
-  'nl': { name: 'Nederlands', tag: 'NL' },
-  'pl': { name: 'Polski', tag: 'PL' },
-  'ro': { name: 'Română', tag: 'RO' },
-  'el': { name: 'Ελληνικά', tag: 'EL' },
-  'sv': { name: 'Svenska', tag: 'SV' },
-  'da': { name: 'Dansk', tag: 'DA' },
-  'cs': { name: 'Čeština', tag: 'CS' },
-  'sk': { name: 'Slovenčina', tag: 'SK' },
-  'hr': { name: 'Hrvatski', tag: 'HR' },
-  'bg': { name: 'Български', tag: 'BG' },
-  'hu': { name: 'Magyar', tag: 'HU' },
-  'fi': { name: 'Suomi', tag: 'FI' },
-  'nb': { name: 'Norsk bokmål', tag: 'NB' },
-  'ca': { name: 'Català', tag: 'CA' },
-  'uk': { name: 'Українська', tag: 'UK' },
-  'ru': { name: 'Русский', tag: 'RU' },
-  'tr': { name: 'Türkçe', tag: 'TR' },
-  'ar': { name: 'العربية', tag: 'AR' },
-  'fa': { name: 'فارسی', tag: 'FA' },
-  'zh-hans': { name: '简体中文', tag: 'ZH' },
-  'zh-hant': { name: '繁體中文', tag: 'ZH-TW' },
-  'ja': { name: '日本語', tag: 'JA' },
-  'ko': { name: '한국어', tag: 'KO' },
-  'hi': { name: 'हिन्दी', tag: 'HI' },
-  'id': { name: 'Bahasa Indonesia', tag: 'ID' },
-  'ms': { name: 'Bahasa Melayu', tag: 'MS' },
-  'vi': { name: 'Tiếng Việt', tag: 'VI' },
-  'th': { name: 'ไทย', tag: 'TH' },
-  'fil': { name: 'Filipino', tag: 'FIL' },
-  'he': { name: 'עברית', tag: 'HE' }
+  'en': { name: 'English', code: 'EN' },
+  'it': { name: 'Italian', code: 'IT' },
+  'es': { name: 'Spanish', code: 'ES' },
+  'fr': { name: 'French', code: 'FR' },
+  'de': { name: 'German', code: 'DE' },
+  'pt': { name: 'Portuguese', code: 'PT' },
+  'nl': { name: 'Dutch', code: 'NL' },
+  'pl': { name: 'Polish', code: 'PL' },
+  'ro': { name: 'Romanian', code: 'RO' },
+  'el': { name: 'Greek', code: 'EL' },
+  'sv': { name: 'Swedish', code: 'SV' },
+  'da': { name: 'Danish', code: 'DA' },
+  'cs': { name: 'Czech', code: 'CS' },
+  'sk': { name: 'Slovak', code: 'SK' },
+  'hr': { name: 'Croatian', code: 'HR' },
+  'bg': { name: 'Bulgarian', code: 'BG' },
+  'hu': { name: 'Hungarian', code: 'HU' },
+  'fi': { name: 'Finnish', code: 'FI' },
+  'nb': { name: 'Norwegian', code: 'NB' },
+  'ca': { name: 'Catalan', code: 'CA' },
+  'uk': { name: 'Ukrainian', code: 'UK' },
+  'ru': { name: 'Russian', code: 'RU' },
+  'tr': { name: 'Turkish', code: 'TR' },
+  'ar': { name: 'Arabic', code: 'AR' },
+  'fa': { name: 'Persian', code: 'FA' },
+  'zh-hans': { name: 'Chinese (Simp.)', code: 'ZH' },
+  'zh-hant': { name: 'Chinese (Trad.)', code: 'ZH-TW' },
+  'ja': { name: 'Japanese', code: 'JA' },
+  'ko': { name: 'Korean', code: 'KO' },
+  'hi': { name: 'Hindi', code: 'HI' },
+  'id': { name: 'Indonesian', code: 'ID' },
+  'ms': { name: 'Malay', code: 'MS' },
+  'vi': { name: 'Vietnamese', code: 'VI' },
+  'th': { name: 'Thai', code: 'TH' },
+  'fil': { name: 'Filipino', code: 'FIL' },
+  'he': { name: 'Hebrew', code: 'HE' }
 }
 
 const collectRepositoryCoverage = async () => {
@@ -105,12 +105,11 @@ const collectRepositoryCoverage = async () => {
 
   const languages = localeTags.map(code => {
     const canon = canonicalTag(code)
-    const meta = LOCALE_META[canon] || { name: code, tag: code.toUpperCase() }
+    const meta = LOCALE_META[canon] || { name: code, code: code.toUpperCase() }
     if (canon === 'en') {
       return {
         name: meta.name,
-        code,
-        tag: meta.tag,
+        code: meta.code,
         percent: 100,
         translated: expectedKeys.size,
         total: expectedKeys.size
@@ -121,8 +120,7 @@ const collectRepositoryCoverage = async () => {
     const translated = Array.from(expectedKeys).filter(key => localized.has(key)).length
     return {
       name: meta.name,
-      code,
-      tag: meta.tag,
+      code: meta.code,
       percent: (translated / expectedKeys.size) * 100,
       translated,
       total: expectedKeys.size
@@ -139,115 +137,135 @@ const collectRepositoryCoverage = async () => {
   }
 }
 
-const getCardColor = (percent, isDark) => {
-  if (percent >= 99.5) return isDark ? '#2DD4BF' : '#0F766E'
-  return isDark ? '#E3B341' : '#9A6700'
-}
-
-const makeLanguageCard = ({ lang, idx, cols, padX, cardGapX, cardGapY, cardW, cardH, cardsStartY, theme }) => {
-  const r = Math.floor(idx / cols)
-  const c = idx % cols
-  const x = padX + c * (cardW + cardGapX)
-  const y = cardsStartY + r * (cardH + cardGapY)
-  const checkColor = getCardColor(lang.percent, theme.isDark)
-  const trackColor = theme.isDark ? '#21262D' : '#E1E4E8'
-  const percentStr = `${Math.round(lang.percent)}%`
-  const nameFontSize = lang.name.length > 15 ? 11 : 12
-
-  // Mini graphic: sleek audio-inspired progress bar
-  const miniBarW = 34
-  const miniBarFillW = Math.max(3, (miniBarW * lang.percent) / 100)
-
-  return `  <g transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})">
-    <rect width="${cardW.toFixed(1)}" height="${cardH}" rx="8" fill="${theme.itemBg}" stroke="${theme.itemBorder}" stroke-width="1"/>
-    <!-- Locale Code Badge -->
-    <rect x="10" y="${(cardH / 2 - 9).toFixed(1)}" width="28" height="18" rx="4" fill="${theme.badgeBg}"/>
-    <text x="24" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="middle" fill="${theme.badgeText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".3">${escapeXml(lang.tag)}</text>
-    <!-- Native Language Name -->
-    <text x="46" y="${(cardH / 2 + 4).toFixed(1)}" fill="${theme.textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${nameFontSize}" font-weight="600">${escapeXml(lang.name)}</text>
-    <!-- Mini Audio Graph / Progress Bar -->
-    <rect x="${(cardW - 80).toFixed(1)}" y="${(cardH / 2 - 2).toFixed(1)}" width="${miniBarW}" height="4" rx="2" fill="${trackColor}"/>
-    <rect x="${(cardW - 80).toFixed(1)}" y="${(cardH / 2 - 2).toFixed(1)}" width="${miniBarFillW.toFixed(1)}" height="4" rx="2" fill="${checkColor}"/>
-    <!-- Progress % text -->
-    <text x="${(cardW - 12).toFixed(1)}" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="end" fill="${checkColor}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="700">${percentStr}</text>
-  </g>`
-}
-
 const getTheme = isDark => ({
   isDark,
   bg: isDark ? '#0D1117' : '#FFFFFF',
   border: isDark ? '#30363D' : '#D0D7DE',
-  itemBg: isDark ? '#161B22' : '#F6F8FA',
-  itemBorder: isDark ? '#21262D' : '#EAECEF',
+  barFill: isDark ? '#1F6FEB' : '#0B5796',
+  barTrack: isDark ? '#161B22' : '#F0F3F6',
+  gridLine: isDark ? '#21262D' : '#EAECEF',
   textTitle: isDark ? '#F0F6FC' : '#1F2328',
   textSub: isDark ? '#8B949E' : '#57606A',
-  badgeBg: isDark ? '#21262D' : '#E7EBF0',
-  badgeText: isDark ? '#C9D1D9' : '#424A53',
-  teal: isDark ? '#2DD4BF' : '#0F766E',
-  purple: isDark ? '#A855F7' : '#7C3AED'
+  textLabel: isDark ? '#C9D1D9' : '#24292F',
+  tagBg: isDark ? '#1E293B' : '#E0F2FE',
+  tagText: isDark ? '#38BDF8' : '#0369A1',
+  tagBorder: isDark ? '#334155' : '#BAE6FD',
+  accentRed: '#EF4444'
 })
 
-const getLayout = (mobile, languageCount) => {
-  const width = mobile ? 720 : 960
-  const cols = mobile ? 2 : 3
-  const rows = Math.ceil(languageCount / cols)
-  const padX = mobile ? 18 : 24
-  const cardGapX = mobile ? 12 : 14
-  const cardGapY = mobile ? 10 : 10
-  const cardW = (width - (padX * 2) - ((cols - 1) * cardGapX)) / cols
-  const cardH = mobile ? 40 : 40
-  const headerH = mobile ? 82 : 88
-  const cardsStartY = headerH + 12
-  const totalCardsH = rows * cardH + (rows - 1) * cardGapY
-  const footerH = mobile ? 42 : 44
-  const height = cardsStartY + totalCardsH + footerH
+const renderBarRow = ({ item, y, labelX, barX, maxBarW, barH, theme }) => {
+  const barW = Math.max(3, (maxBarW * item.percent) / 100)
+  const valX = barX + maxBarW + 8
+  const pctStr = `${Math.round(item.percent)}%`
 
-  return { width, cols, padX, cardGapX, cardGapY, cardW, cardH, cardsStartY, height }
+  return `    <g transform="translate(0, ${y.toFixed(1)})">
+      <!-- Language Label -->
+      <text x="${labelX}" y="${(barH - 2).toFixed(1)}" text-anchor="end" fill="${theme.textLabel}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">${escapeXml(item.name)}</text>
+      <!-- Track background -->
+      <rect x="${barX}" y="0" width="${maxBarW}" height="${barH}" rx="2" fill="${theme.barTrack}"/>
+      <!-- Progress Bar -->
+      <rect x="${barX}" y="0" width="${barW.toFixed(1)}" height="${barH}" rx="2" fill="${theme.barFill}"/>
+      <!-- Code tag badge -->
+      <rect x="${valX}" y="0" width="24" height="${barH}" rx="3" fill="${theme.tagBg}" stroke="${theme.tagBorder}" stroke-width="0.5"/>
+      <text x="${valX + 12}" y="${(barH - 2.5).toFixed(1)}" text-anchor="middle" fill="${theme.tagText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">${escapeXml(item.code)}</text>
+      <!-- Percent -->
+      <text x="${valX + 32}" y="${(barH - 2.5).toFixed(1)}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">${pctStr}</text>
+    </g>`
+}
+
+const renderColumn = ({ items, startX, startY, labelW, maxBarW, barH, rowGap, theme }) => {
+  const labelX = startX + labelW
+  const barX = labelX + 10
+  const ticks = [0, 0.25, 0.5, 0.75, 1.0]
+  const colHeight = items.length * barH + (items.length - 1) * rowGap
+
+  // Vertical grid lines like in The Economist charts
+  const gridLines = ticks.map(t => {
+    const gx = barX + maxBarW * t
+    return `    <line x1="${gx.toFixed(1)}" y1="${startY - 8}" x2="${gx.toFixed(1)}" y2="${startY + colHeight}" stroke="${theme.gridLine}" stroke-width="1" stroke-dasharray="${t === 1.0 ? 'none' : '2,2'}"/>
+    <text x="${gx.toFixed(1)}" y="${startY - 12}" text-anchor="middle" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">${Math.round(t * 100)}%</text>`
+  }).join('\n')
+
+  const rows = items.map((item, idx) => {
+    const y = startY + idx * (barH + rowGap)
+    return renderBarRow({ item, y, labelX, barX, maxBarW, barH, theme })
+  }).join('\n')
+
+  return `${gridLines}\n${rows}`
 }
 
 const makePulse = ({ languages, globalPercent, isDark, mobile }) => {
   const theme = getTheme(isDark)
-  const layout = getLayout(mobile, languages.length)
+  const width = mobile ? 720 : 880
+  const isSingleCol = mobile
+
+  // 2 columns of 18 rows each on desktop (ultra compact ~390px tall)
+  const leftCol = isSingleCol ? languages : languages.slice(0, 18)
+  const rightCol = isSingleCol ? [] : languages.slice(18)
+
+  const labelW = 95
+  const barH = 13
+  const rowGap = 7
+  const startY = 82
+  const maxBarW = isSingleCol ? 140 : 185
+
+  const leftColSvg = renderColumn({
+    items: leftCol,
+    startX: 16,
+    startY,
+    labelW,
+    maxBarW,
+    barH,
+    rowGap,
+    theme
+  })
+
+  const rightColSvg = isSingleCol ? '' : renderColumn({
+    items: rightCol,
+    startX: 455,
+    startY,
+    labelW,
+    maxBarW,
+    barH,
+    rowGap,
+    theme
+  })
+
+  const rowsCount = leftCol.length
+  const chartH = rowsCount * barH + (rowsCount - 1) * rowGap
+  const height = startY + chartH + 46
   const roundedPercent = Math.round(globalPercent)
-  const languageCount = languages.length
-  const aria = `Levyra translations: ${roundedPercent}% coverage across ${languageCount} supported languages`
+  const aria = `Levyra localization coverage: ${roundedPercent}% across ${languages.length} languages`
 
-  const cardsSvg = languages
-    .map((lang, idx) => makeLanguageCard({ lang, idx, theme, ...layout }))
-    .join('\n')
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" role="img" aria-label="${escapeXml(aria)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
-  <defs>
-    <linearGradient id="g-accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="${theme.purple}" />
-      <stop offset="100%" stop-color="${theme.teal}" />
-    </linearGradient>
-  </defs>
 
-  <rect x="0.75" y="0.75" width="${(layout.width - 1.5).toFixed(1)}" height="${(layout.height - 1.5).toFixed(1)}" rx="12" fill="${theme.bg}" stroke="${theme.border}" stroke-width="1.5"/>
-  <path d="M 1 12 A 11 11 0 0 1 12 1 L ${layout.width - 12} 1 A 11 11 0 0 1 ${layout.width - 1} 12 L ${layout.width - 1} 3 L 1 3 Z" fill="url(#g-accent)" opacity="0.85"/>
+  <!-- Clean Canvas Background -->
+  <rect width="${width}" height="${height}" fill="${theme.bg}"/>
 
-  <g transform="translate(${layout.padX}, ${mobile ? 24 : 26})">
-    <rect x="0" y="0" width="${mobile ? 112 : 124}" height="24" rx="12" fill="${theme.teal}" opacity="0.12"/>
-    <circle cx="10" cy="12" r="3.5" fill="${theme.teal}"/>
-    <text x="22" y="15.5" fill="${theme.teal}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="700" letter-spacing=".6">TRANSLATIONS</text>
+  <!-- The Economist style top Red Accent Block -->
+  <rect x="20" y="16" width="12" height="4" fill="${theme.accentRed}"/>
 
-    <text x="${mobile ? 122 : 136}" y="16" fill="${theme.textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${mobile ? 15 : 17}" font-weight="700">Native Multilingual Experience</text>
-    <text x="0" y="${mobile ? 42 : 46}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${mobile ? 11 : 12}">
-      <tspan font-weight="700">${languageCount} supported languages</tspan> · 100% Android string coverage · Zero local setup needed
-    </text>
-  </g>
+  <!-- Chart Title & Subtitle -->
+  <text x="20" y="36" fill="${theme.textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="16" font-weight="700">Language coverage</text>
+  <text x="20" y="52" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11">
+    Translation completion index across ${languages.length} supported Android locales (100% = fully translated)
+  </text>
 
-  <g>
-${cardsSvg}
-  </g>
+  <!-- Horizontal Divider -->
+  <line x1="20" y1="62" x2="${width - 20}" y2="62" stroke="${theme.border}" stroke-width="1"/>
 
-  <g transform="translate(${layout.width / 2}, ${(layout.height - 18).toFixed(1)})">
-    <text text-anchor="middle" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11">
-      Community-powered localization via Weblate · <tspan fill="${theme.teal}" font-weight="600">Contribute or review in your browser →</tspan>
-    </text>
-  </g>
+  <!-- Left Column Data -->
+${leftColSvg}
+
+  <!-- Right Column Data -->
+${rightColSvg}
+
+  <!-- Footer Info -->
+  <line x1="20" y1="${height - 24}" x2="${width - 20}" y2="${height - 24}" stroke="${theme.border}" stroke-width="0.5"/>
+  <text x="20" y="${height - 10}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9.5">
+    Source: Levyra open-source strings catalog · Translations hosted on Weblate (contributions open)
+  </text>
 </svg>`
 }
 
@@ -263,4 +281,4 @@ const updateTranslationPulse = async () => {
 }
 
 await updateTranslationPulse()
-console.log('Successfully generated modern Translation Pulse SVG cards with mini graphs.')
+console.log('Successfully generated Economist-style data chart SVG.')
