@@ -233,7 +233,7 @@ internal object ExtendedLyricsRomanization {
         marks = mapOf(0x0A01 to "n", 0x0A02 to "n", 0x0A03 to "h", 0x0A70 to "n", 0x0A71 to ""),
         virama = 0x0A4D,
         nukta = 0x0A3C,
-        nuktaConsonants = mapOf(0x0A16 to "kh", 0x0A17 to "gh", 0x0A1C to "z", 0x0A2B to "f", 0x0A32 to "l")
+        nuktaConsonants = mapOf(0x0A16 to "kh", 0x0A17 to "gh", 0x0A1C to "z", 0x0A2B to "f", 0x0A32 to "l", 0x0A38 to "sh")
     )
 
     private val bengali = IndicScript(
