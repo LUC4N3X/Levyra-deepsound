@@ -558,70 +558,38 @@ levyraDesktopVersion=1.2.0
 
 ## ✦ Translations
 
+Translations are managed on [Weblate](https://hosted.weblate.org/engage/levyra/) — no local setup needed, contribute directly from your browser.
+
 <div align="center">
 
-### 100% translated on Android
+**36 supported languages · 100% Android coverage**
 
-**36 supported languages**
+</div>
 
-<sub>Translations are managed on <a href="https://hosted.weblate.org/engage/levyra/">Weblate</a> and remain open for review, improvements, and future strings.</sub>
+| Language | Progress | Language | Progress |
+| :--- | :--- | :--- | :--- |
+| **English** <sub>EN</sub> | `██████████` **100%** | **Norsk bokmål** <sub>NB</sub> | `██████████` **100%** |
+| **Italiano** <sub>IT</sub> | `██████████` **100%** | **Català** <sub>CA</sub> | `██████████` **100%** |
+| **Español** <sub>ES</sub> | `██████████` **100%** | **Українська** <sub>UK</sub> | `██████████` **100%** |
+| **Français** <sub>FR</sub> | `██████████` **100%** | **Русский** <sub>RU</sub> | `██████████` **100%** |
+| **Deutsch** <sub>DE</sub> | `██████████` **100%** | **Türkçe** <sub>TR</sub> | `██████████` **100%** |
+| **Português** <sub>PT</sub> | `██████████` **100%** | **العربية** <sub>AR</sub> | `██████████` **100%** |
+| **Nederlands** <sub>NL</sub> | `██████████` **100%** | **فارسی** <sub>FA</sub> | `██████████` **100%** |
+| **Polski** <sub>PL</sub> | `██████████` **100%** | **简体中文** <sub>ZH</sub> | `██████████` **100%** |
+| **Română** <sub>RO</sub> | `██████████` **100%** | **繁體中文** <sub>ZH-TW</sub> | `██████████` **100%** |
+| **Ελληνικά** <sub>EL</sub> | `██████████` **100%** | **日本語** <sub>JA</sub> | `██████████` **100%** |
+| **Svenska** <sub>SV</sub> | `██████████` **100%** | **한국어** <sub>KO</sub> | `██████████` **100%** |
+| **Dansk** <sub>DA</sub> | `██████████` **100%** | **हिन्दी** <sub>HI</sub> | `██████████` **100%** |
+| **Čeština** <sub>CS</sub> | `██████████` **100%** | **Bahasa Indonesia** <sub>ID</sub> | `██████████` **100%** |
+| **Slovenčina** <sub>SK</sub> | `██████████` **100%** | **Bahasa Melayu** <sub>MS</sub> | `██████████` **100%** |
+| **Hrvatski** <sub>HR</sub> | `██████████` **100%** | **Tiếng Việt** <sub>VI</sub> | `██████████` **100%** |
+| **Български** <sub>BG</sub> | `██████████` **100%** | **ไทย** <sub>TH</sub> | `██████████` **100%** |
+| **Magyar** <sub>HU</sub> | `██████████` **100%** | **Filipino** <sub>FIL</sub> | `██████████` **100%** |
+| **Suomi** <sub>FI</sub> | `██████████` **100%** | **עברית** <sub>HE</sub> | `██████████` **100%** |
 
-<br><br>
+<div align="center">
 
-<table>
-  <tr>
-    <td align="center"><b>EN</b><br><sub>English</sub></td>
-    <td align="center"><b>IT</b><br><sub>Italiano</sub></td>
-    <td align="center"><b>ES</b><br><sub>Español</sub></td>
-    <td align="center"><b>FR</b><br><sub>Français</sub></td>
-    <td align="center"><b>DE</b><br><sub>Deutsch</sub></td>
-    <td align="center"><b>PT</b><br><sub>Português</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><b>NL</b><br><sub>Nederlands</sub></td>
-    <td align="center"><b>PL</b><br><sub>Polski</sub></td>
-    <td align="center"><b>RO</b><br><sub>Română</sub></td>
-    <td align="center"><b>EL</b><br><sub>Ελληνικά</sub></td>
-    <td align="center"><b>SV</b><br><sub>Svenska</sub></td>
-    <td align="center"><b>DA</b><br><sub>Dansk</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><b>CS</b><br><sub>Čeština</sub></td>
-    <td align="center"><b>SK</b><br><sub>Slovenčina</sub></td>
-    <td align="center"><b>HR</b><br><sub>Hrvatski</sub></td>
-    <td align="center"><b>BG</b><br><sub>Български</sub></td>
-    <td align="center"><b>HU</b><br><sub>Magyar</sub></td>
-    <td align="center"><b>FI</b><br><sub>Suomi</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><b>NB</b><br><sub>Norsk bokmål</sub></td>
-    <td align="center"><b>CA</b><br><sub>Català</sub></td>
-    <td align="center"><b>UK</b><br><sub>Українська</sub></td>
-    <td align="center"><b>RU</b><br><sub>Русский</sub></td>
-    <td align="center"><b>TR</b><br><sub>Türkçe</sub></td>
-    <td align="center"><b>AR</b><br><sub>العربية</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><b>FA</b><br><sub>فارسی</sub></td>
-    <td align="center"><b>ZH</b><br><sub>简体中文</sub></td>
-    <td align="center"><b>ZH-TW</b><br><sub>繁體中文</sub></td>
-    <td align="center"><b>JA</b><br><sub>日本語</sub></td>
-    <td align="center"><b>KO</b><br><sub>한국어</sub></td>
-    <td align="center"><b>HI</b><br><sub>हिन्दी</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><b>ID</b><br><sub>Bahasa Indonesia</sub></td>
-    <td align="center"><b>MS</b><br><sub>Bahasa Melayu</sub></td>
-    <td align="center"><b>VI</b><br><sub>Tiếng Việt</sub></td>
-    <td align="center"><b>TH</b><br><sub>ไทย</sub></td>
-    <td align="center"><b>FIL</b><br><sub>Filipino</sub></td>
-    <td align="center"><b>HE</b><br><sub>עברית</sub></td>
-  </tr>
-</table>
-
-<br>
-
-<a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute or review translations on Weblate →</b></a>
+[**Contribute or review translations on Weblate →**](https://hosted.weblate.org/engage/levyra/)
 
 </div>
 
