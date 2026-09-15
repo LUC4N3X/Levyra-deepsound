@@ -31,7 +31,7 @@
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><picture><source media="(max-width: 480px)" srcset="docs/assets/levyra-windows-download-mobile.svg"><img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra for Windows"></picture></a>
 </p>
 
-<p align="center"><b>🌍 Levyra speaks 36 languages</b> &nbsp;·&nbsp; <sub>100% Android translation coverage</sub></p>
+<p align="center">🌍 <b>Levyra speaks 36 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
 <p align="center">
   <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
