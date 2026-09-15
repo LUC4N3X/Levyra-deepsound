@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -30,7 +31,10 @@ fun BoxScope.SavedAlbumBookmarkOverlay(
     saved: Boolean,
     enabled: Boolean,
     languageCode: String,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    container: Color = LevyraGlass,
+    border: Color = LevyraGlassBorder,
+    idleTint: Color = LevyraText
 ) {
     val density = LocalDensity.current
     val strings = LevyraStrings.forCode(languageCode)
@@ -42,8 +46,8 @@ fun BoxScope.SavedAlbumBookmarkOverlay(
         onClick = onToggle,
         enabled = enabled,
         shape = CircleShape,
-        color = LevyraGlass,
-        border = BorderStroke(1.dp, LevyraGlassBorder),
+        color = container,
+        border = BorderStroke(1.dp, border),
         modifier = Modifier
             .align(Alignment.TopEnd)
             .zIndex(100f)
@@ -57,7 +61,7 @@ fun BoxScope.SavedAlbumBookmarkOverlay(
                 tint = when {
                     !enabled -> LevyraMuted
                     saved -> LevyraPink
-                    else -> LevyraText
+                    else -> idleTint
                 },
                 modifier = Modifier.size(23.dp)
             )

@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.feature.motion.MotionArtwork
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -41,4 +44,63 @@ class MotionArtworkLayerTest {
             )
         }
     }
+
+    @Test
+    fun sameTrackProviderUpgradeKeepsPreviousMotionUntilHandoff() {
+        val apple = motion(identity = "track-a", url = "https://apple.example/a.m3u8")
+        val community = motion(identity = "track-a", url = "https://canvaz.example/a.mp4")
+
+        assertEquals(apple, retainedMotionArtwork(displayed = apple, incoming = community, gatesOpen = true))
+    }
+
+    @Test
+    fun trackChangeNeverRetainsPreviousTrackMotion() {
+        val previous = motion(identity = "track-a", url = "https://canvaz.example/a.mp4")
+        val next = motion(identity = "track-b", url = "https://canvaz.example/b.mp4")
+
+        assertNull(retainedMotionArtwork(displayed = previous, incoming = next, gatesOpen = true))
+        assertNull(retainedMotionArtwork(displayed = previous, incoming = null, gatesOpen = true))
+    }
+
+    @Test
+    fun closedGatesOrSameAssetRetainNothing() {
+        val current = motion(identity = "track-a", url = "https://canvaz.example/a.mp4")
+        val upgrade = motion(identity = "track-a", url = "https://apple.example/a.m3u8")
+
+        assertNull(retainedMotionArtwork(displayed = current, incoming = upgrade, gatesOpen = false))
+        assertNull(retainedMotionArtwork(displayed = current, incoming = current, gatesOpen = true))
+        assertNull(retainedMotionArtwork(displayed = null, incoming = upgrade, gatesOpen = true))
+    }
+
+    @Test
+    fun handoffComposesOnlyOneVideoPlayerAtATime() {
+        val outgoing = motion(identity = "track-a", url = "https://apple.example/a.m3u8")
+        val incoming = motion(identity = "track-a", url = "https://canvaz.example/a.mp4")
+
+        assertEquals(outgoing, motionVideoSlot(retained = outgoing, incoming = incoming, handoffCaptured = false))
+        assertEquals(incoming, motionVideoSlot(retained = outgoing, incoming = incoming, handoffCaptured = true))
+        assertEquals(incoming, motionVideoSlot(retained = null, incoming = incoming, handoffCaptured = true))
+        assertNull(motionVideoSlot(retained = null, incoming = null, handoffCaptured = true))
+    }
+
+    @Test
+    fun cinematicZoomDoesNotChangeArtistImmersiveCrop() {
+        assertEquals(1.32f, motionArtworkMaxZoom(MotionArtworkPresentation.Immersive), 0f)
+        assertEquals(MotionArtworkCinematicMaxZoom, motionArtworkMaxZoom(MotionArtworkPresentation.Cinematic), 0f)
+        assertEquals(MotionArtworkCardMaxZoom, motionArtworkMaxZoom(MotionArtworkPresentation.Card), 0f)
+        assertTrue(MotionArtworkCinematicMaxZoom > MotionArtworkImmersiveMaxZoom)
+    }
+
+    private fun motion(identity: String, url: String): MotionArtwork = MotionArtwork(
+        identityKey = identity,
+        provider = "test",
+        url = url,
+        mimeType = "video/mp4",
+        width = null,
+        height = null,
+        confidence = 100,
+        expiresAtMs = Long.MAX_VALUE,
+        lastVerifiedAtMs = 0L,
+        configEpoch = 1L
+    )
 }
