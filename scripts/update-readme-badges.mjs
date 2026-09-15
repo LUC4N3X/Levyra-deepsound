@@ -64,8 +64,14 @@ const fetchApptekaDownloads = async () => {
 const readPreviousDownloads = async () => {
   try {
     const svg = await readFile('docs/assets/levyra-downloads.svg', 'utf8')
-    const value = svg.match(/<title>DOWNLOADS ([\\d,]+)<\\/title>/)?.[1]
-    return value ? Number(value.replaceAll(',', '')) : null
+    const prefix = '<title>DOWNLOADS '
+    const startIndex = svg.indexOf(prefix)
+    if (startIndex < 0) return null
+    const valueStart = startIndex + prefix.length
+    const valueEnd = svg.indexOf('</title>', valueStart)
+    if (valueEnd < 0) return null
+    const value = svg.slice(valueStart, valueEnd).replaceAll(',', '')
+    return /^\d+$/.test(value) ? Number(value) : null
   } catch {
     return null
   }
