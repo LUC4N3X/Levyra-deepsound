@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchPage
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.SearchSuggestionBundle
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.releaseTypeFromProviderLabel
 import com.luc4n3x.levyra.domain.Track
@@ -510,6 +511,10 @@ private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 8
 private const val ALBUM_RESULT_RANK_PENALTY = 18
 private const val MAX_ALBUM_RECOVERY_ATTEMPTS = 3
 private const val SUGGESTION_RESPONSE_LIMIT_CHARS = 64 * 1024
+private const val SUGGESTION_RICH_SONG_LIMIT = 4
+private const val SUGGESTION_RICH_VIDEO_LIMIT = 2
+private const val SUGGESTION_RICH_ARTIST_LIMIT = 3
+private const val SUGGESTION_RICH_ALBUM_LIMIT = 3
 private const val MIN_CONTINUOUS_RADIO_CANDIDATES = 20
 internal const val YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_SONG_SEARCH_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF"
@@ -738,7 +743,7 @@ internal fun selectAlbumRecoveryCandidate(
 class YoutubeMusicRepository(private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val clientVersion = "1.20260423.01.00"
-    private val memory = LinkedHashMap<String, Track>()
+    private val memory: MutableMap<String, Track> = java.util.Collections.synchronizedMap(LinkedHashMap())
     private val watchRepository = YoutubeMusicWatchRepository(context)
     private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)
     private val albumDescriptionRepository = AlbumDescriptionRepository(context)
@@ -2683,37 +2688,55 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    fun searchSuggestions(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<String> {
+    fun searchSuggestions(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<String> =
+        searchSuggestionBundle(query, languageCode).queries
+
+    fun searchSuggestionBundle(
+        query: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): SearchSuggestionBundle {
         val cleanQuery = query.trim()
-        if (cleanQuery.isBlank()) return emptyList()
+        if (cleanQuery.isBlank()) return SearchSuggestionBundle()
         val locale = LevyraContentLocales.forLanguage(languageCode)
-        val native = runCatching {
-            parseYoutubeMusicSearchSuggestions(
-                resilienceClient.searchSuggestions(cleanQuery, languageCode)
-            )
+        val root = runCatching { resilienceClient.searchSuggestions(cleanQuery, languageCode) }.getOrNull()
+        val parsed = parseSearchSuggestionBundle(root, cleanQuery)
+        val remote = parsed.queries.ifEmpty { fallbackSuggestionQueries(cleanQuery, locale.hl, locale.gl) }
+        return parsed.copy(queries = LevyraLocalizedDiscovery.suggestions(cleanQuery, locale.languageCode, remote))
+    }
+
+    internal fun parseSearchSuggestionBundle(root: JSONObject?, query: String): SearchSuggestionBundle {
+        root ?: return SearchSuggestionBundle()
+        val queries = parseYoutubeMusicSearchSuggestions(root)
+        val rich = runCatching { parseSearchOverview(root, query) }.getOrDefault(SearchResults())
+        return SearchSuggestionBundle(
+            queries = queries,
+            songs = rich.songs.take(SUGGESTION_RICH_SONG_LIMIT),
+            videos = rich.videos.take(SUGGESTION_RICH_VIDEO_LIMIT),
+            artists = rich.artists.take(SUGGESTION_RICH_ARTIST_LIMIT),
+            albums = rich.albums.take(SUGGESTION_RICH_ALBUM_LIMIT)
+        )
+    }
+
+    private fun fallbackSuggestionQueries(cleanQuery: String, hl: String, gl: String): List<String> {
+        val url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&hl=$hl&gl=$gl&q=${java.net.URLEncoder.encode(cleanQuery, "UTF-8")}"
+        return runCatching {
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+            val response = connection.inputStream.bufferedReader().use { reader ->
+                val buffer = CharArray(SUGGESTION_RESPONSE_LIMIT_CHARS)
+                val read = reader.read(buffer)
+                if (read <= 0) "" else String(buffer, 0, read)
+            }
+            val root = JSONArray(response)
+            val suggestions = root.optJSONArray(1) ?: return@runCatching emptyList()
+            val result = mutableListOf<String>()
+            for (i in 0 until suggestions.length()) {
+                result += suggestions.optString(i)
+            }
+            result
         }.getOrDefault(emptyList())
-        val remote = native.ifEmpty {
-            val url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&hl=${locale.hl}&gl=${locale.gl}&q=${java.net.URLEncoder.encode(cleanQuery, "UTF-8")}"
-            runCatching {
-                val connection = URL(url).openConnection() as HttpURLConnection
-                connection.requestMethod = "GET"
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
-                val response = connection.inputStream.bufferedReader().use { reader ->
-                    val buffer = CharArray(SUGGESTION_RESPONSE_LIMIT_CHARS)
-                    val read = reader.read(buffer)
-                    if (read <= 0) "" else String(buffer, 0, read)
-                }
-                val root = JSONArray(response)
-                val suggestions = root.optJSONArray(1) ?: return@runCatching emptyList()
-                val result = mutableListOf<String>()
-                for (i in 0 until suggestions.length()) {
-                    result += suggestions.optString(i)
-                }
-                result
-            }.getOrDefault(emptyList())
-        }
-        return LevyraLocalizedDiscovery.suggestions(cleanQuery, locale.languageCode, remote)
     }
 
     internal fun parseCarouselItem(item: JSONObject): Track? {
@@ -2757,14 +2780,14 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return ""
     }
 
-    fun cachedTracks(): List<Track> = memory.values.toList()
+    fun cachedTracks(): List<Track> = synchronized(memory) { memory.values.toList() }
 
     fun replace(track: Track) {
         memory[track.id] = track
     }
 
     fun cacheReport(): CacheReport {
-        val all = memory.values.toList()
+        val all = cachedTracks()
         val resolved = all.count { it.streamUrl.isNotBlank() }
         return CacheReport(
             offlineReady = resolved,
