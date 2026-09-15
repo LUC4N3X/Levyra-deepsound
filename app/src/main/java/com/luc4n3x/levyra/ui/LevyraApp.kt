@@ -4437,6 +4437,7 @@ private fun AlbumTrackRow(
                 track = track,
                 isFavorite = isFavorite,
                 isDownloaded = isDownloaded,
+                isDownloading = isDownloading,
                 tint = stage.contentMuted,
                 onFavorite = onFavorite,
                 onDownload = onDownload,
@@ -4478,6 +4479,7 @@ private fun AlbumTrackMenu(
     track: Track,
     isFavorite: Boolean,
     isDownloaded: Boolean,
+    isDownloading: Boolean,
     tint: Color,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
@@ -4494,15 +4496,14 @@ private fun AlbumTrackMenu(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) }, leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) }, onClick = { expanded = false; onFavorite() })
             DropdownMenuItem(text = { Text(strings.addToPlaylist) }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) }, onClick = { expanded = false; onAddToPlaylist() })
-            DropdownMenuItem(text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) }, leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) }, onClick = { expanded = false; if (!isDownloaded) onDownload() })
+            DropdownMenuItem(text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) }, leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) }, enabled = !isDownloading, onClick = { expanded = false; if (!isDownloaded && !isDownloading) onDownload() })
             DropdownMenuItem(text = { Text(strings.openArtist) }, leadingIcon = { Icon(Icons.Rounded.Person, null) }, onClick = { expanded = false; onArtist() })
             DropdownMenuItem(text = { Text(strings.share) }, leadingIcon = { Icon(Icons.Rounded.Share, null) }, onClick = {
                 expanded = false
                 val shareText = buildString {
                     append(track.title)
                     if (track.artist.isNotBlank()) append(" - ").append(track.artist)
-                    val link = track.videoUrl.ifBlank { track.streamUrl }
-                    if (link.isNotBlank()) append("\n").append(link)
+                    if (track.videoUrl.isNotBlank()) append("\n").append(track.videoUrl)
                 }
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
