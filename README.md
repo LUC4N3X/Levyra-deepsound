@@ -660,14 +660,11 @@ For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.g
 
 ---
 
-## ✦ Legal Notice & License
+## ✦ License & Legal
 
-> [!IMPORTANT]
-> **Independent open-source software — lawful use only.** Levyra is client-side software and does not operate a centralized media-hosting or content-distribution service. Users are responsible for ensuring that their use of third-party services and content is lawful and authorized.
->
-> Levyra is provided **"AS IS"** under the **[GNU GPL v3.0](LICENSE)**, to the maximum extent permitted by applicable law. Third-party trademarks, services, APIs, media, metadata, and copyrighted works remain subject to their respective owners, licences, terms, and applicable law.
->
-> **Read the complete [Legal Notice](docs/legal/LEGAL.md)** for no-affiliation terms, third-party rights, user responsibility, warranty and liability limitations, rights-holder notices, and mandatory-law provisions.
+Levyra is provided under the **[GNU GPL v3.0](LICENSE)**.
+
+For third-party rights, lawful use, user responsibilities, warranty, and liability terms, see the complete **[Legal Notice](docs/legal/LEGAL.md)**.
 
 <div align="center">
   <sub>🇮🇹 <b>Made in Italy. Built for the world.</b></sub>
