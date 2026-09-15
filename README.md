@@ -44,7 +44,7 @@
 > [!IMPORTANT]
 > **Legal & responsible use.** Levyra is independent open-source client software and does not host or distribute third-party music. Features that access, process, save, convert, or export media are provided for lawful use only. Users are responsible for ensuring that they have any rights, permissions, licences, or other lawful basis required for the content they choose to access or save, and for complying with applicable law and the terms of third-party services.
 >
-> **Before using Levyra, please read the complete [Legal Notice](docs/legal/LEGAL.md). Do not use Levyra unless you have read and understood it.** The Legal Notice forms part of this project's usage notice and applies to Levyra alongside this README.
+> For details about third-party services, lawful use, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
 >
 > Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
 
