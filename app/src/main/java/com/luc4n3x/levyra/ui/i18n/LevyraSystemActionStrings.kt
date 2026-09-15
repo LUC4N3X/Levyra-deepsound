@@ -49,4 +49,4 @@ private val systemActionBundles: Map<String, Map<String, String>> = mapOf(
     "he" to systemActionStrings("טיימר שינה", "סוף השיר", "בטל טיימר", "הטיימר בוטל", "נותר", "מאזין…", "מנתח…", "הקש כדי להאזין")
 )
 
-internal fun systemActionLocalizationEntries(code: String): Map<String, String> = (systemActionBundles[code] ?: systemActionBundles.getValue("en"))
+internal fun systemActionLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(systemActionBundles, code)

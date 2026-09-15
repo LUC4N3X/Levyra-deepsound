@@ -983,6 +983,6 @@ private val recapBundles: Map<String, Map<String, String>> = mapOf(
     )
 )
 
-internal fun recapLocalizationEntries(code: String): Map<String, String> = (recapBundles[code] ?: recapBundles.getValue("en"))
+internal fun recapLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(recapBundles, code)
 
 internal fun recapLocalizationCodes(): Set<String> = supportedLocalizationCodes()
