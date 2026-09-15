@@ -37,7 +37,19 @@ The authors, maintainers, contributors, and distributors of Levyra do not author
 
 Users are responsible for how they configure and operate the software and for the consequences of their own actions performed through it.
 
-## 5. Technical Interoperability and Stream Resolution
+## 5. Downloads, Offline Copies, and Anti-Piracy
+
+Levyra includes user-triggered features for offline playback, downloading, conversion, export, caching, tagging, and local storage. These features are general software capabilities and do not themselves grant any licence or permission to copy third-party media.
+
+**Levyra does not support or promote piracy.** The project is not intended to facilitate copyright infringement, unauthorized copying, redistribution of protected works, or access to content that the user is not lawfully entitled to use.
+
+Users may use download and export functionality only where they have the necessary rights, permission, licence, consent, statutory exception, or other lawful basis. Examples may include media owned or created by the user, openly licensed or public-domain material, or content for which copying or offline storage is otherwise authorized. The availability of a technical download or export function does not mean that every item accessible through a third-party service may lawfully be copied.
+
+Personal or non-commercial use does not, by itself, establish that a particular download, copy, conversion, or export is authorized. Users are responsible for checking the rights and conditions that apply to the specific content and service they choose to use.
+
+Levyra does not operate a catalogue of infringing copies, does not centrally host user-downloaded media, and does not grant or sell access to third-party copyrighted works. The authors and maintainers do not authorize Levyra to be used to defeat technological protection measures, evade access restrictions, or obtain rights or service features that have not otherwise been lawfully granted.
+
+## 6. Technical Interoperability and Stream Resolution
 
 Levyra includes client-side compatibility and interoperability mechanisms used to communicate with third-party media services. Depending on the provider and feature, these mechanisms may include stream resolution, request signing or signature processing, token handling, URL transformation, client-profile selection, provider-specific request routing, compatibility fallbacks, and other technical processing required for user-requested playback or related functions.
 
@@ -49,7 +61,7 @@ Users remain solely responsible for ensuring that their use of Levyra — includ
 
 Third-party services may change, restrict, block, rate-limit, suspend, or discontinue access at any time. Levyra makes no representation or warranty that any particular integration, resolution method, request profile, token mechanism, compatibility technique, bitrate, route, or media source is authorized, supported, or approved by the relevant third-party service or rights holder.
 
-## 6. No Representation of Legality
+## 7. No Representation of Legality
 
 Laws, licences, contractual terms, exceptions, limitations, and user rights vary by jurisdiction, service, content, and factual circumstances.
 
@@ -57,7 +69,7 @@ Accordingly, Levyra and its authors, maintainers, contributors, and distributors
 
 Nothing in the software or its documentation should be interpreted as legal advice or as an authorization to use third-party content or services in a particular way.
 
-## 7. No Control Over Third-Party Services
+## 8. No Control Over Third-Party Services
 
 Levyra is not responsible for the availability, accuracy, legality, reliability, security, policies, behaviour, content, interfaces, or continued compatibility of any third-party service.
 
@@ -65,7 +77,7 @@ Third-party providers may modify, restrict, suspend, block, discontinue, rate-li
 
 The project does not guarantee that any integration, endpoint, metadata source, stream, API, or other third-party resource will remain available or compatible.
 
-## 8. No Warranty
+## 9. No Warranty
 
 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, LEVYRA IS PROVIDED **"AS IS" AND "AS AVAILABLE"**, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE.
 
@@ -73,7 +85,7 @@ This includes, without limitation, warranties or conditions of merchantability, 
 
 Use of Levyra is at the user's own discretion and risk, subject always to rights and liabilities that cannot lawfully be excluded.
 
-## 9. Limitation of Liability
+## 10. Limitation of Liability
 
 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE AUTHORS, MAINTAINERS, CONTRIBUTORS, COPYRIGHT HOLDERS, AND DISTRIBUTORS OF LEVYRA SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, CONSEQUENTIAL, ECONOMIC, OR SIMILAR LOSS OR DAMAGE ARISING FROM OR RELATING TO THE INSTALLATION, CONFIGURATION, OPERATION, MODIFICATION, USE, MISUSE, INABILITY TO USE, OR DISTRIBUTION OF LEVYRA, OR FROM ACCESS TO OR INTERACTION WITH THIRD-PARTY SERVICES OR CONTENT.
 
@@ -81,13 +93,13 @@ This includes, without limitation, loss or corruption of data, loss of profits o
 
 Nothing in this notice excludes or limits liability to the extent that such liability cannot lawfully be excluded or limited.
 
-## 10. No Transfer of Third-Party Rights
+## 11. No Transfer of Third-Party Rights
 
 Nothing in Levyra, its source code, documentation, distribution, name, functionality, or licence grants any ownership interest, copyright licence, trademark licence, media licence, API entitlement, account entitlement, access entitlement, or other right in any third-party service or material.
 
 Any rights a user may have in relation to third-party content or services arise independently from the relevant rights holder, licence, contract, applicable law, or other valid legal basis — not from Levyra.
 
-## 11. Open-Source Licence
+## 12. Open-Source Licence
 
 Levyra is distributed under the **[GNU General Public License v3.0](../../LICENSE)**.
 
@@ -95,13 +107,13 @@ The GPL governs the copying, modification, and redistribution of Levyra's source
 
 Where this notice and the GPL address different subject matter, the GPL continues to govern Levyra's licensed source code according to its terms.
 
-## 12. Rights Holder Notice
+## 13. Rights Holder Notice
 
 Levyra respects intellectual-property rights. A rights holder who believes that material distributed **as part of the Levyra project itself** infringes their rights may report the concern through the repository's official GitHub issue tracker. Good-faith notices may be reviewed and addressed as appropriate.
 
 This process concerns material distributed by the Levyra project itself. Levyra does not control or host content supplied independently by third-party services.
 
-## 13. Mandatory Law and Severability
+## 14. Mandatory Law and Severability
 
 Nothing in this notice is intended to exclude, restrict, waive, or override any liability, obligation, defence, exception, limitation, consumer protection, or other right that cannot legally be excluded, restricted, waived, or overridden under applicable law.
 
