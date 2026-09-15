@@ -41,6 +41,11 @@
 
 ---
 
+> [!IMPORTANT]
+> **Legal & responsible use.** Levyra is independent open-source client software and does not host or distribute third-party music. Features that access, process, save, convert, or export media are provided for lawful use only. Users are responsible for ensuring that they have any rights, permissions, licences, or other lawful basis required for the content they choose to access or save, and for complying with applicable law and the terms of third-party services.
+>
+> Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services. See the full [Legal Notice](docs/legal/LEGAL.md).
+
 ## ✦ The Pure Listening Philosophy
 
 <div align="center">
@@ -55,7 +60,7 @@ Levyra is built around a simple promise: the music you save, the way you listen,
 
 <br>
 
-### 💿 01 · Keep the music
+### 💿 01 · Keep your offline library
 
 Downloads are standard, high-bitrate M4A files saved to <code>Music/Levyra</code> by default, or to a folder you choose in Settings, including supported SD card locations. Artwork, artist, album, and lyrics can stay embedded inside the file.
 
@@ -82,7 +87,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 <div align="center">
   <p>
     <b>Keep the file. Keep the history. Keep control.</b><br>
-    <sub>Offline playback is not a fallback in Levyra. It is ownership.</sub>
+    <sub>Offline playback is not a fallback in Levyra. It is control.</sub>
   </p>
 
   <br>
@@ -276,7 +281,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
     </td>
     <td width="50%">
       <h3>💾 <b>Offline Vault</b></h3>
-      <p><b>Your library stays yours.</b><br><sub>Portable audio files and versioned local backups without a Levyra account.</sub></p>
+      <p><b>Your offline library stays portable.</b><br><sub>Portable audio files and versioned local backups without a Levyra account.</sub></p>
       <ul>
         <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics embedded directly in the file.</li>
         <li><b>Configurable Download Storage:</b> Choose where Levyra saves offline music, including supported SD card locations, while keeping Artist / Album organization relative to the selected folder.</li>
