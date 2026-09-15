@@ -1,10 +1,10 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
-const WEBLATE_BASE = 'https://hosted.weblate.org'
-const PROJECT = 'levyra'
-const REFRESH_MS = 6 * 60 * 60 * 1000
+const RESOURCE_ROOT = 'app/src/main/res'
+const BASE_STRINGS = join(RESOURCE_ROOT, 'values', 'strings.xml')
+const LOCALE_CONFIG = join(RESOURCE_ROOT, 'xml', 'locales_config.xml')
 const ASSET_DIR = 'docs/assets'
-const DARK_ASSET = ASSET_DIR + '/levyra-translation-pulse.svg'
 
 const escapeXml = value => String(value)
   .replaceAll('&', '&amp;')
@@ -13,63 +13,105 @@ const escapeXml = value => String(value)
   .replaceAll('"', '&quot;')
   .replaceAll("'", '&apos;')
 
-const requestJson = async path => {
-  const response = await fetch(WEBLATE_BASE + path, {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'Levyra-Translation-Pulse-Updater'
-    },
-    signal: AbortSignal.timeout(15000)
-  })
-  if (!response.ok) throw new Error('Weblate API request failed with ' + response.status + ': ' + await response.text())
-  return response.json()
+const canonicalTag = value => String(value)
+  .trim()
+  .replaceAll('_', '-')
+  .toLowerCase()
+
+const qualifierToTag = name => {
+  const suffix = name.replace(/^values-/, '')
+  return suffix.startsWith('b+')
+    ? suffix.slice(2).replaceAll('+', '-')
+    : suffix
 }
 
-const readGeneratedAt = async () => {
-  try {
-    const content = await readFile(DARK_ASSET, 'utf8')
-    const match = content.match(/data-generated-at="([^"]+)"/)
-    if (!match) return 0
-    const timestamp = Date.parse(match[1])
-    return Number.isFinite(timestamp) ? timestamp : 0
-  } catch {
-    return 0
+const readStringKeys = xml => {
+  const pattern = /<string\s+name="([^"]+)"([^>]*)>/g
+  const keys = new Set()
+  for (const match of xml.matchAll(pattern)) {
+    if (!match[2].includes('translatable="false"')) keys.add(match[1])
   }
+  return keys
 }
 
-const shouldRefresh = async () => {
-  if (process.env.FORCE_TRANSLATION_PULSE === '1') return true
-  const generatedAt = await readGeneratedAt()
-  return generatedAt === 0 || Date.now() - generatedAt >= REFRESH_MS
-}
-
-const normalizeLanguage = row => {
-  const rawName = (typeof row.name === 'string' && row.name.trim())
-    || (typeof row.language === 'string' && row.language.trim())
-    || (row.language?.name)
-    || row.code
-    || 'Unknown'
-  const name = rawName
-  const code = row.code || row.language?.code || name
-  const percent = Number(row.translated_percent ?? 0)
-  const total = Number(row.total ?? 0)
-  return {
-    name: String(name),
-    code: String(code),
-    percent: Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0,
-    total: Number.isFinite(total) ? Math.max(0, total) : 0
-  }
+const readLocalizedKeys = xml => {
+  const pattern = /<string\s+name="([^"]+)"/g
+  return new Set(Array.from(xml.matchAll(pattern), match => match[1]))
 }
 
 const displayCode = code => {
-  const normalized = String(code).replaceAll('_', '-').toLowerCase()
+  const normalized = canonicalTag(code)
   const aliases = {
     'zh-hans': 'ZH',
     'zh-hant': 'ZH-TW',
-    'pt-br': 'PT-BR',
     fil: 'FIL'
   }
   return aliases[normalized] || normalized.split('-')[0].slice(0, 3).toUpperCase()
+}
+
+const displayName = code => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code
+  } catch {
+    return code
+  }
+}
+
+const collectRepositoryCoverage = async () => {
+  const [baseXml, localeConfig, entries] = await Promise.all([
+    readFile(BASE_STRINGS, 'utf8'),
+    readFile(LOCALE_CONFIG, 'utf8'),
+    readdir(RESOURCE_ROOT, { withFileTypes: true })
+  ])
+
+  const expectedKeys = readStringKeys(baseXml)
+  if (expectedKeys.size === 0) throw new Error('No translatable Android strings found')
+
+  const localePattern = /<locale\s+android:name="([^"]+)"\s*\/>/g
+  const localeTags = Array.from(localeConfig.matchAll(localePattern), match => match[1])
+  if (localeTags.length === 0) throw new Error('No Android locales found')
+
+  const localizedFiles = new Map()
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith('values-')) continue
+    const tag = canonicalTag(qualifierToTag(entry.name))
+    try {
+      const xml = await readFile(join(RESOURCE_ROOT, entry.name, 'strings.xml'), 'utf8')
+      localizedFiles.set(tag, readLocalizedKeys(xml))
+    } catch {
+    }
+  }
+
+  const languages = localeTags.map(code => {
+    if (canonicalTag(code) === 'en') {
+      return {
+        name: 'English',
+        code,
+        percent: 100,
+        translated: expectedKeys.size,
+        total: expectedKeys.size
+      }
+    }
+
+    const localized = localizedFiles.get(canonicalTag(code)) || new Set()
+    const translated = Array.from(expectedKeys).filter(key => localized.has(key)).length
+    return {
+      name: displayName(code),
+      code,
+      percent: (translated / expectedKeys.size) * 100,
+      translated,
+      total: expectedKeys.size
+    }
+  })
+
+  const translated = languages.reduce((sum, language) => sum + language.translated, 0)
+  const total = languages.reduce((sum, language) => sum + language.total, 0)
+
+  return {
+    languages,
+    globalPercent: total === 0 ? 0 : (translated / total) * 100,
+    stringCount: expectedKeys.size
+  }
 }
 
 const makeBars = ({ languages, columns, startX, startY, width, chartHeight, rowGap, isDark }) => {
@@ -104,23 +146,24 @@ const makeBars = ({ languages, columns, startX, startY, width, chartHeight, rowG
   }).join('\n')
 }
 
-const makePulse = ({ languages, globalPercent, stringCount, generatedAt, isDark, mobile }) => {
+const makePulse = ({ languages, globalPercent, stringCount, isDark, mobile }) => {
   const width = mobile ? 720 : 1040
-  const height = mobile ? 330 : 250
+  const columns = mobile ? 12 : 18
+  const rows = Math.ceil(languages.length / columns)
+  const chartHeight = mobile ? 44 : 54
+  const rowGap = mobile ? 72 : 85
+  const chartStartY = 126
+  const chartStartX = mobile ? 34 : 44
+  const chartWidth = width - chartStartX * 2
+  const lastBaseline = chartStartY + (rows - 1) * rowGap + chartHeight
+  const height = lastBaseline + 66
   const text = isDark ? '#F0F6FC' : '#1F2328'
   const sub = isDark ? '#8B949E' : '#57606A'
   const border = isDark ? '#30363D' : '#D0D7DE'
-  const accent = isDark ? '#818CF8' : '#6366F1'
+  const accent = isDark ? '#2DD4BF' : '#0F766E'
   const languageCount = languages.length
   const roundedPercent = Math.round(globalPercent)
-  const aria = 'Levyra translations: ' + roundedPercent + '% translated across ' + languageCount + ' languages and ' + stringCount + ' strings'
-
-  const columns = mobile ? Math.ceil(languageCount / 2) : Math.max(1, languageCount)
-  const chartHeight = mobile ? 58 : 82
-  const rowGap = mobile ? 98 : 0
-  const chartStartY = mobile ? 135 : 122
-  const chartStartX = mobile ? 34 : 44
-  const chartWidth = width - chartStartX * 2
+  const aria = 'Levyra Android translations: ' + roundedPercent + '% coverage across ' + languageCount + ' supported languages and ' + stringCount + ' translatable strings'
 
   const chart = makeBars({
     languages,
@@ -134,47 +177,28 @@ const makePulse = ({ languages, globalPercent, stringCount, generatedAt, isDark,
   })
 
   return [
-    '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeXml(aria) + '" data-generated-at="' + escapeXml(generatedAt) + '">',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeXml(aria) + '">',
     '<title>' + escapeXml(aria) + '</title>',
     '<line x1="24" y1="16" x2="' + (width - 24) + '" y2="16" stroke="' + border + '" stroke-width="1"/>',
-    '<rect x="' + (width / 2 - 58) + '" y="30" width="116" height="28" rx="7" fill="' + accent + '" opacity=".14"/>',
+    '<rect x="' + (width / 2 - 62) + '" y="30" width="124" height="28" rx="7" fill="' + accent + '" opacity=".14"/>',
     '<text x="' + (width / 2) + '" y="49" text-anchor="middle" fill="' + accent + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.4">TRANSLATED ' + roundedPercent + '%</text>',
     '<text x="' + (width / 2) + '" y="83" text-anchor="middle" fill="' + text + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="' + (mobile ? 18 : 20) + '" font-weight="800">Help Levyra speak your language.</text>',
-    '<text x="' + (width / 2) + '" y="103" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5">' + languageCount + ' languages · live on Weblate</text>',
+    '<text x="' + (width / 2) + '" y="103" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5">' + languageCount + ' languages · Android coverage complete</text>',
     chart,
-    '<text x="' + (width / 2) + '" y="' + (height - 14) + '" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5">Every translation brings Levyra closer to more listeners.</text>',
+    '<text x="' + (width / 2) + '" y="' + (height - 16) + '" text-anchor="middle" fill="' + sub + '" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5">Weblate stays open for reviews, improvements and future strings.</text>',
     '</svg>'
   ].join('\n')
 }
 
 const updateTranslationPulse = async () => {
-  if (!await shouldRefresh()) return
-  try {
-    const [stats, languageResponse] = await Promise.all([
-      requestJson('/api/projects/' + PROJECT + '/statistics/'),
-      requestJson('/api/projects/' + PROJECT + '/languages/?page_size=100')
-    ])
-    const rows = Array.isArray(languageResponse) ? languageResponse : languageResponse.results ?? []
-    const languages = rows
-      .map(normalizeLanguage)
-      .filter(language => language.code)
-      .sort((a, b) => b.percent - a.percent || a.name.localeCompare(b.name))
-    if (languages.length === 0) throw new Error('Weblate returned no languages')
-    const globalPercent = Number(stats.translated_percent)
-    if (!Number.isFinite(globalPercent)) throw new Error('Weblate returned an invalid translated percentage')
-    const stringCount = Math.max(...languages.map(language => language.total), 0)
-    const generatedAt = new Date().toISOString()
-
-    await mkdir(ASSET_DIR, { recursive: true })
-    await Promise.all([
-      writeFile(ASSET_DIR + '/levyra-translation-pulse.svg', makePulse({ languages, globalPercent, stringCount, generatedAt, isDark: true, mobile: false }), 'utf8'),
-      writeFile(ASSET_DIR + '/levyra-translation-pulse-light.svg', makePulse({ languages, globalPercent, stringCount, generatedAt, isDark: false, mobile: false }), 'utf8'),
-      writeFile(ASSET_DIR + '/levyra-translation-pulse-mobile.svg', makePulse({ languages, globalPercent, stringCount, generatedAt, isDark: true, mobile: true }), 'utf8'),
-      writeFile(ASSET_DIR + '/levyra-translation-pulse-mobile-light.svg', makePulse({ languages, globalPercent, stringCount, generatedAt, isDark: false, mobile: true }), 'utf8')
-    ])
-  } catch (error) {
-    console.warn('Translation Pulse update skipped: ' + (error instanceof Error ? error.message : String(error)))
-  }
+  const coverage = await collectRepositoryCoverage()
+  await mkdir(ASSET_DIR, { recursive: true })
+  await Promise.all([
+    writeFile(ASSET_DIR + '/levyra-translation-pulse.svg', makePulse({ ...coverage, isDark: true, mobile: false }), 'utf8'),
+    writeFile(ASSET_DIR + '/levyra-translation-pulse-light.svg', makePulse({ ...coverage, isDark: false, mobile: false }), 'utf8'),
+    writeFile(ASSET_DIR + '/levyra-translation-pulse-mobile.svg', makePulse({ ...coverage, isDark: true, mobile: true }), 'utf8'),
+    writeFile(ASSET_DIR + '/levyra-translation-pulse-mobile-light.svg', makePulse({ ...coverage, isDark: false, mobile: true }), 'utf8')
+  ])
 }
 
 await updateTranslationPulse()
