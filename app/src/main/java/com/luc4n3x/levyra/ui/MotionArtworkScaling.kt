@@ -9,6 +9,7 @@ internal val MotionArtworkFitIdentity = MotionArtworkFit(1f, 1f)
 
 internal const val MotionArtworkCardMaxZoom = 2.6f
 internal const val MotionArtworkImmersiveMaxZoom = 1.32f
+internal const val MotionArtworkCinematicMaxZoom = 2.2f
 
 internal fun motionArtworkFit(
     videoWidth: Int,

@@ -285,6 +285,35 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun cleanAndExplicitEditionsOfOneRecordingAreNotAmbiguousWhenExplicitIsUnknown() {
+        val query = query(title = "hate that i made you love me", artist = "Ariana Grande", album = "YouTube Music", durationMs = 198_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "single-clean", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "hate that i made you love me", duration = 198, explicit = false),
+                candidate(id = "single-explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "hate that i made you love me", duration = 198, explicit = true),
+                candidate(id = "album-clean", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = false),
+                candidate(id = "album-explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = true)
+            )
+        )
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+        assertEquals(false, (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.explicit)
+    }
+
+    @Test
+    fun explicitQueryKeepsTheExplicitEdition() {
+        val query = query(title = "hate that i made you love me", artist = "Ariana Grande", album = "petal", durationMs = 197_000L, explicit = true)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "clean", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = false),
+                candidate(id = "explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = true)
+            )
+        )
+        assertEquals("explicit", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
     fun exactAlbumMatchOutranksSingleReleaseOfDifferentCut() {
         val query = query(title = "Levitating (feat. DaBaby)", artist = "Dua Lipa", album = "Future Nostalgia", durationMs = 203_000L)
         val selection = matcher.select(
