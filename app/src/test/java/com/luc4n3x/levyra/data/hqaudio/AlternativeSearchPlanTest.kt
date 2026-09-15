@@ -22,6 +22,12 @@ class AlternativeSearchPlanTest {
     }
 
     @Test
+    fun genericAlbumNamesAreNotSearched() {
+        val passes = AlternativeSearchPlan.queries(query(album = "YouTube Music"))
+        assertEquals("Blinding Lights The Weeknd", passes.first())
+    }
+
+    @Test
     fun primaryArtistIsUsedForFocusedPasses() {
         val passes = AlternativeSearchPlan.queries(query(title = "One Kiss", artist = "Calvin Harris & Dua Lipa", album = "One Kiss"))
         assertEquals("One Kiss Calvin Harris", passes.first())
