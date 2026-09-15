@@ -103,7 +103,7 @@ internal object LevyraLiveRadioCatalog {
         "fil" to radio("Mga live station mula sa buong mundo", "Mga live station", "Sikat sa %s", "Buong mundo", "Mga kategorya", "Mga bansa", "Mga wika", "Maghanap ayon sa pangalan, bansa, tag, o wika", "Walang katugmang live station", "Ipinapakita ang mga naka-save na station habang kumokonekta", "Kailangan ng Internet para sa live radio", "Mag-load pa", englishCategories),
         "he" to radio("תחנות חיות מכל העולם", "תחנות חיות", "פופולרי ב%s", "בכל העולם", "קטגוריות", "מדינות", "שפות", "חיפוש לפי שם, מדינה, תגית או שפה", "לא נמצאו תחנות חיות", "מציג תחנות שמורות בזמן החיבור", "נדרש אינטרנט לרדיו חי", "טען עוד", englishCategories)
     ).mapValues { (code, strings) ->
-        strings.copy(categoryLabels = (localizedCategories[code] ?: localizedCategories.getValue("en")))
+        strings.copy(categoryLabels = localizedValueOrEnglish(localizedCategories, code))
     }
 
     init {
@@ -115,9 +115,11 @@ internal object LevyraLiveRadioCatalog {
         check(values.values.all { it.exploreSubtitle.isNotBlank() })
     }
 
-    fun forCode(code: String): LevyraLiveRadioStrings = values[LevyraLanguageCatalog.normalize(code)] ?: values.getValue("en")
+    fun forCode(code: String): LevyraLiveRadioStrings =
+        localizedValueOrEnglish(values, LevyraLanguageCatalog.normalize(code))
 
-    fun streamUnavailable(code: String): String = unavailableValues[LevyraLanguageCatalog.normalize(code)] ?: unavailableValues.getValue("en")
+    fun streamUnavailable(code: String): String =
+        localizedValueOrEnglish(unavailableValues, LevyraLanguageCatalog.normalize(code))
 
     private fun radio(
         subtitle: String,
