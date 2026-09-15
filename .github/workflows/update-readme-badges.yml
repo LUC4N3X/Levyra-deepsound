@@ -19,6 +19,9 @@ on:
       - README.md
       - scripts/update-readme-badges.mjs
       - scripts/update-translation-pulse.mjs
+      - app/src/main/res/values/strings.xml
+      - app/src/main/res/values-*/strings.xml
+      - app/src/main/res/xml/locales_config.xml
       - .github/workflows/update-readme-badges.yml
 
 permissions:
@@ -41,9 +44,6 @@ jobs:
           node-version: "22"
       - run: node scripts/update-readme-badges.mjs
       - run: node scripts/update-translation-pulse.mjs
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: |
           badge_files=(
             docs/assets/levyra-release.svg
