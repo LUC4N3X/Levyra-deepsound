@@ -26,6 +26,8 @@ import com.luc4n3x.levyra.ui.artwork.ArtworkPreviewOverlay
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.livingArtworkColors
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareCard
+import com.luc4n3x.levyra.ui.lyrics.LyricsShareFormat
+import com.luc4n3x.levyra.ui.lyrics.rememberLyricsAudioOutputRoute
 import com.luc4n3x.levyra.ui.lyrics.KARAOKE_VISUAL_LEAD_MS
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_INSTRUMENTAL_DOT_COUNT
 import com.luc4n3x.levyra.ui.lyrics.LyricsInstrumentalGap
@@ -2415,6 +2417,8 @@ fun LevyraApp(
                     onLoadVersions = viewModel::loadLyricsVersions,
                     onSelectVersion = viewModel::selectLyricsVersion,
                     onAutomatic = viewModel::useAutomaticLyrics,
+                    onSaveLatencyOffset = viewModel::saveLyricsLatencyOffset,
+                    onClearLatencyOffset = viewModel::clearLyricsLatencyOffset,
                     onSeekToMs = { positionMs ->
                         viewModel.seekTo(progressOf(positionMs, state.durationMs))
                     },
@@ -5690,6 +5694,8 @@ private fun LyricsOverlay(
     onLoadVersions: () -> Unit,
     onSelectVersion: (com.luc4n3x.levyra.data.LyricsRepository.LyricsVersion) -> Unit,
     onAutomatic: () -> Unit,
+    onSaveLatencyOffset: (String?, Boolean, Long) -> Unit,
+    onClearLatencyOffset: (String) -> Unit,
     onSeekToMs: (Long) -> Unit,
     onClose: () -> Unit
 ) {
@@ -5702,10 +5708,16 @@ private fun LyricsOverlay(
     val clipboard = LocalClipboard.current
     val clipboardScope = rememberCoroutineScope()
     val shareContext = LocalContext.current
+    val latencyProfiles = state.lyricsLatencyProfiles
+    val audioOutputRoute = rememberLyricsAudioOutputRoute()
+    val storedLyricsOffsetMs = latencyProfiles.resolve(
+        routeKey = audioOutputRoute?.stableKey,
+        bluetooth = audioOutputRoute?.bluetooth == true
+    )
     var viewMode by remember(track?.id) { mutableStateOf(LyricsViewMode.CINEMA) }
     var showRomanization by remember(track?.id) { mutableStateOf(true) }
     var showSecondaryVoices by remember(track?.id) { mutableStateOf(true) }
-    var lyricsOffsetMs by remember(track?.id) { mutableStateOf(0L) }
+    var lyricsOffsetMs by remember(track?.id) { mutableLongStateOf(storedLyricsOffsetMs) }
     var autoScrollEnabled by remember(track?.id) { mutableStateOf(true) }
     val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
     var lyricsFocusMode by remember(track?.id) { mutableStateOf(lyricsAnimationsEnabled) }
@@ -5715,6 +5727,9 @@ private fun LyricsOverlay(
     var selectedVerseKeys by remember(track?.id) { mutableStateOf<Set<String>>(emptySet()) }
     var showVersions by remember(track?.id) { mutableStateOf(false) }
     var calibrateMode by remember(track?.id) { mutableStateOf(false) }
+    LaunchedEffect(track?.id, audioOutputRoute?.stableKey, storedLyricsOffsetMs) {
+        lyricsOffsetMs = storedLyricsOffsetMs
+    }
     val visibleLyrics = remember(state.lyrics, showSecondaryVoices) {
         if (showSecondaryVoices) {
             state.lyrics
@@ -5733,6 +5748,30 @@ private fun LyricsOverlay(
         buildString {
             append(line.text)
             if (line.translated.isNotBlank()) append("\n").append(line.translated)
+        }
+    }
+    fun shareSelectedLyrics(format: LyricsShareFormat) {
+        val selectedText = selectedLyricsText()
+        val selectedTrack = track
+        if (selectedTrack == null) {
+            val fallback = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, selectedText)
+            }
+            shareContext.startActivity(Intent.createChooser(fallback, strings.shareVia))
+            return
+        }
+        clipboardScope.launch {
+            val shareIntent = LyricsShareCard.createShareIntent(
+                context = shareContext,
+                track = selectedTrack,
+                selectedLyrics = selectedText,
+                format = format
+            ) ?: Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, selectedText)
+            }
+            shareContext.startActivity(Intent.createChooser(shareIntent, strings.shareVia))
         }
     }
     val syncedLyrics = state.lyricsSynced
@@ -6140,32 +6179,16 @@ private fun LyricsOverlay(
                                 }
                             )
                             LyricsControlChip(
-                                label = strings.shareVerses,
+                                label = "${strings.shareVerses} · 1:1",
                                 selected = false,
                                 icon = Icons.Rounded.Share,
-                                onClick = {
-                                    val selectedText = selectedLyricsText()
-                                    val selectedTrack = track
-                                    if (selectedTrack == null) {
-                                        val fallback = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, selectedText)
-                                        }
-                                        shareContext.startActivity(Intent.createChooser(fallback, strings.shareVia))
-                                    } else {
-                                        clipboardScope.launch {
-                                            val shareIntent = LyricsShareCard.createShareIntent(
-                                                context = shareContext,
-                                                track = selectedTrack,
-                                                selectedLyrics = selectedText
-                                            ) ?: Intent(Intent.ACTION_SEND).apply {
-                                                type = "text/plain"
-                                                putExtra(Intent.EXTRA_TEXT, selectedText)
-                                            }
-                                            shareContext.startActivity(Intent.createChooser(shareIntent, strings.shareVia))
-                                        }
-                                    }
-                                }
+                                onClick = { shareSelectedLyrics(LyricsShareFormat.SQUARE) }
+                            )
+                            LyricsControlChip(
+                                label = "${strings.shareVerses} · 9:16",
+                                selected = false,
+                                icon = Icons.Rounded.Share,
+                                onClick = { shareSelectedLyrics(LyricsShareFormat.STORY) }
                             )
                             LyricsControlChip(
                                 label = strings.cancel,
@@ -6193,6 +6216,40 @@ private fun LyricsOverlay(
                                 onClick = { lyricsOffsetMs = 0L }
                             )
                         }
+                        if (lyricsOffsetMs != storedLyricsOffsetMs) {
+                            val profileLabel = audioOutputRoute
+                                ?.takeIf { route -> route.bluetooth && route.stableKey != null }
+                                ?.displayName
+                                ?.ifBlank { strings.connected }
+                            LyricsControlChip(
+                                label = profileLabel?.let { "${strings.save} · $it" } ?: strings.save,
+                                selected = false,
+                                icon = Icons.Rounded.Check,
+                                onClick = {
+                                    onSaveLatencyOffset(
+                                        audioOutputRoute?.stableKey,
+                                        audioOutputRoute?.bluetooth == true,
+                                        lyricsOffsetMs
+                                    )
+                                }
+                            )
+                        }
+                        audioOutputRoute
+                            ?.takeIf { route ->
+                                route.bluetooth && route.stableKey?.let(latencyProfiles.deviceOffsetsMs::containsKey) == true
+                            }
+                            ?.let { route ->
+                                val stableKey = checkNotNull(route.stableKey)
+                                LyricsControlChip(
+                                    label = "${strings.delete} · ${route.displayName.ifBlank { strings.connected }}",
+                                    selected = false,
+                                    icon = Icons.Rounded.Delete,
+                                    onClick = {
+                                        lyricsOffsetMs = latencyProfiles.globalOffsetMs
+                                        onClearLatencyOffset(stableKey)
+                                    }
+                                )
+                            }
                     }
                     if (state.lyricsSections.isNotEmpty()) {
                         LazyRow(

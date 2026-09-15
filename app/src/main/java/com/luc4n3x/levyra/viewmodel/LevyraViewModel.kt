@@ -1114,6 +1114,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             searchEngine.state.collect(::applySearchSnapshot)
         }
+        viewModelScope.launch {
+            preferences.lyricsLatencyProfilesFlow.collect { profiles ->
+                _state.update { state -> state.copy(lyricsLatencyProfiles = profiles) }
+            }
+        }
         com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
             startupSettings.interfaceSettings.motionArtworkWifiOnly
         )
@@ -5128,6 +5133,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             fetchLyrics(track)
             prefetchLyricsAround(track)
         }
+    }
+
+    fun saveLyricsLatencyOffset(routeKey: String?, bluetooth: Boolean, offsetMs: Long) {
+        val current = _state.value.lyricsLatencyProfiles
+        val updated = if (bluetooth && !routeKey.isNullOrBlank()) {
+            current.withDeviceOffset(routeKey, offsetMs)
+        } else {
+            current.withGlobalOffset(offsetMs)
+        }
+        viewModelScope.launch { preferences.setLyricsLatencyProfiles(updated) }
+    }
+
+    fun clearLyricsLatencyOffset(routeKey: String) {
+        val updated = _state.value.lyricsLatencyProfiles.withoutDevice(routeKey)
+        viewModelScope.launch { preferences.setLyricsLatencyProfiles(updated) }
     }
 
     fun selectChart(regionId: String) {

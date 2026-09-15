@@ -4,14 +4,22 @@ import java.util.Locale
 
 object LyricsRomanizer {
     private val cjkRegex = Regex("[\\u3040-\\u30ff\\u3400-\\u9fff\\uac00-\\ud7af]")
+    private val supportedScriptRegex = Regex(
+        "[\\u0370-\\u03ff\\u0400-\\u052f\\u0590-\\u05ff\\u0600-\\u06ff" +
+            "\\u0750-\\u077f\\u08a0-\\u08ff\\u0900-\\u097f\\u0980-\\u09ff" +
+            "\\u0a00-\\u0a7f\\u10a0-\\u10ff\\u1c90-\\u1cbf\\u3040-\\u30ff\\u3400-\\u9fff" +
+            "\\uac00-\\ud7af]"
+    )
     private val whitespaceRegex = Regex("\\s+")
 
     fun romanize(text: String): String {
         val source = text.trim()
-        if (source.isBlank() || !cjkRegex.containsMatchIn(source)) return ""
-        val icu = romanizeWithIcu(source)
-        if (icu.isNotBlank() && icu != source) return normalize(icu)
-        val fallback = buildString {
+        if (source.isBlank() || !supportedScriptRegex.containsMatchIn(source)) return ""
+        if (cjkRegex.containsMatchIn(source)) {
+            val icu = romanizeWithIcu(source)
+            if (icu.isNotBlank() && icu != source) return normalize(icu)
+        }
+        val cjkFallback = buildString {
             var index = 0
             while (index < source.length) {
                 val codePoint = source.codePointAt(index)
@@ -32,6 +40,7 @@ object LyricsRomanizer {
                 index += Character.charCount(codePoint)
             }
         }
+        val fallback = ExtendedLyricsRomanization.romanize(cjkFallback)
         return normalize(fallback).takeIf { it.isNotBlank() && it != source }.orEmpty()
     }
 
