@@ -930,6 +930,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("highQualityAudioMode", snapshot.highQualityAudioMode.storageValue)
             .put("audioNormalization", snapshot.audioNormalization)
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
+            .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
             .put("themePreset", snapshot.themePreset)
             .put("audioSettings", audioSettingsToJson(snapshot.audioSettings))
             .put("interfaceSettings", interfaceSettingsToJson(snapshot.interfaceSettings))
@@ -972,6 +973,10 @@ class LevyraBackupManager(private val context: Context) {
             personalOrbitTracks = json.optJSONArray("personalOrbitTracks").toTrackList(),
             audioNormalization = json.optBoolean("audioNormalization", false),
             lyricsTranslationEnabled = json.optBoolean("lyricsTranslationEnabled", false),
+            lyricsLatencyProfiles = json.optJSONObject("lyricsLatencyProfiles")
+                ?.toString()
+                ?.let { raw -> LyricsLatencyProfiles.decode(raw) }
+                ?: LyricsLatencyProfiles(),
             themePreset = json.optString("themePreset"),
             audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
             interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings"), legacyVisualMode),
