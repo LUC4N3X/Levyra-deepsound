@@ -115,3 +115,10 @@ Levyra does not host, upload, sell, index, or provide copyrighted audio files fr
 Users are responsible for using Levyra only where they have the legal right to access, stream, export, store, or play content, and only in compliance with applicable law and third-party service terms.
 
 Levyra is not intended to bypass DRM, paywalls, authentication walls, geographic restrictions, subscription requirements, private content restrictions, or any other access-control mechanism.
+
+## JioSaavn Integration Notice
+
+The Levyra-specific JioSaavn integration — including its source-resolution flow, identity matching and validation, fallback orchestration, playback integration, and related UI/UX — is part of the Levyra project authored and maintained by **LUC4N3X** and distributed under this repository's **GNU GPL v3.0**. Reuse of Levyra source remains subject to the GPL and its applicable notice and source obligations.
+
+This notice applies only to Levyra's own implementation. **JioSaavn, its service, trademarks, catalogue, media, metadata, and other third-party property remain the property of their respective owners.** Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected with JioSaavn.
+
