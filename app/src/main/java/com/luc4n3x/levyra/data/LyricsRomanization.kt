@@ -4,27 +4,66 @@ import java.util.Locale
 
 object LyricsRomanizer {
     private val cjkRegex = Regex("[\\u3040-\\u30ff\\u3400-\\u9fff\\uac00-\\ud7af]")
+    private val supportedScriptRegex = Regex(
+        "[\\u0370-\\u03ff\\u1f00-\\u1fff\\u0400-\\u052f\\u0590-\\u05ff\\u0600-\\u06ff" +
+            "\\u0750-\\u077f\\u08a0-\\u08ff\\u0900-\\u097f\\u0980-\\u09ff" +
+            "\\u0a00-\\u0a7f\\u10a0-\\u10ff\\u1c90-\\u1cbf\\u3040-\\u30ff\\u3400-\\u9fff" +
+            "\\uac00-\\ud7af]"
+    )
     private val whitespaceRegex = Regex("\\s+")
 
     fun romanize(text: String): String {
         val source = text.trim()
-        if (source.isBlank() || !cjkRegex.containsMatchIn(source)) return ""
+        if (source.isBlank() || !supportedScriptRegex.containsMatchIn(source)) return ""
+
+        val icuResult = transliterateCjkWithIcu(source)
+        if (icuResult != null) return icuResult
+
+        val cjkFallback = transliterateKanaAndHangul(source)
+        val result = ExtendedLyricsRomanization.transliterate(cjkFallback.text)
+        val totalTransformed = cjkFallback.transformedCount + result.transformedCount
+        if (totalTransformed <= 0) return ""
+
+        val normalized = normalize(result.text)
+        return if (normalized.isNotBlank() && normalized != normalize(source)) normalized else ""
+    }
+
+    private data class CjkFallbackResult(val text: String, val transformedCount: Int)
+
+    private fun transliterateCjkWithIcu(source: String): String? {
+        if (!cjkRegex.containsMatchIn(source)) return null
         val icu = romanizeWithIcu(source)
-        if (icu.isNotBlank() && icu != source) return normalize(icu)
-        val fallback = buildString {
+        if (icu.isBlank() || countCjk(icu) >= countCjk(source)) return null
+        val normalized = normalize(icu)
+        return if (normalized.isNotBlank() && normalized != normalize(source)) normalized else null
+    }
+
+    private fun transliterateKanaAndHangul(source: String): CjkFallbackResult {
+        var transformedCount = 0
+        val text = buildString(source.length * 2) {
             var index = 0
             while (index < source.length) {
                 val codePoint = source.codePointAt(index)
                 when {
-                    codePoint in 0xAC00..0xD7A3 -> append(romanizeHangul(codePoint))
+                    codePoint in 0xAC00..0xD7A3 -> {
+                        append(romanizeHangul(codePoint))
+                        transformedCount++
+                    }
                     codePoint in 0x3040..0x30FF -> {
                         val pair = if (index + 1 < source.length) source.substring(index, index + 2) else ""
                         val pairRomanized = kanaPairs[pair]
                         if (pairRomanized != null) {
                             append(pairRomanized)
                             index += 1
+                            transformedCount++
                         } else {
-                            append(kanaSingles[source[index]] ?: source[index])
+                            val single = kanaSingles[source[index]]
+                            if (single != null) {
+                                append(single)
+                                transformedCount++
+                            } else {
+                                append(source[index])
+                            }
                         }
                     }
                     else -> appendCodePoint(codePoint)
@@ -32,8 +71,14 @@ object LyricsRomanizer {
                 index += Character.charCount(codePoint)
             }
         }
-        return normalize(fallback).takeIf { it.isNotBlank() && it != source }.orEmpty()
+        return CjkFallbackResult(text, transformedCount)
     }
+
+    private fun countCjk(text: String): Int = text.codePoints().filter { codePoint ->
+        codePoint in 0x3040..0x30FF ||
+            codePoint in 0x3400..0x9FFF ||
+            codePoint in 0xAC00..0xD7A3
+    }.count().toInt()
 
     private fun romanizeWithIcu(text: String): String {
         return runCatching {

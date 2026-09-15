@@ -51,6 +51,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.data.LyricsRepository
+import com.luc4n3x.levyra.data.LyricsLatencyProfiles
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import com.luc4n3x.levyra.domain.LevyraNetworkSettingsError
 import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
@@ -165,6 +166,7 @@ data class LevyraUiState(
     val lyricsVersionsLoading: Boolean = false,
     val lyricsManualSelection: Boolean = false,
     val lyricsTranslationEnabled: Boolean = false,
+    val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
     val smartProfile: SmartMusicProfile = SmartMusicProfile(),
     val cacheReport: CacheReport = CacheReport(0, 0, 0, 0),
     val query: String = "",
