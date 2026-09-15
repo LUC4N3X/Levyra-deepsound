@@ -18340,6 +18340,7 @@ private fun IntegrationSettingsPanel(
 @Composable
 private fun SettingsHubFooter() {
     val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -18397,6 +18398,26 @@ private fun SettingsHubFooter() {
                 fontWeight = FontWeight.Bold
             )
         }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "Legal & Responsible Use · No piracy · Read Legal Notice",
+            color = LevyraMuted.copy(alpha = 0.72f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .clickable {
+                    runCatching {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/legal/LEGAL.md")
+                            )
+                        )
+                    }
+                }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 }
 
