@@ -19,6 +19,13 @@
   <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg 126w, docs/assets/levyra-wiki-light.svg 130w" sizes="(max-width: 480px) 126px, 130px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 130w" sizes="(max-width: 480px) 126px, 130px"><img src="docs/assets/levyra-wiki.svg" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 130w" sizes="(max-width: 480px) 126px, 130px" alt="Levyra Documentation"></picture></a>
 </p>
 
+<div align="center">
+
+### 🌍 Levyra speaks 36 languages
+<sub><b>100% Android translation coverage</b></sub>
+
+</div>
+
 <p align="center"><b>DOWNLOAD LEVYRA</b></p>
 
 <p align="center">
@@ -32,7 +39,7 @@
 </p>
 
 <p align="center">
-  <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>36 Languages</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
+  <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
 </p>
 
 </div>
