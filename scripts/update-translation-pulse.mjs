@@ -150,16 +150,26 @@ const makeLanguageCard = ({ lang, idx, cols, padX, cardGapX, cardGapY, cardW, ca
   const x = padX + c * (cardW + cardGapX)
   const y = cardsStartY + r * (cardH + cardGapY)
   const checkColor = getCardColor(lang.percent, theme.isDark)
+  const trackColor = theme.isDark ? '#21262D' : '#E1E4E8'
   const percentStr = `${Math.round(lang.percent)}%`
   const nameFontSize = lang.name.length > 15 ? 11 : 12
 
+  // Mini graphic: sleek audio-inspired progress bar
+  const miniBarW = 34
+  const miniBarFillW = Math.max(3, (miniBarW * lang.percent) / 100)
+
   return `  <g transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})">
-    <rect width="${cardW.toFixed(1)}" height="${cardH}" rx="7" fill="${theme.itemBg}" stroke="${theme.itemBorder}" stroke-width="1"/>
-    <circle cx="14" cy="${(cardH / 2).toFixed(1)}" r="3" fill="${checkColor}"/>
-    <text x="25" y="${(cardH / 2 + 4).toFixed(1)}" fill="${theme.textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${nameFontSize}" font-weight="600">${escapeXml(lang.name)}</text>
-    <rect x="${(cardW - 48).toFixed(1)}" y="${(cardH / 2 - 9).toFixed(1)}" width="24" height="18" rx="4" fill="${theme.badgeBg}"/>
-    <text x="${(cardW - 36).toFixed(1)}" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="middle" fill="${theme.badgeText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">${escapeXml(lang.tag)}</text>
-    <text x="${(cardW - 7).toFixed(1)}" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="end" fill="${checkColor}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">${percentStr}</text>
+    <rect width="${cardW.toFixed(1)}" height="${cardH}" rx="8" fill="${theme.itemBg}" stroke="${theme.itemBorder}" stroke-width="1"/>
+    <!-- Locale Code Badge -->
+    <rect x="10" y="${(cardH / 2 - 9).toFixed(1)}" width="28" height="18" rx="4" fill="${theme.badgeBg}"/>
+    <text x="24" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="middle" fill="${theme.badgeText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".3">${escapeXml(lang.tag)}</text>
+    <!-- Native Language Name -->
+    <text x="46" y="${(cardH / 2 + 4).toFixed(1)}" fill="${theme.textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${nameFontSize}" font-weight="600">${escapeXml(lang.name)}</text>
+    <!-- Mini Audio Graph / Progress Bar -->
+    <rect x="${(cardW - 80).toFixed(1)}" y="${(cardH / 2 - 2).toFixed(1)}" width="${miniBarW}" height="4" rx="2" fill="${trackColor}"/>
+    <rect x="${(cardW - 80).toFixed(1)}" y="${(cardH / 2 - 2).toFixed(1)}" width="${miniBarFillW.toFixed(1)}" height="4" rx="2" fill="${checkColor}"/>
+    <!-- Progress % text -->
+    <text x="${(cardW - 12).toFixed(1)}" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="end" fill="${checkColor}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="700">${percentStr}</text>
   </g>`
 }
 
@@ -178,18 +188,18 @@ const getTheme = isDark => ({
 })
 
 const getLayout = (mobile, languageCount) => {
-  const width = mobile ? 680 : 920
-  const cols = mobile ? 3 : 4
+  const width = mobile ? 720 : 960
+  const cols = mobile ? 2 : 3
   const rows = Math.ceil(languageCount / cols)
-  const padX = mobile ? 18 : 22
-  const cardGapX = mobile ? 10 : 12
-  const cardGapY = mobile ? 8 : 10
+  const padX = mobile ? 18 : 24
+  const cardGapX = mobile ? 12 : 14
+  const cardGapY = mobile ? 10 : 10
   const cardW = (width - (padX * 2) - ((cols - 1) * cardGapX)) / cols
-  const cardH = mobile ? 36 : 38
-  const headerH = mobile ? 84 : 92
+  const cardH = mobile ? 40 : 40
+  const headerH = mobile ? 82 : 88
   const cardsStartY = headerH + 12
   const totalCardsH = rows * cardH + (rows - 1) * cardGapY
-  const footerH = mobile ? 42 : 46
+  const footerH = mobile ? 42 : 44
   const height = cardsStartY + totalCardsH + footerH
 
   return { width, cols, padX, cardGapX, cardGapY, cardW, cardH, cardsStartY, height }
@@ -218,7 +228,7 @@ const makePulse = ({ languages, globalPercent, isDark, mobile }) => {
   <rect x="0.75" y="0.75" width="${(layout.width - 1.5).toFixed(1)}" height="${(layout.height - 1.5).toFixed(1)}" rx="12" fill="${theme.bg}" stroke="${theme.border}" stroke-width="1.5"/>
   <path d="M 1 12 A 11 11 0 0 1 12 1 L ${layout.width - 12} 1 A 11 11 0 0 1 ${layout.width - 1} 12 L ${layout.width - 1} 3 L 1 3 Z" fill="url(#g-accent)" opacity="0.85"/>
 
-  <g transform="translate(${layout.padX}, ${mobile ? 24 : 28})">
+  <g transform="translate(${layout.padX}, ${mobile ? 24 : 26})">
     <rect x="0" y="0" width="${mobile ? 112 : 124}" height="24" rx="12" fill="${theme.teal}" opacity="0.12"/>
     <circle cx="10" cy="12" r="3.5" fill="${theme.teal}"/>
     <text x="22" y="15.5" fill="${theme.teal}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="700" letter-spacing=".6">TRANSLATIONS</text>
@@ -253,4 +263,4 @@ const updateTranslationPulse = async () => {
 }
 
 await updateTranslationPulse()
-console.log('Successfully generated modern Translation Pulse SVG cards.')
+console.log('Successfully generated modern Translation Pulse SVG cards with mini graphs.')
