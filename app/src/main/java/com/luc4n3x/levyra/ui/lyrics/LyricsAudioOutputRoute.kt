@@ -42,14 +42,53 @@ internal fun selectLyricsAudioOutputRoute(
     }
 }
 
-internal fun stableLyricsAudioRouteKey(type: Int, address: String): String? {
-    val identity = address.trim().takeIf(String::isNotBlank) ?: return null
+internal fun stableLyricsAudioRouteKey(
+    type: Int,
+    address: String?,
+    productName: String? = null
+): String? {
+    val cleanAddress = address?.trim()?.takeIf(String::isNotBlank)
+    if (cleanAddress != null) {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest("$type:$cleanAddress".toByteArray(Charsets.UTF_8))
+            .take(12)
+            .joinToString("") { byte -> "%02x".format(Locale.ROOT, byte.toInt() and 0xff) }
+        return "audio-$type-$digest"
+    }
+    val cleanName = productName?.trim()?.takeIf { name ->
+        name.isNotBlank() && !isGenericAudioDeviceName(name)
+    } ?: return null
+
     val digest = MessageDigest.getInstance("SHA-256")
-        .digest("$type:$identity".toByteArray(Charsets.UTF_8))
+        .digest("$type:name:$cleanName".toByteArray(Charsets.UTF_8))
         .take(12)
         .joinToString("") { byte -> "%02x".format(Locale.ROOT, byte.toInt() and 0xff) }
-    return "audio-$type-$digest"
+    return "audio-name-$type-$digest"
 }
+
+internal fun isGenericAudioDeviceName(name: String): Boolean {
+    val normalized = name.trim().lowercase(Locale.ROOT)
+    return normalized in genericAudioNames || genericAudioPrefixes.any { normalized.startsWith(it) }
+}
+
+private val genericAudioNames = setOf(
+    "bluetooth",
+    "bluetooth audio",
+    "bluetooth device",
+    "audio",
+    "speaker",
+    "phone speaker",
+    "built-in speaker",
+    "headphones",
+    "headset",
+    "wired headphones",
+    "wired headset"
+)
+
+private val genericAudioPrefixes = setOf(
+    "unknown",
+    "unnamed"
+)
 
 @Composable
 fun rememberLyricsAudioOutputRoute(): LyricsAudioOutputRoute? {
@@ -116,25 +155,65 @@ private fun queryLyricsAudioOutputRoute(
     val routes = devices.filter(AudioDeviceInfo::isSink).map(::toLyricsAudioOutputRoute)
     if (systemOrdered) return selectLyricsAudioOutputRoute(routes, systemOrdered = true)
     val selected = mediaRouter.getSelectedRoute(MediaRouter.ROUTE_TYPE_LIVE_AUDIO)
-    val selectedByName = routes.firstOrNull { route ->
-        route.displayName.equals(selected.name.toString().trim(), ignoreCase = true)
+    return resolvePreTiramisuAudioOutputRoute(routes, selected.name?.toString(), selected.deviceType)
+}
+
+internal fun resolvePreTiramisuAudioOutputRoute(
+    routes: List<LyricsAudioOutputRoute>,
+    selectedRouteName: String?,
+    selectedDeviceType: Int
+): LyricsAudioOutputRoute? {
+    val cleanSelectedName = selectedRouteName?.trim()
+    if (!cleanSelectedName.isNullOrBlank()) {
+        val selectedByName = routes.firstOrNull { route ->
+            route.displayName.equals(cleanSelectedName, ignoreCase = true)
+        }
+        if (selectedByName != null) return selectedByName
     }
-    if (selectedByName != null) return selectedByName
-    return when (selected.deviceType) {
-        MediaRouter.RouteInfo.DEVICE_TYPE_BLUETOOTH -> routes.firstOrNull { it.bluetooth }
+    return when (selectedDeviceType) {
+        MediaRouter.RouteInfo.DEVICE_TYPE_BLUETOOTH -> {
+            val bluetoothRoutes = routes.filter { it.bluetooth }
+            when (bluetoothRoutes.size) {
+                1 -> bluetoothRoutes.single()
+                else -> {
+                    if (bluetoothRoutes.isNotEmpty()) {
+                        LyricsAudioOutputRoute(
+                            stableKey = null,
+                            displayName = cleanSelectedName?.ifBlank { "Bluetooth" } ?: "Bluetooth",
+                            type = AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+                            bluetooth = true
+                        )
+                    } else {
+                        null
+                    }
+                }
+            }
+        }
         MediaRouter.RouteInfo.DEVICE_TYPE_SPEAKER -> routes.firstOrNull {
             it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
         }
-        else -> selectLyricsAudioOutputRoute(routes, systemOrdered = false)
+        else -> {
+            val bluetoothRoutes = routes.filter { it.bluetooth }
+            if (bluetoothRoutes.size > 1) {
+                val nonBluetooth = routes.filter { !it.bluetooth }
+                selectLyricsAudioOutputRoute(nonBluetooth, systemOrdered = false)
+            } else {
+                selectLyricsAudioOutputRoute(routes, systemOrdered = false)
+            }
+        }
     }
 }
 
 private fun toLyricsAudioOutputRoute(device: AudioDeviceInfo): LyricsAudioOutputRoute {
     val name = device.productName.toString().trim()
-    val address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) device.address else ""
+    val address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        runCatching { device.address }.getOrNull().orEmpty()
+    } else {
+        ""
+    }
     return LyricsAudioOutputRoute(
-        stableKey = stableLyricsAudioRouteKey(device.type, address),
-        displayName = name,
+        stableKey = stableLyricsAudioRouteKey(device.type, address, name),
+        displayName = name.ifBlank { "Audio" },
         type = device.type,
         bluetooth = device.type in bluetoothOutputTypes
     )

@@ -122,6 +122,17 @@ internal object LyricsShareCard {
         val cardScale = format.widthPx / DESIGN_WIDTH
         val designHeight = format.heightPx / cardScale
         canvas.scale(cardScale, cardScale)
+
+        val (accentStart, accentEnd) = resolveAccents(track, cover)
+        drawBackground(canvas, designHeight, accentStart, accentEnd)
+        drawPanel(canvas, designHeight)
+        drawHeader(canvas, track, cover, format)
+        drawLyrics(canvas, selectedLyrics, designHeight, format)
+        drawFooter(canvas, designHeight)
+        return bitmap
+    }
+
+    private fun resolveAccents(track: Track, cover: Bitmap?): Pair<Int, Int> {
         val palette = cover?.let {
             ArtworkPaletteCache.extract(
                 bitmap = it,
@@ -131,7 +142,10 @@ internal object LyricsShareCard {
         }
         val accentStart = opaque(palette?.start ?: track.accentStart, Color.rgb(38, 178, 214))
         val accentEnd = opaque(palette?.end ?: track.accentEnd, Color.rgb(111, 76, 255))
+        return accentStart to accentEnd
+    }
 
+    private fun drawBackground(canvas: Canvas, designHeight: Float, accentStart: Int, accentEnd: Int) {
         val background = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 0f,
@@ -168,7 +182,9 @@ internal object LyricsShareCard {
             )
         }
         canvas.drawCircle(DESIGN_WIDTH * 0.16f, designHeight * 0.82f, DESIGN_WIDTH * 0.82f, lowerGlow)
+    }
 
+    private fun drawPanel(canvas: Canvas, designHeight: Float) {
         val panel = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(62, 255, 255, 255) }
         canvas.drawRoundRect(
             RectF(92f, 92f, DESIGN_WIDTH - 92f, designHeight - 92f),
@@ -183,7 +199,14 @@ internal object LyricsShareCard {
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
         canvas.drawText(BRAND, 150f, 176f, brandPaint)
+    }
 
+    private fun drawHeader(
+        canvas: Canvas,
+        track: Track,
+        cover: Bitmap?,
+        format: LyricsShareFormat
+    ) {
         val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             textSize = 54f
@@ -208,7 +231,15 @@ internal object LyricsShareCard {
             }
             drawCover(canvas, cover, target, if (story) 64f else 42f)
         }
+    }
 
+    private fun drawLyrics(
+        canvas: Canvas,
+        selectedLyrics: String,
+        designHeight: Float,
+        format: LyricsShareFormat
+    ) {
+        val story = format == LyricsShareFormat.STORY
         val rawLines = selectedLyrics.lineSequence()
             .map(String::trim)
             .filter(String::isNotBlank)
@@ -236,14 +267,15 @@ internal object LyricsShareCard {
         canvas.translate(150f, y)
         lyricsLayout.draw(canvas)
         canvas.restore()
+    }
 
+    private fun drawFooter(canvas: Canvas, designHeight: Float) {
         val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.argb(145, 255, 255, 255)
             textSize = 27f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
         }
         canvas.drawText(BRAND, 150f, designHeight - 146f, footerPaint)
-        return bitmap
     }
 
     private fun drawCover(canvas: Canvas, cover: Bitmap, target: RectF, radius: Float) {

@@ -1,38 +1,61 @@
 package com.luc4n3x.levyra.data
 
+internal data class ExtendedRomanizationResult(
+    val text: String,
+    val transformedCount: Int
+)
+
 internal object ExtendedLyricsRomanization {
-    fun romanize(source: String): String = buildString(source.length * 2) {
-        var index = 0
-        while (index < source.length) {
-            val codePoint = source.codePointAt(index)
-            val indic = indicScript(codePoint)
-            if (indic != null) {
-                val result = romanizeIndicSyllable(source, index, indic)
-                append(result.text)
-                index = result.nextIndex
-                continue
-            }
-            append(
-                when (codePoint) {
-                    in 0x0370..0x03FF -> greek[codePoint] ?: codePoint.toChars()
-                    in 0x0400..0x052F -> cyrillic[codePoint] ?: codePoint.toChars()
-                    in 0x0590..0x05FF -> hebrew[codePoint] ?: codePoint.toChars()
-                    in 0x0600..0x06FF, in 0x0750..0x077F, in 0x08A0..0x08FF ->
-                        arabic[codePoint] ?: codePoint.toChars()
-                    in 0x10A0..0x10FF -> georgian[codePoint] ?: codePoint.toChars()
-                    in 0x1C90..0x1CBF -> georgian[codePoint - 0x1C90 + 0x10D0] ?: codePoint.toChars()
-                    else -> codePoint.toChars()
+    fun romanize(source: String): String = transliterate(source).text
+
+    fun transliterate(source: String): ExtendedRomanizationResult {
+        var transformedCount = 0
+        val text = buildString(source.length * 2) {
+            var index = 0
+            while (index < source.length) {
+                val codePoint = source.codePointAt(index)
+                val indic = indicScript(codePoint)
+                if (indic != null) {
+                    val result = romanizeIndicSyllable(source, index, indic)
+                    append(result.text)
+                    if (result.transformed) transformedCount++
+                    index = result.nextIndex
+                    continue
                 }
-            )
-            index += Character.charCount(codePoint)
+                val mapped = when (codePoint) {
+                    in 0x0370..0x03FF -> greek[codePoint]
+                    in 0x0400..0x052F -> cyrillic[codePoint]
+                    in 0x0590..0x05FF -> hebrew[codePoint]
+                    in 0x0600..0x06FF, in 0x0750..0x077F, in 0x08A0..0x08FF -> arabic[codePoint]
+                    in 0x10A0..0x10FF -> georgian[codePoint]
+                    in 0x1C90..0x1CBF -> georgian[codePoint - 0x1C90 + 0x10D0]
+                    else -> null
+                }
+                if (mapped != null) {
+                    append(mapped)
+                    if (mapped.isNotEmpty()) transformedCount++
+                } else {
+                    appendCodePoint(codePoint)
+                }
+                index += Character.charCount(codePoint)
+            }
         }
+        return ExtendedRomanizationResult(text, transformedCount)
     }
 
     private fun romanizeIndicSyllable(source: String, start: Int, script: IndicScript): IndicResult {
         val codePoint = source.codePointAt(start)
-        script.independentVowels[codePoint]?.let { return IndicResult(it, start + Character.charCount(codePoint)) }
-        script.marks[codePoint]?.let { return IndicResult(it, start + Character.charCount(codePoint)) }
-        val base = script.consonants[codePoint] ?: return IndicResult(codePoint.toChars(), start + Character.charCount(codePoint))
+        script.independentVowels[codePoint]?.let {
+            return IndicResult(it, start + Character.charCount(codePoint), transformed = true)
+        }
+        script.marks[codePoint]?.let {
+            return IndicResult(it, start + Character.charCount(codePoint), transformed = true)
+        }
+        val base = script.consonants[codePoint] ?: return IndicResult(
+            codePoint.toChars(),
+            start + Character.charCount(codePoint),
+            transformed = false
+        )
         var index = start + Character.charCount(codePoint)
         var consonant = base
         if (index < source.length && source.codePointAt(index) == script.nukta) {
@@ -42,16 +65,16 @@ internal object ExtendedLyricsRomanization {
         if (index < source.length) {
             val next = source.codePointAt(index)
             if (next == script.virama) {
-                return IndicResult(consonant, index + Character.charCount(next))
+                return IndicResult(consonant, index + Character.charCount(next), transformed = true)
             }
             script.vowelMarks[next]?.let { vowel ->
-                return IndicResult(consonant + vowel, index + Character.charCount(next))
+                return IndicResult(consonant + vowel, index + Character.charCount(next), transformed = true)
             }
         }
         val nextIsBoundary = index >= source.length || source.codePointAt(index).let {
             Character.isWhitespace(it) || isPunctuation(it)
         }
-        return IndicResult(consonant + if (nextIsBoundary) "" else script.inherentVowel, index)
+        return IndicResult(consonant + if (nextIsBoundary) "" else script.inherentVowel, index, transformed = true)
     }
 
     private fun indicScript(codePoint: Int): IndicScript? = when (codePoint) {
@@ -74,7 +97,7 @@ internal object ExtendedLyricsRomanization {
 
     private fun Int.toChars(): String = String(Character.toChars(this))
 
-    private data class IndicResult(val text: String, val nextIndex: Int)
+    private data class IndicResult(val text: String, val nextIndex: Int, val transformed: Boolean = false)
 
     private data class IndicScript(
         val consonants: Map<Int, String>,
@@ -129,7 +152,7 @@ internal object ExtendedLyricsRomanization {
         putAll(mapOf(
             0x0640 to "", 0x064B to "an", 0x064C to "un", 0x064D to "in",
             0x064E to "a", 0x064F to "u", 0x0650 to "i", 0x0651 to "",
-            0x0652 to "", 0x0670 to "a"
+            0x0652 to "", 0x0653 to "", 0x0654 to "", 0x0655 to "", 0x0670 to "a"
         ))
     }
 
@@ -143,7 +166,7 @@ internal object ExtendedLyricsRomanization {
         putAll(mapOf(
             0x05B0 to "e", 0x05B4 to "i", 0x05B5 to "e", 0x05B6 to "e",
             0x05B7 to "a", 0x05B8 to "a", 0x05B9 to "o", 0x05BB to "u",
-            0x05BC to "", 0x05BD to "", 0x05BF to ""
+            0x05BC to "", 0x05BD to "", 0x05BF to "", 0x05C1 to "", 0x05C2 to ""
         ))
     }
 
@@ -174,7 +197,7 @@ internal object ExtendedLyricsRomanization {
         ),
         independentVowels = chars("ਅਆਇਈਉਊਏਐਓਔ", listOf("a", "aa", "i", "ii", "u", "uu", "e", "ai", "o", "au")),
         vowelMarks = chars("ਾਿੀੁੂੇੈੋੌ", listOf("aa", "i", "ii", "u", "uu", "e", "ai", "o", "au")),
-        marks = mapOf(0x0A01 to "n", 0x0A02 to "n", 0x0A03 to "h"),
+        marks = mapOf(0x0A01 to "n", 0x0A02 to "n", 0x0A03 to "h", 0x0A70 to "n", 0x0A71 to ""),
         virama = 0x0A4D,
         nukta = 0x0A3C,
         nuktaConsonants = mapOf(0x0A16 to "kh", 0x0A17 to "gh", 0x0A1C to "z", 0x0A2B to "f", 0x0A32 to "l")

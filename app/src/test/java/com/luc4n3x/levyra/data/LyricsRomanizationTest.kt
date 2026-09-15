@@ -42,4 +42,22 @@ class LyricsRomanizationTest {
         assertTrue(result.startsWith("hello — mir!"))
         assertTrue(result.endsWith("🎵"))
     }
+
+    @Test
+    fun `does not produce romanization for latin text with non-latin punctuation or casing differences`() {
+        assertEquals("", LyricsRomanizer.romanize("Hello، WORLD"))
+        assertEquals("", LyricsRomanizer.romanize("HELLO WORLD"))
+        assertEquals("", LyricsRomanizer.romanize("Hello؛ WORLD"))
+        assertEquals("", LyricsRomanizer.romanize("Hello · WORLD"))
+        assertEquals("", LyricsRomanizer.romanize("Hello־WORLD"))
+        assertEquals("", LyricsRomanizer.romanize("Hello? World!"))
+    }
+
+    @Test
+    fun `handles combining marks niqqud and vocalization properly`() {
+        assertEquals("shalvom", LyricsRomanizer.romanize("שָׁלוֹם"))
+        assertEquals("marhabana", LyricsRomanizer.romanize("مَرْحَبًا"))
+        assertEquals("kiaa", LyricsRomanizer.romanize("ਕਿਆ"))
+        assertEquals("sant", LyricsRomanizer.romanize("ਸੰਤ"))
+    }
 }

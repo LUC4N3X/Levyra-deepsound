@@ -17,22 +17,42 @@ object LyricsRomanizer {
         if (source.isBlank() || !supportedScriptRegex.containsMatchIn(source)) return ""
         if (cjkRegex.containsMatchIn(source)) {
             val icu = romanizeWithIcu(source)
-            if (icu.isNotBlank() && icu != source) return normalize(icu)
+            if (icu.isNotBlank()) {
+                val sourceCjk = countCjk(source)
+                val icuCjk = countCjk(icu)
+                if (icuCjk < sourceCjk) {
+                    val normalized = normalize(icu)
+                    if (normalized.isNotBlank() && normalized != normalize(source)) {
+                        return normalized
+                    }
+                }
+            }
         }
+        var cjkTransformedCount = 0
         val cjkFallback = buildString {
             var index = 0
             while (index < source.length) {
                 val codePoint = source.codePointAt(index)
                 when {
-                    codePoint in 0xAC00..0xD7A3 -> append(romanizeHangul(codePoint))
+                    codePoint in 0xAC00..0xD7A3 -> {
+                        append(romanizeHangul(codePoint))
+                        cjkTransformedCount++
+                    }
                     codePoint in 0x3040..0x30FF -> {
                         val pair = if (index + 1 < source.length) source.substring(index, index + 2) else ""
                         val pairRomanized = kanaPairs[pair]
                         if (pairRomanized != null) {
                             append(pairRomanized)
                             index += 1
+                            cjkTransformedCount++
                         } else {
-                            append(kanaSingles[source[index]] ?: source[index])
+                            val single = kanaSingles[source[index]]
+                            if (single != null) {
+                                append(single)
+                                cjkTransformedCount++
+                            } else {
+                                append(source[index])
+                            }
                         }
                     }
                     else -> appendCodePoint(codePoint)
@@ -40,9 +60,19 @@ object LyricsRomanizer {
                 index += Character.charCount(codePoint)
             }
         }
-        val fallback = ExtendedLyricsRomanization.romanize(cjkFallback)
-        return normalize(fallback).takeIf { it.isNotBlank() && it != source }.orEmpty()
+        val result = ExtendedLyricsRomanization.transliterate(cjkFallback)
+        val totalTransformed = cjkTransformedCount + result.transformedCount
+        if (totalTransformed <= 0) return ""
+
+        val normalized = normalize(result.text)
+        return if (normalized.isNotBlank() && normalized != normalize(source)) normalized else ""
     }
+
+    private fun countCjk(text: String): Int = text.codePoints().filter { codePoint ->
+        codePoint in 0x3040..0x30FF ||
+            codePoint in 0x3400..0x9FFF ||
+            codePoint in 0xAC00..0xD7A3
+    }.count().toInt()
 
     private fun romanizeWithIcu(text: String): String {
         return runCatching {
