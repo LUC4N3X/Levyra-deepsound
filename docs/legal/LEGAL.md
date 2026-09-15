@@ -37,7 +37,19 @@ The authors, maintainers, contributors, and distributors of Levyra do not author
 
 Users are responsible for how they configure and operate the software and for the consequences of their own actions performed through it.
 
-## 5. No Representation of Legality
+## 5. Technical Interoperability and Stream Resolution
+
+Levyra includes client-side compatibility and interoperability mechanisms used to communicate with third-party media services. Depending on the provider and feature, these mechanisms may include stream resolution, request signing or signature processing, token handling, URL transformation, client-profile selection, provider-specific request routing, compatibility fallbacks, and other technical processing required for user-requested playback or related functions.
+
+These mechanisms are implemented for compatibility and interoperability. Their presence does **not** constitute authorization, encouragement, or permission to bypass access controls, evade technological protection measures, defeat geographic restrictions, obtain content or service features without authorization, or violate the terms, licences, policies, access conditions, or rights of any third-party service or rights holder.
+
+Levyra does not grant users any entitlement to third-party content, subscription tiers, geographic availability, bitrate levels, catalogue items, account privileges, paid features, or service functionality that they are not otherwise lawfully entitled or authorized to access.
+
+Users remain solely responsible for ensuring that their use of Levyra — including playback, retrieval, downloading, conversion, export, caching, storage, or use of provider-specific routing — is lawful and authorized. The authors, maintainers, contributors, and distributors of Levyra do not encourage, authorize, or intend the software to be used for copyright infringement, unauthorized access, violation of contractual rights, or unlawful circumvention of technological protection measures.
+
+Third-party services may change, restrict, block, rate-limit, suspend, or discontinue access at any time. Levyra makes no representation or warranty that any particular integration, resolution method, request profile, token mechanism, compatibility technique, bitrate, route, or media source is authorized, supported, or approved by the relevant third-party service or rights holder.
+
+## 6. No Representation of Legality
 
 Laws, licences, contractual terms, exceptions, limitations, and user rights vary by jurisdiction, service, content, and factual circumstances.
 
@@ -45,7 +57,7 @@ Accordingly, Levyra and its authors, maintainers, contributors, and distributors
 
 Nothing in the software or its documentation should be interpreted as legal advice or as an authorization to use third-party content or services in a particular way.
 
-## 6. No Control Over Third-Party Services
+## 7. No Control Over Third-Party Services
 
 Levyra is not responsible for the availability, accuracy, legality, reliability, security, policies, behaviour, content, interfaces, or continued compatibility of any third-party service.
 
@@ -53,7 +65,7 @@ Third-party providers may modify, restrict, suspend, block, discontinue, rate-li
 
 The project does not guarantee that any integration, endpoint, metadata source, stream, API, or other third-party resource will remain available or compatible.
 
-## 7. No Warranty
+## 8. No Warranty
 
 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, LEVYRA IS PROVIDED **"AS IS" AND "AS AVAILABLE"**, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE.
 
@@ -61,7 +73,7 @@ This includes, without limitation, warranties or conditions of merchantability, 
 
 Use of Levyra is at the user's own discretion and risk, subject always to rights and liabilities that cannot lawfully be excluded.
 
-## 8. Limitation of Liability
+## 9. Limitation of Liability
 
 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE AUTHORS, MAINTAINERS, CONTRIBUTORS, COPYRIGHT HOLDERS, AND DISTRIBUTORS OF LEVYRA SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, CONSEQUENTIAL, ECONOMIC, OR SIMILAR LOSS OR DAMAGE ARISING FROM OR RELATING TO THE INSTALLATION, CONFIGURATION, OPERATION, MODIFICATION, USE, MISUSE, INABILITY TO USE, OR DISTRIBUTION OF LEVYRA, OR FROM ACCESS TO OR INTERACTION WITH THIRD-PARTY SERVICES OR CONTENT.
 
@@ -69,13 +81,13 @@ This includes, without limitation, loss or corruption of data, loss of profits o
 
 Nothing in this notice excludes or limits liability to the extent that such liability cannot lawfully be excluded or limited.
 
-## 9. No Transfer of Third-Party Rights
+## 10. No Transfer of Third-Party Rights
 
 Nothing in Levyra, its source code, documentation, distribution, name, functionality, or licence grants any ownership interest, copyright licence, trademark licence, media licence, API entitlement, account entitlement, access entitlement, or other right in any third-party service or material.
 
 Any rights a user may have in relation to third-party content or services arise independently from the relevant rights holder, licence, contract, applicable law, or other valid legal basis — not from Levyra.
 
-## 10. Open-Source Licence
+## 11. Open-Source Licence
 
 Levyra is distributed under the **[GNU General Public License v3.0](../../LICENSE)**.
 
@@ -83,13 +95,13 @@ The GPL governs the copying, modification, and redistribution of Levyra's source
 
 Where this notice and the GPL address different subject matter, the GPL continues to govern Levyra's licensed source code according to its terms.
 
-## 11. Rights Holder Notice
+## 12. Rights Holder Notice
 
 Levyra respects intellectual-property rights. A rights holder who believes that material distributed **as part of the Levyra project itself** infringes their rights may report the concern through the repository's official GitHub issue tracker. Good-faith notices may be reviewed and addressed as appropriate.
 
 This process concerns material distributed by the Levyra project itself. Levyra does not control or host content supplied independently by third-party services.
 
-## 12. Mandatory Law and Severability
+## 13. Mandatory Law and Severability
 
 Nothing in this notice is intended to exclude, restrict, waive, or override any liability, obligation, defence, exception, limitation, consumer protection, or other right that cannot legally be excluded, restricted, waived, or overridden under applicable law.
 
