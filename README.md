@@ -560,17 +560,13 @@ levyraDesktopVersion=1.2.0
 
 <div align="center">
 
-<a href="https://hosted.weblate.org/engage/levyra/">
-  <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg">
-    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra Android translation coverage" width="920">
-  </picture>
-</a>
+### 100% translated on Android
 
-<sub><a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute translations on Weblate →</b></a></sub>
+<sub><b>36 supported languages</b> · complete coverage for all translatable Android strings</sub>
+
+<br><br>
+
+<a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute or review translations on Weblate →</b></a>
 
 </div>
 
