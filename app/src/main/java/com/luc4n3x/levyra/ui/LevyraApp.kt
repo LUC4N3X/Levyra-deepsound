@@ -18400,7 +18400,7 @@ private fun SettingsHubFooter() {
         }
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "Legal & Responsible Use · Lawful use only · Legal Notice",
+            text = "Legal information",
             color = LevyraMuted.copy(alpha = 0.72f),
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
