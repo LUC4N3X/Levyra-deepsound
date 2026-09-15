@@ -570,6 +570,8 @@ levyraDesktopVersion=1.2.0
   </picture>
 </a>
 
+<sub><b>35 localized translations + English · 30/30 Android strings per locale</b></sub>
+<br>
 <sub><a href="https://hosted.weblate.org/engage/levyra/"><b>Help translate Levyra on Weblate →</b></a></sub>
 
 </div>
