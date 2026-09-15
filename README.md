@@ -142,7 +142,6 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 </div>
 
-> [!IMPORTANT]
 > **Levyra implementation & copyright.** The Levyra-specific JioSaavn integration — including its source-resolution flow, identity matching and validation, fallback orchestration, playback integration, and related UI/UX — is an original part of the Levyra project authored and maintained by **LUC4N3X**. The implementation is protected by copyright and distributed under this repository's **[GNU GPL v3.0](LICENSE)**. Copying, modification, and redistribution are permitted **only in compliance with GPL-3.0 and its applicable notice/source obligations**; the public repository grants no separate permission to take this implementation and redistribute it as incompatible closed-source/proprietary code.
 >
 > This notice applies only to Levyra's own implementation. **JioSaavn, its service, trademarks, catalogue, media, metadata, and other third-party property remain the property of their respective owners.** Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected with JioSaavn.
@@ -251,7 +250,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 <div align="center">
   <h3>🎧 <b>Everything in the signal path. Nothing in the way.</b></h3>
-  <p><sub>Playback, discovery, live radio, lyrics, offline ownership, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
+  <p><sub>Playback, discovery, live radio, lyrics, offline portability, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
   <p>
     <code>12 CORE SYSTEMS</code> &nbsp;·&nbsp;
     <code>ANDROID + WINDOWS</code> &nbsp;·&nbsp;
@@ -605,8 +604,7 @@ For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.g
    ```
 4. **Pull Request**: Open a PR with a concise description of changes and test verification evidence.
 
-> [!TIP]
-> **Scope & Guidelines**: Keep pull requests focused on a single concern. For major architectural changes or new feature proposals, please open an [Issue](https://github.com/LUC4N3X/Levyra-deepsound/issues) first to coordinate the implementation approach.
+**Scope & Guidelines:** Keep pull requests focused on a single concern. For major architectural changes or new feature proposals, please open an [Issue](https://github.com/LUC4N3X/Levyra-deepsound/issues) first to coordinate the implementation approach.
 
 ---
 
