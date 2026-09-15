@@ -5,7 +5,7 @@ import java.util.Locale
 object LyricsRomanizer {
     private val cjkRegex = Regex("[\\u3040-\\u30ff\\u3400-\\u9fff\\uac00-\\ud7af]")
     private val supportedScriptRegex = Regex(
-        "[\\u0370-\\u03ff\\u0400-\\u052f\\u0590-\\u05ff\\u0600-\\u06ff" +
+        "[\\u0370-\\u03ff\\u1f00-\\u1fff\\u0400-\\u052f\\u0590-\\u05ff\\u0600-\\u06ff" +
             "\\u0750-\\u077f\\u08a0-\\u08ff\\u0900-\\u097f\\u0980-\\u09ff" +
             "\\u0a00-\\u0a7f\\u10a0-\\u10ff\\u1c90-\\u1cbf\\u3040-\\u30ff\\u3400-\\u9fff" +
             "\\uac00-\\ud7af]"
