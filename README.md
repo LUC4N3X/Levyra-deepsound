@@ -10,7 +10,6 @@
 
 **A native music player, stream extractor, and private offline vault for Android & Windows.**
 
-<p align="center"><sub>🌍 <b>Available in 36 languages.</b> Built for listeners everywhere.</sub></p>
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-mobile-light.svg 126w, docs/assets/levyra-release-light.svg 130w" sizes="(max-width: 480px) 126px, 130px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release-mobile.svg 126w, docs/assets/levyra-release.svg 130w" sizes="(max-width: 480px) 126px, 130px"><img src="docs/assets/levyra-release.svg" srcset="docs/assets/levyra-release-mobile.svg 126w, docs/assets/levyra-release.svg 130w" sizes="(max-width: 480px) 126px, 130px" alt="Latest release"></picture></a>
@@ -33,7 +32,7 @@
 </p>
 
 <p align="center">
-  <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
+  <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>36 Languages</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
 </p>
 
 </div>
