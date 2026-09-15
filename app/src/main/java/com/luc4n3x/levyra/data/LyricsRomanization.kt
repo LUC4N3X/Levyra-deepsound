@@ -15,28 +15,39 @@ object LyricsRomanizer {
     fun romanize(text: String): String {
         val source = text.trim()
         if (source.isBlank() || !supportedScriptRegex.containsMatchIn(source)) return ""
-        if (cjkRegex.containsMatchIn(source)) {
-            val icu = romanizeWithIcu(source)
-            if (icu.isNotBlank()) {
-                val sourceCjk = countCjk(source)
-                val icuCjk = countCjk(icu)
-                if (icuCjk < sourceCjk) {
-                    val normalized = normalize(icu)
-                    if (normalized.isNotBlank() && normalized != normalize(source)) {
-                        return normalized
-                    }
-                }
-            }
-        }
-        var cjkTransformedCount = 0
-        val cjkFallback = buildString {
+
+        val icuResult = transliterateCjkWithIcu(source)
+        if (icuResult != null) return icuResult
+
+        val cjkFallback = transliterateKanaAndHangul(source)
+        val result = ExtendedLyricsRomanization.transliterate(cjkFallback.text)
+        val totalTransformed = cjkFallback.transformedCount + result.transformedCount
+        if (totalTransformed <= 0) return ""
+
+        val normalized = normalize(result.text)
+        return if (normalized.isNotBlank() && normalized != normalize(source)) normalized else ""
+    }
+
+    private data class CjkFallbackResult(val text: String, val transformedCount: Int)
+
+    private fun transliterateCjkWithIcu(source: String): String? {
+        if (!cjkRegex.containsMatchIn(source)) return null
+        val icu = romanizeWithIcu(source)
+        if (icu.isBlank() || countCjk(icu) >= countCjk(source)) return null
+        val normalized = normalize(icu)
+        return if (normalized.isNotBlank() && normalized != normalize(source)) normalized else null
+    }
+
+    private fun transliterateKanaAndHangul(source: String): CjkFallbackResult {
+        var transformedCount = 0
+        val text = buildString(source.length * 2) {
             var index = 0
             while (index < source.length) {
                 val codePoint = source.codePointAt(index)
                 when {
                     codePoint in 0xAC00..0xD7A3 -> {
                         append(romanizeHangul(codePoint))
-                        cjkTransformedCount++
+                        transformedCount++
                     }
                     codePoint in 0x3040..0x30FF -> {
                         val pair = if (index + 1 < source.length) source.substring(index, index + 2) else ""
@@ -44,12 +55,12 @@ object LyricsRomanizer {
                         if (pairRomanized != null) {
                             append(pairRomanized)
                             index += 1
-                            cjkTransformedCount++
+                            transformedCount++
                         } else {
                             val single = kanaSingles[source[index]]
                             if (single != null) {
                                 append(single)
-                                cjkTransformedCount++
+                                transformedCount++
                             } else {
                                 append(source[index])
                             }
@@ -60,12 +71,7 @@ object LyricsRomanizer {
                 index += Character.charCount(codePoint)
             }
         }
-        val result = ExtendedLyricsRomanization.transliterate(cjkFallback)
-        val totalTransformed = cjkTransformedCount + result.transformedCount
-        if (totalTransformed <= 0) return ""
-
-        val normalized = normalize(result.text)
-        return if (normalized.isNotBlank() && normalized != normalize(source)) normalized else ""
+        return CjkFallbackResult(text, transformedCount)
     }
 
     private fun countCjk(text: String): Int = text.codePoints().filter { codePoint ->
