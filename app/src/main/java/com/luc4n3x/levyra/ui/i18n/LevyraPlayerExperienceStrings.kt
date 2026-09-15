@@ -49,6 +49,6 @@ private val playerExperienceBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun playerExperienceLocalizationEntries(code: String): Map<String, String> =
-    playerExperienceBundles.getValue(code)
+    localizedBundleOrEnglish(playerExperienceBundles, code)
 
-internal fun playerExperienceLocalizationCodes(): Set<String> = playerExperienceBundles.keys
+internal fun playerExperienceLocalizationCodes(): Set<String> = supportedLocalizationCodes()

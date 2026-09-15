@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Miniprehrávač, rýchle obľúbené, denný mix, offline mix a texty skladieb</string>
+    <string name="widget_idle_subtitle">Klepnutím spustíte počúvanie</string>
+    <string name="widget_toggle">Prehrať/Pozastaviť</string>
+    <string name="widget_next">Ďalšia</string>
+    <string name="widget_previous">Predchádzajúca</string>
+    <string name="widget_favorites">Obľúbené</string>
+    <string name="widget_flow">Denný mix</string>
+    <string name="widget_offline">Offline mix</string>
+    <string name="widget_lyrics">Texty skladieb</string>
+    <string name="radar_channel_name">Radar noviniek</string>
+    <string name="radar_channel_description">Nové vydania od interpretov, ktorých sledujete</string>
+    <string name="radar_new_release_title">Novinka od %1$s</string>
+    <string name="automatic_backups">Automatické zálohy</string>
+    <string name="car_home">Domov</string>
+    <string name="car_downloads">Stiahnuté</string>
+    <string name="car_favorites">Obľúbené</string>
+    <string name="car_playlists">Playlisty</string>
+    <string name="car_no_content">Žiadny obsah</string>
+    <string name="car_content_unavailable">Obsah nie je dostupný</string>
+    <string name="car_search_tracks">Hľadať skladby</string>
+    <string name="car_no_results">Žiadne výsledky</string>
+    <string name="car_connecting_player">Pripájanie k prehrávaču</string>
+    <string name="car_now_playing">Práve hrá</string>
+    <string name="car_queue">Poradie</string>
+    <string name="notification_shuffle">Náhodné prehrávanie</string>
+    <string name="notification_favorite">Obľúbené</string>
+    <string name="tile_recognize_music">Rozpoznať hudbu</string>
+    <string name="shortcut_search">Hľadať</string>
+    <string name="shortcut_library">Knižnica</string>
+    <string name="shortcut_recognition">Rozpoznať hudbu</string>
+</resources>

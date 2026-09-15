@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Mini lejátszó, gyors kedvencek, napi válogatás, offline mix és dalszövegek</string>
+    <string name="widget_idle_subtitle">Koppints a hallgatáshoz</string>
+    <string name="widget_toggle">Lejátszás/Szünet</string>
+    <string name="widget_next">Következő</string>
+    <string name="widget_previous">Előző</string>
+    <string name="widget_favorites">Kedvencek</string>
+    <string name="widget_flow">Napi válogatás</string>
+    <string name="widget_offline">Offline mix</string>
+    <string name="widget_lyrics">Dalszöveg</string>
+    <string name="radar_channel_name">Zeneradar</string>
+    <string name="radar_channel_description">Új megjelenések az általad követett előadóktól</string>
+    <string name="radar_new_release_title">Új megjelenés %1$s előadótól</string>
+    <string name="automatic_backups">Automatikus biztonsági mentések</string>
+    <string name="car_home">Kezdőlap</string>
+    <string name="car_downloads">Letöltések</string>
+    <string name="car_favorites">Kedvencek</string>
+    <string name="car_playlists">Lejátszási listák</string>
+    <string name="car_no_content">Nincs tartalom</string>
+    <string name="car_content_unavailable">A tartalom nem érhető el</string>
+    <string name="car_search_tracks">Zeneszámok keresése</string>
+    <string name="car_no_results">Nincs találat</string>
+    <string name="car_connecting_player">Csatlakozás a lejátszóhoz</string>
+    <string name="car_now_playing">Most szól</string>
+    <string name="car_queue">Lejátszási sor</string>
+    <string name="notification_shuffle">Véletlenszerű lejátszás</string>
+    <string name="notification_favorite">Kedvenc</string>
+    <string name="tile_recognize_music">Zene felismerése</string>
+    <string name="shortcut_search">Keresés</string>
+    <string name="shortcut_library">Könyvtár</string>
+    <string name="shortcut_recognition">Zene felismerése</string>
+</resources>
