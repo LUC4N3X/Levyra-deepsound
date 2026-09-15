@@ -559,16 +559,10 @@ levyraDesktopVersion=1.2.0
 ## ✦ Translations
 
 <div align="center">
-
-Translations are managed on <a href="https://hosted.weblate.org/engage/levyra/">Weblate</a> — no local setup needed, contribute directly from your browser.
-
-<br><br>
-
+<sub>Translations are managed on <a href="https://hosted.weblate.org/engage/levyra/">Weblate</a> — no local setup needed, contribute directly from your browser.</sub><br>
 <b>36 supported languages</b> &nbsp;·&nbsp; <b>100% Android coverage</b>
 
-<br><br>
-
-<table align="center" width="88%">
+<table align="center" width="90%">
   <thead>
     <tr>
       <th align="left">Language</th>
@@ -579,120 +573,117 @@ Translations are managed on <a href="https://hosted.weblate.org/engage/levyra/">
   </thead>
   <tbody>
   <tr>
-    <td width="23%"><b>English</b> <sub>EN</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Norsk bokmål</b> <sub>NB</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>English</b> <sub>EN</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Norsk bokmål</b> <sub>NB</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Italiano</b> <sub>IT</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Català</b> <sub>CA</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Italiano</b> <sub>IT</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Català</b> <sub>CA</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Español</b> <sub>ES</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Українська</b> <sub>UK</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Español</b> <sub>ES</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Українська</b> <sub>UK</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Français</b> <sub>FR</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Русский</b> <sub>RU</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Français</b> <sub>FR</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Русский</b> <sub>RU</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Deutsch</b> <sub>DE</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Türkçe</b> <sub>TR</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Deutsch</b> <sub>DE</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Türkçe</b> <sub>TR</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Português</b> <sub>PT</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>العربية</b> <sub>AR</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Português</b> <sub>PT</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>العربية</b> <sub>AR</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Nederlands</b> <sub>NL</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>فارسی</b> <sub>FA</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Nederlands</b> <sub>NL</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>فارسی</b> <sub>FA</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Polski</b> <sub>PL</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>简体中文</b> <sub>ZH</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Polski</b> <sub>PL</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>简体中文</b> <sub>ZH</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Română</b> <sub>RO</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>繁體中文</b> <sub>ZH-TW</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Română</b> <sub>RO</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>繁體中文</b> <sub>ZH-TW</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Ελληνικά</b> <sub>EL</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>日本語</b> <sub>JA</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Ελληνικά</b> <sub>EL</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>日本語</b> <sub>JA</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Svenska</b> <sub>SV</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>한국어</b> <sub>KO</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Svenska</b> <sub>SV</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>한국어</b> <sub>KO</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Dansk</b> <sub>DA</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>हिन्दी</b> <sub>HI</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Dansk</b> <sub>DA</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>हिन्दी</b> <sub>HI</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Čeština</b> <sub>CS</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Bahasa Indonesia</b> <sub>ID</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Čeština</b> <sub>CS</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Bahasa Indonesia</b> <sub>ID</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Slovenčina</b> <sub>SK</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Bahasa Melayu</b> <sub>MS</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Slovenčina</b> <sub>SK</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Bahasa Melayu</b> <sub>MS</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Hrvatski</b> <sub>HR</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Tiếng Việt</b> <sub>VI</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Hrvatski</b> <sub>HR</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Tiếng Việt</b> <sub>VI</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Български</b> <sub>BG</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>ไทย</b> <sub>TH</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Български</b> <sub>BG</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>ไทย</b> <sub>TH</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Magyar</b> <sub>HU</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>Filipino</b> <sub>FIL</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Magyar</b> <sub>HU</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>Filipino</b> <sub>FIL</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   <tr>
-    <td width="23%"><b>Suomi</b> <sub>FI</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
-    <td width="23%"><b>עברית</b> <sub>HE</sub></td>
-    <td width="27%" align="center"><sub>━━━━━━━━━━</sub> <b>100%</b></td>
+    <td><b>Suomi</b> <sub>FI</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
+    <td><b>עברית</b> <sub>HE</sub></td>
+    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
   </tr>
   </tbody>
 </table>
 
-<br>
-
 <a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute or review translations on Weblate →</b></a>
-
 </div>
 
 ---
