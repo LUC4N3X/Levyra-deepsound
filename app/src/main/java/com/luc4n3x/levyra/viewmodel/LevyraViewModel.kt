@@ -27,6 +27,7 @@ import com.luc4n3x.levyra.data.PlaylistCoverCrop
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.LyricsLatencyProfiles
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.HomeInteractionGate
@@ -1113,6 +1114,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         viewModelScope.launch {
             searchEngine.state.collect(::applySearchSnapshot)
+        }
+        viewModelScope.launch {
+            preferences.lyricsLatencyProfilesFlow.collect { profiles ->
+                _state.update { state -> state.copy(lyricsLatencyProfiles = profiles) }
+            }
         }
         com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
             startupSettings.interfaceSettings.motionArtworkWifiOnly
@@ -5127,6 +5133,34 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.value.currentTrack?.let { track ->
             fetchLyrics(track)
             prefetchLyricsAround(track)
+        }
+    }
+
+    fun saveLyricsLatencyOffset(routeKey: String?, bluetooth: Boolean, offsetMs: Long) {
+        var updatedProfile: LyricsLatencyProfiles? = null
+        _state.update { current ->
+            val updated = if (bluetooth && !routeKey.isNullOrBlank()) {
+                current.lyricsLatencyProfiles.withDeviceOffset(routeKey, offsetMs)
+            } else {
+                current.lyricsLatencyProfiles.withGlobalOffset(offsetMs)
+            }
+            updatedProfile = updated
+            current.copy(lyricsLatencyProfiles = updated)
+        }
+        updatedProfile?.let { profile ->
+            viewModelScope.launch { preferences.setLyricsLatencyProfiles(profile) }
+        }
+    }
+
+    fun clearLyricsLatencyOffset(routeKey: String) {
+        var updatedProfile: LyricsLatencyProfiles? = null
+        _state.update { current ->
+            val updated = current.lyricsLatencyProfiles.withoutDevice(routeKey)
+            updatedProfile = updated
+            current.copy(lyricsLatencyProfiles = updated)
+        }
+        updatedProfile?.let { profile ->
+            viewModelScope.launch { preferences.setLyricsLatencyProfiles(profile) }
         }
     }
 

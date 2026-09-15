@@ -83,7 +83,8 @@ data class LevyraPreferencesSnapshot(
     val backupSettings: LevyraBackupSettings,
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
     val jamDisplayName: String = "",
-    val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320
+    val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
+    val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles()
 )
 
 @Volatile
@@ -130,6 +131,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = snapshot.highQualityAudioMode.storageValue
             mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
+            mutable[KEY_LYRICS_LATENCY_PROFILES] = snapshot.lyricsLatencyProfiles.encode()
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
             mutable[KEY_JAM_DISPLAY_NAME] = normalizeJamDisplayName(snapshot.jamDisplayName)
             writeAutomationSettings(mutable, snapshot.automationSettings.normalized())
@@ -593,7 +595,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             backupSettings = backupSettingsFrom(preferences),
             automationSettings = automationSettingsFrom(preferences),
             jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty(),
-            highQualityAudioMode = HighQualityAudioMode.fromStorage(preferences[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO])
+            highQualityAudioMode = HighQualityAudioMode.fromStorage(preferences[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO]),
+            lyricsLatencyProfiles = LyricsLatencyProfiles.decode(preferences[KEY_LYRICS_LATENCY_PROFILES].orEmpty())
         )
     }
 
@@ -784,6 +787,20 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         .map { preferences -> automationSettingsFrom(preferences) }
         .distinctUntilChanged()
 
+    val lyricsLatencyProfilesFlow: kotlinx.coroutines.flow.Flow<LyricsLatencyProfiles> = store.preferences
+        .map { preferences -> LyricsLatencyProfiles.decode(preferences[KEY_LYRICS_LATENCY_PROFILES].orEmpty()) }
+        .distinctUntilChanged()
+
+    suspend fun setLyricsLatencyProfiles(value: LyricsLatencyProfiles) {
+        try {
+            store.commit { it[KEY_LYRICS_LATENCY_PROFILES] = value.encode() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore lyrics latency profile write failed")
+        }
+    }
+
     suspend fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
         try {
@@ -875,6 +892,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
         val KEY_LYRICS_TRANSLATION = booleanPreferencesKey("lyrics_translation_enabled")
+        val KEY_LYRICS_LATENCY_PROFILES = stringPreferencesKey("lyrics_latency_profiles")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
         val KEY_AUDIO_EQ_ENABLED = booleanPreferencesKey("audio_equalizer_enabled")
         val KEY_AUDIO_EQ_PRESET = stringPreferencesKey("audio_equalizer_preset")
