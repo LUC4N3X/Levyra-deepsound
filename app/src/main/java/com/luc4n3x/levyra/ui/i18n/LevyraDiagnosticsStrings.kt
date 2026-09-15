@@ -240,6 +240,6 @@ private val diagnosticsBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun diagnosticsLocalizationEntries(code: String): Map<String, String> =
-    (diagnosticsBundles[code] ?: diagnosticsBundles.getValue("en"))
+    localizedBundleOrEnglish(diagnosticsBundles, code)
 
 internal fun diagnosticsLocalizationCodes(): Set<String> = supportedLocalizationCodes()

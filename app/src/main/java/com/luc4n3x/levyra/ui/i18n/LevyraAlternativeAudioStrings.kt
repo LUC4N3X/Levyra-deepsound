@@ -200,7 +200,7 @@ private val alternativeAudioBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun alternativeAudioLocalizationEntries(code: String): Map<String, String> =
-    (alternativeAudioBundles[code] ?: alternativeAudioBundles.getValue("en"))
+    localizedBundleOrEnglish(alternativeAudioBundles, code)
 
 internal fun alternativeAudioLocalizationCodes(): Set<String> = supportedLocalizationCodes()
 

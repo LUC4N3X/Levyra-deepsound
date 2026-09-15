@@ -47,6 +47,6 @@ private val integrationBundles: Map<String, Map<String, String>> = mapOf(
     "he" to integrationStrings("שילובים", "מפתח API", "סוד משותף", "אסימון", "לאחר האישור בדפדפן, חזור לכאן והשלם את החיבור.", "כתוביות כבויות", "כתוביות")
 )
 
-internal fun integrationLocalizationEntries(code: String): Map<String, String> = (integrationBundles[code] ?: integrationBundles.getValue("en"))
+internal fun integrationLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(integrationBundles, code)
 
 internal fun integrationLocalizationCodes(): Set<String> = supportedLocalizationCodes()
