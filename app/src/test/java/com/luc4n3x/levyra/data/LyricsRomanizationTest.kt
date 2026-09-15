@@ -60,4 +60,18 @@ class LyricsRomanizationTest {
         assertEquals("kiaa", LyricsRomanizer.romanize("ਕਿਆ"))
         assertEquals("sant", LyricsRomanizer.romanize("ਸੰਤ"))
     }
+
+    @Test
+    fun `nfd and nfc inputs produce identical romanization results`() {
+        val nfcGreek = "Καλημέρα κόσμε"
+        val nfdGreek = java.text.Normalizer.normalize(nfcGreek, java.text.Normalizer.Form.NFD)
+        org.junit.Assert.assertNotEquals(nfcGreek, nfdGreek)
+        assertEquals("kalimera kosme", LyricsRomanizer.romanize(nfcGreek))
+        assertEquals(LyricsRomanizer.romanize(nfcGreek), LyricsRomanizer.romanize(nfdGreek))
+
+        val directNfc = ExtendedLyricsRomanization.transliterate(nfcGreek)
+        val directNfd = ExtendedLyricsRomanization.transliterate(nfdGreek)
+        assertEquals(directNfc.text, directNfd.text)
+        assertEquals(directNfc.transformedCount, directNfd.transformedCount)
+    }
 }

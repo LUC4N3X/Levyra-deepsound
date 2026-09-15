@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data
 
+import java.text.Normalizer
+
 internal data class ExtendedRomanizationResult(
     val text: String,
     val transformedCount: Int
@@ -9,14 +11,15 @@ internal object ExtendedLyricsRomanization {
     fun romanize(source: String): String = transliterate(source).text
 
     fun transliterate(source: String): ExtendedRomanizationResult {
+        val normalizedSource = Normalizer.normalize(source, Normalizer.Form.NFC)
         var transformedCount = 0
-        val text = buildString(source.length * 2) {
+        val text = buildString(normalizedSource.length * 2) {
             var index = 0
-            while (index < source.length) {
-                val codePoint = source.codePointAt(index)
+            while (index < normalizedSource.length) {
+                val codePoint = normalizedSource.codePointAt(index)
                 val indic = indicScript(codePoint)
                 if (indic != null) {
-                    val result = romanizeIndicSyllable(source, index, indic)
+                    val result = romanizeIndicSyllable(normalizedSource, index, indic)
                     append(result.text)
                     if (result.transformed) transformedCount++
                     index = result.nextIndex

@@ -33,22 +33,10 @@ class LyricsAudioOutputRouteTest {
     }
 
     @Test
-    fun `stable route keys fall back deterministically to product name on api 26-27 when address is blank`() {
-        val key1 = stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, "", "Sony WH-1000XM4")
-        val key2 = stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, null, "Sony WH-1000XM4")
-
-        assertEquals(key1, key2)
-        org.junit.Assert.assertNotNull(key1)
-        assertFalse(key1.orEmpty().contains("Sony"))
-        org.junit.Assert.assertTrue(key1.orEmpty().startsWith("audio-name-"))
-    }
-
-    @Test
-    fun `stable route keys reject generic or blank device names`() {
-        assertEquals(null, stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, "", "Bluetooth"))
-        assertEquals(null, stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, null, "Bluetooth Audio"))
-        assertEquals(null, stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, null, "   "))
-        assertEquals(null, stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, null, null))
+    fun `stable route keys return null when reliable address is unavailable`() {
+        assertEquals(null, stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, null))
+        assertEquals(null, stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, ""))
+        assertEquals(null, stableLyricsAudioRouteKey(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, "   "))
     }
 
     @Test

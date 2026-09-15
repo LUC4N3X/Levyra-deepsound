@@ -44,51 +44,15 @@ internal fun selectLyricsAudioOutputRoute(
 
 internal fun stableLyricsAudioRouteKey(
     type: Int,
-    address: String?,
-    productName: String? = null
+    address: String?
 ): String? {
-    val cleanAddress = address?.trim()?.takeIf(String::isNotBlank)
-    if (cleanAddress != null) {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest("$type:$cleanAddress".toByteArray(Charsets.UTF_8))
-            .take(12)
-            .joinToString("") { byte -> "%02x".format(Locale.ROOT, byte.toInt() and 0xff) }
-        return "audio-$type-$digest"
-    }
-    val cleanName = productName?.trim()?.takeIf { name ->
-        name.isNotBlank() && !isGenericAudioDeviceName(name)
-    } ?: return null
-
+    val cleanAddress = address?.trim()?.takeIf(String::isNotBlank) ?: return null
     val digest = MessageDigest.getInstance("SHA-256")
-        .digest("$type:name:$cleanName".toByteArray(Charsets.UTF_8))
+        .digest("$type:$cleanAddress".toByteArray(Charsets.UTF_8))
         .take(12)
         .joinToString("") { byte -> "%02x".format(Locale.ROOT, byte.toInt() and 0xff) }
-    return "audio-name-$type-$digest"
+    return "audio-$type-$digest"
 }
-
-internal fun isGenericAudioDeviceName(name: String): Boolean {
-    val normalized = name.trim().lowercase(Locale.ROOT)
-    return normalized in genericAudioNames || genericAudioPrefixes.any { normalized.startsWith(it) }
-}
-
-private val genericAudioNames = setOf(
-    "bluetooth",
-    "bluetooth audio",
-    "bluetooth device",
-    "audio",
-    "speaker",
-    "phone speaker",
-    "built-in speaker",
-    "headphones",
-    "headset",
-    "wired headphones",
-    "wired headset"
-)
-
-private val genericAudioPrefixes = setOf(
-    "unknown",
-    "unnamed"
-)
 
 @Composable
 fun rememberLyricsAudioOutputRoute(): LyricsAudioOutputRoute? {
@@ -212,7 +176,7 @@ private fun toLyricsAudioOutputRoute(device: AudioDeviceInfo): LyricsAudioOutput
         ""
     }
     return LyricsAudioOutputRoute(
-        stableKey = stableLyricsAudioRouteKey(device.type, address, name),
+        stableKey = stableLyricsAudioRouteKey(device.type, address),
         displayName = name.ifBlank { "Audio" },
         type = device.type,
         bluetooth = device.type in bluetoothOutputTypes

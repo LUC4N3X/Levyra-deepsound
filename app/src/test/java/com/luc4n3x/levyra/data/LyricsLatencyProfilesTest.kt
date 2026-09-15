@@ -37,4 +37,37 @@ class LyricsLatencyProfilesTest {
         assertFalse(restored.deviceOffsetsMs.containsKey("device-0"))
         assertEquals(-MAX_LYRICS_OFFSET_MS, restored.deviceOffsetsMs["device-39"])
     }
+
+    @Test
+    fun `rapid consecutive updates to different devices preserve all entries`() {
+        val initial = LyricsLatencyProfiles(globalOffsetMs = 50L)
+        val update1 = initial.withDeviceOffset("buds", 150L)
+        val update2 = update1.withDeviceOffset("car", 300L)
+
+        assertEquals(150L, update2.resolve("buds", bluetooth = true))
+        assertEquals(300L, update2.resolve("car", bluetooth = true))
+        assertEquals(50L, update2.resolve("other", bluetooth = true))
+        assertEquals(2, update2.deviceOffsetsMs.size)
+    }
+
+    @Test
+    fun `atomic update sequence preserves both device offset and global offset changes`() {
+        var state = LyricsLatencyProfiles(globalOffsetMs = 0L)
+        fun save(routeKey: String?, bluetooth: Boolean, offsetMs: Long) {
+            state = if (bluetooth && !routeKey.isNullOrBlank()) {
+                state.withDeviceOffset(routeKey, offsetMs)
+            } else {
+                state.withGlobalOffset(offsetMs)
+            }
+        }
+
+        save("buds", true, 120L)
+        save("car", true, 250L)
+        save(null, false, 80L)
+
+        assertEquals(80L, state.globalOffsetMs)
+        assertEquals(120L, state.resolve("buds", bluetooth = true))
+        assertEquals(250L, state.resolve("car", bluetooth = true))
+        assertEquals(80L, state.resolve("unknown", bluetooth = true))
+    }
 }

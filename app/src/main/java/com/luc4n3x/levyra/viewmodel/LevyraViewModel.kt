@@ -5136,18 +5136,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun saveLyricsLatencyOffset(routeKey: String?, bluetooth: Boolean, offsetMs: Long) {
-        val current = _state.value.lyricsLatencyProfiles
-        val updated = if (bluetooth && !routeKey.isNullOrBlank()) {
-            current.withDeviceOffset(routeKey, offsetMs)
-        } else {
-            current.withGlobalOffset(offsetMs)
+        var updatedProfile: LyricsLatencyProfiles? = null
+        _state.update { current ->
+            val updated = if (bluetooth && !routeKey.isNullOrBlank()) {
+                current.lyricsLatencyProfiles.withDeviceOffset(routeKey, offsetMs)
+            } else {
+                current.lyricsLatencyProfiles.withGlobalOffset(offsetMs)
+            }
+            updatedProfile = updated
+            current.copy(lyricsLatencyProfiles = updated)
         }
-        viewModelScope.launch { preferences.setLyricsLatencyProfiles(updated) }
+        updatedProfile?.let { profile ->
+            viewModelScope.launch { preferences.setLyricsLatencyProfiles(profile) }
+        }
     }
 
     fun clearLyricsLatencyOffset(routeKey: String) {
-        val updated = _state.value.lyricsLatencyProfiles.withoutDevice(routeKey)
-        viewModelScope.launch { preferences.setLyricsLatencyProfiles(updated) }
+        var updatedProfile: LyricsLatencyProfiles? = null
+        _state.update { current ->
+            val updated = current.lyricsLatencyProfiles.withoutDevice(routeKey)
+            updatedProfile = updated
+            current.copy(lyricsLatencyProfiles = updated)
+        }
+        updatedProfile?.let { profile ->
+            viewModelScope.launch { preferences.setLyricsLatencyProfiles(profile) }
+        }
     }
 
     fun selectChart(regionId: String) {
