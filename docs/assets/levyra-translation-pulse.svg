@@ -7,464 +7,314 @@
     </linearGradient>
   </defs>
 
-  <!-- Container Box -->
   <rect x="0.75" y="0.75" width="918.5" height="570.5" rx="12" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
-
-  <!-- Top Decorative Gradient Glow -->
   <path d="M 1 12 A 11 11 0 0 1 12 1 L 908 1 A 11 11 0 0 1 919 12 L 919 3 L 1 3 Z" fill="url(#g-accent)" opacity="0.85"/>
 
-  <!-- Header Section -->
   <g transform="translate(22, 28)">
-    <!-- Icon / Pill -->
     <rect x="0" y="0" width="124" height="24" rx="12" fill="#2DD4BF" opacity="0.12"/>
     <circle cx="10" cy="12" r="3.5" fill="#2DD4BF"/>
     <text x="22" y="15.5" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="700" letter-spacing=".6">TRANSLATIONS</text>
 
-    <!-- Title & Subtitle -->
     <text x="136" y="16" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="17" font-weight="700">Native Multilingual Experience</text>
-    <text x="0" y="46" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12"><b>36 supported languages</b> &nbsp;·&nbsp; 100% Android string coverage &nbsp;·&nbsp; Zero local setup needed</text>
+    <text x="0" y="46" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12">
+      <tspan font-weight="700">36 supported languages</tspan> · 100% Android string coverage · Zero local setup needed
+    </text>
   </g>
 
-  <!-- Language Grid -->
   <g>
   <g transform="translate(22.0, 104.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">English</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">EN</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 104.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Italiano</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">IT</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 104.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Español</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">ES</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 104.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Français</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">FR</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(22.0, 152.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Deutsch</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">DE</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 152.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Português</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">PT</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 152.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Nederlands</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">NL</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 152.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Polski</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">PL</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(22.0, 200.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Română</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">RO</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 200.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Ελληνικά</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">EL</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 200.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Svenska</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">SV</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 200.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Dansk</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">DA</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(22.0, 248.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Čeština</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">CS</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 248.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Slovenčina</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">SK</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 248.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Hrvatski</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">HR</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 248.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Български</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">BG</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(22.0, 296.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Magyar</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">HU</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 296.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Suomi</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">FI</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 296.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Norsk bokmål</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">NB</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 296.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Català</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">CA</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(22.0, 344.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Українська</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">UK</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 344.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Русский</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">RU</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 344.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Türkçe</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">TR</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 344.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">العربية</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">AR</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(22.0, 392.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">فارسی</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">FA</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 392.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">简体中文</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">ZH</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 392.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">繁體中文</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">ZH-TW</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 392.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">日本語</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">JA</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(22.0, 440.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">한국어</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">KO</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 440.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">हिन्दी</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">HI</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 440.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="600">Bahasa Indonesia</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">ID</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 440.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Bahasa Melayu</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">MS</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(22.0, 488.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Tiếng Việt</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">VI</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(244.0, 488.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">ไทย</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">TH</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(466.0, 488.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">Filipino</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">FIL</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   <g transform="translate(688.0, 488.0)">
     <rect width="210.0" height="38" rx="7" fill="#161B22" stroke="#21262D" stroke-width="1"/>
-    <!-- Status dot / check -->
     <circle cx="14" cy="19.0" r="3" fill="#2DD4BF"/>
-    <!-- Language Name -->
     <text x="25" y="23.0" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="12" font-weight="600">עברית</text>
-    <!-- Locale Tag Pill -->
     <rect x="162.0" y="10.0" width="24" height="18" rx="4" fill="#21262D"/>
     <text x="174.0" y="22.5" text-anchor="middle" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">HE</text>
-    <!-- Progress % -->
     <text x="203.0" y="22.5" text-anchor="end" fill="#2DD4BF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">100%</text>
   </g>
   </g>
 
-  <!-- Footer Section -->
   <g transform="translate(460, 554.0)">
     <text text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11">
-      Community-powered localization via Weblate &nbsp;·&nbsp; <tspan fill="#2DD4BF" font-weight="600">Contribute or review in your browser →</tspan>
+      Community-powered localization via Weblate · <tspan fill="#2DD4BF" font-weight="600">Contribute or review in your browser →</tspan>
     </text>
   </g>
 </svg>

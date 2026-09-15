@@ -139,107 +139,103 @@ const collectRepositoryCoverage = async () => {
   }
 }
 
-const makePulse = ({ languages, globalPercent, stringCount, isDark, mobile }) => {
+const getCardColor = (percent, isDark) => {
+  if (percent >= 99.5) return isDark ? '#2DD4BF' : '#0F766E'
+  return isDark ? '#E3B341' : '#9A6700'
+}
+
+const makeLanguageCard = ({ lang, idx, cols, padX, cardGapX, cardGapY, cardW, cardH, cardsStartY, theme }) => {
+  const r = Math.floor(idx / cols)
+  const c = idx % cols
+  const x = padX + c * (cardW + cardGapX)
+  const y = cardsStartY + r * (cardH + cardGapY)
+  const checkColor = getCardColor(lang.percent, theme.isDark)
+  const percentStr = `${Math.round(lang.percent)}%`
+  const nameFontSize = lang.name.length > 15 ? 11 : 12
+
+  return `  <g transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})">
+    <rect width="${cardW.toFixed(1)}" height="${cardH}" rx="7" fill="${theme.itemBg}" stroke="${theme.itemBorder}" stroke-width="1"/>
+    <circle cx="14" cy="${(cardH / 2).toFixed(1)}" r="3" fill="${checkColor}"/>
+    <text x="25" y="${(cardH / 2 + 4).toFixed(1)}" fill="${theme.textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${nameFontSize}" font-weight="600">${escapeXml(lang.name)}</text>
+    <rect x="${(cardW - 48).toFixed(1)}" y="${(cardH / 2 - 9).toFixed(1)}" width="24" height="18" rx="4" fill="${theme.badgeBg}"/>
+    <text x="${(cardW - 36).toFixed(1)}" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="middle" fill="${theme.badgeText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">${escapeXml(lang.tag)}</text>
+    <text x="${(cardW - 7).toFixed(1)}" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="end" fill="${checkColor}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">${percentStr}</text>
+  </g>`
+}
+
+const getTheme = isDark => ({
+  isDark,
+  bg: isDark ? '#0D1117' : '#FFFFFF',
+  border: isDark ? '#30363D' : '#D0D7DE',
+  itemBg: isDark ? '#161B22' : '#F6F8FA',
+  itemBorder: isDark ? '#21262D' : '#EAECEF',
+  textTitle: isDark ? '#F0F6FC' : '#1F2328',
+  textSub: isDark ? '#8B949E' : '#57606A',
+  badgeBg: isDark ? '#21262D' : '#E7EBF0',
+  badgeText: isDark ? '#C9D1D9' : '#424A53',
+  teal: isDark ? '#2DD4BF' : '#0F766E',
+  purple: isDark ? '#A855F7' : '#7C3AED'
+})
+
+const getLayout = (mobile, languageCount) => {
   const width = mobile ? 680 : 920
   const cols = mobile ? 3 : 4
-  const rows = Math.ceil(languages.length / cols)
-
+  const rows = Math.ceil(languageCount / cols)
   const padX = mobile ? 18 : 22
   const cardGapX = mobile ? 10 : 12
   const cardGapY = mobile ? 8 : 10
-  const totalGapsX = (cols - 1) * cardGapX
-  const cardW = (width - (padX * 2) - totalGapsX) / cols
+  const cardW = (width - (padX * 2) - ((cols - 1) * cardGapX)) / cols
   const cardH = mobile ? 36 : 38
-
   const headerH = mobile ? 84 : 92
   const cardsStartY = headerH + 12
   const totalCardsH = rows * cardH + (rows - 1) * cardGapY
   const footerH = mobile ? 42 : 46
   const height = cardsStartY + totalCardsH + footerH
 
-  // Palette tuned to match GitHub Dark / Light and Levyra's neon indigo-teal brand
-  const bg = isDark ? '#0D1117' : '#FFFFFF'
-  const border = isDark ? '#30363D' : '#D0D7DE'
-  const itemBg = isDark ? '#161B22' : '#F6F8FA'
-  const itemBorder = isDark ? '#21262D' : '#EAECEF'
-  const textTitle = isDark ? '#F0F6FC' : '#1F2328'
-  const textSub = isDark ? '#8B949E' : '#57606A'
-  const badgeBg = isDark ? '#21262D' : '#E7EBF0'
-  const badgeText = isDark ? '#C9D1D9' : '#424A53'
+  return { width, cols, padX, cardGapX, cardGapY, cardW, cardH, cardsStartY, height }
+}
 
-  // Accent colors
-  const teal = isDark ? '#2DD4BF' : '#0F766E'
-  const purple = isDark ? '#A855F7' : '#7C3AED'
-  const green = isDark ? '#3FB950' : '#1A7F37'
-
+const makePulse = ({ languages, globalPercent, isDark, mobile }) => {
+  const theme = getTheme(isDark)
+  const layout = getLayout(mobile, languages.length)
   const roundedPercent = Math.round(globalPercent)
   const languageCount = languages.length
   const aria = `Levyra translations: ${roundedPercent}% coverage across ${languageCount} supported languages`
 
-  // Render language cards
-  const languageCards = languages.map((lang, idx) => {
-    const r = Math.floor(idx / cols)
-    const c = idx % cols
-    const x = padX + c * (cardW + cardGapX)
-    const y = cardsStartY + r * (cardH + cardGapY)
+  const cardsSvg = languages
+    .map((lang, idx) => makeLanguageCard({ lang, idx, theme, ...layout }))
+    .join('\n')
 
-    const isComplete = lang.percent >= 99.5
-    const checkColor = isComplete ? (isDark ? '#2DD4BF' : '#0F766E') : (isDark ? '#E3B341' : '#9A6700')
-    const percentStr = `${Math.round(lang.percent)}%`
-
-    // Native Name font sizing: adjust if long
-    const nameFontSize = lang.name.length > 15 ? 11 : 12
-
-    return `  <g transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})">
-    <rect width="${cardW.toFixed(1)}" height="${cardH}" rx="7" fill="${itemBg}" stroke="${itemBorder}" stroke-width="1"/>
-    <!-- Status dot / check -->
-    <circle cx="14" cy="${(cardH / 2).toFixed(1)}" r="3" fill="${checkColor}"/>
-    <!-- Language Name -->
-    <text x="25" y="${(cardH / 2 + 4).toFixed(1)}" fill="${textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${nameFontSize}" font-weight="600">${escapeXml(lang.name)}</text>
-    <!-- Locale Tag Pill -->
-    <rect x="${(cardW - 48).toFixed(1)}" y="${(cardH / 2 - 9).toFixed(1)}" width="24" height="18" rx="4" fill="${badgeBg}"/>
-    <text x="${(cardW - 36).toFixed(1)}" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="middle" fill="${badgeText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="700" letter-spacing=".2">${escapeXml(lang.tag)}</text>
-    <!-- Progress % -->
-    <text x="${(cardW - 7).toFixed(1)}" y="${(cardH / 2 + 3.5).toFixed(1)}" text-anchor="end" fill="${checkColor}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10" font-weight="700">${percentStr}</text>
-  </g>`
-  }).join('\n')
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(aria)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
   <defs>
     <linearGradient id="g-accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="${purple}" />
-      <stop offset="100%" stop-color="${teal}" />
+      <stop offset="0%" stop-color="${theme.purple}" />
+      <stop offset="100%" stop-color="${theme.teal}" />
     </linearGradient>
   </defs>
 
-  <!-- Container Box -->
-  <rect x="0.75" y="0.75" width="${(width - 1.5).toFixed(1)}" height="${(height - 1.5).toFixed(1)}" rx="12" fill="${bg}" stroke="${border}" stroke-width="1.5"/>
+  <rect x="0.75" y="0.75" width="${(layout.width - 1.5).toFixed(1)}" height="${(layout.height - 1.5).toFixed(1)}" rx="12" fill="${theme.bg}" stroke="${theme.border}" stroke-width="1.5"/>
+  <path d="M 1 12 A 11 11 0 0 1 12 1 L ${layout.width - 12} 1 A 11 11 0 0 1 ${layout.width - 1} 12 L ${layout.width - 1} 3 L 1 3 Z" fill="url(#g-accent)" opacity="0.85"/>
 
-  <!-- Top Decorative Gradient Glow -->
-  <path d="M 1 12 A 11 11 0 0 1 12 1 L ${width - 12} 1 A 11 11 0 0 1 ${width - 1} 12 L ${width - 1} 3 L 1 3 Z" fill="url(#g-accent)" opacity="0.85"/>
+  <g transform="translate(${layout.padX}, ${mobile ? 24 : 28})">
+    <rect x="0" y="0" width="${mobile ? 112 : 124}" height="24" rx="12" fill="${theme.teal}" opacity="0.12"/>
+    <circle cx="10" cy="12" r="3.5" fill="${theme.teal}"/>
+    <text x="22" y="15.5" fill="${theme.teal}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="700" letter-spacing=".6">TRANSLATIONS</text>
 
-  <!-- Header Section -->
-  <g transform="translate(${padX}, ${mobile ? 24 : 28})">
-    <!-- Icon / Pill -->
-    <rect x="0" y="0" width="${mobile ? 112 : 124}" height="24" rx="12" fill="${teal}" opacity="0.12"/>
-    <circle cx="10" cy="12" r="3.5" fill="${teal}"/>
-    <text x="22" y="15.5" fill="${teal}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="700" letter-spacing=".6">TRANSLATIONS</text>
-
-    <!-- Title & Subtitle -->
-    <text x="${mobile ? 122 : 136}" y="16" fill="${textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${mobile ? 15 : 17}" font-weight="700">Native Multilingual Experience</text>
-    <text x="0" y="${mobile ? 42 : 46}" fill="${textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${mobile ? 11 : 12}"><b>${languageCount} supported languages</b> &nbsp;·&nbsp; 100% Android string coverage &nbsp;·&nbsp; Zero local setup needed</text>
+    <text x="${mobile ? 122 : 136}" y="16" fill="${theme.textTitle}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${mobile ? 15 : 17}" font-weight="700">Native Multilingual Experience</text>
+    <text x="0" y="${mobile ? 42 : 46}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="${mobile ? 11 : 12}">
+      <tspan font-weight="700">${languageCount} supported languages</tspan> · 100% Android string coverage · Zero local setup needed
+    </text>
   </g>
 
-  <!-- Language Grid -->
   <g>
-${languageCards}
+${cardsSvg}
   </g>
 
-  <!-- Footer Section -->
-  <g transform="translate(${width / 2}, ${(height - 18).toFixed(1)})">
-    <text text-anchor="middle" fill="${textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11">
-      Community-powered localization via Weblate &nbsp;·&nbsp; <tspan fill="${teal}" font-weight="600">Contribute or review in your browser →</tspan>
+  <g transform="translate(${layout.width / 2}, ${(layout.height - 18).toFixed(1)})">
+    <text text-anchor="middle" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11">
+      Community-powered localization via Weblate · <tspan fill="${theme.teal}" font-weight="600">Contribute or review in your browser →</tspan>
     </text>
   </g>
 </svg>`
