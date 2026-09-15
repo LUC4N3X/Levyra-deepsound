@@ -661,6 +661,8 @@ For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.g
 > **Read the complete [Legal Notice](docs/legal/LEGAL.md)** for no-affiliation terms, third-party rights, user responsibility, warranty and liability limitations, rights-holder notices, and mandatory-law provisions.
 
 <div align="center">
+  <sub>🇮🇹 <b>Made in Italy. Built for the world.</b></sub>
+  <br><br>
   <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
   <br><br>
   <img src="https://capsule-render.vercel.app/api?type=waving&height=120&section=footer&color=0:4A00E0,35:6C5CE7,70:7F52FF,100:00D2FF" width="480" alt="Levyra Acoustic Waves" />
