@@ -188,43 +188,6 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ---
 
-## ✦ Lyrics 4.0
-
-<div align="center">
-
-### 🎙️ Lyrics that stay readable, shareable, and in time with the sound.
-
-<p><sub>Levyra now treats lyric timing, writing systems, and sharing as one playback experience — adapting sync to the active audio route, expanding offline romanization, and rendering share cards correctly across LTR, RTL, emoji, and complex Unicode text.</sub></p>
-
-<table align="center" width="100%">
-  <tr valign="top">
-    <td width="33%">
-      <h3>🎧 <b>Route-Aware Sync</b></h3>
-      <p><sub>Bluetooth latency can be calibrated per device on supported Android versions. When a route cannot be identified safely, Levyra falls back to the global lyric offset instead of guessing.</sub></p>
-    </td>
-    <td width="33%">
-      <h3>🌍 <b>Multi-Script Romanization</b></h3>
-      <p><sub>Offline romanization now reaches Cyrillic, Greek and polytonic Greek, Arabic, Hebrew, Georgian, Devanagari, Gurmukhi, and Bengali while preserving the existing CJK, Kana, and Hangul paths.</sub></p>
-    </td>
-    <td width="33%">
-      <h3>✨ <b>Share Cards 2.0</b></h3>
-      <p><sub>Export selected lyrics as 1080×1080 square or 1080×1920 story cards with RTL-aware alignment, Unicode-safe truncation, emoji handling, artwork, and local-only rendering.</sub></p>
-    </td>
-  </tr>
-</table>
-
-<p>
-  <code>PER-DEVICE LATENCY</code> &nbsp;·&nbsp;
-  <code>GLOBAL FALLBACK</code> &nbsp;·&nbsp;
-  <code>MULTI-SCRIPT</code> &nbsp;·&nbsp;
-  <code>RTL + UNICODE</code> &nbsp;·&nbsp;
-  <code>1:1 + 9:16</code>
-</p>
-
-</div>
-
----
-
 ## ✦ Interface & Experience Showcase
 
 <div align="center">
