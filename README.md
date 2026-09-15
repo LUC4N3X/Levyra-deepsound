@@ -10,6 +10,8 @@
 
 **A native music player, stream extractor, and private offline vault for Android & Windows.**
 
+<p align="center"><sub>🌍 <b>Available in 36 languages.</b> Built for listeners everywhere.</sub></p>
+
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-mobile-light.svg 126w, docs/assets/levyra-release-light.svg 130w" sizes="(max-width: 480px) 126px, 130px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release-mobile.svg 126w, docs/assets/levyra-release.svg 130w" sizes="(max-width: 480px) 126px, 130px"><img src="docs/assets/levyra-release.svg" srcset="docs/assets/levyra-release-mobile.svg 126w, docs/assets/levyra-release.svg 130w" sizes="(max-width: 480px) 126px, 130px" alt="Latest release"></picture></a>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-downloads-mobile-light.svg 126w, docs/assets/levyra-downloads-light.svg 130w" sizes="(max-width: 480px) 126px, 130px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-downloads-mobile.svg 126w, docs/assets/levyra-downloads.svg 130w" sizes="(max-width: 480px) 126px, 130px"><img src="docs/assets/levyra-downloads.svg" srcset="docs/assets/levyra-downloads-mobile.svg 126w, docs/assets/levyra-downloads.svg 130w" sizes="(max-width: 480px) 126px, 130px" alt="Total downloads"></picture></a>
