@@ -370,4 +370,4 @@ private val organizationBundles: Map<String, Map<String, String>> = mapOf(
 internal fun organizationLocalizationEntries(code: String): Map<String, String> =
     organizationBundles[code] ?: organizationBundles.getValue("en")
 
-internal fun organizationLocalizationCodes(): Set<String> = organizationBundles.keys
+internal fun organizationLocalizationCodes(): Set<String> = supportedLocalizationCodes()

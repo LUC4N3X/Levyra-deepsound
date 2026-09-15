@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Mini-Player, Schnellfavoriten, täglicher Flow, offline und Songtexte</string>
+    <string name="widget_description">Mini-Player, Favoriten-Schnellzugriff, täglicher Flow, Offline-Mix und Songtexte</string>
     <string name="widget_idle_subtitle">Zum Anhören tippen</string>
     <string name="widget_toggle">Wiedergabe/Pause</string>
     <string name="widget_next">Weiter</string>
@@ -12,6 +12,20 @@
     <string name="radar_channel_name">Release-Radar</string>
     <string name="radar_channel_description">Neue Veröffentlichungen von Künstlern, denen du folgst</string>
     <string name="radar_new_release_title">Neue Veröffentlichung von %1$s</string>
+    <string name="automatic_backups">Automatische Sicherungen</string>
+    <string name="car_home">Start</string>
+    <string name="car_downloads">Downloads</string>
+    <string name="car_favorites">Favoriten</string>
+    <string name="car_playlists">Playlists</string>
+    <string name="car_no_content">Keine Inhalte</string>
+    <string name="car_content_unavailable">Inhalt nicht verfügbar</string>
+    <string name="car_search_tracks">Titel suchen</string>
+    <string name="car_no_results">Keine Ergebnisse</string>
+    <string name="car_connecting_player">Verbindung zum Player wird hergestellt</string>
+    <string name="car_now_playing">Aktuelle Wiedergabe</string>
+    <string name="car_queue">Warteschlange</string>
+    <string name="notification_shuffle">Zufallswiedergabe</string>
+    <string name="notification_favorite">Zu Favoriten</string>
     <string name="tile_recognize_music">Musik erkennen</string>
     <string name="shortcut_search">Suche</string>
     <string name="shortcut_library">Mediathek</string>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">پخش‌کننده کوچک، علاقه‌مندی‌های سریع، میکس روزانه، میکس آفلاین و متن ترانه</string>
+    <string name="widget_idle_subtitle">برای گوش دادن ضربه بزنید</string>
+    <string name="widget_toggle">پخش/مکث</string>
+    <string name="widget_next">بعدی</string>
+    <string name="widget_previous">قبلی</string>
+    <string name="widget_favorites">علاقه‌مندی‌ها</string>
+    <string name="widget_flow">میکس روزانه</string>
+    <string name="widget_offline">میکس آفلاین</string>
+    <string name="widget_lyrics">متن ترانه</string>
+    <string name="radar_channel_name">رادار انتشار</string>
+    <string name="radar_channel_description">انتشارهای جدید از هنرمندانی که دنبال می‌کنید</string>
+    <string name="radar_new_release_title">انتشار جدید از &#x2068;%1$s&#x2069;</string>
+    <string name="automatic_backups">پشتیبان‌گیری خودکار</string>
+    <string name="car_home">خانه</string>
+    <string name="car_downloads">دانلودها</string>
+    <string name="car_favorites">علاقه‌مندی‌ها</string>
+    <string name="car_playlists">فهرست‌های پخش</string>
+    <string name="car_no_content">محتوایی نیست</string>
+    <string name="car_content_unavailable">محتوا در دسترس نیست</string>
+    <string name="car_search_tracks">جستجوی آهنگ‌ها</string>
+    <string name="car_no_results">نتیجه‌ای نیست</string>
+    <string name="car_connecting_player">در حال اتصال به پخش‌کننده</string>
+    <string name="car_now_playing">در حال پخش</string>
+    <string name="car_queue">صف پخش</string>
+    <string name="notification_shuffle">پخش تصادفی</string>
+    <string name="notification_favorite">علاقه‌مندی</string>
+    <string name="tile_recognize_music">تشخیص موسیقی</string>
+    <string name="shortcut_search">جستجو</string>
+    <string name="shortcut_library">کتابخانه</string>
+    <string name="shortcut_recognition">تشخیص موسیقی</string>
+</resources>

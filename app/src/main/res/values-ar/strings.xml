@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">مشغّل مصغّر، ومفضلة سريعة، وتدفق يومي، واستماع بلا إنترنت، وكلمات الأغاني</string>
+    <string name="widget_description">مشغّل مصغّر، ومفضلة سريعة، وتدفّق يومي، ومزيج بلا إنترنت، وكلمات الأغاني</string>
     <string name="widget_idle_subtitle">اضغط للاستماع</string>
     <string name="widget_toggle">تشغيل/إيقاف مؤقت</string>
     <string name="widget_next">التالي</string>
     <string name="widget_previous">السابق</string>
     <string name="widget_favorites">المفضلة</string>
-    <string name="widget_flow">التدفق اليومي</string>
+    <string name="widget_flow">التدفّق اليومي</string>
     <string name="widget_offline">مزيج بلا إنترنت</string>
     <string name="widget_lyrics">كلمات الأغاني</string>
     <string name="radar_channel_name">رادار الإصدارات</string>
     <string name="radar_channel_description">إصدارات جديدة من الفنانين الذين تتابعهم</string>
-    <string name="radar_new_release_title">إصدار جديد من %1$s</string>
+    <string name="radar_new_release_title">إصدار جديد من &#x2068;%1$s&#x2069;</string>
+    <string name="automatic_backups">نسخ احتياطية تلقائية</string>
+    <string name="car_home">الرئيسية</string>
+    <string name="car_downloads">التنزيلات</string>
+    <string name="car_favorites">المفضلة</string>
+    <string name="car_playlists">قوائم التشغيل</string>
+    <string name="car_no_content">لا يوجد محتوى</string>
+    <string name="car_content_unavailable">المحتوى غير متاح</string>
+    <string name="car_search_tracks">البحث عن المقاطع</string>
+    <string name="car_no_results">لا توجد نتائج</string>
+    <string name="car_connecting_player">جارٍ الاتصال بالمشغّل</string>
+    <string name="car_now_playing">قيد التشغيل</string>
+    <string name="car_queue">قائمة الانتظار</string>
+    <string name="notification_shuffle">تشغيل عشوائي</string>
+    <string name="notification_favorite">إضافة إلى المفضلة</string>
     <string name="tile_recognize_music">التعرّف على الموسيقى</string>
     <string name="shortcut_search">بحث</string>
     <string name="shortcut_library">المكتبة</string>

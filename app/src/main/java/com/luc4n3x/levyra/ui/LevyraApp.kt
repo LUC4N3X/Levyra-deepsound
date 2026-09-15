@@ -16185,7 +16185,7 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
     val currentLocale = LocalLocale.current.platformLocale
     val deviceLanguageCode = remember(currentLocale, selectedLanguageCode) {
         LevyraLanguageCatalog.normalize(
-            currentLocale.language.ifBlank { selectedLanguageCode }
+            currentLocale.toLanguageTag().ifBlank { selectedLanguageCode }
         )
     }
     var selected by remember { mutableStateOf(setOf<String>()) }

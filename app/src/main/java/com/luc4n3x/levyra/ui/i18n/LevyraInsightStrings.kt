@@ -45,6 +45,6 @@ private val insightBundles: Map<String, Map<String, String>> = mapOf(
     "he" to insightStrings("תצוגה מקדימה של העטיפה", "שמירת העטיפה", "העטיפה נשמרה", "לא ניתן לשמור את העטיפה", "הקצב שלך", "כיול סנכרון")
 )
 
-internal fun insightLocalizationEntries(code: String): Map<String, String> = insightBundles.getValue(code)
+internal fun insightLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(insightBundles, code)
 
-internal fun insightLocalizationCodes(): Set<String> = insightBundles.keys
+internal fun insightLocalizationCodes(): Set<String> = supportedLocalizationCodes()
