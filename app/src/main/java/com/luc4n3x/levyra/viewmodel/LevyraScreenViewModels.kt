@@ -1119,7 +1119,8 @@ internal data class SearchProjection(
     val searchResults: List<Track>,
     val searchSectionContinuations: Map<SearchFilter, String>,
     val searchSectionLoading: Set<SearchFilter>,
-    val searchSuggestions: List<String>
+    val searchSuggestions: List<String>,
+    val searchPending: Boolean
 )
 
 internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
@@ -1146,7 +1147,8 @@ internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchPr
     searchResults = state.searchResults,
     searchSectionContinuations = state.searchSectionContinuations,
     searchSectionLoading = state.searchSectionLoading,
-    searchSuggestions = state.searchSuggestions
+    searchSuggestions = state.searchSuggestions,
+    searchPending = state.searchPending
 )
 
 internal data class ExploreProjection(

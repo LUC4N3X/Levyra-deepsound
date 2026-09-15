@@ -170,6 +170,7 @@ data class LevyraUiState(
     val query: String = "",
     val isPlaying: Boolean = false,
     val isSearching: Boolean = false,
+    val searchPending: Boolean = false,
     val isResolving: Boolean = false,
     val searchError: String? = null,
     val playerError: String? = null,

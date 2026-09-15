@@ -78,11 +78,6 @@ import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
-import com.luc4n3x.levyra.data.mergeSearchAlbums
-import com.luc4n3x.levyra.data.mergeSearchArtists
-import com.luc4n3x.levyra.data.mergeSearchPlaylists
-import com.luc4n3x.levyra.data.mergeSearchSongs
-import com.luc4n3x.levyra.data.nextSearchContinuation
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.BatchDownload
@@ -185,6 +180,15 @@ import com.luc4n3x.levyra.feature.providers.LevyraNativePlaybackProvider
 import com.luc4n3x.levyra.feature.providers.LevyraProviderRouter
 import com.luc4n3x.levyra.feature.providers.MemoryCatalogProvider
 import com.luc4n3x.levyra.feature.providers.YoutubeMusicCatalogProvider
+import com.luc4n3x.levyra.feature.search.LevyraSearchEngine
+import com.luc4n3x.levyra.feature.search.LocalSearchAffinity
+import com.luc4n3x.levyra.feature.search.LocalSearchCandidate
+import com.luc4n3x.levyra.feature.search.SearchFailure
+import com.luc4n3x.levyra.feature.search.SearchLatencyReport
+import com.luc4n3x.levyra.feature.search.SearchSessionSnapshot
+import com.luc4n3x.levyra.feature.search.SearchSideEffects
+import com.luc4n3x.levyra.feature.search.YoutubeMusicSearchBackend
+import com.luc4n3x.levyra.feature.search.isSearchableQuery
 import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
 import com.luc4n3x.levyra.feature.dearrow.DeArrowApi
 import com.luc4n3x.levyra.feature.dearrow.DeArrowRepository
@@ -286,7 +290,6 @@ import java.io.File
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
@@ -299,14 +302,8 @@ private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
 private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
 
-private data class SearchSectionPage(
-    val songs: List<Track> = emptyList(),
-    val videos: List<Track> = emptyList(),
-    val albums: List<AlbumHit> = emptyList(),
-    val artists: List<ArtistHit> = emptyList(),
-    val playlists: List<PlaylistHit> = emptyList(),
-    val continuation: String = ""
-)
+private const val LOCAL_SEARCH_CACHE_CANDIDATE_LIMIT = 600
+private const val SEARCH_LATENCY_LOG_TAG = "LevyraSearch"
 
 private data class HomeArtistCandidate(
     val name: String,
@@ -775,9 +772,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             recognitionAvailable = LevyraRecognitionCenter.isAvailable
         )
     )
-    private var searchJob: Job? = null
-    private val searchGeneration = AtomicInteger(0)
-    private val searchSectionJobs = mutableMapOf<SearchFilter, Job>()
+    private val searchEngine = LevyraSearchEngine(
+        scope = viewModelScope,
+        backend = YoutubeMusicSearchBackend(
+            repository = repository,
+            artistRepository = artistRepository,
+            providerRouter = providerRouter,
+            localCandidateSource = ::localSearchCandidates,
+            playableTrack = { track -> youtubePlayableTrack(track) != null }
+        ),
+        sideEffects = object : SearchSideEffects {
+            override fun onRemoteTracks(tracks: List<Track>) = applyRemoteSearchTracks(tracks)
+
+            override fun onPrefetch(tracks: List<Track>) = prefetchSearchResults(tracks)
+
+            override fun onLatency(report: SearchLatencyReport) {
+                if (BuildConfig.DEBUG) Timber.tag(SEARCH_LATENCY_LOG_TAG).d(report.format())
+            }
+        }
+    )
     private var playlistImportJob: Job? = null
     private var spotifyCsvImportJob: Job? = null
     private val automationMutationMutex = kotlinx.coroutines.sync.Mutex()
@@ -1098,6 +1111,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val playerController get() = player.controller
 
     init {
+        viewModelScope.launch {
+            searchEngine.state.collect(::applySearchSnapshot)
+        }
         com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
             startupSettings.interfaceSettings.motionArtworkWifiOnly
         )
@@ -4671,6 +4687,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
         NewPipeRuntime.setLanguage(languageCode)
+        searchEngine.reset()
         pendingHomeSectionsSnapshot.set(null)
         deferredHomeArtistsSnapshot.set(null)
         homeArtistsFingerprint = ""
@@ -6504,22 +6521,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setQuery(query: String) {
         _state.update { it.copy(query = query, searchError = null) }
-        searchJob?.cancel()
-        val clean = query.trim()
-        if (clean.length < 2) {
-            _state.update { it.copy(searchSuggestions = emptyList(), searchResults = emptyList()) }
-            return
-        }
-        searchJob = viewModelScope.launch {
-            delay(180L)
-            val suggestions = withContext(Dispatchers.IO) {
-                runCatching { repository.searchSuggestions(clean, _state.value.languageCode) }.getOrDefault(emptyList()).take(6)
-            }
-            if (_state.value.query.trim() != clean) return@launch
-            _state.update { it.copy(searchSuggestions = suggestions) }
-            delay(260L)
-            if (_state.value.query.trim() == clean) runSearch(clean)
-        }
+        searchEngine.onQueryChanged(query, _state.value.languageCode)
     }
 
     fun searchNow() {
@@ -6527,247 +6529,79 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun searchNow(query: String) {
-        val clean = query.trim()
-        if (clean.length < 2) return
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch { runSearch(clean) }
+        if (!isSearchableQuery(query)) return
+        moveToTab(LevyraTab.Search, rememberCurrent = true)
+        searchEngine.submit(query, _state.value.languageCode)
     }
 
-    private suspend fun runSearch(clean: String) {
-        moveToTab(LevyraTab.Search, rememberCurrent = true)
-        searchGeneration.incrementAndGet()
-        _state.update {
-            it.copy(
-                isSearching = true,
-                searchError = null,
-                searchSuggestions = emptyList(),
-                searchFilter = SearchFilter.All,
-                searchSectionContinuations = emptyMap(),
-                searchSectionLoading = emptySet()
+    private fun applySearchSnapshot(snapshot: SearchSessionSnapshot) {
+        val clean = snapshot.query
+        _state.update { current ->
+            val strings = LevyraStrings.forCode(current.languageCode)
+            current.copy(
+                searchSuggestions = snapshot.suggestions,
+                searchData = snapshot.results,
+                searchResults = snapshot.results.songs,
+                isSearching = snapshot.remoteLoading,
+                searchPending = snapshot.pending,
+                searchError = when (snapshot.failure) {
+                    SearchFailure.Failed -> strings.searchFailed
+                    SearchFailure.NoResults -> strings.formatNoSearchResults(clean)
+                    SearchFailure.None -> null
+                },
+                searchFilter = snapshot.filter,
+                searchSectionContinuations = snapshot.sectionContinuations,
+                searchSectionLoading = snapshot.sectionLoading
             )
         }
-        val result = runCatching {
-            coroutineScope {
-                val rawSearch = async {
-                    providerRouter.searchEverything(clean, _state.value.languageCode)
-                }
-                val exactArtistSearch = async {
-                    runCatchingPreservingCancellation { artistRepository.artistHitFor(clean) }.getOrNull()
-                }
-                val raw = rawSearch.await()
-                enrichSearchOverview(clean, raw, exactArtistSearch.await())
+    }
+
+    private fun localSearchCandidates(): List<LocalSearchCandidate> {
+        val snapshot = _state.value
+        val cached = repository.cachedTracks()
+        return buildList {
+            fun addTracks(tracks: List<Track>, affinity: Int) {
+                tracks.forEach { track -> add(LocalSearchCandidate(track, affinity)) }
             }
+            addTracks(snapshot.recentSearches, LocalSearchAffinity.RECENT)
+            addTracks(snapshot.favorites, LocalSearchAffinity.FAVORITE)
+            addTracks(snapshot.personalOrbitTracks, LocalSearchAffinity.ORBIT)
+            addTracks(snapshot.queue, LocalSearchAffinity.QUEUE)
+            addTracks(snapshot.tracks, LocalSearchAffinity.SESSION)
+            snapshot.homeSections.forEach { section -> addTracks(section.tracks, LocalSearchAffinity.HOME) }
+            addTracks(snapshot.charts, LocalSearchAffinity.CHARTS)
+            addTracks(cached.takeLast(LOCAL_SEARCH_CACHE_CANDIDATE_LIMIT).asReversed(), LocalSearchAffinity.CACHE)
         }
-        result.onSuccess { data ->
-            val strings = LevyraStrings.forCode(_state.value.languageCode)
-            val tracks = data.songs
-            val mood = _state.value.selectedMood
-            val queue = moodEngine.buildQueue(mood, tracks.ifEmpty { repository.cachedTracks() })
-            _state.update {
-                it.copy(
-                    tracks = mergeTracks(it.tracks, tracks),
-                    searchResults = tracks,
-                    searchData = data,
-                    cacheReport = repository.cacheReport(),
-                    smartScore = calculateSmartScore(queue),
-                    isSearching = false,
-                    searchError = if (data.isEmpty) strings.formatNoSearchResults(clean) else null
-                )
-            }
-            val startupPlan = adaptivePlaybackPolicy.current(videoMode = false)
-            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, if (startupPlan.lowRam) 8 else 18)
-            prefetchTop(tracks, if (startupPlan.lowRam) 3 else 8)
-        }.onFailure { error ->
-            if (error is CancellationException) throw error
-            _state.update {
-                it.copy(
-                    isSearching = false,
-                    searchError = LevyraStrings.forCode(it.languageCode).searchFailed
-                )
-            }
+    }
+
+    private fun applyRemoteSearchTracks(tracks: List<Track>) {
+        val queue = moodEngine.buildQueue(_state.value.selectedMood, tracks)
+        val smartScore = calculateSmartScore(queue)
+        val cacheReport = repository.cacheReport()
+        _state.update {
+            it.copy(
+                tracks = mergeTracks(it.tracks, tracks),
+                cacheReport = cacheReport,
+                smartScore = smartScore
+            )
         }
+    }
+
+    private fun prefetchSearchResults(tracks: List<Track>) {
+        val plan = adaptivePlaybackPolicy.current(videoMode = false)
+        LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, if (plan.lowRam) 6 else 12)
+        prefetchTop(tracks, if (plan.lowRam) 2 else 4)
     }
 
     private fun searchAlbumDeduplicationKey(album: AlbumHit): String =
         "${albumRecommendationTextKey(album.title)}|${albumRecommendationTextKey(album.artist)}"
 
-    private suspend fun searchAlbumsForArtistQuery(
-        query: String,
-        raw: SearchResults,
-        artists: List<ArtistHit>
-    ): List<AlbumHit> {
-        val queryKey = artistIdentityKey(query)
-        val exactArtist = artists.firstOrNull { artistIdentityKey(it.name) == queryKey } ?: return raw.albums
-        val profile = runCatching {
-            artistRepository.profile(exactArtist.browseId, exactArtist.name)
-        }.getOrNull()
-        val officialArtistName = profile?.name.orEmpty().ifBlank { exactArtist.name }
-        val officialArtistBrowseId = profile?.browseId.orEmpty().ifBlank { exactArtist.browseId }
-        val officialAlbums = profile?.albums.orEmpty()
-            .asSequence()
-            .filter { release -> release.title.isNotBlank() && release.browseId.isNotBlank() }
-            .map { release ->
-                AlbumHit(
-                    title = release.title,
-                    artist = officialArtistName,
-                    year = release.year,
-                    thumbnailUrl = release.thumbnailUrl,
-                    query = listOf(release.title, officialArtistName, "album")
-                        .filter(String::isNotBlank)
-                        .joinToString(" "),
-                    browseId = release.browseId,
-                    artistBrowseId = officialArtistBrowseId,
-                    audioPlaylistId = release.playlistId,
-                    explicit = release.explicit,
-                    releaseType = release.releaseType
-                )
-            }
-            .distinctBy(::searchAlbumDeduplicationKey)
-            .take(10)
-            .toList()
-        if (officialAlbums.isNotEmpty()) return officialAlbums
-
-        val songTitles = raw.songs
-            .asSequence()
-            .map { track -> albumRecommendationTextKey(track.title) }
-            .filter(String::isNotBlank)
-            .toSet()
-        return raw.albums
-            .filterNot { album -> albumRecommendationTextKey(album.title) in songTitles }
-            .distinctBy(::searchAlbumDeduplicationKey)
-            .take(10)
-    }
-
-    private suspend fun enrichSearchOverview(
-        query: String,
-        raw: SearchResults,
-        exactArtist: ArtistHit?
-    ): SearchResults {
-        val generalCandidates = raw.artists.filterNot { candidate ->
-            exactArtist != null &&
-                candidate.browseId.isNotBlank() &&
-                candidate.browseId.equals(exactArtist.browseId, ignoreCase = true)
-        }
-        val officialArtists = runCatchingPreservingCancellation {
-            mergeReliableArtistSearchResults(
-                query = query,
-                exactArtist = exactArtist,
-                verifiedArtists = artistRepository.officialArtistHits(generalCandidates)
-            )
-        }.onFailure { Timber.w(it, "search artist verification failed") }.getOrNull()
-        val resolvedArtists = officialArtists ?: raw.artists
-        val artistResolvedResults = runCatchingPreservingCancellation {
-            enrichSearchTracksWithExactArtist(
-                query = query,
-                results = raw,
-                reliableArtists = resolvedArtists
-            )
-        }.onFailure { Timber.w(it, "search track artist enrichment failed") }.getOrDefault(raw)
-        val albums = runCatchingPreservingCancellation {
-            searchAlbumsForArtistQuery(query, artistResolvedResults, resolvedArtists)
-        }.onFailure { Timber.w(it, "search album refinement failed") }
-            .getOrDefault(artistResolvedResults.albums)
-        return artistResolvedResults.copy(
-            artists = resolvedArtists,
-            albums = albums,
-            failedSections = buildSet {
-                if (officialArtists == null && raw.artists.isEmpty()) add(SearchFilter.Artists)
-            }
-        )
-    }
-
     fun setSearchFilter(filter: SearchFilter) {
-        _state.update { it.copy(searchFilter = filter) }
-        loadSearchSection(filter, initial = true)
+        searchEngine.selectFilter(filter)
     }
 
     fun loadMoreSearchSection(filter: SearchFilter) {
-        loadSearchSection(filter, initial = false)
-    }
-
-    private fun loadSearchSection(filter: SearchFilter, initial: Boolean) {
-        if (filter == SearchFilter.All) return
-        val snapshot = _state.value
-        val query = snapshot.query.trim()
-        if (query.length < 2) return
-        if (filter in snapshot.searchSectionLoading) return
-        if (searchSectionJobs[filter]?.isActive == true) return
-        val alreadyPaged = snapshot.searchSectionContinuations.containsKey(filter)
-        val continuation = snapshot.searchSectionContinuations[filter].orEmpty()
-        if (initial && alreadyPaged) return
-        if (!initial && (!alreadyPaged || continuation.isBlank())) return
-        val generation = searchGeneration.get()
-        _state.update { it.copy(searchSectionLoading = it.searchSectionLoading + filter) }
-        searchSectionJobs[filter] = viewModelScope.launch {
-            try {
-                val outcome = runCatching { fetchSearchSection(filter, query, continuation) }
-                if (generation != searchGeneration.get()) return@launch
-                outcome.onSuccess { page -> publishSearchSection(filter, page, continuation) }
-                    .onFailure { error ->
-                        if (error is CancellationException) throw error
-                        Timber.w(error, "search section load failed filter=%s", filter)
-                        _state.update { state ->
-                            state.copy(
-                                searchData = state.searchData.copy(
-                                    failedSections = state.searchData.failedSections + filter
-                                )
-                            )
-                        }
-                    }
-            } finally {
-                _state.update { it.copy(searchSectionLoading = it.searchSectionLoading - filter) }
-            }
-        }
-    }
-
-    private suspend fun fetchSearchSection(
-        filter: SearchFilter,
-        query: String,
-        continuation: String
-    ): SearchSectionPage {
-        val language = _state.value.languageCode
-        return when (filter) {
-            SearchFilter.Songs -> repository.searchSongsPage(query, language, continuation)
-                .let { page -> SearchSectionPage(songs = page.items, continuation = page.continuation) }
-            SearchFilter.Videos -> repository.searchVideosPage(query, language, continuation)
-                .let { page -> SearchSectionPage(videos = page.items, continuation = page.continuation) }
-            SearchFilter.Albums -> repository.searchAlbumsPage(query, language, continuation)
-                .let { page -> SearchSectionPage(albums = page.items, continuation = page.continuation) }
-            SearchFilter.Artists -> repository.searchArtistsPage(query, language, continuation)
-                .let { page -> SearchSectionPage(artists = page.items, continuation = page.continuation) }
-            SearchFilter.Playlists -> repository.searchPlaylistsPage(query, language, continuation)
-                .let { page -> SearchSectionPage(playlists = page.items, continuation = page.continuation) }
-            SearchFilter.All -> SearchSectionPage()
-        }
-    }
-
-    private fun publishSearchSection(
-        filter: SearchFilter,
-        page: SearchSectionPage,
-        requestedContinuation: String
-    ) {
-        val nextContinuation = nextSearchContinuation(requestedContinuation, page.continuation)
-        _state.update { state ->
-            val data = state.searchData
-            val merged = when (filter) {
-                SearchFilter.Songs -> data.copy(songs = mergeSearchSongs(data.songs, page.songs))
-                SearchFilter.Videos -> data.copy(videos = mergeSearchSongs(data.videos, page.videos))
-                SearchFilter.Albums -> data.copy(albums = mergeSearchAlbums(data.albums, page.albums))
-                SearchFilter.Artists -> data.copy(artists = mergeSearchArtists(data.artists, page.artists))
-                SearchFilter.Playlists -> data.copy(playlists = mergeSearchPlaylists(data.playlists, page.playlists))
-                SearchFilter.All -> data
-            }
-            state.copy(
-                searchData = merged.copy(failedSections = merged.failedSections - filter),
-                searchResults = if (filter == SearchFilter.Songs) merged.songs else state.searchResults,
-                tracks = if (filter == SearchFilter.Songs || filter == SearchFilter.Videos) {
-                    mergeTracks(state.tracks, page.songs + page.videos)
-                } else {
-                    state.tracks
-                },
-                searchSectionContinuations = state.searchSectionContinuations + (filter to nextContinuation)
-            )
-        }
+        searchEngine.loadMore(filter)
     }
 
     fun searchAlbum(album: AlbumHit) {
@@ -7018,6 +6852,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         var shouldPersistFavorites = false
         var shouldPersistPlaylists = false
         var languageCode = _state.value.languageCode
+        var searchArtworkPatch: ((SearchResults) -> SearchResults)? = null
         _state.update { current ->
             fun withArtwork(item: Track): Track {
                 val enriched = enrichedByKey[LevyraPersonalOrbit.identityKey(item)] ?: return item
@@ -7120,13 +6955,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val openPlaylist = current.openPlaylist?.let { playlist ->
                 playlist.copy(tracks = playlist.tracks.map(::withArtwork))
             }
-            val searchData = current.searchData.copy(
-                topTrack = current.searchData.topTrack?.let(::withArtwork),
-                songs = current.searchData.songs.map(::withArtwork),
-                albums = current.searchData.albums
-                    .map(::withAlbumMetadata)
-                    .distinctBy(::searchAlbumDeduplicationKey)
-            )
+            val patchSearchArtwork: (SearchResults) -> SearchResults = { results ->
+                results.copy(
+                    topTrack = results.topTrack?.let(::withArtwork),
+                    songs = results.songs.map(::withArtwork),
+                    albums = results.albums
+                        .map(::withAlbumMetadata)
+                        .distinctBy(::searchAlbumDeduplicationKey)
+                )
+            }
+            searchArtworkPatch = patchSearchArtwork
+            val searchData = patchSearchArtwork(current.searchData)
             val albumDetail = current.albumDetail?.let { detail ->
                 detail.copy(
                     album = withAlbumMetadata(detail.album),
@@ -7187,6 +7026,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 artistProfile = artistProfile
             )
         }
+        searchArtworkPatch?.let(searchEngine::patchResults)
         persistHomeSnapshot()
         enrichedByKey.values.forEach { queueEngine.updateTrackMetadata(it) }
         val appContext = getApplication<Application>().applicationContext
@@ -10216,7 +10056,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         radioJob?.cancel()
         queueEngine.updatePosition(player.positionMs)
         player.release()
-        searchJob?.cancel()
         playlistImportJob?.cancel()
         homeFeedJob?.cancel()
         homeAlbumsJob?.cancel()
