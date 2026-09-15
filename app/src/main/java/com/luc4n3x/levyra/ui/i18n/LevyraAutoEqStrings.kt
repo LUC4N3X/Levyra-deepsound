@@ -623,6 +623,6 @@ private val autoEqCatalogBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun autoEqLocalizationEntries(code: String): Map<String, String> =
-    (autoEqBundles[code] ?: autoEqBundles.getValue("en")) + (autoEqCatalogBundles[code] ?: autoEqCatalogBundles.getValue("en"))
+    localizedBundleOrEnglish(autoEqBundles, code) + localizedBundleOrEnglish(autoEqCatalogBundles, code)
 
 internal fun autoEqLocalizationCodes(): Set<String> = supportedLocalizationCodes()
