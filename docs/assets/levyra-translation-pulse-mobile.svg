@@ -17,483 +17,483 @@
   <line x1="20" y1="62" x2="700" y2="62" stroke="#30363D" stroke-width="1"/>
 
   <!-- Left Column Data -->
-    <line x1="121.0" y1="74" x2="121.0" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="2,2"/>
-    <text x="121.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">0%</text>
-    <line x1="156.0" y1="74" x2="156.0" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="2,2"/>
-    <text x="156.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">25%</text>
-    <line x1="191.0" y1="74" x2="191.0" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="2,2"/>
-    <text x="191.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">50%</text>
-    <line x1="226.0" y1="74" x2="226.0" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="2,2"/>
-    <text x="226.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">75%</text>
-    <line x1="261.0" y1="74" x2="261.0" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="none"/>
-    <text x="261.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">100%</text>
+    <line x1="134.0" y1="74" x2="134.0" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="134.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">0%</text>
+    <line x1="171.5" y1="74" x2="171.5" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="171.5" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">25%</text>
+    <line x1="209.0" y1="74" x2="209.0" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="209.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">50%</text>
+    <line x1="246.5" y1="74" x2="246.5" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="246.5" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">75%</text>
+    <line x1="284.0" y1="74" x2="284.0" y2="795" stroke="#21262D" stroke-width="1" stroke-dasharray="none"/>
+    <text x="284.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">100%</text>
     <g transform="translate(0, 82.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">English</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">English</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">EN</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">EN</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 102.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Italian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Italiano</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">IT</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">IT</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 122.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Spanish</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Español</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ES</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ES</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 142.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">French</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Français</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">FR</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">FR</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 162.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">German</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Deutsch</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">DE</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">DE</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 182.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Portuguese</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Português</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">PT</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">PT</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 202.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Dutch</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Nederlands</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">NL</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">NL</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 222.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Polish</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Polski</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">PL</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">PL</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 242.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Romanian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Română</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">RO</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">RO</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 262.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Greek</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Ελληνικά</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">EL</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">EL</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 282.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Swedish</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Svenska</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">SV</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">SV</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 302.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Danish</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Dansk</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">DA</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">DA</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 322.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Czech</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Čeština</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">CS</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">CS</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 342.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Slovak</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Slovenčina</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">SK</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">SK</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 362.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Croatian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Hrvatski</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">HR</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">HR</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 382.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Bulgarian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Български</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">BG</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">BG</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 402.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Hungarian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Magyar</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">HU</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">HU</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 422.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Finnish</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Suomi</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">FI</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">FI</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 442.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Norwegian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Norsk bokmål</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">NB</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">NB</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 462.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Catalan</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Català</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">CA</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">CA</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 482.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Ukrainian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Українська</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">UK</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">UK</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 502.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Russian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Русский</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">RU</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">RU</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 522.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Turkish</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Türkçe</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">TR</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">TR</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 542.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Arabic</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">العربية</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">AR</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">AR</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 562.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Persian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">فارسی</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">FA</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">FA</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 582.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Chinese (Simp.)</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">简体中文</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ZH</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ZH</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 602.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Chinese (Trad.)</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">繁體中文</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ZH-TW</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ZH-TW</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 622.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Japanese</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">日本語</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">JA</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">JA</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 642.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Korean</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">한국어</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">KO</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">KO</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 662.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Hindi</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">हिन्दी</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">HI</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">HI</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 682.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Indonesian</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Bahasa Indonesia</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ID</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ID</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 702.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Malay</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Bahasa Melayu</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">MS</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">MS</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 722.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Vietnamese</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Tiếng Việt</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">VI</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">VI</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 742.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Thai</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">ไทย</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">TH</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">TH</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 762.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Filipino</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Filipino</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">FIL</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">FIL</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 782.0)">
       <!-- Language Label -->
-      <text x="111" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Hebrew</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">עברית</text>
       <!-- Track background -->
-      <rect x="121" y="0" width="140" height="13" rx="2" fill="#161B22"/>
+      <rect x="134" y="0" width="150" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
-      <rect x="121" y="0" width="140.0" height="13" rx="2" fill="#1F6FEB"/>
+      <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="269" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="281" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">HE</text>
+      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">HE</text>
       <!-- Percent -->
-      <text x="301" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
 
   <!-- Right Column Data -->

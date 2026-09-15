@@ -39,44 +39,44 @@ const readLocalizedKeys = xml => {
   return new Set(Array.from(xml.matchAll(pattern), match => match[1]))
 }
 
-// Curated clean display names & codes
+// Curated native display names & codes
 const LOCALE_META = {
   'en': { name: 'English', code: 'EN' },
-  'it': { name: 'Italian', code: 'IT' },
-  'es': { name: 'Spanish', code: 'ES' },
-  'fr': { name: 'French', code: 'FR' },
-  'de': { name: 'German', code: 'DE' },
-  'pt': { name: 'Portuguese', code: 'PT' },
-  'nl': { name: 'Dutch', code: 'NL' },
-  'pl': { name: 'Polish', code: 'PL' },
-  'ro': { name: 'Romanian', code: 'RO' },
-  'el': { name: 'Greek', code: 'EL' },
-  'sv': { name: 'Swedish', code: 'SV' },
-  'da': { name: 'Danish', code: 'DA' },
-  'cs': { name: 'Czech', code: 'CS' },
-  'sk': { name: 'Slovak', code: 'SK' },
-  'hr': { name: 'Croatian', code: 'HR' },
-  'bg': { name: 'Bulgarian', code: 'BG' },
-  'hu': { name: 'Hungarian', code: 'HU' },
-  'fi': { name: 'Finnish', code: 'FI' },
-  'nb': { name: 'Norwegian', code: 'NB' },
-  'ca': { name: 'Catalan', code: 'CA' },
-  'uk': { name: 'Ukrainian', code: 'UK' },
-  'ru': { name: 'Russian', code: 'RU' },
-  'tr': { name: 'Turkish', code: 'TR' },
-  'ar': { name: 'Arabic', code: 'AR' },
-  'fa': { name: 'Persian', code: 'FA' },
-  'zh-hans': { name: 'Chinese (Simp.)', code: 'ZH' },
-  'zh-hant': { name: 'Chinese (Trad.)', code: 'ZH-TW' },
-  'ja': { name: 'Japanese', code: 'JA' },
-  'ko': { name: 'Korean', code: 'KO' },
-  'hi': { name: 'Hindi', code: 'HI' },
-  'id': { name: 'Indonesian', code: 'ID' },
-  'ms': { name: 'Malay', code: 'MS' },
-  'vi': { name: 'Vietnamese', code: 'VI' },
-  'th': { name: 'Thai', code: 'TH' },
+  'it': { name: 'Italiano', code: 'IT' },
+  'es': { name: 'Español', code: 'ES' },
+  'fr': { name: 'Français', code: 'FR' },
+  'de': { name: 'Deutsch', code: 'DE' },
+  'pt': { name: 'Português', code: 'PT' },
+  'nl': { name: 'Nederlands', code: 'NL' },
+  'pl': { name: 'Polski', code: 'PL' },
+  'ro': { name: 'Română', code: 'RO' },
+  'el': { name: 'Ελληνικά', code: 'EL' },
+  'sv': { name: 'Svenska', code: 'SV' },
+  'da': { name: 'Dansk', code: 'DA' },
+  'cs': { name: 'Čeština', code: 'CS' },
+  'sk': { name: 'Slovenčina', code: 'SK' },
+  'hr': { name: 'Hrvatski', code: 'HR' },
+  'bg': { name: 'Български', code: 'BG' },
+  'hu': { name: 'Magyar', code: 'HU' },
+  'fi': { name: 'Suomi', code: 'FI' },
+  'nb': { name: 'Norsk bokmål', code: 'NB' },
+  'ca': { name: 'Català', code: 'CA' },
+  'uk': { name: 'Українська', code: 'UK' },
+  'ru': { name: 'Русский', code: 'RU' },
+  'tr': { name: 'Türkçe', code: 'TR' },
+  'ar': { name: 'العربية', code: 'AR' },
+  'fa': { name: 'فارسی', code: 'FA' },
+  'zh-hans': { name: '简体中文', code: 'ZH' },
+  'zh-hant': { name: '繁體中文', code: 'ZH-TW' },
+  'ja': { name: '日本語', code: 'JA' },
+  'ko': { name: '한국어', code: 'KO' },
+  'hi': { name: 'हिन्दी', code: 'HI' },
+  'id': { name: 'Bahasa Indonesia', code: 'ID' },
+  'ms': { name: 'Bahasa Melayu', code: 'MS' },
+  'vi': { name: 'Tiếng Việt', code: 'VI' },
+  'th': { name: 'ไทย', code: 'TH' },
   'fil': { name: 'Filipino', code: 'FIL' },
-  'he': { name: 'Hebrew', code: 'HE' }
+  'he': { name: 'עברית', code: 'HE' }
 }
 
 const collectRepositoryCoverage = async () => {
@@ -196,22 +196,22 @@ const renderColumn = ({ items, startX, startY, labelW, maxBarW, barH, rowGap, th
 
 const makePulse = ({ languages, globalPercent, isDark, mobile }) => {
   const theme = getTheme(isDark)
-  const width = mobile ? 720 : 880
+  const width = mobile ? 720 : 920
   const isSingleCol = mobile
 
   // 2 columns of 18 rows each on desktop (ultra compact ~390px tall)
   const leftCol = isSingleCol ? languages : languages.slice(0, 18)
   const rightCol = isSingleCol ? [] : languages.slice(18)
 
-  const labelW = 95
+  const labelW = 112
   const barH = 13
   const rowGap = 7
   const startY = 82
-  const maxBarW = isSingleCol ? 140 : 185
+  const maxBarW = isSingleCol ? 150 : 180
 
   const leftColSvg = renderColumn({
     items: leftCol,
-    startX: 16,
+    startX: 12,
     startY,
     labelW,
     maxBarW,
@@ -222,7 +222,7 @@ const makePulse = ({ languages, globalPercent, isDark, mobile }) => {
 
   const rightColSvg = isSingleCol ? '' : renderColumn({
     items: rightCol,
-    startX: 455,
+    startX: 472,
     startY,
     labelW,
     maxBarW,
