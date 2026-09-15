@@ -44,6 +44,6 @@ private val exploreBundles: Map<String, Map<String, String>> = mapOf(
     "he" to explore("מצבי רוח וז'אנרים", "דגימות", "קליפים אנכיים מתוך הסרטונים של הרגע", "הדגימות אינן זמינות כרגע. נסו שוב בעוד רגע.", "נסו שוב"),
 )
 
-internal fun exploreLocalizationEntries(code: String): Map<String, String> = (exploreBundles[code] ?: exploreBundles.getValue("en"))
+internal fun exploreLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(exploreBundles, code)
 
 internal fun exploreLocalizationCodes(): Set<String> = supportedLocalizationCodes()
