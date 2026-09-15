@@ -182,6 +182,43 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ---
 
+## ✦ Lyrics 4.0
+
+<div align="center">
+
+### 🎙️ Lyrics that stay readable, shareable, and in time with the sound.
+
+<p><sub>Levyra now treats lyric timing, writing systems, and sharing as one playback experience — adapting sync to the active audio route, expanding offline romanization, and rendering share cards correctly across LTR, RTL, emoji, and complex Unicode text.</sub></p>
+
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="33%">
+      <h3>🎧 <b>Route-Aware Sync</b></h3>
+      <p><sub>Bluetooth latency can be calibrated per device on supported Android versions. When a route cannot be identified safely, Levyra falls back to the global lyric offset instead of guessing.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>🌍 <b>Multi-Script Romanization</b></h3>
+      <p><sub>Offline romanization now reaches Cyrillic, Greek and polytonic Greek, Arabic, Hebrew, Georgian, Devanagari, Gurmukhi, and Bengali while preserving the existing CJK, Kana, and Hangul paths.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>✨ <b>Share Cards 2.0</b></h3>
+      <p><sub>Export selected lyrics as 1080×1080 square or 1080×1920 story cards with RTL-aware alignment, Unicode-safe truncation, emoji handling, artwork, and local-only rendering.</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p>
+  <code>PER-DEVICE LATENCY</code> &nbsp;·&nbsp;
+  <code>GLOBAL FALLBACK</code> &nbsp;·&nbsp;
+  <code>MULTI-SCRIPT</code> &nbsp;·&nbsp;
+  <code>RTL + UNICODE</code> &nbsp;·&nbsp;
+  <code>1:1 + 9:16</code>
+</p>
+
+</div>
+
+---
+
 ## ✦ Interface & Experience Showcase
 
 <div align="center">
@@ -197,7 +234,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 | | |
 | :---: | :---: |
 | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/01_playback_and_lyrics-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/01_playback_and_lyrics.webp"><img src="docs/assets/showcase/01_playback_and_lyrics.webp" alt="Immersive Playback & Live Synced Lyrics" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/02_home_and_charts-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/02_home_and_charts.webp"><img src="docs/assets/showcase/02_home_and_charts.webp" alt="Smart Orbit Feed & Global Top Charts" width="100%" /></picture> |
-| **Immersive Playback & Live Synced Lyrics**<br><sub>ExoPlayer audio engine · Line-by-line LRCLIB synced lyrics · Song/Video toggle · SponsorBlock</sub> | **Smart Orbit Feed & Global Charts**<br><sub>Dynamic 'Your Orbit' rotation · Live Top 50 international charts · Mood chips · Instant prefetch</sub> |
+| **Immersive Playback & Live Synced Lyrics**<br><sub>ExoPlayer audio engine · Route-calibrated LRCLIB sync · Multi-script romanization · 1:1 / 9:16 lyric cards</sub> | **Smart Orbit Feed & Global Charts**<br><sub>Dynamic 'Your Orbit' rotation · Live Top 50 international charts · Mood chips · Instant prefetch</sub> |
 | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/03_search_and_artist-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/03_search_and_artist.webp"><img src="docs/assets/showcase/03_search_and_artist.webp" alt="Deep Search & Artist Immersion" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/04_library_and_pulse-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/04_library_and_pulse.webp"><img src="docs/assets/showcase/04_library_and_pulse.webp" alt="Offline M4A Vault & Listening Pulse" width="100%" /></picture> |
 | **Deep Search & Artist Immersion**<br><sub>Live search with artist bubbles · Wikipedia biography cards · Complete chronological discography</sub> | **Offline M4A Vault & Listening Pulse**<br><sub>Real tagged M4A files with art · On-device 7-day listening analytics · 100% private SQLite</sub> |
 | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/05_video_and_samples-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/05_video_and_samples.webp"><img src="docs/assets/showcase/05_video_and_samples.webp" alt="Samples Clips & Comment Energy" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/06_collections_and_genres-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/06_collections_and_genres.webp"><img src="docs/assets/showcase/06_collections_and_genres.webp" alt="Editorial Playlists & Genre Matrix" width="100%" /></picture> |
@@ -304,7 +341,9 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
       <p><b>Lyrics that move with the music.</b><br><sub>Synced text, shareable moments, artwork motion, and Canvas live inside the player.</sub></p>
       <ul>
         <li><b>Synced Lyrics:</b> Millisecond-aligned LRCLIB lyrics with tap-to-seek highlighting.</li>
-        <li><b>Lyric Sharing:</b> Select verses, copy, share, or export a 1080×1080 Levyra card.</li>
+        <li><b>Route-Aware Latency:</b> Save per-device Bluetooth lyric timing profiles on supported Android versions, with a safe global offset fallback when the active route cannot be identified reliably.</li>
+        <li><b>Multi-Script Romanization:</b> Offline readable forms for Cyrillic, Greek and polytonic Greek, Arabic, Hebrew, Georgian, Devanagari, Gurmukhi, Bengali, plus the existing CJK, Kana, and Hangul paths.</li>
+        <li><b>Lyric Sharing:</b> Select verses, copy, share, or export 1080×1080 square and 1080×1920 story cards with RTL-aware layout and Unicode-safe text handling.</li>
         <li><b>Living Artwork:</b> Artwork-driven motion fallback when a real Canvas is unavailable.</li>
         <li><b>Canvas & Preview:</b> In-player Canvas control plus full-screen zoomable artwork preview.</li>
       </ul>
