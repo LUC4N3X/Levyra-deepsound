@@ -560,13 +560,13 @@ levyraDesktopVersion=1.2.0
 
 <div align="center">
 
-### 100% translated on Android
-
-<sub><b>36 supported languages</b> · complete coverage for all translatable Android strings</sub>
-
-<br><br>
-
-<a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute or review translations on Weblate →</b></a>
+<a href="https://hosted.weblate.org/engage/levyra/">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translations-overview-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translations-overview.svg">
+    <img src="docs/assets/levyra-translations-overview.svg" alt="Levyra translations — 36 supported languages, 100% Android coverage" width="920">
+  </picture>
+</a>
 
 </div>
 
