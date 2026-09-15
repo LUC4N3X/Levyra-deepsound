@@ -25,6 +25,20 @@ import com.luc4n3x.levyra.ui.components.playerGlass
 import com.luc4n3x.levyra.ui.artwork.ArtworkPreviewOverlay
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.livingArtworkColors
+import com.luc4n3x.levyra.ui.artwork.ArtworkDissolveEdge
+import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
+import com.luc4n3x.levyra.ui.artwork.artworkDissolve
+import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
+import com.luc4n3x.levyra.ui.album.AlbumHeaderOverlap
+import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteEnd
+import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteStart
+import com.luc4n3x.levyra.ui.album.AlbumHeroDissolve
+import com.luc4n3x.levyra.ui.album.AlbumSplitHeroFraction
+import com.luc4n3x.levyra.ui.album.AlbumSplitListStartFraction
+import com.luc4n3x.levyra.ui.album.AlbumStageColors
+import com.luc4n3x.levyra.ui.album.albumContentGutter
+import com.luc4n3x.levyra.ui.album.albumStackedHeroHeight
+import com.luc4n3x.levyra.ui.album.albumStageColors
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareCard
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareFormat
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsAudioOutputRoute
@@ -88,6 +102,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
@@ -152,6 +167,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -163,6 +179,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -359,6 +376,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.toggleableState
@@ -2208,7 +2226,8 @@ fun LevyraApp(
                             dragStart = onExpansionDragStart,
                             drag = onExpansionDrag,
                             dragEnd = { velocity -> settleExpansion(velocity, true) }
-                        )
+                        ),
+                        motionSuspended = state.showAlbum || state.showArtist
                     )
                 }
             }
@@ -2499,6 +2518,7 @@ fun LevyraApp(
                 AlbumOverlay(
                     state = state,
                     onPlayAll = viewModel::playCurrentAlbum,
+                    onShuffleAll = viewModel::shuffleCurrentAlbum,
                     onPlay = viewModel::playAlbumSong,
                     onTogglePlayback = viewModel::togglePlay,
                     onFavorite = viewModel::toggleFavorite,
@@ -3386,6 +3406,7 @@ private fun formatTimerRemaining(totalSeconds: Long): String {
 private fun AlbumOverlay(
     state: LevyraUiState,
     onPlayAll: () -> Unit,
+    onShuffleAll: () -> Unit,
     onPlay: (Track) -> Unit,
     onTogglePlayback: () -> Unit,
     onFavorite: (Track) -> Unit,
@@ -3406,12 +3427,12 @@ private fun AlbumOverlay(
     val tracks = detail?.tracks.orEmpty()
     val description = detail?.description.orEmpty()
     val cover = album?.thumbnailUrl.orEmpty()
-    val accentTrack = tracks.firstOrNull() ?: state.currentTrack
-    val accentStart = accentTrack?.let { Color(it.accentStart) } ?: LevyraCyan
-    val accentEnd = accentTrack?.let { Color(it.accentEnd) } ?: LevyraViolet
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
-    val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val listState = rememberSaveable(album?.browseId, album?.title, saver = LazyListState.Saver) {
+        LazyListState()
+    }
     var addTarget by remember { mutableStateOf<Track?>(null) }
     val albumCurrentTrack = remember(tracks, state.currentTrack) {
         tracks.firstOrNull { candidate -> uiTrackMatches(state.currentTrack, candidate) }
@@ -3420,6 +3441,7 @@ private fun AlbumOverlay(
     val albumIsPlaying = albumIsActive && state.isPlaying
     val albumIsResolving = albumIsActive && state.isResolving
     val trackLoadFailed = album != null && tracks.isEmpty() && !state.albumLoading
+    val tracksLoading = state.albumLoading && tracks.isEmpty()
     val albumSaved = remember(tracks, state.favorites) {
         areAllFavoriteTracks(state.favorites, tracks)
     }
@@ -3429,164 +3451,279 @@ private fun AlbumOverlay(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
     )
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(LevyraBlack)
-    ) {
-        LevyraBackground()
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.08f),
-                            Color.Black.copy(alpha = 0.34f),
-                            LevyraBlack.copy(alpha = 0.96f)
-                        )
-                    )
-                )
-        )
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = albumBottomInset),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item(key = "album-topbar") {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = Color.White.copy(alpha = 0.06f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                        shape = CircleShape,
-                        modifier = Modifier.size(48.dp).pressable(onClick = onClose)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = strings.back, tint = LevyraText)
-                        }
+    val paletteKey = remember(album?.browseId, album?.title, album?.artist, cover) {
+        if (album == null || cover.isBlank()) {
+            ""
+        } else {
+            ArtworkPaletteCache.key(
+                trackId = "album:" + album.browseId.ifBlank { album.title + "|" + album.artist },
+                thumbnailUrl = cover,
+                largeThumbnailUrl = cover
+            )
+        }
+    }
+    val fallbackPalette = remember {
+        ArtworkPalette(AlbumNeutralPaletteStart.toArgb(), AlbumNeutralPaletteEnd.toArgb())
+    }
+    val albumPalette by rememberArtworkPalette(
+        paletteKey = paletteKey,
+        artworkUrl = cover,
+        fallback = fallbackPalette
+    )
+    val lightTheme = LevyraIsLight
+    val stageTarget = remember(albumPalette, lightTheme) {
+        albumStageColors(Color(albumPalette.start), Color(albumPalette.end), lightTheme)
+    }
+    val stage = animatedAlbumStage(target = stageTarget, animated = state.animationsEnabled)
+    val motionEnabled = state.animationsEnabled && state.motionArtworkEnabled
+
+    val albumHeader: @Composable () -> Unit = {
+        if (album != null) {
+            AlbumHeader(
+                album = album,
+                trackCount = tracks.size,
+                description = description,
+                stage = stage,
+                isPlaying = albumIsPlaying && !trackLoadFailed,
+                isResolving = albumIsResolving,
+                trackLoadFailed = trackLoadFailed,
+                onPlay = { if (albumIsActive) onTogglePlayback() else onPlayAll() },
+                onShuffle = onShuffleAll,
+                onRetry = onRetry,
+                onOpenArtist = onOpenAlbumArtist,
+                onDownload = onDownloadAlbum,
+                onShare = {
+                    val shareText = buildString {
+                        append(album.title)
+                        if (album.artist.isNotBlank()) append(" - ").append(album.artist)
+                        if (album.browseId.isNotBlank()) append("\nhttps://music.youtube.com/browse/").append(album.browseId)
                     }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Surface(
-                        color = Color.White.copy(alpha = 0.06f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                        shape = CircleShape,
-                        modifier = Modifier.size(48.dp).pressable(onClick = {
-                            val query = listOf(album?.title.orEmpty(), album?.artist.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
-                            if (query.isNotBlank()) openExternalUrl(context, "https://music.youtube.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}", strings)
-                        })
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Search, contentDescription = null, tint = LevyraText)
-                        }
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
                     }
+                    context.startActivity(Intent.createChooser(intent, strings.share))
                 }
+            )
+        }
+    }
+    val albumTrackItems: LazyListScope.(Dp) -> Unit = { gutter ->
+        when {
+            tracksLoading -> items(
+                count = ALBUM_SKELETON_ROWS,
+                key = { index -> "album-skeleton-$index" },
+                contentType = { "album-skeleton" }
+            ) {
+                AlbumTrackSkeleton(stage = stage, modifier = Modifier.padding(horizontal = gutter))
             }
-            when {
-                state.albumLoading && (album == null || tracks.isEmpty()) -> {
-                    item(key = "album-loading") {
-                        AlbumLoadingCard()
-                    }
-                }
-                album == null -> {
-                    item(key = "album-empty") {
-                        GlassMessage(strings.albumUnavailable, LevyraOrange)
-                    }
-                }
-                else -> {
-                    item(key = "album-hero") {
-                        AlbumHeroCard(
-                            album = album,
-                            cover = cover,
-                            description = description,
-                            motionArtwork = state.albumMotionArtwork,
-                            animationsEnabled = state.animationsEnabled && state.motionArtworkEnabled,
-                            canvasQuality = state.interfaceSettings.canvasQuality,
-                            trackCount = tracks.size,
-                            trackLoadFailed = trackLoadFailed,
-                            isPlaying = albumIsPlaying,
-                            isResolving = albumIsResolving,
-                            accentStart = accentStart,
-                            accentEnd = accentEnd,
-                            onPlayAll = {
-                                if (albumIsActive) onTogglePlayback() else onPlayAll()
-                            },
-                            onDownload = onDownloadAlbum,
-                            onRetry = onRetry,
-                            onOpenArtist = onOpenAlbumArtist,
-                            onShare = {
-                                val shareText = buildString {
-                                    append(album.title)
-                                    if (album.artist.isNotBlank()) append(" - ").append(album.artist)
-                                    if (album.browseId.isNotBlank()) append("\nhttps://music.youtube.com/browse/").append(album.browseId)
-                                }
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, shareText)
-                                }
-                                context.startActivity(Intent.createChooser(intent, strings.share))
-                            }
-                        )
-                    }
-                    if (tracks.isNotEmpty()) {
-                        item(key = "album-track-count") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .height(22.dp)
-                                        .width(4.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-                                )
-                                Text(strings.formatTrackCount(tracks.size), color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
-                            }
-                        }
-                        itemsIndexed(
-                            items = tracks,
-                            key = { index, track -> "album-track-$index-${track.id}" },
-                            contentType = { _, _ -> "album-track" }
-                        ) { index, track ->
-                            AlbumTrackItem(
-                                index = index,
-                                track = track,
-                                isCurrent = uiTrackMatches(state.currentTrack, track),
-                                isPlaying = state.isPlaying,
-                                isFavorite = track.id in state.favoriteIds,
-                                isDownloading = track.id in state.downloadingTrackIds,
-                                isDownloaded = track.id in state.downloadedTrackIds,
-                                downloadProgress = state.downloadProgressByTrackId[track.id],
-                                onPlay = {
-                                    if (uiTrackMatches(state.currentTrack, track)) onOpenPlayer() else onPlay(track)
-                                },
-                                onFavorite = { onFavorite(track) },
-                                onDownload = { onDownload(track) },
-                                onAddToPlaylist = { addTarget = track },
-                                onArtist = { onOpenTrackArtist(track) }
-                            )
-                        }
-                    } else if (!state.albumLoading) {
-                        item(key = "album-no-tracks") {
-                            AlbumTracksUnavailableState(strings.albumTracksUnavailable)
-                        }
-                    }
+            tracks.isNotEmpty() -> itemsIndexed(
+                items = tracks,
+                key = { index, track -> "album-track-$index-${track.id}" },
+                contentType = { _, _ -> "album-track" }
+            ) { index, track ->
+                AlbumTrackRow(
+                    index = index,
+                    track = track,
+                    albumArtist = album?.artist.orEmpty(),
+                    stage = stage,
+                    isCurrent = uiTrackMatches(state.currentTrack, track),
+                    isPlaying = state.isPlaying,
+                    isFavorite = track.id in state.favoriteIds,
+                    isDownloading = track.id in state.downloadingTrackIds,
+                    isDownloaded = track.id in state.downloadedTrackIds,
+                    downloadProgress = state.downloadProgressByTrackId[track.id],
+                    showDivider = index < tracks.lastIndex,
+                    onPlay = {
+                        if (uiTrackMatches(state.currentTrack, track)) onOpenPlayer() else onPlay(track)
+                    },
+                    onFavorite = { onFavorite(track) },
+                    onDownload = { onDownload(track) },
+                    onAddToPlaylist = { addTarget = track },
+                    onArtist = { onOpenTrackArtist(track) },
+                    modifier = Modifier.padding(horizontal = gutter)
+                )
+            }
+            album != null && !state.albumLoading -> item(key = "album-no-tracks") {
+                Box(modifier = Modifier.padding(horizontal = gutter, vertical = 8.dp)) {
+                    AlbumTracksUnavailableState(strings.albumTracksUnavailable)
                 }
             }
         }
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(stage.base)
+    ) {
+        val split = resolvePlayerPane(maxWidth.value, maxHeight.value) == LevyraPlayerPane.SideBySide
+        val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val topBarHeight = statusTop + ALBUM_TOP_BAR_HEIGHT
+        val topBarPx = with(density) { topBarHeight.toPx() }
+        val stackedHeroHeight = albumStackedHeroHeight(maxWidth, maxHeight)
+        val heroPx = with(density) { stackedHeroHeight.toPx() }
+        val splitCollapsePx = with(density) { ALBUM_SPLIT_COLLAPSE_OFFSET.toPx() }
+        val collapsedState = remember(listState, split, heroPx, topBarPx, splitCollapsePx) {
+            derivedStateOf {
+                val threshold = if (split) splitCollapsePx else (heroPx - topBarPx).coerceAtLeast(0f)
+                listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > threshold
+            }
+        }
+
+        when {
+            album == null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = topBarHeight, start = 20.dp, end = 20.dp)
+                ) {
+                    if (state.albumLoading) {
+                        CircularProgressIndicator(
+                            color = stage.accent,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 48.dp)
+                        )
+                    } else {
+                        GlassMessage(strings.albumUnavailable, LevyraOrange)
+                    }
+                }
+            }
+            split -> {
+                val heroWidth = maxWidth * AlbumSplitHeroFraction
+                val listStart = maxWidth * AlbumSplitListStartFraction
+                AlbumSplitField(stage = stage, heroWidth = heroWidth, modifier = Modifier.matchParentSize())
+                AlbumArtworkLayer(
+                    cover = cover,
+                    title = album.title,
+                    motionArtwork = state.albumMotionArtwork,
+                    motionEnabled = motionEnabled,
+                    canvasQuality = state.interfaceSettings.canvasQuality,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .fillMaxHeight()
+                        .width(heroWidth)
+                        .artworkDissolve(ArtworkDissolveEdge.End, ALBUM_SPLIT_DISSOLVE)
+                )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = listStart),
+                    contentPadding = PaddingValues(top = topBarHeight, bottom = albumBottomInset)
+                ) {
+                    item(key = "album-header", contentType = "album-header") {
+                        Box(modifier = Modifier.padding(horizontal = ALBUM_SPLIT_GUTTER)) { albumHeader() }
+                    }
+                    albumTrackItems(ALBUM_SPLIT_GUTTER)
+                }
+            }
+            else -> {
+                val gutter = albumContentGutter(maxWidth)
+                val overlapPx = with(density) { AlbumHeaderOverlap.toPx() }
+                val parallax = state.animationsEnabled
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .drawBehind {
+                            val visible = listState.layoutInfo.visibleItemsInfo
+                            val header = visible.firstOrNull { it.key == "album-header" }
+                            val hero = visible.firstOrNull { it.key == "album-hero" }
+                            val heroBottom = when {
+                                header != null -> header.offset + overlapPx
+                                hero != null -> hero.offset + heroPx
+                                else -> return@drawBehind
+                            }
+                            val fieldEnd = if (header != null) {
+                                (header.offset + header.size).toFloat()
+                            } else {
+                                heroBottom + overlapPx
+                            }
+                            if (heroBottom > 0f) {
+                                drawRect(
+                                    color = stage.fieldTop,
+                                    size = Size(size.width, heroBottom.coerceAtMost(size.height))
+                                )
+                            }
+                            if (fieldEnd > heroBottom && fieldEnd > 0f) {
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        0f to stage.fieldTop,
+                                        0.55f to stage.fieldMid,
+                                        1f to stage.base,
+                                        startY = heroBottom,
+                                        endY = fieldEnd
+                                    ),
+                                    topLeft = Offset(0f, heroBottom),
+                                    size = Size(size.width, fieldEnd - heroBottom)
+                                )
+                            }
+                        }
+                )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = albumBottomInset)
+                ) {
+                    item(key = "album-hero", contentType = "album-hero") {
+                        AlbumArtworkLayer(
+                            cover = cover,
+                            title = album.title,
+                            motionArtwork = state.albumMotionArtwork,
+                            motionEnabled = motionEnabled,
+                            canvasQuality = state.interfaceSettings.canvasQuality,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(stackedHeroHeight)
+                                .graphicsLayer {
+                                    translationY = if (parallax && listState.firstVisibleItemIndex == 0) {
+                                        listState.firstVisibleItemScrollOffset * ALBUM_HERO_PARALLAX
+                                    } else {
+                                        0f
+                                    }
+                                }
+                                .artworkDissolve(ArtworkDissolveEdge.Bottom, AlbumHeroDissolve)
+                        )
+                    }
+                    item(key = "album-header", contentType = "album-header") {
+                        Box(
+                            modifier = Modifier
+                                .albumOverlapUpward(AlbumHeaderOverlap)
+                                .padding(horizontal = gutter)
+                        ) {
+                            albumHeader()
+                        }
+                    }
+                    albumTrackItems(gutter)
+                }
+            }
+        }
+
+        AlbumTopBar(
+            title = album?.title.orEmpty(),
+            stage = stage,
+            collapsedState = collapsedState,
+            height = topBarHeight,
+            reserveBookmarkSlot = album != null,
+            animated = state.animationsEnabled,
+            onClose = onClose,
+            onSearch = {
+                val query = listOf(album?.title.orEmpty(), album?.artist.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
+                if (query.isNotBlank()) openExternalUrl(context, "https://music.youtube.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}", strings)
+            }
+        )
         if (state.albumLoading && album != null && tracks.isNotEmpty()) {
-            LinearMiniLoading(modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 58.dp))
+            LinearMiniLoading(modifier = Modifier.align(Alignment.TopCenter).padding(top = topBarHeight))
         }
         if (album != null) {
             SavedAlbumBookmarkOverlay(
                 saved = albumSaved,
                 enabled = tracks.isNotEmpty(),
                 languageCode = state.languageCode,
-                onToggle = onToggleAlbumFavorite
+                onToggle = onToggleAlbumFavorite,
+                container = ALBUM_CHROME_FILL,
+                border = ALBUM_CHROME_BORDER,
+                idleTint = Color.White
             )
         }
         state.currentTrack?.let { current ->
@@ -3619,166 +3756,335 @@ private fun AlbumOverlay(
                     addTarget = null
                 }
             )
-        }    }
-}@Composable
-private fun AlbumLoadingCard() {
-    Surface(
-        color = Color.White.copy(alpha = 0.055f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
-        shape = RoundedCornerShape(32.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 34.dp)
-            .levyraShimmer()
+        }
+    }
+}
+
+private const val ALBUM_SKELETON_ROWS = 6
+private const val ALBUM_HERO_PARALLAX = 0.32f
+private const val ALBUM_SPLIT_DISSOLVE = 0.34f
+private const val ALBUM_STAGE_COLOR_MS = 460
+private val ALBUM_TOP_BAR_HEIGHT = 64.dp
+private val ALBUM_SPLIT_GUTTER = 24.dp
+private val ALBUM_SPLIT_COLLAPSE_OFFSET = 96.dp
+private val ALBUM_CHROME_FILL = Color.Black.copy(alpha = 0.38f)
+private val ALBUM_CHROME_BORDER = Color.White.copy(alpha = 0.14f)
+
+private fun Modifier.albumOverlapUpward(overlap: Dp): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val overlapPx = overlap.roundToPx().coerceAtMost(placeable.height)
+    layout(placeable.width, placeable.height - overlapPx) {
+        placeable.place(0, -overlapPx)
+    }
+}
+
+@Composable
+private fun animatedAlbumStage(target: AlbumStageColors, animated: Boolean): AlbumStageColors {
+    val spec: AnimationSpec<Color> = if (animated) {
+        tween(ALBUM_STAGE_COLOR_MS, easing = LinearOutSlowInEasing)
+    } else {
+        snap()
+    }
+    val fieldTop by animateColorAsState(target.fieldTop, spec, label = "album-field-top")
+    val fieldMid by animateColorAsState(target.fieldMid, spec, label = "album-field-mid")
+    val base by animateColorAsState(target.base, spec, label = "album-field-base")
+    val content by animateColorAsState(target.content, spec, label = "album-content")
+    val contentMuted by animateColorAsState(target.contentMuted, spec, label = "album-content-muted")
+    val accent by animateColorAsState(target.accent, spec, label = "album-accent")
+    val actionStart by animateColorAsState(target.actionStart, spec, label = "album-action-start")
+    val actionEnd by animateColorAsState(target.actionEnd, spec, label = "album-action-end")
+    val actionContent by animateColorAsState(target.actionContent, spec, label = "album-action-content")
+    return AlbumStageColors(
+        fieldTop = fieldTop,
+        fieldMid = fieldMid,
+        base = base,
+        content = content,
+        contentMuted = contentMuted,
+        accent = accent,
+        actionStart = actionStart,
+        actionEnd = actionEnd,
+        actionContent = actionContent,
+        secondaryFill = target.secondaryFill,
+        hairline = target.hairline
+    )
+}
+
+@Composable
+private fun AlbumSplitField(stage: AlbumStageColors, heroWidth: Dp, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.drawBehind {
+            val heroEnd = heroWidth.toPx().coerceAtMost(size.width)
+            val start = heroEnd * (1f - ALBUM_SPLIT_DISSOLVE)
+            val end = (heroEnd * 1.55f).coerceAtMost(size.width)
+            if (end <= start) return@drawBehind
+            val rtl = layoutDirection == LayoutDirection.Rtl
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to stage.fieldTop,
+                    0.45f to stage.fieldMid,
+                    1f to stage.base,
+                    startX = if (rtl) size.width - start else start,
+                    endX = if (rtl) size.width - end else end
+                ),
+                topLeft = Offset(if (rtl) size.width - end else 0f, 0f),
+                size = Size(end, size.height)
+            )
+        }
+    )
+}
+
+@Composable
+private fun AlbumArtworkLayer(
+    cover: String,
+    title: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    motionEnabled: Boolean,
+    canvasQuality: LevyraCanvasQuality,
+    modifier: Modifier = Modifier
+) {
+    MotionArtworkLayer(
+        artwork = motionArtwork,
+        enabled = motionEnabled,
+        isPlaying = false,
+        pageMode = true,
+        cornerRadius = 0.dp,
+        presentation = MotionArtworkPresentation.Immersive,
+        quality = canvasQuality,
+        modifier = modifier
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        SeamlessArtworkImage(
+            url = cover,
+            contentDescription = title,
+            modifier = Modifier.fillMaxSize()
         ) {
-            Box(modifier = Modifier.size(226.dp).clip(RoundedCornerShape(28.dp)).background(Color.White.copy(alpha = 0.08f)))
-            Box(modifier = Modifier.height(34.dp).fillMaxWidth(0.70f).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.08f)))
-            Box(modifier = Modifier.height(18.dp).fillMaxWidth(0.48f).clip(RoundedCornerShape(9.dp)).background(Color.White.copy(alpha = 0.06f)))
-            Box(modifier = Modifier.height(78.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = 0.055f)))
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(listOf(AlbumNeutralPaletteStart, AlbumNeutralPaletteEnd))),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Album, null, tint = Color.White.copy(alpha = 0.82f), modifier = Modifier.size(72.dp))
+            }
         }
     }
 }
 
 @Composable
-private fun AlbumHeroCard(
+private fun AlbumTopBar(
+    title: String,
+    stage: AlbumStageColors,
+    collapsedState: androidx.compose.runtime.State<Boolean>,
+    height: Dp,
+    reserveBookmarkSlot: Boolean,
+    animated: Boolean,
+    onClose: () -> Unit,
+    onSearch: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val collapsed by collapsedState
+    val collapse by animateFloatAsState(
+        targetValue = if (collapsed) 1f else 0f,
+        animationSpec = if (animated) tween(220, easing = LinearOutSlowInEasing) else snap(),
+        label = "album-topbar-collapse"
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .drawBehind {
+                if (collapse < 1f) {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.Black.copy(alpha = 0.44f * (1f - collapse)),
+                            1f to Color.Transparent
+                        )
+                    )
+                }
+                if (collapse > 0f) drawRect(color = stage.fieldTop.copy(alpha = collapse))
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            PlayerRoundIconButton(
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = strings.back,
+                tint = Color.White,
+                background = ALBUM_CHROME_FILL,
+                borderColor = ALBUM_CHROME_BORDER,
+                onClick = onClose
+            )
+            Text(
+                text = title,
+                color = stage.content,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.4).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer { alpha = collapse }
+                    .then(if (collapse <= 0.05f) Modifier.clearAndSetSemantics {} else Modifier)
+            )
+            if (reserveBookmarkSlot) Spacer(modifier = Modifier.width(ALBUM_BOOKMARK_SLOT))
+            PlayerRoundIconButton(
+                icon = Icons.Rounded.Search,
+                contentDescription = strings.search,
+                tint = Color.White,
+                background = ALBUM_CHROME_FILL,
+                borderColor = ALBUM_CHROME_BORDER,
+                onClick = onSearch
+            )
+        }
+    }
+}
+
+private val ALBUM_BOOKMARK_SLOT = 50.dp
+
+@Composable
+private fun AlbumHeader(
     album: AlbumHit,
-    cover: String,
-    description: String,
-    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
-    animationsEnabled: Boolean,
-    canvasQuality: LevyraCanvasQuality,
     trackCount: Int,
-    trackLoadFailed: Boolean,
+    description: String,
+    stage: AlbumStageColors,
     isPlaying: Boolean,
     isResolving: Boolean,
-    accentStart: Color,
-    accentEnd: Color,
-    onPlayAll: () -> Unit,
-    onDownload: () -> Unit,
+    trackLoadFailed: Boolean,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit,
     onRetry: () -> Unit,
     onOpenArtist: () -> Unit,
+    onDownload: () -> Unit,
     onShare: () -> Unit
 ) {
-    val context = LocalContext.current
-    var descriptionExpanded by remember { mutableStateOf(false) }
-
+    val strings = LocalLevyraStrings.current
+    var descriptionExpanded by rememberSaveable(album.browseId, album.title) { mutableStateOf(false) }
+    val meta = remember(album.year, trackCount, strings) {
+        listOf(album.year, if (trackCount > 0) strings.formatTrackCount(trackCount) else "")
+            .filter { it.isNotBlank() }
+            .joinToString("  ·  ")
+    }
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = LevyraPlayerDesign.SpaceLg),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(240.dp)
-                .shadow(30.dp, RoundedCornerShape(28.dp), clip = false, ambientColor = accentStart.copy(alpha = 0.55f), spotColor = accentEnd.copy(alpha = 0.55f))
-                .clip(RoundedCornerShape(28.dp))
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(28.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            MotionArtworkLayer(
-                artwork = motionArtwork,
-                enabled = animationsEnabled,
-                isPlaying = false,
-                pageMode = true,
-                cornerRadius = 28.dp,
-                presentation = MotionArtworkPresentation.Card,
-                quality = canvasQuality,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (cover.isNotBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(LevyraArtworkCache.large(cover))
-                            .crossfade(180)
-                            .diskCachePolicy(CachePolicy.ENABLED)
-                            .memoryCachePolicy(CachePolicy.ENABLED)
-                            .build(),
-                        contentDescription = album.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+        Text(
+            text = album.title,
+            color = stage.content,
+            fontSize = 28.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(28.sp),
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.8).sp,
+            textAlign = TextAlign.Center,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() }
+        )
+        if (album.artist.isNotBlank()) {
+            Row(
+                modifier = Modifier
+                    .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+                    .clip(LevyraPlayerDesign.ShapePill)
+                    .clickable(
+                        onClickLabel = strings.openArtist,
+                        role = Role.Button,
+                        onClick = onOpenArtist
                     )
-                } else {
-                    Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(accentStart, accentEnd))), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Album, null, tint = LevyraText, modifier = Modifier.size(72.dp))
-                    }
-                }
+                    .padding(horizontal = LevyraPlayerDesign.SpaceMd),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = album.artist,
+                    color = stage.accent,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-0.3).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = stage.accent,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
+        if (meta.isNotBlank()) {
             Text(
-                album.title,
-                color = LevyraText,
-                fontSize = 32.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(32.sp),
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                letterSpacing = (-1.0).sp,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                listOf(album.artist, album.year).filter { it.isNotBlank() }.joinToString("  ·  "),
-                color = LevyraMuted,
-                fontSize = 15.sp,
+                text = meta,
+                color = stage.contentMuted,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = (-0.2).sp,
+                letterSpacing = (-0.1).sp,
                 textAlign = TextAlign.Center,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
-
-        AlbumPrimaryPlayButton(
-            enabled = trackCount > 0 || trackLoadFailed,
-            isPlaying = isPlaying && !trackLoadFailed,
-            isResolving = isResolving,
-            retry = trackLoadFailed,
-            accentStart = accentStart,
-            accentEnd = accentEnd,
-            onClick = if (trackLoadFailed) onRetry else onPlayAll
-        )
-
+        Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceLg))
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier
+                .widthIn(max = ALBUM_ACTIONS_MAX_WIDTH)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+        ) {
+            AlbumPlayButton(
+                enabled = trackCount > 0 || trackLoadFailed,
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                retry = trackLoadFailed,
+                stage = stage,
+                onClick = if (trackLoadFailed) onRetry else onPlay,
+                modifier = Modifier.weight(1f)
+            )
+            AlbumShuffleButton(
+                enabled = trackCount > 1 && !trackLoadFailed,
+                stage = stage,
+                onClick = onShuffle
+            )
+        }
+        Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             if (trackCount > 0) {
-                AlbumSecondaryAction(icon = Icons.Rounded.Download, label = LocalLevyraStrings.current.offline, enabled = true, modifier = Modifier.weight(1f), onClick = onDownload)
+                AlbumQuietAction(icon = Icons.Rounded.Download, label = strings.offline, stage = stage, onClick = onDownload)
             }
-            AlbumSecondaryAction(icon = Icons.Rounded.Person, label = LocalLevyraStrings.current.artistLabel, enabled = album.artist.isNotBlank(), modifier = Modifier.weight(1f), onClick = onOpenArtist)
-            AlbumSecondaryAction(icon = Icons.Rounded.Share, label = LocalLevyraStrings.current.share, enabled = true, modifier = Modifier.weight(1f), onClick = onShare)
+            AlbumQuietAction(icon = Icons.Rounded.Share, label = strings.share, stage = stage, onClick = onShare)
         }
-
         if (description.isNotBlank()) {
+            Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White.copy(alpha = 0.04f))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)), RoundedCornerShape(20.dp))
-                    .clickable { descriptionExpanded = !descriptionExpanded }
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                    .clip(LevyraPlayerDesign.ShapeSm)
+                    .clickable(role = Role.Button) { descriptionExpanded = !descriptionExpanded }
+                    .padding(horizontal = LevyraPlayerDesign.SpaceXs, vertical = LevyraPlayerDesign.SpaceSm),
+                verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
             ) {
                 Text(
-                    description,
-                    color = LevyraMuted,
+                    text = description,
+                    color = stage.contentMuted,
                     fontSize = 14.sp,
                     lineHeight = 21.sp,
-                    fontWeight = FontWeight.Normal,
                     letterSpacing = (-0.2).sp,
                     maxLines = if (descriptionExpanded) Int.MAX_VALUE else 3,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    if (descriptionExpanded) LocalLevyraStrings.current.showLess else LocalLevyraStrings.current.readAll,
-                    color = accentStart,
+                    text = if (descriptionExpanded) strings.showLess else strings.readAll,
+                    color = stage.accent,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = (-0.2).sp
@@ -3786,6 +4092,14 @@ private fun AlbumHeroCard(
             }
         }
     }
+}
+
+private val ALBUM_ACTIONS_MAX_WIDTH = 520.dp
+private val ALBUM_ACTION_HEIGHT = 52.dp
+
+private fun albumControlShape(): RoundedCornerShape {
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    return RoundedCornerShape(if (isAppleStyle) LevyraPlayerDesign.CornerXs else LevyraPlayerDesign.CornerSm)
 }
 
 @Composable
@@ -3822,98 +4136,121 @@ private fun AlbumTracksUnavailableState(message: String) {
 }
 
 @Composable
-private fun AlbumPrimaryPlayButton(
+private fun AlbumPlayButton(
     enabled: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     retry: Boolean,
-    accentStart: Color,
-    accentEnd: Color,
-    onClick: () -> Unit
+    stage: AlbumStageColors,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
-    val cornerRadius = if (isAppleStyle) 12.dp else 16.dp
-    val buttonShape = RoundedCornerShape(cornerRadius)
-    val safeGradient = remember(accentStart, accentEnd) {
-        playerContrastGradient(accentStart, accentEnd, PlayerMinimumContrast)
-    }
-    val enabledContent = safeGradient.content
-    val disabledContent = LevyraMuted
+    val strings = LocalLevyraStrings.current
+    val shape = albumControlShape()
+    val content = if (enabled) stage.actionContent else stage.contentMuted
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .shadow(if (enabled) 16.dp else 0.dp, buttonShape, clip = false, spotColor = safeGradient.start.copy(alpha = 0.6f))
-            .clip(buttonShape)
+        modifier = modifier
+            .height(ALBUM_ACTION_HEIGHT)
+            .shadow(if (enabled) 14.dp else 0.dp, shape, clip = false, spotColor = stage.actionStart.copy(alpha = 0.55f))
+            .clip(shape)
             .background(
-                if (enabled) Brush.horizontalGradient(listOf(safeGradient.start, safeGradient.end))
-                else Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f)))
+                if (enabled) {
+                    Brush.horizontalGradient(listOf(stage.actionStart, stage.actionEnd))
+                } else {
+                    Brush.horizontalGradient(listOf(stage.secondaryFill, stage.secondaryFill))
+                }
             )
             .pressable(enabled = enabled && !isResolving, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = LevyraPlayerDesign.SpaceMd),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+        ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    color = if (enabled) enabledContent else disabledContent,
+                    color = content,
                     strokeWidth = 2.5.dp,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             } else {
                 Icon(
-                    when {
+                    imageVector = when {
                         retry -> Icons.Rounded.Refresh
                         isPlaying -> Icons.Rounded.Pause
                         else -> Icons.Rounded.PlayArrow
                     },
-                    null,
-                    tint = if (enabled) enabledContent else disabledContent,
-                    modifier = Modifier.size(26.dp)
+                    contentDescription = null,
+                    tint = content,
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Text(
-                when {
-                    retry -> LocalLevyraStrings.current.exploreSamplesRetry
-                    isPlaying -> LocalLevyraStrings.current.playing
-                    else -> LocalLevyraStrings.current.play
+                text = when {
+                    retry -> strings.exploreSamplesRetry
+                    isPlaying -> strings.playing
+                    else -> strings.play
                 },
-                color = if (enabled) enabledContent else disabledContent,
-                fontSize = 16.sp,
+                color = content,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.3).sp
+                letterSpacing = (-0.3).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
 @Composable
-private fun AlbumSecondaryAction(
+private fun AlbumShuffleButton(
+    enabled: Boolean,
+    stage: AlbumStageColors,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = albumControlShape()
+    val content = if (enabled) stage.content else stage.contentMuted.copy(alpha = 0.5f)
+    Box(
+        modifier = modifier
+            .size(ALBUM_ACTION_HEIGHT)
+            .clip(shape)
+            .background(stage.secondaryFill)
+            .border(BorderStroke(LevyraPlayerDesign.Hairline, stage.hairline), shape)
+            .pressable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Shuffle,
+            contentDescription = LocalLevyraStrings.current.shuffle,
+            tint = content,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun AlbumQuietAction(
     icon: ImageVector,
     label: String,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
+    stage: AlbumStageColors,
     onClick: () -> Unit
 ) {
-    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
-    val cornerRadius = if (isAppleStyle) 12.dp else 14.dp
-    val buttonShape = RoundedCornerShape(cornerRadius)
     Row(
-        modifier = modifier
-            .height(48.dp)
-            .clip(buttonShape)
-            .background(Color.White.copy(alpha = if (enabled) 0.06f else 0.03f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) 0.08f else 0.04f)), buttonShape)
-            .pressable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+        modifier = Modifier
+            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+            .clip(LevyraPlayerDesign.ShapePill)
+            .pressable(onClick = onClick)
+            .padding(horizontal = LevyraPlayerDesign.SpaceMd),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = if (enabled) LevyraText else LevyraMuted.copy(alpha = 0.45f), modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = null, tint = stage.contentMuted, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            label,
-            color = if (enabled) LevyraText else LevyraMuted.copy(alpha = 0.45f),
-            fontSize = 12.sp,
+            text = label,
+            color = stage.contentMuted,
+            fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = (-0.2).sp,
             maxLines = 1,
@@ -4018,85 +4355,101 @@ private fun LinearMiniLoading(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AlbumTrackItem(
+private fun AlbumTrackRow(
     index: Int,
     track: Track,
+    albumArtist: String,
+    stage: AlbumStageColors,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isFavorite: Boolean,
     isDownloading: Boolean,
     isDownloaded: Boolean,
     downloadProgress: Int?,
+    showDivider: Boolean,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
     onAddToPlaylist: () -> Unit,
-    onArtist: () -> Unit
+    onArtist: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
-    Surface(
-        color = if (isCurrent) LevyraCyan.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.03f),
-        border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.05f)),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onPlay)
-    ) {
-        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(modifier = Modifier.width(28.dp), contentAlignment = Alignment.Center) {
+    val showArtist = remember(track.artist, albumArtist) {
+        track.artist.isNotBlank() && !track.artist.trim().equals(albumArtist.trim(), ignoreCase = true)
+    }
+    val status = when {
+        isDownloaded -> strings.offline
+        isDownloading -> strings.formatDownloadProgress(downloadProgress ?: 1)
+        else -> ""
+    }
+    val subtitle = listOf(if (showArtist) track.artist else "", status)
+        .filter { it.isNotBlank() }
+        .joinToString("  ·  ")
+    val duration = formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = ALBUM_TRACK_ROW_HEIGHT)
+                .clip(RoundedCornerShape(LevyraPlayerDesign.CornerXs))
+                .background(if (isCurrent) stage.accent.copy(alpha = 0.12f) else Color.Transparent)
+                .clickable(onClick = onPlay)
+                .padding(start = LevyraPlayerDesign.SpaceXs, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+        ) {
+            Box(modifier = Modifier.width(ALBUM_TRACK_INDEX_WIDTH), contentAlignment = Alignment.Center) {
                 if (isCurrent) {
-                    ActiveTrackEqualizer(color = LevyraCyan, isPlaying = isPlaying, width = 18.dp, height = 14.dp)
+                    ActiveTrackEqualizer(color = stage.accent, isPlaying = isPlaying, width = 18.dp, height = 14.dp)
                 } else {
-                    Text("${index + 1}", color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
-                }
-            }
-            Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(LevyraPanelSoft), contentAlignment = Alignment.Center) {
-                val thumb = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
-                if (thumb.isNotBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context).data(LevyraArtworkCache.small(thumb)).crossfade(120).diskCachePolicy(CachePolicy.ENABLED).memoryCachePolicy(CachePolicy.ENABLED).build(),
-                        contentDescription = track.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.matchParentSize()
-                    )
-                } else {
-                    Icon(Icons.Rounded.MusicNote, null, tint = LevyraMuted, modifier = Modifier.size(24.dp))
-                }
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 15.sp, lineHeight = LevyraTypeRhythm.lineHeight(15.sp), fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                val duration = formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
-                val status = when {
-                    isDownloaded -> strings.offline
-                    isDownloading -> strings.formatDownloadProgress(downloadProgress ?: 1)
-                    else -> duration
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = track.artist,
-                        color = LevyraMuted,
+                        text = "${index + 1}",
+                        color = stage.contentMuted,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.3).sp
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = track.title,
+                    color = if (isCurrent) stage.accent else stage.content,
+                    fontSize = 15.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-0.3).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        color = stage.contentMuted,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = (-0.2).sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (status.isNotBlank()) {
-                        Text(
-                            text = "  ·  ${status}",
-                            color = LevyraMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = (-0.2).sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
+            }
+            if (duration.isNotBlank()) {
+                Text(
+                    text = duration,
+                    color = stage.contentMuted,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
+                    maxLines = 1
+                )
             }
             Box {
                 IconButton(onClick = { expanded = true }) {
-                    Icon(Icons.Rounded.MoreVert, null, tint = LevyraMuted)
+                    Icon(Icons.Rounded.MoreVert, contentDescription = strings.options, tint = stage.contentMuted)
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) }, leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) }, onClick = { expanded = false; onFavorite() })
@@ -4120,8 +4473,50 @@ private fun AlbumTrackItem(
                 }
             }
         }
+        if (showDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = ALBUM_TRACK_INDEX_WIDTH + LevyraPlayerDesign.SpaceMd + LevyraPlayerDesign.SpaceXs)
+                    .height(LevyraPlayerDesign.Hairline)
+                    .background(stage.hairline)
+            )
+        }
     }
 }
+
+@Composable
+private fun AlbumTrackSkeleton(stage: AlbumStageColors, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(ALBUM_TRACK_ROW_HEIGHT)
+            .padding(start = LevyraPlayerDesign.SpaceXs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+    ) {
+        Spacer(modifier = Modifier.width(ALBUM_TRACK_INDEX_WIDTH))
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.62f)
+                    .height(12.dp)
+                    .clip(LevyraPlayerDesign.ShapePill)
+                    .background(stage.content.copy(alpha = 0.10f))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.36f)
+                    .height(10.dp)
+                    .clip(LevyraPlayerDesign.ShapePill)
+                    .background(stage.content.copy(alpha = 0.06f))
+            )
+        }
+    }
+}
+
+private val ALBUM_TRACK_ROW_HEIGHT = 58.dp
+private val ALBUM_TRACK_INDEX_WIDTH = 30.dp
 
 @Composable
 private fun ArtistOverlay(
@@ -14915,7 +15310,8 @@ private fun PlayerScreen(
     state: LevyraUiState,
     morphAnchors: PlayerMorphAnchors,
     morphActive: Boolean,
-    collapseActions: PlayerCollapseActions
+    collapseActions: PlayerCollapseActions,
+    motionSuspended: Boolean
 ) {
     val track = state.currentTrack
     val strings = LocalLevyraStrings.current
@@ -14933,6 +15329,7 @@ private fun PlayerScreen(
         morphAnchors = morphAnchors,
         morphActive = morphActive,
         collapseActions = collapseActions,
+        motionSuspended = motionSuspended,
         modeSwitchContent = {
             if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
                 PlayerModeSwitch(

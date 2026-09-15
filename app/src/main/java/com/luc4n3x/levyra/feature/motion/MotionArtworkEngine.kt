@@ -9,6 +9,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +22,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -216,6 +219,7 @@ class MotionArtworkEngine(context: Context) {
         resolve(track, source)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun resolveFreshProgressive(
         track: Track,
         identityKey: String,
@@ -257,9 +261,54 @@ class MotionArtworkEngine(context: Context) {
                 lookups.joinAll()
                 lookupOutcomes.close()
             }
-            val pendingOutcomes = mutableListOf<IndexedMotionProviderOutcome>()
-            for (lookup in lookupOutcomes) {
-                pendingOutcomes.add(lookup)
+            val pendingProviderIndexes = providers.indices.toMutableSet()
+            fun pendingProviderRanks(): List<Int> = pendingProviderIndexes.map { index ->
+                providerRanks[providers[index].id] ?: Int.MAX_VALUE
+            }
+            var heldCandidate: MotionArtworkRankedCandidate? = null
+            var holdDeadlineNanos = 0L
+
+            suspend fun publish(accepted: MotionArtworkRankedCandidate): Boolean {
+                if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) {
+                    cancelMotionArtworkLookups(lookups)
+                    return false
+                }
+                if (publishedCandidate != null) upgradesUsed++
+                publishedCandidate = accepted
+                val artwork = motionArtworkFrom(accepted, identityKey, configEpoch, config)
+                publishedArtwork = artwork
+                repository.save(artwork)
+                emit(artwork)
+                return true
+            }
+
+            while (true) {
+                val held = heldCandidate
+                val received = if (held == null) {
+                    lookupOutcomes.receiveCatching()
+                } else {
+                    val remainingMs = (holdDeadlineNanos - System.nanoTime()) / NANOS_PER_MILLI
+                    if (remainingMs <= 0L) {
+                        null
+                    } else {
+                        select {
+                            lookupOutcomes.onReceiveCatching { it }
+                            onTimeout(remainingMs) { null }
+                        }
+                    }
+                }
+                if (received == null) {
+                    heldCandidate = null
+                    Timber.d(
+                        "motion priority settle elapsed; publishing provider=%s title=%s",
+                        held?.candidate?.provider,
+                        identity.title
+                    )
+                    if (held != null && !publish(held)) return@supervisorScope
+                    continue
+                }
+                val firstLookup = received.getOrNull() ?: break
+                val pendingOutcomes = mutableListOf(firstLookup)
                 while (true) {
                     val next = lookupOutcomes.tryReceive().getOrNull() ?: break
                     pendingOutcomes.add(next)
@@ -267,6 +316,7 @@ class MotionArtworkEngine(context: Context) {
                 pendingOutcomes.sortBy { providerRanks[providers[it.index].id] ?: Int.MAX_VALUE }
                 while (pendingOutcomes.isNotEmpty()) {
                     val currentLookup = pendingOutcomes.removeAt(0)
+                    pendingProviderIndexes.remove(currentLookup.index)
                     val provider = providers[currentLookup.index]
                     val outcome = currentLookup.outcome
                     val summary = when (outcome) {
@@ -288,7 +338,7 @@ class MotionArtworkEngine(context: Context) {
                     val providerRank = providerRanks[provider.id] ?: Int.MAX_VALUE
                     if (
                         !shouldPublishMotionUpgrade(
-                            publishedProviderRank = publishedCandidate?.providerRank,
+                            publishedProviderRank = publishedCandidate?.providerRank ?: heldCandidate?.providerRank,
                             candidateProviderRank = providerRank,
                             forcedSource = forcedSource,
                             upgradesUsed = upgradesUsed
@@ -338,17 +388,46 @@ class MotionArtworkEngine(context: Context) {
                         }
                     }
                     val accepted = selected ?: continue
-                    if (!shouldPublishMotionArtwork(networkPolicy.canResolveCurrent())) {
-                        cancelMotionArtworkLookups(lookups)
-                        return@supervisorScope
+                    if (
+                        shouldHoldMotionPublication(
+                            candidateProviderRank = accepted.providerRank,
+                            pendingProviderRanks = pendingProviderRanks(),
+                            forcedSource = forcedSource,
+                            alreadyPublished = publishedCandidate != null
+                        )
+                    ) {
+                        if (heldCandidate == null) {
+                            holdDeadlineNanos = System.nanoTime() + MOTION_PRIORITY_SETTLE_MS * NANOS_PER_MILLI
+                        }
+                        heldCandidate = accepted
+                        Timber.d(
+                            "motion priority settle holding provider=%s title=%s pending=%s",
+                            accepted.candidate.provider,
+                            identity.title,
+                            pendingProviderRanks()
+                        )
+                        continue
                     }
-                    if (publishedCandidate != null) upgradesUsed++
-                    publishedCandidate = accepted
-                    val artwork = motionArtworkFrom(accepted, identityKey, configEpoch, config)
-                    publishedArtwork = artwork
-                    repository.save(artwork)
-                    emit(artwork)
+                    heldCandidate = null
+                    if (!publish(accepted)) return@supervisorScope
                 }
+                val stillHeld = heldCandidate
+                if (
+                    stillHeld != null &&
+                    !shouldHoldMotionPublication(
+                        candidateProviderRank = stillHeld.providerRank,
+                        pendingProviderRanks = pendingProviderRanks(),
+                        forcedSource = forcedSource,
+                        alreadyPublished = publishedCandidate != null
+                    )
+                ) {
+                    heldCandidate = null
+                    if (!publish(stillHeld)) return@supervisorScope
+                }
+            }
+            heldCandidate?.let { held ->
+                heldCandidate = null
+                if (!publish(held)) return@supervisorScope
             }
         }
 
@@ -578,6 +657,18 @@ internal fun shouldPublishMotionUpgrade(
     if (upgradesUsed >= maxUpgrades) return false
     return candidateProviderRank < publishedProviderRank
 }
+
+internal const val MOTION_PRIORITY_SETTLE_MS = 1_200L
+private const val NANOS_PER_MILLI = 1_000_000L
+
+internal fun shouldHoldMotionPublication(
+    candidateProviderRank: Int,
+    pendingProviderRanks: Collection<Int>,
+    forcedSource: Boolean,
+    alreadyPublished: Boolean
+): Boolean = !forcedSource &&
+    !alreadyPublished &&
+    pendingProviderRanks.any { pendingRank -> pendingRank < candidateProviderRank }
 
 internal class MotionArtworkRequestCoordinator(
     private val scope: CoroutineScope

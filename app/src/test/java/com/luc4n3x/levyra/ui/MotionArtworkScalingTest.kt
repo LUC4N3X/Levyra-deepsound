@@ -36,9 +36,27 @@ class MotionArtworkScalingTest {
     }
 
     @Test
-    fun `square canvas on a tall screen stops at the crop budget instead of filling`() {
-        val fit = motionArtworkFit(1080, 1080, 1f, 1080, 2340, MotionArtworkImmersiveMaxZoom)
-        val containerAspect = 1080f / 2340f
+    fun `nine by sixteen canvas fully covers the cinematic hero without side bands`() {
+        val fit = motionArtworkFit(720, 1280, 1f, 1440, 1730, MotionArtworkImmersiveMaxZoom)
+        assertTrue(fit.scaleX >= 1f - COVER_TOLERANCE)
+        assertTrue(fit.scaleY >= 1f - COVER_TOLERANCE)
+    }
+
+    @Test
+    fun `nine by sixteen canvas fully covers the landscape cinematic hero`() {
+        val fit = motionArtworkFit(720, 1280, 1f, 1250, 1100, MotionArtworkImmersiveMaxZoom)
+        assertTrue(fit.scaleX >= 1f - COVER_TOLERANCE)
+        assertTrue(fit.scaleY >= 1f - COVER_TOLERANCE)
+    }
+
+    private companion object {
+        const val COVER_TOLERANCE = 0.0001f
+    }
+
+    @Test
+    fun `square canvas on an extremely tall surface stops at the crop budget instead of filling`() {
+        val fit = motionArtworkFit(1080, 1080, 1f, 1080, 3000, MotionArtworkImmersiveMaxZoom)
+        val containerAspect = 1080f / 3000f
         assertEquals(1f / containerAspect, fit.scaleX / fit.scaleY, 0.0001f)
         assertEquals(MotionArtworkImmersiveMaxZoom, fit.scaleX, 0.0001f)
         assertEquals(MotionArtworkImmersiveMaxZoom * containerAspect, fit.scaleY, 0.0001f)

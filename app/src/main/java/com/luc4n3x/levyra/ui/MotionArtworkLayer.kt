@@ -18,6 +18,7 @@ import android.view.TextureView
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -112,9 +114,31 @@ internal fun MotionArtworkLayer(
             environment.remoteAllowed &&
             !videoUnavailable
     }
+    val motionGatesOpen = artwork != null &&
+        enabled &&
+        lifecycleActive &&
+        environment.remoteAllowed
+    var displayedArtwork by remember { mutableStateOf<MotionArtwork?>(null) }
+    val retainedArtwork = retainedMotionArtwork(
+        displayed = displayedArtwork,
+        incoming = artwork,
+        gatesOpen = motionGatesOpen
+    )
     LaunchedEffect(videoArtwork) {
         if (videoArtwork == null) videoReady = false
     }
+    LaunchedEffect(motionGatesOpen, artwork?.identityKey) {
+        if (!motionGatesOpen || displayedArtwork?.identityKey != artwork?.identityKey) {
+            displayedArtwork = null
+        }
+    }
+    LaunchedEffect(videoReady, videoArtwork) {
+        val ready = videoArtwork ?: return@LaunchedEffect
+        if (!videoReady) return@LaunchedEffect
+        delay(VIDEO_FADE_IN_MS.toLong())
+        displayedArtwork = ready
+    }
+    val motionVisible = videoReady || retainedArtwork != null
     LaunchedEffect(artwork?.identityKey, videoArtwork, enabled, lifecycleActive, environment.remoteAllowed, videoUnavailable) {
         if (artwork == null) return@LaunchedEffect
         Timber.d(
@@ -162,14 +186,18 @@ internal fun MotionArtworkLayer(
         lifecycleActive &&
         environment.localAllowed &&
         layerActive &&
-        !videoReady
+        !motionVisible
     val staticBedAlpha by animateFloatAsState(
-        targetValue = if (videoReady) 0f else 1f,
-        animationSpec = tween(
-            durationMillis = STATIC_ARTWORK_BED_FADE_MS,
-            delayMillis = if (videoReady) VIDEO_FADE_IN_MS else 0,
-            easing = FastOutSlowInEasing
-        ),
+        targetValue = if (motionVisible) 0f else 1f,
+        animationSpec = if (motionVisible) {
+            tween(
+                durationMillis = STATIC_ARTWORK_BED_FADE_MS,
+                delayMillis = VIDEO_FADE_IN_MS,
+                easing = FastOutSlowInEasing
+            )
+        } else {
+            snap()
+        },
         label = "motion-artwork-bed-alpha"
     )
 
@@ -190,32 +218,51 @@ internal fun MotionArtworkLayer(
                     lifecycleActive = lifecycleActive,
                     localAllowed = environment.localAllowed,
                     isPlaying = layerActive,
-                    realCanvasReady = videoReady
+                    realCanvasReady = motionVisible
                 ),
                 modifier = Modifier
                     .matchParentSize()
                     .clip(RoundedCornerShape(cornerRadius))
             )
         }
-        if (videoArtwork != null) {
-            MotionArtworkVideo(
-                artwork = videoArtwork,
-                isPlaying = layerActive,
-                cornerRadius = cornerRadius,
-                presentation = presentation,
-                profile = profile,
-                onFirstFrame = {
-                    videoReady = true
-                    videoRetryCount = 0
-                },
-                onUnavailable = {
-                    videoReady = false
-                    videoUnavailable = true
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+        listOfNotNull(retainedArtwork, videoArtwork).forEach { slot ->
+            key(slot.identityKey, slot.url) {
+                val incoming = slot === videoArtwork
+                MotionArtworkVideo(
+                    artwork = slot,
+                    isPlaying = layerActive,
+                    cornerRadius = cornerRadius,
+                    presentation = presentation,
+                    profile = profile,
+                    onFirstFrame = {
+                        if (incoming) {
+                            videoReady = true
+                            videoRetryCount = 0
+                        }
+                    },
+                    onUnavailable = {
+                        if (incoming) {
+                            videoReady = false
+                            videoUnavailable = true
+                        } else if (displayedArtwork?.url == slot.url) {
+                            displayedArtwork = null
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
+}
+
+internal fun retainedMotionArtwork(
+    displayed: MotionArtwork?,
+    incoming: MotionArtwork?,
+    gatesOpen: Boolean
+): MotionArtwork? {
+    if (!gatesOpen || displayed == null || incoming == null) return null
+    if (displayed.identityKey != incoming.identityKey) return null
+    return displayed.takeIf { it.url != incoming.url }
 }
 
 internal fun livingArtworkActive(
