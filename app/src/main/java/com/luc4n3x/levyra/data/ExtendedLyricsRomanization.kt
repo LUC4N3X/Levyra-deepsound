@@ -27,6 +27,7 @@ internal object ExtendedLyricsRomanization {
                 }
                 val mapped = when (codePoint) {
                     in 0x0370..0x03FF -> greek[codePoint]
+                    in 0x1F00..0x1FFF -> romanizeGreekExtended(codePoint)
                     in 0x0400..0x052F -> cyrillic[codePoint]
                     in 0x0590..0x05FF -> hebrew[codePoint]
                     in 0x0600..0x06FF, in 0x0750..0x077F, in 0x08A0..0x08FF -> arabic[codePoint]
@@ -44,6 +45,35 @@ internal object ExtendedLyricsRomanization {
             }
         }
         return ExtendedRomanizationResult(text, transformedCount)
+    }
+
+    private fun romanizeGreekExtended(codePoint: Int): String? {
+        val decomposed = Normalizer.normalize(codePoint.toChars(), Normalizer.Form.NFD)
+        var transformed = false
+        val text = buildString(decomposed.length) {
+            var index = 0
+            while (index < decomposed.length) {
+                val part = decomposed.codePointAt(index)
+                val mapped = greek[part]
+                when {
+                    mapped != null -> {
+                        append(mapped)
+                        transformed = true
+                    }
+                    isCombiningMark(part) -> Unit
+                    else -> appendCodePoint(part)
+                }
+                index += Character.charCount(part)
+            }
+        }
+        return text.takeIf { transformed }
+    }
+
+    private fun isCombiningMark(codePoint: Int): Boolean = when (Character.getType(codePoint)) {
+        Character.NON_SPACING_MARK.toInt(),
+        Character.COMBINING_SPACING_MARK.toInt(),
+        Character.ENCLOSING_MARK.toInt() -> true
+        else -> false
     }
 
     private fun romanizeIndicSyllable(source: String, start: Int, script: IndicScript): IndicResult {
