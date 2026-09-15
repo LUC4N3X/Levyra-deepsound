@@ -562,131 +562,22 @@ levyraDesktopVersion=1.2.0
 ## ✦ Translations
 
 <div align="center">
-<sub>Translations are managed on <a href="https://hosted.weblate.org/engage/levyra/">Weblate</a> — no local setup needed, contribute directly from your browser.</sub><br>
-<b>36 supported languages</b> &nbsp;·&nbsp; <b>100% Android coverage</b>
 
-<table align="center" width="90%">
-  <thead>
-    <tr>
-      <th align="left">Language</th>
-      <th align="center">Progress</th>
-      <th align="left">Language</th>
-      <th align="center">Progress</th>
-    </tr>
-  </thead>
-  <tbody>
-  <tr>
-    <td><b>English</b> <sub>EN</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Norsk bokmål</b> <sub>NB</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Italiano</b> <sub>IT</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Català</b> <sub>CA</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Español</b> <sub>ES</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Українська</b> <sub>UK</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Français</b> <sub>FR</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Русский</b> <sub>RU</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Deutsch</b> <sub>DE</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Türkçe</b> <sub>TR</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Português</b> <sub>PT</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>العربية</b> <sub>AR</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Nederlands</b> <sub>NL</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>فارسی</b> <sub>FA</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Polski</b> <sub>PL</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>简体中文</b> <sub>ZH</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Română</b> <sub>RO</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>繁體中文</b> <sub>ZH-TW</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Ελληνικά</b> <sub>EL</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>日本語</b> <sub>JA</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Svenska</b> <sub>SV</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>한국어</b> <sub>KO</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Dansk</b> <sub>DA</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>हिन्दी</b> <sub>HI</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Čeština</b> <sub>CS</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Bahasa Indonesia</b> <sub>ID</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Slovenčina</b> <sub>SK</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Bahasa Melayu</b> <sub>MS</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Hrvatski</b> <sub>HR</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Tiếng Việt</b> <sub>VI</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Български</b> <sub>BG</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>ไทย</b> <sub>TH</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Magyar</b> <sub>HU</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>Filipino</b> <sub>FIL</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  <tr>
-    <td><b>Suomi</b> <sub>FI</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-    <td><b>עברית</b> <sub>HE</sub></td>
-    <td align="center"><sub>━━━━━━</sub>&nbsp; <b>100%</b></td>
-  </tr>
-  </tbody>
-</table>
+<a href="https://hosted.weblate.org/engage/levyra/">
+  <picture>
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg">
+    <img src="docs/assets/levyra-translation-pulse.svg" alt="Levyra translation progress across 36 languages" width="920">
+  </picture>
+</a>
 
-<a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute or review translations on Weblate →</b></a>
+<br>
+<sub><b>35 localized community translations + English · 30/30 Android strings per locale</b></sub>
+<br>
+<sub><a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute or review translations on Weblate →</b></a></sub>
+
 </div>
 
 ---
