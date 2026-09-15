@@ -49,6 +49,6 @@ private val queueSelectionBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun queueSelectionLocalizationEntries(code: String): Map<String, String> =
-    (queueSelectionBundles[code] ?: queueSelectionBundles.getValue("en"))
+    localizedBundleOrEnglish(queueSelectionBundles, code)
 
 internal fun queueSelectionLocalizationCodes(): Set<String> = supportedLocalizationCodes()
