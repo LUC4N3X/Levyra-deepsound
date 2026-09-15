@@ -18342,7 +18342,9 @@ private fun SettingsHubFooter() {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 24.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
