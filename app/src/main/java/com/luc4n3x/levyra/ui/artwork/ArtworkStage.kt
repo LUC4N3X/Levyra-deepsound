@@ -91,12 +91,27 @@ private class SeamlessArtworkMemory {
     var lastKey: MemoryCache.Key? = null
 }
 
-private enum class SeamlessArtworkPhase {
+internal enum class SeamlessArtworkPhase {
     Loading,
     Ready,
     Stalled,
     Failed
 }
+
+internal enum class SeamlessFallbackPlacement {
+    Hidden,
+    Beneath,
+    Above
+}
+
+internal fun seamlessFallbackPlacement(phase: SeamlessArtworkPhase, bridged: Boolean): SeamlessFallbackPlacement =
+    when (phase) {
+        SeamlessArtworkPhase.Ready -> SeamlessFallbackPlacement.Hidden
+        SeamlessArtworkPhase.Loading -> SeamlessFallbackPlacement.Beneath
+        SeamlessArtworkPhase.Stalled ->
+            if (bridged) SeamlessFallbackPlacement.Above else SeamlessFallbackPlacement.Beneath
+        SeamlessArtworkPhase.Failed -> SeamlessFallbackPlacement.Above
+    }
 
 private const val SEAMLESS_ARTWORK_CROSSFADE_MS = 280
 private const val SEAMLESS_ARTWORK_BRIDGE_MS = 900L
@@ -116,6 +131,7 @@ internal fun SeamlessArtworkImage(
     val context = LocalContext.current
     val memory = remember { SeamlessArtworkMemory() }
     var phase by remember(url) { mutableStateOf(SeamlessArtworkPhase.Loading) }
+    val bridged = remember(url) { memory.lastKey != null }
     val request = remember(context, url) {
         ImageRequest.Builder(context)
             .data(LevyraArtworkCache.large(url))
@@ -129,13 +145,25 @@ internal fun SeamlessArtworkImage(
         delay(SEAMLESS_ARTWORK_BRIDGE_MS)
         if (phase == SeamlessArtworkPhase.Loading) phase = SeamlessArtworkPhase.Stalled
     }
-    val fallbackVisible = phase == SeamlessArtworkPhase.Stalled || phase == SeamlessArtworkPhase.Failed
+    val placement = seamlessFallbackPlacement(phase, bridged)
     val fallbackAlpha by animateFloatAsState(
-        targetValue = if (fallbackVisible) 1f else 0f,
-        animationSpec = tween(SEAMLESS_ARTWORK_FALLBACK_FADE_MS),
+        targetValue = if (placement == SeamlessFallbackPlacement.Hidden) 0f else 1f,
+        animationSpec = tween(
+            durationMillis = SEAMLESS_ARTWORK_FALLBACK_FADE_MS,
+            delayMillis = if (placement == SeamlessFallbackPlacement.Hidden) SEAMLESS_ARTWORK_CROSSFADE_MS else 0
+        ),
         label = "seamless-artwork-fallback"
     )
     Box(modifier = modifier) {
+        if (placement != SeamlessFallbackPlacement.Above && fallbackAlpha > 0.001f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = fallbackAlpha }
+            ) {
+                fallback()
+            }
+        }
         AsyncImage(
             model = request,
             contentDescription = contentDescription,
@@ -150,7 +178,7 @@ internal fun SeamlessArtworkImage(
             },
             modifier = Modifier.matchParentSize()
         )
-        if (fallbackAlpha > 0.001f) {
+        if (placement == SeamlessFallbackPlacement.Above) {
             Box(
                 modifier = Modifier
                     .matchParentSize()

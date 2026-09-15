@@ -37,14 +37,14 @@ class MotionArtworkScalingTest {
 
     @Test
     fun `nine by sixteen canvas fully covers the cinematic hero without side bands`() {
-        val fit = motionArtworkFit(720, 1280, 1f, 1440, 1730, MotionArtworkImmersiveMaxZoom)
+        val fit = motionArtworkFit(720, 1280, 1f, 1440, 1730, MotionArtworkCinematicMaxZoom)
         assertTrue(fit.scaleX >= 1f - COVER_TOLERANCE)
         assertTrue(fit.scaleY >= 1f - COVER_TOLERANCE)
     }
 
     @Test
     fun `nine by sixteen canvas fully covers the landscape cinematic hero`() {
-        val fit = motionArtworkFit(720, 1280, 1f, 1250, 1100, MotionArtworkImmersiveMaxZoom)
+        val fit = motionArtworkFit(720, 1280, 1f, 1250, 1100, MotionArtworkCinematicMaxZoom)
         assertTrue(fit.scaleX >= 1f - COVER_TOLERANCE)
         assertTrue(fit.scaleY >= 1f - COVER_TOLERANCE)
     }

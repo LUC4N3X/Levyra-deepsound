@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -66,6 +67,13 @@ class PlayerCinematicGeometryTest {
         assertEquals(PlayerCinematicLayout.SideBySide, geometry.layout)
         assertEquals(915.dp / 2 + 12.dp, geometry.heroWidth)
         assertEquals(412.dp, geometry.heroHeight)
+    }
+
+    @Test
+    fun immersiveBlurKeepsBlurredArtworkBackdrop() {
+        assertEquals("art", playerBackdropArtworkUrl(immersive = true, backgroundMode = PlayerBackgroundMode.Blur, artworkUrl = "art"))
+        assertEquals("", playerBackdropArtworkUrl(immersive = true, backgroundMode = PlayerBackgroundMode.Dynamic, artworkUrl = "art"))
+        assertEquals("art", playerBackdropArtworkUrl(immersive = false, backgroundMode = PlayerBackgroundMode.Dynamic, artworkUrl = "art"))
     }
 
     @Test

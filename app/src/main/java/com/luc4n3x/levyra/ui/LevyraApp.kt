@@ -3848,7 +3848,7 @@ private fun AlbumArtworkLayer(
         isPlaying = false,
         pageMode = true,
         cornerRadius = 0.dp,
-        presentation = MotionArtworkPresentation.Immersive,
+        presentation = MotionArtworkPresentation.Cinematic,
         quality = canvasQuality,
         modifier = modifier
     ) {

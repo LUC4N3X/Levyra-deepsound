@@ -30,6 +30,20 @@ class ArtworkStageTest {
     }
 
     @Test
+    fun coldLoadKeepsFallbackVisibleBeneathUntilArtworkIsReady() {
+        assertEquals(SeamlessFallbackPlacement.Beneath, seamlessFallbackPlacement(SeamlessArtworkPhase.Loading, bridged = false))
+        assertEquals(SeamlessFallbackPlacement.Beneath, seamlessFallbackPlacement(SeamlessArtworkPhase.Stalled, bridged = false))
+        assertEquals(SeamlessFallbackPlacement.Hidden, seamlessFallbackPlacement(SeamlessArtworkPhase.Ready, bridged = false))
+        assertEquals(SeamlessFallbackPlacement.Above, seamlessFallbackPlacement(SeamlessArtworkPhase.Failed, bridged = false))
+    }
+
+    @Test
+    fun staleBridgeIsCoveredOnceLoadingStalls() {
+        assertEquals(SeamlessFallbackPlacement.Beneath, seamlessFallbackPlacement(SeamlessArtworkPhase.Loading, bridged = true))
+        assertEquals(SeamlessFallbackPlacement.Above, seamlessFallbackPlacement(SeamlessArtworkPhase.Stalled, bridged = true))
+    }
+
+    @Test
     fun dissolveFractionIsClamped() {
         assertEquals(0.95f, artworkDissolveStops(0f)[1].first, 0.0001f)
         assertEquals(0f, artworkDissolveStops(4f)[1].first, 0.0001f)

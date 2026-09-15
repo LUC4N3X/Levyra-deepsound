@@ -72,6 +72,25 @@ class MotionArtworkLayerTest {
         assertNull(retainedMotionArtwork(displayed = null, incoming = upgrade, gatesOpen = true))
     }
 
+    @Test
+    fun handoffComposesOnlyOneVideoPlayerAtATime() {
+        val outgoing = motion(identity = "track-a", url = "https://apple.example/a.m3u8")
+        val incoming = motion(identity = "track-a", url = "https://canvaz.example/a.mp4")
+
+        assertEquals(outgoing, motionVideoSlot(retained = outgoing, incoming = incoming, handoffCaptured = false))
+        assertEquals(incoming, motionVideoSlot(retained = outgoing, incoming = incoming, handoffCaptured = true))
+        assertEquals(incoming, motionVideoSlot(retained = null, incoming = incoming, handoffCaptured = true))
+        assertNull(motionVideoSlot(retained = null, incoming = null, handoffCaptured = true))
+    }
+
+    @Test
+    fun cinematicZoomDoesNotChangeArtistImmersiveCrop() {
+        assertEquals(1.32f, motionArtworkMaxZoom(MotionArtworkPresentation.Immersive), 0f)
+        assertEquals(MotionArtworkCinematicMaxZoom, motionArtworkMaxZoom(MotionArtworkPresentation.Cinematic), 0f)
+        assertEquals(MotionArtworkCardMaxZoom, motionArtworkMaxZoom(MotionArtworkPresentation.Card), 0f)
+        assertTrue(MotionArtworkCinematicMaxZoom > MotionArtworkImmersiveMaxZoom)
+    }
+
     private fun motion(identity: String, url: String): MotionArtwork = MotionArtwork(
         identityKey = identity,
         provider = "test",

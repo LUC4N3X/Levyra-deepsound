@@ -18,6 +18,12 @@ import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.PlayerAmbience
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 
+internal fun playerBackdropArtworkUrl(
+    immersive: Boolean,
+    backgroundMode: PlayerBackgroundMode,
+    artworkUrl: String
+): String = if (immersive && backgroundMode != PlayerBackgroundMode.Blur) "" else artworkUrl
+
 @Composable
 internal fun PlayerVisualHost(
     visualMode: PlayerVisualMode,
@@ -38,7 +44,7 @@ internal fun PlayerVisualHost(
     isVideoMode: Boolean = false
 ) {
     val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive && track != null && !isVideoMode
-    val backdropArtworkUrl = if (isImmersive) "" else artworkUrl
+    val backdropArtworkUrl = playerBackdropArtworkUrl(isImmersive, backgroundMode, artworkUrl)
 
     Box(modifier = modifier) {
         PlayerBackdrop(

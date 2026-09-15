@@ -20,6 +20,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,7 +36,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
@@ -69,7 +73,14 @@ import timber.log.Timber
 
 internal enum class MotionArtworkPresentation {
     Card,
-    Immersive
+    Immersive,
+    Cinematic
+}
+
+internal fun motionArtworkMaxZoom(presentation: MotionArtworkPresentation): Float = when (presentation) {
+    MotionArtworkPresentation.Card -> MotionArtworkCardMaxZoom
+    MotionArtworkPresentation.Immersive -> MotionArtworkImmersiveMaxZoom
+    MotionArtworkPresentation.Cinematic -> MotionArtworkCinematicMaxZoom
 }
 
 @Composable
@@ -89,7 +100,8 @@ internal fun MotionArtworkLayer(
     val environment = rememberMotionArtworkEnvironment(enabled && lifecycleActive)
     val surface = when (presentation) {
         MotionArtworkPresentation.Card -> MotionCanvasSurface.Card
-        MotionArtworkPresentation.Immersive -> MotionCanvasSurface.Immersive
+        MotionArtworkPresentation.Immersive,
+        MotionArtworkPresentation.Cinematic -> MotionCanvasSurface.Immersive
     }
     val profile = remember(quality, presentation, environment.conditions) {
         MotionCanvasQualityPolicy.profile(
@@ -138,7 +150,28 @@ internal fun MotionArtworkLayer(
         delay(VIDEO_FADE_IN_MS.toLong())
         displayedArtwork = ready
     }
-    val motionVisible = videoReady || retainedArtwork != null
+    val frameSource = remember { MotionVideoFrameSource() }
+    var bridgeFrame by remember { mutableStateOf<MotionBridgeFrame?>(null) }
+    var bridgeCapturedFor by remember { mutableStateOf<String?>(null) }
+    val handoffCaptured = retainedArtwork == null || bridgeCapturedFor == artwork?.url
+    val videoSlot = motionVideoSlot(
+        retained = retainedArtwork,
+        incoming = videoArtwork,
+        handoffCaptured = handoffCaptured
+    )
+    LaunchedEffect(handoffCaptured, artwork?.url) {
+        if (handoffCaptured) return@LaunchedEffect
+        bridgeFrame = frameSource.capture()
+        bridgeCapturedFor = artwork?.url
+    }
+    LaunchedEffect(retainedArtwork == null) {
+        if (retainedArtwork == null) {
+            bridgeFrame = null
+            bridgeCapturedFor = null
+        }
+    }
+    val visibleBridge = bridgeFrame?.takeIf { retainedArtwork != null }
+    val motionVisible = videoReady || visibleBridge != null || !handoffCaptured
     LaunchedEffect(artwork?.identityKey, videoArtwork, enabled, lifecycleActive, environment.remoteAllowed, videoUnavailable) {
         if (artwork == null) return@LaunchedEffect
         Timber.d(
@@ -225,7 +258,21 @@ internal fun MotionArtworkLayer(
                     .clip(RoundedCornerShape(cornerRadius))
             )
         }
-        listOfNotNull(retainedArtwork, videoArtwork).forEach { slot ->
+        visibleBridge?.let { frame ->
+            Image(
+                bitmap = frame.image,
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(cornerRadius))
+                    .graphicsLayer {
+                        scaleX = frame.scaleX
+                        scaleY = frame.scaleY
+                    }
+            )
+        }
+        videoSlot?.let { slot ->
             key(slot.identityKey, slot.url) {
                 val incoming = slot === videoArtwork
                 MotionArtworkVideo(
@@ -234,6 +281,7 @@ internal fun MotionArtworkLayer(
                     cornerRadius = cornerRadius,
                     presentation = presentation,
                     profile = profile,
+                    frameSource = frameSource,
                     onFirstFrame = {
                         if (incoming) {
                             videoReady = true
@@ -244,6 +292,7 @@ internal fun MotionArtworkLayer(
                         if (incoming) {
                             videoReady = false
                             videoUnavailable = true
+                            if (bridgeFrame != null) displayedArtwork = null
                         } else if (displayedArtwork?.url == slot.url) {
                             displayedArtwork = null
                         }
@@ -252,6 +301,37 @@ internal fun MotionArtworkLayer(
                 )
             }
         }
+    }
+}
+
+internal fun motionVideoSlot(
+    retained: MotionArtwork?,
+    incoming: MotionArtwork?,
+    handoffCaptured: Boolean
+): MotionArtwork? = if (retained != null && !handoffCaptured) retained else incoming
+
+internal class MotionBridgeFrame(
+    val image: ImageBitmap,
+    val scaleX: Float,
+    val scaleY: Float
+)
+
+internal class MotionVideoFrameSource {
+    var textureView: TextureView? = null
+    var frameReady: Boolean = false
+    var fitScaleX: Float = 1f
+    var fitScaleY: Float = 1f
+
+    fun capture(): MotionBridgeFrame? {
+        val view = textureView ?: return null
+        if (!frameReady || !view.isAvailable || view.width <= 1 || view.height <= 1) return null
+        val bitmap = try {
+            view.getBitmap(view.width / 2, view.height / 2)
+        } catch (error: IllegalStateException) {
+            Timber.d(error, "Canvas bridge frame capture failed")
+            null
+        } ?: return null
+        return MotionBridgeFrame(bitmap.asImageBitmap(), fitScaleX, fitScaleY)
     }
 }
 
@@ -379,7 +459,7 @@ private fun MotionArtworkStaticFallback(
         label = "static-artwork-motion-amount"
     )
 
-    val immersive = presentation == MotionArtworkPresentation.Immersive
+    val immersive = presentation != MotionArtworkPresentation.Card
     val zoomDurationMs = if (immersive) 14_000 else STATIC_ARTWORK_ZOOM_DURATION_MS
     val horizontalDurationMs = if (immersive) 18_000 else STATIC_ARTWORK_HORIZONTAL_DURATION_MS
     val verticalDurationMs = if (immersive) 21_000 else STATIC_ARTWORK_VERTICAL_DURATION_MS
@@ -480,6 +560,7 @@ private fun MotionArtworkVideo(
     cornerRadius: Dp,
     presentation: MotionArtworkPresentation,
     profile: MotionCanvasProfile,
+    frameSource: MotionVideoFrameSource,
     onFirstFrame: () -> Unit,
     onUnavailable: () -> Unit,
     modifier: Modifier
@@ -497,10 +578,7 @@ private fun MotionArtworkVideo(
         mutableStateOf(VideoSize.UNKNOWN)
     }
     var surfaceSize by remember { mutableStateOf(IntSize.Zero) }
-    val maxZoom = when (presentation) {
-        MotionArtworkPresentation.Card -> MotionArtworkCardMaxZoom
-        MotionArtworkPresentation.Immersive -> MotionArtworkImmersiveMaxZoom
-    }
+    val maxZoom = motionArtworkMaxZoom(presentation)
     val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
@@ -526,6 +604,7 @@ private fun MotionArtworkVideo(
             override fun onRenderedFirstFrame() {
                 Timber.d("Canvas player FIRST_FRAME provider=%s", artwork.provider)
                 firstFrameRendered = true
+                if (frameSource.textureView === textureView) frameSource.frameReady = true
                 RuntimeHooks.canvas(RuntimeSignal.CANVAS_FIRST_FRAME)
                 currentOnFirstFrame()
             }
@@ -554,6 +633,8 @@ private fun MotionArtworkVideo(
             artwork.mimeType,
             motionArtworkHost(artwork.url)
         )
+        frameSource.textureView = textureView
+        frameSource.frameReady = false
         player.addListener(listener)
         player.setVideoTextureView(textureView)
         player.setMediaItem(
@@ -565,6 +646,10 @@ private fun MotionArtworkVideo(
         player.prepare()
         onDispose {
             RuntimeHooks.canvas(RuntimeSignal.CANVAS_STOPPED)
+            if (frameSource.textureView === textureView) {
+                frameSource.textureView = null
+                frameSource.frameReady = false
+            }
             player.removeListener(listener)
             player.clearVideoTextureView(textureView)
             player.release()
@@ -608,6 +693,10 @@ private fun MotionArtworkVideo(
                 )
                 scaleX = fit.scaleX
                 scaleY = fit.scaleY
+                if (frameSource.textureView === textureView) {
+                    frameSource.fitScaleX = fit.scaleX
+                    frameSource.fitScaleY = fit.scaleY
+                }
             }
     )
 }

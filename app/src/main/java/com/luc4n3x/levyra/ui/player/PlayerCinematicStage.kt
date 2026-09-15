@@ -166,7 +166,7 @@ internal fun PlayerCinematicStage(
                 enabled = motionEnabled,
                 isPlaying = isPlaying,
                 cornerRadius = 0.dp,
-                presentation = MotionArtworkPresentation.Immersive,
+                presentation = MotionArtworkPresentation.Cinematic,
                 quality = canvasQuality,
                 livingArtwork = livingArtwork,
                 modifier = Modifier.fillMaxSize()

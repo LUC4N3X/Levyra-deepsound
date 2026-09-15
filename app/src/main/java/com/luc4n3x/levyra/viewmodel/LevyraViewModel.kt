@@ -382,6 +382,17 @@ private const val DEARROW_CONCURRENCY = 4
 
 internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
 
+internal fun shouldContinueMotionPrefetch(
+    activeKey: String,
+    currentKey: String,
+    nextKey: String,
+    queueChanged: Boolean
+): Boolean = when (activeKey) {
+    nextKey -> true
+    currentKey -> !queueChanged
+    else -> false
+}
+
 internal fun shouldRefreshMotionArtworkOwnership(
     previous: LevyraInterfaceSettings,
     next: LevyraInterfaceSettings
@@ -828,6 +839,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     @Volatile private var motionArtworkRequestKey: String? = null
     private var motionArtworkPrefetchJob: Job? = null
     @Volatile private var motionArtworkPrefetchKey: String? = null
+    @Volatile private var motionArtworkPrefetchToken = 0L
     private var sleepTimerCollectorJob: Job? = null
     private var audioSettingsPersistJob: Job? = null
     private var similarSongsSeedJob: Job? = null
@@ -5952,10 +5964,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun shuffleCurrentAlbum() {
         val detail = _state.value.albumDetail ?: return
-        if (detail.tracks.isEmpty()) return
-        if (_state.value.jam.role != JamRole.Guest && !queueEngine.state.value.shuffleEnabled) {
-            queueEngine.setShuffle(true)
-        }
+        if (detail.tracks.isEmpty() || _state.value.jam.role == JamRole.Guest) return
+        if (!queueEngine.state.value.shuffleEnabled) queueEngine.setShuffle(true)
         playFrom(detail.tracks, detail.tracks.random(), loopOnCompletion = true)
     }
 
@@ -8766,15 +8776,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .firstOrNull { !samePlayableTrack(it, current) }
             ?: return
         val nextKey = MotionArtworkIdentityKey.create(next)
+        val prefetchToken = ++motionArtworkPrefetchToken
         motionArtworkPrefetchKey = nextKey
         motionArtworkPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 // Yield briefly to audible playback, then warm the next Canvas early enough that a
                 // queue transition can usually enter the immersive layer with the real asset ready.
                 delay(180L)
-                if (!isActive || queueEngine.state.value.generation != generation || _state.value.isVideoMode) return@launch
+                if (!isActive || _state.value.isVideoMode) return@launch
                 val active = _state.value.currentTrack ?: return@launch
-                if (MotionArtworkIdentityKey.create(active) != currentKey) return@launch
+                if (
+                    !shouldContinueMotionPrefetch(
+                        activeKey = MotionArtworkIdentityKey.create(active),
+                        currentKey = currentKey,
+                        nextKey = nextKey,
+                        queueChanged = queueEngine.state.value.generation != generation
+                    )
+                ) {
+                    return@launch
+                }
                 runCatching {
                     motionArtworkEngine.prefetchNext(next, _state.value.interfaceSettings.canvasSource)
                 }
@@ -8783,7 +8803,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         Timber.d(error, "Motion artwork prefetch failed for %s", next.id)
                     }
             } finally {
-                if (motionArtworkPrefetchKey == nextKey) motionArtworkPrefetchKey = null
+                if (motionArtworkPrefetchToken == prefetchToken) motionArtworkPrefetchKey = null
             }
         }
     }
