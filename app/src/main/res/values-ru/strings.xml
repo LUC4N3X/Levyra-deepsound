@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Мини-плеер, быстрый доступ к избранному, ежедневный flow, офлайн и тексты</string>
+    <string name="widget_description">Мини-плеер, быстрый доступ к избранному, ежедневный микс, офлайн и тексты песен</string>
     <string name="widget_idle_subtitle">Нажмите, чтобы слушать</string>
     <string name="widget_toggle">Воспроизвести/Пауза</string>
     <string name="widget_next">Следующий</string>
     <string name="widget_previous">Предыдущий</string>
     <string name="widget_favorites">Избранное</string>
-    <string name="widget_flow">Ежедневный flow</string>
+    <string name="widget_flow">Ежедневный микс</string>
     <string name="widget_offline">Офлайн-микс</string>
-    <string name="widget_lyrics">Тексты</string>
+    <string name="widget_lyrics">Тексты песен</string>
     <string name="radar_channel_name">Радар релизов</string>
     <string name="radar_channel_description">Новые релизы исполнителей, на которых вы подписаны</string>
     <string name="radar_new_release_title">Новый релиз от %1$s</string>
+    <string name="automatic_backups">Автоматическое резервное копирование</string>
+    <string name="car_home">Главная</string>
+    <string name="car_downloads">Загрузки</string>
+    <string name="car_favorites">Избранное</string>
+    <string name="car_playlists">Плейлисты</string>
+    <string name="car_no_content">Нет контента</string>
+    <string name="car_content_unavailable">Контент недоступен</string>
+    <string name="car_search_tracks">Поиск треков</string>
+    <string name="car_no_results">Нет результатов</string>
+    <string name="car_connecting_player">Подключение к плееру</string>
+    <string name="car_now_playing">Сейчас играет</string>
+    <string name="car_queue">Очередь</string>
+    <string name="notification_shuffle">Перемешать</string>
+    <string name="notification_favorite">В избранное</string>
     <string name="tile_recognize_music">Распознать музыку</string>
     <string name="shortcut_search">Поиск</string>
     <string name="shortcut_library">Библиотека</string>

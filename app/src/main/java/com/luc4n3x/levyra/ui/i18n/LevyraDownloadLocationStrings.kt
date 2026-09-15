@@ -58,6 +58,6 @@ private val downloadLocationBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun downloadLocationLocalizationEntries(code: String): Map<String, String> =
-    downloadLocationBundles.getValue(code)
+    localizedBundleOrEnglish(downloadLocationBundles, code)
 
-internal fun downloadLocationLocalizationCodes(): Set<String> = downloadLocationBundles.keys
+internal fun downloadLocationLocalizationCodes(): Set<String> = supportedLocalizationCodes()

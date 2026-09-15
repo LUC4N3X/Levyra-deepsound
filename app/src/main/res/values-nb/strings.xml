@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minispiller, raske favoritter, daglig miks, miks uten nett og sangtekster</string>
+    <string name="widget_idle_subtitle">Trykk for å lytte</string>
+    <string name="widget_toggle">Spill av/Pause</string>
+    <string name="widget_next">Neste</string>
+    <string name="widget_previous">Forrige</string>
+    <string name="widget_favorites">Favoritter</string>
+    <string name="widget_flow">Daglig miks</string>
+    <string name="widget_offline">Miks uten nett</string>
+    <string name="widget_lyrics">Sangtekster</string>
+    <string name="radar_channel_name">Utgivelsesradar</string>
+    <string name="radar_channel_description">Nye utgivelser fra artister du følger</string>
+    <string name="radar_new_release_title">Ny utgivelse fra %1$s</string>
+    <string name="automatic_backups">Automatiske sikkerhetskopier</string>
+    <string name="car_home">Hjem</string>
+    <string name="car_downloads">Nedlastinger</string>
+    <string name="car_favorites">Favoritter</string>
+    <string name="car_playlists">Spillelister</string>
+    <string name="car_no_content">Ikke noe innhold</string>
+    <string name="car_content_unavailable">Innholdet er ikke tilgjengelig</string>
+    <string name="car_search_tracks">Søk etter låter</string>
+    <string name="car_no_results">Ingen resultater</string>
+    <string name="car_connecting_player">Kobler til spilleren</string>
+    <string name="car_now_playing">Spilles nå</string>
+    <string name="car_queue">Kø</string>
+    <string name="notification_shuffle">Tilfeldig rekkefølge</string>
+    <string name="notification_favorite">Favoritt</string>
+    <string name="tile_recognize_music">Gjenkjenn musikk</string>
+    <string name="shortcut_search">Søk</string>
+    <string name="shortcut_library">Bibliotek</string>
+    <string name="shortcut_recognition">Gjenkjenn musikk</string>
+</resources>

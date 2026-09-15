@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Minirreproductor, favoritos rápidos, flow diario, contenido sin conexión y letras</string>
+    <string name="widget_description">Minirreproductor, favoritos rápidos, Flow diario, contenido sin conexión y letras</string>
     <string name="widget_idle_subtitle">Toca para escuchar</string>
     <string name="widget_toggle">Reproducir/Pausar</string>
     <string name="widget_next">Siguiente</string>
     <string name="widget_previous">Anterior</string>
     <string name="widget_favorites">Favoritos</string>
     <string name="widget_flow">Flow diario</string>
-    <string name="widget_offline">Mix sin conexión</string>
+    <string name="widget_offline">Mezcla sin conexión</string>
     <string name="widget_lyrics">Letras</string>
     <string name="radar_channel_name">Radar de lanzamientos</string>
     <string name="radar_channel_description">Nuevos lanzamientos de los artistas que sigues</string>
     <string name="radar_new_release_title">Nuevo lanzamiento de %1$s</string>
+    <string name="automatic_backups">Copias de seguridad automáticas</string>
+    <string name="car_home">Inicio</string>
+    <string name="car_downloads">Descargas</string>
+    <string name="car_favorites">Favoritos</string>
+    <string name="car_playlists">Listas de reproducción</string>
+    <string name="car_no_content">Sin contenido</string>
+    <string name="car_content_unavailable">Contenido no disponible</string>
+    <string name="car_search_tracks">Buscar canciones</string>
+    <string name="car_no_results">Sin resultados</string>
+    <string name="car_connecting_player">Conectando con el reproductor</string>
+    <string name="car_now_playing">En reproducción</string>
+    <string name="car_queue">Cola</string>
+    <string name="notification_shuffle">Aleatorio</string>
+    <string name="notification_favorite">Favorito</string>
     <string name="tile_recognize_music">Reconocer música</string>
     <string name="shortcut_search">Buscar</string>
     <string name="shortcut_library">Biblioteca</string>

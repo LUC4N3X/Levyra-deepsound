@@ -191,6 +191,6 @@ private val librarySortBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun librarySortLocalizationEntries(code: String): Map<String, String> =
-    librarySortBundles.getValue(code)
+    localizedBundleOrEnglish(librarySortBundles, code)
 
-internal fun librarySortLocalizationCodes(): Set<String> = librarySortBundles.keys
+internal fun librarySortLocalizationCodes(): Set<String> = supportedLocalizationCodes()
