@@ -18,47 +18,36 @@ const requestJson = async url => {
 }
 
 const apptekaPackage = 'com.luc4n3x.levyra'
-const apptekaSearchUrl = 'https://appteka.store/api/1/app/search'
+const apptekaInfoUrl = 'https://appteka.store/api/1/app/info'
 
 const fetchApptekaDownloads = async () => {
-  let offset = 0
-  let total = 0
-  const seenEntries = new Set()
+  const url = new URL(apptekaInfoUrl)
+  url.searchParams.set('package', apptekaPackage)
+  url.searchParams.set('locale', 'en')
 
-  for (let page = 0; page < 100; page += 1) {
-    const url = new URL(apptekaSearchUrl)
-    url.searchParams.set('query', apptekaPackage)
-    url.searchParams.set('locale', 'en')
-    if (offset > 0) url.searchParams.set('offset', String(offset))
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      'User-Agent': 'Levyra-README-Badge-Updater'
+    },
+    signal: AbortSignal.timeout(15000)
+  })
+  if (!response.ok) throw new Error(`Appteka API request failed with ${response.status}: ${await response.text()}`)
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'Levyra-README-Badge-Updater'
-      },
-      signal: AbortSignal.timeout(15000)
-    })
-    if (!response.ok) throw new Error(`Appteka API request failed with ${response.status}: ${await response.text()}`)
+  const payload = await response.json()
+  const details = payload?.result
+  const info = details?.info
+  if (!info || info.package !== apptekaPackage) throw new Error('Appteka API returned an invalid app payload')
 
-    const payload = await response.json()
-    const entries = payload?.result?.entries
-    if (!Array.isArray(entries)) throw new Error('Appteka API returned an invalid entries payload')
-    if (entries.length === 0) return total
-
-    let freshEntries = 0
-    for (const entry of entries) {
-      const entryId = String(entry?.app_id ?? '')
-      if (!entryId || seenEntries.has(entryId)) continue
-      seenEntries.add(entryId)
-      freshEntries += 1
-      if (entry?.package === apptekaPackage) total += Number(entry.downloads ?? 0)
-    }
-
-    if (freshEntries === 0) return total
-    offset += entries.length
+  const entries = [info, ...(Array.isArray(details.versions) ? details.versions : [])]
+  const downloadsByAppId = new Map()
+  for (const entry of entries) {
+    const appId = String(entry?.app_id ?? '')
+    if (!appId) continue
+    downloadsByAppId.set(appId, Number(entry.downloads ?? 0))
   }
 
-  throw new Error('Appteka search pagination exceeded 100 pages')
+  return [...downloadsByAppId.values()].reduce((total, downloads) => total + downloads, 0)
 }
 
 const readPreviousDownloads = async () => {
