@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 
 const repository = process.env.GITHUB_REPOSITORY
 const token = process.env.GITHUB_TOKEN
@@ -15,6 +15,60 @@ const requestJson = async url => {
   const response = await fetch(url, { headers })
   if (!response.ok) throw new Error(`GitHub API request failed with ${response.status}: ${await response.text()}`)
   return response.json()
+}
+
+const apptekaPackage = 'com.luc4n3x.levyra'
+const apptekaSearchUrl = 'https://appteka.store/api/1/app/search'
+
+const fetchApptekaDownloads = async () => {
+  let offset = 0
+  let total = 0
+  const seenEntries = new Set()
+
+  for (let page = 0; page < 100; page += 1) {
+    const url = new URL(apptekaSearchUrl)
+    url.searchParams.set('query', apptekaPackage)
+    url.searchParams.set('locale', 'en')
+    if (offset > 0) url.searchParams.set('offset', String(offset))
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Levyra-README-Badge-Updater'
+      },
+      signal: AbortSignal.timeout(15000)
+    })
+    if (!response.ok) throw new Error(`Appteka API request failed with ${response.status}: ${await response.text()}`)
+
+    const payload = await response.json()
+    const entries = payload?.result?.entries
+    if (!Array.isArray(entries)) throw new Error('Appteka API returned an invalid entries payload')
+    if (entries.length === 0) return total
+
+    let freshEntries = 0
+    for (const entry of entries) {
+      const entryId = String(entry?.app_id ?? '')
+      if (!entryId || seenEntries.has(entryId)) continue
+      seenEntries.add(entryId)
+      freshEntries += 1
+      if (entry?.package === apptekaPackage) total += Number(entry.downloads ?? 0)
+    }
+
+    if (freshEntries === 0) return total
+    offset += entries.length
+  }
+
+  throw new Error('Appteka search pagination exceeded 100 pages')
+}
+
+const readPreviousDownloads = async () => {
+  try {
+    const svg = await readFile('docs/assets/levyra-downloads.svg', 'utf8')
+    const value = svg.match(/<title>DOWNLOADS ([\\d,]+)<\\/title>/)?.[1]
+    return value ? Number(value.replaceAll(',', '')) : null
+  } catch {
+    return null
+  }
 }
 
 const listReleases = async () => {
@@ -70,7 +124,15 @@ const stableReleases = releases.filter(release => !release.prerelease)
 const latestAndroid = stableReleases
   .filter(release => !String(release.tag_name ?? '').startsWith('desktop-v') && /^v?\d+\.\d+\.\d+(?:[-+].*)?$/.test(String(release.tag_name ?? '')))
   .sort((a, b) => new Date(b.published_at ?? b.created_at) - new Date(a.published_at ?? a.created_at))[0]
-const totalDownloads = releases.reduce((total, release) => total + (release.assets ?? []).reduce((sum, asset) => sum + Number(asset.download_count ?? 0), 0), 0)
+const githubDownloads = releases.reduce((total, release) => total + (release.assets ?? []).reduce((sum, asset) => sum + Number(asset.download_count ?? 0), 0), 0)
+
+let totalDownloads
+try {
+  totalDownloads = githubDownloads + await fetchApptekaDownloads()
+} catch (error) {
+  console.warn(`Appteka downloads unavailable: ${error instanceof Error ? error.message : String(error)}`)
+  totalDownloads = await readPreviousDownloads() ?? githubDownloads
+}
 
 const releaseValue = latestAndroid?.tag_name ?? 'none'
 const downloadsValue = new Intl.NumberFormat('en-US').format(totalDownloads)
