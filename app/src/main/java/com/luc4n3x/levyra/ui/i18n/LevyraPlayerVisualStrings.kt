@@ -76,6 +76,6 @@ private val playerVisualBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun playerVisualLocalizationEntries(code: String): Map<String, String> =
-    playerVisualBundles.getValue(code) + liveChatLocalizationEntries(code) + diagnosticsLocalizationEntries(code)
+    localizedBundleOrEnglish(playerVisualBundles, code) + liveChatLocalizationEntries(code) + diagnosticsLocalizationEntries(code)
 
-internal fun playerVisualLocalizationCodes(): Set<String> = playerVisualBundles.keys
+internal fun playerVisualLocalizationCodes(): Set<String> = supportedLocalizationCodes()

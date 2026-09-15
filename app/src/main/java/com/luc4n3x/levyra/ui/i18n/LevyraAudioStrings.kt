@@ -49,6 +49,6 @@ private val audioBundles: Map<String, Map<String, String>> = mapOf(
     "he" to audioStrings("איכות סטרימינג", "אקולייזר", "צליל מרחבי", "דינמיקה", "השמעה", "איפוס", "מותאם אישית", "רצועות")
 )
 
-internal fun audioLocalizationEntries(code: String): Map<String, String> = audioBundles.getValue(code)
+internal fun audioLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(audioBundles, code)
 
-internal fun audioLocalizationCodes(): Set<String> = audioBundles.keys
+internal fun audioLocalizationCodes(): Set<String> = supportedLocalizationCodes()

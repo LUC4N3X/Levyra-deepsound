@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Miniodtwarzacz, szybkie ulubione, codzienny flow, offline i teksty</string>
+    <string name="widget_description">Miniodtwarzacz, szybkie ulubione, codzienny miks, offline i teksty utworów</string>
     <string name="widget_idle_subtitle">Dotknij, aby posłuchać</string>
     <string name="widget_toggle">Odtwarzaj/Pauza</string>
     <string name="widget_next">Następny</string>
     <string name="widget_previous">Poprzedni</string>
     <string name="widget_favorites">Ulubione</string>
-    <string name="widget_flow">Codzienny flow</string>
+    <string name="widget_flow">Codzienny miks</string>
     <string name="widget_offline">Miks offline</string>
-    <string name="widget_lyrics">Teksty</string>
+    <string name="widget_lyrics">Teksty utworów</string>
     <string name="radar_channel_name">Radar premier</string>
     <string name="radar_channel_description">Nowe wydania obserwowanych artystów</string>
     <string name="radar_new_release_title">Nowe wydanie od %1$s</string>
+    <string name="automatic_backups">Automatyczne kopie zapasowe</string>
+    <string name="car_home">Strona główna</string>
+    <string name="car_downloads">Pobrane</string>
+    <string name="car_favorites">Ulubione</string>
+    <string name="car_playlists">Playlisty</string>
+    <string name="car_no_content">Brak zawartości</string>
+    <string name="car_content_unavailable">Zawartość niedostępna</string>
+    <string name="car_search_tracks">Szukaj utworów</string>
+    <string name="car_no_results">Brak wyników</string>
+    <string name="car_connecting_player">Łączenie z odtwarzaczem</string>
+    <string name="car_now_playing">Teraz odtwarzane</string>
+    <string name="car_queue">Kolejka</string>
+    <string name="notification_shuffle">Losowo</string>
+    <string name="notification_favorite">Ulubione</string>
     <string name="tile_recognize_music">Rozpoznaj muzykę</string>
     <string name="shortcut_search">Szukaj</string>
     <string name="shortcut_library">Biblioteka</string>

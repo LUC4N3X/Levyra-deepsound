@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Μίνι player, γρήγορα αγαπημένα, καθημερινό flow, εκτός σύνδεσης και στίχοι</string>
+    <string name="widget_description">Μίνι πρόγραμμα αναπαραγωγής, γρήγορα αγαπημένα, καθημερινή ροή, μίξη εκτός σύνδεσης και στίχοι</string>
     <string name="widget_idle_subtitle">Πατήστε για ακρόαση</string>
     <string name="widget_toggle">Αναπαραγωγή/Παύση</string>
     <string name="widget_next">Επόμενο</string>
     <string name="widget_previous">Προηγούμενο</string>
     <string name="widget_favorites">Αγαπημένα</string>
-    <string name="widget_flow">Καθημερινό flow</string>
-    <string name="widget_offline">Mix εκτός σύνδεσης</string>
+    <string name="widget_flow">Καθημερινή ροή</string>
+    <string name="widget_offline">Μίξη εκτός σύνδεσης</string>
     <string name="widget_lyrics">Στίχοι</string>
     <string name="radar_channel_name">Ραντάρ κυκλοφοριών</string>
     <string name="radar_channel_description">Νέες κυκλοφορίες από καλλιτέχνες που ακολουθείτε</string>
     <string name="radar_new_release_title">Νέα κυκλοφορία από %1$s</string>
+    <string name="automatic_backups">Αυτόματα αντίγραφα ασφαλείας</string>
+    <string name="car_home">Αρχική</string>
+    <string name="car_downloads">Λήψεις</string>
+    <string name="car_favorites">Αγαπημένα</string>
+    <string name="car_playlists">Λίστες αναπαραγωγής</string>
+    <string name="car_no_content">Δεν υπάρχει περιεχόμενο</string>
+    <string name="car_content_unavailable">Το περιεχόμενο δεν είναι διαθέσιμο</string>
+    <string name="car_search_tracks">Αναζήτηση κομματιών</string>
+    <string name="car_no_results">Δεν βρέθηκαν αποτελέσματα</string>
+    <string name="car_connecting_player">Σύνδεση με το πρόγραμμα αναπαραγωγής</string>
+    <string name="car_now_playing">Παίζει τώρα</string>
+    <string name="car_queue">Ουρά</string>
+    <string name="notification_shuffle">Τυχαία σειρά</string>
+    <string name="notification_favorite">Αγαπημένο</string>
     <string name="tile_recognize_music">Αναγνώριση μουσικής</string>
     <string name="shortcut_search">Αναζήτηση</string>
     <string name="shortcut_library">Βιβλιοθήκη</string>
