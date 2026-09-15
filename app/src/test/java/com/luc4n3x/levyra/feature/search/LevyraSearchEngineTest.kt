@@ -25,6 +25,7 @@ import org.junit.Test
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
 class LevyraSearchEngineTest {
@@ -386,6 +387,91 @@ class LevyraSearchEngineTest {
         ).forEach { mark -> assertNotNull(mark.label, report.elapsedMs[mark]) }
         assertFalse(report.format().contains("adele"))
     }
+
+    @Test
+    fun `blocked non cancellable request of an old query does not delay the new query`() = runBlocking {
+        val release = CountDownLatch(1)
+        backend.blockingOverviews["geo"] = release
+        backend.overview("geo").complete(SearchResults(songs = listOf(searchTestTrack("g0", "Geo Old", "Someone"))))
+        backend.overview("geolier").complete(SearchResults(songs = listOf(searchTestTrack("g1", "I P' ME", "Geolier"))))
+        val engine = engine()
+        try {
+            engine.submit("geo", "it")
+            awaitCondition { "geo" in backend.overviewCalls }
+
+            engine.submit("geolier", "it")
+            val fresh = engine.awaitState { it.queryKey == "geolier" && it.settled }
+
+            assertEquals(listOf("g1"), fresh.results.songs.map { it.id })
+            assertEquals(1L, release.count)
+        } finally {
+            release.countDown()
+        }
+        delay(100L)
+
+        val state = engine.state.value
+        assertEquals("geolier", state.queryKey)
+        assertTrue(state.results.songs.none { it.id == "g0" })
+    }
+
+    @Test
+    fun `returning to a query while its request still runs reuses the in flight call`() = runBlocking {
+        val release = CountDownLatch(1)
+        backend.blockingSuggestions["adele"] = release
+        backend.suggestions = { query -> SearchSuggestionBundle(queries = listOf("$query live")) }
+        val engine = engine()
+        try {
+            engine.onQueryChanged("adele", "it")
+            awaitCondition { "adele" in backend.suggestionCalls }
+            engine.onQueryChanged("coldplay", "it")
+            engine.awaitState { it.queryKey == "coldplay" && it.suggestions == listOf("coldplay live") }
+            engine.onQueryChanged("adele", "it")
+            engine.awaitState { it.queryKey == "adele" }
+        } finally {
+            release.countDown()
+        }
+
+        engine.awaitState { it.queryKey == "adele" && it.suggestions == listOf("adele live") }
+        assertEquals(1, backend.suggestionCalls.count { it == "adele" })
+    }
+
+    @Test
+    fun `section failures during carry over belong to the new query and survive fresh data`() = runBlocking {
+        val freshSongs = CompletableDeferred<SearchSectionPage>()
+        backend.overview("adele").completeExceptionally(IOException("overview down"))
+        backend.overview("adel").completeExceptionally(IOException("overview down"))
+        backend.section = { filter, query, _ ->
+            when {
+                query == "adele" && filter == SearchFilter.Songs ->
+                    SearchSectionPage(songs = listOf(searchTestTrack("a1", "Hello", "Adele")))
+                query == "adele" -> throw IOException("adele $filter down")
+                filter == SearchFilter.Songs -> freshSongs.await()
+                filter == SearchFilter.Artists || filter == SearchFilter.Albums -> throw IOException("adel $filter down")
+                else -> SearchSectionPage()
+            }
+        }
+        val engine = engine()
+        engine.submit("adele", "it")
+        val previous = engine.awaitState { it.queryKey == "adele" && it.settled }
+        assertTrue(SearchFilter.Playlists in previous.results.failedSections)
+
+        engine.submit("adel", "it")
+        val carried = engine.awaitState { snapshot ->
+            snapshot.queryKey == "adel" &&
+                snapshot.pendingSectionFailures.containsAll(setOf(SearchFilter.Artists, SearchFilter.Albums)) &&
+                SearchFilter.Videos in snapshot.sectionContinuations
+        }
+        assertTrue(carried.carriedOver)
+        assertEquals(listOf("a1"), carried.results.songs.map { it.id })
+        assertTrue(carried.results.failedSections.isEmpty())
+
+        freshSongs.complete(SearchSectionPage(songs = listOf(searchTestTrack("n1", "Adel Song", "Adel"))))
+        val settled = engine.awaitState { it.queryKey == "adel" && it.settled }
+
+        assertEquals(listOf("n1"), settled.results.songs.map { it.id })
+        assertEquals(setOf(SearchFilter.Artists, SearchFilter.Albums), settled.results.failedSections)
+        assertEquals(SearchFailure.None, settled.failure)
+    }
 }
 
 private data class SectionCall(val filter: SearchFilter, val query: String, val continuation: String)
@@ -409,6 +495,8 @@ private class FakeSearchBackend : SearchBackend {
     val overviewCalls = CopyOnWriteArrayList<String>()
     val suggestionCalls = CopyOnWriteArrayList<String>()
     val sectionCalls = CopyOnWriteArrayList<SectionCall>()
+    val blockingOverviews = ConcurrentHashMap<String, CountDownLatch>()
+    val blockingSuggestions = ConcurrentHashMap<String, CountDownLatch>()
     private val overviews = ConcurrentHashMap<String, CompletableDeferred<SearchResults>>()
 
     fun overview(query: String): CompletableDeferred<SearchResults> =
@@ -418,11 +506,13 @@ private class FakeSearchBackend : SearchBackend {
 
     override suspend fun suggestions(query: String, languageCode: String): SearchSuggestionBundle {
         suggestionCalls += query
+        blockingSuggestions[query]?.await()
         return suggestions.invoke(query)
     }
 
     override suspend fun overview(query: String, languageCode: String): SearchResults {
         overviewCalls += query
+        blockingOverviews[query]?.await()
         return overview(query).await()
     }
 

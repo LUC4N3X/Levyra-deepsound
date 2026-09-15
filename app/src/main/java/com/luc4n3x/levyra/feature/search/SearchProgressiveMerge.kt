@@ -149,8 +149,21 @@ internal fun SearchSessionSnapshot.withSectionPage(
     page: SearchSectionPage,
     nextContinuation: String
 ): SearchSessionSnapshot {
-    val base = freshResults
-    val merged = when (filter) {
+    val continuations = sectionContinuations + (filter to nextContinuation)
+    if (carriedOver && page.isEmpty) {
+        return copy(sectionContinuations = continuations, pendingSectionFailures = pendingSectionFailures - filter)
+    }
+    val merged = mergeSectionPage(freshResults, filter, page)
+    return copy(
+        results = merged.copy(failedSections = merged.failedSections - filter),
+        carriedOver = false,
+        failure = if (merged.isEmpty) failure else SearchFailure.None,
+        sectionContinuations = continuations
+    )
+}
+
+private fun mergeSectionPage(base: SearchResults, filter: SearchFilter, page: SearchSectionPage): SearchResults =
+    when (filter) {
         SearchFilter.Songs -> base.copy(
             topTrack = base.topTrack ?: page.songs.firstOrNull(),
             songs = mergeSearchSongs(base.songs, page.songs)
@@ -161,18 +174,13 @@ internal fun SearchSessionSnapshot.withSectionPage(
         SearchFilter.Playlists -> base.copy(playlists = mergeSearchPlaylists(base.playlists, page.playlists))
         SearchFilter.All -> base
     }
-    return copy(
-        results = merged.copy(failedSections = merged.failedSections - filter),
-        carriedOver = false,
-        failure = if (merged.isEmpty) failure else SearchFailure.None,
-        sectionContinuations = sectionContinuations + (filter to nextContinuation)
-    )
-}
 
-internal fun SearchSessionSnapshot.withFailedSection(filter: SearchFilter): SearchSessionSnapshot {
-    if (carriedOver) return this
-    return copy(results = results.copy(failedSections = results.failedSections + filter))
-}
+internal fun SearchSessionSnapshot.withFailedSection(filter: SearchFilter): SearchSessionSnapshot =
+    if (carriedOver) {
+        copy(pendingSectionFailures = pendingSectionFailures + filter)
+    } else {
+        copy(results = results.copy(failedSections = results.failedSections + filter))
+    }
 
 internal sealed interface SearchAlbumRefinement {
     data object Keep : SearchAlbumRefinement

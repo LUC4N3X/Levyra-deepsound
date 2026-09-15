@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
@@ -42,7 +43,10 @@ internal data class SearchSectionPage(
     val artists: List<ArtistHit> = emptyList(),
     val playlists: List<PlaylistHit> = emptyList(),
     val continuation: String = ""
-)
+) {
+    val isEmpty: Boolean
+        get() = songs.isEmpty() && videos.isEmpty() && albums.isEmpty() && artists.isEmpty() && playlists.isEmpty()
+}
 
 internal interface SearchBackend {
     fun localCandidates(): List<LocalSearchCandidate>
@@ -78,13 +82,14 @@ internal data class SearchSessionSnapshot(
     val failure: SearchFailure = SearchFailure.None,
     val filter: SearchFilter = SearchFilter.All,
     val sectionContinuations: Map<SearchFilter, String> = emptyMap(),
-    val sectionLoading: Set<SearchFilter> = emptySet()
+    val sectionLoading: Set<SearchFilter> = emptySet(),
+    val pendingSectionFailures: Set<SearchFilter> = emptySet()
 ) {
     val pending: Boolean
         get() = queryKey.isNotEmpty() && !settled
 
     val freshResults: SearchResults
-        get() = if (carriedOver) SearchResults() else results
+        get() = if (carriedOver) SearchResults(failedSections = pendingSectionFailures) else results
 }
 
 internal data class SearchTiming(
@@ -123,7 +128,8 @@ internal class LevyraSearchEngine(
     private val sideEffects: SearchSideEffects = object : SearchSideEffects {},
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val timing: SearchTiming = SearchTiming(),
-    private val clock: () -> Long = { System.nanoTime() / 1_000_000L }
+    private val clock: () -> Long = { System.nanoTime() / 1_000_000L },
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val requests = MutableStateFlow(SearchRequest("", "", "", 0L))
     private val submittedIdentity = MutableStateFlow("")
@@ -135,6 +141,11 @@ internal class LevyraSearchEngine(
     private val suggestionCache = SearchMemoCache<SearchSuggestionBundle>(SUGGESTION_CACHE_ENTRIES, timing.suggestionTtlMs, clock)
     private val resultCache = SearchMemoCache<SearchResults>(RESULT_CACHE_ENTRIES, timing.resultTtlMs, clock)
     private val sectionCache = SearchMemoCache<SearchSectionPage>(SECTION_CACHE_ENTRIES, timing.resultTtlMs, clock)
+    private val remote = DetachedSearchCalls(
+        backend = backend,
+        scope = CoroutineScope(SupervisorJob(scope.coroutineContext[Job]) + ioDispatcher),
+        suggestionCache = suggestionCache
+    )
 
     @Volatile
     private var activeSession: ActiveSession? = null
@@ -195,10 +206,34 @@ internal class LevyraSearchEngine(
             _state.value = SearchSessionSnapshot(generation = generation)
             return
         }
-        val trace = SearchLatencyTrace(clock)
-        val previous = _state.value
         val cachedResults = resultCache.get(request.cacheKey)
         val cachedSuggestions = suggestionCache.get(request.cacheKey)
+        _state.value = openingSnapshot(generation, request, cachedResults, cachedSuggestions)
+        coroutineScope {
+            val session = ActiveSession(
+                generation = generation,
+                request = request,
+                scope = this,
+                trace = SearchLatencyTrace(clock),
+                sectionGate = Semaphore(timing.sectionConcurrency)
+            )
+            activeSession = session
+            try {
+                runStages(session, cachedResults, cachedSuggestions)
+                awaitCancellation()
+            } finally {
+                if (activeSession === session) activeSession = null
+            }
+        }
+    }
+
+    private fun openingSnapshot(
+        generation: Long,
+        request: SearchRequest,
+        cachedResults: SearchResults?,
+        cachedSuggestions: SearchSuggestionBundle?
+    ): SearchSessionSnapshot {
+        val previous = _state.value
         val prefixSuggestions = if (cachedSuggestions == null) {
             suggestionCache.longestPrefix(request.cacheKey)?.let { narrowSuggestionBundle(it, request.query) }
         } else {
@@ -207,8 +242,9 @@ internal class LevyraSearchEngine(
         val carryOver = cachedResults == null &&
             !previous.results.isEmpty &&
             areRelatedSearchKeys(previous.queryKey, request.key)
-        val initialResults = cachedResults ?: if (carryOver) previous.results else SearchResults()
-        _state.value = SearchSessionSnapshot(
+        val initialResults = cachedResults
+            ?: if (carryOver) previous.results.copy(failedSections = emptySet()) else SearchResults()
+        return SearchSessionSnapshot(
             generation = generation,
             query = request.query,
             queryKey = request.key,
@@ -223,31 +259,25 @@ internal class LevyraSearchEngine(
             verified = cachedResults != null,
             settled = false
         )
-        coroutineScope {
-            val session = ActiveSession(generation, request, this, trace, Semaphore(timing.sectionConcurrency))
-            activeSession = session
-            try {
-                launch { publishLocalMatches(session) }
-                if (cachedSuggestions != null) publishSuggestionBundle(session, cachedSuggestions)
-                if (cachedResults != null) {
-                    trace.markVisible(cachedResults)
-                    if (cachedSuggestions == null && !isSubmitted(request)) launch { loadSuggestions(session) }
-                    settle(session, remoteFailed = false, cacheHit = true)
-                    schedulePrefetch(session)
-                } else {
-                    val suggestionsJob = if (cachedSuggestions == null && !isSubmitted(request)) {
-                        launch { loadSuggestions(session) }
-                    } else {
-                        null
-                    }
-                    if (suggestionsJob != null) awaitFullSearchTrigger(session, suggestionsJob)
-                    runRemoteSearch(session)
-                }
-                awaitCancellation()
-            } finally {
-                if (activeSession === session) activeSession = null
-            }
+    }
+
+    private suspend fun runStages(
+        session: ActiveSession,
+        cachedResults: SearchResults?,
+        cachedSuggestions: SearchSuggestionBundle?
+    ) {
+        session.scope.launch { publishLocalMatches(session) }
+        if (cachedSuggestions != null) publishSuggestionBundle(session, cachedSuggestions)
+        val loadsSuggestions = cachedSuggestions == null && !isSubmitted(session.request)
+        if (cachedResults != null) {
+            session.trace.markVisible(cachedResults)
+            if (loadsSuggestions) session.scope.launch { loadSuggestions(session) }
+            settle(session, remoteFailed = false, cacheHit = true)
+            schedulePrefetch(session)
+            return
         }
+        if (loadsSuggestions) awaitFullSearchTrigger(session, session.scope.launch { loadSuggestions(session) })
+        runRemoteSearch(session)
     }
 
     private fun isSubmitted(request: SearchRequest): Boolean = submittedIdentity.value == request.identity
@@ -270,8 +300,9 @@ internal class LevyraSearchEngine(
     private suspend fun loadSuggestions(session: ActiveSession) {
         val request = session.request
         if (!isSubmitted(request)) delay(timing.typingDebounceMs)
-        val bundle = searchCatching { backend.suggestions(request.query, request.languageCode) }.getOrNull() ?: return
-        suggestionCache.put(request.cacheKey, bundle)
+        val bundle = searchCatching {
+            remote.suggestions(request.query, request.languageCode, request.cacheKey)
+        }.getOrNull() ?: return
         publishSuggestionBundle(session, bundle)
     }
 
@@ -302,8 +333,10 @@ internal class LevyraSearchEngine(
         publish(session) { it.copy(remoteLoading = true) }
         var remoteFailed = false
         coroutineScope {
-            val exactArtist = async { searchCatching { backend.exactArtist(request.query) }.getOrNull() }
-            val overview = async { searchCatching { backend.overview(request.query, request.languageCode) } }
+            val exactArtist = async { searchCatching { remote.exactArtist(request.query, request.key) }.getOrNull() }
+            val overview = async {
+                searchCatching { remote.overview(request.query, request.languageCode, request.cacheKey) }
+            }
             val hedge = launch { hedgeSongs(session, overview) }
             val raw = overview.await().getOrNull()
             hedge.cancel()
@@ -319,13 +352,13 @@ internal class LevyraSearchEngine(
         settle(session, remoteFailed, cacheHit = false)
     }
 
+    private suspend fun fetchSection(request: SearchRequest, filter: SearchFilter, continuation: String): SearchSectionPage =
+        remote.section(filter, request.query, request.languageCode, request.cacheKey, continuation)
+
     private suspend fun hedgeSongs(session: ActiveSession, overview: Deferred<*>) {
         delay(backend.overviewHedgeDelayMs())
         if (overview.isCompleted) return
-        val request = session.request
-        val page = searchCatching {
-            backend.section(SearchFilter.Songs, request.query, request.languageCode, "")
-        }.getOrNull() ?: return
+        val page = searchCatching { fetchSection(session.request, SearchFilter.Songs, "") }.getOrNull() ?: return
         if (page.songs.isEmpty()) return
         applySectionPage(session, SearchFilter.Songs, page, requestedContinuation = "")
         session.trace.mark(SearchLatencyMark.NETWORK_FIRST)
@@ -356,13 +389,13 @@ internal class LevyraSearchEngine(
             mergeReliableArtistSearchResults(
                 query = query,
                 exactArtist = exactArtist,
-                verifiedArtists = backend.officialArtists(candidates)
+                verifiedArtists = remote.officialArtists(candidates)
             )
         }.getOrNull()
         val resolvedArtists = official ?: raw.artists
         val artistsFailed = official == null && raw.artists.isEmpty()
         publish(session) { it.withVerifiedArtists(query, resolvedArtists, artistsFailed) }
-        val refinement = refineSearchAlbums(query, resolvedArtists, backend::officialAlbums)
+        val refinement = refineSearchAlbums(query, resolvedArtists, remote::officialAlbums)
         val verified = publish(session) { it.withAlbumRefinement(refinement) } ?: return
         session.trace.mark(SearchLatencyMark.VERIFIED)
         if (!verified.results.isEmpty) resultCache.put(session.request.cacheKey, verified.results)
@@ -380,16 +413,14 @@ internal class LevyraSearchEngine(
                 .forEach { filter ->
                     launch {
                         session.sectionGate.withPermit {
-                            searchCatching {
-                                backend.section(filter, request.query, request.languageCode, "")
-                            }.onSuccess { page ->
-                                successes.incrementAndGet()
-                                sectionCache.put(sectionCacheKey(request, filter), page)
-                                applySectionPage(session, filter, page, requestedContinuation = "")
-                                session.trace.mark(SearchLatencyMark.NETWORK_FIRST)
-                            }.onFailure {
-                                publish(session) { snapshot -> snapshot.withFailedSection(filter) }
-                            }
+                            searchCatching { fetchSection(request, filter, "") }
+                                .onSuccess { page ->
+                                    successes.incrementAndGet()
+                                    sectionCache.put(sectionCacheKey(request, filter), page)
+                                    applySectionPage(session, filter, page, requestedContinuation = "")
+                                    session.trace.mark(SearchLatencyMark.NETWORK_FIRST)
+                                }
+                                .onFailure { publish(session) { snapshot -> snapshot.withFailedSection(filter) } }
                         }
                     }
                 }
@@ -434,11 +465,7 @@ internal class LevyraSearchEngine(
                 val outcome = if (cached != null) {
                     Result.success(cached)
                 } else {
-                    searchCatching {
-                        session.sectionGate.withPermit {
-                            backend.section(filter, request.query, request.languageCode, continuation)
-                        }
-                    }
+                    searchCatching { session.sectionGate.withPermit { fetchSection(request, filter, continuation) } }
                 }
                 outcome
                     .onSuccess { page ->

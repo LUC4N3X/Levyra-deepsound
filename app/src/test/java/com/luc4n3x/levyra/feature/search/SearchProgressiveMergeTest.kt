@@ -71,10 +71,41 @@ class SearchProgressiveMergeTest {
     }
 
     @Test
-    fun `failed section flags are not attached to carried results`() {
-        val carried = session("geolier").copy(results = SearchResults(songs = listOf(searchTestTrack("old", "Old", "Old"))), carriedOver = true)
+    fun `failures during carry over stay pending and move to the fresh results`() {
+        val stale = searchTestTrack("old", "Old Song", "Old Artist")
+        val carried = session("geolier").copy(
+            results = SearchResults(songs = listOf(stale), failedSections = setOf(SearchFilter.Playlists)),
+            carriedOver = true
+        )
 
-        assertEquals(carried, carried.withFailedSection(SearchFilter.Albums))
+        val failed = carried.withFailedSection(SearchFilter.Albums)
+        assertTrue(failed.carriedOver)
+        assertEquals(setOf(SearchFilter.Albums), failed.pendingSectionFailures)
+        assertEquals(listOf("old"), failed.results.songs.map { it.id })
+
+        val emptyPage = failed.withSectionPage(SearchFilter.Videos, SearchSectionPage(), nextContinuation = "")
+        assertTrue(emptyPage.carriedOver)
+        assertEquals(listOf("old"), emptyPage.results.songs.map { it.id })
+        assertEquals("", emptyPage.sectionContinuations[SearchFilter.Videos])
+
+        val fresh = emptyPage.withSectionPage(
+            SearchFilter.Songs,
+            SearchSectionPage(songs = listOf(searchTestTrack("g1", "I P' ME", "Geolier"))),
+            nextContinuation = ""
+        )
+        assertFalse(fresh.carriedOver)
+        assertEquals(listOf("g1"), fresh.results.songs.map { it.id })
+        assertEquals(setOf(SearchFilter.Albums), fresh.results.failedSections)
+    }
+
+    @Test
+    fun `failures after fresh data are recorded directly`() {
+        val fresh = session("geolier").copy(results = SearchResults(songs = listOf(searchTestTrack("g1", "I P' ME", "Geolier"))))
+
+        val failed = fresh.withFailedSection(SearchFilter.Albums)
+
+        assertEquals(setOf(SearchFilter.Albums), failed.results.failedSections)
+        assertTrue(failed.pendingSectionFailures.isEmpty())
     }
 
     @Test
