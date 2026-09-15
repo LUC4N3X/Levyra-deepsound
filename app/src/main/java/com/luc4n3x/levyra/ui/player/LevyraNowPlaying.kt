@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -76,14 +79,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.request.bitmapConfig
-import coil3.toBitmap
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
-import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
@@ -94,6 +91,7 @@ import com.luc4n3x.levyra.ui.LevyraPlayerPane
 import com.luc4n3x.levyra.ui.PlayerDarkSurface
 import com.luc4n3x.levyra.ui.artwork.ArtworkPreviewOverlay
 import com.luc4n3x.levyra.ui.artwork.livingArtworkColors
+import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
 import com.luc4n3x.levyra.ui.components.PlayerAccentColors
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
@@ -117,9 +115,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.PlayerViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 
 @Composable
 fun LevyraNowPlaying(
@@ -129,6 +125,7 @@ fun LevyraNowPlaying(
     morphActive: Boolean,
     collapseActions: PlayerCollapseActions,
     modifier: Modifier = Modifier,
+    motionSuspended: Boolean = false,
     modeSwitchContent: (@Composable () -> Unit)? = null,
     videoSurfaceContent: (@Composable (Track, Modifier) -> Unit)? = null,
     gestureLayerContent: (@Composable (Track, PlayerGestureConfig, PlayerGestureMediaActions, PlayerGestureUiActions, androidx.compose.runtime.MutableState<PlayerVideoTransform>?, Modifier) -> Unit)? = null,
@@ -164,66 +161,15 @@ fun LevyraNowPlaying(
             )
         } else ""
     }
-    val memoryPalette = remember(paletteKey) {
-        if (paletteKey.isNotBlank()) ArtworkPaletteCache.peek(paletteKey) else null
-    }
-    val artworkPaletteState = remember(paletteKey) {
-        mutableStateOf(memoryPalette ?: fallbackPalette)
-    }
-    var cacheLookupComplete by remember(paletteKey) {
-        mutableStateOf(memoryPalette != null)
-    }
-    var paletteExtractionStarted by remember(paletteKey) {
-        mutableStateOf(memoryPalette != null)
-    }
-
-    LaunchedEffect(paletteKey) {
-        if (paletteKey.isNotBlank() && memoryPalette == null) {
-            val persistedPalette = ArtworkPaletteCache.load(playerContext, paletteKey)
-            if (persistedPalette != null) {
-                artworkPaletteState.value = persistedPalette
-                paletteExtractionStarted = true
-            }
-            cacheLookupComplete = true
-        }
-    }
-
-    LaunchedEffect(paletteKey, cacheLookupComplete) {
-        if (paletteKey.isBlank() || !cacheLookupComplete || paletteExtractionStarted) return@LaunchedEffect
-        val currentTrack = track ?: return@LaunchedEffect
-        val artUrl = artworkUrl.ifBlank {
-            currentTrack.largeThumbnailUrl.ifBlank { currentTrack.thumbnailUrl }
-        }
-        if (artUrl.isBlank()) return@LaunchedEffect
-        paletteExtractionStarted = true
-        withContext(Dispatchers.IO) {
-            val imageLoader = coil3.SingletonImageLoader.get(playerContext)
-            val request = ImageRequest.Builder(playerContext)
-                .data(LevyraArtworkCache.small(artUrl))
-                .size(96, 96)
-                .allowHardware(false)
-                .bitmapConfig(android.graphics.Bitmap.Config.ARGB_8888)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .memoryCachePolicy(CachePolicy.DISABLED)
-                .build()
-            val bitmap = runCatching {
-                imageLoader.execute(request).image?.toBitmap()
-            }.getOrNull()
-            if (bitmap != null) {
-                val extracted = withContext(Dispatchers.Default) {
-                    ArtworkPaletteCache.extract(
-                        bitmap = bitmap,
-                        fallbackStart = fallbackPalette.start,
-                        fallbackEnd = fallbackPalette.end
-                    )
-                }
-                artworkPaletteState.value = extracted
-                ArtworkPaletteCache.store(playerContext, paletteKey, extracted)
-            }
-        }
-    }
-
-    val activePalette = artworkPaletteState.value
+    val paletteArtworkUrl = track?.let { current ->
+        artworkUrl.ifBlank { current.largeThumbnailUrl.ifBlank { current.thumbnailUrl } }
+    }.orEmpty()
+    val activePalette by rememberArtworkPalette(
+        paletteKey = paletteKey,
+        artworkUrl = paletteArtworkUrl,
+        fallback = fallbackPalette
+    )
+    val motionEnabled = state.animationsEnabled && !state.isVideoMode && !motionSuspended
     val rawPrimaryTarget = Color(activePalette.start)
     val rawSecondaryTarget = Color(activePalette.end)
     val harmonizedTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
@@ -369,6 +315,24 @@ fun LevyraNowPlaying(
             videoFullscreen = false
         }
 
+        val chromeTopPadding = if (compactPlayer) 4.dp else 6.dp
+        val heroVerticalPadding = if (compactPlayer) 1.dp else 2.dp
+        val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val cinematicGeometry = playerCinematicGeometry(
+            pane = playerPane,
+            containerWidth = maxWidth,
+            containerHeight = maxHeight,
+            stackedHeroBottom = playerCinematicStackedHeroBottom(
+                statusBarTop = statusBarTop,
+                chromeTopPadding = chromeTopPadding,
+                headerHeight = LevyraPlayerDesign.MinimumTouchTarget,
+                itemSpacing = chromeTopPadding,
+                heroVerticalPadding = heroVerticalPadding,
+                artworkSize = artworkSize
+            ),
+            paneGap = LevyraPlayerDesign.SpaceXl
+        )
+
         PlayerVisualHost(
             visualMode = visualMode,
             backgroundMode = backgroundMode,
@@ -378,10 +342,12 @@ fun LevyraNowPlaying(
             livingArtwork = livingArtwork,
             ambience = ambience,
             animationsEnabled = state.animationsEnabled,
+            motionEnabled = motionEnabled,
             isPlaying = state.isPlaying,
             canvasQuality = state.interfaceSettings.canvasQuality,
             morphActive = morphActive,
             swipeOffset = settledSwipeOffset,
+            cinematicGeometry = cinematicGeometry,
             isVideoMode = state.isVideoMode,
             modifier = Modifier.fillMaxSize()
         )
@@ -582,6 +548,7 @@ fun LevyraNowPlaying(
                         motionArtwork = state.motionArtwork,
                         livingArtwork = livingArtwork,
                         animationsEnabled = state.animationsEnabled && !state.isVideoMode,
+                        motionEnabled = motionEnabled,
                         isPlaying = state.isPlaying,
                         cornerRadius = artCorner,
                         canvasQuality = state.interfaceSettings.canvasQuality,
@@ -942,12 +909,12 @@ fun LevyraNowPlaying(
                     .padding(
                         start = playerHorizontalPadding,
                         end = playerHorizontalPadding,
-                        top = if (compactPlayer) 4.dp else 6.dp,
+                        top = chromeTopPadding,
                         bottom = if (compactPlayer) 8.dp else 12.dp
                     )
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(if (compactPlayer) 4.dp else 6.dp)
+                verticalArrangement = Arrangement.spacedBy(chromeTopPadding)
             ) {
                 headerBlock()
                 if (track == null) {
@@ -967,7 +934,7 @@ fun LevyraNowPlaying(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = if (compactPlayer) 1.dp else 2.dp),
+                            .padding(vertical = heroVerticalPadding),
                         contentAlignment = Alignment.Center
                     ) {
                         mediaHeroBlock(track)

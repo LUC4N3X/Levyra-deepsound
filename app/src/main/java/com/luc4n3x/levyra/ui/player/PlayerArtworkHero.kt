@@ -17,15 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
@@ -34,6 +27,7 @@ import com.luc4n3x.levyra.ui.InstantArtworkPlaceholder
 import com.luc4n3x.levyra.ui.MotionArtworkLayer
 import com.luc4n3x.levyra.ui.MotionArtworkPresentation
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
+import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 @Composable
@@ -44,6 +38,7 @@ internal fun PlayerArtworkHero(
     motionArtwork: MotionArtwork?,
     livingArtwork: LivingArtworkColors?,
     animationsEnabled: Boolean,
+    motionEnabled: Boolean,
     isPlaying: Boolean,
     cornerRadius: Dp,
     canvasQuality: LevyraCanvasQuality,
@@ -54,7 +49,6 @@ internal fun PlayerArtworkHero(
     artOffset: Dp,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val artworkShadow by animateDpAsState(
         targetValue = if (isPlaying) 26.dp else 14.dp,
         animationSpec = if (animationsEnabled) tween(420, easing = FastOutSlowInEasing) else snap(),
@@ -96,26 +90,14 @@ internal fun PlayerArtworkHero(
         ) {
             when (visualMode) {
                 PlayerVisualMode.Artwork -> {
-                    if (artworkUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(LevyraArtworkCache.large(artworkUrl))
-                                .crossfade(true)
-                                .diskCachePolicy(CachePolicy.ENABLED)
-                                .memoryCachePolicy(CachePolicy.ENABLED)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
+                    SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
                         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
                     }
                 }
                 PlayerVisualMode.CanvasCard -> {
                     MotionArtworkLayer(
                         artwork = motionArtwork,
-                        enabled = animationsEnabled,
+                        enabled = motionEnabled,
                         isPlaying = isPlaying,
                         cornerRadius = cornerRadius,
                         presentation = MotionArtworkPresentation.Card,
@@ -123,19 +105,7 @@ internal fun PlayerArtworkHero(
                         livingArtwork = livingArtwork,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        if (artworkUrl.isNotBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(LevyraArtworkCache.large(artworkUrl))
-                                    .crossfade(true)
-                                    .diskCachePolicy(CachePolicy.ENABLED)
-                                    .memoryCachePolicy(CachePolicy.ENABLED)
-                                    .build(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
+                        SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
                             InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
                         }
                     }

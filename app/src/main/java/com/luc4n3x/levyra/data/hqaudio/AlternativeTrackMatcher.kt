@@ -171,24 +171,33 @@ class AlternativeTrackMatcher {
             )
         val top = accepted.firstOrNull()
             ?: return AlternativeMatchSelection.Rejected(dominantRejection(evaluations), evaluations)
-        val contender = accepted.firstOrNull { it.verdict == top.verdict && !sameRecording(it, top) }
+        val explicitKnown = (query.explicit ?: AlternativeTrackText.title(query.title).explicitHint) != null
+        val contender = accepted.firstOrNull { it.verdict == top.verdict && !sameRecording(it, top, explicitKnown) }
         if (contender != null && top.confidence - contender.confidence < AMBIGUITY_MARGIN) {
             return AlternativeMatchSelection.Rejected(MatchRejection.AMBIGUOUS, evaluations)
         }
         val chosen = accepted
-            .filter { it.verdict == top.verdict && sameRecording(it, top) }
-            .maxWith(compareBy<AlternativeMatchEvaluation> { it.candidate.offers320 }.thenBy { it.confidence })
+            .filter { it.verdict == top.verdict && sameRecording(it, top, explicitKnown) }
+            .maxWith(
+                compareBy<AlternativeMatchEvaluation> { it.candidate.explicit != true }
+                    .thenBy { it.candidate.offers320 }
+                    .thenBy { it.confidence }
+            )
         return AlternativeMatchSelection.Accepted(chosen, evaluations)
     }
 
-    private fun sameRecording(left: AlternativeMatchEvaluation, right: AlternativeMatchEvaluation): Boolean {
+    private fun sameRecording(
+        left: AlternativeMatchEvaluation,
+        right: AlternativeMatchEvaluation,
+        explicitKnown: Boolean
+    ): Boolean {
         val a = left.candidate
         val b = right.candidate
         if (a.providerId == b.providerId && a.providerTrackId == b.providerTrackId) return true
         return AlternativeTrackText.title(a.title).fullNormalized == AlternativeTrackText.title(b.title).fullNormalized &&
             primarySet(a) == primarySet(b) &&
             abs(a.durationSeconds - b.durationSeconds) <= 1 &&
-            a.explicit == b.explicit
+            (!explicitKnown || a.explicit == b.explicit)
     }
 
     private fun primarySet(candidate: AlternativeTrackCandidate): Set<String> =
@@ -266,7 +275,7 @@ class AlternativeTrackMatcher {
         const val AMBIGUITY_MARGIN = 8
 
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
-        private val untrustedAlbumNames = setOf(
+        internal val untrustedAlbumNames = setOf(
             "levyra",
             "youtube",
             "youtube music",

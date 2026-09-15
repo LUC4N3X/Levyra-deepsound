@@ -14,7 +14,9 @@ internal object AlternativeSearchPlan {
         val primaryArtist = clean(query.artist).split(rawArtistSeparators).firstOrNull().orEmpty()
         val titleIdentity = AlternativeTrackText.title(query.title)
         val albumIdentity = AlternativeTrackText.album(query.album)
-        val includeAlbum = !albumIdentity.isBlank && albumIdentity.core != titleIdentity.core
+        val includeAlbum = !albumIdentity.isBlank &&
+            albumIdentity.core != titleIdentity.core &&
+            albumIdentity.core !in AlternativeTrackMatcher.untrustedAlbumNames
         val canonical = (listOf(titleIdentity.fullNormalized) + AlternativeTrackText.artistNames(query.artist))
             .joinToString(" ")
         return buildList {

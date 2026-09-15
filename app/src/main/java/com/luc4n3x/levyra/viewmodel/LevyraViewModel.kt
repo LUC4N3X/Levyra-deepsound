@@ -382,6 +382,17 @@ private const val DEARROW_CONCURRENCY = 4
 
 internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
 
+internal fun shouldContinueMotionPrefetch(
+    activeKey: String,
+    currentKey: String,
+    nextKey: String,
+    queueChanged: Boolean
+): Boolean = when (activeKey) {
+    nextKey -> true
+    currentKey -> !queueChanged
+    else -> false
+}
+
 internal fun shouldRefreshMotionArtworkOwnership(
     previous: LevyraInterfaceSettings,
     next: LevyraInterfaceSettings
@@ -827,6 +838,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
     private var motionArtworkPrefetchJob: Job? = null
+    @Volatile private var motionArtworkPrefetchKey: String? = null
+    @Volatile private var motionArtworkPrefetchToken = 0L
     private var sleepTimerCollectorJob: Job? = null
     private var audioSettingsPersistJob: Job? = null
     private var similarSongsSeedJob: Job? = null
@@ -5949,6 +5962,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playFrom(detail.tracks, detail.tracks.first(), loopOnCompletion = true)
     }
 
+    fun shuffleCurrentAlbum() {
+        val detail = _state.value.albumDetail ?: return
+        if (detail.tracks.isEmpty() || _state.value.jam.role == JamRole.Guest) return
+        if (!queueEngine.state.value.shuffleEnabled) queueEngine.setShuffle(true)
+        playFrom(detail.tracks, detail.tracks.random(), loopOnCompletion = true)
+    }
+
     fun exportCurrentAlbum() {
         val detail = _state.value.albumDetail ?: return
         startBatchDownload(
@@ -7404,7 +7424,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun startResolve(track: Track, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {
         streamTransitionId++
-        cancelResolutionSideJobs()
+        cancelResolutionSideJobs(preserveMotionPrefetchKey = MotionArtworkIdentityKey.create(track))
         val engagementVideoId = youtubeEngagementVideoId(track)
         val requestId = ++playRequestId
         val request = PlaybackResolveRequest(requestId, startPaused)
@@ -7433,7 +7453,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun cancelResolutionSideJobs() {
+    private fun cancelResolutionSideJobs(preserveMotionPrefetchKey: String? = null) {
         modeSwitchJob?.cancel()
         if (_state.value.pendingVideoMode != null) {
             _state.update { it.copy(pendingVideoMode = null) }
@@ -7443,7 +7463,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         youtubeEngagementJob?.cancel()
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = null
-        motionArtworkPrefetchJob?.cancel()
+        if (preserveMotionPrefetchKey == null || motionArtworkPrefetchKey != preserveMotionPrefetchKey) {
+            motionArtworkPrefetchJob?.cancel()
+        }
         youtubeDislikeJob?.cancel()
         youtubeCommentsJob?.cancel()
         youtubeCommentsPageJob?.cancel()
@@ -8753,20 +8775,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val next = queueEngine.upcoming(2)
             .firstOrNull { !samePlayableTrack(it, current) }
             ?: return
+        val nextKey = MotionArtworkIdentityKey.create(next)
+        val prefetchToken = ++motionArtworkPrefetchToken
+        motionArtworkPrefetchKey = nextKey
         motionArtworkPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            // Yield briefly to audible playback, then warm the next Canvas early enough that a
-            // queue transition can usually enter the immersive layer with the real asset ready.
-            delay(180L)
-            if (!isActive || queueEngine.state.value.generation != generation || _state.value.isVideoMode) return@launch
-            val active = _state.value.currentTrack ?: return@launch
-            if (MotionArtworkIdentityKey.create(active) != currentKey) return@launch
-            runCatching {
-                motionArtworkEngine.prefetchNext(next, _state.value.interfaceSettings.canvasSource)
-            }
-                .onFailure { error ->
-                    if (error is CancellationException) throw error
-                    Timber.d(error, "Motion artwork prefetch failed for %s", next.id)
+            try {
+                // Yield briefly to audible playback, then warm the next Canvas early enough that a
+                // queue transition can usually enter the immersive layer with the real asset ready.
+                delay(180L)
+                if (!isActive || _state.value.isVideoMode) return@launch
+                val active = _state.value.currentTrack ?: return@launch
+                if (
+                    !shouldContinueMotionPrefetch(
+                        activeKey = MotionArtworkIdentityKey.create(active),
+                        currentKey = currentKey,
+                        nextKey = nextKey,
+                        queueChanged = queueEngine.state.value.generation != generation
+                    )
+                ) {
+                    return@launch
                 }
+                runCatching {
+                    motionArtworkEngine.prefetchNext(next, _state.value.interfaceSettings.canvasSource)
+                }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        Timber.d(error, "Motion artwork prefetch failed for %s", next.id)
+                    }
+            } finally {
+                if (motionArtworkPrefetchToken == prefetchToken) motionArtworkPrefetchKey = null
+            }
         }
     }
 
@@ -8856,19 +8894,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         albumMotionJob = viewModelScope.launch(Dispatchers.IO) {
-            val resolved = runCatching {
-                motionArtworkEngine.resolve(seed, _state.value.interfaceSettings.canvasSource)
+            val publishForVisibleAlbum: (MotionArtwork?) -> Unit = { artwork ->
+                _state.update { current ->
+                    val visible = current.albumDetail
+                    if (
+                        current.showAlbum &&
+                        visible != null &&
+                        sameAlbumIdentity(visible, expectedBrowseId, expectedTitle, expectedArtist)
+                    ) {
+                        current.copy(albumMotionArtwork = artwork)
+                    } else {
+                        current
+                    }
+                }
+            }
+            var published = false
+            runCatching {
+                motionArtworkEngine
+                    .resolveProgressive(seed, _state.value.interfaceSettings.canvasSource)
+                    .collect { artwork ->
+                        published = true
+                        publishForVisibleAlbum(artwork)
+                    }
             }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     Timber.d(error, "Album motion artwork resolve failed for %s", seed.album)
                 }
-                .getOrNull()
             if (!isActive) return@launch
-            val visible = _state.value.albumDetail ?: return@launch
-            val sameAlbum = sameAlbumIdentity(visible, expectedBrowseId, expectedTitle, expectedArtist)
-            if (!_state.value.showAlbum || !sameAlbum) return@launch
-            _state.update { it.copy(albumMotionArtwork = resolved) }
+            if (!published) publishForVisibleAlbum(null)
         }
     }
 
