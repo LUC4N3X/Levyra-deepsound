@@ -18,10 +18,6 @@ on:
     paths:
       - README.md
       - scripts/update-readme-badges.mjs
-      - scripts/update-translation-pulse.mjs
-      - app/src/main/res/values/strings.xml
-      - app/src/main/res/values-*/strings.xml
-      - app/src/main/res/xml/locales_config.xml
       - .github/workflows/update-readme-badges.yml
 
 permissions:
@@ -43,7 +39,6 @@ jobs:
         with:
           node-version: "22"
       - run: node scripts/update-readme-badges.mjs
-      - run: node scripts/update-translation-pulse.mjs
       - run: |
           badge_files=(
             docs/assets/levyra-release.svg
@@ -62,10 +57,6 @@ jobs:
             docs/assets/levyra-downloads-mobile-light.svg
             docs/assets/levyra-license-mobile-light.svg
             docs/assets/levyra-stars-mobile-light.svg
-            docs/assets/levyra-translation-pulse.svg
-            docs/assets/levyra-translation-pulse-light.svg
-            docs/assets/levyra-translation-pulse-mobile.svg
-            docs/assets/levyra-translation-pulse-mobile-light.svg
           )
           if git diff --quiet -- README.md "${badge_files[@]}"; then
             exit 0
