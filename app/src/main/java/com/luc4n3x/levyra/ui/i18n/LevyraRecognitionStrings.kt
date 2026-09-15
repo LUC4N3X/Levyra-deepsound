@@ -393,4 +393,4 @@ private val recognitionBundles: Map<String, Map<String, String>> = mapOf(
     )
 )
 
-internal fun recognitionLocalizationEntries(code: String): Map<String, String> = (recognitionBundles[code] ?: recognitionBundles.getValue("en"))
+internal fun recognitionLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(recognitionBundles, code)

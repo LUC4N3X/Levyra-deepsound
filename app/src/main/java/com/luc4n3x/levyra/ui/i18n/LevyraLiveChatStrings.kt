@@ -36,6 +36,6 @@ private val liveChatBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun liveChatLocalizationEntries(code: String): Map<String, String> =
-    (liveChatBundles[code] ?: liveChatBundles.getValue("en"))
+    localizedBundleOrEnglish(liveChatBundles, code)
 
 internal fun liveChatLocalizationCodes(): Set<String> = supportedLocalizationCodes()
