@@ -74,4 +74,14 @@ class LyricsRomanizationTest {
         assertEquals(directNfc.text, directNfd.text)
         assertEquals(directNfc.transformedCount, directNfd.transformedCount)
     }
+    @Test
+    fun `romanizes polytonic greek in nfc and nfd forms`() {
+        val nfcGreek = "ἀ"
+        val nfdGreek = java.text.Normalizer.normalize(nfcGreek, java.text.Normalizer.Form.NFD)
+
+        org.junit.Assert.assertNotEquals(nfcGreek, nfdGreek)
+        assertEquals("a", LyricsRomanizer.romanize(nfcGreek))
+        assertEquals("a", LyricsRomanizer.romanize(nfdGreek))
+    }
+
 }
