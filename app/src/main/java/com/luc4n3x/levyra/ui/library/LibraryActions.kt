@@ -1006,7 +1006,13 @@ internal fun PlaylistReorderRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(track.artist, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    track.artist,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Icon(
                 Icons.Rounded.DragHandle,
