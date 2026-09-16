@@ -97,6 +97,32 @@ class JamModerationTest {
     }
 
     @Test
+    fun reconnectingIdentityKeepsExistingTrackOwnership() = runBlocking {
+        createHostSession(approvalRequired = false, permission = JamGuestPermission.AddSongs)
+        val guestId = identity(1)
+        host.emit(pending("guest-1", guestId, "Ada"))
+        host.emit(JamHostEvent.ActionReceived("guest-1", JamAction.AddTrack(track("song-1"))))
+        assertEquals("guest-1", controller.state.value.session?.queue?.single()?.addedBy)
+
+        host.emit(pending("guest-2", guestId, "Ada"))
+
+        assertEquals("guest-2", controller.state.value.session?.queue?.single()?.addedBy)
+        assertTrue(controller.state.value.session?.participants?.none { it.id == "guest-1" } == true)
+        assertTrue(controller.state.value.session?.participants?.any { it.id == "guest-2" } == true)
+    }
+
+    @Test
+    fun failedAdmissionRollsBackParticipantState() = runBlocking {
+        createHostSession(approvalRequired = false)
+        host.admitSucceeds = false
+
+        host.emit(pending("guest-1", identity(1), "Ada"))
+
+        assertTrue(host.admitted.isEmpty())
+        assertTrue(controller.state.value.session?.participants?.none { it.id == "guest-1" } == true)
+    }
+
+    @Test
     fun removedGuestWithoutBanCanRequestToJoinAgain() = runBlocking {
         createHostSession(approvalRequired = true)
         host.emit(pending("guest-1", identity(1), "Ada"))
@@ -272,6 +298,7 @@ class JamModerationTest {
         val pendingNotices = mutableListOf<String>()
         val disconnected = mutableListOf<String>()
         val broadcasts = mutableListOf<JamMessage>()
+        var admitSucceeds = true
 
         suspend fun emit(event: JamHostEvent) {
             eventFlow.emit(event)
@@ -285,8 +312,8 @@ class JamModerationTest {
         }
 
         override suspend fun admit(participantId: String, welcome: JamMessage.Welcome): Boolean {
-            admitted += participantId
-            return true
+            if (admitSucceeds) admitted += participantId
+            return admitSucceeds
         }
 
         override suspend fun reject(participantId: String, failure: JamFailure) {
