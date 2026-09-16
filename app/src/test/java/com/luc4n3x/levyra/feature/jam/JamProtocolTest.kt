@@ -109,7 +109,7 @@ class JamProtocolTest {
     @Test
     fun namesAndThumbnailUrlsAreSanitized() {
         val auth = JamProtocol.decode(
-            """{"v":1,"t":"auth","guestNonce":"1234567890abcdef","name":"  A\u0000lice\n  ","proof":"abcdef123456"}"""
+            """{"v":${JamProtocol.VERSION},"t":"auth","guestNonce":"1234567890abcdef","name":"  A\u0000lice\n  ","proof":"abcdef123456"}"""
         ) as JamMessage.Authenticate
         assertEquals("Alice", auth.name)
 

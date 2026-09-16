@@ -1,5 +1,17 @@
 package com.luc4n3x.levyra.domain
 
+enum class LevyraAmbientMode(val id: String) {
+    Minimal("minimal"),
+    Artwork("artwork"),
+    Spotlight("spotlight"),
+    Lyrics("lyrics");
+
+    companion object {
+        fun from(value: String?): LevyraAmbientMode =
+            entries.firstOrNull { it.id.equals(value?.trim(), ignoreCase = true) } ?: Artwork
+    }
+}
+
 data class LevyraAmbientSettings(
     val brightness: Float = 0.35f,
     val autoDim: Boolean = true,
@@ -7,7 +19,12 @@ data class LevyraAmbientSettings(
     val pixelShift: Boolean = true,
     val proximityBlackout: Boolean = false,
     val showLyrics: Boolean = true,
-    val showCanvas: Boolean = true
+    val showCanvas: Boolean = true,
+    val mode: LevyraAmbientMode = LevyraAmbientMode.Artwork,
+    val showClock: Boolean = true,
+    val showTitle: Boolean = true,
+    val showProgress: Boolean = true,
+    val amoledBlack: Boolean = true
 ) {
     fun normalized(): LevyraAmbientSettings = copy(
         brightness = brightness.coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS),
@@ -16,6 +33,12 @@ data class LevyraAmbientSettings(
 
     val autoDimAfterMs: Long
         get() = autoDimAfterSeconds.coerceIn(MIN_AUTO_DIM_SECONDS, MAX_AUTO_DIM_SECONDS) * 1_000L
+
+    val usesArtwork: Boolean
+        get() = mode == LevyraAmbientMode.Artwork || mode == LevyraAmbientMode.Spotlight
+
+    val usesLyricLine: Boolean
+        get() = showLyrics && (mode == LevyraAmbientMode.Lyrics || mode == LevyraAmbientMode.Artwork)
 
     companion object {
         const val MIN_BRIGHTNESS = 0.05f
