@@ -1105,7 +1105,10 @@ internal fun LevyraPlaylistDetailScreen(
                                     dragOffsetY = dragOffsetY
                                 )
                                 val currentIndex = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
-                                if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
+                                val canMove = currentIndex >= 0 &&
+                                    update.targetIndex >= 0 &&
+                                    currentIndex != update.targetIndex
+                                if (canMove) {
                                     orderedTracks = orderedTracks.move(currentIndex, update.targetIndex)
                                     dragOffsetY += update.offsetAdjustment
                                     haptics.perform(LevyraHapticAction.Reorder)
