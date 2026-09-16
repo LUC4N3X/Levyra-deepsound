@@ -109,9 +109,12 @@ class LanJamHostTransport : JamHostTransport {
         val entry = awaiting.remove(participantId) ?: return false
         entry.expiryJob.cancel()
         val connection = entry.connection
-        clients[participantId] = connection
+        if (!connection.write(JamProtocol.encode(welcome))) {
+            connection.close()
+            return false
+        }
         connection.disableReadTimeout()
-        connection.write(JamProtocol.encode(welcome))
+        clients[participantId] = connection
         scope.launch { readLoop(participantId, connection) }
         return true
     }
@@ -432,15 +435,13 @@ internal class JamClientConnection(private val socket: Socket) {
 
     fun readLine(): String? = reader.readBoundedLine()
 
-    suspend fun write(payload: String) {
-        writeMutex.withLock {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    writer.write(payload)
-                    writer.write("\n")
-                    writer.flush()
-                }.onFailure { close() }
-            }
+    suspend fun write(payload: String): Boolean = writeMutex.withLock {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                writer.write(payload)
+                writer.write("\n")
+                writer.flush()
+            }.onFailure { close() }.isSuccess
         }
     }
 
