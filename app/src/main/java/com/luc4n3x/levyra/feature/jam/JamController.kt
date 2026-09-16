@@ -428,6 +428,9 @@ class JamController(
             replaced.forEach { staleId ->
                 participants.removeAll { it.id == staleId }
                 participantIdentities.remove(staleId)
+                trackOwners.entries.forEach { owner ->
+                    if (owner.value == staleId) owner.setValue(event.participantId)
+                }
                 transport.disconnect(staleId)
             }
             pending.removeAll { it.guestId == identity }
