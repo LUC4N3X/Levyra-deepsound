@@ -182,9 +182,11 @@ internal fun PlayerActionsSheet(
                         val currentOffset = dragY
                         if (shouldDismissSheetOnDragEnd(currentOffset, dismissDistancePx)) {
                             settleJob?.cancel()
-                            settleJob = null
-                            isDragging = false
-                            dismiss()
+                            settleJob = scope.launch {
+                                settleAnim.snapTo(currentOffset)
+                                isDragging = false
+                                dismiss()
+                            }
                         } else {
                             settleJob?.cancel()
                             settleJob = scope.launch {

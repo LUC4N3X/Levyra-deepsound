@@ -14659,6 +14659,7 @@ private fun PlayerYoutubeEngagementRow(
     compact: Boolean,
     onComments: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val hasLikes = track.youtubeLikeCount >= 0L
     val hasDislikeEstimate = engagement.dislikeEstimateAvailable && engagement.estimatedDislikeCount >= 0L
     val comments = engagement.comments
@@ -14689,91 +14690,89 @@ private fun PlayerYoutubeEngagementRow(
         exit = fadeOut(animationSpec = tween(140))
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = if (compact) 5.dp else 7.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                color = surface,
-                border = BorderStroke(1.dp, outline),
-                shape = pillShape
+            Box(
+                modifier = Modifier
+                    .height(LevyraPlayerDesign.MinimumTouchTarget)
+                    .wrapContentWidth(),
+                contentAlignment = Alignment.CenterStart
             ) {
-                Row(
-                    modifier = Modifier.height(rowHeight),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    color = surface,
+                    border = BorderStroke(1.dp, outline),
+                    shape = pillShape
                 ) {
                     Row(
-                        modifier = Modifier.padding(start = 11.dp, end = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ThumbUp,
-                            contentDescription = null,
-                            tint = if (hasLikes) accent else quietContent,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        if (hasLikes) {
-                            Text(
-                                text = compactYoutubeCount(track.youtubeLikeCount),
-                                color = strongContent,
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(15.dp)
-                            .background(divider)
-                    )
-
-                    Row(
-                        modifier = Modifier.padding(start = 9.dp, end = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ThumbDown,
-                            contentDescription = null,
-                            tint = if (hasDislikeEstimate) quietContent else quietContent.copy(alpha = 0.68f),
-                            modifier = Modifier.size(14.dp)
-                        )
-                        when {
-                            engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                modifier = Modifier.size(10.dp),
-                                strokeWidth = 1.4.dp,
-                                color = quietContent
-                            )
-                            hasDislikeEstimate -> Text(
-                                text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                color = quietContent.copy(alpha = 0.92f),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(15.dp)
-                            .background(divider)
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .height(rowHeight)
-                            .pressable(enabled = canOpenComments, onClick = onComments)
-                            .padding(horizontal = 11.dp),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.height(rowHeight),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
+                            modifier = Modifier.padding(start = 11.dp, end = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ThumbUp,
+                                contentDescription = null,
+                                tint = if (hasLikes) accent else quietContent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            if (hasLikes) {
+                                Text(
+                                    text = compactYoutubeCount(track.youtubeLikeCount),
+                                    color = strongContent,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(15.dp)
+                                .background(divider)
+                        )
+
+                        Row(
+                            modifier = Modifier.padding(start = 9.dp, end = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ThumbDown,
+                                contentDescription = null,
+                                tint = if (hasDislikeEstimate) quietContent else quietContent.copy(alpha = 0.68f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            when {
+                                engagement.dislikeEstimateLoading -> CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.4.dp,
+                                    color = quietContent
+                                )
+                                hasDislikeEstimate -> Text(
+                                    text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
+                                    color = quietContent.copy(alpha = 0.92f),
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(15.dp)
+                                .background(divider)
+                        )
+
+                        Row(
+                            modifier = Modifier.padding(horizontal = 11.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
@@ -14802,6 +14801,33 @@ private fun PlayerYoutubeEngagementRow(
                                 )
                             }
                         }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .height(LevyraPlayerDesign.MinimumTouchTarget)
+                        .pressable(enabled = canOpenComments, onClick = onComments)
+                        .padding(horizontal = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ChatBubbleOutline,
+                        contentDescription = strings.tapToOpenComments,
+                        tint = Color.Transparent,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    when {
+                        comments.loading && !comments.loaded -> Spacer(modifier = Modifier.size(10.dp))
+                        commentBadge.isNotBlank() -> Text(
+                            text = commentBadge,
+                            color = Color.Transparent,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
                     }
                 }
             }
