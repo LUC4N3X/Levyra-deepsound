@@ -156,7 +156,7 @@ private fun queryLevyraAudioOutputState(
 
 private fun queryOutputDevices(audioManager: AudioManager, systemOrdered: Boolean): List<AudioDeviceInfo> =
     runCatching {
-        if (systemOrdered) {
+        if (systemOrdered && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val attributes = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
