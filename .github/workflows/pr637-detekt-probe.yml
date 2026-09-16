@@ -1,0 +1,19 @@
+name: PR637 Detekt Probe
+
+on:
+  push:
+    branches:
+      - feat/system-player-experience
+
+jobs:
+  detekt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CodeFactor Detekt profile
+        shell: bash
+        run: |
+          set +e
+          curl -fsSL -o detekt.jar https://github.com/detekt/detekt/releases/download/v1.23.8/detekt-cli-1.23.8-all.jar
+          java -jar detekt.jar --build-upon-default-config --input             app/src/main/java/com/luc4n3x/levyra/feature/audio/LevyraAudioOutput.kt,            app/src/main/java/com/luc4n3x/levyra/feature/systemintegration/LevyraRomMediaIntegration.kt,            app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt,            app/src/main/java/com/luc4n3x/levyra/ui/AudioSettingsPanel.kt,            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt,            app/src/main/java/com/luc4n3x/levyra/ui/LevyraOutputHub.kt,            app/src/main/java/com/luc4n3x/levyra/ui/LevyraSleepTimerSheet.kt,            app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraSystemPlayerStrings.kt,            app/src/main/java/com/luc4n3x/levyra/ui/lyrics/LyricsAudioOutputRoute.kt,            app/src/main/java/com/luc4n3x/levyra/ui/update/LevyraUpdateBanner.kt,            app/src/main/java/com/luc4n3x/levyra/ui/update/LevyraUpdateScreen.kt,            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          exit 0
