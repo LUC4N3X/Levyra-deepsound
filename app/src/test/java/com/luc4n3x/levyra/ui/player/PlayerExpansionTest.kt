@@ -78,11 +78,11 @@ class PlayerExpansionTest {
     }
 
     @Test
-    fun `the mini player remains visible during the handoff`() {
+    fun `the mini player hands over before the player surface is solid`() {
         assertEquals(1f, playerChromeAlpha(0f), 0.0001f)
-        assertEquals(1f, playerChromeAlpha(0.05f), 0.0001f)
-        assertTrue(playerChromeAlpha(0.3f) > 0.65f)
-        assertEquals(0f, playerChromeAlpha(0.72f), 0.0001f)
+        assertEquals(1f, playerChromeAlpha(0.02f), 0.0001f)
+        assertTrue(playerChromeAlpha(0.2f) in 0.45f..0.6f)
+        assertEquals(0f, playerChromeAlpha(0.4f), 0.0001f)
         assertEquals(0f, playerChromeAlpha(1f), 0.0001f)
     }
 
@@ -90,7 +90,8 @@ class PlayerExpansionTest {
     fun `the full player emerges early behind the flying artwork`() {
         assertEquals(0f, playerSurfaceAlpha(0f), 0.0001f)
         assertEquals(0f, playerSurfaceAlpha(0.015f), 0.0001f)
-        assertTrue(playerSurfaceAlpha(0.25f) in 0.45f..0.55f)
+        assertTrue(playerSurfaceAlpha(0.25f) in 0.5f..0.65f)
+        assertEquals(1f, playerSurfaceAlpha(0.44f), 0.0001f)
         assertEquals(1f, playerSurfaceAlpha(0.5f), 0.0001f)
         assertEquals(1f, playerSurfaceAlpha(1f), 0.0001f)
     }
@@ -103,6 +104,14 @@ class PlayerExpansionTest {
         assertEquals(0.055f, playerSurfaceLiftFraction(0f), 0.0001f)
         assertTrue(playerSurfaceLiftFraction(0.5f) in 0.013f..0.014f)
         assertEquals(0f, playerSurfaceLiftFraction(1f), 0.0001f)
+    }
+
+    @Test
+    fun `the player surface sheds its tray corners as it opens`() {
+        assertEquals(1f, playerSurfaceCornerFraction(0f), 0.0001f)
+        assertEquals(0.5f, playerSurfaceCornerFraction(0.5f), 0.0001f)
+        assertEquals(0f, playerSurfaceCornerFraction(1f), 0.0001f)
+        assertEquals(1f, playerSurfaceCornerFraction(Float.NaN), 0.0001f)
     }
 
     @Test

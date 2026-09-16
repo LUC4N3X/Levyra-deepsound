@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
@@ -23,6 +25,7 @@ internal fun PlayerProgress(
     durationMs: Long,
     activeColor: Color,
     secondaryColor: Color,
+    surfaces: PlayerSurfaceTokens,
     isPlaying: Boolean,
     animationsEnabled: Boolean,
     compact: Boolean,
@@ -48,24 +51,31 @@ internal fun PlayerProgress(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .offset(y = -LevyraPlayerDesign.SpaceXs)
                 .padding(horizontal = LevyraPlayerDesign.SpaceXxs),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = formatSeekbarMillis(positionMs),
-                color = LevyraPlayerDesign.TextSecondary,
-                fontSize = if (compact) 11.sp else 11.5.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.3.sp
-            )
-            Text(
-                text = if (durationMs > 0L) formatSeekbarMillis(durationMs) else "--:--",
-                color = LevyraPlayerDesign.TextTertiary,
-                fontSize = if (compact) 11.sp else 11.5.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.3.sp
+            PlayerTimeLabel(formatSeekbarMillis(positionMs), surfaces.contentMuted, compact)
+            PlayerTimeLabel(
+                if (durationMs > 0L) formatSeekbarMillis(durationMs) else "--:--",
+                surfaces.contentFaint,
+                compact
             )
         }
     }
+}
+
+private val TabularTimeStyle = TextStyle(fontFeatureSettings = "tnum")
+
+@Composable
+private fun PlayerTimeLabel(text: String, color: Color, compact: Boolean) {
+    Text(
+        text = text,
+        color = color,
+        fontSize = if (compact) 11.sp else 12.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.2.sp,
+        style = TabularTimeStyle
+    )
 }
