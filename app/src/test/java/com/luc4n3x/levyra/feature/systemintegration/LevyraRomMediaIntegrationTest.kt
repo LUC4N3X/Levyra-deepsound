@@ -38,9 +38,7 @@ class LevyraRomMediaIntegrationTest {
                 track = track(),
                 lines = listOf(LyricLine(0L, 1_000L, "Hello")),
                 synced = false,
-                provider = "test",
-                packageName = "com.luc4n3x.levyra",
-                generation = 1L
+                context = context(provider = "test", generation = 1L)
             )
         )
     }
@@ -67,9 +65,7 @@ class LevyraRomMediaIntegrationTest {
                 )
             ),
             synced = true,
-            provider = "LRCLIB",
-            packageName = "com.luc4n3x.levyra",
-            generation = 7L
+            context = context(provider = "LRCLIB", generation = 7L)
         )
 
         val root = JSONObject(requireNotNull(payload))
@@ -99,14 +95,18 @@ class LevyraRomMediaIntegrationTest {
                 LyricLine(1_000L, 2_000L, "Real lyric")
             ),
             synced = true,
-            provider = "test",
-            packageName = "com.luc4n3x.levyra",
-            generation = 2L
+            context = context(provider = "test", generation = 2L)
         )
 
         val lyric = JSONObject(requireNotNull(payload)).getString("lyric")
         assertEquals("[00:01.000]Real lyric\n", lyric)
     }
+
+    private fun context(provider: String, generation: Long) = OPlusLyricsPayloadContext(
+        provider = provider,
+        packageName = "com.luc4n3x.levyra",
+        generation = generation
+    )
 
     private fun track() = Track(
         id = "song-1",
