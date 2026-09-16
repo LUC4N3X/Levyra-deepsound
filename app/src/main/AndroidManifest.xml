@@ -78,6 +78,9 @@
         </provider>
         
         <meta-data
+            android:name="io.github.andrealtb.lockscreenlyrics.OPLUS_MEDIA_HISTORY"
+            android:value="true" />
+        <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
         <meta-data
