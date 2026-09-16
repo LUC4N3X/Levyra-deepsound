@@ -417,10 +417,6 @@ class JamController(
             rejectLocked(transport, event.participantId, JamFailure.SessionLocked)
             return
         }
-        if (participants.size >= JamSessionState.MAX_PARTICIPANTS) {
-            rejectLocked(transport, event.participantId, JamFailure.SessionFull)
-            return
-        }
         if (identity.isNotBlank()) {
             val replaced = participantIdentities.entries
                 .filter { it.value == identity }
@@ -434,6 +430,10 @@ class JamController(
                 transport.disconnect(staleId)
             }
             pending.removeAll { it.guestId == identity }
+        }
+        if (participants.size >= JamSessionState.MAX_PARTICIPANTS) {
+            rejectLocked(transport, event.participantId, JamFailure.SessionFull)
+            return
         }
 
         val entry = JamPendingParticipant(
