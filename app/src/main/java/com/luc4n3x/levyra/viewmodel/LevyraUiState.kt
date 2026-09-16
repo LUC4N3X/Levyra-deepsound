@@ -236,6 +236,8 @@ data class LevyraUiState(
     val searchSectionContinuations: Map<SearchFilter, String> = emptyMap(),
     val searchSectionLoading: Set<SearchFilter> = emptySet(),
     val themePreset: String = LevyraThemes.COSMIC,
+    val themeAccent: Int = 0,
+    val showThemeStudio: Boolean = false,
     val interfaceSettings: LevyraInterfaceSettings = LevyraInterfaceSettings(),
     val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
     val backupSettings: LevyraBackupSettings = LevyraBackupSettings(),
