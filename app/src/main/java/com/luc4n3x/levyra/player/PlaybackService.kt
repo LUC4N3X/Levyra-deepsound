@@ -78,6 +78,7 @@ import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_SOURCE
 import com.luc4n3x.levyra.feature.systemintegration.OPLUS_LYRIC_INFO_KEY
+import com.luc4n3x.levyra.feature.systemintegration.OPlusLyricsPayloadContext
 import com.luc4n3x.levyra.feature.systemintegration.buildOPlusLyricsPayload
 import com.luc4n3x.levyra.feature.systemintegration.detectLevyraRomMediaCapabilities
 import com.luc4n3x.levyra.feature.radio.RadioUrlPolicy
@@ -416,9 +417,11 @@ class PlaybackService : MediaLibraryService() {
             track = track,
             lines = lines,
             synced = synced,
-            provider = provider,
-            packageName = packageName,
-            generation = romMediaGeneration
+            context = OPlusLyricsPayloadContext(
+                provider = provider,
+                packageName = packageName,
+                generation = romMediaGeneration
+            )
         )
         val existingExtras = current.mediaMetadata.extras
         val existingPayload = existingExtras?.getString(OPLUS_LYRIC_INFO_KEY)
