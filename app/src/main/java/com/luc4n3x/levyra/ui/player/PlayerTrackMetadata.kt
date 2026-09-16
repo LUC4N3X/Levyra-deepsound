@@ -3,7 +3,8 @@ package com.luc4n3x.levyra.ui.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -16,100 +17,103 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
+
+private const val FavoritePopScale = 1.22f
+private const val TitleMarqueeDelayMs = 3_200
 
 @Composable
 internal fun PlayerTrackMetadata(
     track: Track,
     isFavorite: Boolean,
-    favoriteScale: Float,
-    favoriteTint: Color,
-    favoriteFill: Color,
-    favoriteBorderTop: Color,
-    favoriteBorderBottom: Color,
+    surfaces: PlayerSurfaceTokens,
     animationsEnabled: Boolean,
     compact: Boolean,
     openArtistLabel: String,
     favoritesLabel: String,
-    addToPlaylistLabel: String,
     onArtistClick: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onAddToPlaylist: () -> Unit,
-    modifier: Modifier = Modifier,
-    engagementContent: (@Composable () -> Unit)? = null
+    modifier: Modifier = Modifier
 ) {
-    val heartButtonSize = if (compact) 38.dp else 40.dp
+    val titleSize = if (compact) 22.sp else 26.sp
+    val artistSize = if (compact) 15.sp else 17.sp
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = LevyraPlayerDesign.SpaceXxs)
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                AnimatedContent(
-                    targetState = track,
-                    transitionSpec = {
-                        if (animationsEnabled) {
-                            (fadeIn(tween(240)) + slideInVertically(tween(240)) { it / 4 }) togetherWith
-                                (fadeOut(tween(140)) + slideOutVertically(tween(140)) { -it / 4 })
-                        } else {
-                            EnterTransition.None togetherWith ExitTransition.None
-                        }
-                    },
-                    contentKey = { it.id },
-                    label = "player-title"
-                ) { titleTrack ->
-                    Text(
-                        text = titleTrack.title,
-                        color = LevyraPlayerDesign.TextPrimary,
-                        fontSize = if (compact) 22.sp else 25.sp,
-                        lineHeight = if (compact) 26.sp else 29.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp,
-                        maxLines = if (animationsEnabled) 1 else 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = if (animationsEnabled) {
-                            Modifier.basicMarquee(
-                                iterations = Int.MAX_VALUE,
-                                repeatDelayMillis = 3_200
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
+        AnimatedContent(
+            targetState = track,
+            modifier = Modifier.weight(1f),
+            transitionSpec = {
+                if (animationsEnabled) {
+                    fadeIn(LevyraPlayerDesign.standardTween(260)) +
+                        slideInVertically(LevyraPlayerDesign.smoothSpring()) { it / 5 } togetherWith
+                        fadeOut(LevyraPlayerDesign.standardTween(120)) +
+                            slideOutVertically(LevyraPlayerDesign.standardTween(160)) { -it / 5 }
+                } else {
+                    EnterTransition.None togetherWith ExitTransition.None
                 }
+            },
+            contentKey = { it.id },
+            label = "player-metadata"
+        ) { shown ->
+            Column {
+                Text(
+                    text = shown.title,
+                    color = surfaces.content,
+                    fontSize = titleSize,
+                    lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.6).sp,
+                    maxLines = if (animationsEnabled) 1 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = if (animationsEnabled) {
+                        Modifier.basicMarquee(
+                            iterations = Int.MAX_VALUE,
+                            repeatDelayMillis = TitleMarqueeDelayMs
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
                 Row(
                     modifier = Modifier
                         .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
                         .widthIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                        .clip(LevyraPlayerDesign.ShapePill)
+                        .clip(LevyraPlayerDesign.ShapeXxs)
                         .clickable(
                             onClickLabel = openArtistLabel,
                             onClick = onArtistClick
@@ -117,9 +121,10 @@ internal fun PlayerTrackMetadata(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = track.artist,
-                        color = LevyraPlayerDesign.TextSecondary,
-                        fontSize = if (compact) 14.sp else 15.sp,
+                        text = shown.artist,
+                        color = surfaces.contentMuted,
+                        fontSize = artistSize,
+                        lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
                         fontWeight = FontWeight.Medium,
                         letterSpacing = (-0.1).sp,
                         maxLines = 1,
@@ -127,37 +132,101 @@ internal fun PlayerTrackMetadata(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceSm))
-            PlayerGlassIconButton(
-                icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = favoritesLabel,
-                size = heartButtonSize,
-                iconSize = if (compact) 22.dp else 24.dp,
-                tint = favoriteTint,
-                fill = favoriteFill,
-                borderTop = favoriteBorderTop,
-                borderBottom = favoriteBorderBottom,
-                modifier = Modifier
-                    .graphicsLayer {
-                        scaleX = favoriteScale
-                        scaleY = favoriteScale
-                    }
-                    .semantics { toggleableState = ToggleableState(isFavorite) },
-                onClick = onToggleFavorite
-            )
-            Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
-            PlayerGlassIconButton(
-                icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                contentDescription = addToPlaylistLabel,
-                size = heartButtonSize,
-                iconSize = if (compact) 22.dp else 24.dp,
-                tint = Color.White.copy(alpha = 0.78f),
-                fill = Color.White.copy(alpha = 0.05f),
-                borderTop = Color.White.copy(alpha = 0.14f),
-                borderBottom = Color.White.copy(alpha = 0.05f),
-                onClick = onAddToPlaylist
-            )
         }
-        engagementContent?.invoke()
+        Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceMd))
+        PlayerFavoriteButton(
+            trackId = track.id,
+            isFavorite = isFavorite,
+            surfaces = surfaces,
+            label = favoritesLabel,
+            animated = animationsEnabled,
+            onToggle = onToggleFavorite
+        )
     }
 }
+
+@Composable
+private fun PlayerFavoriteButton(
+    trackId: String,
+    isFavorite: Boolean,
+    surfaces: PlayerSurfaceTokens,
+    label: String,
+    animated: Boolean,
+    onToggle: () -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    val pop = rememberFavoritePop(trackId, isFavorite, animated)
+    val tint by animateColorAsState(
+        targetValue = surfaces.tintFor(isFavorite, surfaces.content),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
+        label = "player-favorite-tint"
+    )
+    val fill by animateColorAsState(
+        targetValue = surfaces.fillFor(isFavorite),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
+        label = "player-favorite-fill"
+    )
+    val outline = surfaces.segmentOutline
+    PlayerGlassIconButton(
+        icon = favoriteIcon(isFavorite),
+        contentDescription = label,
+        size = 44.dp,
+        iconSize = 23.dp,
+        tint = tint,
+        fill = fill,
+        borderTop = outline,
+        borderBottom = outline,
+        shape = CircleShape,
+        modifier = Modifier
+            .size(LevyraPlayerDesign.MinimumTouchTarget)
+            .graphicsLayer {
+                scaleX = pop.value
+                scaleY = pop.value
+            }
+            .semantics { toggleableState = ToggleableState(isFavorite) },
+        onClick = {
+            haptics.perform(LevyraHapticAction.Favorite)
+            onToggle()
+        }
+    )
+}
+
+internal fun shouldTriggerFavoritePop(
+    previousTrackId: String?,
+    currentTrackId: String,
+    wasFavorite: Boolean,
+    isFavorite: Boolean,
+    animated: Boolean
+): Boolean =
+    animated && previousTrackId == currentTrackId && !wasFavorite && isFavorite
+
+@Composable
+internal fun rememberFavoritePop(
+    trackId: String,
+    isFavorite: Boolean,
+    animated: Boolean
+): Animatable<Float, *> {
+    val pop = remember(trackId) { Animatable(1f) }
+    var wasFavorite by remember(trackId) { mutableStateOf(isFavorite) }
+
+    LaunchedEffect(trackId, isFavorite, animated) {
+        val shouldPop = shouldTriggerFavoritePop(
+            previousTrackId = trackId,
+            currentTrackId = trackId,
+            wasFavorite = wasFavorite,
+            isFavorite = isFavorite,
+            animated = animated
+        )
+        wasFavorite = isFavorite
+
+        pop.snapTo(1f)
+        if (shouldPop) {
+            pop.snapTo(FavoritePopScale)
+            pop.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
+        }
+    }
+    return pop
+}
+
+private fun favoriteIcon(isFavorite: Boolean): ImageVector =
+    if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder

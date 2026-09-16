@@ -10,10 +10,10 @@ private const val CloseCommitFraction = 0.72f
 private const val CommitVelocity = 900f
 private const val MorphStart = 0.01f
 private const val MorphEnd = 0.96f
-private const val ChromeFadeStart = 0.05f
-private const val ChromeFadeEnd = 0.72f
+private const val ChromeFadeStart = 0.02f
+private const val ChromeFadeEnd = 0.40f
 private const val SurfaceFadeStart = 0.015f
-private const val SurfaceFadeEnd = 0.50f
+private const val SurfaceFadeEnd = 0.44f
 private const val BackgroundDepth = 0.028f
 private const val SurfaceScaleStart = 0.94f
 private const val SurfaceLiftStart = 0.055f
@@ -68,6 +68,8 @@ fun playerSurfaceLiftFraction(expansion: Float): Float {
     val remaining = 1f - playerMotionProgress(expansion)
     return remaining * remaining * SurfaceLiftStart
 }
+
+fun playerSurfaceCornerFraction(expansion: Float): Float = 1f - playerMotionProgress(expansion)
 
 fun playerMorphActive(expansion: Float): Boolean {
     val safeExpansion = expansion.finiteOr(PlayerExpansionCollapsed)

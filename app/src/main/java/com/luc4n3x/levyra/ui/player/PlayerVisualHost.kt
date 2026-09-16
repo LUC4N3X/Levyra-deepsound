@@ -41,7 +41,8 @@ internal fun PlayerVisualHost(
     swipeOffset: Float,
     cinematicGeometry: PlayerCinematicGeometry,
     modifier: Modifier = Modifier,
-    isVideoMode: Boolean = false
+    isVideoMode: Boolean = false,
+    backdropFocus: Float = 0.34f
 ) {
     val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive && track != null && !isVideoMode
     val backdropArtworkUrl = playerBackdropArtworkUrl(isImmersive, backgroundMode, artworkUrl)
@@ -53,6 +54,7 @@ internal fun PlayerVisualHost(
             ambience = ambience,
             isPlaying = isPlaying,
             animationsEnabled = animationsEnabled,
+            focusY = backdropFocus,
             modifier = Modifier.fillMaxSize()
         )
 
