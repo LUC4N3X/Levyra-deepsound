@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -40,6 +41,11 @@ import com.luc4n3x.levyra.ui.createPlayerAmbientColorMatrix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 private const val MistDecodePx = 96
+private const val LegacyMistDecodePx = 512
+private const val HardwareBlurMinSdk = 31
+
+internal fun mistDecodePxForApi(sdkInt: Int): Int =
+    if (sdkInt >= HardwareBlurMinSdk) MistDecodePx else LegacyMistDecodePx
 private const val MistScale = 1.32f
 private const val MistAlphaPlaying = 0.64f
 private const val MistAlphaPaused = 0.48f
@@ -137,6 +143,7 @@ private fun PlayerArtworkMist(
 ) {
     if (artworkUrl.isBlank()) return
     val context = LocalContext.current
+    val mistDecodePx = mistDecodePxForApi(Build.VERSION.SDK_INT)
     val mistAlpha by animateFloatAsState(
         targetValue = if (isPlaying) MistAlphaPlaying else MistAlphaPaused,
         animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(600)),
@@ -154,10 +161,10 @@ private fun PlayerArtworkMist(
         },
         label = "player-backdrop-mist"
     ) { url ->
-        val request = remember(context, url) {
+        val request = remember(context, url, mistDecodePx) {
             ImageRequest.Builder(context)
                 .data(LevyraArtworkCache.large(url))
-                .size(MistDecodePx, MistDecodePx)
+                .size(mistDecodePx, mistDecodePx)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .memoryCachePolicy(CachePolicy.ENABLED)
                 .crossfade(false)

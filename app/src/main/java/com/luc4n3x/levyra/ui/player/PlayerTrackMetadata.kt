@@ -206,30 +206,23 @@ internal fun rememberFavoritePop(
     isFavorite: Boolean,
     animated: Boolean
 ): Animatable<Float, *> {
-    val pop = remember { Animatable(1f) }
-    var lastTrackId by remember { mutableStateOf<String?>(trackId) }
-    var wasFavorite by remember { mutableStateOf(isFavorite) }
+    val pop = remember(trackId) { Animatable(1f) }
+    var wasFavorite by remember(trackId) { mutableStateOf(isFavorite) }
 
     LaunchedEffect(trackId, isFavorite, animated) {
         val shouldPop = shouldTriggerFavoritePop(
-            previousTrackId = lastTrackId,
+            previousTrackId = trackId,
             currentTrackId = trackId,
             wasFavorite = wasFavorite,
             isFavorite = isFavorite,
             animated = animated
         )
-        lastTrackId = trackId
         wasFavorite = isFavorite
 
+        pop.snapTo(1f)
         if (shouldPop) {
-            try {
-                pop.snapTo(FavoritePopScale)
-                pop.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
-            } finally {
-                pop.snapTo(1f)
-            }
-        } else {
-            pop.snapTo(1f)
+            pop.snapTo(FavoritePopScale)
+            pop.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
         }
     }
     return pop

@@ -143,6 +143,14 @@ class PlayerQualityFixesTest {
     }
 
     @Test
+    fun `mist decode stays lightweight with hardware blur and preserves quality before api 31`() {
+        assertEquals(512, mistDecodePxForApi(26))
+        assertEquals(512, mistDecodePxForApi(30))
+        assertEquals(96, mistDecodePxForApi(31))
+        assertEquals(96, mistDecodePxForApi(37))
+    }
+
+    @Test
     fun `visual mode accessibility semantics describe current mode without boolean toggle`() {
         val strings = LevyraStrings.forCode("en")
 

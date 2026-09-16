@@ -73,9 +73,11 @@ internal fun PlayerArtworkHero(
     val trackChangeScale = remember { Animatable(1f) }
     var settledTrackId by remember { mutableStateOf(track.id) }
     LaunchedEffect(track.id, animationsEnabled) {
-        if (settledTrackId == track.id) return@LaunchedEffect
+        val trackChanged = settledTrackId != track.id
         settledTrackId = track.id
-        if (animationsEnabled) {
+
+        trackChangeScale.snapTo(1f)
+        if (trackChanged && animationsEnabled) {
             trackChangeScale.snapTo(LevyraPlayerDesign.ArtworkTrackChangeScale)
             trackChangeScale.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
         }

@@ -1322,8 +1322,6 @@ private fun playerSheetActions(
             key = "radio",
             icon = Icons.Rounded.Radio,
             label = strings.startRadio,
-            active = state.radioEnabled,
-            toggle = true,
             enabled = canStartRadio,
             onClick = onStartRadio
         ),

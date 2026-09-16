@@ -21388,9 +21388,7 @@ private fun MiniPlayer(
         animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
         label = "mini-accent-end"
     )
-    val miniProgressColor = remember(harmonizedTargets) {
-        harmonizedTargets.primary.playerMix(Color.White, 0.72f)
-    }
+    val miniProgressColor = accentStart.playerMix(Color.White, 0.72f)
     val miniPrimaryContent = LevyraPlayerDesign.TextPrimary
     val miniSecondaryContent = LevyraPlayerDesign.TextSecondary
     val animatedProgress = animateFloatAsState(

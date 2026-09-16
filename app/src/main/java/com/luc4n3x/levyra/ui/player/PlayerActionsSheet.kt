@@ -75,6 +75,7 @@ import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraSegment
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -121,6 +122,7 @@ internal fun PlayerActionsSheet(
     val scope = rememberCoroutineScope()
     var dragY by remember { mutableFloatStateOf(0f) }
     val settleAnim = remember { Animatable(0f) }
+    var settleJob by remember { mutableStateOf<Job?>(null) }
     var isDragging by remember { mutableStateOf(false) }
     val dismissDistancePx = with(density) { SheetDismissDistance.toPx() }
     var visible by remember { mutableStateOf(false) }
@@ -168,6 +170,8 @@ internal fun PlayerActionsSheet(
             ) {
                 PlayerSheetDragHandle(
                     onDragStart = {
+                        settleJob?.cancel()
+                        settleJob = null
                         isDragging = true
                         dragY = settleAnim.value
                     },
@@ -178,9 +182,12 @@ internal fun PlayerActionsSheet(
                         val currentOffset = dragY
                         isDragging = false
                         if (shouldDismissSheetOnDragEnd(currentOffset, dismissDistancePx)) {
+                            settleJob?.cancel()
+                            settleJob = null
                             dismiss()
                         } else {
-                            scope.launch {
+                            settleJob?.cancel()
+                            settleJob = scope.launch {
                                 settleAnim.snapTo(currentOffset)
                                 if (animated) {
                                     settleAnim.animateTo(0f, LevyraPlayerDesign.smoothSpring())
@@ -189,6 +196,20 @@ internal fun PlayerActionsSheet(
                                 }
                                 dragY = 0f
                             }
+                        }
+                    },
+                    onDragCancel = {
+                        val currentOffset = dragY
+                        isDragging = false
+                        settleJob?.cancel()
+                        settleJob = scope.launch {
+                            settleAnim.snapTo(currentOffset)
+                            if (animated) {
+                                settleAnim.animateTo(0f, LevyraPlayerDesign.smoothSpring())
+                            } else {
+                                settleAnim.snapTo(0f)
+                            }
+                            dragY = 0f
                         }
                     },
                     surfaces = surfaces
@@ -277,6 +298,7 @@ private fun PlayerSheetDragHandle(
     onDragStart: () -> Unit,
     onDragDelta: (Float) -> Unit,
     onDragFinish: () -> Unit,
+    onDragCancel: () -> Unit,
     surfaces: PlayerSurfaceTokens
 ) {
     Box(
@@ -286,7 +308,7 @@ private fun PlayerSheetDragHandle(
                 detectVerticalDragGestures(
                     onDragStart = { onDragStart() },
                     onDragEnd = { onDragFinish() },
-                    onDragCancel = { onDragFinish() }
+                    onDragCancel = { onDragCancel() }
                 ) { change, delta ->
                     change.consume()
                     onDragDelta(delta)
