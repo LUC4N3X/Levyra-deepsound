@@ -464,7 +464,7 @@ private fun timerRemainingSeconds(deadlineElapsedRealtimeMs: Long): Long =
 
 private fun formatTimerClock(totalSeconds: Long): String {
     val hours = totalSeconds / 3_600L
-    val minutes = (totalSeconds % 3_600L) / 60L
+    val minutes = totalSeconds % 3_600L / 60L
     val seconds = totalSeconds % 60L
     return if (hours > 0L) {
         "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
