@@ -65,9 +65,7 @@ class LevyraFeatureLocalizationTest {
                 strings.jamSessionLockedMessage,
                 strings.jamSessionFull,
                 strings.jamRemovedMessage,
-                strings.jamAddedBy,
                 strings.jamNoParticipants,
-                strings.jamNoPendingRequests,
                 strings.jamYou,
                 strings.jamShareInvite
             ).forEach { value ->

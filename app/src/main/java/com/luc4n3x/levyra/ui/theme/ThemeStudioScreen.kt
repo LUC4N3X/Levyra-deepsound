@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.theme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +77,7 @@ internal fun LevyraThemeStudioOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val preview = rememberThemeStudioPreview(selectedPresetId, accent, pureBlack)
+    val presetRows = remember { themeStudioRows() }
 
     Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
         LazyColumn(
@@ -140,11 +142,11 @@ internal fun LevyraThemeStudioOverlay(
             }
 
             items(
-                count = themeStudioRows().size,
+                count = presetRows.size,
                 key = { index -> "studio-row-$index" },
                 contentType = { "studio-row" }
             ) { index ->
-                val row = themeStudioRows()[index]
+                val row = presetRows[index]
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
@@ -475,6 +477,8 @@ private fun ThemeAccentDot(
     Box(
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
             .semantics {
                 this.role = Role.RadioButton
                 this.selected = selected
@@ -490,7 +494,6 @@ private fun ThemeAccentDot(
             } else {
                 null
             },
-            onClick = onClick,
             modifier = Modifier.size(30.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {

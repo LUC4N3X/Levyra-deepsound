@@ -479,7 +479,7 @@ private fun JamParticipantRow(
         else -> strings.jamRoleGuest
     }
     val detail = if (contributions > 0) {
-        "$role · ${strings.jamAddedBy} ${strings.formatTrackCount(contributions)}"
+        "$role · ${strings.formatTrackCount(contributions)}"
     } else {
         role
     }
@@ -765,7 +765,7 @@ private fun JamInlineAction(
             border = BorderStroke(LevyraPlayerDesign.Hairline, JamHairline),
             shape = LevyraPlayerDesign.ShapePill,
             onClick = onClick,
-            modifier = Modifier.sizeIn(minHeight = 36.dp)
+            modifier = Modifier.sizeIn(minHeight = LevyraPlayerDesign.MinimumTouchTarget)
         ) {
             Text(
                 actionLabel,

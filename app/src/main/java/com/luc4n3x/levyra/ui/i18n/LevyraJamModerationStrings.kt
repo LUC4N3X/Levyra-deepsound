@@ -20,9 +20,7 @@ internal val jamModerationKeys = setOf(
     "jamSessionLockedMessage",
     "jamSessionFull",
     "jamRemovedMessage",
-    "jamAddedBy",
     "jamNoParticipants",
-    "jamNoPendingRequests",
     "jamYou",
     "jamShareInvite"
 )
@@ -47,9 +45,7 @@ private fun jamModeration(
     sessionLockedMessage: String,
     sessionFull: String,
     removedMessage: String,
-    addedBy: String,
     noParticipants: String,
-    noPendingRequests: String,
     you: String,
     shareInvite: String
 ): Map<String, String> = mapOf(
@@ -72,9 +68,7 @@ private fun jamModeration(
     "jamSessionLockedMessage" to sessionLockedMessage,
     "jamSessionFull" to sessionFull,
     "jamRemovedMessage" to removedMessage,
-    "jamAddedBy" to addedBy,
     "jamNoParticipants" to noParticipants,
-    "jamNoPendingRequests" to noPendingRequests,
     "jamYou" to you,
     "jamShareInvite" to shareInvite
 )
@@ -88,7 +82,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Waiting for the host to let you in", "The host declined your request",
         "The host blocked you from this Jam", "The session is locked",
         "The session is full", "The host removed you from the Jam",
-        "Added by", "No guests yet", "No pending requests", "You", "Share invite"
+        "No guests yet", "You", "Share invite"
     ),
     "it" to jamModeration(
         "Controlli host", "Approva i nuovi ospiti", "Ogni ospite attende la tua approvazione prima di entrare",
@@ -98,7 +92,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "In attesa che l'host ti faccia entrare", "L'host ha rifiutato la tua richiesta",
         "L'host ti ha bloccato da questo Jam", "La sessione è bloccata",
         "La sessione è piena", "L'host ti ha rimosso dal Jam",
-        "Aggiunto da", "Ancora nessun ospite", "Nessuna richiesta in attesa", "Tu", "Condividi invito"
+        "Ancora nessun ospite", "Tu", "Condividi invito"
     ),
     "es" to jamModeration(
         "Controles del anfitrión", "Aprobar nuevos invitados", "Cada invitado espera tu aprobación antes de entrar",
@@ -108,7 +102,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Esperando a que el anfitrión te deje entrar", "El anfitrión rechazó tu solicitud",
         "El anfitrión te bloqueó en este Jam", "La sesión está bloqueada",
         "La sesión está llena", "El anfitrión te quitó del Jam",
-        "Añadido por", "Aún no hay invitados", "No hay solicitudes pendientes", "Tú", "Compartir invitación"
+        "Aún no hay invitados", "Tú", "Compartir invitación"
     ),
     "fr" to jamModeration(
         "Contrôles de l'hôte", "Approuver les nouveaux invités", "Chaque invité attend votre approbation avant d'entrer",
@@ -118,7 +112,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "En attente que l'hôte vous laisse entrer", "L'hôte a refusé votre demande",
         "L'hôte vous a bloqué dans ce Jam", "La session est verrouillée",
         "La session est complète", "L'hôte vous a retiré du Jam",
-        "Ajouté par", "Aucun invité pour l'instant", "Aucune demande en attente", "Vous", "Partager l'invitation"
+        "Aucun invité pour l'instant", "Vous", "Partager l'invitation"
     ),
     "de" to jamModeration(
         "Host-Steuerung", "Neue Gäste bestätigen", "Jeder Gast wartet vor dem Beitritt auf deine Bestätigung",
@@ -128,7 +122,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Warte, bis der Host dich hereinlässt", "Der Host hat deine Anfrage abgelehnt",
         "Der Host hat dich für diesen Jam gesperrt", "Die Sitzung ist gesperrt",
         "Die Sitzung ist voll", "Der Host hat dich aus dem Jam entfernt",
-        "Hinzugefügt von", "Noch keine Gäste", "Keine offenen Anfragen", "Du", "Einladung teilen"
+        "Noch keine Gäste", "Du", "Einladung teilen"
     ),
     "pt" to jamModeration(
         "Controlos do anfitrião", "Aprovar novos convidados", "Cada convidado espera a tua aprovação antes de entrar",
@@ -138,7 +132,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "À espera que o anfitrião te deixe entrar", "O anfitrião recusou o teu pedido",
         "O anfitrião bloqueou-te neste Jam", "A sessão está bloqueada",
         "A sessão está cheia", "O anfitrião removeu-te do Jam",
-        "Adicionado por", "Ainda sem convidados", "Sem pedidos pendentes", "Tu", "Partilhar convite"
+        "Ainda sem convidados", "Tu", "Partilhar convite"
     ),
     "nl" to jamModeration(
         "Hostbediening", "Nieuwe gasten goedkeuren", "Elke gast wacht op jouw goedkeuring voordat hij meedoet",
@@ -148,7 +142,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Wachten tot de host je binnenlaat", "De host heeft je verzoek geweigerd",
         "De host heeft je geblokkeerd voor deze Jam", "De sessie is vergrendeld",
         "De sessie is vol", "De host heeft je uit de Jam verwijderd",
-        "Toegevoegd door", "Nog geen gasten", "Geen openstaande verzoeken", "Jij", "Uitnodiging delen"
+        "Nog geen gasten", "Jij", "Uitnodiging delen"
     ),
     "pl" to jamModeration(
         "Panel gospodarza", "Zatwierdzaj nowych gości", "Każdy gość czeka na twoje zatwierdzenie przed dołączeniem",
@@ -158,7 +152,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Czekasz, aż gospodarz cię wpuści", "Gospodarz odrzucił twoją prośbę",
         "Gospodarz zablokował cię w tym Jamie", "Sesja jest zablokowana",
         "Sesja jest pełna", "Gospodarz usunął cię z Jamu",
-        "Dodane przez", "Brak gości", "Brak oczekujących próśb", "Ty", "Udostępnij zaproszenie"
+        "Brak gości", "Ty", "Udostępnij zaproszenie"
     ),
     "ro" to jamModeration(
         "Controale gazdă", "Aprobă invitații noi", "Fiecare invitat așteaptă aprobarea ta înainte să intre",
@@ -168,7 +162,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Aștepți ca gazda să te lase să intri", "Gazda ți-a respins cererea",
         "Gazda te-a blocat în acest Jam", "Sesiunea este blocată",
         "Sesiunea este plină", "Gazda te-a eliminat din Jam",
-        "Adăugat de", "Încă niciun invitat", "Nicio cerere în așteptare", "Tu", "Distribuie invitația"
+        "Încă niciun invitat", "Tu", "Distribuie invitația"
     ),
     "el" to jamModeration(
         "Έλεγχοι οικοδεσπότη", "Έγκριση νέων καλεσμένων", "Κάθε καλεσμένος περιμένει την έγκρισή σου πριν μπει",
@@ -178,7 +172,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Περιμένεις να σε δεχτεί ο οικοδεσπότης", "Ο οικοδεσπότης απέρριψε το αίτημά σου",
         "Ο οικοδεσπότης σε απέκλεισε από αυτό το Jam", "Η συνεδρία είναι κλειδωμένη",
         "Η συνεδρία είναι γεμάτη", "Ο οικοδεσπότης σε αφαίρεσε από το Jam",
-        "Προστέθηκε από", "Κανένας καλεσμένος ακόμα", "Κανένα εκκρεμές αίτημα", "Εσύ", "Κοινή χρήση πρόσκλησης"
+        "Κανένας καλεσμένος ακόμα", "Εσύ", "Κοινή χρήση πρόσκλησης"
     ),
     "sv" to jamModeration(
         "Värdkontroller", "Godkänn nya gäster", "Varje gäst väntar på ditt godkännande innan de går med",
@@ -188,7 +182,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Väntar på att värden släpper in dig", "Värden avvisade din förfrågan",
         "Värden blockerade dig från detta Jam", "Sessionen är låst",
         "Sessionen är full", "Värden tog bort dig från Jam",
-        "Tillagd av", "Inga gäster än", "Inga väntande förfrågningar", "Du", "Dela inbjudan"
+        "Inga gäster än", "Du", "Dela inbjudan"
     ),
     "da" to jamModeration(
         "Værtsindstillinger", "Godkend nye gæster", "Hver gæst venter på din godkendelse, før de deltager",
@@ -198,7 +192,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Venter på, at værten lukker dig ind", "Værten afviste din anmodning",
         "Værten blokerede dig fra dette Jam", "Sessionen er låst",
         "Sessionen er fuld", "Værten fjernede dig fra Jam",
-        "Tilføjet af", "Ingen gæster endnu", "Ingen ventende anmodninger", "Dig", "Del invitation"
+        "Ingen gæster endnu", "Dig", "Del invitation"
     ),
     "cs" to jamModeration(
         "Ovládání hostitele", "Schvalovat nové hosty", "Každý host před připojením čeká na tvé schválení",
@@ -208,7 +202,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Čekáš, až tě hostitel vpustí", "Hostitel tvou žádost odmítl",
         "Hostitel tě v tomto Jamu zablokoval", "Relace je zamčená",
         "Relace je plná", "Hostitel tě odebral z Jamu",
-        "Přidal", "Zatím žádní hosté", "Žádné čekající žádosti", "Ty", "Sdílet pozvánku"
+        "Zatím žádní hosté", "Ty", "Sdílet pozvánku"
     ),
     "uk" to jamModeration(
         "Керування хостом", "Схвалювати нових гостей", "Кожен гість чекає на твоє схвалення перед приєднанням",
@@ -218,7 +212,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Очікуєш, поки хост тебе впустить", "Хост відхилив твій запит",
         "Хост заблокував тебе в цьому Jam", "Сесію заблоковано",
         "Сесія заповнена", "Хост видалив тебе з Jam",
-        "Додав", "Поки що немає гостей", "Немає запитів в очікуванні", "Ти", "Поділитися запрошенням"
+        "Поки що немає гостей", "Ти", "Поділитися запрошенням"
     ),
     "ru" to jamModeration(
         "Управление хостом", "Одобрять новых гостей", "Каждый гость ждёт твоего одобрения перед входом",
@@ -228,7 +222,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Ждёшь, пока хост тебя впустит", "Хост отклонил твой запрос",
         "Хост заблокировал тебя в этом Jam", "Сессия заблокирована",
         "Сессия заполнена", "Хост удалил тебя из Jam",
-        "Добавил", "Гостей пока нет", "Нет ожидающих запросов", "Ты", "Поделиться приглашением"
+        "Гостей пока нет", "Ты", "Поделиться приглашением"
     ),
     "tr" to jamModeration(
         "Sunucu kontrolleri", "Yeni misafirleri onayla", "Her misafir katılmadan önce onayını bekler",
@@ -238,7 +232,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Sunucunun seni almasını bekliyorsun", "Sunucu isteğini reddetti",
         "Sunucu seni bu Jam'den engelledi", "Oturum kilitli",
         "Oturum dolu", "Sunucu seni Jam'den çıkardı",
-        "Ekleyen", "Henüz misafir yok", "Bekleyen istek yok", "Sen", "Daveti paylaş"
+        "Henüz misafir yok", "Sen", "Daveti paylaş"
     ),
     "ar" to jamModeration(
         "أدوات المضيف", "الموافقة على الضيوف الجدد", "ينتظر كل ضيف موافقتك قبل الانضمام",
@@ -248,7 +242,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "في انتظار أن يسمح لك المضيف بالدخول", "رفض المضيف طلبك",
         "حظرك المضيف من هذا الـ Jam", "الجلسة مقفلة",
         "الجلسة ممتلئة", "أزالك المضيف من الـ Jam",
-        "أضافه", "لا يوجد ضيوف بعد", "لا توجد طلبات معلقة", "أنت", "مشاركة الدعوة"
+        "لا يوجد ضيوف بعد", "أنت", "مشاركة الدعوة"
     ),
     "zh" to jamModeration(
         "主持人控制", "审批新访客", "每位访客加入前都需要你的批准",
@@ -258,7 +252,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "正在等待主持人放行", "主持人拒绝了你的请求",
         "主持人已在此 Jam 中屏蔽你", "会话已锁定",
         "会话已满", "主持人已将你移出 Jam",
-        "添加者", "暂无访客", "没有待处理的请求", "你", "分享邀请"
+        "暂无访客", "你", "分享邀请"
     ),
     "ja" to jamModeration(
         "ホスト操作", "新しいゲストを承認", "参加前にすべてのゲストがあなたの承認を待ちます",
@@ -268,7 +262,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "ホストの許可を待っています", "ホストがリクエストを却下しました",
         "ホストがこの Jam であなたをブロックしました", "セッションはロックされています",
         "セッションが満員です", "ホストが Jam からあなたを削除しました",
-        "追加者", "ゲストはまだいません", "保留中のリクエストはありません", "あなた", "招待を共有"
+        "ゲストはまだいません", "あなた", "招待を共有"
     ),
     "ko" to jamModeration(
         "호스트 제어", "새 게스트 승인", "모든 게스트는 참여 전에 승인을 기다립니다",
@@ -278,7 +272,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "호스트의 승인을 기다리는 중", "호스트가 요청을 거절했습니다",
         "호스트가 이 Jam에서 차단했습니다", "세션이 잠겨 있습니다",
         "세션이 가득 찼습니다", "호스트가 Jam에서 내보냈습니다",
-        "추가한 사람", "아직 게스트가 없습니다", "대기 중인 요청이 없습니다", "나", "초대 공유"
+        "아직 게스트가 없습니다", "나", "초대 공유"
     ),
     "hi" to jamModeration(
         "होस्ट नियंत्रण", "नए मेहमानों को मंज़ूरी दें", "हर मेहमान शामिल होने से पहले आपकी मंज़ूरी का इंतज़ार करता है",
@@ -288,7 +282,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "होस्ट के प्रवेश देने का इंतज़ार", "होस्ट ने आपका अनुरोध अस्वीकार किया",
         "होस्ट ने आपको इस Jam से ब्लॉक किया", "सत्र लॉक है",
         "सत्र भरा है", "होस्ट ने आपको Jam से हटा दिया",
-        "जोड़ा गया", "अभी कोई मेहमान नहीं", "कोई लंबित अनुरोध नहीं", "आप", "आमंत्रण साझा करें"
+        "अभी कोई मेहमान नहीं", "आप", "आमंत्रण साझा करें"
     ),
     "id" to jamModeration(
         "Kontrol host", "Setujui tamu baru", "Setiap tamu menunggu persetujuanmu sebelum bergabung",
@@ -298,7 +292,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Menunggu host mengizinkanmu masuk", "Host menolak permintaanmu",
         "Host memblokirmu dari Jam ini", "Sesi terkunci",
         "Sesi penuh", "Host mengeluarkanmu dari Jam",
-        "Ditambahkan oleh", "Belum ada tamu", "Tidak ada permintaan tertunda", "Kamu", "Bagikan undangan"
+        "Belum ada tamu", "Kamu", "Bagikan undangan"
     ),
     "vi" to jamModeration(
         "Điều khiển của chủ phòng", "Duyệt khách mới", "Mỗi khách chờ bạn duyệt trước khi tham gia",
@@ -308,7 +302,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Đang chờ chủ phòng cho vào", "Chủ phòng đã từ chối yêu cầu của bạn",
         "Chủ phòng đã chặn bạn khỏi Jam này", "Phiên đang bị khóa",
         "Phiên đã đầy", "Chủ phòng đã xóa bạn khỏi Jam",
-        "Thêm bởi", "Chưa có khách", "Không có yêu cầu chờ", "Bạn", "Chia sẻ lời mời"
+        "Chưa có khách", "Bạn", "Chia sẻ lời mời"
     ),
     "th" to jamModeration(
         "การควบคุมของเจ้าของห้อง", "อนุมัติผู้เข้าร่วมใหม่", "ผู้เข้าร่วมทุกคนต้องรอการอนุมัติก่อนเข้าห้อง",
@@ -318,7 +312,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "กำลังรอเจ้าของห้องอนุญาต", "เจ้าของห้องปฏิเสธคำขอของคุณ",
         "เจ้าของห้องบล็อกคุณจาก Jam นี้", "เซสชันถูกล็อก",
         "เซสชันเต็มแล้ว", "เจ้าของห้องนำคุณออกจาก Jam",
-        "เพิ่มโดย", "ยังไม่มีผู้เข้าร่วม", "ไม่มีคำขอที่รออยู่", "คุณ", "แชร์คำเชิญ"
+        "ยังไม่มีผู้เข้าร่วม", "คุณ", "แชร์คำเชิญ"
     ),
     "fil" to jamModeration(
         "Mga kontrol ng host", "Aprubahan ang bagong bisita", "Bawat bisita ay naghihintay ng pag-apruba mo bago sumali",
@@ -328,7 +322,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Naghihintay na papasukin ka ng host", "Tinanggihan ng host ang request mo",
         "Na-block ka ng host sa Jam na ito", "Naka-lock ang session",
         "Puno na ang session", "Inalis ka ng host sa Jam",
-        "Idinagdag ni", "Wala pang bisita", "Walang nakabinbing request", "Ikaw", "Ibahagi ang imbitasyon"
+        "Wala pang bisita", "Ikaw", "Ibahagi ang imbitasyon"
     ),
     "he" to jamModeration(
         "בקרות המארח", "אישור אורחים חדשים", "כל אורח ממתין לאישור שלך לפני ההצטרפות",
@@ -338,7 +332,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "ממתין שהמארח יכניס אותך", "המארח דחה את הבקשה שלך",
         "המארח חסם אותך ב-Jam הזה", "המפגש נעול",
         "המפגש מלא", "המארח הסיר אותך מה-Jam",
-        "נוסף על ידי", "עדיין אין אורחים", "אין בקשות ממתינות", "את/ה", "שיתוף הזמנה"
+        "עדיין אין אורחים", "את/ה", "שיתוף הזמנה"
     )
 )
 

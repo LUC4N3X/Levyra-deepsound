@@ -204,7 +204,15 @@ class JamController(
                 val transport = hostTransport
                 val waiting = pending.toList()
                 pending.clear()
-                if (transport != null) waiting.forEach { entry -> admitLocked(transport, entry) }
+                if (transport != null) {
+                    waiting.forEach { entry ->
+                        if (participants.size >= JamSessionState.MAX_PARTICIPANTS) {
+                            rejectLocked(transport, entry.participantId, JamFailure.SessionFull)
+                        } else {
+                            admitLocked(transport, entry)
+                        }
+                    }
+                }
             }
             publishHostState()
         }
@@ -251,7 +259,6 @@ class JamController(
             participantIdentities.remove(participantId)
             pending.removeAll { it.participantId == participantId }
             rejectLocked(transport, participantId, if (ban) JamFailure.Banned else JamFailure.Removed)
-            transport.disconnect(participantId)
             publishHostState()
         }
     }
