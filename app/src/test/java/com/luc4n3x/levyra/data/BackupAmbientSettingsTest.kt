@@ -31,6 +31,15 @@ class BackupAmbientSettingsTest {
     }
 
     @Test
+    fun nonFiniteBrightnessFallsBackToDefault() {
+        val restored = backupAmbientSettingsFromJson(
+            JSONObject().put("brightness", "NaN")
+        )
+
+        assertEquals(LevyraAmbientSettings().brightness, restored.brightness)
+    }
+
+    @Test
     fun missingAmbientSettingsUseCurrentDefaults() {
         assertEquals(LevyraAmbientSettings(), backupAmbientSettingsFromJson(null))
         assertEquals(LevyraAmbientSettings(), backupAmbientSettingsFromJson(JSONObject()))
