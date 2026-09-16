@@ -208,6 +208,7 @@ class LanJamHostTransport : JamHostTransport {
                     awaiting.remove(participantId)?.connection?.let { stale ->
                         runCatching { stale.write(JamProtocol.encode(JamMessage.Failure(JamFailure.Rejected))) }
                         stale.close()
+                        _events.tryEmit(JamHostEvent.GuestLeft(participantId))
                     }
                 }
                 awaiting[participantId] = AwaitingConnection(connection, expiryJob)
