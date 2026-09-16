@@ -67,6 +67,17 @@ class JamModerationTest {
     }
 
     @Test
+    fun reconnectingPendingIdentityRejectsTheStaleRequest() = runBlocking {
+        createHostSession(approvalRequired = true)
+        val guestId = identity(1)
+        host.emit(pending("guest-1", guestId, "Ada"))
+        host.emit(pending("guest-2", guestId, "Ada"))
+
+        assertTrue(host.rejected.contains("guest-1" to JamFailure.Removed))
+        assertEquals(listOf("guest-2"), controller.state.value.pending.map { it.participantId })
+    }
+
+    @Test
     fun rejectedGuestNeverEntersTheParticipantList() = runBlocking {
         createHostSession(approvalRequired = true)
         host.emit(pending("guest-1", identity(1), "Ada"))
