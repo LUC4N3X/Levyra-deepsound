@@ -10,11 +10,9 @@ import com.luc4n3x.levyra.ui.player.PlayerVideoTransform
 import com.luc4n3x.levyra.ui.player.applyPlayerVideoGesture
 import com.luc4n3x.levyra.ui.player.playerVideoZoomGestures
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
-import com.luc4n3x.levyra.ui.components.PlayerAccentColors
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.PlayerIcon
-import com.luc4n3x.levyra.ui.components.PlayerTransportControls
 import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
@@ -56,6 +54,7 @@ import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import com.luc4n3x.levyra.ui.theme.LevyraPlayerShapes
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.player.*
 import com.luc4n3x.levyra.domain.PlayerVisualMode
@@ -102,6 +101,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.drawWithCache
@@ -240,7 +240,6 @@ import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Source
@@ -341,6 +340,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.SolidColor
@@ -594,6 +594,7 @@ import com.luc4n3x.levyra.ui.player.playerTapSide
 import com.luc4n3x.levyra.ui.player.rememberPlayerMorphAnchors
 import com.luc4n3x.levyra.ui.player.resolveMiniPlayerDismiss
 import com.luc4n3x.levyra.ui.player.resolvePlayerExpansionTarget
+import com.luc4n3x.levyra.ui.player.playerSurfaceCornerFraction
 import java.io.File
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
@@ -1983,7 +1984,7 @@ fun LevyraApp(
                 val target = if (state.selectedTab == LevyraTab.Player) 1f else 0f
                 if (playerExpansion.value == target) return@LaunchedEffect
                 if (state.animationsEnabled) {
-                    playerExpansion.animateTo(target, spring(dampingRatio = 0.82f, stiffness = 360f))
+                    playerExpansion.animateTo(target, LevyraPlayerDesign.expandSpring())
                 } else {
                     playerExpansion.snapTo(target)
                 }
@@ -2022,9 +2023,9 @@ fun LevyraApp(
                 expansionScope.launch {
                     if (target >= 1f) {
                         if (state.selectedTab != LevyraTab.Player) viewModel.selectTab(LevyraTab.Player)
-                        playerExpansion.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 360f))
+                        playerExpansion.animateTo(1f, LevyraPlayerDesign.expandSpring())
                     } else {
-                        playerExpansion.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 430f))
+                        playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
                         if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                     }
                 }
@@ -2033,7 +2034,7 @@ fun LevyraApp(
             val collapsePlayer: () -> Unit = {
                 expansionScope.launch {
                     if (state.animationsEnabled) {
-                        playerExpansion.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 430f))
+                        playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
                     } else {
                         playerExpansion.snapTo(0f)
                     }
@@ -2066,12 +2067,12 @@ fun LevyraApp(
                             playerPredictiveBackExpansion(startExpansion, backEvent.progress)
                         )
                     }
-                    playerExpansion.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 430f))
+                    playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
                     if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                 } catch (cancelled: CancellationException) {
                     playerExpansion.animateTo(
                         startExpansion,
-                        spring(dampingRatio = 0.82f, stiffness = 360f)
+                        LevyraPlayerDesign.expandSpring()
                     )
                     throw cancelled
                 }
@@ -2198,7 +2199,7 @@ fun LevyraApp(
                     ) {
                         BottomTabs(
                             selected = backgroundTab,
-                            hasActiveTrack = state.currentTrack != null,
+                            hasActiveTrack = state.currentTrack != null && !state.isSamplesOpen,
                             onSelect = viewModel::selectTab
                         )
                     }
@@ -2206,6 +2207,7 @@ fun LevyraApp(
             }
 
             if (playerVisible) {
+                val playerSurfaceCornerPx = with(rootDensity) { LevyraPlayerDesign.DockTrayCorner.toPx() }
                 val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
                 val playerScreenState by playerViewModel.state.collectAsStateWithLifecycle()
                 Box(
@@ -2219,6 +2221,9 @@ fun LevyraApp(
                             scaleY = surfaceScale
                             translationY = playerSurfaceLiftFraction(expansion) * expansionTravelPx
                             transformOrigin = TransformOrigin(0.5f, 1f)
+                            val cornerRadius = playerSurfaceCornerFraction(expansion) * playerSurfaceCornerPx
+                            clip = cornerRadius > 0.5f
+                            shape = if (clip) RoundedCornerShape(cornerRadius) else RectangleShape
                         }
                 ) {
                     PlayerScreen(
@@ -14654,12 +14659,30 @@ private fun PlayerYoutubeEngagementRow(
     compact: Boolean,
     onComments: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val hasLikes = track.youtubeLikeCount >= 0L
     val hasDislikeEstimate = engagement.dislikeEstimateAvailable && engagement.estimatedDislikeCount >= 0L
     val comments = engagement.comments
     val commentBadge = youtubeCommentCountBadge(comments.countText)
     val canOpenComments = engagement.videoId.isNotBlank()
     val visible = hasLikes || hasDislikeEstimate || engagement.dislikeEstimateLoading || canOpenComments
+    val baseContent = if (LevyraIsLight) Color(0xFF1A1B20) else Color.White
+    val accent = Color(track.accentStart).playerMix(baseContent, if (LevyraIsLight) 0.34f else 0.26f)
+    val quietContent = baseContent.copy(alpha = 0.66f)
+    val strongContent = baseContent.copy(alpha = 0.90f)
+    val surface = if (LevyraIsLight) {
+        LevyraAdaptiveChip
+    } else {
+        Color.White.copy(alpha = 0.065f)
+    }
+    val outline = if (LevyraIsLight) {
+        LevyraAdaptiveHairline
+    } else {
+        accent.copy(alpha = 0.18f)
+    }
+    val divider = baseContent.copy(alpha = if (LevyraIsLight) 0.10f else 0.12f)
+    val pillShape = RoundedCornerShape(16.dp)
+    val rowHeight = if (compact) 30.dp else 32.dp
 
     AnimatedVisibility(
         visible = visible,
@@ -14667,130 +14690,144 @@ private fun PlayerYoutubeEngagementRow(
         exit = fadeOut(animationSpec = tween(140))
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = if (compact) 6.dp else 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                color = Color.White.copy(alpha = 0.08f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = CircleShape
+            Box(
+                modifier = Modifier
+                    .height(LevyraPlayerDesign.MinimumTouchTarget)
+                    .wrapContentWidth(),
+                contentAlignment = Alignment.CenterStart
             ) {
-                Row(
-                    modifier = Modifier.height(28.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    color = surface,
+                    border = BorderStroke(1.dp, outline),
+                    shape = pillShape
                 ) {
                     Row(
-                        modifier = Modifier.padding(
-                            start = 10.dp,
-                            end = 8.dp
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        modifier = Modifier.height(rowHeight),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ThumbUp,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = if (hasLikes) 0.92f else 0.50f),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        if (hasLikes) {
-                            Text(
-                                text = compactYoutubeCount(track.youtubeLikeCount),
-                                color = Color.White.copy(alpha = 0.92f),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
+                        Row(
+                            modifier = Modifier.padding(start = 11.dp, end = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ThumbUp,
+                                contentDescription = null,
+                                tint = if (hasLikes) accent else quietContent,
+                                modifier = Modifier.size(14.dp)
                             )
+                            if (hasLikes) {
+                                Text(
+                                    text = compactYoutubeCount(track.youtubeLikeCount),
+                                    color = strongContent,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
                         }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(14.dp)
-                            .background(Color.White.copy(alpha = 0.12f))
-                    )
-                    Row(
-                        modifier = Modifier.padding(
-                            start = 8.dp,
-                            end = 10.dp
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ThumbDown,
-                            contentDescription = null,
-                            tint = if (hasDislikeEstimate) {
-                                Color.White.copy(alpha = 0.72f)
-                            } else {
-                                Color.White.copy(alpha = 0.50f)
-                            },
-                            modifier = Modifier.size(13.dp)
+
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(15.dp)
+                                .background(divider)
                         )
-                        when {
-                            engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                modifier = Modifier.size(10.dp),
-                                strokeWidth = 1.4.dp,
-                                color = Color.White.copy(alpha = 0.72f)
+
+                        Row(
+                            modifier = Modifier.padding(start = 9.dp, end = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ThumbDown,
+                                contentDescription = null,
+                                tint = if (hasDislikeEstimate) quietContent else quietContent.copy(alpha = 0.68f),
+                                modifier = Modifier.size(14.dp)
                             )
-                            hasDislikeEstimate -> Text(
-                                text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
+                            when {
+                                engagement.dislikeEstimateLoading -> CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.4.dp,
+                                    color = quietContent
+                                )
+                                hasDislikeEstimate -> Text(
+                                    text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
+                                    color = quietContent.copy(alpha = 0.92f),
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(15.dp)
+                                .background(divider)
+                        )
+
+                        Row(
+                            modifier = Modifier.padding(horizontal = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ChatBubbleOutline,
+                                contentDescription = null,
+                                tint = when {
+                                    comments.visible -> accent
+                                    canOpenComments -> strongContent.copy(alpha = 0.82f)
+                                    else -> quietContent.copy(alpha = 0.62f)
+                                },
+                                modifier = Modifier.size(14.dp)
                             )
+                            when {
+                                comments.loading && !comments.loaded -> CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.4.dp,
+                                    color = quietContent
+                                )
+                                commentBadge.isNotBlank() -> Text(
+                                    text = commentBadge,
+                                    color = if (comments.visible) accent else strongContent,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            Surface(
-                color = Color.White.copy(alpha = 0.08f),
-                border = BorderStroke(
-                    1.dp,
-                    if (comments.visible) Color.White.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.12f)
-                ),
-                shape = CircleShape
-            ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .height(28.dp)
+                        .align(Alignment.CenterEnd)
+                        .height(LevyraPlayerDesign.MinimumTouchTarget)
                         .pressable(enabled = canOpenComments, onClick = onComments)
-                        .padding(horizontal = 10.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ChatBubbleOutline,
-                            contentDescription = null,
-                            tint = if (canOpenComments) {
-                                Color.White.copy(alpha = 0.75f)
-                            } else {
-                                Color.White.copy(alpha = 0.45f)
-                            },
-                            modifier = Modifier.size(13.dp)
+                    Icon(
+                        imageVector = Icons.Rounded.ChatBubbleOutline,
+                        contentDescription = strings.tapToOpenComments,
+                        tint = Color.Transparent,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    when {
+                        comments.loading && !comments.loaded -> Spacer(modifier = Modifier.size(10.dp))
+                        commentBadge.isNotBlank() -> Text(
+                            text = commentBadge,
+                            color = Color.Transparent,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
                         )
-                        when {
-                            comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                modifier = Modifier.size(10.dp),
-                                strokeWidth = 1.4.dp,
-                                color = Color.White.copy(alpha = 0.72f)
-                            )
-                            commentBadge.isNotBlank() -> Text(
-                                text = commentBadge,
-                                color = Color.White.copy(alpha = 0.90f),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
-                        }
                     }
                 }
             }
@@ -15420,21 +15457,6 @@ private fun PlayerScreen(
                 engagement = state.youtubeEngagement,
                 compact = true,
                 onComments = viewModel::openYoutubeComments
-            )
-        },
-        optionsMenuContent = {
-            PlayerOptionsRow(
-                speed = state.playbackSpeed,
-                sleepMinutes = state.sleepTimerMinutes,
-                sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
-                audioNormalization = state.audioNormalization,
-                activeColor = Color(track?.accentStart ?: LevyraCyan.toArgb()),
-                secondaryColor = Color(track?.accentEnd ?: LevyraViolet.toArgb()),
-                compact = true,
-                onSpeed = viewModel::cycleSpeed,
-                onSleep = viewModel::openSleepTimer,
-                onNormalization = viewModel::toggleAudioNormalization,
-                onAmbient = viewModel::openAmbient
             )
         },
         similarSongsContent = { activeTrack ->
@@ -21225,8 +21247,9 @@ private fun PlayerArtworkMorphLayer(
     expansion: () -> Float
 ) {
     val density = LocalDensity.current
-    val startCornerPx = with(density) { LevyraPlayerDesign.CornerXs.toPx() }
-    val endCornerPx = with(density) { LevyraPlayerDesign.CornerLg.toPx() }
+    val startCornerPx = with(density) { LevyraPlayerDesign.MiniArtworkCorner.toPx() }
+    val fullWidthPx = anchors.fullBounds?.width ?: 0f
+    val endCornerPx = with(density) { LevyraPlayerShapes.artworkCorner(fullWidthPx.toDp()).toPx() }
     Box(
         modifier = Modifier
             .layout { measurable, _ ->
@@ -21325,9 +21348,17 @@ private fun settleMiniPlayerVerticalDrag(
     if (!event.peeked && result == PlayerVerticalResult.Collapse) playbackActions.close()
 }
 
-private val MiniPlayerBarBase = Color(0xFF08090C)
-private val MiniPlayerTrackColor = Color.White.copy(alpha = 0.09f)
-private val MiniPlayerBufferedColor = Color.White.copy(alpha = 0.16f)
+private val MiniPlayerCardBase = PlayerDarkSurface
+private val MiniPlayerTrackColor = Color.White.copy(alpha = 0.12f)
+private val MiniPlayerBufferedColor = Color.White.copy(alpha = 0.20f)
+private val MiniPlayerProgressInset = 18.dp
+private val MiniPlayerProgressHeight = 2.dp
+private val MiniPlayerTrayTop = 8.dp
+private val MiniPlayerTrayBottom = 5.dp
+private val MiniPlayerCardGutter = 8.dp
+
+private val miniPlayerTrayColor: Color
+    get() = if (LevyraIsLight) Color.White else LevyraInk
 
 @Composable
 private fun MiniPlayer(
@@ -21339,8 +21370,6 @@ private fun MiniPlayer(
     val track = model.track
     val isPlaying = model.isPlaying
     val isResolving = model.isResolving
-    val progress = model.progress
-    val bufferedProgress = model.bufferedProgress
     val liveRadio = track.isLiveRadio()
     val animated = model.animated
     val gesturesEnabled = model.gesturesEnabled
@@ -21383,29 +21412,24 @@ private fun MiniPlayer(
     }
     val accentStart by animateColorAsState(
         targetValue = harmonizedTargets.primary,
-        animationSpec = if (animated) tween(550, easing = LinearOutSlowInEasing) else snap(),
+        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
         label = "mini-accent-start"
     )
     val accentEnd by animateColorAsState(
         targetValue = harmonizedTargets.secondary,
-        animationSpec = if (animated) tween(550, easing = LinearOutSlowInEasing) else snap(),
+        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
         label = "mini-accent-end"
     )
-    val ambience = remember(accentStart, accentEnd) {
-        playerAmbienceOf(accentStart, accentEnd)
-    }
-    val miniProgressColor = remember(ambience) {
-        ambience.tint.playerAmbienceMix(Color.White, 0.55f)
-    }
+    val miniProgressColor = accentStart.playerMix(Color.White, 0.72f)
     val miniPrimaryContent = LevyraPlayerDesign.TextPrimary
     val miniSecondaryContent = LevyraPlayerDesign.TextSecondary
     val animatedProgress = animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f),
+        targetValue = model.progress.coerceIn(0f, 1f),
         animationSpec = if (animated) tween(420, easing = LinearOutSlowInEasing) else snap(),
         label = "mini-progress"
     )
     val animatedBuffered = animateFloatAsState(
-        targetValue = bufferedProgress.coerceIn(0f, 1f),
+        targetValue = model.bufferedProgress.coerceIn(0f, 1f),
         animationSpec = if (animated) tween(520, easing = LinearOutSlowInEasing) else snap(),
         label = "mini-buffered"
     )
@@ -21415,95 +21439,123 @@ private fun MiniPlayer(
         animationSpec = if (animated) LevyraPlayerDesign.smoothSpring() else snap(),
         label = "mini-swipe-offset"
     )
-    val miniProgressBrush = remember(miniProgressColor) {
-        Brush.horizontalGradient(
-            listOf(
-                miniProgressColor,
-                miniProgressColor.playerAmbienceMix(Color.White, 0.22f)
-            )
-        )
-    }
-    val miniBarBackground = remember(accentStart, accentEnd) {
-        Brush.horizontalGradient(
-            colorStops = arrayOf(
-                0f to MiniPlayerBarBase.playerAmbienceMix(accentStart, 0.38f),
-                0.34f to MiniPlayerBarBase.playerAmbienceMix(accentStart, 0.22f),
-                0.72f to MiniPlayerBarBase.playerAmbienceMix(accentEnd, 0.13f),
-                1f to MiniPlayerBarBase
-            )
-        )
-    }
+    val cardShape = RoundedCornerShape(LevyraPlayerDesign.MiniCorner)
+    val artworkShape = RoundedCornerShape(LevyraPlayerDesign.MiniArtworkCorner)
+    val trayShape = RoundedCornerShape(
+        topStart = LevyraPlayerDesign.DockTrayCorner,
+        topEnd = LevyraPlayerDesign.DockTrayCorner
+    )
     val horizontalGesturesEnabled = gesturesEnabled && !liveRadio
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(miniBarBackground)
-            .playerAxisDragGestures(
-                key = track.id,
-                enabled = gesturesEnabled,
-                rightToLeft = miniRightToLeft,
-                edgeZonesEnabled = false
-            ) { event ->
-                handleMiniPlayerDragEvent(
-                    event = event,
-                    playbackActions = playbackActions,
-                    expansionActions = expansionActions,
-                    haptics = miniHaptics,
-                    horizontalGesturesEnabled = horizontalGesturesEnabled,
-                    updateSwipeOffset = { swipeOffsetPx = it }
-                )
-            }
+
+    Surface(
+        color = miniPlayerTrayColor,
+        shape = trayShape,
+        shadowElevation = if (LevyraIsLight) 10.dp else 16.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(LevyraPlayerDesign.Hairline)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Transparent,
-                            ambience.tint.copy(alpha = 0.30f),
-                            Color.White.copy(alpha = 0.10f),
-                            Color.Transparent
-                        )
-                    )
+                .padding(
+                    start = MiniPlayerCardGutter,
+                    end = MiniPlayerCardGutter,
+                    top = MiniPlayerTrayTop,
+                    bottom = MiniPlayerTrayBottom
                 )
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(70.dp)
-                .padding(start = 10.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Mini)
-                    .size(48.dp)
-                    .graphicsLayer { translationX = settledSwipeOffset * 0.4f }
-                    .clip(LevyraPlayerDesign.ShapeXs)
-                    .pressable(onClick = playbackActions.open)
-            ) {
-                CoverImage(track, Modifier.fillMaxSize())
-            }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .graphicsLayer {
-                        translationX = settledSwipeOffset
-                        alpha = playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                    .fillMaxWidth()
+                    .height(LevyraPlayerDesign.MiniHeight)
+                    .clip(cardShape)
+                    .drawBehind {
+                        drawRect(
+                            Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0f to MiniPlayerCardBase.playerAmbienceMix(accentStart, 0.46f),
+                                    0.45f to MiniPlayerCardBase.playerAmbienceMix(accentStart, 0.26f),
+                                    1f to MiniPlayerCardBase.playerAmbienceMix(accentEnd, 0.14f)
+                                )
+                            )
+                        )
+                        val inset = MiniPlayerProgressInset.toPx()
+                        val barHeight = MiniPlayerProgressHeight.toPx()
+                        val span = (size.width - inset * 2f).coerceAtLeast(0f)
+                        val origin = Offset(inset, size.height - barHeight)
+                        val radius = CornerRadius(barHeight / 2f)
+                        drawRoundRect(
+                            color = MiniPlayerTrackColor,
+                            topLeft = origin,
+                            size = Size(span, barHeight),
+                            cornerRadius = radius
+                        )
+                        if (liveRadio) {
+                            drawRoundRect(
+                                color = miniProgressColor.copy(alpha = if (isResolving) 0.4f else 0.9f),
+                                topLeft = origin,
+                                size = Size(span, barHeight),
+                                cornerRadius = radius
+                            )
+                        } else {
+                            drawRoundRect(
+                                color = MiniPlayerBufferedColor,
+                                topLeft = origin,
+                                size = Size(span * animatedBuffered.value, barHeight),
+                                cornerRadius = radius
+                            )
+                            drawRoundRect(
+                                color = miniProgressColor,
+                                topLeft = origin,
+                                size = Size(span * animatedProgress.value, barHeight),
+                                cornerRadius = radius
+                            )
+                        }
+                    }
+                    .border(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.08f), cardShape)
+                    .playerAxisDragGestures(
+                        key = track.id,
+                        enabled = gesturesEnabled,
+                        rightToLeft = miniRightToLeft,
+                        edgeZonesEnabled = false
+                    ) { event ->
+                        handleMiniPlayerDragEvent(
+                            event = event,
+                            playbackActions = playbackActions,
+                            expansionActions = expansionActions,
+                            haptics = miniHaptics,
+                            horizontalGesturesEnabled = horizontalGesturesEnabled,
+                            updateSwipeOffset = { swipeOffsetPx = it }
+                        )
                     }
                     .semantics { onClick(label = strings.expandPlayer, action = null) }
-                    .pressable(pressedScale = 0.985f, onClick = playbackActions.open),
-                verticalArrangement = Arrangement.Center
+                    .pressable(pressedScale = LevyraPressScale.Row, onClick = playbackActions.open)
+                    .padding(start = 9.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Box(
+                    modifier = Modifier
+                        .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Mini)
+                        .size(LevyraPlayerDesign.MiniArtwork)
+                        .graphicsLayer { translationX = settledSwipeOffset * 0.4f }
+                        .clip(artworkShape)
+                ) {
+                    CoverImage(track, Modifier.fillMaxSize())
+                }
                 AnimatedContent(
                     targetState = track,
+                    modifier = Modifier
+                        .weight(1f)
+                        .graphicsLayer {
+                            translationX = settledSwipeOffset
+                            alpha = playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                        },
                     transitionSpec = {
                         if (animated) {
-                            (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 3 }) togetherWith
-                                (fadeOut(tween(120)) + slideOutVertically(tween(120)) { -it / 3 })
+                            fadeIn(LevyraPlayerDesign.standardTween(220)) +
+                                slideInVertically(LevyraPlayerDesign.smoothSpring()) { it / 3 } togetherWith
+                                fadeOut(LevyraPlayerDesign.standardTween(110)) +
+                                    slideOutVertically(LevyraPlayerDesign.standardTween(140)) { -it / 3 }
                         } else {
                             EnterTransition.None togetherWith ExitTransition.None
                         }
@@ -21511,7 +21563,7 @@ private fun MiniPlayer(
                     contentKey = { it.id },
                     label = "mini-track"
                 ) { animatedTrack ->
-                    Column {
+                    Column(verticalArrangement = Arrangement.Center) {
                         Text(
                             text = animatedTrack.title,
                             color = miniPrimaryContent,
@@ -21530,106 +21582,55 @@ private fun MiniPlayer(
                                 Modifier
                             }
                         )
-                        Spacer(modifier = Modifier.height(1.dp))
                         Text(
                             text = if (liveRadio) {
                                 model.liveNowPlaying.ifBlank { "${radioStrings.live} / ${animatedTrack.artist}" }
                             } else animatedTrack.artist,
                             color = miniSecondaryContent,
-                            fontSize = 12.5.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
-                            fontWeight = FontWeight.Normal,
+                            fontSize = 13.sp,
+                            lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+                            fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                if (!liveRadio) {
-                    PlayerRoundIconButton(
-                        icon = Icons.Rounded.SkipPrevious,
-                        contentDescription = strings.previous,
-                        size = 42.dp,
-                        iconSize = 23.dp,
-                        tint = miniSecondaryContent,
-                        background = Color.Transparent,
-                        borderColor = Color.Transparent,
-                        onClick = playbackActions.previous
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MiniPlayerToggleButton(
+                        isPlaying = isPlaying,
+                        isResolving = isResolving,
+                        buttonColor = miniPrimaryContent,
+                        animated = animated,
+                        onToggle = playbackActions.toggle
                     )
-                }
-                MiniPlayerToggleButton(
-                    isPlaying = isPlaying,
-                    isResolving = isResolving,
-                    buttonColor = miniPrimaryContent,
-                    animated = animated,
-                    onToggle = playbackActions.toggle
-                )
-                if (!liveRadio) {
-                    PlayerRoundIconButton(
-                        icon = Icons.Rounded.SkipNext,
-                        contentDescription = strings.next,
-                        size = 42.dp,
-                        iconSize = 23.dp,
-                        tint = miniSecondaryContent,
-                        background = Color.Transparent,
-                        borderColor = Color.Transparent,
-                        onClick = playbackActions.next
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .sizeIn(minWidth = 44.dp, minHeight = LevyraPlayerDesign.MinimumTouchTarget)
-                        .pressable(onClick = playbackActions.close),
-                    contentAlignment = Alignment.Center
-                ) {
+                    if (!liveRadio) {
+                        PlayerRoundIconButton(
+                            icon = Icons.Rounded.SkipNext,
+                            contentDescription = strings.next,
+                            size = 40.dp,
+                            iconSize = 26.dp,
+                            tint = miniPrimaryContent,
+                            background = Color.Transparent,
+                            borderColor = Color.Transparent,
+                            onClick = playbackActions.next
+                        )
+                    }
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .background(accentEnd.copy(alpha = 0.20f), CircleShape)
-                            .border(Dp.Hairline, Color.White.copy(alpha = 0.10f), CircleShape),
+                            .sizeIn(minWidth = 40.dp, minHeight = LevyraPlayerDesign.MinimumTouchTarget)
+                            .pressable(onClick = playbackActions.close),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
                             contentDescription = strings.closePlayer,
-                            tint = LevyraPlayerDesign.TextSecondary,
-                            modifier = Modifier.size(16.dp)
+                            tint = LevyraPlayerDesign.TextTertiary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
             }
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .drawBehind {
-                    drawRect(MiniPlayerTrackColor)
-                    if (liveRadio) {
-                        drawRect(color = LevyraCyan.copy(alpha = if (isResolving) 0.35f else 0.85f))
-                    } else {
-                        drawRect(
-                            color = MiniPlayerBufferedColor,
-                            size = androidx.compose.ui.geometry.Size(
-                                size.width * animatedBuffered.value,
-                                size.height
-                            )
-                        )
-                        drawRect(
-                            brush = miniProgressBrush,
-                            size = androidx.compose.ui.geometry.Size(
-                                size.width * animatedProgress.value,
-                                size.height
-                            )
-                        )
-                    }
-                }
-        )
     }
 }
 
@@ -22841,12 +22842,22 @@ private fun BottomTabs(
         )
     }
     val indicatorBorderColor = accentStart.copy(alpha = if (isLight) 0.24f else 0.20f)
-    val hairline = if (isLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.085f)
+    val hairline = if (hasActiveTrack) {
+        Color.Transparent
+    } else if (isLight) {
+        Color(0x1A11131F)
+    } else {
+        Color.White.copy(alpha = 0.085f)
+    }
 
     Surface(
         color = barBase,
         shape = barShape,
-        shadowElevation = if (isLight) 10.dp else 16.dp,
+        shadowElevation = when {
+            hasActiveTrack -> 0.dp
+            isLight -> 10.dp
+            else -> 16.dp
+        },
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
