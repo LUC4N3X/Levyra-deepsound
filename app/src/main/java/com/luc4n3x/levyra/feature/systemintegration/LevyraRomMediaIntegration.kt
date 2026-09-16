@@ -106,7 +106,7 @@ private fun buildWordTimedLane(lines: List<LyricLine>): String? {
             words.forEach { word ->
                 val start = word.startMs.coerceAtLeast(previous)
                 append(wordTimestamp(start))
-                append(cleanSystemLyricText(word.text))
+                append(cleanSystemLyricWordText(word.text))
                 previous = start
             }
             val terminal = words.last().endMs.coerceAtLeast(previous)
@@ -130,3 +130,6 @@ private fun wordTimestamp(positionMs: Long): String =
 
 private fun cleanSystemLyricText(value: String): String =
     value.replace('\n', ' ').replace('\r', ' ').trim()
+
+private fun cleanSystemLyricWordText(value: String): String =
+    value.replace('\n', ' ').replace('\r', ' ')
