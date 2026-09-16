@@ -983,7 +983,9 @@ class LevyraBackupManager(private val context: Context) {
                 ?: LyricsLatencyProfiles(),
             themePreset = json.optString("themePreset"),
             themeAccent = backupThemeAccentFromJson(json),
-            ambientSettings = backupAmbientSettingsFromJson(json.optJSONObject("ambientSettings")),
+            ambientSettings = json.optJSONObject("ambientSettings")
+                ?.let(::backupAmbientSettingsFromJson)
+                ?: preferences.ambientSettings(),
             audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
             interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings"), legacyVisualMode),
             downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings")),
