@@ -21,10 +21,14 @@ data class JamUiState(
     val session: JamSessionState? = null,
     val selfParticipantId: String = "",
     val permission: JamGuestPermission = JamGuestPermission.HostOnly,
+    val pending: List<JamPendingParticipant> = emptyList(),
+    val bannedCount: Int = 0,
     val failure: JamFailure? = null
 ) {
     val isActive: Boolean get() = role != null
     val isHost: Boolean get() = role == JamRole.Host
+    val locked: Boolean get() = session?.locked == true
+    val requireApproval: Boolean get() = session?.requireApproval == true
     val canControlPlayback: Boolean get() = isHost || permission.canControlPlayback
     val canAddTracks: Boolean get() = isHost || permission.canAddTracks
     val supportsBatchAddTracks: Boolean
@@ -37,13 +41,15 @@ private fun jamActionBatchValid(action: JamAction): Boolean = when (action) {
     else -> true
 }
 
+private fun jamActionAddedTracks(action: JamAction): List<JamTrack> = when (action) {
+    is JamAction.AddTrack -> listOf(action.track)
+    is JamAction.AddTracks -> action.tracks
+    is JamAction.PlayNextTracks -> action.tracks
+    else -> emptyList()
+}
+
 private fun jamActionExceedsQueueLimit(action: JamAction, queue: List<JamTrack>): Boolean {
-    val requested = when (action) {
-        is JamAction.AddTrack -> listOf(action.track)
-        is JamAction.AddTracks -> action.tracks
-        is JamAction.PlayNextTracks -> action.tracks
-        else -> emptyList()
-    }
+    val requested = jamActionAddedTracks(action)
     if (requested.isEmpty()) return false
     val knownIds = queue.mapTo(hashSetOf()) { it.id }
     val added = requested.asSequence()
@@ -55,7 +61,9 @@ private fun jamActionExceedsQueueLimit(action: JamAction, queue: List<JamTrack>)
 class JamController(
     private val scope: CoroutineScope,
     private val bridge: JamPlayerBridge,
-    private val transports: JamTransportFactory = LanJamTransportFactory
+    private val transports: JamTransportFactory = LanJamTransportFactory,
+    private val elapsedMs: () -> Long = { SystemClock.elapsedRealtime() },
+    private val wallClockMs: () -> Long = { System.currentTimeMillis() }
 ) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow(JamUiState())
@@ -73,13 +81,25 @@ class JamController(
     private var revision: Long = 0L
     private var createdAt: Long = 0L
     private var permission: JamGuestPermission = JamGuestPermission.HostOnly
+    private var requireApproval: Boolean = true
+    private var locked: Boolean = false
     private var participants: MutableList<JamParticipant> = mutableListOf()
+    private val pending: MutableList<JamPendingParticipant> = mutableListOf()
+    private val pendingProofs: MutableMap<String, String> = linkedMapOf()
+    private val participantIdentities: MutableMap<String, String> = linkedMapOf()
+    private val banned: MutableSet<String> = linkedSetOf()
+    private val trackOwners: MutableMap<String, String> = linkedMapOf()
     private var lastAppliedRevision: Long = -1L
     private var joinedCode: JamSessionCode? = null
     private var joinedName: String = ""
+    private var joinedIdentity: String = ""
     private var leaving = false
 
-    suspend fun createJam(displayName: String, guestPermission: JamGuestPermission) {
+    suspend fun createJam(
+        displayName: String,
+        guestPermission: JamGuestPermission,
+        approvalRequired: Boolean = true
+    ) {
         mutex.withLock {
             releaseLocked()
             _state.value = JamUiState(role = JamRole.Host, connection = JamConnectionState.Connecting)
@@ -94,8 +114,10 @@ class JamController(
             sessionId = UUID.randomUUID().toString()
             hostParticipantId = UUID.randomUUID().toString()
             revision = 0L
-            createdAt = System.currentTimeMillis()
+            createdAt = wallClockMs()
             permission = guestPermission
+            requireApproval = approvalRequired
+            locked = false
             participants = mutableListOf(
                 JamParticipant(hostParticipantId, JamProtocol.sanitizeName(displayName), isHost = true)
             )
@@ -113,7 +135,7 @@ class JamController(
         }
     }
 
-    suspend fun joinJam(rawCode: String, displayName: String) {
+    suspend fun joinJam(rawCode: String, displayName: String, guestIdentity: String) {
         val code = JamSessionCode.parse(rawCode)
         if (code == null) {
             _state.value = JamUiState(failure = JamFailure.InvalidCode)
@@ -124,12 +146,13 @@ class JamController(
             leaving = false
             joinedCode = code
             joinedName = JamProtocol.sanitizeName(displayName)
+            joinedIdentity = JamIdentity.sanitize(guestIdentity)
             _state.value = JamUiState(role = JamRole.Guest, connection = JamConnectionState.Connecting)
             val transport = transports.guest()
             guestTransport = transport
             observeGuest(transport)
             lastAppliedRevision = -1L
-            val connected = transport.connect(code, displayName)
+            val connected = transport.connect(code, joinedName, joinedIdentity)
             if (!connected) {
                 val failure = _state.value.failure ?: JamFailure.ConnectionFailed
                 releaseLocked()
@@ -163,13 +186,89 @@ class JamController(
         }
     }
 
-    suspend fun removeParticipant(participantId: String) {
+    suspend fun setSessionLocked(value: Boolean) {
+        mutex.withLock {
+            if (_state.value.role != JamRole.Host) return
+            if (locked == value) return
+            locked = value
+            publishHostState()
+        }
+    }
+
+    suspend fun setApprovalRequired(value: Boolean) {
+        mutex.withLock {
+            if (_state.value.role != JamRole.Host) return
+            if (requireApproval == value) return
+            requireApproval = value
+            if (!value) {
+                val transport = hostTransport
+                val waiting = pending.toList()
+                pending.clear()
+                if (transport != null) {
+                    waiting.forEach { entry ->
+                        if (participants.size >= JamSessionState.MAX_PARTICIPANTS) {
+                            rejectLocked(transport, entry.participantId, JamFailure.SessionFull)
+                        } else {
+                            admitLocked(transport, entry)
+                        }
+                    }
+                }
+            }
+            publishHostState()
+        }
+    }
+
+    suspend fun approveParticipant(participantId: String) {
+        mutex.withLock {
+            if (_state.value.role != JamRole.Host) return
+            val transport = hostTransport ?: return
+            val entry = pending.firstOrNull { it.participantId == participantId } ?: return
+            pending.remove(entry)
+            if (participants.size >= JamSessionState.MAX_PARTICIPANTS) {
+                rejectLocked(transport, participantId, JamFailure.SessionFull)
+                publishHostState()
+                return
+            }
+            admitLocked(transport, entry)
+            publishHostState()
+        }
+    }
+
+    suspend fun rejectParticipant(participantId: String) {
+        mutex.withLock {
+            if (_state.value.role != JamRole.Host) return
+            val transport = hostTransport ?: return
+            if (pending.removeAll { it.participantId == participantId }) {
+                rejectLocked(transport, participantId, JamFailure.Rejected)
+                publishHostState()
+            }
+        }
+    }
+
+    suspend fun removeParticipant(participantId: String, ban: Boolean = false) {
         mutex.withLock {
             if (_state.value.role != JamRole.Host) return
             if (participantId == hostParticipantId) return
             val transport = hostTransport ?: return
-            transport.send(participantId, JamMessage.Failure(JamFailure.NotAuthorized))
-            transport.disconnect(participantId)
+            if (ban) {
+                participantIdentities[participantId]
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(::banIdentityLocked)
+            }
+            participants.removeAll { it.id == participantId }
+            participantIdentities.remove(participantId)
+            pending.removeAll { it.participantId == participantId }
+            rejectLocked(transport, participantId, if (ban) JamFailure.Banned else JamFailure.Removed)
+            publishHostState()
+        }
+    }
+
+    suspend fun clearBans() {
+        mutex.withLock {
+            if (_state.value.role != JamRole.Host) return
+            if (banned.isEmpty()) return
+            banned.clear()
+            _state.update { it.copy(bannedCount = 0) }
         }
     }
 
@@ -188,10 +287,15 @@ class JamController(
             }
             when (current.role) {
                 JamRole.Host -> {
+                    rememberOwnersLocked(action, hostParticipantId)
                     bridge.applyAction(action)
                     publishHostState()
                 }
                 JamRole.Guest -> {
+                    if (current.connection != JamConnectionState.Connected) {
+                        _state.update { it.copy(failure = JamFailure.NotAuthorized) }
+                        return
+                    }
                     if (action is JamAction.AddTracks &&
                         JamCapabilities.BATCH_ADD_TRACKS !in current.session?.capabilities.orEmpty()
                     ) {
@@ -250,13 +354,21 @@ class JamController(
         }
         guestTransport = null
         participants = mutableListOf()
+        pending.clear()
+        pendingProofs.clear()
+        participantIdentities.clear()
+        banned.clear()
+        trackOwners.clear()
         sessionId = ""
         hostParticipantId = ""
         revision = 0L
         createdAt = 0L
+        requireApproval = true
+        locked = false
         lastAppliedRevision = -1L
         joinedCode = null
         joinedName = ""
+        joinedIdentity = ""
     }
 
     private fun observeHost(transport: JamHostTransport) {
@@ -270,31 +382,131 @@ class JamController(
         mutex.withLock {
             if (_state.value.role != JamRole.Host || hostTransport !== transport) return
             when (event) {
-                is JamHostEvent.GuestJoined -> {
-                    if (participants.size >= JamSessionState.MAX_PARTICIPANTS) {
-                        transport.send(event.participantId, JamMessage.Failure(JamFailure.NotAuthorized))
-                        transport.disconnect(event.participantId)
-                        return
-                    }
-                    participants.removeAll { it.id == event.participantId }
-                    participants.add(JamParticipant(event.participantId, event.name, isHost = false))
-                    transport.send(event.participantId, JamMessage.Welcome(sessionId, event.participantId, event.hostProof))
-                    publishHostState()
-                }
+                is JamHostEvent.GuestPending -> handleGuestPendingLocked(transport, event)
                 is JamHostEvent.GuestLeft -> {
-                    if (participants.removeAll { it.id == event.participantId }) publishHostState()
+                    val removedParticipant = participants.removeAll { it.id == event.participantId }
+                    val removedPending = pending.removeAll { it.participantId == event.participantId }
+                    pendingProofs.remove(event.participantId)
+                    participantIdentities.remove(event.participantId)
+                    if (removedParticipant) publishHostState() else if (removedPending) publishPendingLocked()
                 }
                 is JamHostEvent.ActionReceived -> {
                     val sender = participants.firstOrNull { it.id == event.participantId }
                     if (sender == null || sender.isHost) return
                     if (!JamAuthorization.allows(permission, event.action)) return
                     if (jamActionExceedsQueueLimit(event.action, bridge.snapshot().queue)) return
+                    rememberOwnersLocked(event.action, event.participantId)
                     bridge.applyAction(event.action)
                     publishHostState()
                 }
                 is JamHostEvent.Failed -> _state.update { it.copy(failure = event.failure) }
             }
         }
+    }
+
+    private suspend fun handleGuestPendingLocked(
+        transport: JamHostTransport,
+        event: JamHostEvent.GuestPending
+    ) {
+        val identity = JamIdentity.sanitize(event.guestId)
+        // Session bans are best-effort moderation based on a resettable local guest identity.
+        if (identity.isNotBlank() && identity in banned) {
+            rejectLocked(transport, event.participantId, JamFailure.Banned)
+            return
+        }
+        if (locked) {
+            rejectLocked(transport, event.participantId, JamFailure.SessionLocked)
+            return
+        }
+        if (identity.isNotBlank()) {
+            val replaced = participantIdentities.entries
+                .filter { it.value == identity }
+                .map { it.key }
+            replaced.forEach { staleId ->
+                participants.removeAll { it.id == staleId }
+                participantIdentities.remove(staleId)
+                trackOwners.entries.forEach { owner ->
+                    if (owner.value == staleId) owner.setValue(event.participantId)
+                }
+                transport.disconnect(staleId)
+            }
+            val stalePending = pending.filter { it.guestId == identity }
+            stalePending.forEach { stale ->
+                pending.remove(stale)
+                rejectLocked(transport, stale.participantId, JamFailure.Removed)
+            }
+        }
+        if (participants.size >= JamSessionState.MAX_PARTICIPANTS) {
+            rejectLocked(transport, event.participantId, JamFailure.SessionFull)
+            return
+        }
+
+        val entry = JamPendingParticipant(
+            participantId = event.participantId,
+            guestId = identity,
+            name = JamProtocol.sanitizeName(event.name),
+            requestedAtElapsedMs = elapsedMs()
+        )
+        pendingProofs[event.participantId] = event.hostProof
+
+        if (!requireApproval) {
+            admitLocked(transport, entry)
+            publishHostState()
+            return
+        }
+        if (pending.size >= JamSessionState.MAX_PENDING) {
+            rejectLocked(transport, event.participantId, JamFailure.SessionFull)
+            return
+        }
+        pending += entry
+        transport.notifyPending(event.participantId, JamMessage.Pending(event.hostProof))
+        publishPendingLocked()
+    }
+
+    private suspend fun admitLocked(transport: JamHostTransport, entry: JamPendingParticipant) {
+        val proof = pendingProofs.remove(entry.participantId) ?: return
+        participants.removeAll { it.id == entry.participantId }
+        participants += JamParticipant(entry.participantId, entry.name, isHost = false)
+        if (entry.guestId.isNotBlank()) participantIdentities[entry.participantId] = entry.guestId
+        val admitted = transport.admit(
+            entry.participantId,
+            JamMessage.Welcome(sessionId, entry.participantId, proof)
+        )
+        if (!admitted) {
+            participants.removeAll { it.id == entry.participantId }
+            participantIdentities.remove(entry.participantId)
+        }
+    }
+
+    private suspend fun rejectLocked(
+        transport: JamHostTransport,
+        participantId: String,
+        failure: JamFailure
+    ) {
+        pendingProofs.remove(participantId)
+        transport.reject(participantId, failure)
+    }
+
+    private fun banIdentityLocked(identity: String) {
+        banned += identity
+        while (banned.size > JamSessionState.MAX_BANNED) {
+            val oldest = banned.firstOrNull() ?: break
+            banned.remove(oldest)
+        }
+    }
+
+    private fun rememberOwnersLocked(action: JamAction, participantId: String) {
+        val tracks = jamActionAddedTracks(action)
+        if (tracks.isEmpty()) return
+        tracks.forEach { track -> trackOwners[track.id] = participantId }
+        while (trackOwners.size > JamSessionState.MAX_QUEUE_SIZE) {
+            val oldest = trackOwners.keys.firstOrNull() ?: break
+            trackOwners.remove(oldest)
+        }
+    }
+
+    private fun publishPendingLocked() {
+        _state.update { it.copy(pending = pending.toList(), bannedCount = banned.size) }
     }
 
     private fun observeGuest(transport: JamGuestTransport) {
@@ -317,6 +529,13 @@ class JamController(
                     )
                 }
             }
+            JamGuestEvent.AwaitingApproval -> _state.update {
+                it.copy(
+                    role = JamRole.Guest,
+                    connection = JamConnectionState.AwaitingApproval,
+                    failure = null
+                )
+            }
             is JamGuestEvent.StateReceived -> applyRemoteState(event.message)
             is JamGuestEvent.Failed -> _state.update {
                 it.copy(connection = JamConnectionState.Disconnected, failure = event.failure)
@@ -332,7 +551,7 @@ class JamController(
         if (sessionId.isNotBlank() && message.sessionId != sessionId) return
         if (JamPlaybackSync.isStaleRevision(message.revision, lastAppliedRevision)) return
         lastAppliedRevision = message.revision
-        val received = message.state.copy(updatedAtElapsedMs = SystemClock.elapsedRealtime())
+        val received = message.state.copy(updatedAtElapsedMs = elapsedMs())
         bridge.applyRemoteState(received)
         _state.update {
             it.copy(
@@ -346,12 +565,7 @@ class JamController(
     private fun scheduleReconnect() {
         if (
             leaving || joinedCode == null ||
-            _state.value.failure in setOf(
-                JamFailure.HostEnded,
-                JamFailure.NotAuthorized,
-                JamFailure.ProtocolError,
-                JamFailure.InvalidCode
-            )
+            _state.value.failure in NON_RECOVERABLE_FAILURES
         ) return
         if (reconnectJob?.isActive == true) return
         reconnectJob = scope.launch {
@@ -359,6 +573,7 @@ class JamController(
                 delay(RECONNECT_DELAYS_MS[attempt])
                 val connected = mutex.withLock {
                     if (leaving || _state.value.role != JamRole.Guest) return@withLock true
+                    if (_state.value.failure in NON_RECOVERABLE_FAILURES) return@withLock true
                     val code = joinedCode ?: return@withLock true
                     guestEventsJob?.cancel()
                     guestTransport?.stop()
@@ -366,11 +581,13 @@ class JamController(
                     guestTransport = transport
                     observeGuest(transport)
                     _state.update { it.copy(connection = JamConnectionState.Connecting) }
-                    transport.connect(code, joinedName)
+                    transport.connect(code, joinedName, joinedIdentity)
                 }
                 if (connected) return@launch
             }
-            _state.update { it.copy(connection = JamConnectionState.Disconnected, failure = JamFailure.ConnectionFailed) }
+            _state.update {
+                it.copy(connection = JamConnectionState.Disconnected, failure = JamFailure.ConnectionFailed)
+            }
         }
     }
 
@@ -391,13 +608,20 @@ class JamController(
         val transport = hostTransport ?: return
         revision++
         val hostState = buildHostState()
-        _state.update { it.copy(session = hostState, permission = permission) }
+        _state.update {
+            it.copy(
+                session = hostState,
+                permission = permission,
+                pending = pending.toList(),
+                bannedCount = banned.size
+            )
+        }
         transport.broadcast(
             JamMessage.State(
                 sessionId = sessionId,
                 revision = revision,
                 source = hostParticipantId,
-                timestamp = System.currentTimeMillis(),
+                timestamp = wallClockMs(),
                 state = hostState
             )
         )
@@ -405,13 +629,19 @@ class JamController(
 
     private fun buildHostState(): JamSessionState {
         val snapshot = bridge.snapshot()
+        val queue = snapshot.queue.take(JamSessionState.MAX_QUEUE_SIZE).map { track ->
+            val owner = trackOwners[track.id]
+            if (owner == null) track else track.copy(addedBy = owner)
+        }
+        val liveIds = queue.mapTo(hashSetOf()) { it.id }
+        trackOwners.keys.retainAll(liveIds)
         return JamSessionState(
             sessionId = sessionId,
             hostId = hostParticipantId,
             revision = revision,
             createdAt = createdAt,
             participants = participants.toList(),
-            queue = snapshot.queue.take(JamSessionState.MAX_QUEUE_SIZE),
+            queue = queue,
             currentIndex = snapshot.currentIndex,
             currentMediaId = snapshot.currentMediaId,
             positionMs = snapshot.positionMs,
@@ -419,13 +649,26 @@ class JamController(
             shuffle = snapshot.shuffle,
             repeatMode = snapshot.repeatMode,
             permission = permission,
-            updatedAtElapsedMs = SystemClock.elapsedRealtime(),
-            capabilities = JamCapabilities.current
+            updatedAtElapsedMs = elapsedMs(),
+            capabilities = JamCapabilities.current,
+            locked = locked,
+            requireApproval = requireApproval
         )
     }
 
     companion object {
         private const val RECONNECT_ATTEMPTS = 3
         private val RECONNECT_DELAYS_MS = longArrayOf(1_000L, 2_000L, 4_000L)
+        private val NON_RECOVERABLE_FAILURES = setOf(
+            JamFailure.HostEnded,
+            JamFailure.NotAuthorized,
+            JamFailure.ProtocolError,
+            JamFailure.InvalidCode,
+            JamFailure.Rejected,
+            JamFailure.Banned,
+            JamFailure.SessionLocked,
+            JamFailure.SessionFull,
+            JamFailure.Removed
+        )
     }
 }

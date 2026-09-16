@@ -1288,6 +1288,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 lyricsTranslationEnabled = settings.lyricsTranslationEnabled,
                 playbackSpeed = settings.audioSettings.playbackSpeed,
                 themePreset = settings.themePreset,
+                themeAccent = settings.themeAccent,
                 showOnboarding = !settings.onboarded,
                 currentTrack = restoredTrack,
                 positionMs = pendingSeekMs,
@@ -2121,6 +2122,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(themePreset = normalized) }
     }
 
+    fun setThemeAccent(value: Int) {
+        if (_state.value.themeAccent == value) return
+        preferences.setThemeAccent(value)
+        _state.update { it.copy(themeAccent = value) }
+    }
+
+    fun openThemeStudio() {
+        _state.update { it.copy(showThemeStudio = true) }
+    }
+
+    fun closeThemeStudio() {
+        _state.update { it.copy(showThemeStudio = false) }
+    }
+
     private fun widgetAccentColor(track: Track?): Int {
         if (track == null) return WIDGET_DEFAULT_ACCENT
         val cached = ArtworkPaletteCache.peek(
@@ -2788,12 +2803,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) { preferences.setJamDisplayName(trimmed) }
     }
 
-    fun createJam(permission: JamGuestPermission) {
-        viewModelScope.launch { jamController.createJam(jamDisplayNameOrDefault(), permission) }
+    fun createJam(permission: JamGuestPermission, approvalRequired: Boolean = true) {
+        viewModelScope.launch {
+            jamController.createJam(jamDisplayNameOrDefault(), permission, approvalRequired)
+        }
     }
 
     fun joinJam(code: String) {
-        viewModelScope.launch { jamController.joinJam(code, jamDisplayNameOrDefault()) }
+        viewModelScope.launch {
+            val identity = withContext(Dispatchers.IO) { preferences.jamGuestId() }
+            jamController.joinJam(code, jamDisplayNameOrDefault(), identity)
+        }
     }
 
     fun leaveJam() {
@@ -2808,8 +2828,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { jamController.setGuestPermission(permission) }
     }
 
-    fun removeJamParticipant(participantId: String) {
-        viewModelScope.launch { jamController.removeParticipant(participantId) }
+    fun removeJamParticipant(participantId: String, ban: Boolean = false) {
+        viewModelScope.launch { jamController.removeParticipant(participantId, ban) }
+    }
+
+    fun approveJamParticipant(participantId: String) {
+        viewModelScope.launch { jamController.approveParticipant(participantId) }
+    }
+
+    fun rejectJamParticipant(participantId: String) {
+        viewModelScope.launch { jamController.rejectParticipant(participantId) }
+    }
+
+    fun setJamSessionLocked(locked: Boolean) {
+        viewModelScope.launch { jamController.setSessionLocked(locked) }
+    }
+
+    fun setJamApprovalRequired(required: Boolean) {
+        viewModelScope.launch { jamController.setApprovalRequired(required) }
+    }
+
+    fun clearJamBans() {
+        viewModelScope.launch { jamController.clearBans() }
     }
 
     fun clearJamFailure() = jamController.clearFailure()
@@ -4662,6 +4702,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 playbackSpeed = snapshot.audioSettings.playbackSpeed,
                 lyricsTranslationEnabled = snapshot.lyricsTranslationEnabled,
                 themePreset = snapshot.themePreset,
+                themeAccent = snapshot.themeAccent,
                 interfaceSettings = snapshot.interfaceSettings,
                 downloadSettings = snapshot.downloadSettings,
                 backupSettings = snapshot.backupSettings,
