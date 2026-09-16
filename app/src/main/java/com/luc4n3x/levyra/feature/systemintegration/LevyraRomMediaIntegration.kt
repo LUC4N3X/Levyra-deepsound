@@ -20,6 +20,12 @@ internal data class LevyraRomMediaCapabilities(
     val timedLyricsMetadata: Boolean
 )
 
+internal data class OPlusLyricsPayloadContext(
+    val provider: String,
+    val packageName: String,
+    val generation: Long
+)
+
 internal fun detectLevyraRomMediaCapabilities(
     manufacturer: String = Build.MANUFACTURER.orEmpty(),
     brand: String = Build.BRAND.orEmpty()
@@ -36,19 +42,26 @@ internal fun buildOPlusLyricsPayload(
     track: Track,
     lines: List<LyricLine>,
     synced: Boolean,
-    provider: String,
-    packageName: String,
-    generation: Long
+    context: OPlusLyricsPayloadContext
 ): String? {
-    if (!synced || generation <= 0L) return null
+    if (!synced || context.generation <= 0L) return null
     val timedLines = lines
         .asSequence()
         .filterNot { it.isMetadata || it.isInstrumental }
         .filter { it.startMs >= 0L && it.text.isNotBlank() }
         .sortedBy(LyricLine::startMs)
         .toList()
-    if (timedLines.isEmpty()) return null
 
+    return timedLines.takeIf(List<LyricLine>::isNotEmpty)?.let { validLines ->
+        buildOPlusLyricsJson(track, validLines, context)
+    }
+}
+
+private fun buildOPlusLyricsJson(
+    track: Track,
+    timedLines: List<LyricLine>,
+    context: OPlusLyricsPayloadContext
+): String? {
     val lyric = timedLines.joinToString(separator = "\n", postfix = "\n") { line ->
         "${lrcTimestamp(line.startMs)}${cleanSystemLyricText(line.text)}"
     }
@@ -69,8 +82,8 @@ internal fun buildOPlusLyricsPayload(
         .put("songId", mediaId)
         .put("lyricType", 0)
         .put("lyric", lyric)
-        .put("provider", packageName)
-        .put("source", "levyra:${provider.ifBlank { "automatic" }}")
+        .put("provider", context.packageName)
+        .put("source", "levyra:${context.provider.ifBlank { "automatic" }}")
         .put(
             "trackKey",
             listOf(
@@ -80,7 +93,7 @@ internal fun buildOPlusLyricsPayload(
                 (track.durationMs.coerceAtLeast(0L) / 1_000L).toString()
             ).joinToString("|")
         )
-        .put("sessionGeneration", generation)
+        .put("sessionGeneration", context.generation)
         .put("noLyric", false)
         .apply {
             track.album.trim().takeIf(String::isNotBlank)?.let { put("album", it) }
@@ -122,7 +135,10 @@ private fun lrcTimestamp(positionMs: Long): String {
     val minutes = safe / 60_000L
     val seconds = (safe % 60_000L) / 1_000L
     val millis = safe % 1_000L
-    return "[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}]"
+    val minuteText = minutes.toString().padStart(2, '0')
+    val secondText = seconds.toString().padStart(2, '0')
+    val millisText = millis.toString().padStart(3, '0')
+    return "[$minuteText:$secondText.$millisText]"
 }
 
 private fun wordTimestamp(positionMs: Long): String =
