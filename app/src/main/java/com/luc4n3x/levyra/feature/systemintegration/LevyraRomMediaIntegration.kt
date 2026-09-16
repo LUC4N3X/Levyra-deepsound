@@ -133,7 +133,7 @@ private fun buildWordTimedLane(lines: List<LyricLine>): String? {
 private fun lrcTimestamp(positionMs: Long): String {
     val safe = positionMs.coerceAtLeast(0L)
     val minutes = safe / 60_000L
-    val seconds = (safe % 60_000L) / 1_000L
+    val seconds = safe % 60_000L / 1_000L
     val millis = safe % 1_000L
     val minuteText = minutes.toString().padStart(2, '0')
     val secondText = seconds.toString().padStart(2, '0')
