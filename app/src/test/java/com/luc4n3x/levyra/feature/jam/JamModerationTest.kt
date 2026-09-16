@@ -55,6 +55,18 @@ class JamModerationTest {
     }
 
     @Test
+    fun pendingGuestIsRemovedWhenTransportReportsDisconnect() = runBlocking {
+        createHostSession(approvalRequired = true)
+        host.emit(pending("guest-1", identity(1), "Ada"))
+        assertEquals(1, controller.state.value.pending.size)
+
+        host.emit(JamHostEvent.GuestLeft("guest-1"))
+
+        assertTrue(controller.state.value.pending.isEmpty())
+        assertEquals(1, controller.state.value.session?.participants?.size)
+    }
+
+    @Test
     fun rejectedGuestNeverEntersTheParticipantList() = runBlocking {
         createHostSession(approvalRequired = true)
         host.emit(pending("guest-1", identity(1), "Ada"))
