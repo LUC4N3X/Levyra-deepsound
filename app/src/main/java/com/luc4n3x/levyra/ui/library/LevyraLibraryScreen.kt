@@ -1072,50 +1072,54 @@ internal fun LevyraPlaylistDetailScreen(
                     val isDragging = draggedEntryKey == entryKey
                     PlaylistReorderRow(
                         track = track,
-                        index = index,
-                        count = orderedTracks.size,
-                        isDragging = isDragging,
-                        dragOffsetY = if (isDragging) dragOffsetY else 0f,
-                        modifier = Modifier.animateItem(),
-                        onMoveUp = {
-                            if (index > 0) {
-                                orderedTracks = orderedTracks.move(index, index - 1)
-                                haptics.perform(LevyraHapticAction.Reorder)
+                        state = PlaylistReorderRowState(
+                            index = index,
+                            count = orderedTracks.size,
+                            isDragging = isDragging,
+                            dragOffsetY = if (isDragging) dragOffsetY else 0f
+                        ),
+                        actions = PlaylistReorderRowActions(
+                            onMoveUp = {
+                                if (index > 0) {
+                                    orderedTracks = orderedTracks.move(index, index - 1)
+                                    haptics.perform(LevyraHapticAction.Reorder)
+                                }
+                            },
+                            onMoveDown = {
+                                if (index in 0 until orderedTracks.lastIndex) {
+                                    orderedTracks = orderedTracks.move(index, index + 1)
+                                    haptics.perform(LevyraHapticAction.Reorder)
+                                }
+                            },
+                            onDragStart = {
+                                draggedEntryKey = entryKey
+                                dragOffsetY = 0f
+                            },
+                            onDrag = drag@{ deltaY ->
+                                if (draggedEntryKey != entryKey) return@drag
+                                dragOffsetY += deltaY
+                                val update = playlistDragUpdate(
+                                    layoutInfo = playlistListState.layoutInfo,
+                                    draggedEntryKey = entryKey,
+                                    orderedTracks = orderedTracks,
+                                    dragOffsetY = dragOffsetY
+                                )
+                                val currentIndex = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
+                                if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
+                                    orderedTracks = orderedTracks.move(currentIndex, update.targetIndex)
+                                    dragOffsetY += update.offsetAdjustment
+                                    haptics.perform(LevyraHapticAction.Reorder)
+                                }
+                                if (update.scrollDelta != 0f) {
+                                    playlistListState.dispatchRawDelta(update.scrollDelta)
+                                }
+                            },
+                            onDragEnd = {
+                                draggedEntryKey = null
+                                dragOffsetY = 0f
                             }
-                        },
-                        onMoveDown = {
-                            if (index in 0 until orderedTracks.lastIndex) {
-                                orderedTracks = orderedTracks.move(index, index + 1)
-                                haptics.perform(LevyraHapticAction.Reorder)
-                            }
-                        },
-                        onDragStart = {
-                            draggedEntryKey = entryKey
-                            dragOffsetY = 0f
-                        },
-                        onDrag = drag@{ deltaY ->
-                            if (draggedEntryKey != entryKey) return@drag
-                            dragOffsetY += deltaY
-                            val update = playlistDragUpdate(
-                                layoutInfo = playlistListState.layoutInfo,
-                                draggedEntryKey = entryKey,
-                                orderedTracks = orderedTracks,
-                                dragOffsetY = dragOffsetY
-                            )
-                            val currentIndex = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
-                            if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
-                                orderedTracks = orderedTracks.move(currentIndex, update.targetIndex)
-                                dragOffsetY += update.offsetAdjustment
-                                haptics.perform(LevyraHapticAction.Reorder)
-                            }
-                            if (update.scrollDelta != 0f) {
-                                playlistListState.dispatchRawDelta(update.scrollDelta)
-                            }
-                        },
-                        onDragEnd = {
-                            draggedEntryKey = null
-                            dragOffsetY = 0f
-                        }
+                        ),
+                        modifier = Modifier.animateItem()
                     )
                 }
             } else if (visibleTracks.isEmpty()) {
