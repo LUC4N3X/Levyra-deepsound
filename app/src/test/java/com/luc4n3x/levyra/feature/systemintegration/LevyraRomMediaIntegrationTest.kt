@@ -102,6 +102,24 @@ class LevyraRomMediaIntegrationTest {
         assertEquals("[00:01.000]Real lyric\n", lyric)
     }
 
+    @Test
+    fun oversizedLyricsPayloadIsRejected() {
+        val payload = buildOPlusLyricsPayload(
+            track = track(),
+            lines = listOf(
+                LyricLine(
+                    startMs = 1_000L,
+                    endMs = 2_000L,
+                    text = "x".repeat(400_000)
+                )
+            ),
+            synced = true,
+            context = context(provider = "test", generation = 3L)
+        )
+
+        assertNull(payload)
+    }
+
     private fun context(provider: String, generation: Long) = OPlusLyricsPayloadContext(
         provider = provider,
         packageName = "com.luc4n3x.levyra",
