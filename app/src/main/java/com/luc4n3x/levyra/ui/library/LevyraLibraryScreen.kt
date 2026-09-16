@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -55,9 +57,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -81,6 +85,8 @@ import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraInk
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -92,6 +98,111 @@ private val playlistSelectionSaver = listSaver<Set<String>, String>(
     save = { it.toList() },
     restore = { it.toSet() }
 )
+
+private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
+private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
+
+private data class PlaylistDragUpdate(
+    val targetIndex: Int = -1,
+    val offsetAdjustment: Float = 0f,
+    val scrollDelta: Float = 0f
+)
+
+private fun playlistDragUpdate(
+    layoutInfo: LazyListLayoutInfo,
+    draggedEntryKey: String,
+    orderedTracks: List<Track>,
+    dragOffsetY: Float
+): PlaylistDragUpdate {
+    val draggedLayout = layoutInfo.visibleItemsInfo.firstOrNull {
+        it.key == "reorder-$draggedEntryKey"
+    } ?: return PlaylistDragUpdate()
+
+    val draggedCenter = draggedLayout.offset + draggedLayout.size / 2f + dragOffsetY
+    val targetLayout = layoutInfo.visibleItemsInfo
+        .asSequence()
+        .filter { (it.key as? String)?.startsWith("reorder-") == true }
+        .minByOrNull { item ->
+            kotlin.math.abs(item.offset + item.size / 2f - draggedCenter)
+        }
+
+    val targetKey = (targetLayout?.key as? String)
+        ?.takeIf { it != draggedLayout.key }
+        ?.removePrefix("reorder-")
+    val targetIndex = targetKey?.let { key ->
+        orderedTracks.indexOfFirst { it.id == key }
+    } ?: -1
+    val offsetAdjustment = if (targetIndex >= 0 && targetLayout != null) {
+        (draggedLayout.offset - targetLayout.offset).toFloat()
+    } else {
+        0f
+    }
+
+    val edge = draggedLayout.size.coerceAtLeast(1) * PLAYLIST_DRAG_EDGE_FACTOR
+    val viewportStart = layoutInfo.viewportStartOffset.toFloat()
+    val viewportEnd = layoutInfo.viewportEndOffset.toFloat()
+    val scrollDelta = when {
+        draggedCenter < viewportStart + edge ->
+            -((viewportStart + edge - draggedCenter) / edge)
+                .coerceIn(0f, 1f) * draggedLayout.size * PLAYLIST_DRAG_SCROLL_FACTOR
+        draggedCenter > viewportEnd - edge ->
+            ((draggedCenter - (viewportEnd - edge)) / edge)
+                .coerceIn(0f, 1f) * draggedLayout.size * PLAYLIST_DRAG_SCROLL_FACTOR
+        else -> 0f
+    }
+
+    return PlaylistDragUpdate(
+        targetIndex = targetIndex,
+        offsetAdjustment = offsetAdjustment,
+        scrollDelta = scrollDelta
+    )
+}
+
+private data class PlaylistDragSnapshot(
+    val entryKey: String,
+    val orderedTracks: List<Track>,
+    val dragOffsetY: Float
+)
+
+private data class PlaylistDragFrameActions(
+    val onMove: (fromIndex: Int, toIndex: Int, offsetAdjustment: Float) -> Unit,
+    val onScrollConsumed: (Float) -> Unit
+)
+
+@Composable
+private fun PlaylistDragFrameLoop(
+    activeEntryKey: String?,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    snapshotProvider: () -> PlaylistDragSnapshot?,
+    actions: PlaylistDragFrameActions
+) {
+    val currentSnapshotProvider by rememberUpdatedState(snapshotProvider)
+    val currentActions by rememberUpdatedState(actions)
+
+    LaunchedEffect(activeEntryKey, listState) {
+        if (activeEntryKey == null) return@LaunchedEffect
+        while (true) {
+            withFrameNanos { }
+            val snapshot = currentSnapshotProvider() ?: break
+            val update = playlistDragUpdate(
+                layoutInfo = listState.layoutInfo,
+                draggedEntryKey = snapshot.entryKey,
+                orderedTracks = snapshot.orderedTracks,
+                dragOffsetY = snapshot.dragOffsetY
+            )
+            val currentIndex = snapshot.orderedTracks.indexOfFirst {
+                it.id == snapshot.entryKey
+            }
+            if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
+                currentActions.onMove(currentIndex, update.targetIndex, update.offsetAdjustment)
+            }
+            if (update.scrollDelta != 0f) {
+                val consumed = listState.scrollBy(update.scrollDelta)
+                if (consumed != 0f) currentActions.onScrollConsumed(consumed)
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -872,9 +983,37 @@ internal fun LevyraPlaylistDetailScreen(
     val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) coverSource = uri
     }
+    val playlistListState = rememberLazyListState()
+    val haptics = LocalLevyraHaptics.current
+    var draggedEntryKey by remember(playlist.id) { mutableStateOf<String?>(null) }
+    var dragOffsetY by remember(playlist.id) { mutableStateOf(0f) }
+
+    PlaylistDragFrameLoop(
+        activeEntryKey = draggedEntryKey,
+        listState = playlistListState,
+        snapshotProvider = {
+            draggedEntryKey?.let { entryKey ->
+                PlaylistDragSnapshot(entryKey, orderedTracks, dragOffsetY)
+            }
+        },
+        actions = PlaylistDragFrameActions(
+            onMove = { fromIndex, toIndex, offsetAdjustment ->
+                orderedTracks = orderedTracks.move(fromIndex, toIndex)
+                dragOffsetY += offsetAdjustment
+                haptics.perform(LevyraHapticAction.Reorder)
+            },
+            onScrollConsumed = { consumedScroll ->
+                dragOffsetY += consumedScroll
+            }
+        )
+    )
 
     LaunchedEffect(playlist.tracks, reorderMode) {
-        if (!reorderMode) orderedTracks = playlist.tracks
+        if (!reorderMode) {
+            orderedTracks = playlist.tracks
+            draggedEntryKey = null
+            dragOffsetY = 0f
+        }
     }
 
     val searchIndex = remember(orderedTracks) { buildPlaylistSearchIndex(orderedTracks) }
@@ -909,6 +1048,7 @@ internal fun LevyraPlaylistDetailScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
         LazyColumn(
+            state = playlistListState,
             modifier = Modifier.fillMaxSize().statusBarsPadding().then(if (searchActive) Modifier.imePadding() else Modifier),
             contentPadding = PaddingValues(
                 start = 16.dp,
@@ -997,19 +1137,46 @@ internal fun LevyraPlaylistDetailScreen(
             if (orderedTracks.isEmpty()) {
                 item { LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.playlistEmpty) }
             } else if (reorderMode) {
-                items(orderedTracks, key = { "reorder-${playlistEntryKey(it)}" }) { track ->
-                    val entryKey = playlistEntryKey(track)
-                    val index = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
+                items(orderedTracks, key = { "reorder-${it.id}" }) { track ->
+                    val entryKey = track.id
+                    val index = orderedTracks.indexOfFirst { it.id == entryKey }
+                    if (index < 0) return@items
+                    val isDragging = draggedEntryKey == entryKey
                     PlaylistReorderRow(
                         track = track,
-                        index = index,
-                        count = orderedTracks.size,
-                        onMoveUp = {
-                            if (index > 0) orderedTracks = orderedTracks.move(index, index - 1)
-                        },
-                        onMoveDown = {
-                            if (index in 0 until orderedTracks.lastIndex) orderedTracks = orderedTracks.move(index, index + 1)
-                        }
+                        state = PlaylistReorderRowState(
+                            index = index,
+                            count = orderedTracks.size,
+                            isDragging = isDragging,
+                            dragOffsetY = if (isDragging) dragOffsetY else 0f
+                        ),
+                        actions = PlaylistReorderRowActions(
+                            onMoveUp = {
+                                if (index > 0) {
+                                    orderedTracks = orderedTracks.move(index, index - 1)
+                                    haptics.perform(LevyraHapticAction.Reorder)
+                                }
+                            },
+                            onMoveDown = {
+                                if (index in 0 until orderedTracks.lastIndex) {
+                                    orderedTracks = orderedTracks.move(index, index + 1)
+                                    haptics.perform(LevyraHapticAction.Reorder)
+                                }
+                            },
+                            onDragStart = {
+                                draggedEntryKey = entryKey
+                                dragOffsetY = 0f
+                            },
+                            onDrag = drag@{ deltaY ->
+                                if (draggedEntryKey != entryKey) return@drag
+                                dragOffsetY += deltaY
+                            },
+                            onDragEnd = {
+                                draggedEntryKey = null
+                                dragOffsetY = 0f
+                            }
+                        ),
+                        modifier = Modifier.animateItem()
                     )
                 }
             } else if (visibleTracks.isEmpty()) {
