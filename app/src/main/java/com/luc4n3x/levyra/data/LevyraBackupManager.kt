@@ -932,6 +932,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
             .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
             .put("themePreset", snapshot.themePreset)
+            .putBackupThemeAccent(snapshot.themeAccent)
             .put("audioSettings", audioSettingsToJson(snapshot.audioSettings))
             .put("interfaceSettings", interfaceSettingsToJson(snapshot.interfaceSettings))
             .put("downloadSettings", downloadSettingsToJson(snapshot.downloadSettings))
@@ -978,6 +979,7 @@ class LevyraBackupManager(private val context: Context) {
                 ?.let { raw -> LyricsLatencyProfiles.decode(raw) }
                 ?: LyricsLatencyProfiles(),
             themePreset = json.optString("themePreset"),
+            themeAccent = backupThemeAccentFromJson(json),
             audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
             interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings"), legacyVisualMode),
             downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings")),
@@ -1459,6 +1461,12 @@ internal fun reconcileDownloadedTracks(
 }
 
 private fun String.restoreKey(): String = trim().lowercase(Locale.ROOT)
+
+internal fun JSONObject.putBackupThemeAccent(value: Int): JSONObject =
+    put("themeAccent", value)
+
+internal fun backupThemeAccentFromJson(json: JSONObject): Int =
+    json.optInt("themeAccent", 0)
 
 internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject = JSONObject()
     .put("equalizerEnabled", value.equalizerEnabled)
