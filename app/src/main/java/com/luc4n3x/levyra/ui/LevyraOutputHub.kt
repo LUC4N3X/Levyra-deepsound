@@ -182,7 +182,7 @@ internal fun LevyraOutputHub(
             Text(
                 text = output.connected
                     .filterNot { candidate ->
-                        candidate.stableKey != null && candidate.stableKey == route?.stableKey
+                        route != null && candidate.sameRouteAs(route)
                     }
                     .take(2)
                     .joinToString(" · ") { it.displayName },
@@ -217,6 +217,13 @@ private fun OutputMetric(label: String, value: String, modifier: Modifier = Modi
         }
     }
 }
+
+private fun LevyraAudioOutputRoute.sameRouteAs(other: LevyraAudioOutputRoute): Boolean =
+    if (stableKey != null && other.stableKey != null) {
+        stableKey == other.stableKey
+    } else {
+        type == other.type && displayName.equals(other.displayName, ignoreCase = true)
+    }
 
 private fun outputRouteLabel(
     route: LevyraAudioOutputRoute?,
