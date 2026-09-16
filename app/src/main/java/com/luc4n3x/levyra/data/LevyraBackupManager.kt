@@ -25,6 +25,8 @@ import com.luc4n3x.levyra.data.local.PlaylistTagLinkEntity
 import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.LevyraAmbientMode
+import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.PLAYLIST_TAG_MAX_PER_PLAYLIST
 import com.luc4n3x.levyra.domain.PlaylistTag
@@ -932,6 +934,8 @@ class LevyraBackupManager(private val context: Context) {
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
             .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
             .put("themePreset", snapshot.themePreset)
+            .putBackupThemeAccent(snapshot.themeAccent)
+            .put("ambientSettings", backupAmbientSettingsToJson(snapshot.ambientSettings))
             .put("audioSettings", audioSettingsToJson(snapshot.audioSettings))
             .put("interfaceSettings", interfaceSettingsToJson(snapshot.interfaceSettings))
             .put("downloadSettings", downloadSettingsToJson(snapshot.downloadSettings))
@@ -978,6 +982,10 @@ class LevyraBackupManager(private val context: Context) {
                 ?.let { raw -> LyricsLatencyProfiles.decode(raw) }
                 ?: LyricsLatencyProfiles(),
             themePreset = json.optString("themePreset"),
+            themeAccent = backupThemeAccentFromJson(json),
+            ambientSettings = json.optJSONObject("ambientSettings")
+                ?.let(::backupAmbientSettingsFromJson)
+                ?: preferences.ambientSettings(),
             audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
             interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings"), legacyVisualMode),
             downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings")),
@@ -1459,6 +1467,48 @@ internal fun reconcileDownloadedTracks(
 }
 
 private fun String.restoreKey(): String = trim().lowercase(Locale.ROOT)
+
+internal fun JSONObject.putBackupThemeAccent(value: Int): JSONObject =
+    put("themeAccent", value)
+
+internal fun backupThemeAccentFromJson(json: JSONObject): Int =
+    json.optInt("themeAccent", 0)
+
+internal fun backupAmbientSettingsToJson(value: LevyraAmbientSettings): JSONObject = JSONObject()
+    .put("brightness", value.brightness.toDouble())
+    .put("autoDim", value.autoDim)
+    .put("autoDimAfterSeconds", value.autoDimAfterSeconds)
+    .put("pixelShift", value.pixelShift)
+    .put("proximityBlackout", value.proximityBlackout)
+    .put("showLyrics", value.showLyrics)
+    .put("showCanvas", value.showCanvas)
+    .put("mode", value.mode.id)
+    .put("showClock", value.showClock)
+    .put("showTitle", value.showTitle)
+    .put("showProgress", value.showProgress)
+    .put("amoledBlack", value.amoledBlack)
+
+internal fun backupAmbientSettingsFromJson(json: JSONObject?): LevyraAmbientSettings {
+    if (json == null) return LevyraAmbientSettings()
+    val defaults = LevyraAmbientSettings()
+    return LevyraAmbientSettings(
+        brightness = json.optDouble("brightness", defaults.brightness.toDouble())
+            .toFloat()
+            .takeIf { it.isFinite() }
+            ?: defaults.brightness,
+        autoDim = json.optBoolean("autoDim", defaults.autoDim),
+        autoDimAfterSeconds = json.optInt("autoDimAfterSeconds", defaults.autoDimAfterSeconds),
+        pixelShift = json.optBoolean("pixelShift", defaults.pixelShift),
+        proximityBlackout = json.optBoolean("proximityBlackout", defaults.proximityBlackout),
+        showLyrics = json.optBoolean("showLyrics", defaults.showLyrics),
+        showCanvas = json.optBoolean("showCanvas", defaults.showCanvas),
+        mode = LevyraAmbientMode.from(json.optString("mode", defaults.mode.id)),
+        showClock = json.optBoolean("showClock", defaults.showClock),
+        showTitle = json.optBoolean("showTitle", defaults.showTitle),
+        showProgress = json.optBoolean("showProgress", defaults.showProgress),
+        amoledBlack = json.optBoolean("amoledBlack", defaults.amoledBlack)
+    ).normalized()
+}
 
 internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject = JSONObject()
     .put("equalizerEnabled", value.equalizerEnabled)

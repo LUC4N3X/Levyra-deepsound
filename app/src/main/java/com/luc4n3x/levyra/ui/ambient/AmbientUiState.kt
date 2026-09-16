@@ -17,6 +17,10 @@ internal data class AmbientUiState(
     val lyricLine: String = "",
     val motionArtwork: MotionArtwork? = null,
     val animationsEnabled: Boolean = true,
+    val accentStart: Int = 0,
+    val accentEnd: Int = 0,
     val canvasQuality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     val settings: LevyraAmbientSettings = LevyraAmbientSettings()
-)
+) {
+    val hasAccent: Boolean get() = accentStart != 0 && accentEnd != 0
+}

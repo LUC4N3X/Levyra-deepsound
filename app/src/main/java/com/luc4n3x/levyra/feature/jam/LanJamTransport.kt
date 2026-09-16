@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -35,6 +36,7 @@ private const val JAM_CONNECT_TIMEOUT_MS = 6_000
 private const val JAM_HANDSHAKE_TIMEOUT_MS = 5_000L
 private const val JAM_SOCKET_TIMEOUT_MS = 45_000
 private const val JAM_MAX_PENDING_HANDSHAKES = 8
+private const val JAM_APPROVAL_TIMEOUT_MS = 120_000L
 private const val JAM_EVENT_BUFFER = 64
 
 internal fun BufferedReader.readBoundedLine(maxChars: Int = JAM_MAX_LINE_CHARS): String? {
@@ -66,9 +68,15 @@ class LanJamHostTransport : JamHostTransport {
     override val events: Flow<JamHostEvent> = _events.asSharedFlow()
 
     private val clients = ConcurrentHashMap<String, JamClientConnection>()
+    private val awaiting = ConcurrentHashMap<String, AwaitingConnection>()
     private val pendingSockets = ConcurrentHashMap.newKeySet<Socket>()
     private var serverSocket: ServerSocket? = null
     private var acceptJob: Job? = null
+
+    private class AwaitingConnection(
+        val connection: JamClientConnection,
+        val expiryJob: Job
+    )
 
     override suspend fun start(secret: String): JamSessionCode? = withContext(Dispatchers.IO) {
         if (!JamSessionCode.isValidSecret(secret)) return@withContext null
@@ -93,13 +101,49 @@ class LanJamHostTransport : JamHostTransport {
         JamSessionCode(hostAddress = address, port = bound.localPort, secret = secret)
     }
 
+    override suspend fun notifyPending(participantId: String, message: JamMessage.Pending) {
+        val entry = awaiting[participantId] ?: return
+        if (!entry.connection.write(JamProtocol.encode(message)) &&
+            awaiting.remove(participantId, entry)
+        ) {
+            entry.expiryJob.cancel()
+            entry.connection.close()
+            _events.tryEmit(JamHostEvent.GuestLeft(participantId))
+        }
+    }
+
+    override suspend fun admit(participantId: String, welcome: JamMessage.Welcome): Boolean {
+        val entry = awaiting.remove(participantId) ?: return false
+        entry.expiryJob.cancel()
+        val connection = entry.connection
+        if (!connection.write(JamProtocol.encode(welcome))) {
+            connection.close()
+            return false
+        }
+        connection.disableReadTimeout()
+        clients[participantId] = connection
+        scope.launch { readLoop(participantId, connection) }
+        return true
+    }
+
+    override suspend fun reject(participantId: String, failure: JamFailure) {
+        val awaitingEntry = awaiting.remove(participantId)
+        awaitingEntry?.expiryJob?.cancel()
+        val connection = awaitingEntry?.connection ?: clients.remove(participantId)
+        if (connection == null) return
+        runCatching { connection.write(JamProtocol.encode(JamMessage.Failure(failure))) }
+        connection.close()
+        if (awaitingEntry == null) _events.tryEmit(JamHostEvent.GuestLeft(participantId))
+    }
+
     override suspend fun broadcast(message: JamMessage) {
         val payload = JamProtocol.encode(message)
         coroutineScope { clients.values.map { client -> async { client.write(payload) } }.awaitAll() }
     }
 
     override suspend fun send(participantId: String, message: JamMessage) {
-        clients[participantId]?.write(JamProtocol.encode(message))
+        val target = clients[participantId] ?: awaiting[participantId]?.connection ?: return
+        target.write(JamProtocol.encode(message))
     }
 
     override suspend fun disconnect(participantId: String) {
@@ -114,6 +158,11 @@ class LanJamHostTransport : JamHostTransport {
         serverSocket = null
         clients.values.forEach(JamClientConnection::close)
         clients.clear()
+        awaiting.values.forEach { entry ->
+            entry.expiryJob.cancel()
+            entry.connection.close()
+        }
+        awaiting.clear()
         pendingSockets.forEach { socket -> runCatching { socket.close() } }
         pendingSockets.clear()
     }
@@ -132,7 +181,8 @@ class LanJamHostTransport : JamHostTransport {
             } catch (_: IOException) {
                 return
             }
-            if (clients.size >= JamSessionState.MAX_PARTICIPANTS - 1 || pendingSockets.size >= JAM_MAX_PENDING_HANDSHAKES) {
+            val occupied = clients.size + awaiting.size
+            if (occupied >= JamSessionState.MAX_PARTICIPANTS - 1 || pendingSockets.size >= JAM_MAX_PENDING_HANDSHAKES) {
                 runCatching { client.close() }
                 continue
             }
@@ -148,33 +198,38 @@ class LanJamHostTransport : JamHostTransport {
                 runCatching { socket.close() }
                 return
             }
-            val participantId = withTimeoutOrNull(JAM_HANDSHAKE_TIMEOUT_MS) {
+            val admitted = withTimeoutOrNull(JAM_HANDSHAKE_TIMEOUT_MS) {
                 val hostNonce = JamAuth.generateNonce()
                 connection.write(JamProtocol.encode(JamMessage.Challenge(hostNonce)))
 
-                val line = withContext(Dispatchers.IO) { connection.readLine() } ?: return@withTimeoutOrNull null
-                val auth = JamProtocol.decode(line) as? JamMessage.Authenticate ?: return@withTimeoutOrNull null
+                val line = withContext(Dispatchers.IO) { connection.readLine() } ?: return@withTimeoutOrNull false
+                val auth = JamProtocol.decode(line) as? JamMessage.Authenticate ?: return@withTimeoutOrNull false
 
                 val expectedProof = JamAuth.computeGuestProof(secret, hostNonce, auth.guestNonce)
                 if (!JamAuth.verifyProof(expectedProof, auth.proof)) {
                     runCatching { connection.write(JamProtocol.encode(JamMessage.Failure(JamFailure.NotAuthorized))) }
-                    return@withTimeoutOrNull null
+                    return@withTimeoutOrNull false
                 }
 
-                val newParticipantId = UUID.randomUUID().toString()
+                val participantId = UUID.randomUUID().toString()
                 val hostProof = JamAuth.computeHostProof(secret, hostNonce, auth.guestNonce)
-                clients[newParticipantId] = connection
+                val expiryJob = scope.launch {
+                    delay(JAM_APPROVAL_TIMEOUT_MS)
+                    awaiting.remove(participantId)?.connection?.let { stale ->
+                        runCatching { stale.write(JamProtocol.encode(JamMessage.Failure(JamFailure.Rejected))) }
+                        stale.close()
+                        _events.tryEmit(JamHostEvent.GuestLeft(participantId))
+                    }
+                }
+                awaiting[participantId] = AwaitingConnection(connection, expiryJob)
                 pendingSockets.remove(socket)
-                connection.disableReadTimeout()
-                _events.tryEmit(JamHostEvent.GuestJoined(newParticipantId, auth.name, hostProof))
-                newParticipantId
-            }
+                _events.tryEmit(
+                    JamHostEvent.GuestPending(participantId, auth.guestId, auth.name, hostProof)
+                )
+                true
+            } ?: false
 
-            if (participantId == null) {
-                connection.close()
-            } else {
-                readLoop(participantId, connection)
-            }
+            if (!admitted) connection.close()
         } catch (error: CancellationException) {
             connection?.close()
             throw error
@@ -222,7 +277,11 @@ class LanJamGuestTransport : JamGuestTransport {
     private var connection: JamClientConnection? = null
     private var readJob: Job? = null
 
-    override suspend fun connect(code: JamSessionCode, name: String): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun connect(
+        code: JamSessionCode,
+        name: String,
+        guestId: String
+    ): Boolean = withContext(Dispatchers.IO) {
         if (!JamSessionCode.isValidSecret(code.secret)) {
             _events.tryEmit(JamGuestEvent.Failed(JamFailure.InvalidCode))
             return@withContext false
@@ -243,7 +302,8 @@ class LanJamGuestTransport : JamGuestTransport {
             val challengeLine = runCatching { opened.readLine() }.getOrNull()
             val challenge = challengeLine?.let(JamProtocol::decode) as? JamMessage.Challenge
             if (challenge == null) {
-                val failure = (challengeLine?.let(JamProtocol::decode) as? JamMessage.Failure)?.failure ?: JamFailure.ConnectionFailed
+                val failure = (challengeLine?.let(JamProtocol::decode) as? JamMessage.Failure)?.failure
+                    ?: JamFailure.ConnectionFailed
                 _events.tryEmit(JamGuestEvent.Failed(failure))
                 return@withTimeoutOrNull false
             }
@@ -253,7 +313,8 @@ class LanJamGuestTransport : JamGuestTransport {
             val authMessage = JamMessage.Authenticate(
                 guestNonce = guestNonce,
                 name = JamProtocol.sanitizeName(name),
-                proof = guestProof
+                proof = guestProof,
+                guestId = JamIdentity.sanitize(guestId)
             )
             val sent = runCatching { opened.write(JamProtocol.encode(authMessage)) }.isSuccess
             if (!sent) {
@@ -261,24 +322,37 @@ class LanJamGuestTransport : JamGuestTransport {
                 return@withTimeoutOrNull false
             }
 
-            val welcomeLine = runCatching { opened.readLine() }.getOrNull()
-            val welcome = welcomeLine?.let(JamProtocol::decode)
-            if (welcome !is JamMessage.Welcome) {
-                val failure = (welcome as? JamMessage.Failure)?.failure ?: JamFailure.ConnectionFailed
-                _events.tryEmit(JamGuestEvent.Failed(failure))
-                return@withTimeoutOrNull false
-            }
-
+            val replyLine = runCatching { opened.readLine() }.getOrNull()
+            val reply = replyLine?.let(JamProtocol::decode)
             val expectedHostProof = JamAuth.computeHostProof(code.secret, challenge.hostNonce, guestNonce)
-            if (!JamAuth.verifyProof(expectedHostProof, welcome.hostProof)) {
-                _events.tryEmit(JamGuestEvent.Failed(JamFailure.NotAuthorized))
-                return@withTimeoutOrNull false
-            }
 
-            opened.disableReadTimeout()
-            _events.tryEmit(JamGuestEvent.Connected(welcome.sessionId, welcome.participantId))
-            readJob = scope.launch { readLoop(opened) }
-            true
+            when (reply) {
+                is JamMessage.Welcome -> {
+                    if (!JamAuth.verifyProof(expectedHostProof, reply.hostProof)) {
+                        _events.tryEmit(JamGuestEvent.Failed(JamFailure.NotAuthorized))
+                        return@withTimeoutOrNull false
+                    }
+                    opened.disableReadTimeout()
+                    _events.tryEmit(JamGuestEvent.Connected(reply.sessionId, reply.participantId))
+                    readJob = scope.launch { readLoop(opened, expectedHostProof) }
+                    true
+                }
+                is JamMessage.Pending -> {
+                    if (!JamAuth.verifyProof(expectedHostProof, reply.hostProof)) {
+                        _events.tryEmit(JamGuestEvent.Failed(JamFailure.NotAuthorized))
+                        return@withTimeoutOrNull false
+                    }
+                    opened.disableReadTimeout()
+                    _events.tryEmit(JamGuestEvent.AwaitingApproval)
+                    readJob = scope.launch { readLoop(opened, expectedHostProof) }
+                    true
+                }
+                else -> {
+                    val failure = (reply as? JamMessage.Failure)?.failure ?: JamFailure.ConnectionFailed
+                    _events.tryEmit(JamGuestEvent.Failed(failure))
+                    false
+                }
+            }
         } ?: false
 
         if (!authSuccess) {
@@ -305,13 +379,20 @@ class LanJamGuestTransport : JamGuestTransport {
         scope.cancel()
     }
 
-    private suspend fun readLoop(active: JamClientConnection) {
+    private suspend fun readLoop(active: JamClientConnection, expectedHostProof: String) {
         var failure: JamFailure? = null
         try {
             while (true) {
                 val line = withContext(Dispatchers.IO) { active.readLine() } ?: break
                 if (line.isBlank()) continue
                 when (val message = JamProtocol.decode(line)) {
+                    is JamMessage.Welcome -> {
+                        if (!JamAuth.verifyProof(expectedHostProof, message.hostProof)) {
+                            failure = JamFailure.NotAuthorized
+                            break
+                        }
+                        _events.tryEmit(JamGuestEvent.Connected(message.sessionId, message.participantId))
+                    }
                     is JamMessage.State -> _events.tryEmit(JamGuestEvent.StateReceived(message))
                     is JamMessage.Failure -> {
                         failure = message.failure
@@ -361,15 +442,13 @@ internal class JamClientConnection(private val socket: Socket) {
 
     fun readLine(): String? = reader.readBoundedLine()
 
-    suspend fun write(payload: String) {
-        writeMutex.withLock {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    writer.write(payload)
-                    writer.write("\n")
-                    writer.flush()
-                }.onFailure { close() }
-            }
+    suspend fun write(payload: String): Boolean = writeMutex.withLock {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                writer.write(payload)
+                writer.write("\n")
+                writer.flush()
+            }.onFailure { close() }.isSuccess
         }
     }
 

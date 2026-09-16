@@ -22,6 +22,7 @@ enum class JamGuestPermission(val id: String) {
 enum class JamConnectionState {
     Idle,
     Connecting,
+    AwaitingApproval,
     Connected,
     Disconnected
 }
@@ -31,7 +32,12 @@ enum class JamFailure {
     ConnectionFailed,
     NotAuthorized,
     HostEnded,
-    ProtocolError
+    ProtocolError,
+    Rejected,
+    Banned,
+    SessionLocked,
+    SessionFull,
+    Removed
 }
 
 data class JamTrack(
@@ -39,7 +45,8 @@ data class JamTrack(
     val title: String,
     val artist: String,
     val durationMs: Long,
-    val thumbnailUrl: String
+    val thumbnailUrl: String,
+    val addedBy: String = ""
 )
 
 data class JamParticipant(
@@ -48,9 +55,17 @@ data class JamParticipant(
     val isHost: Boolean
 )
 
+data class JamPendingParticipant(
+    val participantId: String,
+    val guestId: String,
+    val name: String,
+    val requestedAtElapsedMs: Long
+)
+
 object JamCapabilities {
     const val BATCH_ADD_TRACKS = "batch_add_tracks_v1"
-    val current: Set<String> = setOf(BATCH_ADD_TRACKS)
+    const val MODERATION = "moderation_v1"
+    val current: Set<String> = setOf(BATCH_ADD_TRACKS, MODERATION)
 }
 
 data class JamSessionState(
@@ -68,11 +83,15 @@ data class JamSessionState(
     val repeatMode: Int,
     val permission: JamGuestPermission,
     val updatedAtElapsedMs: Long,
-    val capabilities: Set<String> = emptySet()
+    val capabilities: Set<String> = emptySet(),
+    val locked: Boolean = false,
+    val requireApproval: Boolean = false
 ) {
     companion object {
         const val MAX_QUEUE_SIZE = 200
         const val MAX_PARTICIPANTS = 8
+        const val MAX_PENDING = 8
+        const val MAX_BANNED = 32
         const val MAX_NAME_LENGTH = 32
         const val MAX_TEXT_LENGTH = 200
     }
@@ -108,5 +127,18 @@ object JamAuthorization {
         action is JamAction.PlayNextTracks -> false
         action.isPlaybackControl() -> permission.canControlPlayback
         else -> false
+    }
+}
+
+object JamIdentity {
+    const val LENGTH = 32
+
+    private val identityPattern = Regex("[0-9a-f]{$LENGTH}")
+
+    fun isValid(value: String): Boolean = identityPattern.matches(value)
+
+    fun sanitize(value: String): String {
+        val normalized = value.trim().lowercase()
+        return if (isValid(normalized)) normalized else ""
     }
 }

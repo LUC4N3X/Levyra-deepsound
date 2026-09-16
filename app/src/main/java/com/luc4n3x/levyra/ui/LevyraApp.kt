@@ -523,12 +523,12 @@ import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
-import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraIsPureBlack
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LevyraThemeStudioOverlay
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.rememberLevyraHaptics
@@ -566,6 +566,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import com.luc4n3x.levyra.domain.ExcludedArtist
+import com.luc4n3x.levyra.domain.LevyraAmbientMode
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
@@ -1814,6 +1815,7 @@ fun LevyraApp(
     val pureBlack = state.interfaceSettings.pureBlack
     LaunchedEffect(
         state.themePreset,
+        state.themeAccent,
         accentTrack?.accentStart,
         accentTrack?.accentEnd,
         state.selectedMood?.id,
@@ -1825,7 +1827,8 @@ fun LevyraApp(
             accentTrack?.accentEnd,
             state.selectedMood?.accentStart,
             state.selectedMood?.accentEnd,
-            pureBlack
+            pureBlack,
+            state.themeAccent.takeIf { it != 0 }
         )
     }
     val rootView = LocalView.current
@@ -1916,11 +1919,13 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    BackHandler(enabled = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
         } else if (state.showRecognition) {
             viewModel.closeRecognition()
+        } else if (state.showThemeStudio) {
+            viewModel.closeThemeStudio()
         } else if (state.showJam) {
             viewModel.closeJam()
         } else if (state.showListeningInsights) {
@@ -2326,7 +2331,10 @@ fun LevyraApp(
                         viewModel.closeSettings()
                         viewModel.openJam()
                     },
-                    onThemePreset = viewModel::setThemePreset,
+                    onOpenThemeStudio = {
+                        viewModel.closeSettings()
+                        viewModel.openThemeStudio()
+                    },
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onAmbientSettings = viewModel::updateAmbientSettings,
                     onOpenAmbient = {
@@ -2596,10 +2604,30 @@ fun LevyraApp(
                     onLeave = viewModel::leaveJam,
                     onEnd = viewModel::endJam,
                     onPermissionChange = viewModel::setJamPermission,
-                    onRemoveParticipant = viewModel::removeJamParticipant,
+                    onApprovalRequiredChange = viewModel::setJamApprovalRequired,
+                    onLockedChange = viewModel::setJamSessionLocked,
+                    onApproveParticipant = viewModel::approveJamParticipant,
+                    onRejectParticipant = viewModel::rejectJamParticipant,
+                    onRemoveParticipant = { participantId, ban ->
+                        viewModel.removeJamParticipant(participantId, ban)
+                    },
+                    onClearBans = viewModel::clearJamBans,
                     onShare = { payload -> shareJamInvite(toastContext, payload, currentStrings) },
                     onDismissFailure = viewModel::clearJamFailure,
                     onClose = viewModel::closeJam
+                )
+            }
+
+            AnimatedVisibility(visible = state.showThemeStudio, enter = overlayEnter, exit = overlayExit) {
+                LevyraThemeStudioOverlay(
+                    selectedPresetId = state.themePreset,
+                    accent = state.themeAccent,
+                    pureBlack = state.interfaceSettings.pureBlack,
+                    previewTitle = state.currentTrack?.title.orEmpty(),
+                    previewArtist = state.currentTrack?.artist.orEmpty(),
+                    onSelectPreset = viewModel::setThemePreset,
+                    onSelectAccent = viewModel::setThemeAccent,
+                    onClose = viewModel::closeThemeStudio
                 )
             }
 
@@ -17137,7 +17165,7 @@ private fun SettingsOverlay(
     onNetworkSettings: (LevyraNetworkSettings, String?) -> Unit,
     onTestNetwork: (LevyraNetworkSettings, String?) -> Unit,
     onOpenJam: () -> Unit,
-    onThemePreset: (String) -> Unit,
+    onOpenThemeStudio: () -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onAmbientSettings: (LevyraAmbientSettings) -> Unit,
     onOpenAmbient: () -> Unit,
@@ -17228,7 +17256,7 @@ private fun SettingsOverlay(
     val settingsSearchIndex = remember(strings.code) {
         SettingsSearchIndex(
             entries = listOf(
-                SettingsSearchEntry(strings.theme, strings.themeSubtitle, strings.design, "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.themeStudio, strings.themeStudioSubtitle, "${strings.theme} ${strings.themeAccent}", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.animations, strings.animationsSubtitle, strings.motionArtwork, "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.dynamicColor, strings.dynamicColorSubtitle, strings.design, "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.compactHome, strings.compactHomeSubtitle, "home releases charts", "home", categoryTitle(strings.homeInterfaceSection)),
@@ -17412,16 +17440,12 @@ private fun SettingsOverlay(
                         }
                         "design" -> {
                             item {
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        Icon(Icons.Rounded.Palette, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
-                                        Column {
-                                            Text(strings.theme, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                                            Text(strings.themeSubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                        }
-                                    }
-                                    ThemeSelector(selectedId = themePreset, onSelect = onThemePreset)
-                                }
+                                SettingsButton(
+                                    icon = Icons.Rounded.Palette,
+                                    title = strings.themeStudio,
+                                    subtitle = LevyraThemes.byId(themePreset).label,
+                                    onClick = onOpenThemeStudio
+                                )
                             }
                             item {
                                 SettingsChoiceRow(
@@ -17677,6 +17701,61 @@ private fun SettingsOverlay(
                                     title = strings.ambientOpen,
                                     subtitle = strings.ambientModeSubtitle,
                                     onClick = onOpenAmbient
+                                )
+                            }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientLayout,
+                                    subtitle = strings.ambientLayoutSubtitle,
+                                    options = listOf(
+                                        LevyraAmbientMode.Minimal.id to strings.ambientModeMinimal,
+                                        LevyraAmbientMode.Artwork.id to strings.ambientModeArtwork,
+                                        LevyraAmbientMode.Spotlight.id to strings.ambientModeSpotlight,
+                                        LevyraAmbientMode.Lyrics.id to strings.ambientModeLyrics
+                                    ),
+                                    selected = ambientSettings.mode.id,
+                                    onSelect = { value ->
+                                        onAmbientSettings(
+                                            ambientSettings.copy(mode = LevyraAmbientMode.from(value))
+                                        )
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientShowClock,
+                                    subtitle = strings.ambientShowClockSubtitle,
+                                    checked = ambientSettings.showClock,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(showClock = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientShowTitle,
+                                    subtitle = strings.ambientShowTitleSubtitle,
+                                    checked = ambientSettings.showTitle,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(showTitle = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientShowProgress,
+                                    subtitle = strings.ambientShowProgressSubtitle,
+                                    checked = ambientSettings.showProgress,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(showProgress = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientAmoledBlack,
+                                    subtitle = strings.ambientAmoledBlackSubtitle,
+                                    checked = ambientSettings.amoledBlack,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(amoledBlack = it)) }
                                 )
                             }
                             item {
@@ -18650,54 +18729,6 @@ private fun SettingsSectionLabel(text: String) {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ThemeSelector(selectedId: String, onSelect: (String) -> Unit) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        LevyraThemes.presets.forEach { preset ->
-            ThemePresetCard(
-                preset = preset,
-                selected = preset.id == selectedId,
-                onClick = { onSelect(preset.id) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ThemePresetCard(preset: LevyraPalette, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        color = preset.black,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) LevyraCyan else if (preset.isLight) Color(0x2211131F) else Color.White.copy(alpha = 0.14f)),
-        modifier = Modifier.pressable(onClick = onClick)
-    ) {
-        Column(
-            modifier = Modifier
-                .width(112.dp)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(preset.emoji, fontSize = 20.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                Box(modifier = Modifier.size(14.dp).clip(CircleShape).background(preset.cyan))
-                Box(modifier = Modifier.size(14.dp).clip(CircleShape).background(preset.violet))
-                Box(modifier = Modifier.size(14.dp).clip(CircleShape).background(preset.pink))
-            }
-            Text(
-                preset.label,
-                color = preset.text,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
 @Composable
 private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Surface(
