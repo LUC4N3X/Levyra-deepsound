@@ -79,6 +79,7 @@ data class LevyraPreferencesSnapshot(
     val lyricsTranslationEnabled: Boolean,
     val themePreset: String,
     val themeAccent: Int = 0,
+    val ambientSettings: LevyraAmbientSettings = LevyraAmbientSettings(),
     val audioSettings: LevyraAudioSettings,
     val interfaceSettings: LevyraInterfaceSettings,
     val downloadSettings: LevyraDownloadSettings,
@@ -113,6 +114,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val normalizedLanguage = LevyraLanguageCatalog.normalize(snapshot.languageCode)
         val normalizedAudio = snapshot.audioSettings.normalized()
         val normalizedInterface = snapshot.interfaceSettings.normalized()
+        val normalizedAmbient = snapshot.ambientSettings.normalized()
         val normalizedDownloads = snapshot.downloadSettings.normalized()
         val normalizedBackup = snapshot.backupSettings.normalized()
         val recentSearchesJson = JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } }.toString()
@@ -136,6 +138,18 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_LYRICS_LATENCY_PROFILES] = snapshot.lyricsLatencyProfiles.encode()
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
             mutable[KEY_THEME_ACCENT] = snapshot.themeAccent
+            mutable[KEY_AMBIENT_BRIGHTNESS] = normalizedAmbient.brightness
+            mutable[KEY_AMBIENT_AUTO_DIM] = normalizedAmbient.autoDim
+            mutable[KEY_AMBIENT_AUTO_DIM_SECONDS] = normalizedAmbient.autoDimAfterSeconds
+            mutable[KEY_AMBIENT_PIXEL_SHIFT] = normalizedAmbient.pixelShift
+            mutable[KEY_AMBIENT_PROXIMITY_BLACKOUT] = normalizedAmbient.proximityBlackout
+            mutable[KEY_AMBIENT_SHOW_LYRICS] = normalizedAmbient.showLyrics
+            mutable[KEY_AMBIENT_SHOW_CANVAS] = normalizedAmbient.showCanvas
+            mutable[KEY_AMBIENT_MODE] = normalizedAmbient.mode.id
+            mutable[KEY_AMBIENT_SHOW_CLOCK] = normalizedAmbient.showClock
+            mutable[KEY_AMBIENT_SHOW_TITLE] = normalizedAmbient.showTitle
+            mutable[KEY_AMBIENT_SHOW_PROGRESS] = normalizedAmbient.showProgress
+            mutable[KEY_AMBIENT_AMOLED_BLACK] = normalizedAmbient.amoledBlack
             mutable[KEY_JAM_DISPLAY_NAME] = normalizeJamDisplayName(snapshot.jamDisplayName)
             writeAutomationSettings(mutable, snapshot.automationSettings.normalized())
             mutable[KEY_AUDIO_EQ_ENABLED] = normalizedAudio.equalizerEnabled
@@ -612,6 +626,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             lyricsTranslationEnabled = preferences[KEY_LYRICS_TRANSLATION] ?: false,
             themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty()),
             themeAccent = preferences[KEY_THEME_ACCENT] ?: 0,
+            ambientSettings = ambientSettingsFrom(preferences),
             audioSettings = audioSettingsFrom(preferences),
             interfaceSettings = interfaceSettingsFrom(preferences),
             downloadSettings = downloadSettingsFrom(preferences),
