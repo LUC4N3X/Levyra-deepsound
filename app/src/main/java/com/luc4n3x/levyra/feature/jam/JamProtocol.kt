@@ -10,8 +10,14 @@ import org.json.JSONObject
 
 sealed interface JamMessage {
     data class Challenge(val hostNonce: String) : JamMessage
-    data class Authenticate(val guestNonce: String, val name: String, val proof: String) : JamMessage
+    data class Authenticate(
+        val guestNonce: String,
+        val name: String,
+        val proof: String,
+        val guestId: String = ""
+    ) : JamMessage
     data class Welcome(val sessionId: String, val participantId: String, val hostProof: String) : JamMessage
+    data class Pending(val hostProof: String) : JamMessage
     data class State(
         val sessionId: String,
         val revision: Long,
@@ -61,7 +67,7 @@ object JamAuth {
 }
 
 object JamProtocol {
-    const val VERSION = 1
+    const val VERSION = 2
     const val MAX_MESSAGE_BYTES = 512 * 1024
 
     private const val TYPE = "t"
@@ -76,10 +82,14 @@ object JamProtocol {
             put("guestNonce", message.guestNonce)
             put("name", message.name.take(JamSessionState.MAX_NAME_LENGTH))
             put("proof", message.proof)
+            put("guestId", message.guestId)
         }
         is JamMessage.Welcome -> base("welcome").apply {
             put("sessionId", message.sessionId)
             put("participantId", message.participantId)
+            put("hostProof", message.hostProof)
+        }
+        is JamMessage.Pending -> base("pending").apply {
             put("hostProof", message.hostProof)
         }
         is JamMessage.State -> base("state").apply {
@@ -111,13 +121,17 @@ object JamProtocol {
             "auth" -> JamMessage.Authenticate(
                 guestNonce = root.optString("guestNonce").trim().take(JamSessionState.MAX_TEXT_LENGTH),
                 name = sanitizeName(root.optString("name")),
-                proof = root.optString("proof").trim().take(JamSessionState.MAX_TEXT_LENGTH)
+                proof = root.optString("proof").trim().take(JamSessionState.MAX_TEXT_LENGTH),
+                guestId = JamIdentity.sanitize(root.optString("guestId"))
             ).takeIf { it.guestNonce.isNotBlank() && it.proof.isNotBlank() }
             "welcome" -> JamMessage.Welcome(
                 sessionId = root.optString("sessionId").trim().take(JamSessionState.MAX_TEXT_LENGTH),
                 participantId = root.optString("participantId").trim().take(JamSessionState.MAX_TEXT_LENGTH),
                 hostProof = root.optString("hostProof").trim().take(JamSessionState.MAX_TEXT_LENGTH)
             ).takeIf { it.sessionId.isNotBlank() && it.participantId.isNotBlank() && it.hostProof.isNotBlank() }
+            "pending" -> JamMessage.Pending(
+                hostProof = root.optString("hostProof").trim().take(JamSessionState.MAX_TEXT_LENGTH)
+            ).takeIf { it.hostProof.isNotBlank() }
             "state" -> decodeState(root)
             "action" -> decodeAction(root)
             "bye" -> JamMessage.Bye(root.optString("reason").take(JamSessionState.MAX_TEXT_LENGTH))
@@ -143,6 +157,8 @@ object JamProtocol {
         put("shuffle", state.shuffle)
         put("repeatMode", state.repeatMode)
         put("permission", state.permission.id)
+        put("locked", state.locked)
+        put("requireApproval", state.requireApproval)
         require(state.capabilities.size <= MAX_CAPABILITIES)
         put("capabilities", JSONArray().apply {
             state.capabilities.forEach { capability -> put(capability) }
@@ -204,7 +220,9 @@ object JamProtocol {
             repeatMode = payload.optInt("repeatMode", 0).coerceIn(0, 2),
             permission = JamGuestPermission.fromId(payload.optString("permission")),
             updatedAtElapsedMs = 0L,
-            capabilities = decodedCapabilities
+            capabilities = decodedCapabilities,
+            locked = payload.optBoolean("locked", false),
+            requireApproval = payload.optBoolean("requireApproval", false)
         )
         return JamMessage.State(
             sessionId = sessionId,
@@ -249,6 +267,7 @@ object JamProtocol {
         .put("artist", track.artist.take(JamSessionState.MAX_TEXT_LENGTH))
         .put("durationMs", track.durationMs)
         .put("thumbnailUrl", track.thumbnailUrl.take(JamSessionState.MAX_TEXT_LENGTH))
+        .put("addedBy", track.addedBy.take(JamSessionState.MAX_TEXT_LENGTH))
 
     private fun decodeTrack(entry: JSONObject?): JamTrack? {
         entry ?: return null
@@ -258,7 +277,8 @@ object JamProtocol {
             title = entry.optString("title").filterNot { it.isISOControl() }.take(JamSessionState.MAX_TEXT_LENGTH),
             artist = entry.optString("artist").filterNot { it.isISOControl() }.take(JamSessionState.MAX_TEXT_LENGTH),
             durationMs = entry.optLong("durationMs", 0L).coerceAtLeast(0L),
-            thumbnailUrl = sanitizedHttpsUrl(entry.optString("thumbnailUrl"))
+            thumbnailUrl = sanitizedHttpsUrl(entry.optString("thumbnailUrl")),
+            addedBy = entry.optString("addedBy").trim().take(JamSessionState.MAX_TEXT_LENGTH)
         )
     }
 

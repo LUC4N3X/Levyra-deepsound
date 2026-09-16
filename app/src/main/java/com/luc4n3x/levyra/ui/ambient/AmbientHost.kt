@@ -62,6 +62,8 @@ internal fun LevyraUiState.toAmbientUiState(): AmbientUiState {
         lyricLine = activeLyric?.text.orEmpty(),
         motionArtwork = motionArtwork,
         animationsEnabled = animationsEnabled && motionArtworkEnabled,
+        accentStart = track?.accentStart ?: 0,
+        accentEnd = track?.accentEnd ?: 0,
         canvasQuality = interfaceSettings.canvasQuality,
         settings = ambientSettings
     )

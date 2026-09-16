@@ -40,6 +40,9 @@ object LevyraThemes {
     const val APPLE_MUSIC = LEVYRA_AURA
     const val COVER_FLOW = "cover_flow"
     const val MOOD_FLOW = "mood_flow"
+    const val FROST = "frost"
+    const val OCEAN = "ocean"
+    const val EMBER = "ember"
 
     private const val LEGACY_APPLE_MUSIC = "apple_music"
 
@@ -157,14 +160,72 @@ object LevyraThemes {
         followsMood = true
     )
 
+    val frost = cosmic.copy(
+        id = FROST,
+        label = "Frost",
+        emoji = "❄",
+        isLight = true,
+        black = Color(0xFFF7F9FC),
+        ink = Color(0xFFEFF3F9),
+        panel = Color(0xFFE4EBF4),
+        panelSoft = Color(0xFFD7E0EC),
+        cyan = Color(0xFF00708F),
+        blue = Color(0xFF2F6BD8),
+        violet = Color(0xFF5A63C8),
+        pink = Color(0xFF9C4BB0),
+        orange = Color(0xFFB2640C),
+        text = Color(0xFF10151D),
+        muted = Color(0xFF55606F),
+        outline = Color(0x3300708F)
+    )
+
+    val ocean = cosmic.copy(
+        id = OCEAN,
+        label = "Ocean",
+        emoji = "🌊",
+        black = Color(0xFF03090F),
+        ink = Color(0xFF061420),
+        panel = Color(0xFF0A1F30),
+        panelSoft = Color(0xFF102B41),
+        cyan = Color(0xFF3FC4D8),
+        blue = Color(0xFF2E86C8),
+        violet = Color(0xFF4FA8E8),
+        pink = Color(0xFF63D6C0),
+        orange = Color(0xFF8FD98A),
+        text = Color(0xFFEAF4F8),
+        muted = Color(0xFF8FA9B8),
+        outline = Color(0x333FC4D8)
+    )
+
+    val ember = cosmic.copy(
+        id = EMBER,
+        label = "Ember",
+        emoji = "🔥",
+        black = Color(0xFF0C0605),
+        ink = Color(0xFF150B08),
+        panel = Color(0xFF22120D),
+        panelSoft = Color(0xFF2E1912),
+        cyan = Color(0xFFFF8A4C),
+        blue = Color(0xFFE2633A),
+        violet = Color(0xFFFFA96B),
+        pink = Color(0xFFD9485F),
+        orange = Color(0xFFFFC46B),
+        text = Color(0xFFF7EBE5),
+        muted = Color(0xFFB2938A),
+        outline = Color(0x33FF8A4C)
+    )
+
     val presets: List<LevyraPalette> = listOf(
         levyraAura,
-        cosmic,
+        coverFlow,
         amoled,
+        frost,
+        ocean,
+        ember,
+        cosmic,
         neonCyan,
         purpleGlass,
         minimalWhite,
-        coverFlow,
         moodFlow
     )
 
@@ -195,10 +256,12 @@ object LevyraThemeController {
         coverAccentEnd: Int? = null,
         moodAccentStart: Int? = null,
         moodAccentEnd: Int? = null,
-        pureBlack: Boolean = false
+        pureBlack: Boolean = false,
+        accentOverride: Int? = null
     ) {
         val base = LevyraThemes.byId(presetId)
         val tinted = when {
+            accentOverride != null -> withAccent(base, Color(accentOverride))
             base.followsCover && coverAccentStart != null && coverAccentEnd != null ->
                 tinted(base, Color(coverAccentStart), Color(coverAccentEnd))
             base.followsMood && moodAccentStart != null && moodAccentEnd != null ->
@@ -226,6 +289,24 @@ object LevyraThemeController {
             outline = base.outline.copy(alpha = (base.outline.alpha + 0.12f).coerceAtMost(0.6f))
         )
     }
+
+    fun withAccent(base: LevyraPalette, accent: Color): LevyraPalette {
+        val readable = if (base.isLight) darken(accent) else brighten(accent)
+        return base.copy(
+            cyan = readable,
+            blue = accent,
+            violet = readable,
+            pink = accent,
+            outline = readable.copy(alpha = 0.28f)
+        )
+    }
+
+    private fun darken(color: Color): Color = Color(
+        red = color.red * 0.7f,
+        green = color.green * 0.7f,
+        blue = color.blue * 0.7f,
+        alpha = 1f
+    )
 
     private fun tinted(
         base: LevyraPalette,
