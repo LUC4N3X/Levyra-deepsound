@@ -274,14 +274,8 @@ class PlaylistStore(context: Context) {
     }
 
     suspend fun reorder(playlistId: String, orderedTracks: List<Track>) = withContext(Dispatchers.IO) {
-        val existing = dao.tracksOf(playlistId)
-        val existingById = existing.associateBy { it.trackId }
         val orderedIds = orderedTracks.map { it.id }.filter(String::isNotBlank)
-        if (orderedIds.size != existing.size || orderedIds.toSet().size != orderedIds.size) return@withContext
-        if (orderedIds.toSet() != existingById.keys) return@withContext
-        dao.replaceTracks(playlistId, orderedIds.mapIndexed { index, trackId ->
-            existingById.getValue(trackId).copy(position = index)
-        })
+        dao.reorderTracks(playlistId, orderedIds)
     }
 
     suspend fun updateTrackMetadata(playlists: List<Playlist>) = withContext(Dispatchers.IO) {

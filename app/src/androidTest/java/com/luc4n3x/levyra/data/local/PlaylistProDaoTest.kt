@@ -53,12 +53,29 @@ class PlaylistProDaoTest {
     }
 
     @Test
+    fun reorderMoveDownShiftsIntermediateTracksWithoutSwap() = runBlocking {
+        dao.reorderTracks(PLAYLIST_ID, listOf("A", "C", "D", "E", "B"))
+
+        val reordered = dao.tracksOf(PLAYLIST_ID)
+        assertEquals(listOf("A", "C", "D", "E", "B"), reordered.map { it.trackId })
+        assertEquals(listOf(0, 1, 2, 3, 4), reordered.map { it.position })
+        assertCustomCover()
+    }
+
+    @Test
+    fun reorderMoveUpShiftsIntermediateTracksWithoutSwap() = runBlocking {
+        dao.reorderTracks(PLAYLIST_ID, listOf("A", "E", "B", "C", "D"))
+
+        val reordered = dao.tracksOf(PLAYLIST_ID)
+        assertEquals(listOf("A", "E", "B", "C", "D"), reordered.map { it.trackId })
+        assertEquals(listOf(0, 1, 2, 3, 4), reordered.map { it.position })
+        assertCustomCover()
+    }
+
+    @Test
     fun automaticArtworkUpdatesAndReorderDoNotOverrideCustomCover() = runBlocking {
         dao.updateAutomaticCover(PLAYLIST_ID, "https://example.test/automatic.jpg", 2L)
-        val reversed = dao.tracksOf(PLAYLIST_ID).reversed().mapIndexed { index, track ->
-            track.copy(position = index)
-        }
-        dao.replaceTracks(PLAYLIST_ID, reversed)
+        dao.reorderTracks(PLAYLIST_ID, listOf("E", "D", "C", "B", "A"))
 
         assertEquals(listOf("E", "D", "C", "B", "A"), dao.tracksOf(PLAYLIST_ID).map { it.trackId })
         assertCustomCover()
