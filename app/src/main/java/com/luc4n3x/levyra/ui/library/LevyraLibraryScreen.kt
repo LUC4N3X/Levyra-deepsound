@@ -96,6 +96,9 @@ private val playlistSelectionSaver = listSaver<Set<String>, String>(
     restore = { it.toSet() }
 )
 
+private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
+private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
+
 private data class PlaylistDragUpdate(
     val targetIndex: Int = -1,
     val offsetAdjustment: Float = 0f,
@@ -132,16 +135,16 @@ private fun playlistDragUpdate(
         0f
     }
 
-    val edge = draggedLayout.size.coerceAtLeast(1) * 1.35f
+    val edge = draggedLayout.size.coerceAtLeast(1) * PLAYLIST_DRAG_EDGE_FACTOR
     val viewportStart = layoutInfo.viewportStartOffset.toFloat()
     val viewportEnd = layoutInfo.viewportEndOffset.toFloat()
     val scrollDelta = when {
         draggedCenter < viewportStart + edge ->
             -((viewportStart + edge - draggedCenter) / edge)
-                .coerceIn(0f, 1f) * draggedLayout.size * 0.38f
+                .coerceIn(0f, 1f) * draggedLayout.size * PLAYLIST_DRAG_SCROLL_FACTOR
         draggedCenter > viewportEnd - edge ->
             ((draggedCenter - (viewportEnd - edge)) / edge)
-                .coerceIn(0f, 1f) * draggedLayout.size * 0.38f
+                .coerceIn(0f, 1f) * draggedLayout.size * PLAYLIST_DRAG_SCROLL_FACTOR
         else -> 0f
     }
 
