@@ -409,6 +409,7 @@ class JamController(
         event: JamHostEvent.GuestPending
     ) {
         val identity = JamIdentity.sanitize(event.guestId)
+        // Session bans are best-effort moderation based on a resettable local guest identity.
         if (identity.isNotBlank() && identity in banned) {
             rejectLocked(transport, event.participantId, JamFailure.Banned)
             return
@@ -429,7 +430,11 @@ class JamController(
                 }
                 transport.disconnect(staleId)
             }
-            pending.removeAll { it.guestId == identity }
+            val stalePending = pending.filter { it.guestId == identity }
+            stalePending.forEach { stale ->
+                pending.remove(stale)
+                rejectLocked(transport, stale.participantId, JamFailure.Removed)
+            }
         }
         if (participants.size >= JamSessionState.MAX_PARTICIPANTS) {
             rejectLocked(transport, event.participantId, JamFailure.SessionFull)
