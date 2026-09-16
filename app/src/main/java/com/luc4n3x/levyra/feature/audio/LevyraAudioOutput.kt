@@ -149,7 +149,7 @@ private fun queryLevyraAudioOutputState(
     return LevyraAudioOutputState(
         active = active,
         connected = routes,
-        volumePercent = ((current.toFloat() / maximum.toFloat()) * 100f).toInt().coerceIn(0, 100),
+        volumePercent = (current.toFloat() / maximum.toFloat() * 100f).toInt().coerceIn(0, 100),
         systemSwitcherAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
     )
 }
