@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -94,6 +95,62 @@ private val playlistSelectionSaver = listSaver<Set<String>, String>(
     save = { it.toList() },
     restore = { it.toSet() }
 )
+
+private data class PlaylistDragUpdate(
+    val targetIndex: Int = -1,
+    val offsetAdjustment: Float = 0f,
+    val scrollDelta: Float = 0f
+)
+
+private fun playlistDragUpdate(
+    layoutInfo: LazyListLayoutInfo,
+    draggedEntryKey: String,
+    orderedTracks: List<Track>,
+    dragOffsetY: Float
+): PlaylistDragUpdate {
+    val draggedLayout = layoutInfo.visibleItemsInfo.firstOrNull {
+        it.key == "reorder-$draggedEntryKey"
+    } ?: return PlaylistDragUpdate()
+
+    val draggedCenter = draggedLayout.offset + draggedLayout.size / 2f + dragOffsetY
+    val targetLayout = layoutInfo.visibleItemsInfo
+        .asSequence()
+        .filter { (it.key as? String)?.startsWith("reorder-") == true }
+        .minByOrNull { item ->
+            kotlin.math.abs(item.offset + item.size / 2f - draggedCenter)
+        }
+
+    val targetKey = (targetLayout?.key as? String)
+        ?.takeIf { it != draggedLayout.key }
+        ?.removePrefix("reorder-")
+    val targetIndex = targetKey?.let { key ->
+        orderedTracks.indexOfFirst { playlistEntryKey(it) == key }
+    } ?: -1
+    val offsetAdjustment = if (targetIndex >= 0 && targetLayout != null) {
+        (draggedLayout.offset - targetLayout.offset).toFloat()
+    } else {
+        0f
+    }
+
+    val edge = draggedLayout.size.coerceAtLeast(1) * 1.35f
+    val viewportStart = layoutInfo.viewportStartOffset.toFloat()
+    val viewportEnd = layoutInfo.viewportEndOffset.toFloat()
+    val scrollDelta = when {
+        draggedCenter < viewportStart + edge ->
+            -((viewportStart + edge - draggedCenter) / edge)
+                .coerceIn(0f, 1f) * draggedLayout.size * 0.38f
+        draggedCenter > viewportEnd - edge ->
+            ((draggedCenter - (viewportEnd - edge)) / edge)
+                .coerceIn(0f, 1f) * draggedLayout.size * 0.38f
+        else -> 0f
+    }
+
+    return PlaylistDragUpdate(
+        targetIndex = targetIndex,
+        offsetAdjustment = offsetAdjustment,
+        scrollDelta = scrollDelta
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1039,46 +1096,20 @@ internal fun LevyraPlaylistDetailScreen(
                         onDrag = drag@{ deltaY ->
                             if (draggedEntryKey != entryKey) return@drag
                             dragOffsetY += deltaY
-
-                            val layoutInfo = playlistListState.layoutInfo
-                            val draggedLayout = layoutInfo.visibleItemsInfo.firstOrNull {
-                                it.key == "reorder-$entryKey"
-                            } ?: return@drag
-                            val draggedCenter = draggedLayout.offset + draggedLayout.size / 2f + dragOffsetY
-                            val targetLayout = layoutInfo.visibleItemsInfo
-                                .asSequence()
-                                .filter { (it.key as? String)?.startsWith("reorder-") == true }
-                                .minByOrNull { item ->
-                                    kotlin.math.abs(item.offset + item.size / 2f - draggedCenter)
-                                }
-
-                            if (targetLayout != null && targetLayout.key != draggedLayout.key) {
-                                val targetKey = (targetLayout.key as? String)?.removePrefix("reorder-")
-                                val currentIndex = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
-                                val targetIndex = targetKey?.let { key ->
-                                    orderedTracks.indexOfFirst { playlistEntryKey(it) == key }
-                                } ?: -1
-                                if (currentIndex >= 0 && targetIndex >= 0 && currentIndex != targetIndex) {
-                                    orderedTracks = orderedTracks.move(currentIndex, targetIndex)
-                                    dragOffsetY += draggedLayout.offset - targetLayout.offset
-                                    haptics.perform(LevyraHapticAction.Reorder)
-                                }
+                            val update = playlistDragUpdate(
+                                layoutInfo = playlistListState.layoutInfo,
+                                draggedEntryKey = entryKey,
+                                orderedTracks = orderedTracks,
+                                dragOffsetY = dragOffsetY
+                            )
+                            val currentIndex = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
+                            if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
+                                orderedTracks = orderedTracks.move(currentIndex, update.targetIndex)
+                                dragOffsetY += update.offsetAdjustment
+                                haptics.perform(LevyraHapticAction.Reorder)
                             }
-
-                            val edge = draggedLayout.size.coerceAtLeast(1) * 1.35f
-                            val viewportStart = layoutInfo.viewportStartOffset.toFloat()
-                            val viewportEnd = layoutInfo.viewportEndOffset.toFloat()
-                            val scrollDelta = when {
-                                draggedCenter < viewportStart + edge ->
-                                    -((viewportStart + edge - draggedCenter) / edge)
-                                        .coerceIn(0f, 1f) * draggedLayout.size * 0.38f
-                                draggedCenter > viewportEnd - edge ->
-                                    ((draggedCenter - (viewportEnd - edge)) / edge)
-                                        .coerceIn(0f, 1f) * draggedLayout.size * 0.38f
-                                else -> 0f
-                            }
-                            if (scrollDelta != 0f) {
-                                playlistListState.dispatchRawDelta(scrollDelta)
+                            if (update.scrollDelta != 0f) {
+                                playlistListState.dispatchRawDelta(update.scrollDelta)
                             }
                         },
                         onDragEnd = {
