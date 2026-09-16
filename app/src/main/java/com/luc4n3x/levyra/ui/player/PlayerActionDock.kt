@@ -26,7 +26,8 @@ internal data class PlayerDockAction(
     val active: Boolean = false,
     val toggle: Boolean = false,
     val busy: Boolean = false,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val stateDescription: String? = null
 )
 
 @Composable
@@ -80,6 +81,7 @@ private fun RowScope.PlayerDockSegment(
         animated = animated,
         enabled = action.enabled,
         toggleState = segmentToggleState(action.toggle, action.active),
+        stateDescription = action.stateDescription,
         outline = surfaces.segmentOutline,
         onClick = { if (!action.busy) action.onClick() }
     ) {

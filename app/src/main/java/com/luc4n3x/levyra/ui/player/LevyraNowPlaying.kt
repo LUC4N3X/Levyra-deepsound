@@ -84,6 +84,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -1242,18 +1243,11 @@ private fun playerDockActions(
             add(
                 PlayerDockAction(
                     key = "visual-mode",
-                    icon = when (visualMode) {
-                        PlayerVisualMode.Artwork -> Icons.Rounded.Image
-                        PlayerVisualMode.CanvasCard -> Icons.Rounded.AutoAwesome
-                        PlayerVisualMode.CanvasImmersive -> Icons.Rounded.Fullscreen
-                    },
-                    label = when (visualMode) {
-                        PlayerVisualMode.Artwork -> strings.playerVisualModeArtwork
-                        PlayerVisualMode.CanvasCard -> strings.playerVisualModeCanvasCard
-                        PlayerVisualMode.CanvasImmersive -> strings.playerVisualModeCanvasImmersive
-                    },
+                    icon = visualModeIcon(visualMode),
+                    label = visualModeLabel(strings),
+                    stateDescription = visualModeStateDescription(visualMode, strings),
                     active = visualMode != PlayerVisualMode.Artwork,
-                    toggle = true,
+                    toggle = false,
                     onClick = onCycleVisualMode
                 )
             )
@@ -1385,4 +1379,22 @@ private fun shareTrack(context: Context, track: Track, strings: LevyraStrings) {
         putExtra(Intent.EXTRA_TEXT, text)
     }
     context.startActivity(Intent.createChooser(intent, strings.shareSong))
+}
+
+internal fun visualModeLabel(strings: LevyraStrings): String =
+    strings.playerVisualMode
+
+internal fun visualModeStateDescription(
+    mode: PlayerVisualMode,
+    strings: LevyraStrings
+): String = when (mode) {
+    PlayerVisualMode.Artwork -> strings.playerVisualModeArtwork
+    PlayerVisualMode.CanvasCard -> strings.playerVisualModeCanvasCard
+    PlayerVisualMode.CanvasImmersive -> strings.playerVisualModeCanvasImmersive
+}
+
+internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
+    PlayerVisualMode.Artwork -> Icons.Rounded.Image
+    PlayerVisualMode.CanvasCard -> Icons.Rounded.AutoAwesome
+    PlayerVisualMode.CanvasImmersive -> Icons.Rounded.Fullscreen
 }

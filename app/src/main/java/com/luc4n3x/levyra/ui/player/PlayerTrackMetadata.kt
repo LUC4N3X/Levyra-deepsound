@@ -191,20 +191,45 @@ private fun PlayerFavoriteButton(
     )
 }
 
+internal fun shouldTriggerFavoritePop(
+    previousTrackId: String?,
+    currentTrackId: String,
+    wasFavorite: Boolean,
+    isFavorite: Boolean,
+    animated: Boolean
+): Boolean =
+    animated && previousTrackId == currentTrackId && !wasFavorite && isFavorite
+
 @Composable
-private fun rememberFavoritePop(
+internal fun rememberFavoritePop(
     trackId: String,
     isFavorite: Boolean,
     animated: Boolean
 ): Animatable<Float, *> {
     val pop = remember { Animatable(1f) }
-    var settled by remember(trackId) { mutableStateOf(isFavorite) }
+    var lastTrackId by remember { mutableStateOf<String?>(trackId) }
+    var wasFavorite by remember { mutableStateOf(isFavorite) }
+
     LaunchedEffect(trackId, isFavorite, animated) {
-        if (settled == isFavorite) return@LaunchedEffect
-        settled = isFavorite
-        if (animated && isFavorite) {
-            pop.snapTo(FavoritePopScale)
-            pop.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
+        val shouldPop = shouldTriggerFavoritePop(
+            previousTrackId = lastTrackId,
+            currentTrackId = trackId,
+            wasFavorite = wasFavorite,
+            isFavorite = isFavorite,
+            animated = animated
+        )
+        lastTrackId = trackId
+        wasFavorite = isFavorite
+
+        if (shouldPop) {
+            try {
+                pop.snapTo(FavoritePopScale)
+                pop.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
+            } finally {
+                pop.snapTo(1f)
+            }
+        } else {
+            pop.snapTo(1f)
         }
     }
     return pop

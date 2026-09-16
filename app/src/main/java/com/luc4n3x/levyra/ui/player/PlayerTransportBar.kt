@@ -15,6 +15,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +34,9 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,6 +55,52 @@ import com.luc4n3x.levyra.ui.theme.LevyraSegment
 private const val ModeSegmentWeight = 0.86f
 private const val SkipSegmentWeight = 1f
 private const val PlaySegmentWeight = 1.56f
+
+@Immutable
+internal data class PlayerTransportWeights(
+    val modeWeight: Float,
+    val skipWeight: Float,
+    val playWeight: Float
+)
+
+internal fun resolveTransportWeights(
+    availableWidth: Dp,
+    gap: Dp = LevyraPlayerDesign.TransportGap,
+    minTouchTarget: Dp = LevyraPlayerDesign.MinimumTouchTarget
+): PlayerTransportWeights {
+    val totalGaps = gap * 4
+    val availableSegmentWidth = availableWidth - totalGaps
+    if (availableSegmentWidth <= 0.dp) {
+        return PlayerTransportWeights(
+            modeWeight = ModeSegmentWeight,
+            skipWeight = SkipSegmentWeight,
+            playWeight = PlaySegmentWeight
+        )
+    }
+
+    val minFraction = (minTouchTarget / availableSegmentWidth).coerceIn(0f, 0.2f)
+    val standardSum = ModeSegmentWeight * 2 + SkipSegmentWeight * 2 + PlaySegmentWeight
+    val standardModeFraction = ModeSegmentWeight / standardSum
+    val standardSkipFraction = SkipSegmentWeight / standardSum
+
+    if (standardModeFraction >= minFraction) {
+        return PlayerTransportWeights(
+            modeWeight = ModeSegmentWeight,
+            skipWeight = SkipSegmentWeight,
+            playWeight = PlaySegmentWeight
+        )
+    }
+
+    val modeFraction = maxOf(standardModeFraction, minFraction)
+    val skipFraction = maxOf(standardSkipFraction, minFraction)
+    val playFraction = (1f - 2f * modeFraction - 2f * skipFraction).coerceAtLeast(minFraction)
+
+    return PlayerTransportWeights(
+        modeWeight = modeFraction,
+        skipWeight = skipFraction,
+        playWeight = playFraction
+    )
+}
 
 @Composable
 internal fun PlayerTransportBar(
@@ -74,69 +123,77 @@ internal fun PlayerTransportBar(
     val skipGlyph = if (compact) LevyraPlayerDesign.TransportGlyphCompact else LevyraPlayerDesign.TransportGlyph
     val controlOutline = if (surfaces.amoled) surfaces.outline else Color.Transparent
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
-        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.TransportGap),
-        verticalAlignment = Alignment.CenterVertically
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth()
     ) {
-        PlayerModeSegment(
-            position = LevyraSegment.Leading,
-            icon = Icons.Rounded.Shuffle,
-            label = labels.shuffle,
-            active = shuffleOn,
-            surfaces = surfaces,
-            outline = controlOutline,
-            animated = animated,
-            onClick = onShuffle
-        )
-        PlayerSegmentButton(
-            position = LevyraSegment.Middle,
-            weight = SkipSegmentWeight,
-            container = surfaces.control,
-            innerCorner = LevyraPlayerDesign.TransportInnerCorner,
-            contentDescription = labels.previous,
-            animated = animated,
-            outline = controlOutline,
-            haptic = LevyraHapticAction.Transport,
-            onClick = onPrevious
+        val weights = remember(maxWidth) { resolveTransportWeights(maxWidth) }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height),
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.TransportGap),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            PlayerIcon(Icons.Rounded.SkipPrevious, surfaces.content, Modifier.size(skipGlyph))
+            PlayerModeSegment(
+                position = LevyraSegment.Leading,
+                icon = Icons.Rounded.Shuffle,
+                label = labels.shuffle,
+                active = shuffleOn,
+                surfaces = surfaces,
+                outline = controlOutline,
+                animated = animated,
+                weight = weights.modeWeight,
+                onClick = onShuffle
+            )
+            PlayerSegmentButton(
+                position = LevyraSegment.Middle,
+                weight = weights.skipWeight,
+                container = surfaces.control,
+                innerCorner = LevyraPlayerDesign.TransportInnerCorner,
+                contentDescription = labels.previous,
+                animated = animated,
+                outline = controlOutline,
+                haptic = LevyraHapticAction.Transport,
+                onClick = onPrevious
+            ) {
+                PlayerIcon(Icons.Rounded.SkipPrevious, surfaces.content, Modifier.size(skipGlyph))
+            }
+            PlayerPlaySegment(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                surfaces = surfaces,
+                height = height,
+                glyph = if (compact) LevyraPlayerDesign.TransportPlayGlyphCompact else LevyraPlayerDesign.TransportPlayGlyph,
+                animated = animated,
+                labels = labels,
+                weight = weights.playWeight,
+                onClick = onTogglePlay
+            )
+            PlayerSegmentButton(
+                position = LevyraSegment.Middle,
+                weight = weights.skipWeight,
+                container = surfaces.control,
+                innerCorner = LevyraPlayerDesign.TransportInnerCorner,
+                contentDescription = labels.next,
+                animated = animated,
+                outline = controlOutline,
+                haptic = LevyraHapticAction.Transport,
+                onClick = onNext
+            ) {
+                PlayerIcon(Icons.Rounded.SkipNext, surfaces.content, Modifier.size(skipGlyph))
+            }
+            PlayerModeSegment(
+                position = LevyraSegment.Trailing,
+                icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                label = labels.repeat,
+                active = repeatMode != RepeatMode.Off,
+                surfaces = surfaces,
+                outline = controlOutline,
+                animated = animated,
+                weight = weights.modeWeight,
+                onClick = onRepeat
+            )
         }
-        PlayerPlaySegment(
-            isPlaying = isPlaying,
-            isResolving = isResolving,
-            surfaces = surfaces,
-            height = height,
-            glyph = if (compact) LevyraPlayerDesign.TransportPlayGlyphCompact else LevyraPlayerDesign.TransportPlayGlyph,
-            animated = animated,
-            labels = labels,
-            onClick = onTogglePlay
-        )
-        PlayerSegmentButton(
-            position = LevyraSegment.Middle,
-            weight = SkipSegmentWeight,
-            container = surfaces.control,
-            innerCorner = LevyraPlayerDesign.TransportInnerCorner,
-            contentDescription = labels.next,
-            animated = animated,
-            outline = controlOutline,
-            haptic = LevyraHapticAction.Transport,
-            onClick = onNext
-        ) {
-            PlayerIcon(Icons.Rounded.SkipNext, surfaces.content, Modifier.size(skipGlyph))
-        }
-        PlayerModeSegment(
-            position = LevyraSegment.Trailing,
-            icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-            label = labels.repeat,
-            active = repeatMode != RepeatMode.Off,
-            surfaces = surfaces,
-            outline = controlOutline,
-            animated = animated,
-            onClick = onRepeat
-        )
     }
 }
 
@@ -149,6 +206,7 @@ private fun RowScope.PlayerPlaySegment(
     glyph: Dp,
     animated: Boolean,
     labels: PlayerControlLabels,
+    weight: Float = PlaySegmentWeight,
     onClick: () -> Unit
 ) {
     val innerCorner by animateDpAsState(
@@ -168,7 +226,7 @@ private fun RowScope.PlayerPlaySegment(
     )
     PlayerSegmentButton(
         position = LevyraSegment.Middle,
-        weight = PlaySegmentWeight,
+        weight = weight,
         container = hero,
         innerCorner = innerCorner,
         contentDescription = playDescription(isPlaying, labels),
@@ -257,6 +315,7 @@ private fun RowScope.PlayerModeSegment(
     surfaces: PlayerSurfaceTokens,
     outline: Color,
     animated: Boolean,
+    weight: Float = ModeSegmentWeight,
     onClick: () -> Unit
 ) {
     val tint by animateColorAsState(
@@ -271,7 +330,7 @@ private fun RowScope.PlayerModeSegment(
     )
     PlayerSegmentButton(
         position = position,
-        weight = ModeSegmentWeight,
+        weight = weight,
         container = if (active) surfaces.active else surfaces.controlQuiet,
         innerCorner = LevyraPlayerDesign.TransportInnerCorner,
         contentDescription = label,

@@ -44,6 +44,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -117,7 +118,10 @@ internal fun PlayerActionsSheet(
     discoverContent: (@Composable () -> Unit)? = null
 ) {
     val density = LocalDensity.current
-    val dragOffset = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    var dragY by remember { mutableFloatStateOf(0f) }
+    val settleAnim = remember { Animatable(0f) }
+    var isDragging by remember { mutableStateOf(false) }
     val dismissDistancePx = with(density) { SheetDismissDistance.toPx() }
     var visible by remember { mutableStateOf(false) }
     var closing by remember { mutableStateOf(false) }
@@ -155,7 +159,7 @@ internal fun PlayerActionsSheet(
                 modifier = Modifier
                     .widthIn(max = 620.dp)
                     .fillMaxWidth()
-                    .offset { IntOffset(0, dragOffset.value.roundToInt()) }
+                    .offset { IntOffset(0, (if (isDragging) dragY else settleAnim.value).roundToInt()) }
                     .clip(SheetShape)
                     .background(playerSheetColor(surfaces))
                     .border(LevyraPlayerDesign.Hairline, playerSheetOutline(surfaces), SheetShape)
@@ -163,11 +167,31 @@ internal fun PlayerActionsSheet(
                     .navigationBarsPadding()
             ) {
                 PlayerSheetDragHandle(
-                    dragOffset = dragOffset,
-                    dismissDistancePx = dismissDistancePx,
-                    animated = animated,
-                    surfaces = surfaces,
-                    onDismiss = dismiss
+                    onDragStart = {
+                        isDragging = true
+                        dragY = settleAnim.value
+                    },
+                    onDragDelta = { delta ->
+                        dragY = (dragY + delta).coerceAtLeast(0f)
+                    },
+                    onDragFinish = {
+                        val currentOffset = dragY
+                        isDragging = false
+                        if (shouldDismissSheetOnDragEnd(currentOffset, dismissDistancePx)) {
+                            dismiss()
+                        } else {
+                            scope.launch {
+                                settleAnim.snapTo(currentOffset)
+                                if (animated) {
+                                    settleAnim.animateTo(0f, LevyraPlayerDesign.smoothSpring())
+                                } else {
+                                    settleAnim.snapTo(0f)
+                                }
+                                dragY = 0f
+                            }
+                        }
+                    },
+                    surfaces = surfaces
                 )
                 PlayerSheetScrollBody(
                     track = track,
@@ -243,38 +267,29 @@ private fun playerSheetColor(surfaces: PlayerSurfaceTokens): Color =
 private fun playerSheetOutline(surfaces: PlayerSurfaceTokens): Color =
     if (surfaces.amoled) surfaces.outline else Color.White.copy(alpha = 0.08f)
 
+internal fun shouldDismissSheetOnDragEnd(
+    dragOffsetPx: Float,
+    dismissThresholdPx: Float
+): Boolean = dragOffsetPx > dismissThresholdPx
+
 @Composable
 private fun PlayerSheetDragHandle(
-    dragOffset: Animatable<Float, *>,
-    dismissDistancePx: Float,
-    animated: Boolean,
-    surfaces: PlayerSurfaceTokens,
-    onDismiss: () -> Unit
+    onDragStart: () -> Unit,
+    onDragDelta: (Float) -> Unit,
+    onDragFinish: () -> Unit,
+    surfaces: PlayerSurfaceTokens
 ) {
-    val scope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
-                    onDragEnd = {
-                        if (dragOffset.value > dismissDistancePx) {
-                            onDismiss()
-                        } else {
-                            scope.launch {
-                                dragOffset.animateTo(
-                                    0f,
-                                    LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.smoothSpring())
-                                )
-                            }
-                        }
-                    },
-                    onDragCancel = { scope.launch { dragOffset.snapTo(0f) } }
+                    onDragStart = { onDragStart() },
+                    onDragEnd = { onDragFinish() },
+                    onDragCancel = { onDragFinish() }
                 ) { change, delta ->
                     change.consume()
-                    scope.launch {
-                        dragOffset.snapTo((dragOffset.value + delta).coerceAtLeast(0f))
-                    }
+                    onDragDelta(delta)
                 }
             }
             .padding(top = LevyraPlayerDesign.SpaceMd, bottom = LevyraPlayerDesign.SpaceSm),
