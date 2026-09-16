@@ -5,7 +5,15 @@ internal val themeStudioKeys = setOf(
     "themeStudioSubtitle",
     "themeStudioPreview",
     "themeAccent",
-    "themeAccentFromPreset"
+    "themeAccentFromPreset",
+    "themeAccentBlue",
+    "themeAccentGreen",
+    "themeAccentIndigo",
+    "themeAccentOrange",
+    "themeAccentPink",
+    "themeAccentCyan",
+    "themeAccentPurple",
+    "themeAccentYellow"
 )
 
 private fun themeStudio(
@@ -22,7 +30,7 @@ private fun themeStudio(
     "themeAccentFromPreset" to accentFromPreset
 )
 
-private val themeStudioBundles: Map<String, Map<String, String>> = mapOf(
+private val themeStudioBaseBundles: Map<String, Map<String, String>> = mapOf(
     "en" to themeStudio(
         "Theme Studio", "One preset drives colour across Levyra", "Preview", "Accent", "From preset"
     ),
@@ -102,6 +110,60 @@ private val themeStudioBundles: Map<String, Map<String, String>> = mapOf(
         "Theme Studio", "ערכה אחת קובעת את הצבע בכל Levyra", "תצוגה מקדימה", "צבע הדגשה", "מהערכה"
     )
 )
+
+private fun themeAccentNames(
+    blue: String,
+    green: String,
+    indigo: String,
+    orange: String,
+    pink: String,
+    cyan: String,
+    purple: String,
+    yellow: String
+): Map<String, String> = mapOf(
+    "themeAccentBlue" to blue,
+    "themeAccentGreen" to green,
+    "themeAccentIndigo" to indigo,
+    "themeAccentOrange" to orange,
+    "themeAccentPink" to pink,
+    "themeAccentCyan" to cyan,
+    "themeAccentPurple" to purple,
+    "themeAccentYellow" to yellow
+)
+
+private val themeAccentNameBundles: Map<String, Map<String, String>> = mapOf(
+    "en" to themeAccentNames("Blue", "Green", "Indigo", "Orange", "Pink", "Cyan", "Purple", "Yellow"),
+    "it" to themeAccentNames("Blu", "Verde", "Indaco", "Arancione", "Rosa", "Ciano", "Viola", "Giallo"),
+    "es" to themeAccentNames("Azul", "Verde", "Índigo", "Naranja", "Rosa", "Cian", "Morado", "Amarillo"),
+    "fr" to themeAccentNames("Bleu", "Vert", "Indigo", "Orange", "Rose", "Cyan", "Violet", "Jaune"),
+    "de" to themeAccentNames("Blau", "Grün", "Indigo", "Orange", "Pink", "Cyan", "Violett", "Gelb"),
+    "pt" to themeAccentNames("Azul", "Verde", "Índigo", "Laranja", "Rosa", "Ciano", "Roxo", "Amarelo"),
+    "nl" to themeAccentNames("Blauw", "Groen", "Indigo", "Oranje", "Roze", "Cyaan", "Paars", "Geel"),
+    "pl" to themeAccentNames("Niebieski", "Zielony", "Indygo", "Pomarańczowy", "Różowy", "Cyjan", "Fioletowy", "Żółty"),
+    "ro" to themeAccentNames("Albastru", "Verde", "Indigo", "Portocaliu", "Roz", "Cyan", "Mov", "Galben"),
+    "el" to themeAccentNames("Μπλε", "Πράσινο", "Λουλακί", "Πορτοκαλί", "Ροζ", "Κυανό", "Μωβ", "Κίτρινο"),
+    "sv" to themeAccentNames("Blå", "Grön", "Indigo", "Orange", "Rosa", "Cyan", "Lila", "Gul"),
+    "da" to themeAccentNames("Blå", "Grøn", "Indigo", "Orange", "Pink", "Cyan", "Lilla", "Gul"),
+    "cs" to themeAccentNames("Modrá", "Zelená", "Indigo", "Oranžová", "Růžová", "Azurová", "Fialová", "Žlutá"),
+    "uk" to themeAccentNames("Синій", "Зелений", "Індиго", "Помаранчевий", "Рожевий", "Блакитний", "Фіолетовий", "Жовтий"),
+    "ru" to themeAccentNames("Синий", "Зелёный", "Индиго", "Оранжевый", "Розовый", "Голубой", "Фиолетовый", "Жёлтый"),
+    "tr" to themeAccentNames("Mavi", "Yeşil", "Çivit", "Turuncu", "Pembe", "Camgöbeği", "Mor", "Sarı"),
+    "ar" to themeAccentNames("أزرق", "أخضر", "نيلي", "برتقالي", "وردي", "سماوي", "بنفسجي", "أصفر"),
+    "zh" to themeAccentNames("蓝色", "绿色", "靛蓝色", "橙色", "粉色", "青色", "紫色", "黄色"),
+    "ja" to themeAccentNames("ブルー", "グリーン", "インディゴ", "オレンジ", "ピンク", "シアン", "パープル", "イエロー"),
+    "ko" to themeAccentNames("파랑", "초록", "남색", "주황", "분홍", "청록", "보라", "노랑"),
+    "hi" to themeAccentNames("नीला", "हरा", "इंडिगो", "नारंगी", "गुलाबी", "सियान", "बैंगनी", "पीला"),
+    "id" to themeAccentNames("Biru", "Hijau", "Nila", "Oranye", "Merah muda", "Sian", "Ungu", "Kuning"),
+    "vi" to themeAccentNames("Xanh dương", "Xanh lá", "Chàm", "Cam", "Hồng", "Lục lam", "Tím", "Vàng"),
+    "th" to themeAccentNames("น้ำเงิน", "เขียว", "คราม", "ส้ม", "ชมพู", "ฟ้าอมเขียว", "ม่วง", "เหลือง"),
+    "fil" to themeAccentNames("Asul", "Berde", "Indigo", "Kahel", "Rosas", "Cyan", "Lila", "Dilaw"),
+    "he" to themeAccentNames("כחול", "ירוק", "אינדיגו", "כתום", "ורוד", "ציאן", "סגול", "צהוב")
+)
+
+private val themeStudioBundles: Map<String, Map<String, String>> =
+    themeStudioBaseBundles.mapValues { (code, base) ->
+        base + themeAccentNameBundles.getValue(code)
+    }
 
 internal fun themeStudioLocalizationEntries(code: String): Map<String, String> =
     localizedBundleOrEnglish(themeStudioBundles, code)
