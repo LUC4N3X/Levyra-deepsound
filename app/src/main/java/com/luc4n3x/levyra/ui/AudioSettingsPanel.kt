@@ -103,6 +103,8 @@ import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
@@ -128,7 +130,7 @@ private val EqualizerHandleRadius = 5.dp
 @Composable
 internal fun AudioSettingsPanel(
     selected: String,
-    volumePercent: Int,
+    currentTrack: Track?,
     audioSettings: LevyraAudioSettings,
     onSelect: (String) -> Unit,
     highQualityAudioMode: HighQualityAudioMode,
@@ -158,6 +160,7 @@ internal fun AudioSettingsPanel(
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val outputState = rememberLevyraAudioOutputState()
     val blocker = remember { MutableInteractionSource() }
     val equalizerEnabled = audioSettings.equalizerEnabled
     var showAutoEqImport by remember { mutableStateOf(false) }
@@ -188,9 +191,16 @@ internal fun AudioSettingsPanel(
                     AudioPanelHeader(
                         title = strings.audioEngine,
                         subtitle = strings.audioEngineSubtitle,
-                        volumeLabel = "$volumePercent%",
+                        volumeLabel = "${outputState.volumePercent}%",
                         closeLabel = strings.close,
                         onClose = onClose
+                    )
+                }
+                item {
+                    LevyraOutputHub(
+                        output = outputState,
+                        track = currentTrack,
+                        audioSettings = audioSettings
                     )
                 }
 
