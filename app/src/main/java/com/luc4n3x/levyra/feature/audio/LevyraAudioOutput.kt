@@ -183,7 +183,7 @@ internal fun resolveLevyraPreTiramisuAudioOutputRoute(
             val bluetoothRoutes = routes.filter { it.bluetooth }
             when (bluetoothRoutes.size) {
                 1 -> bluetoothRoutes.single()
-                else -> bluetoothRoutes.takeIf(List<LevyraAudioOutputRoute>::isNotEmpty)?.let {
+                else -> bluetoothRoutes.takeIf { it.isNotEmpty() }?.let {
                     LevyraAudioOutputRoute(
                         stableKey = null,
                         displayName = cleanSelectedName?.ifBlank { "Bluetooth" } ?: "Bluetooth",
