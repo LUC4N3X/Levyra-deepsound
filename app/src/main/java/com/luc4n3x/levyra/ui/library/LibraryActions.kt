@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.library
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
@@ -69,10 +71,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import java.util.Locale
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.ui.platform.LocalContext
@@ -924,13 +931,47 @@ internal fun PlaylistReorderRow(
     track: Track,
     index: Int,
     count: Int,
+    isDragging: Boolean,
+    dragOffsetY: Float,
     onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onMoveDown: () -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val strings = LocalLevyraStrings.current
+    val haptics = LocalLevyraHaptics.current
     Surface(
-        color = LevyraPanel.copy(alpha = 0.82f),
+        color = if (isDragging) LevyraPanel.copy(alpha = 0.96f) else LevyraPanel.copy(alpha = 0.82f),
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
+        shadowElevation = if (isDragging) 12.dp else 0.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .zIndex(if (isDragging) 2f else 0f)
+            .graphicsLayer {
+                translationY = if (isDragging) dragOffsetY else 0f
+                val scale = if (isDragging) 1.012f else 1f
+                scaleX = scale
+                scaleY = scale
+            }
+            .pointerInput(track.id) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = {
+                        haptics.perform(LevyraHapticAction.Reorder)
+                        onDragStart()
+                    },
+                    onDragEnd = {
+                        haptics.perform(LevyraHapticAction.Reorder)
+                        onDragEnd()
+                    },
+                    onDragCancel = onDragEnd,
+                    onDrag = { change, amount ->
+                        change.consume()
+                        onDrag(amount.y)
+                    }
+                )
+            }
     ) {
         Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -959,17 +1000,23 @@ internal fun PlaylistReorderRow(
                 )
                 Text(track.artist, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            Icon(
+                Icons.Rounded.DragHandle,
+                contentDescription = strings.dragToReorder,
+                tint = if (isDragging) LevyraCyan else LevyraMuted,
+                modifier = Modifier.size(22.dp)
+            )
             IconButton(onClick = onMoveUp, enabled = index > 0) {
                 Icon(
                     Icons.Rounded.ArrowUpward,
-                    contentDescription = null,
+                    contentDescription = "${strings.dragToReorder} ↑",
                     tint = if (index > 0) LevyraText else LevyraMuted.copy(alpha = 0.3f)
                 )
             }
             IconButton(onClick = onMoveDown, enabled = index < count - 1) {
                 Icon(
                     Icons.Rounded.ArrowDownward,
-                    contentDescription = null,
+                    contentDescription = "${strings.dragToReorder} ↓",
                     tint = if (index < count - 1) LevyraText else LevyraMuted.copy(alpha = 0.3f)
                 )
             }
