@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,9 +57,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -153,6 +156,52 @@ private fun playlistDragUpdate(
         offsetAdjustment = offsetAdjustment,
         scrollDelta = scrollDelta
     )
+}
+
+private data class PlaylistDragSnapshot(
+    val entryKey: String,
+    val orderedTracks: List<Track>,
+    val dragOffsetY: Float
+)
+
+private data class PlaylistDragFrameActions(
+    val onMove: (fromIndex: Int, toIndex: Int, offsetAdjustment: Float) -> Unit,
+    val onScrollConsumed: (Float) -> Unit
+)
+
+@Composable
+private fun PlaylistDragFrameLoop(
+    activeEntryKey: String?,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    snapshotProvider: () -> PlaylistDragSnapshot?,
+    actions: PlaylistDragFrameActions
+) {
+    val currentSnapshotProvider by rememberUpdatedState(snapshotProvider)
+    val currentActions by rememberUpdatedState(actions)
+
+    LaunchedEffect(activeEntryKey, listState) {
+        if (activeEntryKey == null) return@LaunchedEffect
+        while (true) {
+            withFrameNanos { }
+            val snapshot = currentSnapshotProvider() ?: break
+            val update = playlistDragUpdate(
+                layoutInfo = listState.layoutInfo,
+                draggedEntryKey = snapshot.entryKey,
+                orderedTracks = snapshot.orderedTracks,
+                dragOffsetY = snapshot.dragOffsetY
+            )
+            val currentIndex = snapshot.orderedTracks.indexOfFirst {
+                playlistEntryKey(it) == snapshot.entryKey
+            }
+            if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
+                currentActions.onMove(currentIndex, update.targetIndex, update.offsetAdjustment)
+            }
+            if (update.scrollDelta != 0f) {
+                val consumed = listState.scrollBy(update.scrollDelta)
+                if (consumed != 0f) currentActions.onScrollConsumed(consumed)
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -939,6 +988,26 @@ internal fun LevyraPlaylistDetailScreen(
     var draggedEntryKey by remember(playlist.id) { mutableStateOf<String?>(null) }
     var dragOffsetY by remember(playlist.id) { mutableStateOf(0f) }
 
+    PlaylistDragFrameLoop(
+        activeEntryKey = draggedEntryKey,
+        listState = playlistListState,
+        snapshotProvider = {
+            draggedEntryKey?.let { entryKey ->
+                PlaylistDragSnapshot(entryKey, orderedTracks, dragOffsetY)
+            }
+        },
+        actions = PlaylistDragFrameActions(
+            onMove = { fromIndex, toIndex, offsetAdjustment ->
+                orderedTracks = orderedTracks.move(fromIndex, toIndex)
+                dragOffsetY += offsetAdjustment
+                haptics.perform(LevyraHapticAction.Reorder)
+            },
+            onScrollConsumed = { consumedScroll ->
+                dragOffsetY += consumedScroll
+            }
+        )
+    )
+
     LaunchedEffect(playlist.tracks, reorderMode) {
         if (!reorderMode) {
             orderedTracks = playlist.tracks
@@ -1101,24 +1170,6 @@ internal fun LevyraPlaylistDetailScreen(
                             onDrag = drag@{ deltaY ->
                                 if (draggedEntryKey != entryKey) return@drag
                                 dragOffsetY += deltaY
-                                val update = playlistDragUpdate(
-                                    layoutInfo = playlistListState.layoutInfo,
-                                    draggedEntryKey = entryKey,
-                                    orderedTracks = orderedTracks,
-                                    dragOffsetY = dragOffsetY
-                                )
-                                val currentIndex = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
-                                val canMove = currentIndex >= 0 &&
-                                    update.targetIndex >= 0 &&
-                                    currentIndex != update.targetIndex
-                                if (canMove) {
-                                    orderedTracks = orderedTracks.move(currentIndex, update.targetIndex)
-                                    dragOffsetY += update.offsetAdjustment
-                                    haptics.perform(LevyraHapticAction.Reorder)
-                                }
-                                if (update.scrollDelta != 0f) {
-                                    playlistListState.dispatchRawDelta(update.scrollDelta)
-                                }
                             },
                             onDragEnd = {
                                 draggedEntryKey = null
