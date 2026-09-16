@@ -13,7 +13,8 @@ enum class LevyraHapticAction {
     SeekSnap,
     TrackSwipe,
     Reorder,
-    Confirm
+    Confirm,
+    Transport
 }
 
 @Immutable
@@ -31,6 +32,7 @@ class LevyraHaptics(
         LevyraHapticAction.SeekSnap, LevyraHapticAction.Reorder -> HapticFeedbackType.TextHandleMove
         LevyraHapticAction.Favorite, LevyraHapticAction.TrackSwipe, LevyraHapticAction.Confirm ->
             HapticFeedbackType.LongPress
+        LevyraHapticAction.Transport -> HapticFeedbackType.ContextClick
     }
 
     companion object {
