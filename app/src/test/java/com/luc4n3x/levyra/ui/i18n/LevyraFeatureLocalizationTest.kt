@@ -82,7 +82,15 @@ class LevyraFeatureLocalizationTest {
                 strings.themeStudioSubtitle,
                 strings.themeStudioPreview,
                 strings.themeAccent,
-                strings.themeAccentFromPreset
+                strings.themeAccentFromPreset,
+                strings.themeAccentBlue,
+                strings.themeAccentGreen,
+                strings.themeAccentIndigo,
+                strings.themeAccentOrange,
+                strings.themeAccentPink,
+                strings.themeAccentCyan,
+                strings.themeAccentPurple,
+                strings.themeAccentYellow
             ).forEach { value ->
                 assertTrue("Blank Theme Studio copy for ${strings.code}", value.isNotBlank())
             }
