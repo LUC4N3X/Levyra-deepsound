@@ -926,6 +926,8 @@ internal fun PlaylistDetailHeader(
     }
 }
 
+private const val PLAYLIST_REORDER_DRAG_SCALE = 1.012f
+
 internal data class PlaylistReorderRowState(
     val index: Int,
     val count: Int,
@@ -941,6 +943,37 @@ internal data class PlaylistReorderRowActions(
     val onDragEnd: () -> Unit
 )
 
+private fun Modifier.playlistReorderDrag(
+    trackId: String,
+    state: PlaylistReorderRowState,
+    actions: PlaylistReorderRowActions,
+    onHaptic: () -> Unit
+): Modifier = this
+    .zIndex(if (state.isDragging) 2f else 0f)
+    .graphicsLayer {
+        translationY = if (state.isDragging) state.dragOffsetY else 0f
+        val scale = if (state.isDragging) PLAYLIST_REORDER_DRAG_SCALE else 1f
+        scaleX = scale
+        scaleY = scale
+    }
+    .pointerInput(trackId) {
+        detectDragGesturesAfterLongPress(
+            onDragStart = {
+                onHaptic()
+                actions.onDragStart()
+            },
+            onDragEnd = {
+                onHaptic()
+                actions.onDragEnd()
+            },
+            onDragCancel = actions.onDragEnd,
+            onDrag = { change, amount ->
+                change.consume()
+                actions.onDrag(amount.y)
+            }
+        )
+    }
+
 @Composable
 internal fun PlaylistReorderRow(
     track: Track,
@@ -950,36 +983,17 @@ internal fun PlaylistReorderRow(
 ) {
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
+    val rowModifier = modifier
+        .fillMaxWidth()
+        .playlistReorderDrag(track.id, state, actions) {
+            haptics.perform(LevyraHapticAction.Reorder)
+        }
+
     Surface(
         color = if (state.isDragging) LevyraPanel.copy(alpha = 0.96f) else LevyraPanel.copy(alpha = 0.82f),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = if (state.isDragging) 12.dp else 0.dp,
-        modifier = modifier
-            .fillMaxWidth()
-            .zIndex(if (state.isDragging) 2f else 0f)
-            .graphicsLayer {
-                translationY = if (state.isDragging) state.dragOffsetY else 0f
-                val scale = if (state.isDragging) 1.012f else 1f
-                scaleX = scale
-                scaleY = scale
-            }
-            .pointerInput(track.id) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = {
-                        haptics.perform(LevyraHapticAction.Reorder)
-                        actions.onDragStart()
-                    },
-                    onDragEnd = {
-                        haptics.perform(LevyraHapticAction.Reorder)
-                        actions.onDragEnd()
-                    },
-                    onDragCancel = actions.onDragEnd,
-                    onDrag = { change, amount ->
-                        change.consume()
-                        actions.onDrag(amount.y)
-                    }
-                )
-            }
+        modifier = rowModifier
     ) {
         Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
