@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import android.app.TimePickerDialog
+import android.content.Context
 import android.os.SystemClock
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -68,6 +69,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import java.text.DateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
@@ -302,6 +304,7 @@ private fun SleepTimerPresets(
     onSelectEndOfTrack: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val copy = strings.systemPlayerCopy()
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -310,7 +313,7 @@ private fun SleepTimerPresets(
             listOf(15, 30, 45, 60).forEach { minutes ->
                 SleepPreset(
                     label = minutes.toString(),
-                    suffix = "min",
+                    suffix = copy.sleepMinuteUnit,
                     selected = selectedMinutes == minutes && !endOfTrack,
                     onClick = { onSelectMinutes(minutes) },
                     modifier = Modifier.weight(1f)
@@ -408,7 +411,7 @@ private fun SleepTimerAutomationCard(
                                 },
                                 bedtime.startMinuteOfDay / 60,
                                 bedtime.startMinuteOfDay % 60,
-                                true
+                                android.text.format.DateFormat.is24HourFormat(context)
                             ).show()
                         }
                         .sizeIn(minHeight = 48.dp),
@@ -416,7 +419,11 @@ private fun SleepTimerAutomationCard(
                 ) {
                     Text(copy.startTime, color = LevyraMuted, fontSize = 12.sp)
                     Spacer(Modifier.weight(1f))
-                    Text(formatBedtimeClock(bedtime.startMinuteOfDay), color = LevyraText, fontWeight = FontWeight.Bold)
+                    Text(
+                        formatBedtimeClock(context, bedtime.startMinuteOfDay),
+                        color = LevyraText,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(15, 30, 45, 60).forEach { minutes ->
@@ -480,8 +487,14 @@ private fun formatSleepEndClock(deadlineElapsedRealtimeMs: Long, languageCode: S
     return DateFormat.getTimeInstance(DateFormat.SHORT, locale).format(Date(System.currentTimeMillis() + remaining))
 }
 
-private fun formatBedtimeClock(startMinuteOfDay: Int): String {
+private fun formatBedtimeClock(context: Context, startMinuteOfDay: Int): String {
     val hour = (startMinuteOfDay / 60).coerceIn(0, 23)
     val minute = (startMinuteOfDay % 60).coerceIn(0, 59)
-    return "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
+    val time = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, hour)
+        set(Calendar.MINUTE, minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.time
+    return android.text.format.DateFormat.getTimeFormat(context).format(time)
 }
