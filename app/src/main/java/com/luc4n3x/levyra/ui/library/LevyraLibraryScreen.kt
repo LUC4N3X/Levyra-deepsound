@@ -891,9 +891,6 @@ internal fun LevyraPlaylistDetailScreen(
     val visibleTracks = remember(orderedTracks, query, searchIndex) {
         filterPlaylistTracks(orderedTracks, query, searchIndex)
     }
-    val reorderIndexByKey = remember(orderedTracks) {
-        orderedTracks.mapIndexed { index, track -> playlistEntryKey(track) to index }.toMap()
-    }
     val selectedTracks = remember(orderedTracks, selectedKeys) {
         selectedPlaylistTracks(orderedTracks, selectedKeys)
     }
@@ -1013,7 +1010,8 @@ internal fun LevyraPlaylistDetailScreen(
             } else if (reorderMode) {
                 items(orderedTracks, key = { "reorder-${playlistEntryKey(it)}" }) { track ->
                     val entryKey = playlistEntryKey(track)
-                    val index = reorderIndexByKey[entryKey] ?: return@items
+                    val index = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
+                    if (index < 0) return@items
                     val isDragging = draggedEntryKey == entryKey
                     PlaylistReorderRow(
                         track = track,
@@ -1056,9 +1054,11 @@ internal fun LevyraPlaylistDetailScreen(
 
                             if (targetLayout != null && targetLayout.key != draggedLayout.key) {
                                 val targetKey = (targetLayout.key as? String)?.removePrefix("reorder-")
-                                val currentIndex = reorderIndexByKey[entryKey]
-                                val targetIndex = targetKey?.let(reorderIndexByKey::get)
-                                if (currentIndex != null && targetIndex != null && currentIndex != targetIndex) {
+                                val currentIndex = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
+                                val targetIndex = targetKey?.let { key ->
+                                    orderedTracks.indexOfFirst { playlistEntryKey(it) == key }
+                                } ?: -1
+                                if (currentIndex >= 0 && targetIndex >= 0 && currentIndex != targetIndex) {
                                     orderedTracks = orderedTracks.move(currentIndex, targetIndex)
                                     dragOffsetY += draggedLayout.offset - targetLayout.offset
                                     haptics.perform(LevyraHapticAction.Reorder)
