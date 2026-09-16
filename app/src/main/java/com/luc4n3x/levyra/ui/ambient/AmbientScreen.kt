@@ -251,8 +251,12 @@ private fun AmbientPortraitContent(
         verticalArrangement = Arrangement.Center
     ) {
         if (settings.showClock) {
-            AmbientClock(color = palette.text, compact = settings.mode != LevyraAmbientMode.Minimal)
-            Spacer(modifier = Modifier.height(if (settings.mode == LevyraAmbientMode.Minimal) 20.dp else 32.dp))
+            AmbientClockBlock(
+                palette = palette,
+                compact = settings.mode != LevyraAmbientMode.Minimal,
+                centered = true,
+                spacing = if (settings.mode == LevyraAmbientMode.Minimal) 20.dp else 32.dp
+            )
         }
 
         if (settings.usesArtwork) {
@@ -290,22 +294,14 @@ private fun AmbientPortraitContent(
             )
         }
 
-        if (settings.usesLyricLine &&
-            settings.mode != LevyraAmbientMode.Lyrics &&
-            state.lyricLine.isNotBlank()
-        ) {
-            Spacer(modifier = Modifier.height(18.dp))
-            Text(
-                text = state.lyricLine,
-                color = palette.lyric,
-                fontSize = if (resting) 15.sp else 17.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(if (resting) 15f else 17f),
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        AmbientSecondaryLyric(
+            settings = settings,
+            lyricLine = state.lyricLine,
+            palette = palette,
+            fontSize = if (resting) 15f else 17f,
+            spacing = 18.dp,
+            centered = true
+        )
 
         if (settings.showProgress) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -317,23 +313,17 @@ private fun AmbientPortraitContent(
             )
         }
 
-        AnimatedVisibility(
+        AmbientControlsReveal(
             visible = controlsVisible,
-            enter = fadeIn(tween(220)),
-            exit = fadeOut(tween(600))
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Spacer(modifier = Modifier.height(28.dp))
-                AmbientControls(
-                    isPlaying = state.isPlaying,
-                    palette = palette,
-                    onInteract = onInteract,
-                    onTogglePlay = onTogglePlay,
-                    onNext = onNext,
-                    onPrevious = onPrevious
-                )
-            }
-        }
+            spacing = 28.dp,
+            centered = true,
+            isPlaying = state.isPlaying,
+            palette = palette,
+            onInteract = onInteract,
+            onTogglePlay = onTogglePlay,
+            onNext = onNext,
+            onPrevious = onPrevious
+        )
     }
 }
 
@@ -379,8 +369,12 @@ private fun AmbientLandscapeContent(
             verticalArrangement = Arrangement.Center
         ) {
             if (settings.showClock) {
-                AmbientClock(color = palette.text, compact = true, centered = false)
-                Spacer(modifier = Modifier.height(20.dp))
+                AmbientClockBlock(
+                    palette = palette,
+                    compact = true,
+                    centered = false,
+                    spacing = 20.dp
+                )
             }
             if (settings.mode == LevyraAmbientMode.Lyrics) {
                 AmbientLyricHero(
@@ -402,21 +396,14 @@ private fun AmbientLandscapeContent(
                     centered = false
                 )
             }
-            if (settings.usesLyricLine &&
-                settings.mode != LevyraAmbientMode.Lyrics &&
-                state.lyricLine.isNotBlank()
-            ) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = state.lyricLine,
-                    color = palette.lyric,
-                    fontSize = 16.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(16f),
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            AmbientSecondaryLyric(
+                settings = settings,
+                lyricLine = state.lyricLine,
+                palette = palette,
+                fontSize = 16f,
+                spacing = 14.dp,
+                centered = false
+            )
             if (settings.showProgress) {
                 Spacer(modifier = Modifier.height(20.dp))
                 AmbientProgress(
@@ -426,23 +413,86 @@ private fun AmbientLandscapeContent(
                     widthFraction = 1f
                 )
             }
-            AnimatedVisibility(
+            AmbientControlsReveal(
                 visible = controlsVisible,
-                enter = fadeIn(tween(220)),
-                exit = fadeOut(tween(600))
-            ) {
-                Column {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    AmbientControls(
-                        isPlaying = state.isPlaying,
-                        palette = palette,
-                        onInteract = onInteract,
-                        onTogglePlay = onTogglePlay,
-                        onNext = onNext,
-                        onPrevious = onPrevious
-                    )
-                }
-            }
+                spacing = 24.dp,
+                centered = false,
+                isPlaying = state.isPlaying,
+                palette = palette,
+                onInteract = onInteract,
+                onTogglePlay = onTogglePlay,
+                onNext = onNext,
+                onPrevious = onPrevious
+            )
+        }
+    }
+}
+
+@Composable
+private fun AmbientClockBlock(
+    palette: AmbientPalette,
+    compact: Boolean,
+    centered: Boolean,
+    spacing: Dp
+) {
+    AmbientClock(color = palette.text, compact = compact, centered = centered)
+    Spacer(modifier = Modifier.height(spacing))
+}
+
+@Composable
+private fun AmbientSecondaryLyric(
+    settings: LevyraAmbientSettings,
+    lyricLine: String,
+    palette: AmbientPalette,
+    fontSize: Float,
+    spacing: Dp,
+    centered: Boolean
+) {
+    if (!settings.usesLyricLine) return
+    if (settings.mode == LevyraAmbientMode.Lyrics) return
+    if (lyricLine.isBlank()) return
+    Spacer(modifier = Modifier.height(spacing))
+    Text(
+        text = lyricLine,
+        color = palette.lyric,
+        fontSize = fontSize.sp,
+        lineHeight = LevyraTypeRhythm.lineHeight(fontSize),
+        fontWeight = FontWeight.Medium,
+        textAlign = if (centered) TextAlign.Center else TextAlign.Start,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun AmbientControlsReveal(
+    visible: Boolean,
+    spacing: Dp,
+    centered: Boolean,
+    isPlaying: Boolean,
+    palette: AmbientPalette,
+    onInteract: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(220)),
+        exit = fadeOut(tween(600))
+    ) {
+        Column(
+            horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start
+        ) {
+            Spacer(modifier = Modifier.height(spacing))
+            AmbientControls(
+                isPlaying = isPlaying,
+                palette = palette,
+                onInteract = onInteract,
+                onTogglePlay = onTogglePlay,
+                onNext = onNext,
+                onPrevious = onPrevious
+            )
         }
     }
 }
