@@ -130,7 +130,7 @@ private fun playlistDragUpdate(
         ?.takeIf { it != draggedLayout.key }
         ?.removePrefix("reorder-")
     val targetIndex = targetKey?.let { key ->
-        orderedTracks.indexOfFirst { playlistEntryKey(it) == key }
+        orderedTracks.indexOfFirst { it.id == key }
     } ?: -1
     val offsetAdjustment = if (targetIndex >= 0 && targetLayout != null) {
         (draggedLayout.offset - targetLayout.offset).toFloat()
@@ -191,7 +191,7 @@ private fun PlaylistDragFrameLoop(
                 dragOffsetY = snapshot.dragOffsetY
             )
             val currentIndex = snapshot.orderedTracks.indexOfFirst {
-                playlistEntryKey(it) == snapshot.entryKey
+                it.id == snapshot.entryKey
             }
             if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
                 currentActions.onMove(currentIndex, update.targetIndex, update.offsetAdjustment)
@@ -1137,9 +1137,9 @@ internal fun LevyraPlaylistDetailScreen(
             if (orderedTracks.isEmpty()) {
                 item { LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.playlistEmpty) }
             } else if (reorderMode) {
-                items(orderedTracks, key = { "reorder-${playlistEntryKey(it)}" }) { track ->
-                    val entryKey = playlistEntryKey(track)
-                    val index = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
+                items(orderedTracks, key = { "reorder-${it.id}" }) { track ->
+                    val entryKey = track.id
+                    val index = orderedTracks.indexOfFirst { it.id == entryKey }
                     if (index < 0) return@items
                     val isDragging = draggedEntryKey == entryKey
                     PlaylistReorderRow(
