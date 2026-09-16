@@ -8605,6 +8605,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 )
             }
+            PlaybackService.publishSystemLyrics(
+                track = track,
+                lines = result.lines,
+                synced = result.synced,
+                provider = result.provider
+            )
             val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, result.lines) }
             if (generation == lyricsVersionsGeneration && _state.value.currentTrack?.let(::playbackIdentity) == trackIdentity) {
                 _state.update { it.copy(intelligenceSummary = intelligence) }
@@ -8682,6 +8688,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             lyricsLoading = false
                         )
                     }
+                    PlaybackService.publishSystemLyrics(
+                        track = track,
+                        lines = lines,
+                        synced = result.synced,
+                        provider = result.provider
+                    )
                     val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
                     val latestIdentity = _state.value.currentTrack?.let(::playbackIdentity)
                     if (requestGeneration == lyricsRequestGeneration && latestIdentity == trackIdentity) {
