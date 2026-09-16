@@ -114,7 +114,7 @@ private fun buildWordTimedLane(lines: List<LyricLine>): String? {
         }
         body
     }
-    return wordTimed.takeIf(List<String>::isNotEmpty)?.joinToString(separator = "\n", postfix = "\n")
+    return wordTimed.takeIf { it.isNotEmpty() }?.joinToString(separator = "\n", postfix = "\n")
 }
 
 private fun lrcTimestamp(positionMs: Long): String {
