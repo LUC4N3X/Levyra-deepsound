@@ -180,15 +180,16 @@ internal fun PlayerActionsSheet(
                     },
                     onDragFinish = {
                         val currentOffset = dragY
-                        isDragging = false
                         if (shouldDismissSheetOnDragEnd(currentOffset, dismissDistancePx)) {
                             settleJob?.cancel()
                             settleJob = null
+                            isDragging = false
                             dismiss()
                         } else {
                             settleJob?.cancel()
                             settleJob = scope.launch {
                                 settleAnim.snapTo(currentOffset)
+                                isDragging = false
                                 if (animated) {
                                     settleAnim.animateTo(0f, LevyraPlayerDesign.smoothSpring())
                                 } else {
@@ -200,10 +201,10 @@ internal fun PlayerActionsSheet(
                     },
                     onDragCancel = {
                         val currentOffset = dragY
-                        isDragging = false
                         settleJob?.cancel()
                         settleJob = scope.launch {
                             settleAnim.snapTo(currentOffset)
+                            isDragging = false
                             if (animated) {
                                 settleAnim.animateTo(0f, LevyraPlayerDesign.smoothSpring())
                             } else {
