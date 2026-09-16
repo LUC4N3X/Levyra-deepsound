@@ -102,7 +102,14 @@ class LanJamHostTransport : JamHostTransport {
     }
 
     override suspend fun notifyPending(participantId: String, message: JamMessage.Pending) {
-        awaiting[participantId]?.connection?.write(JamProtocol.encode(message))
+        val entry = awaiting[participantId] ?: return
+        if (!entry.connection.write(JamProtocol.encode(message)) &&
+            awaiting.remove(participantId, entry)
+        ) {
+            entry.expiryJob.cancel()
+            entry.connection.close()
+            _events.tryEmit(JamHostEvent.GuestLeft(participantId))
+        }
     }
 
     override suspend fun admit(participantId: String, welcome: JamMessage.Welcome): Boolean {
