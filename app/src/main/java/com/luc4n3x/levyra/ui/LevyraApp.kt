@@ -2504,7 +2504,7 @@ fun LevyraApp(
             }
 
             if (state.showSleepTimer) {
-                SleepTimerDialog(
+                LevyraSleepTimerSheet(
                     state = state,
                     onAutomationSettings = viewModel::setAutomationSettings,
                     onSelectMinutes = viewModel::setSleepTimerMinutes,
