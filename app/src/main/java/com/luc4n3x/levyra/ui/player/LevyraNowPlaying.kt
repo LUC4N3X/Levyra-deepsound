@@ -854,6 +854,9 @@ fun LevyraNowPlaying(
 
         val controlsBlock: @Composable ColumnScope.(Track) -> Unit = { activeTrack ->
             metadataBlock(activeTrack)
+            if (!activeTrack.isLiveRadio()) {
+                engagementContent?.invoke(activeTrack)
+            }
             Spacer(modifier = Modifier.height(if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm))
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                 progressBlock()

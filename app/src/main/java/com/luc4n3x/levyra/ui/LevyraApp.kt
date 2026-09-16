@@ -14665,6 +14665,23 @@ private fun PlayerYoutubeEngagementRow(
     val commentBadge = youtubeCommentCountBadge(comments.countText)
     val canOpenComments = engagement.videoId.isNotBlank()
     val visible = hasLikes || hasDislikeEstimate || engagement.dislikeEstimateLoading || canOpenComments
+    val baseContent = if (LevyraIsLight) Color(0xFF1A1B20) else Color.White
+    val accent = Color(track.accentStart).playerMix(baseContent, if (LevyraIsLight) 0.34f else 0.26f)
+    val quietContent = baseContent.copy(alpha = 0.66f)
+    val strongContent = baseContent.copy(alpha = 0.90f)
+    val surface = if (LevyraIsLight) {
+        LevyraAdaptiveChip
+    } else {
+        Color.White.copy(alpha = 0.065f)
+    }
+    val outline = if (LevyraIsLight) {
+        LevyraAdaptiveHairline
+    } else {
+        accent.copy(alpha = 0.18f)
+    }
+    val divider = baseContent.copy(alpha = if (LevyraIsLight) 0.10f else 0.12f)
+    val pillShape = RoundedCornerShape(16.dp)
+    val rowHeight = if (compact) 30.dp else 32.dp
 
     AnimatedVisibility(
         visible = visible,
@@ -14674,127 +14691,116 @@ private fun PlayerYoutubeEngagementRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = if (compact) 6.dp else 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(top = if (compact) 5.dp else 7.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                color = Color.White.copy(alpha = 0.08f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = CircleShape
+                color = surface,
+                border = BorderStroke(1.dp, outline),
+                shape = pillShape
             ) {
                 Row(
-                    modifier = Modifier.height(28.dp),
+                    modifier = Modifier.height(rowHeight),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        modifier = Modifier.padding(
-                            start = 10.dp,
-                            end = 8.dp
-                        ),
+                        modifier = Modifier.padding(start = 11.dp, end = 9.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbUp,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = if (hasLikes) 0.92f else 0.50f),
-                            modifier = Modifier.size(13.dp)
+                            tint = if (hasLikes) accent else quietContent,
+                            modifier = Modifier.size(14.dp)
                         )
                         if (hasLikes) {
                             Text(
                                 text = compactYoutubeCount(track.youtubeLikeCount),
-                                color = Color.White.copy(alpha = 0.92f),
+                                color = strongContent,
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
                         }
                     }
+
                     Box(
                         modifier = Modifier
                             .width(1.dp)
-                            .height(14.dp)
-                            .background(Color.White.copy(alpha = 0.12f))
+                            .height(15.dp)
+                            .background(divider)
                     )
+
                     Row(
-                        modifier = Modifier.padding(
-                            start = 8.dp,
-                            end = 10.dp
-                        ),
+                        modifier = Modifier.padding(start = 9.dp, end = 9.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbDown,
                             contentDescription = null,
-                            tint = if (hasDislikeEstimate) {
-                                Color.White.copy(alpha = 0.72f)
-                            } else {
-                                Color.White.copy(alpha = 0.50f)
-                            },
-                            modifier = Modifier.size(13.dp)
+                            tint = if (hasDislikeEstimate) quietContent else quietContent.copy(alpha = 0.68f),
+                            modifier = Modifier.size(14.dp)
                         )
                         when {
                             engagement.dislikeEstimateLoading -> CircularProgressIndicator(
                                 modifier = Modifier.size(10.dp),
                                 strokeWidth = 1.4.dp,
-                                color = Color.White.copy(alpha = 0.72f)
+                                color = quietContent
                             )
                             hasDislikeEstimate -> Text(
                                 text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = quietContent.copy(alpha = 0.92f),
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
                         }
                     }
-                }
-            }
 
-            Surface(
-                color = Color.White.copy(alpha = 0.08f),
-                border = BorderStroke(
-                    1.dp,
-                    if (comments.visible) Color.White.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.12f)
-                ),
-                shape = CircleShape
-            ) {
-                Box(
-                    modifier = Modifier
-                        .height(28.dp)
-                        .pressable(enabled = canOpenComments, onClick = onComments)
-                        .padding(horizontal = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(15.dp)
+                            .background(divider)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .height(rowHeight)
+                            .pressable(enabled = canOpenComments, onClick = onComments)
+                            .padding(horizontal = 11.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ChatBubbleOutline,
-                            contentDescription = null,
-                            tint = if (canOpenComments) {
-                                Color.White.copy(alpha = 0.75f)
-                            } else {
-                                Color.White.copy(alpha = 0.45f)
-                            },
-                            modifier = Modifier.size(13.dp)
-                        )
-                        when {
-                            comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                modifier = Modifier.size(10.dp),
-                                strokeWidth = 1.4.dp,
-                                color = Color.White.copy(alpha = 0.72f)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ChatBubbleOutline,
+                                contentDescription = null,
+                                tint = when {
+                                    comments.visible -> accent
+                                    canOpenComments -> strongContent.copy(alpha = 0.82f)
+                                    else -> quietContent.copy(alpha = 0.62f)
+                                },
+                                modifier = Modifier.size(14.dp)
                             )
-                            commentBadge.isNotBlank() -> Text(
-                                text = commentBadge,
-                                color = Color.White.copy(alpha = 0.90f),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
+                            when {
+                                comments.loading && !comments.loaded -> CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.4.dp,
+                                    color = quietContent
+                                )
+                                commentBadge.isNotBlank() -> Text(
+                                    text = commentBadge,
+                                    color = if (comments.visible) accent else strongContent,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
