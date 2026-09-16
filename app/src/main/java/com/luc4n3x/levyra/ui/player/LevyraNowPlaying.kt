@@ -9,7 +9,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -214,19 +213,19 @@ fun LevyraNowPlaying(
     val secondaryTarget = harmonizedTargets.secondary
     val primary by animateColorAsState(
         targetValue = primaryTarget,
-        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-primary-color"
     )
     val secondary by animateColorAsState(
         targetValue = secondaryTarget,
-        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-secondary-color"
     )
     val amoled = backgroundMode == PlayerBackgroundMode.PureBlack
     val surfaces = remember(primaryTarget, amoled) { playerSurfaceTokens(primaryTarget, amoled) }
     val heroTone by animateColorAsState(
         targetValue = surfaces.hero,
-        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-hero-tone"
     )
     val ambience = remember(primaryTarget, secondaryTarget) {
@@ -253,7 +252,7 @@ fun LevyraNowPlaying(
     var swipeOffsetPx by remember(track?.id) { mutableFloatStateOf(0f) }
     val settledSwipeOffset by animateFloatAsState(
         targetValue = swipeOffsetPx,
-        animationSpec = if (animated) LevyraPlayerDesign.smoothSpring() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.smoothSpring()),
         label = "player-swipe-offset"
     )
 
@@ -272,12 +271,12 @@ fun LevyraNowPlaying(
 
     val artScale by animateFloatAsState(
         targetValue = if (state.isPlaying) 1f else LevyraPlayerDesign.ArtworkPausedScale,
-        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "artwork-scale"
     )
     val artOffset by animateDpAsState(
         targetValue = if (state.isPlaying) 0.dp else 4.dp,
-        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "artwork-offset"
     )
 
@@ -368,10 +367,12 @@ fun LevyraNowPlaying(
         val headerButtonBorder = if (surfaces.amoled) surfaces.outline else Color.Transparent
         val headerButtonSize = if (compactPlayer) LevyraPlayerDesign.HeaderButtonCompact else LevyraPlayerDesign.HeaderButton
 
-        val headerTrailingCount = (if (!state.isVideoMode && !liveRadio) 1 else 0) +
-            (if (state.isVideoMode) 1 else 0) +
-            (if (state.isVideoMode && track?.videoSubtitleTracks?.isNotEmpty() == true) 1 else 0) +
-            (if (track != null) 1 else 0)
+        val headerTrailingCount = listOf(
+            !state.isVideoMode && !liveRadio,
+            state.isVideoMode,
+            state.isVideoMode && track?.videoSubtitleTracks?.isNotEmpty() == true,
+            track != null
+        ).count { it }
         val headerSlotWidth = maxOf(headerButtonSize, HeaderButtonMinimumWidth)
         val headerTrailingWidth = headerSlotWidth * headerTrailingCount +
             LevyraPlayerDesign.SpaceXs * (headerTrailingCount - 1).coerceAtLeast(0)

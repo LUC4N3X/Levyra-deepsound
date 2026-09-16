@@ -1,9 +1,11 @@
 package com.luc4n3x.levyra.ui.theme
 
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -112,6 +114,9 @@ object LevyraPlayerDesign {
     const val CollapseDamping: Float = 0.86f
     const val CollapseStiffness: Float = 430f
     const val PaletteMillis: Int = 650
+
+    fun <T> motion(animated: Boolean, spec: AnimationSpec<T>): AnimationSpec<T> =
+        if (animated) spec else snap()
 
     fun <T> pressSpring(): SpringSpec<T> =
         spring(dampingRatio = PressDamping, stiffness = PressStiffness)

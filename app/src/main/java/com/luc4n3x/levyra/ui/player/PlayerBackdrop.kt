@@ -5,7 +5,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -61,16 +60,15 @@ internal fun PlayerBackdrop(
     modifier: Modifier = Modifier,
     focusY: Float = 0.34f
 ) {
-    val colorSpec = if (animationsEnabled) {
+    val colorSpec = LevyraPlayerDesign.motion(
+        animationsEnabled,
         tween<Color>(BackdropColorMillis, easing = LevyraPlayerDesign.Decelerate)
-    } else {
-        snap()
-    }
+    )
     val primary = animateColorAsState(ambience.primary, colorSpec, label = "player-backdrop-primary")
     val secondary = animateColorAsState(ambience.secondary, colorSpec, label = "player-backdrop-secondary")
     val glowStrength = animateFloatAsState(
         targetValue = if (isPlaying) 1f else 0.7f,
-        animationSpec = if (animationsEnabled) LevyraPlayerDesign.emphasizedTween(600) else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(600)),
         label = "player-backdrop-glow"
     )
 
@@ -141,7 +139,7 @@ private fun PlayerArtworkMist(
     val context = LocalContext.current
     val mistAlpha by animateFloatAsState(
         targetValue = if (isPlaying) MistAlphaPlaying else MistAlphaPaused,
-        animationSpec = if (animationsEnabled) LevyraPlayerDesign.emphasizedTween(600) else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(600)),
         label = "player-backdrop-mist-alpha"
     )
     AnimatedContent(

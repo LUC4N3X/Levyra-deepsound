@@ -6,7 +6,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -118,7 +117,6 @@ internal fun PlayerActionsSheet(
     discoverContent: (@Composable () -> Unit)? = null
 ) {
     val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
     val dragOffset = remember { Animatable(0f) }
     val dismissDistancePx = with(density) { SheetDismissDistance.toPx() }
     var visible by remember { mutableStateOf(false) }
@@ -139,51 +137,19 @@ internal fun PlayerActionsSheet(
     }
     BackHandler(enabled = !closing, onBack = dismiss)
 
-    val sheetColor = if (surfaces.amoled) {
-        Color.Black
-    } else {
-        surfaces.glow.playerMix(PlayerDarkSurface, SheetSurfaceTint)
-    }
-    val sheetOutline = if (surfaces.amoled) surfaces.outline else Color.White.copy(alpha = 0.08f)
-
     Box(
         modifier = modifier
             .fillMaxSize()
             .zIndex(80f)
     ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = if (animated) fadeIn(LevyraPlayerDesign.standardTween(SheetEnterMs)) else EnterTransition.None,
-            exit = if (animated) fadeOut(LevyraPlayerDesign.standardTween(SheetExitMs)) else ExitTransition.None
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.56f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = dismiss
-                    )
-            )
-        }
+        PlayerSheetScrim(visible = visible, animated = animated, onClick = dismiss)
         AnimatedVisibility(
             visible = visible,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .statusBarsPadding(),
-            enter = if (animated) {
-                slideInVertically(LevyraPlayerDesign.expandSpring()) { it } +
-                    fadeIn(LevyraPlayerDesign.standardTween(SheetEnterMs))
-            } else {
-                EnterTransition.None
-            },
-            exit = if (animated) {
-                slideOutVertically(LevyraPlayerDesign.emphasizedTween(SheetExitMs)) { it } +
-                    fadeOut(LevyraPlayerDesign.standardTween(SheetExitMs))
-            } else {
-                ExitTransition.None
-            }
+            enter = sheetBodyEnter(animated),
+            exit = sheetBodyExit(animated)
         ) {
             Column(
                 modifier = Modifier
@@ -191,71 +157,168 @@ internal fun PlayerActionsSheet(
                     .fillMaxWidth()
                     .offset { IntOffset(0, dragOffset.value.roundToInt()) }
                     .clip(SheetShape)
-                    .background(sheetColor)
-                    .border(LevyraPlayerDesign.Hairline, sheetOutline, SheetShape)
+                    .background(playerSheetColor(surfaces))
+                    .border(LevyraPlayerDesign.Hairline, playerSheetOutline(surfaces), SheetShape)
                     .pointerInput(Unit) { detectTapGestures { } }
                     .navigationBarsPadding()
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragEnd = {
-                                    if (dragOffset.value > dismissDistancePx) {
-                                        dismiss()
-                                    } else {
-                                        scope.launch {
-                                            dragOffset.animateTo(
-                                                0f,
-                                                if (animated) LevyraPlayerDesign.smoothSpring() else snap()
-                                            )
-                                        }
-                                    }
-                                },
-                                onDragCancel = { scope.launch { dragOffset.snapTo(0f) } }
-                            ) { change, delta ->
-                                change.consume()
-                                scope.launch {
-                                    dragOffset.snapTo((dragOffset.value + delta).coerceAtLeast(0f))
-                                }
-                            }
-                        }
-                        .padding(top = LevyraPlayerDesign.SpaceMd, bottom = LevyraPlayerDesign.SpaceSm),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(4.dp)
-                            .clip(CircleShape)
-                            .background(surfaces.contentFaint)
-                    )
-                }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 640.dp)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = LevyraPlayerDesign.Gutter)
-                        .padding(bottom = LevyraPlayerDesign.SpaceXl),
-                    verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg)
-                ) {
-                    PlayerSheetHeader(track = track, artworkUrl = artworkUrl, surfaces = surfaces)
-                    engagementContent?.invoke()
-                    PlayerSheetGrid(
-                        actions = actions,
-                        surfaces = surfaces,
-                        animated = animated,
-                        onPerform = { action ->
-                            action.onClick()
-                            if (!action.keepsSheetOpen) dismiss()
-                        }
-                    )
-                    discoverContent?.invoke()
-                }
+                PlayerSheetDragHandle(
+                    dragOffset = dragOffset,
+                    dismissDistancePx = dismissDistancePx,
+                    animated = animated,
+                    surfaces = surfaces,
+                    onDismiss = dismiss
+                )
+                PlayerSheetScrollBody(
+                    track = track,
+                    artworkUrl = artworkUrl,
+                    surfaces = surfaces,
+                    animated = animated,
+                    actions = actions,
+                    engagementContent = engagementContent,
+                    discoverContent = discoverContent,
+                    onAction = { action ->
+                        action.onClick()
+                        if (!action.keepsSheetOpen) dismiss()
+                    }
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun PlayerSheetScrim(
+    visible: Boolean,
+    animated: Boolean,
+    onClick: () -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = sheetScrimEnter(animated),
+        exit = sheetScrimExit(animated)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.56f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick
+                )
+        )
+    }
+}
+
+private fun sheetScrimEnter(animated: Boolean): EnterTransition =
+    if (animated) fadeIn(LevyraPlayerDesign.standardTween(SheetEnterMs)) else EnterTransition.None
+
+private fun sheetScrimExit(animated: Boolean): ExitTransition =
+    if (animated) fadeOut(LevyraPlayerDesign.standardTween(SheetExitMs)) else ExitTransition.None
+
+private fun sheetBodyEnter(animated: Boolean): EnterTransition =
+    if (animated) {
+        slideInVertically(LevyraPlayerDesign.expandSpring()) { it } +
+            fadeIn(LevyraPlayerDesign.standardTween(SheetEnterMs))
+    } else {
+        EnterTransition.None
+    }
+
+private fun sheetBodyExit(animated: Boolean): ExitTransition =
+    if (animated) {
+        slideOutVertically(LevyraPlayerDesign.emphasizedTween(SheetExitMs)) { it } +
+            fadeOut(LevyraPlayerDesign.standardTween(SheetExitMs))
+    } else {
+        ExitTransition.None
+    }
+
+private fun playerSheetColor(surfaces: PlayerSurfaceTokens): Color =
+    if (surfaces.amoled) {
+        Color.Black
+    } else {
+        surfaces.glow.playerMix(PlayerDarkSurface, SheetSurfaceTint)
+    }
+
+private fun playerSheetOutline(surfaces: PlayerSurfaceTokens): Color =
+    if (surfaces.amoled) surfaces.outline else Color.White.copy(alpha = 0.08f)
+
+@Composable
+private fun PlayerSheetDragHandle(
+    dragOffset: Animatable<Float, *>,
+    dismissDistancePx: Float,
+    animated: Boolean,
+    surfaces: PlayerSurfaceTokens,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        if (dragOffset.value > dismissDistancePx) {
+                            onDismiss()
+                        } else {
+                            scope.launch {
+                                dragOffset.animateTo(
+                                    0f,
+                                    LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.smoothSpring())
+                                )
+                            }
+                        }
+                    },
+                    onDragCancel = { scope.launch { dragOffset.snapTo(0f) } }
+                ) { change, delta ->
+                    change.consume()
+                    scope.launch {
+                        dragOffset.snapTo((dragOffset.value + delta).coerceAtLeast(0f))
+                    }
+                }
+            }
+            .padding(top = LevyraPlayerDesign.SpaceMd, bottom = LevyraPlayerDesign.SpaceSm),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(4.dp)
+                .clip(CircleShape)
+                .background(surfaces.contentFaint)
+        )
+    }
+}
+
+@Composable
+private fun PlayerSheetScrollBody(
+    track: Track,
+    artworkUrl: String,
+    surfaces: PlayerSurfaceTokens,
+    animated: Boolean,
+    actions: List<PlayerSheetAction>,
+    engagementContent: (@Composable () -> Unit)?,
+    discoverContent: (@Composable () -> Unit)?,
+    onAction: (PlayerSheetAction) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 640.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = LevyraPlayerDesign.Gutter)
+            .padding(bottom = LevyraPlayerDesign.SpaceXl),
+        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg)
+    ) {
+        PlayerSheetHeader(track = track, artworkUrl = artworkUrl, surfaces = surfaces)
+        engagementContent?.invoke()
+        PlayerSheetGrid(
+            actions = actions,
+            surfaces = surfaces,
+            animated = animated,
+            onPerform = onAction
+        )
+        discoverContent?.invoke()
     }
 }
 
@@ -324,7 +387,7 @@ private fun PlayerSheetGrid(
                     key(action.key) {
                         val tint by animateColorAsState(
                             targetValue = if (action.active) surfaces.activeContent else surfaces.content,
-                            animationSpec = if (animated) LevyraPlayerDesign.standardTween(200) else snap(),
+                            animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
                             label = "player-sheet-tint"
                         )
                         PlayerSegmentButton(

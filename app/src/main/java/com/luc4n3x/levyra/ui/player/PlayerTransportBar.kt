@@ -1,12 +1,12 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -152,18 +152,18 @@ private fun RowScope.PlayerPlaySegment(
     onClick: () -> Unit
 ) {
     val innerCorner by animateDpAsState(
-        targetValue = if (isPlaying) LevyraPlayerDesign.TransportInnerCorner else height / 2,
-        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        targetValue = playInnerCorner(isPlaying, height),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "player-play-corner"
     )
     val content by animateColorAsState(
         targetValue = surfaces.heroContent,
-        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-play-content"
     )
     val hero by animateColorAsState(
         targetValue = surfaces.hero,
-        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-play-fill"
     )
     PlayerSegmentButton(
@@ -171,43 +171,82 @@ private fun RowScope.PlayerPlaySegment(
         weight = PlaySegmentWeight,
         container = hero,
         innerCorner = innerCorner,
-        contentDescription = if (isPlaying) labels.pause else labels.play,
+        contentDescription = playDescription(isPlaying, labels),
         animated = animated,
         haptic = LevyraHapticAction.Transport,
         onClick = onClick
     ) {
-        if (isResolving) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(glyph * 0.72f),
-                strokeWidth = 2.8.dp,
-                color = content
-            )
-        } else {
-            AnimatedContent(
-                targetState = isPlaying,
-                transitionSpec = {
-                    if (animated) {
-                        (fadeIn(LevyraPlayerDesign.standardTween(150)) +
-                            scaleIn(LevyraPlayerDesign.expressiveSpring(), initialScale = 0.6f)) togetherWith
-                            (fadeOut(LevyraPlayerDesign.standardTween(90)) +
-                                scaleOut(LevyraPlayerDesign.standardTween(90), targetScale = 0.6f))
-                    } else {
-                        EnterTransition.None togetherWith ExitTransition.None
-                    }
-                },
-                label = "player-play-glyph"
-            ) { playing ->
-                PlayerIcon(
-                    icon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    tint = content,
-                    modifier = Modifier
-                        .size(glyph)
-                        .offset(x = if (playing) 0.dp else 2.dp)
-                )
-            }
-        }
+        PlayGlyphContent(
+            isResolving = isResolving,
+            isPlaying = isPlaying,
+            content = content,
+            glyph = glyph,
+            animated = animated
+        )
     }
 }
+
+private fun playInnerCorner(isPlaying: Boolean, height: Dp): Dp =
+    if (isPlaying) LevyraPlayerDesign.TransportInnerCorner else height / 2
+
+private fun playDescription(isPlaying: Boolean, labels: PlayerControlLabels): String =
+    if (isPlaying) labels.pause else labels.play
+
+@Composable
+private fun PlayGlyphContent(
+    isResolving: Boolean,
+    isPlaying: Boolean,
+    content: Color,
+    glyph: Dp,
+    animated: Boolean
+) {
+    if (isResolving) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(glyph * 0.72f),
+            strokeWidth = 2.8.dp,
+            color = content
+        )
+    } else {
+        PlayIconAnimated(
+            isPlaying = isPlaying,
+            content = content,
+            glyph = glyph,
+            animated = animated
+        )
+    }
+}
+
+@Composable
+private fun PlayIconAnimated(
+    isPlaying: Boolean,
+    content: Color,
+    glyph: Dp,
+    animated: Boolean
+) {
+    AnimatedContent(
+        targetState = isPlaying,
+        transitionSpec = { playTransition(animated) },
+        label = "player-play-glyph"
+    ) { playing ->
+        PlayerIcon(
+            icon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+            tint = content,
+            modifier = Modifier
+                .size(glyph)
+                .offset(x = if (playing) 0.dp else 2.dp)
+        )
+    }
+}
+
+private fun playTransition(animated: Boolean): ContentTransform =
+    if (animated) {
+        fadeIn(LevyraPlayerDesign.standardTween(150)) +
+            scaleIn(LevyraPlayerDesign.expressiveSpring(), initialScale = 0.6f) togetherWith
+            fadeOut(LevyraPlayerDesign.standardTween(90)) +
+                scaleOut(LevyraPlayerDesign.standardTween(90), targetScale = 0.6f)
+    } else {
+        EnterTransition.None togetherWith ExitTransition.None
+    }
 
 @Composable
 private fun RowScope.PlayerModeSegment(
@@ -222,12 +261,12 @@ private fun RowScope.PlayerModeSegment(
 ) {
     val tint by animateColorAsState(
         targetValue = if (active) surfaces.activeContent else surfaces.contentMuted,
-        animationSpec = if (animated) LevyraPlayerDesign.standardTween(200) else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
         label = "player-mode-tint"
     )
     val indicator by animateFloatAsState(
         targetValue = if (active) 1f else 0f,
-        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "player-mode-indicator"
     )
     PlayerSegmentButton(

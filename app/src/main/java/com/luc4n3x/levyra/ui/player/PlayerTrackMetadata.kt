@@ -5,7 +5,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -37,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
@@ -79,10 +79,10 @@ internal fun PlayerTrackMetadata(
             modifier = Modifier.weight(1f),
             transitionSpec = {
                 if (animationsEnabled) {
-                    (fadeIn(LevyraPlayerDesign.standardTween(260)) +
-                        slideInVertically(LevyraPlayerDesign.smoothSpring()) { it / 5 }) togetherWith
-                        (fadeOut(LevyraPlayerDesign.standardTween(120)) +
-                            slideOutVertically(LevyraPlayerDesign.standardTween(160)) { -it / 5 })
+                    fadeIn(LevyraPlayerDesign.standardTween(260)) +
+                        slideInVertically(LevyraPlayerDesign.smoothSpring()) { it / 5 } togetherWith
+                        fadeOut(LevyraPlayerDesign.standardTween(120)) +
+                            slideOutVertically(LevyraPlayerDesign.standardTween(160)) { -it / 5 }
                 } else {
                     EnterTransition.None togetherWith ExitTransition.None
                 }
@@ -155,35 +155,27 @@ private fun PlayerFavoriteButton(
     onToggle: () -> Unit
 ) {
     val haptics = LocalLevyraHaptics.current
-    val pop = remember { Animatable(1f) }
-    var settled by remember(trackId) { mutableStateOf(isFavorite) }
-    LaunchedEffect(trackId, isFavorite, animated) {
-        if (settled == isFavorite) return@LaunchedEffect
-        settled = isFavorite
-        if (animated && isFavorite) {
-            pop.snapTo(FavoritePopScale)
-            pop.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
-        }
-    }
+    val pop = rememberFavoritePop(trackId, isFavorite, animated)
     val tint by animateColorAsState(
-        targetValue = if (isFavorite) surfaces.activeContent else surfaces.content,
-        animationSpec = if (animated) LevyraPlayerDesign.standardTween(200) else snap(),
+        targetValue = surfaces.tintFor(isFavorite, surfaces.content),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
         label = "player-favorite-tint"
     )
     val fill by animateColorAsState(
-        targetValue = if (isFavorite) surfaces.active else surfaces.controlQuiet,
-        animationSpec = if (animated) LevyraPlayerDesign.standardTween(200) else snap(),
+        targetValue = surfaces.fillFor(isFavorite),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(200)),
         label = "player-favorite-fill"
     )
+    val outline = surfaces.segmentOutline
     PlayerGlassIconButton(
-        icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+        icon = favoriteIcon(isFavorite),
         contentDescription = label,
         size = 44.dp,
         iconSize = 23.dp,
         tint = tint,
         fill = fill,
-        borderTop = if (surfaces.amoled) surfaces.outline else Color.Transparent,
-        borderBottom = if (surfaces.amoled) surfaces.outline else Color.Transparent,
+        borderTop = outline,
+        borderBottom = outline,
         shape = CircleShape,
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
@@ -198,3 +190,25 @@ private fun PlayerFavoriteButton(
         }
     )
 }
+
+@Composable
+private fun rememberFavoritePop(
+    trackId: String,
+    isFavorite: Boolean,
+    animated: Boolean
+): Animatable<Float, *> {
+    val pop = remember { Animatable(1f) }
+    var settled by remember(trackId) { mutableStateOf(isFavorite) }
+    LaunchedEffect(trackId, isFavorite, animated) {
+        if (settled == isFavorite) return@LaunchedEffect
+        settled = isFavorite
+        if (animated && isFavorite) {
+            pop.snapTo(FavoritePopScale)
+            pop.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
+        }
+    }
+    return pop
+}
+
+private fun favoriteIcon(isFavorite: Boolean): ImageVector =
+    if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder

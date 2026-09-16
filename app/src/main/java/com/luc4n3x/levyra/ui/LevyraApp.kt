@@ -21522,10 +21522,10 @@ private fun MiniPlayer(
                         },
                     transitionSpec = {
                         if (animated) {
-                            (fadeIn(LevyraPlayerDesign.standardTween(220)) +
-                                slideInVertically(LevyraPlayerDesign.smoothSpring()) { it / 3 }) togetherWith
-                                (fadeOut(LevyraPlayerDesign.standardTween(110)) +
-                                    slideOutVertically(LevyraPlayerDesign.standardTween(140)) { -it / 3 })
+                            fadeIn(LevyraPlayerDesign.standardTween(220)) +
+                                slideInVertically(LevyraPlayerDesign.smoothSpring()) { it / 3 } togetherWith
+                                fadeOut(LevyraPlayerDesign.standardTween(110)) +
+                                    slideOutVertically(LevyraPlayerDesign.standardTween(140)) { -it / 3 }
                         } else {
                             EnterTransition.None togetherWith ExitTransition.None
                         }

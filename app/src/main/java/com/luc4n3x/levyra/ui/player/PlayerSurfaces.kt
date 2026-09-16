@@ -80,3 +80,12 @@ internal fun playerSurfaceTokens(primary: Color, amoled: Boolean): PlayerSurface
         )
     }
 }
+
+internal val PlayerSurfaceTokens.segmentOutline: Color
+    get() = if (amoled) outline else Color.Transparent
+
+internal fun PlayerSurfaceTokens.fillFor(active: Boolean): Color =
+    if (active) this.active else controlQuiet
+
+internal fun PlayerSurfaceTokens.tintFor(active: Boolean, idle: Color = contentMuted): Color =
+    if (active) activeContent else idle

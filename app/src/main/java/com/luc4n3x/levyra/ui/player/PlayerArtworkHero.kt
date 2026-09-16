@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.ui.player
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -63,12 +62,12 @@ internal fun PlayerArtworkHero(
 ) {
     val artworkShadow by animateDpAsState(
         targetValue = if (isPlaying) 28.dp else 12.dp,
-        animationSpec = if (animationsEnabled) LevyraPlayerDesign.emphasizedTween(420) else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(420)),
         label = "player-artwork-hero-shadow"
     )
     val glowAlpha by animateFloatAsState(
         targetValue = if (isPlaying) ArtworkGlowPlaying else ArtworkGlowPaused,
-        animationSpec = if (animationsEnabled) LevyraPlayerDesign.emphasizedTween(520) else snap(),
+        animationSpec = LevyraPlayerDesign.motion(animationsEnabled, LevyraPlayerDesign.emphasizedTween(520)),
         label = "player-artwork-hero-glow"
     )
     val trackChangeScale = remember { Animatable(1f) }
