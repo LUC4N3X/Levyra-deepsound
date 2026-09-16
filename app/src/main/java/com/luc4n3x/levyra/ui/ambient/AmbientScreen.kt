@@ -568,7 +568,6 @@ private fun AmbientLyricHero(
 @Composable
 private fun AmbientClock(color: Color, compact: Boolean, centered: Boolean = true) {
     val context = LocalContext.current
-    val use24Hours = remember(context) { DateFormat.is24HourFormat(context) }
     var minuteToken by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -576,7 +575,7 @@ private fun AmbientClock(color: Color, compact: Boolean, centered: Boolean = tru
             minuteToken++
         }
     }
-    val time = remember(minuteToken, use24Hours) { ambientClockLabel(use24Hours) }
+    val time = remember(minuteToken, context) { ambientClockLabel(context) }
     val size = if (compact) 34f else 64f
     Text(
         text = time,
@@ -859,20 +858,8 @@ private fun millisUntilNextMinute(): Long {
     return (60_000L - elapsed).coerceIn(1_000L, 60_000L)
 }
 
-private fun ambientClockLabel(use24Hours: Boolean): String {
-    val calendar = Calendar.getInstance()
-    val hour24 = calendar.get(Calendar.HOUR_OF_DAY)
-    val minute = calendar.get(Calendar.MINUTE)
-    return if (use24Hours) {
-        String.format(Locale.getDefault(), "%02d:%02d", hour24, minute)
-    } else {
-        val hour12 = when (val raw = hour24 % 12) {
-            0 -> 12
-            else -> raw
-        }
-        String.format(Locale.getDefault(), "%d:%02d", hour12, minute)
-    }
-}
+private fun ambientClockLabel(context: Context): String =
+    DateFormat.getTimeFormat(context).format(Calendar.getInstance().time)
 
 private val LANDSCAPE_CONTENT_MAX_WIDTH = 520.dp
 private const val PROXIMITY_NEAR_CM = 5f
