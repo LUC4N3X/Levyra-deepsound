@@ -176,6 +176,16 @@ internal fun LevyraThemeStudioOverlay(
                     ThemeAccentPicker(
                         selected = accent,
                         fromPresetLabel = strings.themeAccentFromPreset,
+                        accentLabels = listOf(
+                            strings.themeAccentBlue,
+                            strings.themeAccentGreen,
+                            strings.themeAccentIndigo,
+                            strings.themeAccentOrange,
+                            strings.themeAccentPink,
+                            strings.themeAccentCyan,
+                            strings.themeAccentPurple,
+                            strings.themeAccentYellow
+                        ),
                         presetAccent = preview.accent,
                         onSelect = onSelectAccent
                     )
@@ -439,6 +449,7 @@ private fun ThemePresetTile(
 private fun ThemeAccentPicker(
     selected: Int,
     fromPresetLabel: String,
+    accentLabels: List<String>,
     presetAccent: Color,
     onSelect: (Int) -> Unit
 ) {
@@ -454,11 +465,11 @@ private fun ThemeAccentPicker(
             outlined = true,
             onClick = { onSelect(0) }
         )
-        LevyraThemeAccents.forEach { value ->
+        LevyraThemeAccents.forEachIndexed { index, value ->
             ThemeAccentDot(
                 color = Color(value),
                 selected = selected == value,
-                label = fromPresetLabel,
+                label = accentLabels[index],
                 outlined = false,
                 onClick = { onSelect(value) }
             )
@@ -482,7 +493,7 @@ private fun ThemeAccentDot(
             .semantics {
                 this.role = Role.RadioButton
                 this.selected = selected
-                if (outlined) this.contentDescription = label
+                this.contentDescription = label
             },
         contentAlignment = Alignment.Center
     ) {
