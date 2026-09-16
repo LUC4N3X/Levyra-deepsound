@@ -63,6 +63,9 @@ abstract class PlaylistDao {
     @Query("UPDATE playlists SET hidden = :hidden, updatedAt = :updatedAt WHERE id = :playlistId")
     abstract suspend fun setHidden(playlistId: String, hidden: Boolean, updatedAt: Long)
 
+    @Query("UPDATE playlist_tracks SET position = :position WHERE playlistId = :playlistId AND trackId = :trackId")
+    abstract suspend fun updateTrackPosition(playlistId: String, trackId: String, position: Int)
+
     @Transaction
     open suspend fun createPlaylistWithTracks(
         playlist: PlaylistEntity,
@@ -70,6 +73,28 @@ abstract class PlaylistDao {
     ) {
         upsertPlaylist(playlist)
         if (tracks.isNotEmpty()) insertTracks(tracks)
+    }
+
+    /**
+     * Applica un nuovo ordine aggiornando soltanto le righe la cui posizione cambia.
+     * Mantiene la semantica MOVE: gli elementi attraversati scorrono di una posizione,
+     * senza cancellare e reinserire l'intera playlist.
+     */
+    @Transaction
+    open suspend fun reorderTracks(playlistId: String, orderedTrackIds: List<String>) {
+        val existing = tracksOf(playlistId)
+        if (orderedTrackIds.size != existing.size || orderedTrackIds.distinct().size != orderedTrackIds.size) return
+        val existingById = existing.associateBy { it.trackId }
+        if (orderedTrackIds.any { it !in existingById }) return
+
+        var changed = false
+        orderedTrackIds.forEachIndexed { position, trackId ->
+            if (existingById.getValue(trackId).position != position) {
+                updateTrackPosition(playlistId, trackId, position)
+                changed = true
+            }
+        }
+        if (changed) touch(playlistId, System.currentTimeMillis())
     }
 
     /** Riscrive l'intero ordine di una playlist (usato dopo un riordino o rimozione). */
