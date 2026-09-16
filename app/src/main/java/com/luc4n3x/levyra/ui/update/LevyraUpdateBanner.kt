@@ -20,12 +20,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -96,7 +101,15 @@ fun LevyraUpdateBanner(
         modifier = modifier
             .fillMaxWidth()
             .clip(BannerShape)
-            .background(LevyraPanel)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = if (phase is LevyraUpdatePhase.Available) 0.09f else 0.04f),
+                        LevyraViolet.copy(alpha = 0.045f),
+                        LevyraPanel
+                    )
+                )
+            )
             .border(width = 1.dp, color = LevyraGlassBorder, shape = BannerShape)
     ) {
         Box(
@@ -107,6 +120,7 @@ fun LevyraUpdateBanner(
         )
         Column(modifier = Modifier.padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 8.dp)) {
             BannerHeader(
+                phase = phase,
                 title = phaseTitle(phase, strings),
                 version = phaseVersion(phase),
                 dismissLabel = strings.close,
@@ -128,12 +142,29 @@ fun LevyraUpdateBanner(
 
 @Composable
 private fun BannerHeader(
+    phase: LevyraUpdatePhase,
     title: String,
     version: String?,
     dismissLabel: String,
     onDismiss: (() -> Unit)?
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+            modifier = Modifier.size(40.dp),
+            shape = CircleShape,
+            color = LevyraCyan.copy(alpha = 0.1f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.18f))
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Rounded.SystemUpdateAlt,
+                    contentDescription = null,
+                    tint = if (phase is LevyraUpdatePhase.Failed) LevyraMuted else LevyraCyan,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -197,6 +228,26 @@ private fun BannerBody(
                     } else {
                         Modifier.padding(end = 10.dp)
                     }
+                )
+            }
+            val protection = strings.systemPlayerCopy()
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 10.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.CheckCircle,
+                    contentDescription = null,
+                    tint = LevyraCyan,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = protection.releaseProtection,
+                    color = LevyraMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }

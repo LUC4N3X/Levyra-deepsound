@@ -74,8 +74,13 @@ import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
+import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_SOURCE
+import com.luc4n3x.levyra.feature.systemintegration.OPLUS_LYRIC_INFO_KEY
+import com.luc4n3x.levyra.feature.systemintegration.OPlusLyricsPayloadContext
+import com.luc4n3x.levyra.feature.systemintegration.buildOPlusLyricsPayload
+import com.luc4n3x.levyra.feature.systemintegration.detectLevyraRomMediaCapabilities
 import com.luc4n3x.levyra.feature.radio.RadioUrlPolicy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackBackendProvider
@@ -263,6 +268,19 @@ class PlaybackService : MediaLibraryService() {
             return true
         }
 
+        fun publishSystemLyrics(
+            track: Track,
+            lines: List<LyricLine>,
+            synced: Boolean,
+            provider: String
+        ): Boolean {
+            val service = activeService ?: return false
+            service.serviceScope.launch {
+                service.publishSystemLyricsInternal(track, lines, synced, provider)
+            }
+            return true
+        }
+
         @Volatile
         private var activeService: PlaybackService? = null
 
@@ -337,6 +355,9 @@ class PlaybackService : MediaLibraryService() {
     private val playbackFailureGuard = ConsecutivePlaybackFailureGuard()
     private var sleepFadeBaselineVolume: Float? = null
     private var pausedByRouteLossAtMs: Long? = null
+    private val romMediaCapabilities by lazy { detectLevyraRomMediaCapabilities() }
+    private var romMediaId = ""
+    private var romMediaGeneration = 0L
 
     @Volatile
     private var routedOutputIsBluetooth = false
@@ -370,6 +391,57 @@ class PlaybackService : MediaLibraryService() {
             pendingAudioSettings?.let { settings ->
                 applyPremiumAudioSettingsInternal(settings, pendingAudioNormalization)
             }
+        }
+    }
+
+    private fun updateRomMediaGeneration(mediaItem: MediaItem?) {
+        val mediaId = mediaItem?.mediaId.orEmpty()
+        if (mediaId == romMediaId) return
+        romMediaId = mediaId
+        romMediaGeneration = (romMediaGeneration + 1L).coerceAtLeast(1L)
+    }
+
+    private fun publishSystemLyricsInternal(
+        track: Track,
+        lines: List<LyricLine>,
+        synced: Boolean,
+        provider: String
+    ) {
+        if (!romMediaCapabilities.timedLyricsMetadata) return
+        val player = activePlayer ?: return
+        val current = player.currentMediaItem ?: return
+        val mediaId = LevyraMediaItemFactory.metadataOnly(track).mediaId
+        if (mediaId.isBlank() || current.mediaId != mediaId || romMediaId != mediaId) return
+
+        val payload = buildOPlusLyricsPayload(
+            track = track,
+            lines = lines,
+            synced = synced,
+            context = OPlusLyricsPayloadContext(
+                provider = provider,
+                packageName = packageName,
+                generation = romMediaGeneration
+            )
+        )
+        val existingExtras = current.mediaMetadata.extras
+        val existingPayload = existingExtras?.getString(OPLUS_LYRIC_INFO_KEY)
+        if (existingPayload == payload) return
+        if (payload == null && existingPayload == null) return
+
+        val extras = Bundle(existingExtras ?: Bundle.EMPTY).apply {
+            if (payload == null) remove(OPLUS_LYRIC_INFO_KEY) else putString(OPLUS_LYRIC_INFO_KEY, payload)
+        }
+        val updatedMetadata = current.mediaMetadata
+            .buildUpon()
+            .setExtras(extras)
+            .build()
+        val updatedItem = current
+            .buildUpon()
+            .setMediaMetadata(updatedMetadata)
+            .build()
+        val index = player.currentMediaItemIndex
+        if (index in 0 until player.mediaItemCount && player.currentMediaItem?.mediaId == mediaId) {
+            player.replaceMediaItem(index, updatedItem)
         }
     }
 
@@ -495,6 +567,7 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 _liveRadioMetadataFlow.value = ""
+                updateRomMediaGeneration(mediaItem)
                 RuntimeHooks.player(
                     action = RuntimeSignal.PLAYER_TRANSITION,
                     mode = if (mediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true) {
