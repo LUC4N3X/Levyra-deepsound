@@ -1492,7 +1492,10 @@ internal fun backupAmbientSettingsFromJson(json: JSONObject?): LevyraAmbientSett
     if (json == null) return LevyraAmbientSettings()
     val defaults = LevyraAmbientSettings()
     return LevyraAmbientSettings(
-        brightness = json.optDouble("brightness", defaults.brightness.toDouble()).toFloat(),
+        brightness = json.optDouble("brightness", defaults.brightness.toDouble())
+            .toFloat()
+            .takeIf { it.isFinite() }
+            ?: defaults.brightness,
         autoDim = json.optBoolean("autoDim", defaults.autoDim),
         autoDimAfterSeconds = json.optInt("autoDimAfterSeconds", defaults.autoDimAfterSeconds),
         pixelShift = json.optBoolean("pixelShift", defaults.pixelShift),
