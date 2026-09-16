@@ -41,17 +41,39 @@ object LevyraPlayerDesign {
 
     val HeaderButton: Dp = 40.dp
     val HeaderButtonCompact: Dp = 36.dp
-    val ModeSlot: Dp = 42.dp
-    val ModeGlyph: Dp = 20.dp
-    val ModeGlyphCompact: Dp = 18.dp
     val ModeIndicator: Dp = 4.dp
-    val SkipGlyph: Dp = 26.dp
-    val SkipGlyphCompact: Dp = 23.dp
-    val PrimarySize: Dp = 66.dp
-    val PrimarySizeCompact: Dp = 58.dp
-    val PrimaryGlyph: Dp = 30.dp
     val PrimaryCornerPlaying: Dp = 22.dp
     val MinimumTouchTarget: Dp = 48.dp
+
+    val TransportHeight: Dp = 76.dp
+    val TransportHeightCompact: Dp = 64.dp
+    val TransportGap: Dp = 5.dp
+    val TransportInnerCorner: Dp = 12.dp
+    val TransportGlyph: Dp = 30.dp
+    val TransportGlyphCompact: Dp = 26.dp
+    val TransportModeGlyph: Dp = 22.dp
+    val TransportPlayGlyph: Dp = 38.dp
+    val TransportPlayGlyphCompact: Dp = 32.dp
+    val DockHeight: Dp = 50.dp
+    val DockHeightCompact: Dp = 46.dp
+    val DockMaxWidth: Dp = 340.dp
+    val DockGap: Dp = 3.dp
+    val DockInnerCorner: Dp = 6.dp
+    val DockGlyph: Dp = 22.dp
+    val SegmentPressedInnerCorner: Dp = 22.dp
+    const val SegmentPressGrowth: Float = 0.16f
+
+    const val ArtworkCornerRatio: Float = 0.075f
+    val ArtworkCornerMin: Dp = 18.dp
+    val ArtworkCornerMax: Dp = 32.dp
+    const val ArtworkPausedScale: Float = 0.92f
+    const val ArtworkTrackChangeScale: Float = 0.94f
+
+    val MiniCorner: Dp = 20.dp
+    val MiniArtwork: Dp = 46.dp
+    val MiniArtworkCorner: Dp = 13.dp
+    val MiniHeight: Dp = 64.dp
+    val DockTrayCorner: Dp = 28.dp
 
     val Hairline: Dp = 1.dp
     val TrackHeight: Dp = 4.dp
@@ -83,6 +105,26 @@ object LevyraPlayerDesign {
     fun <T> snappySpring(): SpringSpec<T> =
         spring(dampingRatio = SnappyDamping, stiffness = SnappyStiffness)
 
+    const val PressDamping: Float = 0.58f
+    const val PressStiffness: Float = 760f
+    const val ExpandDamping: Float = 0.82f
+    const val ExpandStiffness: Float = 360f
+    const val CollapseDamping: Float = 0.86f
+    const val CollapseStiffness: Float = 430f
+    const val PaletteMillis: Int = 650
+
+    fun <T> pressSpring(): SpringSpec<T> =
+        spring(dampingRatio = PressDamping, stiffness = PressStiffness)
+
+    fun <T> expandSpring(): SpringSpec<T> =
+        spring(dampingRatio = ExpandDamping, stiffness = ExpandStiffness)
+
+    fun <T> collapseSpring(): SpringSpec<T> =
+        spring(dampingRatio = CollapseDamping, stiffness = CollapseStiffness)
+
+    fun <T> paletteTween(): TweenSpec<T> =
+        tween(durationMillis = PaletteMillis, easing = Decelerate)
+
     fun <T> emphasizedTween(durationMillis: Int = 320): TweenSpec<T> =
         tween(durationMillis = durationMillis, easing = Emphasized)
 
@@ -98,8 +140,6 @@ object LevyraPlayerDesign {
     val TextPrimary: Color = Color.White
     val TextSecondary: Color = Color.White.copy(alpha = 0.70f)
     val TextTertiary: Color = Color.White.copy(alpha = 0.48f)
-    val IconIdle: Color = Color.White.copy(alpha = 0.55f)
-    val PrimaryContent: Color = Color(0xFF121214)
     val TrackInactive: Color = Color.White.copy(alpha = 0.18f)
     val TrackBuffered: Color = Color.White.copy(alpha = 0.32f)
 }
