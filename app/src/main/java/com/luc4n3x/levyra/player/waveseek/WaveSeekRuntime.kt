@@ -12,8 +12,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 internal object WaveSeekRuntime {
-    private const val SAMPLE_INTERVAL_MS = 120L
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Volatile
@@ -33,7 +31,14 @@ internal object WaveSeekRuntime {
         scope.launch {
             while (isActive) {
                 sample(appContext)
-                delay(SAMPLE_INTERVAL_MS)
+                val player = PlaybackService.activePlayerFlow.value
+                delay(
+                    waveSeekPollDelayMs(
+                        hasPlayer = player != null,
+                        hasCapture = capture != null,
+                        isPlaying = player?.isPlaying == true
+                    )
+                )
             }
         }
     }
