@@ -119,7 +119,7 @@ fun PremiumSeekbar(
         if (measuredWaveform != null || !animated || !isPlaying || isDragging) return@LaunchedEffect
         val fullPhase = 2f * PI.toFloat()
         while (true) {
-            val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
+            val remainingFraction = (fullPhase - wavePhase.value) / fullPhase
                 .coerceIn(0.001f, 1f)
             wavePhase.animateTo(
                 targetValue = fullPhase,
