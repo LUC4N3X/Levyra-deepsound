@@ -119,7 +119,7 @@ fun PremiumSeekbar(
         if (measuredWaveform != null || !animated || !isPlaying || isDragging) return@LaunchedEffect
         val fullPhase = 2f * PI.toFloat()
         while (true) {
-            val remainingFraction = (fullPhase - wavePhase.value) / fullPhase
+            val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
                 .coerceIn(0.001f, 1f)
             wavePhase.animateTo(
                 targetValue = fullPhase,
@@ -148,7 +148,7 @@ fun PremiumSeekbar(
             val offsetX = seekbarTooltipOffsetX(effectiveProgress, widthPx, tooltipWidthPx)
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(offsetX.roundToInt(), with(density) { (-34).dp.roundToPx() }) }
+                    .offset { IntOffset(offsetX.roundToInt(), with(density) { -34.dp.roundToPx() }) }
                     .background(Color(0xFF101014).copy(alpha = 0.94f), LevyraPlayerDesign.ShapeXs)
                     .border(
                         width = LevyraPlayerDesign.Hairline,
