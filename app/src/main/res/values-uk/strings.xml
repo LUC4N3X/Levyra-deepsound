@@ -16,7 +16,7 @@
     <string name="car_home">Головна</string>
     <string name="car_downloads">Завантаження</string>
     <string name="car_favorites">Обране</string>
-    <string name="car_playlists">Плейлісти</string>
+    <string name="car_playlists">Добірки</string>
     <string name="car_no_content">Немає вмісту</string>
     <string name="car_content_unavailable">Вміст недоступний</string>
     <string name="car_search_tracks">Пошук треків</string>
