@@ -158,7 +158,7 @@ private fun EditorialRail(
             Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceMd))
         }
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .padding(start = LevyraPlayerDesign.SpaceXs)
                 .weight(1f)
                 .width(LevyraPlayerDesign.Hairline)
