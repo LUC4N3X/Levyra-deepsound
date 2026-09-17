@@ -261,7 +261,8 @@ internal fun PlaylistStudioScreen(
 internal fun studioCloseNeedsConfirmation(session: PlaylistStudioSession): Boolean {
     val draft = session.draft
     val untouchedNew = draft.isNew && draft.name.isBlank() && draft.tracks.isEmpty()
-    if (session.saving || untouchedNew) return false
+    if (untouchedNew) return false
+    if (session.saving) return true
     return session.saveState != PlaylistStudioSaveState.Clean && session.saveState != PlaylistStudioSaveState.Saved
 }
 
