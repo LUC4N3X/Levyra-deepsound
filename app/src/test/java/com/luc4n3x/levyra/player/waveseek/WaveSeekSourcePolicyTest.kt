@@ -18,6 +18,24 @@ class WaveSeekSourcePolicyTest {
         assertTrue(WaveSeekSourcePolicy.canAnalyze("https://media.example/videoplayback?mime=audio%2Fmp4", 180_000L))
         assertFalse(WaveSeekSourcePolicy.canAnalyze("https://media.example/master.m3u8", 180_000L))
         assertFalse(WaveSeekSourcePolicy.canAnalyze("https://media.example/manifest.mpd", 180_000L))
+        assertFalse(
+            WaveSeekSourcePolicy.canAnalyze(
+                "https://media.example/videoplayback?mime=application%2Fx-mpegURL",
+                180_000L
+            )
+        )
+        assertFalse(
+            WaveSeekSourcePolicy.canAnalyze(
+                "https://media.example/videoplayback?type=application%2Fx-mpegURL",
+                180_000L
+            )
+        )
+        assertFalse(
+            WaveSeekSourcePolicy.canAnalyze(
+                "https://media.example/videoplayback?mime=application%2Fdash+xml",
+                180_000L
+            )
+        )
     }
 
     @Test
