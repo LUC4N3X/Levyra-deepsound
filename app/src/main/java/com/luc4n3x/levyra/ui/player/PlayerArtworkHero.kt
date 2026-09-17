@@ -83,7 +83,7 @@ internal fun PlayerArtworkHero(
         }
     }
     val artworkShape = RoundedCornerShape(cornerRadius)
-    val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive
+    val isImmersive = visualMode.showsCinematicStage()
 
     Box(
         modifier = modifier
@@ -97,6 +97,7 @@ internal fun PlayerArtworkHero(
                 alpha = if (morphActive || isImmersive) 0f else 1f
             }
             .drawBehind {
+                if (glowColor.alpha <= 0f) return@drawBehind
                 val radius = size.minDimension * ArtworkGlowReach
                 drawCircle(
                     brush = Brush.radialGradient(
@@ -133,7 +134,9 @@ internal fun PlayerArtworkHero(
                         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
                     }
                 }
-                PlayerVisualMode.CanvasCard -> {
+                PlayerVisualMode.CanvasCard,
+                PlayerVisualMode.Editorial,
+                PlayerVisualMode.Pulse -> {
                     MotionArtworkLayer(
                         artwork = motionArtwork,
                         enabled = motionEnabled,

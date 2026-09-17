@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.ui.player
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
-import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.ui.PlayerDarkSurface
 import com.luc4n3x.levyra.ui.playerCompositeOver
 import com.luc4n3x.levyra.ui.playerContrastRatio
@@ -61,13 +60,6 @@ class PlayerSurfacesTest {
             assertTrue(tokens.outline.alpha > 0f)
         }
         assertFalse(playerSurfaceTokens(accents.first(), amoled = false).amoled)
-    }
-
-    @Test
-    fun `the visual mode button cycles through every mode`() {
-        assertEquals(PlayerVisualMode.CanvasCard, nextPlayerVisualMode(PlayerVisualMode.Artwork))
-        assertEquals(PlayerVisualMode.CanvasImmersive, nextPlayerVisualMode(PlayerVisualMode.CanvasCard))
-        assertEquals(PlayerVisualMode.Artwork, nextPlayerVisualMode(PlayerVisualMode.CanvasImmersive))
     }
 
     @Test

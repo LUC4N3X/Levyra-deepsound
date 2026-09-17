@@ -14,6 +14,8 @@ class LevyraFeatureLocalizationTest {
         assertTrue(reference.size >= 26)
         assertEquals(reference, ambientModeLocalizationCodes())
         assertEquals(reference, themeStudioLocalizationCodes())
+        assertEquals(reference, playerDeckLocalizationCodes())
+        assertEquals(reference, playlistStudioLocalizationCodes())
         assertTrue("en" in reference)
         assertTrue("it" in reference)
     }
@@ -108,5 +110,52 @@ class LevyraFeatureLocalizationTest {
         assertEquals("Anteprima", italian.themeStudioPreview)
         assertFalse(german.jamLockSession == english.jamLockSession)
         assertFalse(italian.ambientAmoledBlack == english.ambientAmoledBlack)
+    }
+
+    @Test
+    fun everyLanguageResolvesThePlaylistStudioCopy() {
+        LevyraStrings.all().forEach { strings ->
+            listOf(
+                strings.playlistStudio,
+                strings.playlistStudioNew,
+                strings.playlistStudioEdit,
+                strings.playlistStudioOpen,
+                strings.playlistStudioNameHint,
+                strings.playlistStudioNameRequired,
+                strings.playlistStudioCover,
+                strings.playlistStudioCoverCurrent,
+                strings.playlistStudioCoverAutomatic,
+                strings.playlistStudioCoverArtwork,
+                strings.playlistStudioCoverMosaic,
+                strings.playlistStudioCoverSpotlight,
+                strings.playlistStudioCoverSignal,
+                strings.playlistStudioCoverPhoto,
+                strings.playlistStudioChooseArtwork,
+                strings.playlistStudioAddSongs,
+                strings.playlistStudioSearchLibrary,
+                strings.playlistStudioInPlaylist,
+                strings.playlistStudioStateSaved,
+                strings.playlistStudioStateUnsaved,
+                strings.playlistStudioStateSaving,
+                strings.playlistStudioStateFailed,
+                strings.playlistStudioRetry,
+                strings.playlistStudioUndo,
+                strings.playlistStudioEmptyTitle,
+                strings.playlistStudioEmptyBody,
+                strings.playlistStudioLibraryEmpty,
+                strings.playlistStudioLoading,
+                strings.playlistStudioDiscardTitle,
+                strings.playlistStudioDiscardBody,
+                strings.playlistStudioDiscard,
+                strings.playlistStudioKeepEditing
+            ).forEach { value ->
+                assertTrue("Blank Playlist Studio copy for ${strings.code}", value.isNotBlank())
+            }
+            val removed = strings.playlistStudioRemoved("Halo")
+            val moved = strings.playlistStudioMoved("Halo")
+            assertTrue("Removed copy for ${strings.code}", removed.contains("Halo") && !removed.contains("{title}"))
+            assertTrue("Moved copy for ${strings.code}", moved.contains("Halo") && !moved.contains("{title}"))
+        }
+        assertEquals("Rimosso Halo", LevyraStrings.forCode("it").playlistStudioRemoved("Halo"))
     }
 }

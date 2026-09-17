@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -118,6 +119,36 @@ internal fun PlayerActionsSheet(
     engagementContent: (@Composable () -> Unit)? = null,
     discoverContent: (@Composable () -> Unit)? = null
 ) {
+    PlayerSheetFrame(
+        surfaces = surfaces,
+        animated = animated,
+        onDismiss = onDismiss,
+        modifier = modifier
+    ) { dismiss ->
+        PlayerSheetScrollBody(
+            track = track,
+            artworkUrl = artworkUrl,
+            surfaces = surfaces,
+            animated = animated,
+            actions = actions,
+            engagementContent = engagementContent,
+            discoverContent = discoverContent,
+            onAction = { action ->
+                action.onClick()
+                if (!action.keepsSheetOpen) dismiss()
+            }
+        )
+    }
+}
+
+@Composable
+internal fun PlayerSheetFrame(
+    surfaces: PlayerSurfaceTokens,
+    animated: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable (dismiss: () -> Unit) -> Unit
+) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     var dragY by remember { mutableFloatStateOf(0f) }
@@ -127,12 +158,13 @@ internal fun PlayerActionsSheet(
     val dismissDistancePx = with(density) { SheetDismissDistance.toPx() }
     var visible by remember { mutableStateOf(false) }
     var closing by remember { mutableStateOf(false) }
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
 
     LaunchedEffect(Unit) { visible = true }
     LaunchedEffect(closing) {
         if (closing) {
             if (animated) delay(SheetExitMs.toLong())
-            onDismiss()
+            currentOnDismiss()
         }
     }
     val dismiss: () -> Unit = {
@@ -142,6 +174,19 @@ internal fun PlayerActionsSheet(
         }
     }
     BackHandler(enabled = !closing, onBack = dismiss)
+    val settleBack: (Float) -> Unit = { currentOffset ->
+        settleJob?.cancel()
+        settleJob = scope.launch {
+            settleAnim.snapTo(currentOffset)
+            isDragging = false
+            if (animated) {
+                settleAnim.animateTo(0f, LevyraPlayerDesign.smoothSpring())
+            } else {
+                settleAnim.snapTo(0f)
+            }
+            dragY = 0f
+        }
+    }
 
     Box(
         modifier = modifier
@@ -188,48 +233,13 @@ internal fun PlayerActionsSheet(
                                 dismiss()
                             }
                         } else {
-                            settleJob?.cancel()
-                            settleJob = scope.launch {
-                                settleAnim.snapTo(currentOffset)
-                                isDragging = false
-                                if (animated) {
-                                    settleAnim.animateTo(0f, LevyraPlayerDesign.smoothSpring())
-                                } else {
-                                    settleAnim.snapTo(0f)
-                                }
-                                dragY = 0f
-                            }
+                            settleBack(currentOffset)
                         }
                     },
-                    onDragCancel = {
-                        val currentOffset = dragY
-                        settleJob?.cancel()
-                        settleJob = scope.launch {
-                            settleAnim.snapTo(currentOffset)
-                            isDragging = false
-                            if (animated) {
-                                settleAnim.animateTo(0f, LevyraPlayerDesign.smoothSpring())
-                            } else {
-                                settleAnim.snapTo(0f)
-                            }
-                            dragY = 0f
-                        }
-                    },
+                    onDragCancel = { settleBack(dragY) },
                     surfaces = surfaces
                 )
-                PlayerSheetScrollBody(
-                    track = track,
-                    artworkUrl = artworkUrl,
-                    surfaces = surfaces,
-                    animated = animated,
-                    actions = actions,
-                    engagementContent = engagementContent,
-                    discoverContent = discoverContent,
-                    onAction = { action ->
-                        action.onClick()
-                        if (!action.keepsSheetOpen) dismiss()
-                    }
-                )
+                content(dismiss)
             }
         }
     }
