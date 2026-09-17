@@ -136,6 +136,8 @@ class PlayerDeckTest {
         assertEquals("OPUS", playerAudioCodecLabel("audio/opus", null))
         assertEquals("AAC", playerAudioCodecLabel("audio/mp4a-latm", "mp4a.40.2"))
         assertEquals("AAC", playerAudioCodecLabel(null, "mp4a.40.5"))
+        assertEquals("MP3", playerAudioCodecLabel("audio/mpeg", null))
+        assertEquals("MP2", playerAudioCodecLabel("audio/mpeg-l2", null))
         assertEquals("FLAC", playerAudioCodecLabel("audio/flac", null))
         assertEquals("", playerAudioCodecLabel(null, null))
         assertEquals(
