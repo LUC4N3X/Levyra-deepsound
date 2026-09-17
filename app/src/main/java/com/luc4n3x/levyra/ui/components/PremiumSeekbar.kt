@@ -32,6 +32,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -255,38 +256,16 @@ fun PremiumSeekbar(
             }
 
             if (measuredWaveform != null) {
-                val count = measuredWaveform.size
-                val slotWidth = if (count > 0) trackSpan / count else 0f
-                val barWidth = minOf(2.dp.toPx(), slotWidth * 0.58f).coerceAtLeast(1f)
-                val minimumHalfHeight = trackHeight * 0.72f
-                val maximumHalfHeight = 10.dp.toPx()
-
-                fun drawMeasuredBars(color: Color) {
-                    measuredWaveform.forEachIndexed { index, rawAmplitude ->
-                        val amplitude = rawAmplitude.coerceIn(0f, 1f)
-                        val halfHeight = minimumHalfHeight +
-                            (maximumHalfHeight - minimumHalfHeight) * amplitude
-                        val x = trackStart + (index + 0.5f) * slotWidth
-                        drawRoundRect(
-                            color = color,
-                            topLeft = Offset(x - barWidth / 2f, centerY - halfHeight),
-                            size = Size(barWidth, halfHeight * 2f),
-                            cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f)
-                        )
-                    }
-                }
-
-                drawMeasuredBars(inactiveColor.copy(alpha = maxOf(inactiveColor.alpha, 0.46f)))
-                if (handleX > trackStart) {
-                    clipRect(
-                        left = trackStart,
-                        top = 0f,
-                        right = handleX,
-                        bottom = size.height
-                    ) {
-                        drawMeasuredBars(activeColor)
-                    }
-                }
+                drawMeasuredWaveform(
+                    waveform = measuredWaveform,
+                    trackStart = trackStart,
+                    trackSpan = trackSpan,
+                    centerY = centerY,
+                    trackHeight = trackHeight,
+                    handleX = handleX,
+                    inactiveColor = inactiveColor,
+                    activeColor = activeColor
+                )
             } else if (handleX > trackStart) {
                 val activeSpan = handleX - trackStart
                 clipRect(
@@ -381,6 +360,49 @@ fun PremiumSeekbar(
                 radius = thumbRadius,
                 center = Offset(handleX, centerY)
             )
+        }
+    }
+}
+
+private fun DrawScope.drawMeasuredWaveform(
+    waveform: FloatArray,
+    trackStart: Float,
+    trackSpan: Float,
+    centerY: Float,
+    trackHeight: Float,
+    handleX: Float,
+    inactiveColor: Color,
+    activeColor: Color
+) {
+    val slotWidth = trackSpan / waveform.size
+    val barWidth = minOf(2.dp.toPx(), slotWidth * 0.58f).coerceAtLeast(1f)
+    val minimumHalfHeight = trackHeight * 0.72f
+    val maximumHalfHeight = 10.dp.toPx()
+
+    fun drawBars(color: Color) {
+        waveform.forEachIndexed { index, rawAmplitude ->
+            val amplitude = rawAmplitude.coerceIn(0f, 1f)
+            val halfHeight = minimumHalfHeight +
+                (maximumHalfHeight - minimumHalfHeight) * amplitude
+            val x = trackStart + (index + 0.5f) * slotWidth
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(x - barWidth / 2f, centerY - halfHeight),
+                size = Size(barWidth, halfHeight * 2f),
+                cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f)
+            )
+        }
+    }
+
+    drawBars(inactiveColor.copy(alpha = maxOf(inactiveColor.alpha, 0.46f)))
+    if (handleX > trackStart) {
+        clipRect(
+            left = trackStart,
+            top = 0f,
+            right = handleX,
+            bottom = size.height
+        ) {
+            drawBars(activeColor)
         }
     }
 }
