@@ -164,7 +164,7 @@ Levyra is licensed under the [GNU GPL v3.0](../LICENSE). When adapting third-par
 
 ---
 
-## ✅ Before you open a PR
+## Before you open a PR
 
 - [ ] The change has one clear purpose.
 - [ ] Unrelated refactors and generated noise are excluded.
