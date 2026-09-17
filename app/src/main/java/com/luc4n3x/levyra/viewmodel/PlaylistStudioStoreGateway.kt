@@ -5,12 +5,15 @@ import android.net.Uri
 import com.luc4n3x.levyra.data.PLAYLIST_COVER_RENDER_PX
 import com.luc4n3x.levyra.data.PlaylistCoverArtist
 import com.luc4n3x.levyra.data.PlaylistCoverCrop
+import com.luc4n3x.levyra.data.PlaylistCoverStore
 import com.luc4n3x.levyra.data.PlaylistStore
 import com.luc4n3x.levyra.data.PlaylistStudioStoreSnapshot
+import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.PlaylistCoverStyle
 import com.luc4n3x.levyra.domain.PlaylistStudioDraft
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.buildPlaylistCoverPlan
+import java.io.IOException
 import timber.log.Timber
 
 internal class PlaylistStudioStoreGateway(
@@ -19,17 +22,31 @@ internal class PlaylistStudioStoreGateway(
     private val refresh: (String) -> Unit
 ) : PlaylistStudioGateway {
     private val artist = PlaylistCoverArtist(context)
+    private val coverStore = PlaylistCoverStore(context.applicationContext)
 
     private data class StoreRollbackToken(
         val playlistId: String,
-        val snapshot: PlaylistStudioStoreSnapshot
+        val snapshot: PlaylistStudioStoreSnapshot,
+        val coverBytes: ByteArray?
     ) : PlaylistStudioRollbackToken
 
     override suspend fun create(name: String, tracks: List<Track>): String =
         store.createForStudio(name, tracks).id
 
-    override suspend fun captureRollback(playlistId: String): PlaylistStudioRollbackToken? =
-        store.snapshotStudio(playlistId)?.let { StoreRollbackToken(playlistId, it) }
+    override suspend fun captureRollback(playlistId: String): PlaylistStudioRollbackToken? {
+        val snapshot = store.snapshotStudio(playlistId) ?: return null
+        val playlist = snapshot.playlist
+        val coverBytes = if (
+            playlist.coverMode == PlaylistCoverMode.CUSTOM.name &&
+            playlist.coverUrl.isNotBlank()
+        ) {
+            coverStore.readBackup(playlist.coverUrl)
+                ?: throw IOException("Unable to snapshot the current playlist cover")
+        } else {
+            null
+        }
+        return StoreRollbackToken(playlistId, snapshot, coverBytes)
+    }
 
     override suspend fun update(playlistId: String, name: String, tracks: List<Track>) {
         if (!store.applyStudioEdit(playlistId, name, tracks)) throw PlaylistStudioMissingException(playlistId)
@@ -81,7 +98,17 @@ internal class PlaylistStudioStoreGateway(
         val rollback = rollbackState as? StoreRollbackToken ?: return false
         if (rollback.playlistId != playlistId) return false
         return try {
-            store.restoreStudio(rollback.snapshot)
+            val current = store.load(playlistId)
+            val previousWasCustom = rollback.snapshot.playlist.coverMode == PlaylistCoverMode.CUSTOM.name
+            if (previousWasCustom && rollback.snapshot.playlist.coverUrl.isNotBlank()) {
+                val coverBytes = rollback.coverBytes ?: return false
+                coverStore.restore(playlistId, coverBytes)
+            }
+            val restored = store.restoreStudio(rollback.snapshot)
+            if (restored && !previousWasCustom && current?.coverMode == PlaylistCoverMode.CUSTOM) {
+                coverStore.delete(current.coverUrl)
+            }
+            restored
         } catch (error: Exception) {
             Timber.w(error, "Playlist Studio edited-playlist rollback failed")
             false
