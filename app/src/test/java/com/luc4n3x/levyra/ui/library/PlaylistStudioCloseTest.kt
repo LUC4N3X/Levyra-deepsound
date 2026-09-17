@@ -24,9 +24,9 @@ class PlaylistStudioCloseTest {
     }
 
     @Test
-    fun `a save in progress never blocks closing`() {
+    fun `a save in progress asks before closing`() {
         val edited = saved.copy(name = "Renamed")
-        assertFalse(studioCloseNeedsConfirmation(PlaylistStudioSession(1, edited, saved, saving = true)))
+        assertTrue(studioCloseNeedsConfirmation(PlaylistStudioSession(1, edited, saved, saving = true)))
     }
 
     @Test
