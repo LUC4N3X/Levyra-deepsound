@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,10 +23,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+interface PlaylistStudioRollbackToken
+
 interface PlaylistStudioGateway {
     suspend fun create(name: String, tracks: List<Track>): String
+    suspend fun captureRollback(playlistId: String): PlaylistStudioRollbackToken? = null
     suspend fun update(playlistId: String, name: String, tracks: List<Track>)
     suspend fun applyCover(playlistId: String, draft: PlaylistStudioDraft): String?
+    suspend fun rollbackCreated(playlistId: String): Boolean = false
+    suspend fun rollbackUpdated(playlistId: String, token: PlaylistStudioRollbackToken?): Boolean = false
     fun onSaved(playlistId: String)
 }
 
@@ -162,17 +168,11 @@ class PlaylistStudioController(
         saveJob = scope.launch {
             val existingId = snapshot.playlistId
             var persistedId: String? = existingId
+            var rollbackToken: PlaylistStudioRollbackToken? = null
             try {
+                if (existingId != null) rollbackToken = gateway.captureRollback(existingId)
                 val playlistId = if (existingId == null) {
-                    val newId = gateway.create(snapshot.name.trim(), snapshot.tracks)
-                    persistedId = newId
-                    mutate(sessionGeneration) { session ->
-                        session.copy(
-                            draft = session.draft.copy(playlistId = newId),
-                            baseline = session.baseline.copy(playlistId = newId)
-                        )
-                    }
-                    newId
+                    gateway.create(snapshot.name.trim(), snapshot.tracks).also { persistedId = it }
                 } else {
                     gateway.update(existingId, snapshot.name.trim(), snapshot.tracks)
                     existingId
@@ -182,7 +182,6 @@ class PlaylistStudioController(
                 } else {
                     null
                 }
-                gateway.onSaved(playlistId)
                 val saved = snapshot.copy(
                     playlistId = playlistId,
                     customCoverUrl = coverUrl ?: snapshot.customCoverUrl
@@ -196,17 +195,55 @@ class PlaylistStudioController(
                         justSaved = true
                     )
                 }
+                refreshSafely(playlistId)
             } catch (cancelled: CancellationException) {
+                rollbackFailedSave(existingId, persistedId, rollbackToken)
+                persistedId?.let(::refreshSafely)
                 throw cancelled
             } catch (error: Exception) {
                 Timber.w(error, "Playlist Studio save failed")
-                persistedId?.let(gateway::onSaved)
-                mutate(sessionGeneration) { it.copy(saving = false, failed = true, justSaved = false) }
+                val rolledBack = rollbackFailedSave(existingId, persistedId, rollbackToken)
+                persistedId?.let(::refreshSafely)
+                mutate(sessionGeneration) { session ->
+                    val keepPersistedId = existingId == null && persistedId != null && !rolledBack
+                    session.copy(
+                        draft = if (keepPersistedId) session.draft.copy(playlistId = persistedId) else session.draft,
+                        baseline = if (keepPersistedId) session.baseline.copy(playlistId = persistedId) else session.baseline,
+                        saving = false,
+                        failed = true,
+                        justSaved = false
+                    )
+                }
             }
         }
     }
 
     fun retry() = save()
+
+    private suspend fun rollbackFailedSave(
+        existingId: String?,
+        persistedId: String?,
+        rollbackToken: PlaylistStudioRollbackToken?
+    ): Boolean {
+        val playlistId = persistedId ?: return true
+        return try {
+            withContext(NonCancellable) {
+                if (existingId == null) {
+                    gateway.rollbackCreated(playlistId)
+                } else {
+                    gateway.rollbackUpdated(playlistId, rollbackToken)
+                }
+            }
+        } catch (rollbackError: Exception) {
+            Timber.w(rollbackError, "Playlist Studio rollback failed")
+            false
+        }
+    }
+
+    private fun refreshSafely(playlistId: String) {
+        runCatching { gateway.onSaved(playlistId) }
+            .onFailure { Timber.w(it, "Playlist Studio refresh failed") }
+    }
 
     private fun edit(transform: (PlaylistStudioDraft) -> PlaylistStudioDraft) {
         val current = _session.value ?: return
