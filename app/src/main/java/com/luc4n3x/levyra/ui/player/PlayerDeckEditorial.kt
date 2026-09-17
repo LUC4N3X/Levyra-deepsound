@@ -49,14 +49,14 @@ internal fun PlayerEditorialDeck(
     slots: PlayerDeckSlots,
     surfaces: PlayerSurfaceTokens,
     accent: Color,
-    isFavorite: Boolean,
+    favoriteIds: Set<String>,
     queuePosition: PlayerDeckQueuePosition?,
     animated: Boolean,
     compact: Boolean,
     scrollable: Boolean,
     gutter: Dp,
-    onArtistClick: () -> Unit,
-    onToggleFavorite: () -> Unit,
+    onArtistClick: (Track) -> Unit,
+    onToggleFavorite: (Track) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -106,7 +106,7 @@ internal fun PlayerEditorialDeck(
             track = track,
             surfaces = surfaces,
             accent = accent,
-            isFavorite = isFavorite,
+            favoriteIds = favoriteIds,
             animated = animated,
             compact = compact,
             onArtistClick = onArtistClick,
@@ -171,11 +171,11 @@ private fun EditorialHeadline(
     track: Track,
     surfaces: PlayerSurfaceTokens,
     accent: Color,
-    isFavorite: Boolean,
+    favoriteIds: Set<String>,
     animated: Boolean,
     compact: Boolean,
-    onArtistClick: () -> Unit,
-    onToggleFavorite: () -> Unit
+    onArtistClick: (Track) -> Unit,
+    onToggleFavorite: (Track) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     AnimatedContent(
@@ -220,7 +220,7 @@ private fun EditorialHeadline(
                         .weight(1f)
                         .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
                         .clip(LevyraPlayerDesign.ShapeXxs)
-                        .clickable(onClickLabel = strings.openArtist, onClick = onArtistClick),
+                        .clickable(onClickLabel = strings.openArtist) { onArtistClick(shown) },
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
@@ -235,11 +235,11 @@ private fun EditorialHeadline(
                 }
                 PlayerFavoriteButton(
                     trackId = shown.id,
-                    isFavorite = isFavorite,
+                    isFavorite = shown.id in favoriteIds,
                     surfaces = surfaces,
                     label = strings.favoritesPlain,
                     animated = animated,
-                    onToggle = onToggleFavorite
+                    onToggle = { onToggleFavorite(shown) }
                 )
             }
         }
