@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.data.preloadLevyraPreferences
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
 import com.luc4n3x.levyra.feature.cast.CastRuntimeInitializer
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
+import com.luc4n3x.levyra.player.waveseek.WaveSeekRuntime
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +40,7 @@ class LevyraApplication : Application() {
         LevyraArtworkCache.configure(this)
         YoutubeLocalDecoder.install(this)
         PlaybackNetworkStack.initialize(this)
+        WaveSeekRuntime.start(this)
         runCatching { NewPipeRuntime.ensure(this) }
             .onFailure { Timber.w(it, "Extractor initialization failed") }
         warmPlaybackPipeline()
