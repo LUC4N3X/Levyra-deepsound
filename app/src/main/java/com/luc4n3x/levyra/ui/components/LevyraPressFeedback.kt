@@ -43,7 +43,7 @@ fun Modifier.levyraPressable(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed && enabled && animationsEnabled) pressedScale else 1f,
-        animationSpec = LevyraMotion.press.spec(),
+        animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.press),
         label = "levyra-press"
     )
     val indication = if (animationsEnabled) null else LocalIndication.current
