@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'chore: run CodeRabbit fixes'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
