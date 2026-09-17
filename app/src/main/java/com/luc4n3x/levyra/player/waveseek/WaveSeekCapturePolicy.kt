@@ -19,6 +19,13 @@ internal fun waveSeekCaptureSpec(
     return WaveSeekCaptureSpec(cleanId, durationMs)
 }
 
+internal fun waveSeekResolvedDurationMs(
+    playerDurationMs: Long,
+    metadataDurationMs: Long
+): Long = playerDurationMs.takeIf { it > 0L }
+    ?: metadataDurationMs.takeIf { it > 0L }
+    ?: 0L
+
 internal fun waveSeekPollDelayMs(
     hasPlayer: Boolean,
     hasCapture: Boolean,
