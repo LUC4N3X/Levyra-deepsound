@@ -13,7 +13,7 @@ class WaveSeekCaptureTest {
 
         var positionMs = 0L
         while (positionMs < durationMs) {
-            val amplitude = 0.12f + ((positionMs / 1_000L) % 7L).toFloat() * 0.1f
+            val amplitude = 0.12f + (positionMs / 1_000L % 7L).toFloat() * 0.1f
             capture.record(positionMs, floatArrayOf(amplitude, amplitude * 0.8f))
             positionMs += 120L
         }
