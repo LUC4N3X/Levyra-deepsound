@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 
 @Dao
 abstract class PlaylistDao {
@@ -26,6 +27,9 @@ abstract class PlaylistDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertPlaylist(playlist: PlaylistEntity)
+
+    @Update
+    abstract suspend fun updatePlaylist(playlist: PlaylistEntity): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertTracks(tracks: List<PlaylistTrackEntity>)
