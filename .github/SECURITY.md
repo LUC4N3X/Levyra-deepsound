@@ -1,258 +1,177 @@
 # Security Policy
 
-Security issues deserve a different handling path from ordinary bugs.
+If you find a security issue in Levyra, please keep the details private until there has been time to investigate and fix it.
 
-Levyra is an open-source media application that interacts with local files, network services, third-party APIs, user-provided credentials, and external content providers. This policy explains which reports belong in the security process, how to report them safely, what information is useful during triage, and what reporters can expect after disclosure.
+This page is for security problems in Levyra itself. Normal bugs, playback issues, UI problems, provider outages, and feature requests should go through the regular issue tracker.
 
-Security is an ongoing process, not a claim that Levyra is vulnerability-free. The goal of this policy is to make responsible reporting clear, predictable, and safe for both users and researchers.
+## Reporting a security issue
 
-## Quick Reporting Guide
+Please use GitHub's private **Report a vulnerability** option from the repository Security tab when it is available.
 
-If you believe you have found a security vulnerability:
+If private reporting is not available, open a public issue only to ask for a private contact channel. Do not include exploit details, proof-of-concept code, credentials, tokens, cookies, private URLs, personal data, or sensitive logs in the public issue.
 
-1. **Do not publish the vulnerability publicly.**
-2. Check whether the issue still affects the latest official Levyra release.
-3. Use GitHub's **Report a vulnerability** option if a private reporting form is available in the repository's Security tab.
-4. If no private reporting option is available, open a public issue **only to request a private contact channel**. Do not include technical vulnerability details in that issue.
-5. Provide enough information privately for the issue to be reproduced and assessed safely.
+Issue tracker: https://github.com/LUC4N3X/Levyra-deepsound/issues/new/choose
 
-Never place exploit details, proof-of-concept code, credentials, tokens, cookies, private URLs, signing material, personal information, or sensitive logs in a public GitHub issue, discussion, pull request, comment, screenshot, or attachment.
+When possible, check the latest official release before reporting. If the issue only affects an older release but the same code is still present in the current version, the report is still useful.
 
-Issue tracker:
+## Supported versions
 
-https://github.com/LUC4N3X/Levyra-deepsound/issues/new/choose
-
-## Supported Versions
-
-Security fixes are primarily developed for the latest supported Levyra releases.
-
-| Product | Security support |
+| Version | Security support |
 | --- | --- |
 | Latest Android release | Supported |
-| Latest Windows Desktop release | Supported |
-| Older official releases | Best effort only |
-| Unofficial forks, repackaged builds, or modified APKs/binaries | Not supported by this project |
+| Latest Windows release | Supported |
+| Older official releases | Best effort |
+| Modified, repackaged, or unofficial builds | Not supported |
 
-Before reporting a vulnerability, please confirm that it can still be reproduced on the latest official release whenever reasonably possible.
+---
 
-A report affecting only an old version may still be useful when the same vulnerable code path exists in the current release.
+<details>
+<summary><strong>What to include in a report</strong></summary>
 
-## Reporting a Vulnerability
+<br>
 
-Please report suspected vulnerabilities privately whenever possible.
+A short, reproducible report is much more useful than a long severity claim.
 
-A good report does not need to be long, but it should make the security impact and reproduction path clear. Include the following when applicable:
+Include whatever is relevant:
 
-- affected Levyra version or commit;
-- platform and OS version;
-- affected component, screen, service, or feature;
-- concise vulnerability description;
-- exact reproduction steps;
-- minimal proof of concept, if one is necessary to demonstrate the issue;
-- realistic security impact;
-- attacker requirements or preconditions;
-- whether user interaction is required;
-- whether authentication, local access, special permissions, or a modified environment is required;
-- logs, traces, screenshots, or recordings with sensitive information removed;
-- whether the issue appears to affect Android, Windows, or both;
-- any known mitigation or suggested fix.
+- Levyra version or commit;
+- Android or Windows version;
+- affected feature or component;
+- what happens and why you believe it is a security issue;
+- clear reproduction steps;
+- a minimal proof of concept if one is needed;
+- realistic impact and attacker requirements;
+- whether user interaction, authentication, local access, or special permissions are required;
+- logs or screenshots with private information removed;
+- any workaround or suggested fix you already know about.
 
-Please distinguish clearly between what you have verified and what you believe may be possible. A precise, reproducible report is more useful than an exaggerated severity claim.
+Please separate what you actually reproduced from what you think may also be possible.
 
-## What Is In Scope
+</details>
 
-A vulnerability is generally in scope when it is caused by Levyra itself or when Levyra turns an upstream weakness into a meaningful security problem for its users.
+<details>
+<summary><strong>Scope</strong></summary>
 
-Examples include, but are not limited to:
+<br>
 
-- exposure of credentials, tokens, cookies, secrets, or private user data caused by Levyra;
-- unsafe handling of locally stored sensitive information;
+Examples of issues that belong here include:
+
+- exposure of credentials, tokens, cookies, or private user data caused by Levyra;
+- unsafe storage or handling of sensitive local data;
 - authentication or authorization bypasses in Levyra-owned functionality;
-- arbitrary code execution or unintended command execution through Levyra;
-- unsafe file handling, path traversal, or unintended file access;
-- insecure IPC, deep-link, intent, URI, or inter-process handling with a meaningful security impact;
-- injection vulnerabilities in application-controlled input paths;
-- unsafe deserialization or parsing when it creates a real security boundary violation;
-- server-side request behavior introduced by Levyra that can reach unintended resources;
-- vulnerabilities in update, release, packaging, or artifact-handling logic controlled by the project;
-- privacy-impacting data exposure caused by application behavior;
-- security-relevant misuse of a dependency or external API by Levyra;
-- security issues in Levyra's own networking, session, credential, or local-storage logic.
+- unintended code or command execution;
+- unsafe file access, path traversal, or similar file-handling issues;
+- security problems involving intents, deep links, URIs, IPC, or app-controlled input;
+- injection or unsafe parsing with a real security impact;
+- update, packaging, release, networking, session, or credential-handling issues controlled by Levyra;
+- a dependency problem that is actually reachable and exploitable through Levyra.
 
-Reports involving an upstream dependency are welcome when the vulnerability is exploitable through Levyra, when Levyra uses the dependency unsafely, or when project-specific mitigation is required.
+Things that are normally not Levyra security issues include ordinary crashes, UI bugs, playback failures, provider outages, geo-restrictions, rate limits, copyright or content-policy disputes, and vulnerabilities that exist only in a third-party service or operating system.
 
-## What Is Normally Out of Scope
+Scanner output by itself is not enough. If a dependency is flagged, explain how Levyra reaches the vulnerable code and what the real impact is.
 
-The following are normally not treated as Levyra security vulnerabilities unless they demonstrate a separate vulnerability in Levyra itself:
+If you are not sure whether something belongs here, report it privately and explain why you think it matters.
 
-- ordinary crashes, UI bugs, playback failures, or performance problems without a security impact;
-- content availability, catalog differences, geo-restrictions, rate limits, provider blocking, or API behavior controlled by third parties;
-- copyright, licensing, moderation, or content-policy disputes;
-- vulnerabilities that exist exclusively in an operating system, device firmware, external API, upstream library, website, CDN, DNS provider, or other third-party infrastructure;
-- issues that require an already fully compromised device or unrestricted attacker-controlled operating system, unless Levyra creates an additional security boundary violation;
-- reports affecting only unofficial forks, modified builds, repackaged APKs, patched binaries, or third-party distributions that alter Levyra;
-- theoretical weaknesses without a credible attack path or meaningful impact;
-- missing hardening measures that do not create an exploitable vulnerability by themselves;
-- denial-of-service testing against third-party services;
-- social engineering, phishing, credential stuffing, or attacks against accounts and systems not operated by Levyra;
-- automated scanner output without validation or evidence of exploitability.
+</details>
 
-If you are unsure whether something is in scope, report it privately with a short explanation of the suspected impact.
+<details>
+<summary><strong>Third-party services</strong></summary>
 
-## Third-Party Services and Boundaries
+<br>
 
-Levyra integrates with external services and providers. Those services remain outside the project's control.
+Levyra talks to external APIs, websites, providers, and other services. Those systems are not operated by this project.
 
-This policy does **not** authorize security testing against third-party infrastructure, APIs, user accounts, websites, streaming services, CDNs, or other systems that Levyra communicates with.
+This policy does not give permission to test third-party infrastructure, accounts, APIs, streaming services, CDNs, or other systems Levyra connects to.
 
-If a vulnerability belongs entirely to a third party, it should normally be reported to that provider through its own security process. If Levyra introduces, exposes, amplifies, or fails to safely contain the issue, a Levyra report may still be appropriate.
+When testing an integration, use only accounts, devices, content, and systems you own or are explicitly allowed to test.
 
-When testing an integration, use only accounts, devices, content, endpoints, and systems that you own or are explicitly authorized to test.
+If the problem belongs entirely to a third party, report it to that provider. If Levyra introduces the unsafe behavior or turns an upstream issue into a security problem for Levyra users, then it is reasonable to report it here as well.
 
-## Handling Secrets and Sensitive Data
+</details>
 
-Do not include real secrets in reports unless absolutely necessary.
+<details>
+<summary><strong>Response and disclosure</strong></summary>
 
-Whenever possible:
+<br>
 
-- replace API keys, cookies, tokens, session identifiers, and credentials with redacted examples;
-- remove personal data from logs and screenshots;
-- use test accounts rather than real user accounts;
-- minimize the amount of data collected during reproduction;
-- do not retain user data after testing;
-- do not upload sensitive artifacts to public file-sharing services.
+For a credible report, the project aims to acknowledge it within 14 days, usually sooner when possible. This is a target, not a guaranteed response time.
 
-If a secret has already been exposed publicly, assume it may be compromised and rotate or revoke it where possible.
+The usual flow is:
 
-## Triage and Severity
+1. reproduce the issue;
+2. work out which versions and platforms are affected;
+3. prepare and test a fix or mitigation;
+4. release the fix when needed;
+5. disclose technical details after users have had a reasonable chance to update.
 
-Reports are evaluated based on demonstrated impact, exploitability, affected users, required privileges, user interaction, attack complexity, and the security boundary that is crossed.
+Please allow time for investigation and release before publishing the vulnerability.
 
-CVSS or another scoring system may be used as a reference, but a submitted score does not automatically determine project priority. Levyra may classify an issue differently after reproduction and impact analysis.
+A confirmed issue may later be documented in a security advisory, release note, CVE, or another public record when appropriate. Reporters may be credited unless they prefer not to be.
 
-The project aims to:
+</details>
 
-- acknowledge credible security reports within **14 days**, usually sooner;
-- reproduce and classify the issue as soon as practical;
-- prioritize fixes according to real-world risk;
-- keep the reporter informed when meaningful progress or additional information is needed;
-- coordinate disclosure after an appropriate fix or mitigation is available.
+<details>
+<summary><strong>Handling secrets and user data</strong></summary>
 
-These are targets rather than contractual service-level guarantees. Response time may vary based on severity, reproducibility, maintainer availability, upstream dependencies, and the complexity of producing a safe fix.
+<br>
 
-## Response Process
+Do not send more sensitive data than the report actually needs.
 
-A typical security report moves through the following stages:
+Redact API keys, cookies, tokens, session identifiers, account details, and personal information where possible. Prefer test accounts over real accounts and remove unrelated data from logs and screenshots.
 
-1. **Acknowledgement** — the report is received and checked for enough information to investigate.
-2. **Validation** — the issue is reproduced and confirmed or rejected as a security vulnerability.
-3. **Impact assessment** — affected platforms, versions, attack requirements, and likely severity are determined.
-4. **Remediation** — a fix or mitigation is prepared, reviewed, and tested.
-5. **Release** — the fix is shipped through an official Levyra release when necessary.
-6. **Disclosure** — technical details may be published after users have had a reasonable opportunity to update.
+If a real secret has already been exposed publicly, treat it as compromised and rotate or revoke it where possible.
 
-Some reports may be closed as non-security bugs, upstream issues, duplicates, already-fixed problems, or non-reproducible reports. When possible, the reason will be explained to the reporter.
+</details>
 
-## Coordinated Disclosure
+<details>
+<summary><strong>Security notes</strong></summary>
 
-Please allow reasonable time for investigation, remediation, testing, and release before publishing vulnerability details.
-
-For a confirmed issue, the preferred disclosure sequence is:
-
-1. private report;
-2. validation and impact assessment;
-3. development and testing of a fix or mitigation;
-4. release to users;
-5. coordinated public disclosure when appropriate.
-
-Public disclosure may include a security advisory, release note, CVE, or another vulnerability identifier when one is appropriate and available.
-
-Reporters who materially help identify or resolve a confirmed vulnerability may be credited, unless they prefer to remain anonymous.
-
-## Responsible Security Research
-
-Good-faith security research is welcome when it is designed to demonstrate a vulnerability without creating unnecessary risk.
-
-Please:
-
-- test only systems and accounts you are authorized to use;
-- avoid accessing data that is not needed to prove the issue;
-- stop testing if you encounter private data belonging to another person;
-- avoid destructive actions, persistence, malware, or unnecessary privilege escalation;
-- avoid degrading availability for users or third-party services;
-- avoid high-volume automated traffic that could disrupt external providers;
-- do not use a vulnerability to access, modify, delete, or publish information beyond what is necessary to demonstrate impact;
-- report findings privately and allow a reasonable remediation window.
-
-This policy is intended to support responsible research into Levyra itself. It does not grant permission to test systems owned by other people or organizations.
-
-## Security Architecture Notes
-
-The following notes exist to make important security boundaries explicit. They are not a complete security design specification and should not be interpreted as a guarantee that every piece of application data uses the same mechanism.
+<br>
 
 ### Android credential storage
 
-Where Levyra stores supported external credentials through `AndroidKeystoreCredentialStore`, the application uses Android Keystore-backed AES keys and `AES/GCM/NoPadding` for authenticated encryption before persisting the encrypted value in application-private preferences.
+Credentials handled through `AndroidKeystoreCredentialStore` use Android Keystore-backed AES keys and `AES/GCM/NoPadding` before the encrypted value is stored in app-private preferences.
 
-Relevant implementation:
+Implementation:
 
 https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/data/security/AndroidKeystoreCredentialStore.kt
 
 ### Compatibility cryptography
 
-A small number of external compatibility paths use older cryptographic primitives because the corresponding upstream protocol or interoperability flow expects them. These uses are intentionally isolated from Levyra's own credential-encryption and security boundaries.
+A few integrations use older algorithms because the external protocol expects them. These are compatibility paths, not Levyra's credential-storage or release-verification mechanisms.
 
-- **Last.fm API signing** — Last.fm's `api_sig` construction uses MD5 as part of its authentication protocol. Levyra uses MD5 only for that protocol-compatible signature construction over HTTPS. It is not used for password hashing, local authentication, local credential encryption, or release verification.
-- **Spotify compatibility TOTP** — the anonymous-token compatibility flow uses HMAC-SHA1 TOTP. This is limited to the external Spotify compatibility path and is not used for Levyra credential encryption, password storage, or release verification.
-- **YouTube player fingerprinting** — an MD5 digest is used as a compact, non-security fingerprint for player-script identity/change detection. It is not treated as a cryptographic authenticity or integrity guarantee.
+- **Last.fm** uses MD5 when building the service's `api_sig` value.
+- **Spotify compatibility** uses HMAC-SHA1 TOTP in the anonymous-token flow.
+- **YouTube player fingerprinting** uses MD5 only as a non-security fingerprint for script identity/change detection.
 
-Relevant implementation references:
+References:
 
 - https://www.last.fm/api/authspec
 - https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/feature/scrobbling/Scrobbling.kt
 - https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/data/SpotifyArtistArtworkRepository.kt
 - https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/data/YoutubeLocalDecoder.kt
 
-If an upstream protocol gains a stronger compatible alternative, Levyra should prefer migrating to it when that can be done without breaking interoperability.
+If an upstream protocol provides a stronger compatible alternative in the future, Levyra should move to it when that can be done without breaking the integration.
 
-## Dependencies and Upstream Vulnerabilities
+</details>
 
-Levyra depends on platform libraries, open-source dependencies, and external services. A vulnerability in one of those components does not automatically mean Levyra is exploitable.
+<details>
+<summary><strong>Responsible research and bug bounty</strong></summary>
 
-Reports are most actionable when they explain:
+<br>
 
-- the affected dependency or service;
-- the vulnerable version or behavior;
-- how Levyra reaches the vulnerable code path;
-- the realistic impact on a Levyra user;
-- whether a patched upstream version or mitigation already exists.
+Please keep testing limited to systems and accounts you are allowed to use. Avoid destructive testing, unnecessary access to other people's data, persistence, malware, service disruption, or high-volume traffic against third-party services.
 
-Dependency scanner alerts without a demonstrated Levyra impact may be handled as maintenance issues rather than security incidents.
+Stop if testing exposes private data that is not needed to prove the issue.
 
-## Security Updates and Official Releases
+Levyra does not currently run a paid bug bounty program. A valid report may be credited publicly, but payment or other compensation is not promised.
 
-Users should keep Levyra updated to the latest official release to receive current security, compatibility, and reliability fixes.
+</details>
 
-Official GitHub releases are published at:
+---
+
+Official releases are published at:
 
 https://github.com/LUC4N3X/Levyra-deepsound/releases
 
-For security-sensitive verification, prefer artifacts published or linked by the Levyra project rather than unknown third-party re-hosts or modified packages.
-
-## No Bug Bounty
-
-Levyra does not currently operate a paid bug bounty program.
-
-Submitting a report does not create an entitlement to payment, compensation, merchandise, or other rewards. Public acknowledgement or credit may be offered for responsible disclosure of a confirmed vulnerability.
-
-## Public Discussions After a Fix
-
-Once a vulnerability has been fixed and disclosure is considered safe, discussion is welcome when it helps users understand the impact, mitigation, or engineering lessons without exposing unnecessary private information.
-
-Please avoid publishing secrets, user data, or unrelated third-party information even after the vulnerability itself is public.
-
-## Policy Changes
-
-This policy may evolve as Levyra's architecture, platforms, integrations, and release process change.
-
-The version committed to the repository is the authoritative project policy. If a security-sensitive process changes, this document should be updated alongside that change.
+For security-sensitive testing, use an official Levyra build rather than an unknown repackaged or modified copy.
