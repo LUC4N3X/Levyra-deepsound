@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -49,14 +50,14 @@ internal fun PlayerEditorialDeck(
     slots: PlayerDeckSlots,
     surfaces: PlayerSurfaceTokens,
     accent: Color,
-    favoriteIds: Set<String>,
+    isFavorite: Boolean,
     queuePosition: PlayerDeckQueuePosition?,
     animated: Boolean,
     compact: Boolean,
     scrollable: Boolean,
     gutter: Dp,
-    onArtistClick: (Track) -> Unit,
-    onToggleFavorite: (Track) -> Unit,
+    onArtistClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -106,7 +107,7 @@ internal fun PlayerEditorialDeck(
             track = track,
             surfaces = surfaces,
             accent = accent,
-            favoriteIds = favoriteIds,
+            isFavorite = isFavorite,
             animated = animated,
             compact = compact,
             onArtistClick = onArtistClick,
@@ -157,7 +158,7 @@ private fun EditorialRail(
             Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceMd))
         }
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .padding(start = LevyraPlayerDesign.SpaceXs)
                 .weight(1f)
                 .width(LevyraPlayerDesign.Hairline)
@@ -171,11 +172,11 @@ private fun EditorialHeadline(
     track: Track,
     surfaces: PlayerSurfaceTokens,
     accent: Color,
-    favoriteIds: Set<String>,
+    isFavorite: Boolean,
     animated: Boolean,
     compact: Boolean,
-    onArtistClick: (Track) -> Unit,
-    onToggleFavorite: (Track) -> Unit
+    onArtistClick: () -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     AnimatedContent(
@@ -184,6 +185,7 @@ private fun EditorialHeadline(
         contentKey = { it.id },
         label = "player-editorial-headline"
     ) { shown ->
+        val isCurrent = shown.id == track.id
         Column(modifier = Modifier.fillMaxWidth()) {
             val deckline = editorialDeckline(shown)
             if (deckline.isNotEmpty()) {
@@ -220,7 +222,11 @@ private fun EditorialHeadline(
                         .weight(1f)
                         .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
                         .clip(LevyraPlayerDesign.ShapeXxs)
-                        .clickable(onClickLabel = strings.openArtist) { onArtistClick(shown) },
+                        .clickable(
+                            enabled = isCurrent,
+                            onClickLabel = strings.openArtist,
+                            onClick = onArtistClick
+                        ),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
@@ -233,14 +239,18 @@ private fun EditorialHeadline(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                PlayerFavoriteButton(
-                    trackId = shown.id,
-                    isFavorite = shown.id in favoriteIds,
-                    surfaces = surfaces,
-                    label = strings.favoritesPlain,
-                    animated = animated,
-                    onToggle = { onToggleFavorite(shown) }
-                )
+                if (isCurrent) {
+                    PlayerFavoriteButton(
+                        trackId = shown.id,
+                        isFavorite = isFavorite,
+                        surfaces = surfaces,
+                        label = strings.favoritesPlain,
+                        animated = animated,
+                        onToggle = onToggleFavorite
+                    )
+                } else {
+                    Box(modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget))
+                }
             }
         }
     }
