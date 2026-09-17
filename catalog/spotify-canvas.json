@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-17T04:57:06Z",
+  "generatedAt": "2026-09-17T11:47:05Z",
   "items": [
     {
       "song": "PER NOI (feat. Achille Lauro)",
@@ -313,7 +313,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -532,6 +532,13 @@
       "artist": "SIENNA SPIRO",
       "album": "Visitor",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/03877583cb194e8aaa8cb60f90e239ee.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2383,13 +2390,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Sömnmolnet",
       "artist": "Humlan Djojj, Josefine Götestam",
       "album": "Sov med Humlan Djojj",
@@ -3555,7 +3555,7 @@
       "song": "Finding Her",
       "artist": "Kushagra, Bharath, Saaheal",
       "album": "Finding Her",
-      "url": "https://canvaz.scdn.co/upload/artist/2IKfr1JgPRXmXKAWwrABc6/video/c62660b466a941f8b54d85bd28081228.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/2IKfr1JgPRXmXKAWwrABc6/video/38e69ae71fd0407b9e0a6aab8a55fa2e.cnvs.mp4",
       "scope": "track"
     },
     {
