@@ -43,4 +43,33 @@ class WaveSeekCapturePolicyTest {
             waveSeekCaptureSpec("", "https://media.example/song.m4a", 180_000L, false, false, false)
         )
     }
+
+    @Test
+    fun `real player duration wins over metadata duration`() {
+        assertEquals(
+            179_240L,
+            waveSeekResolvedDurationMs(
+                playerDurationMs = 179_240L,
+                metadataDurationMs = 180_000L
+            )
+        )
+    }
+
+    @Test
+    fun `metadata duration is fallback when player duration is unavailable`() {
+        assertEquals(
+            180_000L,
+            waveSeekResolvedDurationMs(
+                playerDurationMs = 0L,
+                metadataDurationMs = 180_000L
+            )
+        )
+        assertEquals(
+            0L,
+            waveSeekResolvedDurationMs(
+                playerDurationMs = -1L,
+                metadataDurationMs = 0L
+            )
+        )
+    }
 }
