@@ -117,6 +117,14 @@ internal class PlaylistCoverStore(context: Context) {
         }
     }
 
+    suspend fun saveRendered(playlistId: String, bitmap: Bitmap): String = withContext(Dispatchers.IO) {
+        directory.mkdirs()
+        if (!directory.isDirectory) throw IOException("Unable to create playlist cover storage")
+        val target = targetFile(playlistId)
+        writeBitmap(target, bitmap)
+        Uri.fromFile(target).toString()
+    }
+
     fun readBackup(reference: String): ByteArray? {
         val file = ownedFile(reference) ?: return null
         if (!file.isFile || file.length() !in 1..MAX_PLAYLIST_COVER_BACKUP_BYTES.toLong()) return null

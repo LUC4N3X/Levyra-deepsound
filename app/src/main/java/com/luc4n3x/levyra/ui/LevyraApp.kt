@@ -54,6 +54,7 @@ import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerShapes
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.player.*
@@ -547,6 +548,8 @@ import com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog
 import com.luc4n3x.levyra.ui.library.LibrarySelectionAction
 import com.luc4n3x.levyra.ui.library.LevyraLibraryScreen
 import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
+import com.luc4n3x.levyra.ui.library.PlaylistStudioScreen
+import com.luc4n3x.levyra.ui.components.rememberLastNonNull
 import com.luc4n3x.levyra.ui.library.SavedAlbumBookmarkOverlay
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
@@ -1800,8 +1803,8 @@ fun LevyraApp(
         }
     }
     val accent = if (state.dynamicColor) state.currentTrack ?: state.tracks.firstOrNull() else null
-    val overlayEnter = if (state.animationsEnabled) fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) else EnterTransition.None
-    val overlayExit = if (state.animationsEnabled) fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing)) else ExitTransition.None
+    val overlayEnter = LevyraMotion.overlayEnter(state.animationsEnabled)
+    val overlayExit = LevyraMotion.overlayExit(state.animationsEnabled)
     val miniEnter = if (state.animationsEnabled) {
         slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing), initialOffsetY = { it / 2 }) + fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing))
     } else {
@@ -2564,6 +2567,24 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.openPlaylist != null, enter = overlayEnter, exit = overlayExit) {
                 LevyraPlaylistDetailScreen(viewModel = viewModel, state = state)
+            }
+
+            val studioSession by viewModel.playlistStudio.session.collectAsStateWithLifecycle()
+            val lastStudioSession = rememberLastNonNull(studioSession)
+            AnimatedVisibility(
+                visible = studioSession != null,
+                enter = LevyraMotion.sheetEnter(state.animationsEnabled),
+                exit = LevyraMotion.overlayExit(state.animationsEnabled)
+            ) {
+                lastStudioSession?.let { session ->
+                    PlaylistStudioScreen(
+                        session = session,
+                        controller = viewModel.playlistStudio,
+                        downloadedTrackIds = state.downloadedTrackIds,
+                        animated = state.animationsEnabled,
+                        onClose = viewModel::closePlaylistStudio
+                    )
+                }
             }
 
             AnimatedVisibility(
@@ -17647,7 +17668,9 @@ private fun SettingsOverlay(
                                     options = listOf(
                                         PlayerVisualMode.Artwork.name to strings.playerVisualModeArtwork,
                                         PlayerVisualMode.CanvasCard.name to strings.playerVisualModeCanvasCard,
-                                        PlayerVisualMode.CanvasImmersive.name to strings.playerVisualModeCanvasImmersive
+                                        PlayerVisualMode.CanvasImmersive.name to strings.playerVisualModeCanvasImmersive,
+                                        PlayerVisualMode.Editorial.name to strings.playerDeckEditorial,
+                                        PlayerVisualMode.Pulse.name to strings.playerDeckPulse
                                     ),
                                     selected = interfaceSettings.playerVisualMode.name,
                                     onSelect = { value ->

@@ -741,6 +741,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
+    val playlistStudio = PlaylistStudioController(
+        scope = viewModelScope,
+        gateway = PlaylistStudioStoreGateway(application.applicationContext, playlistStore) { playlistId ->
+            loadPlaylists()
+            viewModelScope.launch { refreshOpenPlaylist(playlistId) }
+        }
+    )
     private val preferences = LevyraPreferences(application.applicationContext)
     private val audioSettingsPersistence = AudioSettingsPersistenceCoordinator(preferences::setAudioSettings)
     private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
@@ -3132,6 +3139,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun closePlaylist() {
         _state.update { it.copy(openPlaylist = null) }
     }
+
+    fun openPlaylistStudio(playlistId: String? = null) {
+        val snapshot = _state.value
+        val draft = if (playlistId == null) {
+            com.luc4n3x.levyra.domain.PlaylistStudioEdits.startNew()
+        } else {
+            val playlist = snapshot.openPlaylist?.takeIf { it.id == playlistId }
+                ?: snapshot.playlists.firstOrNull { it.id == playlistId }
+                ?: return
+            com.luc4n3x.levyra.domain.PlaylistStudioEdits.startFrom(playlist)
+        }
+        playlistStudio.open(draft) {
+            listOf(
+                snapshot.favorites,
+                snapshot.recentListens,
+                snapshot.queue,
+                snapshot.playlists.flatMap { it.tracks },
+                snapshot.recentSearches
+            )
+        }
+    }
+
+    fun closePlaylistStudio() = playlistStudio.close()
 
     fun playPlaylist(playlistId: String, startTrackId: String? = null) {
         viewModelScope.launch {

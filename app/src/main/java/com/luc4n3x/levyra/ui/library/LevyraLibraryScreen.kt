@@ -158,19 +158,19 @@ private fun playlistDragUpdate(
     )
 }
 
-private data class PlaylistDragSnapshot(
+internal data class PlaylistDragSnapshot(
     val entryKey: String,
     val orderedTracks: List<Track>,
     val dragOffsetY: Float
 )
 
-private data class PlaylistDragFrameActions(
+internal data class PlaylistDragFrameActions(
     val onMove: (fromIndex: Int, toIndex: Int, offsetAdjustment: Float) -> Unit,
     val onScrollConsumed: (Float) -> Unit
 )
 
 @Composable
-private fun PlaylistDragFrameLoop(
+internal fun PlaylistDragFrameLoop(
     activeEntryKey: String?,
     listState: androidx.compose.foundation.lazy.LazyListState,
     snapshotProvider: () -> PlaylistDragSnapshot?,
@@ -245,7 +245,6 @@ internal fun LevyraLibraryScreen(
     var addToPlaylistTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
     var confirmDelete by remember { mutableStateOf(false) }
     var pendingDownloadDelete by remember { mutableStateOf<DownloadedTrack?>(null) }
-    var showCreatePlaylist by remember { mutableStateOf(false) }
     var showImportPlaylist by remember { mutableStateOf(false) }
     var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
     var pendingCsvPlaylistName by rememberSaveable { mutableStateOf("") }
@@ -831,7 +830,7 @@ internal fun LevyraLibraryScreen(
 
         if (category == LibraryCategory.Playlists && !selectionActive) {
             FloatingActionButton(
-                onClick = { showCreatePlaylist = true },
+                onClick = { viewModel.openPlaylistStudio() },
                 containerColor = LevyraCyan,
                 contentColor = Color.Black,
                 modifier = Modifier
@@ -856,19 +855,6 @@ internal fun LevyraLibraryScreen(
                 onClose = { openSmartCollectionName = null }
             )
         }
-    }
-
-    if (showCreatePlaylist) {
-        LibraryNameDialog(
-            title = strings.newPlaylist,
-            initialValue = "",
-            confirmLabel = strings.create,
-            onDismiss = { showCreatePlaylist = false },
-            onConfirm = { name ->
-                viewModel.createPlaylist(name)
-                showCreatePlaylist = false
-            }
-        )
     }
 
     if (showImportPlaylist) {
@@ -1104,7 +1090,8 @@ internal fun LevyraPlaylistDetailScreen(
                     onChangeCover = {
                         coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
-                    onResetCover = { viewModel.resetPlaylistCover(playlist.id) }
+                    onResetCover = { viewModel.resetPlaylistCover(playlist.id) },
+                    onOpenStudio = { viewModel.openPlaylistStudio(playlist.id) }
                 )
             }
 
