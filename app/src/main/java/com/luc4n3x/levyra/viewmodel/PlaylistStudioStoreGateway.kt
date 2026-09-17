@@ -100,13 +100,30 @@ internal class PlaylistStudioStoreGateway(
         return try {
             val current = store.load(playlistId)
             val previousWasCustom = rollback.snapshot.playlist.coverMode == PlaylistCoverMode.CUSTOM.name
-            if (previousWasCustom && rollback.snapshot.playlist.coverUrl.isNotBlank()) {
+            val restoredCoverUrl = if (previousWasCustom && rollback.snapshot.playlist.coverUrl.isNotBlank()) {
                 val coverBytes = rollback.coverBytes ?: return false
                 coverStore.restore(playlistId, coverBytes)
+            } else {
+                null
             }
-            val restored = store.restoreStudio(rollback.snapshot)
-            if (restored && !previousWasCustom && current?.coverMode == PlaylistCoverMode.CUSTOM) {
-                coverStore.delete(current.coverUrl)
+            val snapshot = if (restoredCoverUrl != null) {
+                rollback.snapshot.copy(
+                    playlist = rollback.snapshot.playlist.copy(coverUrl = restoredCoverUrl)
+                )
+            } else {
+                rollback.snapshot
+            }
+            val restored = store.restoreStudio(snapshot)
+            if (restored) {
+                if (
+                    current?.coverMode == PlaylistCoverMode.CUSTOM &&
+                    current.coverUrl.isNotBlank() &&
+                    current.coverUrl != restoredCoverUrl
+                ) {
+                    coverStore.delete(current.coverUrl)
+                }
+            } else if (restoredCoverUrl != null) {
+                coverStore.delete(restoredCoverUrl)
             }
             restored
         } catch (error: Exception) {
