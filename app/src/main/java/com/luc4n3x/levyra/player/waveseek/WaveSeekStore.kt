@@ -14,12 +14,10 @@ internal data class WaveSeekIndexUpdate(
 internal fun waveSeekStorageKey(mediaId: String, durationMs: Long): String? {
     val cleanId = mediaId.trim()
     if (cleanId.isBlank() || durationMs <= 0L) return null
-    val durationSeconds = durationMs / 1_000L
-    if (durationSeconds <= 0L) return null
     val encodedId = Base64.getUrlEncoder()
         .withoutPadding()
         .encodeToString(cleanId.toByteArray(Charsets.UTF_8))
-    return "wave-v1:$durationSeconds:$encodedId"
+    return "wave-v1:$durationMs:$encodedId"
 }
 
 internal fun waveSeekUpdatedIndex(
