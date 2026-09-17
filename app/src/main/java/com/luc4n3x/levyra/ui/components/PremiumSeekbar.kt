@@ -271,9 +271,7 @@ fun PremiumSeekbar(
                 drawAnimatedWaveform(
                     trackStart = trackStart,
                     handleX = handleX,
-                    centerY = centerY,
                     trackHeight = trackHeight,
-                    radius = radius,
                     scrub = scrub,
                     animated = animated,
                     isDragging = isDragging,
@@ -353,9 +351,7 @@ private fun DrawScope.drawMeasuredWaveform(
 private fun DrawScope.drawAnimatedWaveform(
     trackStart: Float,
     handleX: Float,
-    centerY: Float,
     trackHeight: Float,
-    radius: CornerRadius,
     scrub: Float,
     animated: Boolean,
     isDragging: Boolean,
@@ -364,6 +360,8 @@ private fun DrawScope.drawAnimatedWaveform(
     trailingColor: Color,
     activeColor: Color
 ) {
+    val centerY = size.height / 2f
+    val radius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
     val activeSpan = handleX - trackStart
     clipRect(
         left = trackStart,
