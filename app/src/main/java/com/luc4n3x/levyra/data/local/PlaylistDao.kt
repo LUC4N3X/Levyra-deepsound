@@ -106,6 +106,22 @@ abstract class PlaylistDao {
     }
 
     @Transaction
+    open suspend fun applyStudioEdit(
+        playlistId: String,
+        name: String,
+        tracks: List<PlaylistTrackEntity>,
+        automaticCover: String,
+        updatedAt: Long
+    ): Boolean {
+        if (playlist(playlistId) == null) return false
+        rename(playlistId, name, updatedAt)
+        clearTracks(playlistId)
+        if (tracks.isNotEmpty()) insertTracks(tracks)
+        updateAutomaticCover(playlistId, automaticCover, updatedAt)
+        return true
+    }
+
+    @Transaction
     open suspend fun removeTracksAndCompact(playlistId: String, trackIds: Set<String>) {
         if (trackIds.isEmpty()) return
         val remaining = tracksOf(playlistId).filterNot { it.trackId in trackIds }
