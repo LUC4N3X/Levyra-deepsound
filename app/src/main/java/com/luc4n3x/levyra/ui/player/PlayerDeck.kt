@@ -111,7 +111,8 @@ internal fun playerAudioCodecLabel(mimeType: String?, codecs: String?): String {
     return when {
         mime == "audio/opus" || codec.startsWith("opus") -> "OPUS"
         mime == "audio/mp4a-latm" || codec.startsWith("mp4a") -> "AAC"
-        mime == "audio/mpeg" || mime == "audio/mpeg-l2" -> "MP3"
+        mime == "audio/mpeg" -> "MP3"
+        mime == "audio/mpeg-l2" -> "MP2"
         mime == "audio/flac" || codec == "flac" -> "FLAC"
         mime == "audio/vorbis" || codec == "vorbis" -> "VORBIS"
         mime == "audio/alac" || codec == "alac" -> "ALAC"
