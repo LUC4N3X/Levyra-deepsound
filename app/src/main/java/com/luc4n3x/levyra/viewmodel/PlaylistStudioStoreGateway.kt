@@ -76,9 +76,9 @@ internal class PlaylistStudioStoreGateway(
 
     override suspend fun rollbackUpdated(
         playlistId: String,
-        token: PlaylistStudioRollbackToken?
+        rollbackState: PlaylistStudioRollbackToken?
     ): Boolean {
-        val rollback = token as? StoreRollbackToken ?: return false
+        val rollback = rollbackState as? StoreRollbackToken ?: return false
         if (rollback.playlistId != playlistId) return false
         return try {
             store.restoreStudio(rollback.snapshot)
