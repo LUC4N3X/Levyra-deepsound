@@ -5037,7 +5037,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val loaded = withContext(Dispatchers.IO) { queueEngine.switchSpace(spaceId, outgoingPositionMs) }
         _state.update { it.copy(queueSwitching = false) }
         if (loaded == null || loaded.spaceId != spaceId) {
-            if (wasPlaying) player.play()
+            if (wasPlaying) play()
             return
         }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
