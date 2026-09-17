@@ -18,3 +18,14 @@ internal fun waveSeekCaptureSpec(
     if (!WaveSeekSourcePolicy.canAnalyze(source, durationMs)) return null
     return WaveSeekCaptureSpec(cleanId, durationMs)
 }
+
+internal fun waveSeekPollDelayMs(
+    hasPlayer: Boolean,
+    hasCapture: Boolean,
+    isPlaying: Boolean
+): Long = when {
+    !hasPlayer -> 1_500L
+    hasCapture && isPlaying -> 120L
+    hasCapture -> 750L
+    else -> 1_000L
+}
