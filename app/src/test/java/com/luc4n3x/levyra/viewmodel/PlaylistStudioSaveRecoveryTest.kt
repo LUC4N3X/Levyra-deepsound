@@ -105,9 +105,9 @@ class PlaylistStudioSaveRecoveryTest {
 
         override suspend fun rollbackUpdated(
             playlistId: String,
-            token: PlaylistStudioRollbackToken?
+            rollbackState: PlaylistStudioRollbackToken?
         ): Boolean {
-            val rollback = token as? RecoveryToken ?: return false
+            val rollback = rollbackState as? RecoveryToken ?: return false
             if (rollback.playlistId != playlistId) return false
             records[playlistId] = rollback.record
             return true
