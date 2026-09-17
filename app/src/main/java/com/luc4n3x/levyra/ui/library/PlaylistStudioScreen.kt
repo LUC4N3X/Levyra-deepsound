@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -53,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.domain.PlaylistCoverStyle
+import com.luc4n3x.levyra.domain.PlaylistStudioDraft
 import com.luc4n3x.levyra.domain.PlaylistStudioPhoto
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.playlistStudioArtwork
@@ -130,47 +134,13 @@ internal fun PlaylistStudioScreen(
         if (uri != null) photoSource = uri
     }
     val listState = rememberLazyListState()
-    var draggedTrackId by remember(session.generation) { mutableStateOf<String?>(null) }
-    var dragOffsetY by remember(session.generation) { mutableFloatStateOf(0f) }
+    val reorder = rememberStudioReorder(session.generation, controller, listState)
     val stats = remember(draft.tracks, downloadedTrackIds) { playlistStudioStats(draft.tracks, downloadedTrackIds) }
     val coverOptions = remember(draft.customCoverUrl, strings) { playlistStudioCoverOptions(draft, strings) }
-    val untouchedNew = draft.isNew && draft.name.isBlank() && draft.tracks.isEmpty()
-
     val requestClose: () -> Unit = {
-        if (session.saving || untouchedNew || session.saveState == PlaylistStudioSaveState.Clean ||
-            session.saveState == PlaylistStudioSaveState.Saved
-        ) {
-            onClose()
-        } else {
-            discardPrompt = true
-        }
+        if (studioCloseNeedsConfirmation(session)) discardPrompt = true else onClose()
     }
     BackHandler(enabled = !libraryOpen, onBack = requestClose)
-
-    PlaylistDragFrameLoop(
-        activeEntryKey = draggedTrackId,
-        listState = listState,
-        snapshotProvider = {
-            draggedTrackId?.let { PlaylistDragSnapshot(it, controller.session.value?.draft?.tracks.orEmpty(), dragOffsetY) }
-        },
-        actions = PlaylistDragFrameActions(
-            onMove = { fromIndex, toIndex, offsetAdjustment ->
-                controller.move(fromIndex, toIndex)
-                dragOffsetY += offsetAdjustment
-                haptics.perform(LevyraHapticAction.Reorder)
-            },
-            onScrollConsumed = { consumed -> dragOffsetY += consumed }
-        )
-    )
-
-    val lastUndo = session.lastUndo
-    val displayedUndo = rememberLastNonNull(lastUndo, session.generation)
-    LaunchedEffect(lastUndo) {
-        if (lastUndo != null) {
-            delay(UndoVisibleMs)
-            controller.dismissUndo()
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -213,117 +183,40 @@ internal fun PlaylistStudioScreen(
                         onRetry = controller::retry
                     )
                 }
-                item(key = "studio-cover-label", contentType = "studio-label") {
-                    StudioSectionLabel(strings.playlistStudioCover)
-                }
-                item(key = "studio-cover-styles", contentType = "studio-cover-styles") {
-                    PlaylistStudioCoverStyles(
-                        options = coverOptions,
-                        selected = draft.coverStyle,
-                        animated = animated,
-                        onSelect = { style ->
-                            if (style == PlaylistCoverStyle.Photo) {
-                                photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            } else {
-                                controller.setCoverStyle(style)
-                            }
+                studioCoverSection(
+                    draft = draft,
+                    options = coverOptions,
+                    strings = strings,
+                    animated = animated,
+                    onSelectStyle = { style ->
+                        if (style == PlaylistCoverStyle.Photo) {
+                            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } else {
+                            controller.setCoverStyle(style)
                         }
-                    )
-                }
-                if (draft.coverStyle == PlaylistCoverStyle.Artwork) {
-                    item(key = "studio-cover-artworks", contentType = "studio-cover-artworks") {
-                        PlaylistStudioArtworkChoices(
-                            tracks = draft.tracks,
-                            selectedTrackId = draft.coverTrackId,
-                            label = strings.playlistStudioChooseArtwork,
-                            onSelect = controller::setCoverTrack,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                }
-                item(key = "studio-tracks-header", contentType = "studio-tracks-header") {
-                    StudioTracksHeader(
-                        title = strings.songsPlain,
-                        count = draft.tracks.size,
-                        hint = if (draft.tracks.size > 1) strings.dragToReorder else null,
-                        addLabel = strings.playlistStudioAddSongs,
-                        onAdd = { libraryOpen = true }
-                    )
-                }
-                if (draft.tracks.isEmpty()) {
-                    item(key = "studio-empty", contentType = "studio-empty") {
-                        PlaylistStudioEmptyTracks(
-                            title = strings.playlistStudioEmptyTitle,
-                            body = strings.playlistStudioEmptyBody,
-                            actionLabel = strings.playlistStudioAddSongs,
-                            onAction = { libraryOpen = true }
-                        )
-                    }
-                } else {
-                    itemsIndexed(
-                        items = draft.tracks,
-                        key = { _, track -> "reorder-${track.id}" },
-                        contentType = { _, _ -> "studio-track" }
-                    ) { index, track ->
-                        val dragging = draggedTrackId == track.id
-                        StudioTrackRow(
-                            track = track,
-                            index = index,
-                            count = draft.tracks.size,
-                            offline = track.id in downloadedTrackIds,
-                            dragging = dragging,
-                            dragOffsetY = if (dragging) dragOffsetY else 0f,
-                            strings = strings,
-                            actions = PlaylistReorderRowActions(
-                                onMoveUp = {
-                                    controller.beginMove(track.id)
-                                    controller.move(index, index - 1)
-                                },
-                                onMoveDown = {
-                                    controller.beginMove(track.id)
-                                    controller.move(index, index + 1)
-                                },
-                                onDragStart = {
-                                    controller.beginMove(track.id)
-                                    draggedTrackId = track.id
-                                    dragOffsetY = 0f
-                                },
-                                onDrag = { delta -> if (draggedTrackId == track.id) dragOffsetY += delta },
-                                onDragEnd = {
-                                    draggedTrackId = null
-                                    dragOffsetY = 0f
-                                }
-                            ),
-                            onRemove = {
-                                haptics.perform(LevyraHapticAction.Confirm)
-                                controller.remove(track.id)
-                            },
-                            animated = animated
-                        )
-                    }
-                }
+                    },
+                    onSelectTrack = controller::setCoverTrack
+                )
+                studioTrackSection(
+                    draft = draft,
+                    strings = strings,
+                    downloadedTrackIds = downloadedTrackIds,
+                    reorder = reorder,
+                    controller = controller,
+                    animated = animated,
+                    onAddSongs = { libraryOpen = true }
+                )
             }
         }
 
-        AnimatedVisibility(
-            visible = lastUndo != null && !libraryOpen,
-            enter = LevyraMotion.sheetEnter(animated),
-            exit = LevyraMotion.sheetExit(animated),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(16.dp)
-        ) {
-            val undo = displayedUndo ?: return@AnimatedVisibility
-            StudioUndoBar(
-                message = when (undo.kind) {
-                    PlaylistStudioUndoKind.Removed -> strings.playlistStudioRemoved(undo.trackTitle)
-                    PlaylistStudioUndoKind.Moved -> strings.playlistStudioMoved(undo.trackTitle)
-                },
-                actionLabel = strings.playlistStudioUndo,
-                onUndo = controller::undo
-            )
-        }
+        StudioUndoOverlay(
+            session = session,
+            controller = controller,
+            strings = strings,
+            hidden = libraryOpen,
+            animated = animated,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         AnimatedVisibility(
             visible = libraryOpen,
@@ -343,40 +236,274 @@ internal fun PlaylistStudioScreen(
     }
 
     if (discardPrompt) {
-        AlertDialog(
-            onDismissRequest = { discardPrompt = false },
-            title = { Text(strings.playlistStudioDiscardTitle) },
-            text = { Text(strings.playlistStudioDiscardBody) },
-            confirmButton = {
-                TextButton(onClick = {
-                    discardPrompt = false
-                    onClose()
-                }) { Text(strings.playlistStudioDiscard, color = LevyraPink) }
-            },
-            dismissButton = {
-                TextButton(onClick = { discardPrompt = false }) { Text(strings.playlistStudioKeepEditing) }
+        StudioDiscardDialog(
+            strings = strings,
+            onKeepEditing = { discardPrompt = false },
+            onDiscard = {
+                discardPrompt = false
+                onClose()
             }
         )
     }
 
     photoSource?.let { source ->
-        PlaylistCoverCropDialog(
+        StudioPhotoCropDialog(
             source = source,
             onDismiss = { photoSource = null },
-            onConfirm = { crop ->
-                controller.setPhoto(
-                    PlaylistStudioPhoto(
-                        uri = source.toString(),
-                        viewportSizePx = crop.viewportSizePx,
-                        zoom = crop.zoom,
-                        offsetX = crop.offsetX,
-                        offsetY = crop.offsetY
-                    )
-                )
+            onConfirm = { photo ->
+                controller.setPhoto(photo)
                 photoSource = null
             }
         )
     }
+}
+
+internal fun studioCloseNeedsConfirmation(session: PlaylistStudioSession): Boolean {
+    val draft = session.draft
+    val untouchedNew = draft.isNew && draft.name.isBlank() && draft.tracks.isEmpty()
+    if (session.saving || untouchedNew) return false
+    return session.saveState != PlaylistStudioSaveState.Clean && session.saveState != PlaylistStudioSaveState.Saved
+}
+
+@Stable
+private class StudioReorderState {
+    var draggedTrackId by mutableStateOf<String?>(null)
+    var dragOffsetY by mutableFloatStateOf(0f)
+}
+
+@Composable
+private fun rememberStudioReorder(
+    generation: Long,
+    controller: PlaylistStudioController,
+    listState: LazyListState
+): StudioReorderState {
+    val haptics = LocalLevyraHaptics.current
+    val reorder = remember(generation) { StudioReorderState() }
+    PlaylistDragFrameLoop(
+        activeEntryKey = reorder.draggedTrackId,
+        listState = listState,
+        snapshotProvider = {
+            reorder.draggedTrackId?.let { trackId ->
+                PlaylistDragSnapshot(trackId, controller.session.value?.draft?.tracks.orEmpty(), reorder.dragOffsetY)
+            }
+        },
+        actions = PlaylistDragFrameActions(
+            onMove = { fromIndex, toIndex, offsetAdjustment ->
+                controller.move(fromIndex, toIndex)
+                reorder.dragOffsetY += offsetAdjustment
+                haptics.perform(LevyraHapticAction.Reorder)
+            },
+            onScrollConsumed = { consumed -> reorder.dragOffsetY += consumed }
+        )
+    )
+    return reorder
+}
+
+private fun LazyListScope.studioCoverSection(
+    draft: PlaylistStudioDraft,
+    options: List<PlaylistStudioCoverOption>,
+    strings: LevyraStrings,
+    animated: Boolean,
+    onSelectStyle: (PlaylistCoverStyle) -> Unit,
+    onSelectTrack: (String) -> Unit
+) {
+    item(key = "studio-cover-label", contentType = "studio-label") {
+        StudioSectionLabel(strings.playlistStudioCover)
+    }
+    item(key = "studio-cover-styles", contentType = "studio-cover-styles") {
+        PlaylistStudioCoverStyles(
+            options = options,
+            selected = draft.coverStyle,
+            animated = animated,
+            onSelect = onSelectStyle
+        )
+    }
+    if (draft.coverStyle == PlaylistCoverStyle.Artwork) {
+        item(key = "studio-cover-artworks", contentType = "studio-cover-artworks") {
+            PlaylistStudioArtworkChoices(
+                tracks = draft.tracks,
+                selectedTrackId = draft.coverTrackId,
+                label = strings.playlistStudioChooseArtwork,
+                onSelect = onSelectTrack,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+private fun LazyListScope.studioTrackSection(
+    draft: PlaylistStudioDraft,
+    strings: LevyraStrings,
+    downloadedTrackIds: Set<String>,
+    reorder: StudioReorderState,
+    controller: PlaylistStudioController,
+    animated: Boolean,
+    onAddSongs: () -> Unit
+) {
+    item(key = "studio-tracks-header", contentType = "studio-tracks-header") {
+        StudioTracksHeader(
+            title = strings.songsPlain,
+            count = draft.tracks.size,
+            hint = if (draft.tracks.size > 1) strings.dragToReorder else null,
+            addLabel = strings.playlistStudioAddSongs,
+            onAdd = onAddSongs
+        )
+    }
+    if (draft.tracks.isEmpty()) {
+        item(key = "studio-empty", contentType = "studio-empty") {
+            PlaylistStudioEmptyTracks(
+                title = strings.playlistStudioEmptyTitle,
+                body = strings.playlistStudioEmptyBody,
+                actionLabel = strings.playlistStudioAddSongs,
+                onAction = onAddSongs
+            )
+        }
+        return
+    }
+    itemsIndexed(
+        items = draft.tracks,
+        key = { _, track -> "reorder-${track.id}" },
+        contentType = { _, _ -> "studio-track" }
+    ) { index, track ->
+        StudioReorderableTrack(
+            track = track,
+            index = index,
+            count = draft.tracks.size,
+            offline = track.id in downloadedTrackIds,
+            reorder = reorder,
+            controller = controller,
+            strings = strings,
+            animated = animated
+        )
+    }
+}
+
+@Composable
+private fun LazyItemScope.StudioReorderableTrack(
+    track: Track,
+    index: Int,
+    count: Int,
+    offline: Boolean,
+    reorder: StudioReorderState,
+    controller: PlaylistStudioController,
+    strings: LevyraStrings,
+    animated: Boolean
+) {
+    val haptics = LocalLevyraHaptics.current
+    val dragging = reorder.draggedTrackId == track.id
+    StudioTrackRow(
+        track = track,
+        index = index,
+        count = count,
+        offline = offline,
+        dragging = dragging,
+        dragOffsetY = if (dragging) reorder.dragOffsetY else 0f,
+        strings = strings,
+        actions = PlaylistReorderRowActions(
+            onMoveUp = {
+                controller.beginMove(track.id)
+                controller.move(index, index - 1)
+            },
+            onMoveDown = {
+                controller.beginMove(track.id)
+                controller.move(index, index + 1)
+            },
+            onDragStart = {
+                controller.beginMove(track.id)
+                reorder.draggedTrackId = track.id
+                reorder.dragOffsetY = 0f
+            },
+            onDrag = { delta -> if (reorder.draggedTrackId == track.id) reorder.dragOffsetY += delta },
+            onDragEnd = {
+                reorder.draggedTrackId = null
+                reorder.dragOffsetY = 0f
+            }
+        ),
+        onRemove = {
+            haptics.perform(LevyraHapticAction.Confirm)
+            controller.remove(track.id)
+        },
+        animated = animated
+    )
+}
+
+@Composable
+private fun StudioUndoOverlay(
+    session: PlaylistStudioSession,
+    controller: PlaylistStudioController,
+    strings: LevyraStrings,
+    hidden: Boolean,
+    animated: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val lastUndo = session.lastUndo
+    val displayedUndo = rememberLastNonNull(lastUndo, session.generation)
+    LaunchedEffect(lastUndo) {
+        if (lastUndo != null) {
+            delay(UndoVisibleMs)
+            controller.dismissUndo()
+        }
+    }
+    AnimatedVisibility(
+        visible = lastUndo != null && !hidden,
+        enter = LevyraMotion.sheetEnter(animated),
+        exit = LevyraMotion.sheetExit(animated),
+        modifier = modifier
+            .navigationBarsPadding()
+            .padding(16.dp)
+    ) {
+        val undo = displayedUndo ?: return@AnimatedVisibility
+        StudioUndoBar(
+            message = when (undo.kind) {
+                PlaylistStudioUndoKind.Removed -> strings.playlistStudioRemoved(undo.trackTitle)
+                PlaylistStudioUndoKind.Moved -> strings.playlistStudioMoved(undo.trackTitle)
+            },
+            actionLabel = strings.playlistStudioUndo,
+            onUndo = controller::undo
+        )
+    }
+}
+
+@Composable
+private fun StudioDiscardDialog(
+    strings: LevyraStrings,
+    onKeepEditing: () -> Unit,
+    onDiscard: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onKeepEditing,
+        title = { Text(strings.playlistStudioDiscardTitle) },
+        text = { Text(strings.playlistStudioDiscardBody) },
+        confirmButton = {
+            TextButton(onClick = onDiscard) { Text(strings.playlistStudioDiscard, color = LevyraPink) }
+        },
+        dismissButton = {
+            TextButton(onClick = onKeepEditing) { Text(strings.playlistStudioKeepEditing) }
+        }
+    )
+}
+
+@Composable
+private fun StudioPhotoCropDialog(
+    source: android.net.Uri,
+    onDismiss: () -> Unit,
+    onConfirm: (PlaylistStudioPhoto) -> Unit
+) {
+    PlaylistCoverCropDialog(
+        source = source,
+        onDismiss = onDismiss,
+        onConfirm = { crop ->
+            onConfirm(
+                PlaylistStudioPhoto(
+                    uri = source.toString(),
+                    viewportSizePx = crop.viewportSizePx,
+                    zoom = crop.zoom,
+                    offsetX = crop.offsetX,
+                    offsetY = crop.offsetY
+                )
+            )
+        }
+    )
 }
 
 internal fun studioStatsLine(
