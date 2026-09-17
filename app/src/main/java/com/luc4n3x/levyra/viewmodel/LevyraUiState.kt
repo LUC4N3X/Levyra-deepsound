@@ -123,7 +123,7 @@ data class LevyraUiState(
     val queueCurrentIndex: Int = -1,
     val queueSpaces: List<QueueSpaceSummary> = emptyList(),
     val activeQueueSpaceId: String = DEFAULT_QUEUE_SPACE_ID,
-    val pendingQueueAddTrack: Track? = null,
+    val pendingQueueAddTracks: List<Track> = emptyList(),
     val queueSwitching: Boolean = false,
     val queueUnavailableUris: Set<String> = emptySet(),
     val localLibrary: LocalLibraryUiState = LocalLibraryUiState(),

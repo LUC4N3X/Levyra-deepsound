@@ -253,6 +253,7 @@ import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
 import com.luc4n3x.levyra.data.locallibrary.buildLocalLibraryCatalog
 import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import com.luc4n3x.levyra.player.queue.shouldPromptForQueueDestination
+import com.luc4n3x.levyra.player.queue.mergePendingQueueDestinationTracks
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
@@ -4765,6 +4766,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 playbackDiagnostics = resolver.playbackDiagnostics()
             )
         }
+        localLibrarySortFlow.value =
+            snapshot.interfaceSettings.librarySort to snapshot.interfaceSettings.librarySortDirection
         LevyraTypographyController.apply(snapshot.interfaceSettings.fontPreset)
         applyLanguageContent(snapshot.languageCode, refreshRemote = true)
         player.setSkipSilence(snapshot.skipSilence)
@@ -5170,25 +5173,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun addToQueue(track: Track) {
         if (routeJamAction(JamAction.AddTrack(toJamTrack(track)))) return
         if (shouldPromptForQueueDestination(_state.value.queueSpaces)) {
-            _state.update { it.copy(pendingQueueAddTrack = track) }
+            _state.update { current ->
+                current.copy(
+                    pendingQueueAddTracks = mergePendingQueueDestinationTracks(
+                        current.pendingQueueAddTracks,
+                        listOf(track)
+                    )
+                )
+            }
             return
         }
         addToQueueLocal(track)
     }
 
     fun dismissQueueDestinationPicker() {
-        if (_state.value.pendingQueueAddTrack == null) return
-        _state.update { it.copy(pendingQueueAddTrack = null) }
+        if (_state.value.pendingQueueAddTracks.isEmpty()) return
+        _state.update { it.copy(pendingQueueAddTracks = emptyList()) }
     }
 
     fun addPendingTrackToQueueSpace(spaceId: String) {
-        val pending = _state.value.pendingQueueAddTrack ?: return
-        _state.update { it.copy(pendingQueueAddTrack = null) }
+        val pending = _state.value.pendingQueueAddTracks
+        if (pending.isEmpty()) return
+        _state.update { it.copy(pendingQueueAddTracks = emptyList()) }
         if (spaceId == _state.value.activeQueueSpaceId) {
-            addToQueueLocal(pending)
+            pending.forEach(::addToQueueLocal)
             return
         }
-        addTracksToQueueSpace(spaceId, listOf(pending))
+        addTracksToQueueSpace(spaceId, pending)
     }
 
     private fun addToQueueLocal(track: Track) {

@@ -2735,7 +2735,7 @@ fun LevyraApp(
                 )
             }
 
-            state.pendingQueueAddTrack?.let {
+            if (state.pendingQueueAddTracks.isNotEmpty()) {
                 QueueSpaceDestinationDialog(
                     spaces = state.queueSpaces,
                     activeSpaceId = state.activeQueueSpaceId,
