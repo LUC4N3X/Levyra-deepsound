@@ -68,6 +68,11 @@ class PlaylistStudioSaveRecoveryTest {
 
     private data class Record(val name: String, val tracks: List<Track>)
 
+    private data class RecoveryToken(
+        val playlistId: String,
+        val record: Record
+    ) : PlaylistStudioRollbackToken
+
     private class RecoveryGateway : PlaylistStudioGateway {
         val records = linkedMapOf<String, Record>()
         var coverFailures = 0
@@ -79,6 +84,9 @@ class PlaylistStudioSaveRecoveryTest {
             records[id] = Record(name, tracks)
             return id
         }
+
+        override suspend fun captureRollback(playlistId: String): PlaylistStudioRollbackToken? =
+            records[playlistId]?.let { RecoveryToken(playlistId, it) }
 
         override suspend fun update(playlistId: String, name: String, tracks: List<Track>) {
             if (playlistId !in records) throw PlaylistStudioMissingException(playlistId)
@@ -93,12 +101,16 @@ class PlaylistStudioSaveRecoveryTest {
             return if (draft.coverStyle == PlaylistCoverStyle.Automatic) "" else "file:///cover-$playlistId.jpg"
         }
 
-        suspend fun rollbackCreated(playlistId: String) {
-            records.remove(playlistId)
-        }
+        override suspend fun rollbackCreated(playlistId: String): Boolean = records.remove(playlistId) != null
 
-        suspend fun rollbackUpdated(playlistId: String, baseline: PlaylistStudioDraft) {
-            records[playlistId] = Record(baseline.name, baseline.tracks)
+        override suspend fun rollbackUpdated(
+            playlistId: String,
+            token: PlaylistStudioRollbackToken?
+        ): Boolean {
+            val rollback = token as? RecoveryToken ?: return false
+            if (rollback.playlistId != playlistId) return false
+            records[playlistId] = rollback.record
+            return true
         }
 
         override fun onSaved(playlistId: String) = Unit
