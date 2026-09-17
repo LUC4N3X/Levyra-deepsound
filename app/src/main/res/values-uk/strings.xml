@@ -16,12 +16,12 @@
     <string name="car_home">Головна</string>
     <string name="car_downloads">Завантаження</string>
     <string name="car_favorites">Обране</string>
-    <string name="car_playlists">Плейлісти</string>
+    <string name="car_playlists">Добірки</string>
     <string name="car_no_content">Немає вмісту</string>
     <string name="car_content_unavailable">Вміст недоступний</string>
     <string name="car_search_tracks">Пошук треків</string>
     <string name="car_no_results">Немає результатів</string>
-    <string name="car_connecting_player">Підключення до програвача</string>
+    <string name="car_connecting_player">З’єднання з програвачем</string>
     <string name="car_now_playing">Зараз грає</string>
     <string name="car_queue">Черга</string>
     <string name="notification_shuffle">Перемішати</string>
