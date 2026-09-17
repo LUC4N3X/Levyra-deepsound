@@ -21,6 +21,12 @@ class WaveSeekSourcePolicyTest {
     }
 
     @Test
+    fun `levyra cache and sabr sources can be measured passively`() {
+        assertTrue(WaveSeekSourcePolicy.canAnalyze("levyra-cache://media?key=track", 180_000L))
+        assertTrue(WaveSeekSourcePolicy.canAnalyze("levyra-sabr://s/abc?itag=251", 180_000L))
+    }
+
+    @Test
     fun `unknown duration and unsupported schemes fall back to the existing seekbar`() {
         assertFalse(WaveSeekSourcePolicy.canAnalyze("https://media.example/song.m4a", 0L))
         assertFalse(WaveSeekSourcePolicy.canAnalyze("rtsp://media.example/song", 180_000L))
