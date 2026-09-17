@@ -60,7 +60,9 @@ enum class LibrarySortDirection {
 enum class PlayerVisualMode {
     Artwork,
     CanvasCard,
-    CanvasImmersive;
+    CanvasImmersive,
+    Editorial,
+    Pulse;
 
     companion object {
         fun from(value: String): PlayerVisualMode =

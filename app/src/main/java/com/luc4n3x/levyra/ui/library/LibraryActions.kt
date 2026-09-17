@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.Check
@@ -598,6 +599,104 @@ private fun PlaylistMosaicTile(
 }
 
 @Composable
+internal fun PlaylistCoverArt(
+    coverMode: PlaylistCoverMode,
+    coverUrl: String,
+    tracks: List<Track>,
+    contentDescription: String?,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val previewTracks = remember(tracks) { tracks.take(4) }
+    if (coverMode == PlaylistCoverMode.CUSTOM && coverUrl.isNotBlank()) {
+        AsyncImage(
+            model = coverUrl,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+        )
+    } else if (previewTracks.size >= 4) {
+        Column(modifier = modifier) {
+            Row(modifier = Modifier.weight(1f)) {
+                PlaylistMosaicTile(
+                    url = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl },
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+                PlaylistMosaicTile(
+                    url = previewTracks[1].thumbnailUrl.ifBlank { previewTracks[1].largeThumbnailUrl },
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+            }
+            Row(modifier = Modifier.weight(1f)) {
+                PlaylistMosaicTile(
+                    url = previewTracks[2].thumbnailUrl.ifBlank { previewTracks[2].largeThumbnailUrl },
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+                PlaylistMosaicTile(
+                    url = previewTracks[3].thumbnailUrl.ifBlank { previewTracks[3].largeThumbnailUrl },
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+            }
+        }
+    } else if (previewTracks.isNotEmpty()) {
+        val primaryCover = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl }
+        if (primaryCover.isNotBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(LevyraArtworkCache.large(primaryCover))
+                    .crossfade(120)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = modifier
+            )
+        } else {
+            Box(
+                modifier = modifier.background(
+                    Brush.linearGradient(
+                        listOf(
+                            LevyraCyan.copy(alpha = 0.35f),
+                            LevyraViolet.copy(alpha = 0.35f),
+                            LevyraPanelSoft
+                        )
+                    )
+                ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.PlaylistPlay,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.80f),
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+        }
+    } else {
+        Box(
+            modifier = modifier.background(
+                Brush.linearGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = 0.35f),
+                        LevyraViolet.copy(alpha = 0.35f),
+                        LevyraPanelSoft
+                    )
+                )
+            ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Rounded.PlaylistPlay,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.80f),
+                modifier = Modifier.size(48.dp)
+            )
+        }
+    }
+}
+
+@Composable
 internal fun PlaylistDetailHeader(
     playlist: Playlist,
     durationMs: Long,
@@ -612,10 +711,10 @@ internal fun PlaylistDetailHeader(
     searchActive: Boolean,
     onToggleSearch: () -> Unit,
     onChangeCover: () -> Unit,
-    onResetCover: () -> Unit
+    onResetCover: () -> Unit,
+    onOpenStudio: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
 
     Column(
@@ -701,6 +800,11 @@ internal fun PlaylistDetailHeader(
                         modifier = Modifier.background(LevyraPanel)
                     ) {
                         DropdownMenuItem(
+                            text = { Text(strings.playlistStudioOpen) },
+                            leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null) },
+                            onClick = { menuExpanded = false; onOpenStudio() }
+                        )
+                        DropdownMenuItem(
                             text = { Text(strings.playlistName) },
                             leadingIcon = { Icon(Icons.Rounded.Edit, null) },
                             onClick = { menuExpanded = false; onRename() }
@@ -746,93 +850,13 @@ internal fun PlaylistDetailHeader(
                     .background(LevyraPanelSoft)
                     .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
             ) {
-                val previewTracks = remember(playlist.tracks) { playlist.tracks.take(4) }
-                if (playlist.coverMode == PlaylistCoverMode.CUSTOM && playlist.coverUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = playlist.coverUrl,
-                        contentDescription = playlist.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else if (previewTracks.size >= 4) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Row(modifier = Modifier.weight(1f)) {
-                            PlaylistMosaicTile(
-                                url = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl },
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                            )
-                            PlaylistMosaicTile(
-                                url = previewTracks[1].thumbnailUrl.ifBlank { previewTracks[1].largeThumbnailUrl },
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                            )
-                        }
-                        Row(modifier = Modifier.weight(1f)) {
-                            PlaylistMosaicTile(
-                                url = previewTracks[2].thumbnailUrl.ifBlank { previewTracks[2].largeThumbnailUrl },
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                            )
-                            PlaylistMosaicTile(
-                                url = previewTracks[3].thumbnailUrl.ifBlank { previewTracks[3].largeThumbnailUrl },
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                            )
-                        }
-                    }
-                } else if (previewTracks.isNotEmpty()) {
-                    val primaryCover = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl }
-                    if (primaryCover.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(LevyraArtworkCache.large(primaryCover))
-                                .crossfade(120)
-                                .diskCachePolicy(CachePolicy.ENABLED)
-                                .memoryCachePolicy(CachePolicy.ENABLED)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize().background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        LevyraCyan.copy(alpha = 0.35f),
-                                        LevyraViolet.copy(alpha = 0.35f),
-                                        LevyraPanelSoft
-                                    )
-                                )
-                            ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Rounded.PlaylistPlay,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.80f),
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(
-                            Brush.linearGradient(
-                                listOf(
-                                    LevyraCyan.copy(alpha = 0.35f),
-                                    LevyraViolet.copy(alpha = 0.35f),
-                                    LevyraPanelSoft
-                                )
-                            )
-                        ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.PlaylistPlay,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.80f),
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
-                }
+                PlaylistCoverArt(
+                    coverMode = playlist.coverMode,
+                    coverUrl = playlist.coverUrl,
+                    tracks = playlist.tracks,
+                    contentDescription = playlist.name,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             Column(
@@ -943,7 +967,7 @@ internal data class PlaylistReorderRowActions(
     val onDragEnd: () -> Unit
 )
 
-private fun Modifier.playlistReorderDrag(
+internal fun Modifier.playlistReorderDrag(
     trackId: String,
     state: PlaylistReorderRowState,
     actions: PlaylistReorderRowActions,

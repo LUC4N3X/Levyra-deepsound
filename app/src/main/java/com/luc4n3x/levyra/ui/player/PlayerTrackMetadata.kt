@@ -146,7 +146,7 @@ internal fun PlayerTrackMetadata(
 }
 
 @Composable
-private fun PlayerFavoriteButton(
+internal fun PlayerFavoriteButton(
     trackId: String,
     isFavorite: Boolean,
     surfaces: PlayerSurfaceTokens,

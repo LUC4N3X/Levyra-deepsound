@@ -379,6 +379,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun openPlayerScreen() = root.openPlayerScreen()
     fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
     fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
+    fun openPlaylistStudio(playlistId: String? = null) = root.openPlaylistStudio(playlistId)
     fun pauseDownload(taskKey: String) = root.pauseDownload(taskKey)
     fun playDownloaded(download: DownloadedTrack) = root.playDownloaded(download)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)

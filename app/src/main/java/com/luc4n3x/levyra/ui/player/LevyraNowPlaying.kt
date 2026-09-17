@@ -44,12 +44,14 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloseFullscreen
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -77,6 +79,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -246,6 +249,10 @@ fun LevyraNowPlaying(
         )
     }
     var showActions by remember { mutableStateOf(false) }
+    var showDeck by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.isVideoMode, track == null) {
+        if (state.isVideoMode || track == null) showDeck = false
+    }
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableIntStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
@@ -292,6 +299,14 @@ fun LevyraNowPlaying(
         } else {
             resolvePlayerPane(maxWidth.value, maxHeight.value)
         }
+        val deckLayout = resolvePlayerDeckLayout(
+            mode = visualMode,
+            isVideoMode = state.isVideoMode,
+            isLiveRadio = liveRadio,
+            pane = playerPane,
+            hasTrack = track != null
+        )
+        val deckMode = resolvePlayerDeckVisualMode(visualMode, deckLayout)
         val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 380.dp || maxHeight < 720.dp)
         val fitsViewport = maxHeight >= MinimumFittedPlayerHeight || playerPane == LevyraPlayerPane.SideBySide
         val gutter = if (state.isVideoMode) {
@@ -304,7 +319,7 @@ fun LevyraNowPlaying(
         val containerHeightPx = with(density) { maxHeight.toPx() }
         val scrollingArtworkHeight = min(maxWidth - gutter * 2, ScrollingArtworkMax)
 
-        val artworkPreviewAvailable = !state.isVideoMode && artworkUrl.isNotBlank() && visualMode == PlayerVisualMode.Artwork
+        val artworkPreviewAvailable = !state.isVideoMode && artworkUrl.isNotBlank() && deckMode == PlayerVisualMode.Artwork
         var showArtworkPreview by remember(track?.id, state.isVideoMode) { mutableStateOf(false) }
         var videoFullscreen by remember(track?.id, state.isVideoMode) { mutableStateOf(false) }
         val videoTransform = remember(track?.id, state.isVideoMode) {
@@ -345,7 +360,7 @@ fun LevyraNowPlaying(
         }
 
         PlayerVisualHost(
-            visualMode = visualMode,
+            visualMode = deckMode,
             backgroundMode = backgroundMode,
             track = track,
             artworkUrl = artworkUrl,
@@ -390,7 +405,7 @@ fun LevyraNowPlaying(
                 borderBottom = headerButtonBorder,
                 onClick = collapseActions.collapse
             )
-            if (visualMode == PlayerVisualMode.CanvasImmersive && !state.isVideoMode) {
+            if (deckMode == PlayerVisualMode.CanvasImmersive && !state.isVideoMode) {
                 PlayerGlassIconButton(
                     icon = Icons.Rounded.CloseFullscreen,
                     contentDescription = strings.exitImmersive,
@@ -534,8 +549,8 @@ fun LevyraNowPlaying(
             }
         }
 
-        val mediaHeroBlock: @Composable (Track, Dp) -> Unit = { activeTrack, heroSize ->
-            val artworkCorner = LevyraPlayerShapes.artworkCorner(heroSize)
+        val mediaHeroBlock: @Composable (Track, Dp, Dp?) -> Unit = { activeTrack, heroSize, cornerOverride ->
+            val artworkCorner = cornerOverride ?: LevyraPlayerShapes.artworkCorner(heroSize)
             Box(
                 modifier = if (state.isVideoMode) {
                     Modifier
@@ -579,7 +594,7 @@ fun LevyraNowPlaying(
                     PlayerArtworkHero(
                         track = activeTrack,
                         artworkUrl = artworkUrl,
-                        visualMode = visualMode,
+                        visualMode = deckMode,
                         motionArtwork = state.motionArtwork,
                         livingArtwork = livingArtwork,
                         animationsEnabled = animated && !state.isVideoMode,
@@ -592,7 +607,7 @@ fun LevyraNowPlaying(
                         swipeOffset = settledSwipeOffset,
                         artScale = artScale,
                         artOffset = artOffset,
-                        glowColor = primary,
+                        glowColor = if (deckLayout == PlayerDeckLayout.Editorial) Color.Transparent else primary,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -706,7 +721,7 @@ fun LevyraNowPlaying(
             }
         }
 
-        val stageBlock: @Composable (Track, Modifier) -> Unit = { activeTrack, stageModifier ->
+        val stageBlock: @Composable (Track, Modifier, Dp?) -> Unit = { activeTrack, stageModifier, stageCorner ->
             BoxWithConstraints(
                 modifier = stageModifier
                     .fillMaxWidth()
@@ -722,7 +737,7 @@ fun LevyraNowPlaying(
             ) {
                 val heroSize = minOf(maxWidth, maxHeight, artworkCap)
                 if (heroSize > 0.dp) {
-                    mediaHeroBlock(activeTrack, heroSize)
+                    mediaHeroBlock(activeTrack, heroSize, stageCorner)
                 }
             }
         }
@@ -837,10 +852,7 @@ fun LevyraNowPlaying(
                     isExporting = state.isOfflineExporting,
                     onLyrics = viewModel::openLyrics,
                     onQueue = viewModel::openQueue,
-                    onCycleVisualMode = {
-                        viewModel.setPlayerVisualMode(nextPlayerVisualMode(visualMode))
-                        hapticFeedback.perform(LevyraHapticAction.Confirm)
-                    },
+                    onOpenDeck = { showDeck = true },
                     onDownload = viewModel::exportCurrentTrack
                 )
             }
@@ -852,8 +864,7 @@ fun LevyraNowPlaying(
             )
         }
 
-        val controlsBlock: @Composable ColumnScope.(Track) -> Unit = { activeTrack ->
-            metadataBlock(activeTrack)
+        val controlsTailBlock: @Composable ColumnScope.(Track) -> Unit = { activeTrack ->
             if (!activeTrack.isLiveRadio()) {
                 engagementContent?.invoke(activeTrack)
             }
@@ -872,11 +883,56 @@ fun LevyraNowPlaying(
             }
         }
 
+        val controlsBlock: @Composable ColumnScope.(Track) -> Unit = { activeTrack ->
+            metadataBlock(activeTrack)
+            controlsTailBlock(activeTrack)
+        }
+
         val rootModifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned { rootCoordinates = it }
 
-        if (playerPane == LevyraPlayerPane.SideBySide && track != null) {
+        val deckSlots = PlayerDeckSlots(
+            header = headerBlock,
+            stage = stageBlock,
+            controls = controlsBlock,
+            controlsWithoutMetadata = controlsTailBlock
+        )
+        val deckModifier = rootModifier
+            .widthIn(max = detailMaxWidth)
+            .align(Alignment.TopCenter)
+
+        if (deckLayout == PlayerDeckLayout.Editorial && track != null) {
+            PlayerEditorialDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                accent = heroTone,
+                isFavorite = track.id in state.favoriteIds,
+                queuePosition = playerDeckQueuePosition(state.queue, track.id),
+                animated = animated,
+                compact = compactPlayer,
+                scrollable = !fitsViewport,
+                gutter = gutter,
+                onArtistClick = { viewModel.openArtist(track) },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                modifier = deckModifier
+            )
+        } else if (deckLayout == PlayerDeckLayout.Pulse && track != null) {
+            PlayerPulseDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                accent = heroTone,
+                isPlaying = state.isPlaying,
+                animated = animated,
+                compact = compactPlayer,
+                scrollable = !fitsViewport,
+                scrollingHeroHeight = scrollingArtworkHeight,
+                gutter = gutter,
+                modifier = deckModifier
+            )
+        } else if (playerPane == LevyraPlayerPane.SideBySide && track != null) {
             Column(
                 modifier = rootModifier
                     .widthIn(max = detailMaxWidth)
@@ -898,7 +954,8 @@ fun LevyraNowPlaying(
                         Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .padding(vertical = LevyraPlayerDesign.SpaceMd)
+                            .padding(vertical = LevyraPlayerDesign.SpaceMd),
+                        null
                     )
                     Column(
                         modifier = Modifier
@@ -954,7 +1011,8 @@ fun LevyraNowPlaying(
                             Modifier
                                 .height(scrollingArtworkHeight)
                                 .padding(vertical = LevyraPlayerDesign.SpaceMd)
-                        }
+                        },
+                        null
                     )
                     controlsBlock(track)
                 }
@@ -1082,6 +1140,24 @@ fun LevyraNowPlaying(
             )
         }
 
+        if (showDeck && track != null && !state.isVideoMode) {
+            PlayerDeckSheet(
+                track = track,
+                artworkUrl = artworkUrl,
+                selected = visualMode,
+                surfaces = surfaces,
+                accent = heroTone,
+                animated = animated,
+                onSelect = { mode ->
+                    if (mode != visualMode) {
+                        viewModel.setPlayerVisualMode(mode)
+                        hapticFeedback.perform(LevyraHapticAction.Confirm)
+                    }
+                },
+                onDismiss = { showDeck = false }
+            )
+        }
+
         playlistDialogContent?.invoke()
     }
 }
@@ -1206,12 +1282,6 @@ private fun PlayerLiveRadioTransport(
     }
 }
 
-internal fun nextPlayerVisualMode(mode: PlayerVisualMode): PlayerVisualMode = when (mode) {
-    PlayerVisualMode.CanvasCard -> PlayerVisualMode.CanvasImmersive
-    PlayerVisualMode.CanvasImmersive -> PlayerVisualMode.Artwork
-    PlayerVisualMode.Artwork -> PlayerVisualMode.CanvasCard
-}
-
 private fun playerDockActions(
     strings: LevyraStrings,
     visualMode: PlayerVisualMode,
@@ -1221,7 +1291,7 @@ private fun playerDockActions(
     isExporting: Boolean,
     onLyrics: () -> Unit,
     onQueue: () -> Unit,
-    onCycleVisualMode: () -> Unit,
+    onOpenDeck: () -> Unit,
     onDownload: () -> Unit
 ): List<PlayerDockAction> {
     return buildList {
@@ -1251,7 +1321,7 @@ private fun playerDockActions(
                     stateDescription = visualModeStateDescription(visualMode, strings),
                     active = visualMode != PlayerVisualMode.Artwork,
                     toggle = false,
-                    onClick = onCycleVisualMode
+                    onClick = onOpenDeck
                 )
             )
         }
@@ -1392,10 +1462,14 @@ internal fun visualModeStateDescription(
     PlayerVisualMode.Artwork -> strings.playerVisualModeArtwork
     PlayerVisualMode.CanvasCard -> strings.playerVisualModeCanvasCard
     PlayerVisualMode.CanvasImmersive -> strings.playerVisualModeCanvasImmersive
+    PlayerVisualMode.Editorial -> strings.playerDeckEditorial
+    PlayerVisualMode.Pulse -> strings.playerDeckPulse
 }
 
 internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
     PlayerVisualMode.Artwork -> Icons.Rounded.Image
     PlayerVisualMode.CanvasCard -> Icons.Rounded.AutoAwesome
     PlayerVisualMode.CanvasImmersive -> Icons.Rounded.Fullscreen
+    PlayerVisualMode.Editorial -> Icons.Rounded.AutoStories
+    PlayerVisualMode.Pulse -> Icons.Rounded.GraphicEq
 }

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 
 @Dao
 abstract class PlaylistDao {
@@ -26,6 +27,9 @@ abstract class PlaylistDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertPlaylist(playlist: PlaylistEntity)
+
+    @Update
+    abstract suspend fun updatePlaylist(playlist: PlaylistEntity): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertTracks(tracks: List<PlaylistTrackEntity>)
@@ -103,6 +107,22 @@ abstract class PlaylistDao {
         clearTracks(playlistId)
         if (tracks.isNotEmpty()) insertTracks(tracks)
         touch(playlistId, System.currentTimeMillis())
+    }
+
+    @Transaction
+    open suspend fun applyStudioEdit(
+        playlistId: String,
+        name: String,
+        tracks: List<PlaylistTrackEntity>,
+        automaticCover: String,
+        updatedAt: Long
+    ): Boolean {
+        if (playlist(playlistId) == null) return false
+        rename(playlistId, name, updatedAt)
+        clearTracks(playlistId)
+        if (tracks.isNotEmpty()) insertTracks(tracks)
+        updateAutomaticCover(playlistId, automaticCover, updatedAt)
+        return true
     }
 
     @Transaction
