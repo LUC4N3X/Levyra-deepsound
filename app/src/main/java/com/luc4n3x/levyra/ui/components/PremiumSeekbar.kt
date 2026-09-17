@@ -267,78 +267,20 @@ fun PremiumSeekbar(
                     activeColor = activeColor
                 )
             } else if (handleX > trackStart) {
-                val activeSpan = handleX - trackStart
-                clipRect(
-                    left = trackStart,
-                    top = 0f,
-                    right = handleX,
-                    bottom = size.height
-                ) {
-                    if (scrub > 0.001f) {
-                        drawRoundRect(
-                            color = activeColor.copy(alpha = activeColor.alpha * scrub),
-                            topLeft = Offset(trackStart, trackTop),
-                            size = Size(activeSpan, trackHeight),
-                            cornerRadius = radius
-                        )
-                    }
-
-                    val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
-                    if (waveAlpha > 0.001f) {
-                        val targetWaveLength = 92.dp.toPx()
-                        val waveCount = (activeSpan / targetWaveLength)
-                            .roundToInt()
-                            .coerceAtLeast(1)
-                        val waveLength = activeSpan / waveCount
-                        val minimumWaveSpan = 56.dp.toPx()
-                        val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
-                        val waveHeight = 9.5.dp.toPx() * waveReveal.value * amplitudeScale
-                        val baselineY = centerY + trackHeight / 2f
-                        val topBaseY = centerY - trackHeight / 2f
-                        val step = 2.dp.toPx().coerceAtLeast(1f)
-                        val phaseOffset = if (animated && !isDragging) wavePhase.value else 0f
-                        val edgeFeather = 18.dp.toPx().coerceAtMost(activeSpan / 2f)
-
-                        val waveFill = Path().apply {
-                            moveTo(trackStart, baselineY)
-                            lineTo(trackStart, topBaseY)
-                            var x = trackStart
-                            while (x < handleX) {
-                                val localX = x - trackStart
-                                val phase = (localX / waveLength) * (2f * PI.toFloat()) + phaseOffset
-                                val primaryCrest = (1f - cos(phase)) * 0.5f
-                                val secondaryRipple = sin(phase * 2f) * 0.07f
-                                val waterProfile = (primaryCrest + secondaryRipple).coerceIn(0f, 1f)
-                                val edgeEnvelope = if (edgeFeather > 0f) {
-                                    minOf(
-                                        1f,
-                                        localX / edgeFeather,
-                                        (activeSpan - localX) / edgeFeather
-                                    ).coerceIn(0f, 1f)
-                                } else {
-                                    1f
-                                }
-                                lineTo(
-                                    x,
-                                    topBaseY - waveHeight * waterProfile * edgeEnvelope
-                                )
-                                x += step
-                            }
-                            lineTo(handleX, topBaseY)
-                            lineTo(handleX, baselineY)
-                            close()
-                        }
-
-                        drawPath(
-                            path = waveFill,
-                            color = trailingColor.copy(alpha = trailingColor.alpha * waveAlpha * 0.14f)
-                        )
-                        drawPath(
-                            path = waveFill,
-                            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha)
-                        )
-                    }
-                }
+                drawAnimatedWaveform(
+                    trackStart = trackStart,
+                    handleX = handleX,
+                    centerY = centerY,
+                    trackHeight = trackHeight,
+                    radius = radius,
+                    scrub = scrub,
+                    animated = animated,
+                    isDragging = isDragging,
+                    waveReveal = waveReveal.value,
+                    wavePhase = wavePhase.value,
+                    trailingColor = trailingColor,
+                    activeColor = activeColor
+                )
             }
 
             if (scrub > 0.01f) {
@@ -404,6 +346,94 @@ private fun DrawScope.drawMeasuredWaveform(
         ) {
             drawBars(activeColor)
         }
+    }
+}
+
+private fun DrawScope.drawAnimatedWaveform(
+    trackStart: Float,
+    handleX: Float,
+    centerY: Float,
+    trackHeight: Float,
+    radius: CornerRadius,
+    scrub: Float,
+    animated: Boolean,
+    isDragging: Boolean,
+    waveReveal: Float,
+    wavePhase: Float,
+    trailingColor: Color,
+    activeColor: Color
+) {
+    val activeSpan = handleX - trackStart
+    clipRect(
+        left = trackStart,
+        top = 0f,
+        right = handleX,
+        bottom = size.height
+    ) {
+        if (scrub > 0.001f) {
+            drawRoundRect(
+                color = activeColor.copy(alpha = activeColor.alpha * scrub),
+                topLeft = Offset(trackStart, centerY - trackHeight / 2f),
+                size = Size(activeSpan, trackHeight),
+                cornerRadius = radius
+            )
+        }
+
+        val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
+        if (waveAlpha <= 0.001f) return@clipRect
+
+        val targetWaveLength = 92.dp.toPx()
+        val waveCount = (activeSpan / targetWaveLength)
+            .roundToInt()
+            .coerceAtLeast(1)
+        val waveLength = activeSpan / waveCount
+        val minimumWaveSpan = 56.dp.toPx()
+        val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
+        val waveHeight = 9.5.dp.toPx() * waveReveal * amplitudeScale
+        val baselineY = centerY + trackHeight / 2f
+        val topBaseY = centerY - trackHeight / 2f
+        val step = 2.dp.toPx().coerceAtLeast(1f)
+        val phaseOffset = if (animated && !isDragging) wavePhase else 0f
+        val edgeFeather = 18.dp.toPx().coerceAtMost(activeSpan / 2f)
+
+        val waveFill = Path().apply {
+            moveTo(trackStart, baselineY)
+            lineTo(trackStart, topBaseY)
+            var x = trackStart
+            while (x < handleX) {
+                val localX = x - trackStart
+                val phase = (localX / waveLength) * (2f * PI.toFloat()) + phaseOffset
+                val primaryCrest = (1f - cos(phase)) * 0.5f
+                val secondaryRipple = sin(phase * 2f) * 0.07f
+                val waterProfile = (primaryCrest + secondaryRipple).coerceIn(0f, 1f)
+                val edgeEnvelope = if (edgeFeather > 0f) {
+                    minOf(
+                        1f,
+                        localX / edgeFeather,
+                        (activeSpan - localX) / edgeFeather
+                    ).coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
+                lineTo(
+                    x,
+                    topBaseY - waveHeight * waterProfile * edgeEnvelope
+                )
+                x += step
+            }
+            lineTo(handleX, topBaseY)
+            lineTo(handleX, baselineY)
+            close()
+        }
+
+        drawPath(
+            path = waveFill,
+            color = trailingColor.copy(alpha = trailingColor.alpha * waveAlpha * 0.14f)
+        )
+        drawPath(
+            path = waveFill,
+            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha)
+        )
     }
 }
 
