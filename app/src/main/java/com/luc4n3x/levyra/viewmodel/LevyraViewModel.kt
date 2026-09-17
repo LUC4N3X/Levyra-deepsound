@@ -247,6 +247,11 @@ import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.SponsorBlockSkipOnceTracker
 import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.data.locallibrary.LocalLibraryRepository
+import com.luc4n3x.levyra.data.locallibrary.LocalLibraryStatus
+import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
+import com.luc4n3x.levyra.data.locallibrary.buildLocalLibraryCatalog
+import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
@@ -732,6 +737,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val playbackWarmup = PlaybackWarmup(application.applicationContext)
     private val adaptivePlaybackPolicy = AdaptivePlaybackPolicy(application.applicationContext)
     private val queueEngine = PersistentQueueEngine.get(application.applicationContext)
+    private val localLibrary = LocalLibraryRepository.get(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
@@ -960,6 +966,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var pendingSeekMs: Long = 0L
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
+    private var queueSpaceJob: Job? = null
+    private var consecutiveUnavailableLocalSkips: Int = 0
+    private val localLibrarySortFlow = MutableStateFlow(
+        startupSettings.interfaceSettings.librarySort to startupSettings.interfaceSettings.librarySortDirection
+    )
     private var samplesPlaybackSession: SamplesPlaybackSession? = null
     private var liveRadioQueueSnapshot: PlaybackQueueSnapshot? = null
     private var liveRadioRecoveryAttempt = 0
@@ -1327,6 +1338,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
             queueEngine.state.collectLatest { queueSnapshot ->
+                refreshLocalQueueAvailability(queueSnapshot.tracks)
                 val previousIndex = queueIndex
                 queueIndex = queueSnapshot.currentIndex
                 val currentPersisted = queueSnapshot.currentTrack
@@ -1338,6 +1350,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     val synchronizeCurrent = !current.isResolving && (!current.isPlaying || externalSelectionChanged)
                     current.copy(
                         queue = queueSnapshot.tracks,
+                        activeQueueSpaceId = queueSnapshot.spaceId,
                         queueCurrentIndex = queueSnapshot.currentIndex,
                         queueUndoAvailable = queueSnapshot.undoAvailable,
                         queueHistoryCount = queueSnapshot.history.size,
@@ -1429,6 +1442,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         startTicker()
+        observeQueueSpaces()
+        observeLocalLibrary()
         observeDownloads()
         observeDownloadTasks()
         observeDownloadBatches()
@@ -4414,6 +4429,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
         LevyraTypographyController.apply(normalized.fontPreset)
         _state.update { it.copy(interfaceSettings = normalized) }
+        localLibrarySortFlow.value = normalized.librarySort to normalized.librarySortDirection
         if (previous.showResonance && !normalized.showResonance) {
             homeResonanceCommentsJob?.cancel()
             homeResonanceCommentsJob = null
@@ -4911,6 +4927,233 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         queueEngine.replace(tracks, 0, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
         queueIndex = 0
         startResolve(tracks.first())
+    }
+
+    private suspend fun refreshLocalQueueAvailability(tracks: List<Track>) {
+        val localUris = tracks.mapNotNullTo(LinkedHashSet()) { track ->
+            track.streamUrl.takeIf { it.startsWith("content://", ignoreCase = true) }
+        }
+        if (localUris.isEmpty()) {
+            if (_state.value.queueUnavailableUris.isNotEmpty()) {
+                _state.update { it.copy(queueUnavailableUris = emptySet()) }
+            }
+            return
+        }
+        val unavailable = withContext(Dispatchers.IO) {
+            runCatching { localLibrary.unavailableContentUris(localUris) }.getOrDefault(emptySet())
+        }
+        if (unavailable != _state.value.queueUnavailableUris) {
+            _state.update { it.copy(queueUnavailableUris = unavailable) }
+        }
+    }
+
+    private fun observeQueueSpaces() {
+        viewModelScope.launch {
+            queueEngine.spaces.collect { spaces -> _state.update { it.copy(queueSpaces = spaces) } }
+        }
+    }
+
+    private fun observeLocalLibrary() {
+        viewModelScope.launch {
+            localLibrary.status.collect { status ->
+                _state.update { current ->
+                    current.copy(
+                        localLibrary = current.localLibrary.copy(
+                            permissionGranted = status.permissionGranted,
+                            scanning = status.scanning,
+                            lastScanAt = status.lastScanAt,
+                            excludedFolders = status.excludedFolders,
+                            message = localScanMessage(status)
+                        )
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            combine(localLibrary.availableMedia, localLibrarySortFlow) { rows, sort -> rows to sort }
+                .collectLatest { (rows, sort) ->
+                    val catalog = withContext(Dispatchers.Default) {
+                        buildLocalLibraryCatalog(rows, sort.first, sort.second)
+                    }
+                    _state.update { it.copy(localLibrary = it.localLibrary.copy(catalog = catalog)) }
+                }
+        }
+    }
+
+    private fun localScanMessage(status: LocalLibraryStatus): String {
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        if (status.scanning) return strings.localScanning
+        val result = status.lastResult ?: return ""
+        return when {
+            result.permissionDenied -> strings.localPermissionRequired
+            result.failed -> strings.localScanning
+            result.skippedUnchanged -> strings.localScanUpToDate
+            else -> strings.formatLocalScanSummary(
+                result.added,
+                result.updated + result.moved,
+                result.missing + result.removed
+            )
+        }
+    }
+
+    fun requestLocalLibraryScan(mode: LocalScanMode, force: Boolean = false) {
+        localLibrary.requestScan(mode, force)
+    }
+
+    fun refreshLocalLibraryAccess() {
+        if (localLibrary.refreshPermission()) localLibrary.requestScan(LocalScanMode.Quick)
+    }
+
+    fun setLocalFolderExcluded(folderKey: String, excluded: Boolean) {
+        localLibrary.setFolderExcluded(folderKey, excluded)
+    }
+
+    fun playLocalTracks(tracks: List<Track>, track: Track) {
+        if (tracks.isEmpty()) return
+        if (_state.value.isVideoMode) _state.update { it.copy(isVideoMode = false) }
+        playFrom(tracks, track)
+    }
+
+    fun switchQueueSpace(spaceId: String) {
+        if (spaceId.isBlank() || spaceId == _state.value.activeQueueSpaceId) return
+        if (_state.value.jam.isActive) {
+            jamController.rejectGuestLocalMutation()
+            return
+        }
+        queueSpaceJob?.cancel()
+        queueSpaceJob = viewModelScope.launch { performQueueSpaceSwitch(spaceId) }
+    }
+
+    private suspend fun performQueueSpaceSwitch(spaceId: String) {
+        leaveLiveRadioQueue()
+        val wasPlaying = _state.value.isPlaying
+        val outgoingPositionMs = _state.value.currentTrack?.let { player.positionMs.coerceAtLeast(0L) }
+        _state.update { it.copy(queueSwitching = true) }
+        playJob?.cancel()
+        playRequestId++
+        streamTransitionId++
+        cancelResolutionSideJobs()
+        player.pause()
+        val loaded = withContext(Dispatchers.IO) { queueEngine.switchSpace(spaceId, outgoingPositionMs) }
+        _state.update { it.copy(queueSwitching = false) }
+        if (loaded == null || loaded.spaceId != spaceId) {
+            if (wasPlaying) player.play()
+            return
+        }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        val name = queueSpaceDisplayName(_state.value.queueSpaces.firstOrNull { it.id == spaceId }, strings)
+        loopCurrentQueueOnCompletion = loaded.tracks.size > 1
+        queueIndex = loaded.currentIndex
+        _state.update { it.copy(offlineExportMessage = strings.formatQueueSpaceSwitched(name)) }
+        val target = loaded.currentTrack
+        if (target == null) {
+            player.stop()
+            pendingSeekMs = 0L
+            _state.update {
+                it.copy(
+                    currentTrack = null,
+                    isPlaying = false,
+                    isResolving = false,
+                    positionMs = 0L,
+                    bufferedPositionMs = 0L,
+                    durationMs = 0L,
+                    motionArtwork = null,
+                    motionArtworkLoading = false,
+                    playerError = null
+                )
+            }
+            updateWidget()
+            return
+        }
+        pendingSeekMs = loaded.positionMs
+        startResolve(target, startPaused = !wasPlaying)
+    }
+
+    fun createQueueSpace(name: String, seedWithCurrentQueue: Boolean = false) {
+        val tracks = if (seedWithCurrentQueue) _state.value.queue else emptyList()
+        viewModelScope.launch { queueEngine.createSpace(name, tracks) }
+    }
+
+    fun renameQueueSpace(spaceId: String, name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch { queueEngine.renameSpace(spaceId, name) }
+    }
+
+    fun duplicateQueueSpace(spaceId: String) {
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        val source = _state.value.queueSpaces.firstOrNull { it.id == spaceId }
+        val name = duplicatedQueueSpaceName(queueSpaceDisplayName(source, strings))
+        viewModelScope.launch { queueEngine.duplicateSpace(spaceId, name) }
+    }
+
+    fun clearQueueSpace(spaceId: String) {
+        if (spaceId == _state.value.activeQueueSpaceId) {
+            closePlayer()
+            return
+        }
+        viewModelScope.launch { queueEngine.clearSpace(spaceId) }
+    }
+
+    fun deleteQueueSpace(spaceId: String) {
+        val spaces = _state.value.queueSpaces
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        if (spaces.size <= 1) {
+            _state.update { it.copy(offlineExportMessage = strings.queueSpaceDeleteLast) }
+            return
+        }
+        queueSpaceJob?.cancel()
+        queueSpaceJob = viewModelScope.launch {
+            if (spaceId == _state.value.activeQueueSpaceId) {
+                val fallback = spaces.firstOrNull { it.id != spaceId } ?: return@launch
+                performQueueSpaceSwitch(fallback.id)
+                if (queueEngine.state.value.spaceId == spaceId) return@launch
+            }
+            queueEngine.deleteSpace(spaceId)
+        }
+    }
+
+    fun addTracksToQueueSpace(spaceId: String, tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        if (spaceId == _state.value.activeQueueSpaceId) {
+            addTracksToQueue(tracks)
+            return
+        }
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        val name = queueSpaceDisplayName(_state.value.queueSpaces.firstOrNull { it.id == spaceId }, strings)
+        viewModelScope.launch {
+            if (queueEngine.appendToSpace(spaceId, tracks)) {
+                _state.update {
+                    it.copy(offlineExportMessage = "$name: ${strings.formatTrackCount(tracks.size)}")
+                }
+            }
+        }
+    }
+
+    private fun isUnavailableLocalTrack(track: Track): Boolean =
+        track.streamUrl.startsWith("content://", ignoreCase = true) &&
+            track.streamUrl in _state.value.queueUnavailableUris
+
+    private fun handleUnavailableLocalTrack(track: Track) {
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
+        localLibrary.requestScan(LocalScanMode.Quick, force = true)
+        val queueSize = queueEngine.state.value.tracks.size
+        val canSkip = queueSize > 1 &&
+            consecutiveUnavailableLocalSkips < queueSize.coerceAtMost(MAX_UNAVAILABLE_LOCAL_SKIPS)
+        _state.update {
+            it.copy(
+                isResolving = false,
+                isPlaying = false,
+                currentTrack = track.copy(streamUrl = ""),
+                playerError = strings.localFileUnavailable
+            )
+        }
+        if (canSkip) {
+            consecutiveUnavailableLocalSkips++
+            nextLocal()
+        } else {
+            consecutiveUnavailableLocalSkips = 0
+            player.stop()
+        }
     }
 
     fun addToQueue(track: Track) {
@@ -6690,6 +6933,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             addTracks(snapshot.recentSearches, LocalSearchAffinity.RECENT)
             addTracks(snapshot.favorites, LocalSearchAffinity.FAVORITE)
+            addTracks(
+                snapshot.localLibrary.catalog.songs.take(LOCAL_LIBRARY_SEARCH_CANDIDATE_LIMIT),
+                LocalSearchAffinity.LOCAL_MEDIA
+            )
             addTracks(snapshot.personalOrbitTracks, LocalSearchAffinity.ORBIT)
             addTracks(snapshot.queue, LocalSearchAffinity.QUEUE)
             addTracks(snapshot.tracks, LocalSearchAffinity.SESSION)
@@ -7555,6 +7802,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val requestedVideoMode = _state.value.isVideoMode
         val playableTrack = if (requestedVideoMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
         val selectedTrack = playableTrack ?: track
+        if (isUnavailableLocalTrack(track)) {
+            if (!isActive || requestId != playRequestId) return
+            handleUnavailableLocalTrack(track)
+            return
+        }
         val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
             if (!isActive || requestId != playRequestId) return
@@ -8104,6 +8356,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {
         if (request.id != playRequestId) return
+        consecutiveUnavailableLocalSkips = 0
         val startPaused = shouldStartPlaybackPaused(request, playRequestId)
         val selectedIndex = queueEngine.state.value.currentIndex
         if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)
@@ -10647,6 +10900,14 @@ internal fun jamSimilarSongAction(jam: JamUiState, existingIndex: Int): JamSimil
 internal fun playbackIdentity(track: Track): String = LevyraPersonalOrbit.identityKey(track)
 
 private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
+
+private const val LOCAL_LIBRARY_SEARCH_CANDIDATE_LIMIT = 4_000
+private const val MAX_UNAVAILABLE_LOCAL_SKIPS = 8
+
+internal fun queueSpaceDisplayName(space: QueueSpaceSummary?, strings: LevyraStrings): String =
+    space?.name?.trim()?.takeIf { it.isNotEmpty() } ?: strings.queueSpaceDefaultName
+
+internal fun duplicatedQueueSpaceName(name: String): String = "$name 2"
 
 internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {
     val counterpart = track.counterpartVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()

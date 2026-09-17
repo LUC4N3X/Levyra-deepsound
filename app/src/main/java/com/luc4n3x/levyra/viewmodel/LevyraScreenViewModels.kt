@@ -343,6 +343,11 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
     fun addToQueue(track: Track) = root.addToQueue(track)
     fun addTracksToQueue(tracks: List<Track>) = root.addTracksToQueue(tracks)
+    fun playLocalTracks(tracks: List<Track>, track: Track) = root.playLocalTracks(tracks, track)
+    fun requestLocalLibraryScan(mode: com.luc4n3x.levyra.data.locallibrary.LocalScanMode) =
+        root.requestLocalLibraryScan(mode, force = mode != com.luc4n3x.levyra.data.locallibrary.LocalScanMode.Quick)
+    fun refreshLocalLibraryAccess() = root.refreshLocalLibraryAccess()
+    fun setLocalFolderHidden(folderKey: String, hidden: Boolean) = root.setLocalFolderExcluded(folderKey, hidden)
     fun cancelDownload(taskKey: String) = root.cancelDownload(taskKey)
     fun retryBatchDownload(batchKey: String) = root.retryBatchDownload(batchKey)
     fun cancelBatchDownload(batchKey: String) = root.cancelBatchDownload(batchKey)
@@ -1223,7 +1228,9 @@ internal data class LibraryProjection(
     val recentListens: List<Track>,
     val librarySort: LibrarySort,
     val librarySortDirection: LibrarySortDirection,
-    val spotifyCsvImport: SpotifyCsvImportState?
+    val spotifyCsvImport: SpotifyCsvImportState?,
+    val localLibrary: LocalLibraryUiState,
+    val queueUnavailableUris: Set<String>
 )
 
 internal fun libraryProjection(state: LevyraUiState): LibraryProjection = LibraryProjection(
@@ -1247,7 +1254,9 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     spotifyCsvImport = state.spotifyCsvImport,
     recentListens = state.recentListens,
     librarySort = state.interfaceSettings.librarySort,
-    librarySortDirection = state.interfaceSettings.librarySortDirection
+    librarySortDirection = state.interfaceSettings.librarySortDirection,
+    localLibrary = state.localLibrary,
+    queueUnavailableUris = state.queueUnavailableUris
 )
 
 internal data class PlayerProjection(

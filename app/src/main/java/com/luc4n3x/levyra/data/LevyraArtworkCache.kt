@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
+import com.luc4n3x.levyra.data.locallibrary.LocalArtworkFetcher
+import com.luc4n3x.levyra.data.locallibrary.isLocalArtworkModel
 import coil3.disk.DiskCache
 import coil3.intercept.Interceptor
 import coil3.memory.MemoryCache
@@ -181,6 +183,7 @@ object LevyraArtworkCache {
                 ImageLoader.Builder(appContext)
                     .components {
                         add(FullResolutionArtworkInterceptor())
+                        add(LocalArtworkFetcher.Factory(appContext))
                     }
                     .memoryCache {
                         MemoryCache.Builder()
@@ -332,7 +335,7 @@ object LevyraArtworkCache {
     private data class ArtworkTarget(val urls: List<String>, val file: File)
 
     private fun target(context: Context, track: Track, highRes: Boolean): ArtworkTarget? {
-        val urls = artworkUrlCandidates(track, highRes)
+        val urls = artworkUrlCandidates(track, highRes).filterNot(::isLocalArtworkModel)
         if (urls.isEmpty()) return null
         val size = if (highRes) LARGE_SIZE else SMALL_SIZE
         return ArtworkTarget(urls, persistentFile(context, track, size))

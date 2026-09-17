@@ -1080,6 +1080,36 @@ class LevyraStrings private constructor(
     val coverAndTags: String get() = value("coverAndTags")
     val madeWithBy: String get() = value("madeWithBy")
     val activeIndicator: String get() = value("activeIndicator")
+    val queueSpaces: String get() = value("queueSpaces")
+    val queueSpacesSubtitle: String get() = value("queueSpacesSubtitle")
+    val queueSpaceDefaultName: String get() = value("queueSpaceDefaultName")
+    val queueSpaceNew: String get() = value("queueSpaceNew")
+    val queueSpaceNameHint: String get() = value("queueSpaceNameHint")
+    val queueSpaceRename: String get() = value("queueSpaceRename")
+    val queueSpaceDuplicate: String get() = value("queueSpaceDuplicate")
+    val queueSpaceClear: String get() = value("queueSpaceClear")
+    val queueSpaceDelete: String get() = value("queueSpaceDelete")
+    val queueSpaceDeleteConfirm: String get() = value("queueSpaceDeleteConfirm")
+    val queueSpaceDeleteLast: String get() = value("queueSpaceDeleteLast")
+    val queueSpaceAddTo: String get() = value("queueSpaceAddTo")
+    val queueSpaceEmpty: String get() = value("queueSpaceEmpty")
+    val localOnDevice: String get() = value("localOnDevice")
+    val localOnDeviceSubtitle: String get() = value("localOnDeviceSubtitle")
+    val localFolders: String get() = value("localFolders")
+    val localScanQuick: String get() = value("localScanQuick")
+    val localScanFull: String get() = value("localScanFull")
+    val localRebuildLevyra: String get() = value("localRebuildLevyra")
+    val localScanning: String get() = value("localScanning")
+    val localScanUpToDate: String get() = value("localScanUpToDate")
+    val localEmpty: String get() = value("localEmpty")
+    val localPermissionRequired: String get() = value("localPermissionRequired")
+    val localGrantPermission: String get() = value("localGrantPermission")
+    val localUnknownArtist: String get() = value("localUnknownArtist")
+    val localUnknownAlbum: String get() = value("localUnknownAlbum")
+    val localHideFolder: String get() = value("localHideFolder")
+    val localShowFolder: String get() = value("localShowFolder")
+    val localFileUnavailable: String get() = value("localFileUnavailable")
+    val localDuplicatesHidden: String get() = value("localDuplicatesHidden")
     fun formatReplayPeriod(days: Int): String {
         val value = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
             .format(days.coerceAtLeast(0))
@@ -1184,6 +1214,16 @@ class LevyraStrings private constructor(
     fun formatPlayingFrom(source: String): String = "$playingFrom ${directionalValue(source)}"
 
     fun formatQueueSummary(queueSize: Int, historyCount: Int): String = "${formatTrackCount(queueSize)} · ${historyCount.coerceAtLeast(0)} $historyLabel"
+
+    fun formatQueueSpaceSwitched(name: String): String =
+        String.format(value("queueSpaceSwitched"), directionalValue(name))
+
+    fun formatLocalScanSummary(added: Int, updated: Int, unavailable: Int): String = String.format(
+        value("localScanSummary"),
+        added.coerceAtLeast(0),
+        updated.coerceAtLeast(0),
+        unavailable.coerceAtLeast(0)
+    )
 
     fun formatLyricsAnalysis(lineCount: Int, wordCount: Int): String = "$linesLabel: ${lineCount.coerceAtLeast(0)} · $wordsLabel: ${wordCount.coerceAtLeast(0)} · $localAnalysis"
 
@@ -1749,8 +1789,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
