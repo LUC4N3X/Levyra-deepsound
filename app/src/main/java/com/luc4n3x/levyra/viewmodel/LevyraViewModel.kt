@@ -1337,8 +1337,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     fallbackRadioEnabled = true
                 )
             }
-            queueEngine.state.collectLatest { queueSnapshot ->
-                refreshLocalQueueAvailability(queueSnapshot.tracks)
+            launch {
+                queueEngine.state
+                    .map { it.tracks }
+                    .distinctUntilChanged()
+                    .collectLatest { tracks -> refreshLocalQueueAvailability(tracks) }
+            }
+            queueEngine.state.collect { queueSnapshot ->
                 val previousIndex = queueIndex
                 queueIndex = queueSnapshot.currentIndex
                 val currentPersisted = queueSnapshot.currentTrack
@@ -4986,7 +4991,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val result = status.lastResult ?: return ""
         return when {
             result.permissionDenied -> strings.localPermissionRequired
-            result.failed -> strings.localScanning
+            result.failed -> strings.localScanFailed
             result.skippedUnchanged -> strings.localScanUpToDate
             else -> strings.formatLocalScanSummary(
                 result.added,
@@ -5029,13 +5034,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val wasPlaying = _state.value.isPlaying
         val outgoingPositionMs = _state.value.currentTrack?.let { player.positionMs.coerceAtLeast(0L) }
         _state.update { it.copy(queueSwitching = true) }
-        playJob?.cancel()
-        playRequestId++
-        streamTransitionId++
-        cancelResolutionSideJobs()
-        player.pause()
-        val loaded = withContext(Dispatchers.IO) { queueEngine.switchSpace(spaceId, outgoingPositionMs) }
-        _state.update { it.copy(queueSwitching = false) }
+        val loaded = try {
+            playJob?.cancel()
+            playRequestId++
+            streamTransitionId++
+            cancelResolutionSideJobs()
+            player.pause()
+            withContext(Dispatchers.IO) { queueEngine.switchSpace(spaceId, outgoingPositionMs) }
+        } finally {
+            _state.update { it.copy(queueSwitching = false) }
+        }
         if (loaded == null || loaded.spaceId != spaceId) {
             if (wasPlaying) play()
             return
@@ -5101,13 +5109,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(offlineExportMessage = strings.queueSpaceDeleteLast) }
             return
         }
+        if (spaceId != _state.value.activeQueueSpaceId) {
+            viewModelScope.launch { queueEngine.deleteSpace(spaceId) }
+            return
+        }
         queueSpaceJob?.cancel()
         queueSpaceJob = viewModelScope.launch {
-            if (spaceId == _state.value.activeQueueSpaceId) {
-                val fallback = spaces.firstOrNull { it.id != spaceId } ?: return@launch
-                performQueueSpaceSwitch(fallback.id)
-                if (queueEngine.state.value.spaceId == spaceId) return@launch
-            }
+            val fallback = spaces.firstOrNull { it.id != spaceId } ?: return@launch
+            performQueueSpaceSwitch(fallback.id)
+            if (queueEngine.state.value.spaceId == spaceId) return@launch
             queueEngine.deleteSpace(spaceId)
         }
     }

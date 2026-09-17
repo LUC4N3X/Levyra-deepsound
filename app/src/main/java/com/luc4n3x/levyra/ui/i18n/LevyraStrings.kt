@@ -1100,6 +1100,7 @@ class LevyraStrings private constructor(
     val localScanFull: String get() = value("localScanFull")
     val localRebuildLevyra: String get() = value("localRebuildLevyra")
     val localScanning: String get() = value("localScanning")
+    val localScanFailed: String get() = localScanFailedLocalization(code)
     val localScanUpToDate: String get() = value("localScanUpToDate")
     val localEmpty: String get() = value("localEmpty")
     val localPermissionRequired: String get() = value("localPermissionRequired")

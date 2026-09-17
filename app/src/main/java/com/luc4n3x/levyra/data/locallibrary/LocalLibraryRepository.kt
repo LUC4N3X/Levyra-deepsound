@@ -60,6 +60,7 @@ class LocalLibraryRepository private constructor(context: Context) {
     private val requestLock = Any()
     private var activeJob: Job? = null
     private var pendingMode: LocalScanMode? = null
+    private var loopRunning: Boolean = false
     private val _status = MutableStateFlow(
         LocalLibraryStatus(
             permissionGranted = scanner.hasPermission(),
@@ -80,11 +81,12 @@ class LocalLibraryRepository private constructor(context: Context) {
 
     fun requestScan(mode: LocalScanMode, force: Boolean = false): Job = synchronized(requestLock) {
         val running = activeJob
-        if (running != null && running.isActive) {
+        if (running != null && running.isActive && loopRunning) {
             pendingMode = strongerLocalScanMode(pendingMode, mode)
             return running
         }
         pendingMode = null
+        loopRunning = true
         scope.launch { runScanLoop(mode, force) }.also { activeJob = it }
     }
 
@@ -113,6 +115,7 @@ class LocalLibraryRepository private constructor(context: Context) {
             mode = synchronized(requestLock) {
                 val next = pendingMode
                 pendingMode = null
+                if (next == null) loopRunning = false
                 next
             } ?: return
             force = true
@@ -214,7 +217,11 @@ class LocalLibraryRepository private constructor(context: Context) {
         }
         val downloadsDao = database.downloadedTracksDao()
         val current = downloadsDao.all()
-        val merged = reconcileDownloadedTracks(current, identified.map(::toDownloadEntity), ::contentReadable)
+        val merged = reconcileDownloadedTracks(
+            current,
+            identified.filter { it.levyraTrackId.isNotBlank() }.map(::toDownloadEntity),
+            ::contentReadable
+        )
         val changed = merged.map(::downloadSignature).toSet() != current.map(::downloadSignature).toSet()
         if (newlyIdentified.isEmpty() && !changed) return 0
         database.withTransaction {

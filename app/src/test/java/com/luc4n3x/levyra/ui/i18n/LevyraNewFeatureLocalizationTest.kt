@@ -35,6 +35,7 @@ class LevyraNewFeatureLocalizationTest {
             val summary = strings.formatLocalScanSummary(3, 2, 1)
             assertTrue("$code switch message lost the queue name", switched.contains("Gym"))
             assertTrue("$code scan summary lost its counters", listOf("3", "2", "1").all(summary::contains))
+            assertTrue("$code scan failure message is blank", strings.localScanFailed.isNotBlank())
         }
     }
 }

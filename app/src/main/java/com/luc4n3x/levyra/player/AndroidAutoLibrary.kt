@@ -320,7 +320,7 @@ class AndroidAutoLibrary(context: Context) {
             .build()
         return MediaItem.Builder()
             .setUri(track.streamUrl)
-            .setMediaId(trackMediaId(track))
+            .setMediaId(LevyraMediaItemFactory.mediaId(track))
             .setMediaMetadata(metadata)
             .apply { if (!track.streamUrl.isLocalUri()) setCustomCacheKey(LevyraPlaybackCacheKey.stream(track)) }
             .build()

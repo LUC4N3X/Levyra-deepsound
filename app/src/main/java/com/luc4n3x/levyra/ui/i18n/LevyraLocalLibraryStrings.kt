@@ -377,6 +377,48 @@ private val localLibraryBundles: Map<String, Map<String, String>> = mapOf(
     )
 )
 
+private val localScanFailedMessages = mapOf(
+    "en" to "Couldn't scan your music.",
+    "it" to "Impossibile analizzare la musica.",
+    "es" to "No se pudo analizar tu música.",
+    "fr" to "Impossible d’analyser votre musique.",
+    "de" to "Deine Musik konnte nicht gescannt werden.",
+    "pt" to "Não foi possível analisar a tua música.",
+    "nl" to "Je muziek kon niet worden gescand.",
+    "pl" to "Nie udało się przeskanować muzyki.",
+    "ro" to "Muzica nu a putut fi scanată.",
+    "el" to "Δεν ήταν δυνατή η σάρωση της μουσικής σου.",
+    "sv" to "Det gick inte att skanna din musik.",
+    "da" to "Din musik kunne ikke scannes.",
+    "cs" to "Hudbu se nepodařilo prohledat.",
+    "sk" to "Hudbu sa nepodarilo prehľadať.",
+    "hr" to "Skeniranje glazbe nije uspjelo.",
+    "bg" to "Музиката не можа да бъде сканирана.",
+    "hu" to "A zene beolvasása nem sikerült.",
+    "fi" to "Musiikin skannaus epäonnistui.",
+    "nb" to "Kunne ikke skanne musikken din.",
+    "ca" to "No s'ha pogut analitzar la música.",
+    "uk" to "Не вдалося просканувати музику.",
+    "ru" to "Не удалось просканировать музыку.",
+    "tr" to "Müziğin taranamadı.",
+    "ar" to "تعذّر فحص الموسيقى.",
+    "fa" to "اسکن موسیقی انجام نشد.",
+    "zh" to "无法扫描你的音乐。",
+    "zh-Hant" to "無法掃描你的音樂。",
+    "ja" to "音楽をスキャンできませんでした。",
+    "ko" to "음악을 검색하지 못했습니다.",
+    "hi" to "आपके संगीत को स्कैन नहीं किया जा सका।",
+    "id" to "Musikmu tidak dapat dipindai.",
+    "ms" to "Muzik anda tidak dapat diimbas.",
+    "vi" to "Không thể quét nhạc của bạn.",
+    "th" to "ไม่สามารถสแกนเพลงของคุณได้",
+    "fil" to "Hindi ma-scan ang musika mo.",
+    "he" to "לא ניתן היה לסרוק את המוזיקה שלך."
+)
+
+internal fun localScanFailedLocalization(code: String): String =
+    localScanFailedMessages[code] ?: localScanFailedMessages.getValue("en")
+
 internal fun localLibraryLocalizationEntries(code: String): Map<String, String> =
     localizedBundleOrEnglish(localLibraryBundles, code)
 
