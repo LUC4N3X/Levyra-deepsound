@@ -3,8 +3,6 @@ package com.luc4n3x.levyra.ui.player
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +15,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.PlayerAmbience
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
+import com.luc4n3x.levyra.ui.theme.LevyraMotion
 
 internal fun playerBackdropArtworkUrl(
     immersive: Boolean,
@@ -44,7 +43,7 @@ internal fun PlayerVisualHost(
     isVideoMode: Boolean = false,
     backdropFocus: Float = 0.34f
 ) {
-    val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive && track != null && !isVideoMode
+    val isImmersive = visualMode.showsCinematicStage() && track != null && !isVideoMode
     val backdropArtworkUrl = playerBackdropArtworkUrl(isImmersive, backgroundMode, artworkUrl)
 
     Box(modifier = modifier) {
@@ -61,7 +60,7 @@ internal fun PlayerVisualHost(
         AnimatedVisibility(
             visible = isImmersive,
             enter = EnterTransition.None,
-            exit = if (animationsEnabled) fadeOut(tween(260, easing = LinearOutSlowInEasing)) else ExitTransition.None,
+            exit = if (animationsEnabled) fadeOut(LevyraMotion.fade(LevyraMotion.Durations.Medium)) else ExitTransition.None,
             modifier = Modifier.fillMaxSize()
         ) {
             if (track != null) {

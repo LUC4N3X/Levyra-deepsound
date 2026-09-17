@@ -1,13 +1,9 @@
 package com.luc4n3x.levyra.ui.theme
 
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -87,54 +83,47 @@ object LevyraPlayerDesign {
     val HandleHeight: Dp = 12.dp
     val HandleHeightActive: Dp = 17.dp
 
-    val Emphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-    val Standard: Easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
-    val Decelerate: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+    val Emphasized: Easing = LevyraMotion.Easings.Emphasized
+    val Standard: Easing = LevyraMotion.Easings.Standard
+    val Decelerate: Easing = LevyraMotion.Easings.Decelerate
 
-    const val ExpressiveDamping: Float = 0.64f
-    const val ExpressiveStiffness: Float = 360f
-    const val SmoothDamping: Float = 0.90f
-    const val SmoothStiffness: Float = 540f
-    const val SnappyDamping: Float = 0.82f
-    const val SnappyStiffness: Float = 1_100f
+    const val ExpressiveDamping: Float = LevyraMotion.Springs.ExpressiveDamping
+    const val ExpressiveStiffness: Float = LevyraMotion.Springs.ExpressiveStiffness
+    const val SmoothDamping: Float = LevyraMotion.Springs.SettleDamping
+    const val SmoothStiffness: Float = LevyraMotion.Springs.SettleStiffness
+    const val SnappyDamping: Float = LevyraMotion.Springs.SnappyDamping
+    const val SnappyStiffness: Float = LevyraMotion.Springs.SnappyStiffness
 
-    fun <T> expressiveSpring(): SpringSpec<T> =
-        spring(dampingRatio = ExpressiveDamping, stiffness = ExpressiveStiffness)
+    fun <T> expressiveSpring(): SpringSpec<T> = LevyraMotion.expressive.spec()
 
-    fun <T> smoothSpring(): SpringSpec<T> =
-        spring(dampingRatio = SmoothDamping, stiffness = SmoothStiffness)
+    fun <T> smoothSpring(): SpringSpec<T> = LevyraMotion.settle.spec()
 
-    fun <T> snappySpring(): SpringSpec<T> =
-        spring(dampingRatio = SnappyDamping, stiffness = SnappyStiffness)
+    fun <T> snappySpring(): SpringSpec<T> = LevyraMotion.snappy.spec()
 
-    const val PressDamping: Float = 0.58f
-    const val PressStiffness: Float = 760f
-    const val ExpandDamping: Float = 0.82f
-    const val ExpandStiffness: Float = 360f
-    const val CollapseDamping: Float = 0.86f
-    const val CollapseStiffness: Float = 430f
-    const val PaletteMillis: Int = 650
+    const val PressDamping: Float = LevyraMotion.Springs.ReleaseDamping
+    const val PressStiffness: Float = LevyraMotion.Springs.ReleaseStiffness
+    const val ExpandDamping: Float = LevyraMotion.Springs.ExpandDamping
+    const val ExpandStiffness: Float = LevyraMotion.Springs.ExpandStiffness
+    const val CollapseDamping: Float = LevyraMotion.Springs.CollapseDamping
+    const val CollapseStiffness: Float = LevyraMotion.Springs.CollapseStiffness
+    const val PaletteMillis: Int = LevyraMotion.Durations.Palette
 
     fun <T> motion(animated: Boolean, spec: AnimationSpec<T>): AnimationSpec<T> =
-        if (animated) spec else snap()
+        LevyraMotion.spec(animated, spec)
 
-    fun <T> pressSpring(): SpringSpec<T> =
-        spring(dampingRatio = PressDamping, stiffness = PressStiffness)
+    fun <T> pressSpring(): SpringSpec<T> = LevyraMotion.release.spec()
 
-    fun <T> expandSpring(): SpringSpec<T> =
-        spring(dampingRatio = ExpandDamping, stiffness = ExpandStiffness)
+    fun <T> expandSpring(): SpringSpec<T> = LevyraMotion.expand.spec()
 
-    fun <T> collapseSpring(): SpringSpec<T> =
-        spring(dampingRatio = CollapseDamping, stiffness = CollapseStiffness)
+    fun <T> collapseSpring(): SpringSpec<T> = LevyraMotion.collapse.spec()
 
-    fun <T> paletteTween(): TweenSpec<T> =
-        tween(durationMillis = PaletteMillis, easing = Decelerate)
+    fun <T> paletteTween(): TweenSpec<T> = LevyraMotion.palette()
 
     fun <T> emphasizedTween(durationMillis: Int = 320): TweenSpec<T> =
-        tween(durationMillis = durationMillis, easing = Emphasized)
+        LevyraMotion.emphasized(durationMillis)
 
     fun <T> standardTween(durationMillis: Int = 220): TweenSpec<T> =
-        tween(durationMillis = durationMillis, easing = Standard)
+        LevyraMotion.standard(durationMillis)
 
     val GlassFill: Color = Color.White.copy(alpha = 0.08f)
     val GlassFillStrong: Color = Color.White.copy(alpha = 0.14f)
