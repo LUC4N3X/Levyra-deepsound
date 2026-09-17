@@ -12,11 +12,11 @@ The best contribution is not necessarily the biggest one. It is the one that sol
 
 ### Quick navigation
 
-[Before you start](#-before-you-start) · [Setup](#-development-setup) · [Code quality](#-code-quality) · [UI & UX](#-ui--ux) · [Testing](#-testing--validation) · [Pull requests](#-pull-requests) · [AI-assisted work](#-ai-assisted-contributions) · [Security](#-security--sensitive-data) · [Checklist](#-final-checklist)
+[Before you start](#before-you-start) · [Setup](#-development-setup) · [Code quality](#code-quality) · [UI & UX](#-ui--ux) · [Testing](#-testing--validation) · [Pull requests](#pull-requests) · [AI-assisted work](#ai-assisted-contributions) · [Security](#-security--sensitive-data) · [Checklist](#-final-checklist)
 
 ---
 
-## 👋 Before You Start
+## Before You Start
 
 Check the existing **issues** and **pull requests** before beginning work. Someone may already be solving the same problem, or there may be context that changes the best implementation approach.
 
@@ -36,7 +36,7 @@ Do not bundle unrelated cleanup, refactors, dependency updates, or release work 
 
 ---
 
-## 🧭 Project Map
+## Project Map
 
 Levyra currently has two native application targets:
 
@@ -117,7 +117,7 @@ If your change affects desktop behavior, validate the **desktop target itself**.
 
 ---
 
-## 🎯 Keep Changes Focused
+## Keep Changes Focused
 
 A pull request should be easy to explain in one or two sentences.
 
@@ -145,7 +145,7 @@ If a wider refactor is genuinely required, explain **why** and keep it limited t
 
 ---
 
-## 🛡️ Preserve Existing Behavior
+## Preserve Existing Behavior
 
 Levyra has several tightly connected systems. A change in one place can easily affect another.
 
@@ -171,7 +171,7 @@ If compatibility cannot be preserved, make that explicit before merge.
 
 ---
 
-## 🧱 Code Quality
+## Code Quality
 
 Follow the patterns already used by the surrounding code unless there is a concrete reason to improve them.
 
@@ -212,7 +212,7 @@ A beautiful screen that makes playback harder to reach is still a regression.
 
 ---
 
-## 📦 Dependencies
+## Dependencies
 
 Every dependency becomes part of Levyra's maintenance surface.
 
@@ -279,7 +279,7 @@ More details are available in the [development guide](../docs/site/development.m
 
 ---
 
-## 🚀 Pull Requests
+## Pull Requests
 
 Use a title that says what the change actually does.
 
@@ -303,7 +303,7 @@ If review uncovers a separate problem, prefer a new issue or PR instead of letti
 
 ---
 
-## 🔎 Make Reviews Easy
+## Make Reviews Easy
 
 A reviewer should not need detective skills to understand the patch.
 
@@ -323,7 +323,7 @@ Review comments are about the code and the health of the project. Technical disa
 
 ---
 
-## 🐛 Bug Reports
+## Bug Reports
 
 A useful bug report gives another person enough information to reproduce the problem.
 
@@ -345,7 +345,7 @@ If the issue may be a security vulnerability, **stop and follow [SECURITY.md](SE
 
 ---
 
-## 💡 Feature Requests
+## Feature Requests
 
 Start with the **user problem**, not the implementation.
 
@@ -361,7 +361,7 @@ References to other applications are welcome when they explain an interaction or
 
 ---
 
-## 📝 Documentation & Localization
+## Documentation & Localization
 
 Documentation changes are first-class contributions.
 
@@ -380,7 +380,7 @@ For user-facing strings:
 
 ---
 
-## 🤖 AI-Assisted Contributions
+## AI-Assisted Contributions
 
 AI-assisted development is allowed. **Responsibility is not delegated to the tool.**
 
@@ -420,7 +420,7 @@ Suspected vulnerabilities belong in the process described by **[SECURITY.md](SEC
 
 ---
 
-## ⚖️ Third-Party Code & Licensing
+## Third-Party Code & Licensing
 
 Levyra is licensed under the [GNU General Public License v3.0](../LICENSE).
 
@@ -438,7 +438,7 @@ Ideas, UX patterns and architectural concepts can often be reimplemented indepen
 
 ---
 
-## 🧹 Repository Hygiene
+## Repository Hygiene
 
 Before publishing a PR, inspect your own diff.
 
@@ -479,7 +479,7 @@ Before submitting your pull request:
 
 ---
 
-## 🤝 Community
+## Community
 
 Be respectful to maintainers, contributors, and users.
 
