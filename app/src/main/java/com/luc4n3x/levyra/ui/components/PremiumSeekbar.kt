@@ -44,12 +44,12 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
-import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
@@ -69,10 +69,14 @@ fun PremiumSeekbar(
     thumbColor: Color = Color.White,
     isPlaying: Boolean = true,
     animated: Boolean = true,
-    contentDescription: String? = null
+    contentDescription: String? = null,
+    waveform: FloatArray? = null
 ) {
     val density = LocalDensity.current
     val haptics = LocalLevyraHaptics.current
+    val measuredWaveform = waveform?.takeIf { values ->
+        values.isNotEmpty() && values.all { it.isFinite() }
+    }
 
     var isDragging by remember { mutableStateOf(false) }
     var dragProgressFraction by remember { mutableFloatStateOf(0f) }
@@ -111,8 +115,8 @@ fun PremiumSeekbar(
     }
 
     val wavePhase = remember { Animatable(0f) }
-    LaunchedEffect(animated, isPlaying, isDragging) {
-        if (!animated || !isPlaying || isDragging) return@LaunchedEffect
+    LaunchedEffect(animated, isPlaying, isDragging, measuredWaveform) {
+        if (measuredWaveform != null || !animated || !isPlaying || isDragging) return@LaunchedEffect
         val fullPhase = 2f * PI.toFloat()
         while (true) {
             val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
@@ -250,7 +254,40 @@ fun PremiumSeekbar(
                 )
             }
 
-            if (handleX > trackStart) {
+            if (measuredWaveform != null) {
+                val count = measuredWaveform.size
+                val slotWidth = if (count > 0) trackSpan / count else 0f
+                val barWidth = minOf(2.dp.toPx(), slotWidth * 0.58f).coerceAtLeast(1f)
+                val minimumHalfHeight = trackHeight * 0.72f
+                val maximumHalfHeight = 10.dp.toPx()
+
+                fun drawMeasuredBars(color: Color) {
+                    measuredWaveform.forEachIndexed { index, rawAmplitude ->
+                        val amplitude = rawAmplitude.coerceIn(0f, 1f)
+                        val halfHeight = minimumHalfHeight +
+                            (maximumHalfHeight - minimumHalfHeight) * amplitude
+                        val x = trackStart + (index + 0.5f) * slotWidth
+                        drawRoundRect(
+                            color = color,
+                            topLeft = Offset(x - barWidth / 2f, centerY - halfHeight),
+                            size = Size(barWidth, halfHeight * 2f),
+                            cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f)
+                        )
+                    }
+                }
+
+                drawMeasuredBars(inactiveColor.copy(alpha = maxOf(inactiveColor.alpha, 0.46f)))
+                if (handleX > trackStart) {
+                    clipRect(
+                        left = trackStart,
+                        top = 0f,
+                        right = handleX,
+                        bottom = size.height
+                    ) {
+                        drawMeasuredBars(activeColor)
+                    }
+                }
+            } else if (handleX > trackStart) {
                 val activeSpan = handleX - trackStart
                 clipRect(
                     left = trackStart,
