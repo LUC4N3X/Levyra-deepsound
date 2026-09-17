@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DriveFileRenameOutline
 import androidx.compose.material.icons.rounded.LayersClear
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +66,78 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 
 internal fun queueSpaceLabel(space: QueueSpaceSummary, strings: LevyraStrings): String =
     space.name.trim().ifEmpty { strings.queueSpaceDefaultName }
+
+@Composable
+internal fun QueueSpaceDestinationDialog(
+    spaces: List<QueueSpaceSummary>,
+    activeSpaceId: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val orderedSpaces = remember(spaces, activeSpaceId) {
+        spaces.sortedBy { it.id != activeSpaceId }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = strings.addToQueue,
+                color = LevyraText,
+                fontWeight = FontWeight.Black
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                orderedSpaces.forEach { space ->
+                    TextButton(
+                        onClick = { onSelect(space.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (space.id == activeSpaceId) {
+                                    Icons.Rounded.Check
+                                } else {
+                                    Icons.AutoMirrored.Rounded.QueueMusic
+                                },
+                                contentDescription = null,
+                                tint = if (space.id == activeSpaceId) LevyraCyan else LevyraMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = queueSpaceLabel(space, strings),
+                                    color = LevyraText,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (space.trackCount == 0) {
+                                        strings.queueSpaceEmpty
+                                    } else {
+                                        strings.formatTrackCount(space.trackCount)
+                                    },
+                                    color = LevyraMuted,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(strings.cancel)
+            }
+        }
+    )
+}
 
 @Composable
 internal fun QueueSpacesPanel(

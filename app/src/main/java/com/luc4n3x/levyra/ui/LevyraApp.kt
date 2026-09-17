@@ -2735,6 +2735,15 @@ fun LevyraApp(
                 )
             }
 
+            state.pendingQueueAddTrack?.let {
+                QueueSpaceDestinationDialog(
+                    spaces = state.queueSpaces,
+                    activeSpaceId = state.activeQueueSpaceId,
+                    onDismiss = viewModel::dismissQueueDestinationPicker,
+                    onSelect = viewModel::addPendingTrackToQueueSpace
+                )
+            }
+
             trackActionTarget?.let { target ->
                 val download = remember(state.downloads, target.id) {
                     state.downloads.firstOrNull { it.trackId == target.id }
@@ -2756,7 +2765,9 @@ fun LevyraApp(
                     isArtistExcluded = state.artistExclusions.excludesTrack(target),
                     onDismiss = { trackActionTarget = null },
                     onPlayNext = { viewModel.playNext(target) },
-                    onAddToQueue = { viewModel.addToQueue(target) },
+                    onAddToQueue = {
+                        viewModel.addTracksToQueueSpace(state.activeQueueSpaceId, listOf(target))
+                    },
                     queueSpaces = state.queueSpaces,
                     activeQueueSpaceId = state.activeQueueSpaceId,
                     onAddToQueueSpace = { spaceId -> viewModel.addTracksToQueueSpace(spaceId, listOf(target)) },

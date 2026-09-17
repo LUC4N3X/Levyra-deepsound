@@ -252,6 +252,7 @@ import com.luc4n3x.levyra.data.locallibrary.LocalLibraryStatus
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
 import com.luc4n3x.levyra.data.locallibrary.buildLocalLibraryCatalog
 import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
+import com.luc4n3x.levyra.player.queue.shouldPromptForQueueDestination
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
@@ -5168,7 +5169,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun addToQueue(track: Track) {
         if (routeJamAction(JamAction.AddTrack(toJamTrack(track)))) return
+        if (shouldPromptForQueueDestination(_state.value.queueSpaces)) {
+            _state.update { it.copy(pendingQueueAddTrack = track) }
+            return
+        }
         addToQueueLocal(track)
+    }
+
+    fun dismissQueueDestinationPicker() {
+        if (_state.value.pendingQueueAddTrack == null) return
+        _state.update { it.copy(pendingQueueAddTrack = null) }
+    }
+
+    fun addPendingTrackToQueueSpace(spaceId: String) {
+        val pending = _state.value.pendingQueueAddTrack ?: return
+        _state.update { it.copy(pendingQueueAddTrack = null) }
+        if (spaceId == _state.value.activeQueueSpaceId) {
+            addToQueueLocal(pending)
+            return
+        }
+        addTracksToQueueSpace(spaceId, listOf(pending))
     }
 
     private fun addToQueueLocal(track: Track) {
