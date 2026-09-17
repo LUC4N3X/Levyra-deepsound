@@ -54,32 +54,26 @@ internal class WaveSeekEnvelope private constructor(
             (value * 255f).toInt().coerceIn(0, 255) / 255f
     }
 
-    fun bars(count: Int): FloatArray {
-        if (count <= 0) return FloatArray(0)
-        if (count == frozen.size) return frozen.copyOf()
-        if (count < frozen.size) {
-            return FloatArray(count) { index ->
-                val start = floor(index.toDouble() * frozen.size / count).toInt()
-                    .coerceIn(0, frozen.lastIndex)
-                val endExclusive = ceil((index + 1).toDouble() * frozen.size / count).toInt()
-                    .coerceIn(start + 1, frozen.size)
-                var peak = RESTING
-                for (sourceIndex in start until endExclusive) {
-                    peak = maxOf(peak, frozen[sourceIndex])
-                }
-                peak
+    fun bars(count: Int): FloatArray = when {
+        count <= 0 -> FloatArray(0)
+        count == frozen.size -> frozen.copyOf()
+        count < frozen.size -> FloatArray(count) { index ->
+            val start = floor(index.toDouble() * frozen.size / count).toInt()
+                .coerceIn(0, frozen.lastIndex)
+            val endExclusive = ceil((index + 1).toDouble() * frozen.size / count).toInt()
+                .coerceIn(start + 1, frozen.size)
+            var peak = RESTING
+            for (sourceIndex in start until endExclusive) {
+                peak = maxOf(peak, frozen[sourceIndex])
             }
+            peak
         }
-        return FloatArray(count) { index ->
-            if (count == 1) {
-                frozen.first()
-            } else {
-                val position = index.toDouble() * (frozen.size - 1) / (count - 1)
-                val left = floor(position).toInt()
-                val right = ceil(position).toInt().coerceAtMost(frozen.lastIndex)
-                val fraction = (position - left).toFloat()
-                frozen[left] + (frozen[right] - frozen[left]) * fraction
-            }
+        else -> FloatArray(count) { index ->
+            val position = index.toDouble() * (frozen.size - 1) / (count - 1)
+            val left = floor(position).toInt()
+            val right = ceil(position).toInt().coerceAtMost(frozen.lastIndex)
+            val fraction = (position - left).toFloat()
+            frozen[left] + (frozen[right] - frozen[left]) * fraction
         }
     }
 
