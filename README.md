@@ -8,7 +8,7 @@
 
 # Hear every layer. No limits.
 
-**A native music player, stream extractor, and private offline vault for Android & Windows.**
+**A native music player for Android & Windows with streaming, downloads, and a private offline library.**
 
 
 <p align="center">
@@ -56,7 +56,7 @@
 
 **Not rented. Not profiled. Not trapped.**
 
-Levyra is built around a simple promise: the music you save, the way you listen, and the history you create should remain useful beyond a session — and beyond Levyra itself.
+Levyra is made around a pretty simple idea: if you save music, build playlists, or spend months creating a listening history, that stuff should stay useful instead of disappearing the moment you leave the app.
 
 </div>
 
@@ -64,25 +64,25 @@ Levyra is built around a simple promise: the music you save, the way you listen,
 
 ### 💿 01 · Keep your offline library
 
-Downloads are standard, high-bitrate M4A files saved to <code>Music/Levyra</code> by default, or to a folder you choose in Settings, including supported SD card locations. Artwork, artist, album, and lyrics can stay embedded inside the file.
+Downloads are normal high-bitrate M4A files. By default they go to <code>Music/Levyra</code>, but you can pick another folder in Settings, including supported SD card locations. Artwork, artist, album, and lyrics can be written into the file too.
 
-**No proprietary vault required.** Your music remains usable in the car, on a DAP, through a hi-fi system, or in any compatible media player.
+**No proprietary vault required.** You can take those files somewhere else, play them in the car, move them to a DAP, use them on a hi-fi system, or open them with another compatible player.
 
 ### 🎚️ 02 · Stay close to the sound
 
-Android uses Media3 / ExoPlayer; Windows uses its own libvlc core. Playback stays native to the platform instead of living inside a web wrapper.
+Android runs on Media3 / ExoPlayer and Windows has its own libvlc playback core. Both are native playback paths, not a web player wrapped inside an app.
 
 <code>GAPLESS PLAYBACK</code> &nbsp;·&nbsp; <code>LOUDNESS-AWARE NORMALIZATION</code> &nbsp;·&nbsp; <code>AUTOEQ HEADPHONE CATALOG</code> &nbsp;·&nbsp; <code>LOW-OVERHEAD AUDIO</code>
 
 ### 🎙️ 03 · Remove everything between you and the song
 
-Synced LRCLIB lyrics keep the words tied to the music with tap-to-seek karaoke, while SponsorBlock can skip supported intros, silence, dialogue, and other non-musical segments automatically.
+LRCLIB provides synced lyrics with tap-to-seek karaoke, and SponsorBlock can automatically skip supported intros, silence, dialogue, and other sections that are not part of the music.
 
 The goal is simple: **less interface friction, more music.**
 
 ### 🛡️ 04 · Keep your listening private
 
-Play counts, listening time, streaks, playlists, and listening insights are computed locally in SQLite.
+Play counts, listening time, streaks, playlists, and listening stats are calculated locally and stored in SQLite on your device.
 
 **No analytics profile. No cookies. No mandatory Levyra account.**
 
@@ -115,23 +115,23 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ### 🎧 Higher-quality audio, accepted only when Levyra knows it is the right recording.
 
-<p><sub>When enabled, Levyra can resolve and verify an alternative high-quality JioSaavn audio source before playback while preserving the original track identity, metadata, queue state, artwork, lyrics, listening history, and recommendations.</sub></p>
+<p><sub>If you enable it, Levyra can look for a higher-quality JioSaavn source before playback. The original track still owns the metadata, queue entry, artwork, lyrics, listening history, and recommendations.</sub></p>
 
-<p><b>At a verified 320 kbps, the JioSaavn route delivers premium lossy audio in the same general quality class as TIDAL's 320 kbps compressed tier — a level that can sound extremely close in normal listening conditions on phones, Bluetooth headphones, car systems, and everyday speakers. It is not presented as lossless: TIDAL High and Max can still provide technically higher-fidelity FLAC up to Hi-Res 24-bit/192 kHz.</b></p>
+<p><b>When a real 320 kbps match is found, the result is high-quality lossy audio in roughly the same class as TIDAL's 320 kbps compressed tier. On phones, Bluetooth headphones, car systems, and normal speakers the difference can be very small. It is still not lossless: TIDAL High and Max can use higher-fidelity FLAC up to Hi-Res 24-bit/192 kHz.</b></p>
 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="33%">
       <h3>🎚️ <b>Verified HQ Routing</b></h3>
-      <p><sub>Levyra can resolve a genuine higher-bitrate stream — up to 320 kbps when available and validated — with automatic 160/96 kbps fallback when the requested tier is not actually usable.</sub></p>
+      <p><sub>Levyra asks for the higher-bitrate source only when it can actually use it, up to 320 kbps. If that tier is not available, it can fall back to 160 or 96 kbps instead.</sub></p>
     </td>
     <td width="33%">
       <h3>🧬 <b>Identity Lock</b></h3>
-      <p><sub>Title, primary and featured artists, album, duration, explicit state, ISRC, and version markers are checked before an alternative source is accepted. Remix, live, acoustic, sped-up, and ambiguous matches are rejected.</sub></p>
+      <p><sub>Before switching source, Levyra checks the title, artists, album, duration, explicit state, ISRC, and version markers. Remixes, live versions, acoustic versions, sped-up tracks, and unclear matches are left alone.</sub></p>
     </td>
     <td width="33%">
       <h3>🛡️ <b>Fail-Safe by Design</b></h3>
-      <p><sub>If the verified source is unavailable, stale, restricted, mismatched, or not meaningfully better, Levyra keeps the normal playback path. No identity swap. No forced match. No broken queue.</sub></p>
+      <p><sub>If the alternative source is stale, restricted, mismatched, unavailable, or simply not better, playback stays on the normal route. The queue and track identity are not swapped around just to force a match.</sub></p>
     </td>
   </tr>
 </table>
@@ -152,21 +152,21 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ### 🧠 The engine listens before it changes anything.
 
-<p><sub>Loudness, transitions, and headphone correction live inside Levyra's single native DSP chain — one path from decoder to true-peak limiter, with no second processor stacked on top.</sub></p>
+<p><sub>Loudness handling, transitions, and headphone correction all run through the same native DSP path. There is not a second processor stacked on top of the player.</sub></p>
 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="33%">
       <h3>🔊 <b>Honest Loudness</b></h3>
-      <p><sub>Every song is brought to a consistent streaming reference using the track's own loudness data. Tracks without it are measured in real time with a gated, broadcast-style loudness meter. Levyra only turns loud tracks down — it never pumps quiet ones up — and a −1 dBTP true-peak limiter guards the output.</sub></p>
+      <p><sub>When a track already has loudness data, Levyra uses it. When it does not, the app estimates loudness in real time with a gated BS.1770-style meter. Loud tracks can be turned down, quiet tracks are not artificially boosted, and a −1 dBTP true-peak limiter protects the output.</sub></p>
     </td>
     <td width="33%">
       <h3>💿 <b>Album Continuity</b></h3>
-      <p><sub>Consecutive tracks from the same release play straight through, even with crossfade on, so live albums, DJ mixes, and concept records stay continuous. The release is identified by its catalog ID and running order, not by the album title alone. Leaving the album still crossfades.</sub></p>
+      <p><sub>Tracks that belong next to each other on the same release stay continuous even when crossfade is enabled. This matters for live albums, DJ mixes, and concept records. Levyra uses the catalog ID and track order instead of trusting the album title alone.</sub></p>
     </td>
     <td width="33%">
       <h3>🎧 <b>AutoEQ Headphone Catalog</b></h3>
-      <p><sub>Search more than 8,800 headphone and earphone profiles by brand or model, preview the correction curve, and apply it in one tap through the built-in 10-band equalizer. Profiles download on demand — nothing is bundled into the APK — and preamp headroom is respected, never doubled.</sub></p>
+      <p><sub>You can search more than 8,800 headphone and earphone profiles, preview the curve, and apply it through the built-in 10-band equalizer. Profiles are downloaded only when needed, so the whole database is not bundled into the APK.</sub></p>
     </td>
   </tr>
 </table>
@@ -178,7 +178,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
   <code>8,800+ HEADPHONE PROFILES</code>
 </p>
 
-<p><sub>The loudness meter follows the ITU-R BS.1770-4 method (K-weighting, 400 ms gated blocks) as a real-time estimate for playback. It is not presented as a certified EBU R128 measurement tool.</sub></p>
+<p><sub>The loudness meter follows the ITU-R BS.1770-4 method (K-weighting, 400 ms gated blocks) as a real-time playback estimate. It is not meant to be a certified EBU R128 measurement tool.</sub></p>
 
 </div>
 
@@ -199,11 +199,11 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 | | |
 | :---: | :---: |
 | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/01_playback_and_lyrics-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/01_playback_and_lyrics.webp"><img src="docs/assets/showcase/01_playback_and_lyrics.webp" alt="Immersive Playback & Live Synced Lyrics" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/02_home_and_charts-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/02_home_and_charts.webp"><img src="docs/assets/showcase/02_home_and_charts.webp" alt="Smart Orbit Feed & Global Top Charts" width="100%" /></picture> |
-| **Immersive Playback & Live Synced Lyrics**<br><sub>ExoPlayer audio engine · Route-calibrated LRCLIB sync · Multi-script romanization · 1:1 / 9:16 lyric cards</sub> | **Smart Orbit Feed & Global Charts**<br><sub>Dynamic 'Your Orbit' rotation · Live Top 50 international charts · Mood chips · Instant prefetch</sub> |
+| **Immersive Playback & Live Synced Lyrics**<br><sub>ExoPlayer playback · LRCLIB lyrics with route-aware sync · Multi-script romanization · 1:1 / 9:16 lyric cards</sub> | **Smart Orbit Feed & Global Charts**<br><sub>Your Orbit rotation · Live international Top 50 charts · Mood chips · Prefetch before playback</sub> |
 | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/03_search_and_artist-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/03_search_and_artist.webp"><img src="docs/assets/showcase/03_search_and_artist.webp" alt="Deep Search & Artist Immersion" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/04_library_and_pulse-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/04_library_and_pulse.webp"><img src="docs/assets/showcase/04_library_and_pulse.webp" alt="Offline M4A Vault & Listening Pulse" width="100%" /></picture> |
-| **Deep Search & Artist Immersion**<br><sub>Live search with artist bubbles · Wikipedia biography cards · Complete chronological discography</sub> | **Offline M4A Vault & Listening Pulse**<br><sub>Real tagged M4A files with art · On-device 7-day listening analytics · 100% private SQLite</sub> |
+| **Deep Search & Artist Immersion**<br><sub>Live search with artist results · Wikipedia biography cards · Full discography in chronological order</sub> | **Offline M4A Vault & Listening Pulse**<br><sub>Tagged M4A files with artwork · 7-day listening stats on device · Private SQLite storage</sub> |
 | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/05_video_and_samples-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/05_video_and_samples.webp"><img src="docs/assets/showcase/05_video_and_samples.webp" alt="Samples Clips & Comment Energy" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/06_collections_and_genres-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/06_collections_and_genres.webp"><img src="docs/assets/showcase/06_collections_and_genres.webp" alt="Editorial Playlists & Genre Matrix" width="100%" /></picture> |
-| **Samples Clips & Comment Energy**<br><sub>Vertical video teaser clips · Live music video feeds · Real-time 73% comment energy resonance</sub> | **Editorial Playlists & Genre Matrix**<br><sub>4-tile dynamic editorial collections · Expansive mood spectrum (Rap, Lo-Fi, Anime, Electronic)</sub> |
+| **Samples Clips & Comment Energy**<br><sub>Vertical preview clips · Music video feeds · Live comment-energy percentage</sub> | **Editorial Playlists & Genre Matrix**<br><sub>4-tile editorial collections · Mood and genre browsing including Rap, Lo-Fi, Anime, Electronic and more</sub> |
 
 </div>
 
@@ -248,7 +248,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 <div align="center">
   <h3>🎧 <b>Everything in the signal path. Nothing in the way.</b></h3>
-  <p><sub>Playback, discovery, live radio, lyrics, offline portability, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
+  <p><sub>Playback, discovery, radio, lyrics, downloads, recognition, local sync, privacy, and networking all live in the same native app instead of being split across separate services.</sub></p>
   <p>
     <code>12 CORE SYSTEMS</code> &nbsp;·&nbsp;
     <code>ANDROID + WINDOWS</code> &nbsp;·&nbsp;
@@ -263,146 +263,146 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
   <tr valign="top">
     <td width="50%">
       <h3>🎚️ <b>Playback Core</b></h3>
-      <p><b>Fast, native, interruption-free.</b><br><sub>The listening path is tuned around low overhead, predictable behavior, and direct playback control on both platforms.</sub></p>
+      <p><b>Fast, native, interruption-free.</b><br><sub>The player is kept close to the platform, with low overhead and direct control over the playback session on Android and Windows.</sub></p>
       <ul>
-        <li><b>Native Engines:</b> Media3 / ExoPlayer on Android and isolated libvlc on Windows.</li>
-        <li><b>Verified HQ Audio:</b> Android can route to a validated alternative source up to 320 kbps while preserving the original Levyra/YouTube track identity and falling back safely when verification fails.</li>
-        <li><b>Gapless & Queue:</b> Seamless track transitions, shuffle/repeat, queue Undo, and album continuity that skips the crossfade between consecutive tracks of the same release.</li>
-        <li><b>Tempo & Timing:</b> Speed/pitch controls plus a built-in sleep timer.</li>
-        <li><b>Android Auto:</b> Playback integrates with the car-focused Android media experience.</li>
-        <li><b>Loudness Normalization:</b> Attenuation-only leveling from track loudness data, with a gated BS.1770-4-style meter for tracks that carry none.</li>
-        <li><b>Equalizer & AutoEQ:</b> 10-band equalizer with presets, bass boost, virtualizer, preamp, and a searchable headphone correction catalog.</li>
-        <li><b>SponsorBlock:</b> Automatically skips supported non-musical segments during playback.</li>
-        <li><b>Audio / Video Mode:</b> Switch between listening and native-video playback when available.</li>
+        <li><b>Native Engines:</b> Media3 / ExoPlayer on Android and an isolated libvlc player on Windows.</li>
+        <li><b>Verified HQ Audio:</b> Android can use a verified alternative source up to 320 kbps without changing the original Levyra/YouTube track identity. If verification fails, it falls back normally.</li>
+        <li><b>Gapless & Queue:</b> Gapless transitions, shuffle/repeat, queue Undo, and album continuity that avoids crossfading between consecutive tracks from the same release.</li>
+        <li><b>Tempo & Timing:</b> Speed and pitch controls, plus a built-in sleep timer.</li>
+        <li><b>Android Auto:</b> Playback works with Android's car-focused media controls.</li>
+        <li><b>Loudness Normalization:</b> Attenuation-only leveling from track loudness data, with a gated BS.1770-4-style meter when the track has no loudness metadata.</li>
+        <li><b>Equalizer & AutoEQ:</b> 10-band EQ with presets, bass boost, virtualizer, preamp, and a searchable headphone correction catalog.</li>
+        <li><b>SponsorBlock:</b> Can skip supported non-musical sections automatically during playback.</li>
+        <li><b>Audio / Video Mode:</b> Switch between audio playback and native video when a video stream is available.</li>
       </ul>
     </td>
     <td width="50%">
       <h3>💾 <b>Offline Vault</b></h3>
-      <p><b>Your offline library stays portable.</b><br><sub>Portable audio files and versioned local backups without a Levyra account.</sub></p>
+      <p><b>Your offline library stays portable.</b><br><sub>Downloads stay as normal audio files, and local backups do not require a Levyra account.</sub></p>
       <ul>
-        <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics embedded directly in the file.</li>
-        <li><b>Configurable Download Storage:</b> Choose where Levyra saves offline music, including supported SD card locations, while keeping Artist / Album organization relative to the selected folder.</li>
-        <li><b>Local-First Playback:</b> Existing offline files play instantly from <code>Music/Levyra</code> or your configured download folder.</li>
-        <li><b>Levyra Vault:</b> Versioned <code>.levyra</code> backups protect settings, favorites, playlists, followed artists, history, and queue without an online account.</li>
-        <li><b>Verified Restore:</b> Manifest validation, SHA-256 checksums, compatibility preview, required-section checks, and rollback protection before local data is replaced.</li>
-        <li><b>Automatic Protection:</b> Manual, scheduled, and pre-update backups with 3/5/10 retention and optional Android SAF destinations; internal storage remains the safe fallback.</li>
+        <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics can be embedded directly in the file.</li>
+        <li><b>Configurable Download Storage:</b> Pick where Levyra saves music, including supported SD card locations. Artist / Album folders stay relative to the location you choose.</li>
+        <li><b>Local-First Playback:</b> Existing downloads play directly from <code>Music/Levyra</code> or your chosen download folder.</li>
+        <li><b>Levyra Vault:</b> Versioned <code>.levyra</code> backups can include settings, favorites, playlists, followed artists, history, and queue data without an online account.</li>
+        <li><b>Verified Restore:</b> Restores check the manifest, SHA-256 checksums, compatibility, required sections, and rollback state before replacing local data.</li>
+        <li><b>Automatic Protection:</b> Manual, scheduled, and pre-update backups support 3/5/10 retention and optional Android SAF destinations, with internal storage as the fallback.</li>
       </ul>
     </td>
   </tr>
   <tr valign="top">
     <td width="50%">
       <h3>🔍 <b>Discovery & Extraction</b></h3>
-      <p><b>Find it, resolve it, start it.</b><br><sub>Discovery and stream resolution are designed as one continuous path into playback.</sub></p>
+      <p><b>Find it, resolve it, start it.</b><br><sub>Search and stream resolution feed straight into playback instead of behaving like separate parts of the app.</sub></p>
       <ul>
-        <li><b>Multi-Source Resolver:</b> Highest-fidelity Opus or AAC on the normal path, plus verified JioSaavn alternative audio when enabled and demonstrably matched to the same recording.</li>
-        <li><b>Strict Match Guard:</b> Artist credits, album, duration, explicit state, ISRC and recording/version markers prevent remixes, live cuts, covers and ambiguous candidates from replacing the requested track.</li>
-        <li><b>Queue Prefetch:</b> Upcoming tracks buffer quietly before the skip.</li>
-        <li><b>Discovery Engine:</b> Global Top 50, Smart Orbit recommendations, and Samples feed.</li>
-        <li><b>Live Radio:</b> Real worldwide stations with country, language, category and station-name discovery, local favorites and recents, ICY now-playing metadata, background playback, bounded reconnect, and a live Media3 path kept separate from Song Radio and the persistent music queue.</li>
+        <li><b>Multi-Source Resolver:</b> The normal route prefers the best available Opus or AAC stream. Verified JioSaavn audio can be used as an alternative when enabled and matched to the same recording.</li>
+        <li><b>Strict Match Guard:</b> Artist credits, album, duration, explicit state, ISRC, and version markers are checked so remixes, live cuts, covers, and unclear matches do not replace the track you asked for.</li>
+        <li><b>Queue Prefetch:</b> Upcoming tracks can start buffering before you skip to them.</li>
+        <li><b>Discovery Engine:</b> Global Top 50, Smart Orbit recommendations, and the Samples feed.</li>
+        <li><b>Live Radio:</b> Real worldwide stations with country, language, category, and station-name search, local favorites and recents, ICY now-playing metadata, background playback, controlled reconnects, and a Media3 path kept separate from Song Radio and the normal music queue.</li>
       </ul>
     </td>
     <td width="50%">
       <h3>🎙️ <b>Lyrics & Visual Immersion</b></h3>
-      <p><b>Lyrics that move with the music.</b><br><sub>Synced text, shareable moments, artwork motion, and Canvas live inside the player.</sub></p>
+      <p><b>Lyrics that move with the music.</b><br><sub>Synced lyrics, lyric sharing, artwork motion, and Canvas are all handled inside the player.</sub></p>
       <ul>
-        <li><b>Synced Lyrics:</b> Millisecond-aligned LRCLIB lyrics with tap-to-seek highlighting.</li>
-        <li><b>Route-Aware Latency:</b> Save per-device Bluetooth lyric timing profiles on supported Android versions, with a safe global offset fallback when the active route cannot be identified reliably.</li>
+        <li><b>Synced Lyrics:</b> LRCLIB lyrics with millisecond timing and tap-to-seek highlighting.</li>
+        <li><b>Route-Aware Latency:</b> On supported Android versions you can save Bluetooth lyric timing per device, with a normal global offset when the active route cannot be identified reliably.</li>
         <li><b>Multi-Script Romanization:</b> Offline readable forms for Cyrillic, Greek and polytonic Greek, Arabic, Hebrew, Georgian, Devanagari, Gurmukhi, Bengali, plus the existing CJK, Kana, and Hangul paths.</li>
-        <li><b>Lyric Sharing:</b> Select verses, copy, share, or export 1080×1080 square and 1080×1920 story cards with RTL-aware layout and Unicode-safe text handling.</li>
-        <li><b>Living Artwork:</b> Artwork-driven motion fallback when a real Canvas is unavailable.</li>
-        <li><b>Canvas & Preview:</b> In-player Canvas control plus full-screen zoomable artwork preview.</li>
+        <li><b>Lyric Sharing:</b> Select verses, copy or share them, or export 1080×1080 square and 1080×1920 story cards with RTL-aware layout and Unicode-safe text.</li>
+        <li><b>Living Artwork:</b> Uses artwork-driven motion when a real Canvas is not available.</li>
+        <li><b>Canvas & Preview:</b> Canvas controls in the player plus a full-screen zoomable artwork view.</li>
       </ul>
     </td>
   </tr>
   <tr valign="top">
     <td width="50%">
       <h3>📈 <b>Listening Intelligence</b></h3>
-      <p><b>Useful insight, computed locally.</b><br><sub>Your listening patterns become readable without turning into telemetry.</sub></p>
+      <p><b>Useful insight, computed locally.</b><br><sub>Listening stats are useful without needing to send your history somewhere else.</sub></p>
       <ul>
-        <li><b>Accurate Listening:</b> Playback time and counted plays respect pause, seek, skip, and completion.</li>
-        <li><b>Listening Pulse:</b> Weekly activity, 24-hour rhythm, and artist distribution.</li>
-        <li><b>Your Sound:</b> 7-day, 30-day, 6-month, and All Time analysis stored on device.</li>
+        <li><b>Accurate Listening:</b> Playback time and play counts account for pauses, seeks, skips, and completion.</li>
+        <li><b>Listening Pulse:</b> Weekly activity, your 24-hour listening rhythm, and artist distribution.</li>
+        <li><b>Your Sound:</b> 7-day, 30-day, 6-month, and All Time views stored on the device.</li>
       </ul>
     </td>
     <td width="50%">
       <h3>🔤 <b>Typography & Readability</b></h3>
-      <p><b>Dense when useful. Clear everywhere.</b><br><sub>Type rhythm and layout rules keep metadata readable across languages and font scales.</sub></p>
+      <p><b>Dense when useful. Clear everywhere.</b><br><sub>Shared type and spacing rules keep titles and metadata readable across languages and larger font sizes.</sub></p>
       <ul>
-        <li><b>Levyra Type Rhythm:</b> Shared line-height scale for titles, metadata, and multi-line text.</li>
-        <li><b>Accessible Layout:</b> Role-aware tracking with safe accents, descenders, and large font scales.</li>
-        <li><b>Private by Default:</b> Listening statistics are computed locally and never leave the device.</li>
+        <li><b>Levyra Type Rhythm:</b> Shared line-height rules for titles, metadata, and multi-line text.</li>
+        <li><b>Accessible Layout:</b> Tracking and spacing are kept safe for accents, descenders, and large font scales.</li>
+        <li><b>Private by Default:</b> Listening statistics are calculated locally and do not leave the device.</li>
       </ul>
     </td>
   </tr>
   <tr valign="top">
     <td width="50%">
       <h3>🎛️ <b>Music Recognition 2.0</b></h3>
-      <p><b>Identify what is playing without an account.</b><br><sub>Recognition works from the microphone or supported internal playback capture.</sub></p>
+      <p><b>Identify what is playing without an account.</b><br><sub>Recognition can listen through the microphone or, when supported, capture audio already playing on the device.</sub></p>
       <ul>
-        <li><b>Shazam-Compatible:</b> Credential-free acoustic fingerprint matching directly on device.</li>
-        <li><b>Dual Audio Capture:</b> Listens via microphone or internal device playback (Android 10+ MediaProjection).</li>
-        <li><b>AudD Fallback & History:</b> Optional secondary provider with Keystore token, plus local recognition history.</li>
+        <li><b>Shazam-Compatible:</b> Acoustic fingerprint matching works without an account or stored service credentials.</li>
+        <li><b>Dual Audio Capture:</b> Use the microphone or internal device playback through MediaProjection on Android 10+.</li>
+        <li><b>AudD Fallback & History:</b> An optional AudD fallback can use a Keystore-protected token, and recognition history stays local.</li>
       </ul>
     </td>
     <td width="50%">
       <h3>📻 <b>Levyra Jam</b></h3>
-      <p><b>Shared listening, kept on the local network.</b><br><sub>Sync playback and queues across nearby devices without turning the session into a cloud service.</sub></p>
+      <p><b>Shared listening, kept on the local network.</b><br><sub>Nearby devices can share playback and queues without turning the session into a cloud service.</sub></p>
       <ul>
-        <li><b>Local Network Listening:</b> Synchronized playback and shared queues across devices on the same Wi-Fi.</li>
-        <li><b>Host Authority & Permissions:</b> Granular controls for host-only, guest queue additions, or collaborative sessions.</li>
-        <li><b>Mutual Auth Security:</b> Cryptographic challenge-response handshake over HMAC-SHA256 with deep link invites.</li>
+        <li><b>Local Network Listening:</b> Keep playback and queues in sync across devices on the same Wi-Fi.</li>
+        <li><b>Host Authority & Permissions:</b> Choose host-only control, let guests add to the queue, or run a collaborative session.</li>
+        <li><b>Mutual Auth Security:</b> Devices use an HMAC-SHA256 challenge-response handshake, with deep links for invites.</li>
       </ul>
     </td>
   </tr>
   <tr valign="top">
     <td width="50%">
       <h3>🛡️ <b>Network Resilience</b></h3>
-      <p><b>Flexible routing without hidden behavior.</b><br><sub>DNS, proxy controls, bypasses, and diagnostics stay visible and user-controlled.</sub></p>
+      <p><b>Flexible routing without hidden behavior.</b><br><sub>DNS, proxies, bypasses, and diagnostics stay visible in settings instead of being hidden behind the player.</sub></p>
       <ul>
-        <li><b>DNS-over-HTTPS:</b> Built-in presets for Cloudflare, Google, AdGuard, and Quad9, plus custom HTTPS resolvers.</li>
-        <li><b>HTTP & SOCKS Proxies:</b> Authenticated proxy routing with Keystore-encrypted credentials and anti-loop safety.</li>
-        <li><b>Stream Bypass & Diagnostics:</b> Option to bypass proxies for direct audio streams, and an in-app network probe.</li>
+        <li><b>DNS-over-HTTPS:</b> Presets for Cloudflare, Google, AdGuard, and Quad9, plus custom HTTPS resolvers.</li>
+        <li><b>HTTP & SOCKS Proxies:</b> Authenticated proxy support with Keystore-encrypted credentials and loop protection.</li>
+        <li><b>Stream Bypass & Diagnostics:</b> Audio streams can bypass the proxy when you want them to, and there is an in-app network probe for troubleshooting.</li>
       </ul>
     </td>
     <td width="50%">
       <h3>🔗 <b>Integrations & Control</b></h3>
-      <p><b>Useful connections, never mandatory ones.</b><br><sub>External services remain optional while core playback stays independent.</sub></p>
+      <p><b>Useful connections, never mandatory ones.</b><br><sub>External services are optional. Core playback does not depend on signing in to them.</sub></p>
       <ul>
-        <li><b>Scrobbling:</b> Last.fm and ListenBrainz integration with bounded deduplication.</li>
-        <li><b>Searchable Settings:</b> Instant search across settings, titles, and keywords in 26 languages.</li>
-        <li><b>Video Subtitles:</b> Selectable multi-language subtitles during native-video playback.</li>
+        <li><b>Scrobbling:</b> Optional Last.fm and ListenBrainz integration with bounded deduplication.</li>
+        <li><b>Searchable Settings:</b> Search settings by title or keyword in 26 languages.</li>
+        <li><b>Video Subtitles:</b> Choose from available subtitle languages during native video playback.</li>
       </ul>
     </td>
   </tr>
   <tr valign="top">
     <td width="50%">
       <h3>🌙 <b>Levyra Ambient</b></h3>
-      <p><b>A quiet screen for a loud song.</b><br><sub>An OLED-friendly now-playing surface driven by the existing PlaybackService session — never a second player.</sub></p>
+      <p><b>A quiet screen for a loud song.</b><br><sub>An OLED-friendly now-playing view that uses the PlaybackService session you already have running. It does not start a second player.</sub></p>
       <ul>
-        <li><b>Same Session:</b> Attaches to the running MediaSession, so entering and leaving Ambient never interrupts audio.</li>
-        <li><b>Artwork or Canvas:</b> Shows Levyra Canvas when available, with static artwork as the immediate fallback.</li>
-        <li><b>Synced Lyric Line:</b> The current line follows playback, alongside title, artist, and a minimal progress cue.</li>
-        <li><b>Burn-in Care:</b> Reduced brightness, auto dimming, periodic pixel shifting, and a minimal layout once idle.</li>
-        <li><b>Proximity Blackout:</b> Optional blackout while the sensor is covered, for pocket and nightstand use.</li>
-        <li><b>Tile & Screensaver:</b> A Quick Settings tile plus a native Android <code>DreamService</code> for docked playback.</li>
+        <li><b>Same Session:</b> Ambient attaches to the current MediaSession, so opening or closing it does not interrupt playback.</li>
+        <li><b>Artwork or Canvas:</b> Shows Levyra Canvas when one is available, otherwise it falls back to the track artwork.</li>
+        <li><b>Synced Lyric Line:</b> The current lyric follows playback next to the title, artist, and a small progress indicator.</li>
+        <li><b>Burn-in Care:</b> Lower brightness, automatic dimming, periodic pixel shifting, and a simpler idle layout help reduce static OLED content.</li>
+        <li><b>Proximity Blackout:</b> Optionally blacks out the screen while the proximity sensor is covered, useful in a pocket or on a nightstand.</li>
+        <li><b>Tile & Screensaver:</b> Includes a Quick Settings tile and an Android <code>DreamService</code> for docked playback.</li>
       </ul>
     </td>
     <td width="50%">
       <h3>🗂️ <b>Library Organization</b></h3>
-      <p><b>Shape the library around how you actually listen.</b><br><sub>Tags, visibility, and recommendation control — all local, all reversible, all included in Levyra Vault backups.</sub></p>
+      <p><b>Shape the library around how you actually listen.</b><br><sub>Tags, hidden playlists, and recommendation controls are local, reversible, and included in Levyra Vault backups.</sub></p>
       <ul>
-        <li><b>Playlist Tags:</b> Create, rename, and remove tags such as Rap, Gym, Relax, or Auto, and assign several to one playlist.</li>
+        <li><b>Playlist Tags:</b> Create your own tags such as Rap, Gym, Relax, or Auto, and put more than one tag on a playlist.</li>
         <li><b>Tag Filtering:</b> Filter the Library by one or more tags without leaving the playlist view.</li>
-        <li><b>Hidden Playlists:</b> Hide a playlist from the Library without deleting it, then restore it from a dedicated filter. No track or metadata is lost.</li>
-        <li><b>Artist Exclusions:</b> Keep an artist out of the personalized Home, Your Orbit, radio, autoplay, and mixes while still being able to search and open them.</li>
-        <li><b>Rediscover:</b> A Home shelf for favorites you have not played in a long time, built only from listening history already on the device.</li>
+        <li><b>Hidden Playlists:</b> Hide a playlist without deleting it, then bring it back from the dedicated filter. Tracks and metadata stay untouched.</li>
+        <li><b>Artist Exclusions:</b> Keep an artist out of Home recommendations, Your Orbit, radio, autoplay, and mixes while still being able to search for and open that artist normally.</li>
+        <li><b>Rediscover:</b> A Home shelf brings back favorites you have not played in a while using only listening history already stored on the device.</li>
       </ul>
     </td>
   </tr>
 </table>
 
 <div align="center">
-  <sub>One listening stack — built to stay fast, portable, private, and recoverable online or offline.</sub>
+  <sub>One listening stack that stays fast, portable, private, and recoverable whether you are online or offline.</sub>
 </div>
 
 ---
@@ -413,7 +413,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 ### ⚙️ Two native runtimes. One engineering language.
 
-<sub>Android and Windows stay independent where platform behavior matters, while sharing the same discipline for state, playback resilience, and local ownership.</sub>
+<sub>Android and Windows use separate platform code where they need to, but the project follows the same basic rules for state, playback reliability, and keeping data local.</sub>
 
 </div>
 
@@ -430,40 +430,40 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
   <tbody>
     <tr valign="top">
       <td><b>Interface</b><br><sub>Surface</sub></td>
-      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a></b><br><sub>Jetpack Compose screens, gestures, Canvas, and visual presentation.</sub></td>
-      <td><b><a href="desktop/app"><code>app/</code></a></b><br><sub>Compose Multiplatform UI, windows, application lifecycle, and updater.</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a></b><br><sub>Jetpack Compose screens, gestures, Canvas, and the rest of the Android UI.</sub></td>
+      <td><b><a href="desktop/app"><code>app/</code></a></b><br><sub>Compose Multiplatform UI, windows, app lifecycle, and desktop updater.</sub></td>
     </tr>
     <tr valign="top">
       <td><b>State</b><br><sub>Orchestration</sub></td>
-      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a></b><br><sub>Immutable UI state and unidirectional coordination.</sub></td>
-      <td><b><a href="desktop/app"><code>app/</code></a></b><br><sub>Application lifecycle and desktop UI coordination.</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a></b><br><sub>Immutable UI state and the coordination between screens and app logic.</sub></td>
+      <td><b><a href="desktop/app"><code>app/</code></a></b><br><sub>Desktop application lifecycle and UI coordination.</sub></td>
     </tr>
     <tr valign="top">
       <td><b>Playback</b><br><sub>Runtime core</sub></td>
-      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a></b><br><sub>Media3 / ExoPlayer foreground service, MediaSession, and playback ownership.</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a></b><br><sub>Media3 / ExoPlayer foreground service, MediaSession, queues, and Android playback ownership.</sub></td>
       <td><b><a href="desktop/player"><code>player/</code></a></b><br><sub>libvlc playback, hardware acceleration, tray controls, and global hotkeys.</sub></td>
     </tr>
     <tr valign="top">
       <td><b>Data</b><br><sub>Resolution</sub></td>
-      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/data"><code>data/</code></a></b><br><sub>Stream resolution, lyrics, prefetch, and persistent local data.</sub></td>
-      <td><b><a href="desktop/core"><code>core/</code></a></b><br><sub>Stream resolution, downloads, and local application storage.</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/data"><code>data/</code></a></b><br><sub>Stream resolution, lyrics, prefetch, providers, and persistent local data.</sub></td>
+      <td><b><a href="desktop/core"><code>core/</code></a></b><br><sub>Stream resolution, downloads, and local desktop storage.</sub></td>
     </tr>
     <tr valign="top">
       <td><b>Output</b><br><sub>Portable layer</sub></td>
-      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/player/offline"><code>player/offline/</code></a></b><br><sub>Offline exports, M4A tagging, artwork, and portable files.</sub></td>
-      <td><b><a href="desktop/packaging"><code>packaging/</code></a></b><br><sub>WiX MSI packaging and portable desktop distributions.</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/player/offline"><code>player/offline/</code></a></b><br><sub>Offline export, M4A tagging, artwork, and portable audio files.</sub></td>
+      <td><b><a href="desktop/packaging"><code>packaging/</code></a></b><br><sub>WiX MSI packaging and portable Windows builds.</sub></td>
     </tr>
     <tr>
       <td colspan="3" align="center">
         <b>🧠 State ownership</b> &nbsp;·&nbsp; <b>⚡ Resolver resilience</b> &nbsp;·&nbsp; <b>💿 Portable data</b><br>
-        <sub>Predictable state, resilient playback paths, and data that stays useful beyond the app.</sub>
+        <sub>Keep state predictable, keep playback recoverable, and keep user data useful outside the app.</sub>
       </td>
     </tr>
   </tbody>
 </table>
 
 <div align="center">
-  <sub>Different runtimes where it matters. The same engineering discipline underneath.</sub>
+  <sub>Different runtimes where it matters. The same project rules underneath.</sub>
 </div>
 
 ---
@@ -537,25 +537,25 @@ levyraDesktopVersion=1.2.0
   <tr valign="top">
     <td width="50%">
       <h3>🌐 <b>Network Transparency</b></h3>
-      <p><b>Only what playback needs.</b><br><sub>Connections go directly to the services Levyra uses—never through a Levyra tracking proxy.</sub></p>
+      <p><b>Only what playback needs.</b><br><sub>Levyra connects directly to the services it uses. There is no Levyra tracking proxy sitting in the middle.</sub></p>
       <ul>
         <li><b>🎵 Streams:</b> Direct YouTube / YT Music CDN connections.</li>
         <li><b>📝 Lyrics:</b> LRCLIB and YouTube Music metadata queries.</li>
         <li><b>🖼️ Artwork:</b> Public Deezer, Apple Music, and Tidal catalog lookups.</li>
-        <li><b>✂️ SponsorBlock:</b> Optional truncated video-ID hash requests.</li>
-        <li><b>🚀 Updates:</b> GitHub release checks; disabled in F-Droid builds.</li>
+        <li><b>✂️ SponsorBlock:</b> Optional requests using truncated video-ID hashes.</li>
+        <li><b>🚀 Updates:</b> Release checks through GitHub; disabled in F-Droid builds.</li>
       </ul>
     </td>
     <td width="50%">
       <h3>🔐 <b>Permission Surface</b></h3>
-      <p><b>Access stays narrow.</b><br><sub>Android permissions are limited to playback, notifications, optional recognition, and offline export.</sub></p>
+      <p><b>Access stays narrow.</b><br><sub>Android permissions are limited to what Levyra needs for playback, notifications, optional recognition, and offline export.</sub></p>
       <ul>
         <li><b><code>INTERNET</code> / <code>ACCESS_<wbr>NETWORK_STATE</code></b><br><sub>Streaming and metadata.</sub></li>
         <li><b><code>FOREGROUND_<wbr>SERVICE_<wbr>MEDIA_<wbr>PLAYBACK</code></b><br><sub>Background playback and media controls.</sub></li>
         <li><b><code>POST_<wbr>NOTIFICATIONS</code></b><br><sub>Lockscreen controls and download updates.</sub></li>
-        <li><b><code>RECORD_<wbr>AUDIO</code></b><br><sub>Optional music recognition only.</sub></li>
-        <li><b><code>WAKE_<wbr>LOCK</code></b><br><sub>Keeps playback active with the screen off.</sub></li>
-        <li><b><code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code></b> <sub>Android ≤ 9</sub><br><sub>Tagged M4A export to <code>Music/Levyra</code>.</sub></li>
+        <li><b><code>RECORD_<wbr>AUDIO</code></b><br><sub>Used only when you choose microphone-based music recognition.</sub></li>
+        <li><b><code>WAKE_<wbr>LOCK</code></b><br><sub>Keeps playback running while the screen is off.</sub></li>
+        <li><b><code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code></b> <sub>Android ≤ 9</sub><br><sub>Used to export tagged M4A files to <code>Music/Levyra</code>.</sub></li>
       </ul>
     </td>
   </tr>
@@ -587,24 +587,24 @@ levyraDesktopVersion=1.2.0
 ---
 
 ## ✦ Contributing
-We welcome community contributions, bug fixes, localization, and performance enhancements.
+Bug fixes, translations, performance work, documentation, and focused features are welcome.
 
-For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+Build instructions and contributor documentation are in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ### Engineering Workflow
 
-1. **Fork & Branch**: Create a focused topic branch from `main`:
+1. **Fork & Branch**: Start from `main` and keep the branch focused on one change:
    ```bash
    git checkout -b feature/your-feature-name
    ```
-2. **Architecture Contract**: Preserve unidirectional data flow (UDF), immutable Compose state, and low-latency audio pipelines.
-3. **Quality Gate**: Run repository validation before submitting:
+2. **Architecture Contract**: Keep the existing UDF flow, immutable Compose state, and low-latency playback paths unless the change really needs something different.
+3. **Quality Gate**: Run the repository validation before submitting:
    ```bash
    python scripts/ai_quality_gate.py --profile fast
    ```
-4. **Pull Request**: Open a PR with a concise description of changes and test verification evidence.
+4. **Pull Request**: Explain what changed, why, and what you actually tested.
 
-**Scope & Guidelines:** Keep pull requests focused on a single concern. For major architectural changes or new feature proposals, please open an [Issue](https://github.com/LUC4N3X/Levyra-deepsound/issues) first to coordinate the implementation approach.
+**Scope & Guidelines:** Please keep one PR about one thing. If you want to change a major part of the architecture or add a large new feature, open an [Issue](https://github.com/LUC4N3X/Levyra-deepsound/issues) first so the approach can be discussed before a lot of code is written.
 
 ---
 
@@ -622,7 +622,7 @@ For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.g
         <a href="https://github.com/LUC4N3X">LUC4N3X</a> &nbsp;·&nbsp; <code>Lead Systems Architect & Creator</code>
       </h3>
       <p style="margin: 0 0 10px 0;">
-        Creator and lead systems architect of Levyra. Engineering low-latency Android audio pipelines (Media3 & ExoPlayer), standalone libvlc desktop cores, zero-telemetry SQLite vaults, and synchronized LRCLIB karaoke engines.
+        I started Levyra and I still build most of it myself. The work is mainly Kotlin: Media3 / ExoPlayer on Android, libvlc on Windows, local SQLite data, lyrics, downloads, and all the less glamorous playback/reliability stuff around them.
       </p>
       <div>
         <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="GitHub Profile" /></a>&nbsp;
@@ -637,16 +637,16 @@ For build and contributor docs, see the [Levyra Documentation](https://luc4n3x.g
 <br>
 
 <p align="center">
-  <sub><b>Branding credit</b> · Special thanks to <a href="https://github.com/gauravbhindwar"><b>@gauravbhindwar</b></a> for designing and contributing Levyra's new app logo through <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525"><b>#525</b></a>.</sub>
+  <sub><b>Branding credit</b> · Thanks to <a href="https://github.com/gauravbhindwar"><b>@gauravbhindwar</b></a> for designing and contributing Levyra's new app logo in <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525"><b>#525</b></a>.</sub>
 </p>
 
 ### Built With & Inspired By
 
-* **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Reference for Levyra's renderer-recovery backoff policy and BetterLyrics TTML parsing behavior, reimplemented for Levyra.
-* **[PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)** — LevyraExtractor is maintained as a Levyra-specific fork of this project, with additional stream-resolution, playback-reliability, diagnostics, and fallback work.
-* **[NewPipe & PipePipe Communities](https://github.com/TeamNewPipe/NewPipeExtractor)** — Foundational extractor architecture, service implementations, parser protocols, and downstream ecosystem work retained in LevyraExtractor.
-* **[zemer-cipher](https://github.com/ZemerTeam/zemer-cipher)** — Special thanks to the Zemer team for its open-source work on YouTube cipher deobfuscation and PoToken generation.
-* **[LRCLIB](https://lrclib.net/)** — Community synchronized lyric database and open API powering real-time karaoke synchronization.
+* **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Used as a reference for renderer-recovery backoff and BetterLyrics TTML parsing. The Levyra implementation is its own.
+* **[PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)** — LevyraExtractor is a Levyra-specific fork with additional stream resolution, playback reliability, diagnostics, and fallback work.
+* **[NewPipe & PipePipe Communities](https://github.com/TeamNewPipe/NewPipeExtractor)** — A lot of the extractor foundation, service implementations, parsing work, and downstream knowledge comes from these projects and communities.
+* **[zemer-cipher](https://github.com/ZemerTeam/zemer-cipher)** — Thanks to the Zemer team for its open-source work on YouTube cipher deobfuscation and PoToken generation.
+* **[LRCLIB](https://lrclib.net/)** — The open lyric database and API used for Levyra's synchronized lyrics.
 
 <div align="center">
 
