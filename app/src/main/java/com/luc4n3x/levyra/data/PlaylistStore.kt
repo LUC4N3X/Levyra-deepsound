@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.PlaylistEntity
 import com.luc4n3x.levyra.data.local.PlaylistTagEntity
 import com.luc4n3x.levyra.data.local.PlaylistTagLinkEntity
+import com.luc4n3x.levyra.data.local.PlaylistTrackEntity
 import com.luc4n3x.levyra.data.local.toPlaylistTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.PLAYLIST_TAG_MAX_PER_PLAYLIST
@@ -21,6 +22,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+
+internal data class PlaylistStudioStoreSnapshot(
+    val playlist: PlaylistEntity,
+    val tracks: List<PlaylistTrackEntity>
+)
 
 class PlaylistStore(context: Context) {
     private val database = LevyraDatabase.get(context.applicationContext)
@@ -259,6 +265,24 @@ class PlaylistStore(context: Context) {
 
     suspend fun createForStudio(name: String, tracks: List<Track>): Playlist =
         if (tracks.any { it.id.isNotBlank() && it.title.isNotBlank() }) createWithTracks(name, tracks) else create(name)
+
+    internal suspend fun snapshotStudio(playlistId: String): PlaylistStudioStoreSnapshot? = withContext(Dispatchers.IO) {
+        val playlist = dao.playlist(playlistId) ?: return@withContext null
+        PlaylistStudioStoreSnapshot(playlist = playlist, tracks = dao.tracksOf(playlistId))
+    }
+
+    internal suspend fun restoreStudio(snapshot: PlaylistStudioStoreSnapshot): Boolean = withContext(Dispatchers.IO) {
+        LevyraVaultOperationMutex.withLock vault@ {
+            coverMutationLock(snapshot.playlist.id).withLock cover@ {
+                database.withTransaction {
+                    if (dao.updatePlaylist(snapshot.playlist) == 0) return@withTransaction false
+                    dao.clearTracks(snapshot.playlist.id)
+                    if (snapshot.tracks.isNotEmpty()) dao.insertTracks(snapshot.tracks)
+                    true
+                }
+            }
+        }
+    }
 
     suspend fun applyStudioEdit(playlistId: String, name: String, tracks: List<Track>): Boolean =
         withContext(Dispatchers.IO) {
