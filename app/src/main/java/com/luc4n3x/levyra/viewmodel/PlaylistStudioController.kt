@@ -31,7 +31,7 @@ interface PlaylistStudioGateway {
     suspend fun update(playlistId: String, name: String, tracks: List<Track>)
     suspend fun applyCover(playlistId: String, draft: PlaylistStudioDraft): String?
     suspend fun rollbackCreated(playlistId: String): Boolean = false
-    suspend fun rollbackUpdated(playlistId: String, token: PlaylistStudioRollbackToken?): Boolean = false
+    suspend fun rollbackUpdated(playlistId: String, rollbackState: PlaylistStudioRollbackToken?): Boolean = false
     fun onSaved(playlistId: String)
 }
 
