@@ -1,39 +1,38 @@
 # Contributing to Levyra
 
-> **Build carefully. Test honestly. Keep Levyra fast.**
+Thanks for wanting to help with Levyra.
 
-Thanks for helping improve **Levyra**.
+Levyra changes quickly, so focused contributions are much easier to review and maintain than large PRs that touch everything at once. You do not need to know the whole codebase before contributing; just keep the scope clear and test the part you changed.
 
-Levyra is an open-source music player for **Android** and **Windows**. Contributions are welcome when they solve a clear problem, fit the existing architecture, preserve working behavior, and include honest validation.
+## Before you start
 
-## Start here
-
-| Change | Best path |
+| Change | What to do |
 | --- | --- |
 | Small bug fix, docs, translation, UI polish | Open a focused PR |
-| New feature touching several areas | Discuss it first |
-| Architecture, database, or subsystem change | Open an issue first |
-| Security vulnerability | Follow **[SECURITY.md](SECURITY.md)** — do not disclose details publicly |
+| Feature touching several areas | Discuss it first |
+| Architecture, database, or new subsystem | Open an issue first |
+| Security issue | Follow [SECURITY.md](SECURITY.md) and keep the details private |
 
-A few rules matter more than everything else:
+Please keep unrelated cleanup out of the same PR. In particular, avoid broad refactors, formatting sweeps, dependency updates, file moves, or version bumps unless they are actually needed for the change.
 
-- **One PR, one purpose.** Keep unrelated refactors and cleanup out.
-- **Preserve user data and existing behavior** outside the intended scope.
-- **Follow the architecture already owning the feature** instead of adding parallel systems.
-- **Do not claim tests passed unless they actually ran and passed.**
-- **Never commit secrets, credentials, signing material, or private data.**
-- Other apps are useful references, but Levyra should keep its own UI and identity.
+A few things are worth keeping in mind:
 
-Useful references: [Development guide](../docs/site/development.md) · [AGENTS.md](../AGENTS.md) · [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
+- preserve existing behavior and user data outside the scope of the change;
+- use the code and architecture already in place instead of building a second system beside it;
+- do not report a test as passing if it was not run;
+- never commit secrets, credentials, signing material, or private data;
+- other apps are useful references, but Levyra should still look and behave like Levyra.
+
+[Development guide](../docs/site/development.md) · [AGENTS.md](../AGENTS.md) · [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ---
 
 <details>
-<summary><strong>🛠 Development setup</strong></summary>
+<summary><strong>Development setup</strong></summary>
 
 <br>
 
-Fork the repository, clone your fork, and branch from a current `main`.
+Fork the repository, clone your fork, and create a branch from a current `main`.
 
 ```bash
 git clone https://github.com/<your-user>/Levyra-deepsound.git
@@ -43,9 +42,9 @@ git pull --ff-only
 git checkout -b <your-branch-name>
 ```
 
-Use the Gradle wrappers committed to the repository.
+Use the Gradle wrappers included in the repository.
 
-**Android**
+Android:
 
 ```bash
 ./gradlew assembleDebug
@@ -57,37 +56,33 @@ Windows:
 .\gradlew.bat assembleDebug
 ```
 
-For Windows Desktop requirements, packaging, device qualification, and current toolchain requirements, use the [development guide](../docs/site/development.md).
+Windows Desktop requirements, packaging commands, device qualification, and current toolchain requirements are documented in the [development guide](../docs/site/development.md).
 
 </details>
 
 <details>
-<summary><strong>Code, architecture & UI</strong></summary>
+<summary><strong>Code and UI</strong></summary>
 
 <br>
 
-Keep changes small enough to understand and review. Avoid unrelated dependency upgrades, formatting sweeps, file moves, speculative cleanup, or rewrites of stable code.
+Try to follow the style and ownership already used around the code you are changing. There is usually no reason to rewrite stable code just to make it look different.
 
-Take particular care around playback, queues, Media3, Room migrations, playlists, favorites, history, downloads, settings, credentials, provider fallbacks, localization, lifecycle behavior, and Windows playback.
+Be especially careful around playback, queues, Media3, Room migrations, playlists, favorites, history, downloads, settings, credentials, provider fallbacks, lifecycle behavior, and Windows playback. Changes in those areas can have effects well outside the file being edited.
 
-For UI work:
+For UI work, keep Levyra's existing spacing, typography, shapes, motion, localization, and accessibility behavior in mind. Avoid adding controls simply because there is empty space, and watch for unnecessary recomposition or work on the UI thread.
 
-- match Levyra's spacing, typography, motion, shapes, and interaction language;
-- keep important actions discoverable;
-- preserve accessibility and localization;
-- avoid unnecessary recomposition, jank, and heavy UI-thread work;
-- include screenshots or a short recording when visual review benefits from them.
+Screenshots or a short recording are useful when the change is visual.
 
-**Never silently reset or discard user data to simplify an implementation.**
+Do not silently reset or discard user data to make an implementation easier.
 
 </details>
 
 <details>
-<summary><strong>🧪 Testing & validation</strong></summary>
+<summary><strong>Testing</strong></summary>
 
 <br>
 
-Start with the smallest meaningful validation: a focused unit test, module task, debug build, manual reproduction, device/emulator check, or desktop test depending on the change.
+Run the smallest useful test first: a targeted unit test, module task, debug build, manual reproduction, device/emulator check, or desktop test depending on what changed.
 
 Before committing meaningful code changes:
 
@@ -95,17 +90,17 @@ Before committing meaningful code changes:
 python3 scripts/ai_quality_gate.py --profile fast
 ```
 
-Before pushing or publishing a pull request:
+Before pushing or opening a PR:
 
 ```bash
 python3 scripts/ai_quality_gate.py --profile full
 ```
 
-Use `python` instead of `python3` if that is the configured launcher on your system.
+Use `python` instead of `python3` if that is how Python is configured on your system.
 
-A skipped, blocked, unavailable, or never-run check is **not** a passing check. If something could not be tested, say exactly what and why.
+If a required check could not run because of your local setup, say what was skipped and why. A skipped check is not a passing check.
 
-For Android work involving playback, MediaSession, startup, lifecycle, memory, or device-specific behavior, Levyra also includes:
+For Android changes involving playback, MediaSession, startup, lifecycle, memory, or device-specific behavior, the repository also includes:
 
 ```powershell
 .\scripts\levyra-device-qualification.ps1
@@ -114,51 +109,49 @@ For Android work involving playback, MediaSession, startup, lifecycle, memory, o
 </details>
 
 <details>
-<summary><strong>Pull request standard</strong></summary>
+<summary><strong>Pull requests</strong></summary>
 
 <br>
 
-A good PR should make five things obvious:
+Keep the PR description practical. It should be enough for someone else to understand the change without reading the entire diff first.
 
-| | |
-| --- | --- |
-| **Problem** | What was wrong, missing, or unreliable? |
-| **Solution** | What changed and why? |
-| **User impact** | What will users notice? |
-| **Validation** | What exactly was tested or built? |
-| **Limitations** | What remains untested or intentionally out of scope? |
+Include:
 
-Keep claims proportional to the evidence. Avoid phrases such as "fully tested", "production ready", "fixed everywhere", or "no regressions" unless the evidence genuinely supports them.
+- what was wrong or missing;
+- what you changed;
+- anything users will notice;
+- what you tested;
+- anything you could not test.
 
-If review uncovers a separate problem, prefer a separate issue or PR instead of expanding the current one indefinitely.
+For UI changes, add before/after screenshots when they help. For behavior changes, include reproduction or test steps if the reviewer would otherwise have to work them out from scratch.
+
+If review uncovers a different problem, it is usually better handled in another issue or PR than added to the current one.
 
 </details>
 
 <details>
-<summary><strong>AI-assisted contributions</strong></summary>
+<summary><strong>AI-assisted work</strong></summary>
 
 <br>
 
-AI-assisted development is allowed. The contributor opening the PR is still responsible for every submitted line.
+Using a coding assistant is fine. The person opening the PR is still responsible for the result.
 
-Review generated code, understand what it changes, remove unnecessary churn, verify APIs and paths against the real repository, and run real tests.
+Read generated code before committing it, remove unrelated churn, check APIs and paths against the actual repository, and run real tests. Also check generated work for secrets, made-up references, copied proprietary material, or licensing problems.
 
-Do not treat an assistant's explanation as validation, and check generated work for fabricated references, secrets, proprietary material, or incompatible licensing.
-
-> **"The AI said it works" is not validation.**
+An assistant saying the change works is not test evidence.
 
 </details>
 
 <details>
-<summary><strong>🔐 Security, secrets & licensing</strong></summary>
+<summary><strong>Security and licensing</strong></summary>
 
 <br>
 
-Never commit API keys, tokens, cookies, passwords, signing keys, keystores, private certificates, populated `.env` or `local.properties` files, private service URLs, or sensitive user information.
+Do not commit API keys, tokens, cookies, passwords, signing keys, keystores, private certificates, populated `.env` or `local.properties` files, private service URLs, or sensitive user information.
 
-Suspected vulnerabilities belong in **[SECURITY.md](SECURITY.md)**, not in public issues or pull requests.
+Possible vulnerabilities should be reported through [SECURITY.md](SECURITY.md), not in a public issue or PR.
 
-Levyra is licensed under the [GNU GPL v3.0](../LICENSE). When adapting third-party code, verify license compatibility and preserve required copyright, attribution, and license notices. Do not copy proprietary or incompatible source code.
+Levyra is licensed under the [GNU GPL v3.0](../LICENSE). If you adapt code from another project, check that the license is compatible and keep any copyright, attribution, or license notices that are required.
 
 </details>
 
@@ -167,14 +160,14 @@ Levyra is licensed under the [GNU GPL v3.0](../LICENSE). When adapting third-par
 ## Before you open a PR
 
 - [ ] The change has one clear purpose.
-- [ ] Unrelated refactors and generated noise are excluded.
+- [ ] Unrelated refactors and generated files are not included.
 - [ ] Existing behavior and user data are preserved outside the intended scope.
-- [ ] Relevant tests or manual checks were completed.
-- [ ] Required quality gates were run, or unavailable checks are disclosed honestly.
-- [ ] UI changes include visual evidence when useful.
-- [ ] No secrets or sensitive data are included.
-- [ ] Third-party code and assets have compatible licensing and attribution.
+- [ ] The relevant tests or manual checks were run.
+- [ ] Anything that could not be tested is mentioned in the PR.
+- [ ] UI changes include screenshots or a recording when useful.
+- [ ] No secrets or private data are included.
+- [ ] Reused code or assets have compatible licensing and the required attribution.
 
-Be respectful to maintainers, contributors, and users. Technical disagreement is normal; personal attacks and harassment are not. See the [Code of Conduct](CODE_OF_CONDUCT.md).
+Please keep discussions technical and respectful. The [Code of Conduct](CODE_OF_CONDUCT.md) applies to project discussions and contributions.
 
-**Thanks for helping make Levyra better.**
+Thanks for contributing.
