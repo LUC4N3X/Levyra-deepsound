@@ -57,6 +57,7 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
+@Suppress("CognitiveComplexMethod")
 @Composable
 fun PremiumSeekbar(
     positionMs: Long,
