@@ -58,10 +58,10 @@ internal object WaveSeekRuntime {
             ?.getLong("levyra.durationMs", C.TIME_UNSET)
             ?: C.TIME_UNSET
         val playerDurationMs = player.duration
-        val durationMs = metadataDurationMs
-            .takeIf { it > 0L && it != C.TIME_UNSET }
-            ?: playerDurationMs.takeIf { it > 0L && it != C.TIME_UNSET }
-            ?: 0L
+        val durationMs = waveSeekResolvedDurationMs(
+            playerDurationMs = playerDurationMs,
+            metadataDurationMs = metadataDurationMs
+        )
         val mediaId = mediaItem.mediaId.trim()
         val source = mediaItem.localConfiguration?.uri?.toString().orEmpty()
         val videoMode = extras?.getBoolean(PlaybackService.EXTRA_VIDEO_MODE, false) == true
