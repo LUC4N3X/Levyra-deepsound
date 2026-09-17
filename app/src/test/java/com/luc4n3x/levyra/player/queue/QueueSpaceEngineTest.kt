@@ -39,7 +39,7 @@ class QueueSpaceEngineTest {
     }
 
     @Test
-    fun restoreOfAnEmptyActiveSpaceKeepsItsIdentityForTheFallbackQueue() = runBlocking {
+    fun restoreOfAnEmptyActiveSpaceDoesNotInheritFallbackQueue() = runBlocking {
         val storage = FakeQueueSpaceStorage()
         storage.put(persisted("drive", emptyList(), currentIndex = -1, positionMs = 0L))
         storage.activeId = "drive"
@@ -48,8 +48,9 @@ class QueueSpaceEngineTest {
         val restored = engine.restore(listOf(track("last")), 0, 12_000L)
 
         assertEquals("drive", restored.spaceId)
-        assertEquals(listOf("last"), restored.tracks.map { it.id })
-        assertEquals(12_000L, restored.positionMs)
+        assertTrue(restored.tracks.isEmpty())
+        assertEquals(-1, restored.currentIndex)
+        assertEquals(0L, restored.positionMs)
     }
 
     @Test

@@ -5695,7 +5695,6 @@ private fun QueueOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-            .consumeOverlayTouches()
     ) {
         LazyColumn(
             modifier = Modifier

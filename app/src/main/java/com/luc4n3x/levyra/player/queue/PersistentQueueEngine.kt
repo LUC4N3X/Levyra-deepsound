@@ -193,19 +193,15 @@ class PersistentQueueEngine internal constructor(
             .onFailure { Timber.w(it, "Persistent queue restore failed") }
             .getOrNull()
         val spaceId = restored?.spaceId ?: _state.value.spaceId
-        val snapshot = if (restored != null && restored.tracks.isNotEmpty()) {
-            restored.toRuntimeSnapshot()
-        } else {
-            buildSnapshot(
-                tracks = fallbackTracks,
-                currentIndex = fallbackIndex,
-                positionMs = fallbackPositionMs,
-                repeatMode = fallbackRepeatMode,
-                shuffleEnabled = fallbackShuffleEnabled,
-                radioEnabled = fallbackRadioEnabled,
-                generation = 1L
-            ).copy(spaceId = spaceId)
-        }
+        val snapshot = restored?.toRuntimeSnapshot() ?: buildSnapshot(
+            tracks = fallbackTracks,
+            currentIndex = fallbackIndex,
+            positionMs = fallbackPositionMs,
+            repeatMode = fallbackRepeatMode,
+            shuffleEnabled = fallbackShuffleEnabled,
+            radioEnabled = fallbackRadioEnabled,
+            generation = 1L
+        ).copy(spaceId = spaceId)
         val restoredState = synchronized(lock) {
             undoRemoval = null
             snapshot.copy(generation = maxOf(snapshot.generation, _state.value.generation + 1L), undoAvailable = false)

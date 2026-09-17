@@ -161,8 +161,8 @@ internal fun LevyraTrackActionSheet(
     val scope = rememberCoroutineScope()
     val dragOffset = remember { Animatable(0f) }
     var queueSpacePickerVisible by remember { mutableStateOf(false) }
-    val otherQueueSpaces = remember(queueSpaces, activeQueueSpaceId) {
-        queueSpaces.filter { it.id != activeQueueSpaceId }
+    val queueSpaceChoices = remember(queueSpaces, activeQueueSpaceId) {
+        queueSpaces.sortedBy { it.id != activeQueueSpaceId }
     }
     val dismissDistancePx = remember(density) { with(density) { TrackActionSheetDismissDistance.toPx() } }
     var visible by remember { mutableStateOf(false) }
@@ -333,7 +333,13 @@ internal fun LevyraTrackActionSheet(
                                 label = strings.addToQueue,
                                 animationsEnabled = animationsEnabled,
                                 modifier = Modifier.weight(1f),
-                                onClick = { perform(onAddToQueue) }
+                                onClick = {
+                                    if (queueSpaceChoices.size > 1) {
+                                        queueSpacePickerVisible = !queueSpacePickerVisible
+                                    } else {
+                                        perform(onAddToQueue)
+                                    }
+                                }
                             )
                             TrackActionTile(
                                 icon = Icons.Rounded.Share,
@@ -361,21 +367,22 @@ internal fun LevyraTrackActionSheet(
                         TrackActionDivider()
 
                         Column(modifier = Modifier.padding(top = 6.dp, bottom = 14.dp)) {
-                            if (otherQueueSpaces.isNotEmpty()) {
-                                TrackActionRow(
-                                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                                    label = strings.queueSpaceAddTo,
-                                    onClick = { queueSpacePickerVisible = !queueSpacePickerVisible }
-                                )
-                                if (queueSpacePickerVisible) {
-                                    otherQueueSpaces.forEach { space ->
-                                        TrackActionRow(
-                                            icon = Icons.Rounded.Add,
-                                            label = queueSpaceLabel(space, strings),
-                                            tint = LevyraCyan,
-                                            onClick = { perform { onAddToQueueSpace(space.id) } }
-                                        )
-                                    }
+                            if (queueSpacePickerVisible && queueSpaceChoices.size > 1) {
+                                queueSpaceChoices.forEach { space ->
+                                    TrackActionRow(
+                                        icon = Icons.Rounded.Add,
+                                        label = queueSpaceLabel(space, strings),
+                                        tint = LevyraCyan,
+                                        onClick = {
+                                            perform {
+                                                if (space.id == activeQueueSpaceId) {
+                                                    onAddToQueue()
+                                                } else {
+                                                    onAddToQueueSpace(space.id)
+                                                }
+                                            }
+                                        }
+                                    )
                                 }
                             }
                             TrackActionRow(
