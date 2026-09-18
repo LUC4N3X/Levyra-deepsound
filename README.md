@@ -653,18 +653,6 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
 * **[zemer-cipher](https://github.com/ZemerTeam/zemer-cipher)** — Thanks to the Zemer team for its open-source work on YouTube cipher deobfuscation and PoToken generation.
 * **[LRCLIB](https://lrclib.net/)** — The open lyric database and API used for Levyra's synchronized lyrics.
 
-<div align="center">
-
-### Discover Levyra
-
-<a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
-  <img src="https://devglobe.app/badges/launched-on-devglobe-dark.svg" alt="Launched on DevGlobe" width="250" height="54">
-</a>
-
-</div>
-
----
-
 ## ✦ License & Legal
 
 Levyra is provided under the **[GNU GPL v3.0](LICENSE)**.
