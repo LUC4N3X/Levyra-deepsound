@@ -1,0 +1,1 @@
+Levyra 2.5.9 aggiunge Queue Spaces persistenti, Local Library 2.0, Player Deck e Playlist Studio, ricerca più veloce, Sleep Timer 2.0, Jam migliorata, Theme Studio, Ambient standby e WaveSeek. La riproduzione guadagna anche output Oboe/AAudio opzionale, fallback FFmpeg e maggiore affidabilità dell'audio HQ.
