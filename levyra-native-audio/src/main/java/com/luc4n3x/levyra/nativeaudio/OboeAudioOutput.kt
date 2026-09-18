@@ -10,7 +10,7 @@ import androidx.media3.exoplayer.audio.AudioOutput
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.CopyOnWriteArraySet
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
@@ -228,9 +228,16 @@ internal class OboeAudioOutput private constructor(
         private const val STALL_TIMEOUT_MS = 2_000L
         private const val ERROR_ROUTE_CHANGED = -899
 
-        private val releaseExecutor = ThreadPoolExecutor(0, 1, 1L, TimeUnit.SECONDS, LinkedBlockingQueue()) { runnable ->
-            Thread(runnable, "LevyraOboeRelease").apply { isDaemon = true }
-        }
+        private val releaseExecutor = ThreadPoolExecutor(
+            0,
+            1,
+            1L,
+            TimeUnit.SECONDS,
+            ArrayBlockingQueue(RELEASE_QUEUE_CAPACITY),
+            { runnable -> Thread(runnable, "LevyraOboeRelease").apply { isDaemon = true } },
+            ThreadPoolExecutor.CallerRunsPolicy()
+        )
+        private const val RELEASE_QUEUE_CAPACITY = 2
 
         fun open(
             sampleRate: Int,
