@@ -14,6 +14,7 @@ enum class ProviderFailure {
     TIMEOUT,
     NETWORK,
     FORBIDDEN,
+    RATE_LIMITED,
     NOT_FOUND,
     HTTP_ERROR,
     MALFORMED_RESPONSE,
@@ -55,6 +56,18 @@ data class ResolvedHighQualityStream(
     fun isFresh(nowMs: Long, marginMs: Long): Boolean = url.isNotBlank() && nowMs + marginMs < expiresAtMs
 }
 
+data class ProviderBackendHealth(
+    val providerId: String,
+    val backend: String,
+    val state: String,
+    val cooldownRemainingMs: Long,
+    val consecutiveFailures: Int,
+    val lastSuccessAtMs: Long,
+    val lastFailureAtMs: Long,
+    val lastFailure: String,
+    val lastLatencyMs: Long
+)
+
 interface HighQualityAudioProvider {
     val id: String
     val displayName: String
@@ -64,6 +77,8 @@ interface HighQualityAudioProvider {
     suspend fun lookup(providerTrackId: String): ProviderLookupOutcome
 
     suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome
+
+    fun health(): List<ProviderBackendHealth> = emptyList()
 }
 
 object HighQualityTierPolicy {

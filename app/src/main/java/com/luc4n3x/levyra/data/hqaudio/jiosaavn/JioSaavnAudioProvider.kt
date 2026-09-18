@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackCandidate
 import com.luc4n3x.levyra.data.hqaudio.AudioQualityTier
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioDiagnostics
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.ProviderBackendHealth
 import com.luc4n3x.levyra.data.hqaudio.ProviderCircuitBreaker
 import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
@@ -75,6 +76,11 @@ internal class JioSaavnAudioProvider(
                 ProviderLookupOutcome.Failed(result.failure)
             }
         }
+
+    override fun health(): List<ProviderBackendHealth> = listOf(
+        catalogCircuitBreaker.snapshot(id),
+        authorizationCircuitBreaker.snapshot(id)
+    )
 
     override suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome {
         if (candidate.mediaToken.isBlank()) return ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
@@ -202,12 +208,13 @@ internal class JioSaavnAudioProvider(
         var settled = false
         try {
             val attempts = if (permit == ProviderCircuitBreaker.Permit.PROBE) 1 else MAX_API_ATTEMPTS
+            val startedAt = clock()
             val result = attemptApi(url, attempts)
             settled = true
             if (result is ApiResult.Failure && result.failure != ProviderFailure.NOT_FOUND) {
-                circuitBreaker.onFailure(permit)
+                circuitBreaker.onFailure(permit, result.failure.name)
             } else {
-                circuitBreaker.onSuccess(permit)
+                circuitBreaker.onSuccess(permit, clock() - startedAt)
             }
             return result
         } finally {
@@ -234,7 +241,7 @@ internal class JioSaavnAudioProvider(
                 response.code == HTTP_NOT_FOUND -> return ApiResult.Failure(ProviderFailure.NOT_FOUND)
                 isProfileRejection(response) -> {
                     rejectProfile(session, response.code)
-                    lastFailure = if (response.code == HTTP_FORBIDDEN) ProviderFailure.FORBIDDEN else ProviderFailure.HTTP_ERROR
+                    lastFailure = if (response.code == HTTP_FORBIDDEN) ProviderFailure.FORBIDDEN else ProviderFailure.RATE_LIMITED
                 }
                 response.code >= HTTP_SERVER_ERROR -> lastFailure = ProviderFailure.HTTP_ERROR
                 else -> return ApiResult.Failure(ProviderFailure.HTTP_ERROR)

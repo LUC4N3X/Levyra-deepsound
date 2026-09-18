@@ -83,6 +83,8 @@ class HighQualityPlaybackCoordinator(
         return applyStream(track, normalCached, selection, provenance())
     }
 
+    fun providerHealth(): List<ProviderBackendHealth> = resolver.providerHealth()
+
     fun handlesFailure(track: Track): Boolean = track.playbackManifest?.alternativeSource != null
 
     fun reportFailure(track: Track, reason: String) {
