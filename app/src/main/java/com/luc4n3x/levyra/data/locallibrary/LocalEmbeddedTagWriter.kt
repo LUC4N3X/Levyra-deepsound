@@ -316,7 +316,7 @@ internal object LocalEmbeddedTagWriter {
         if (payload.size < 8) return null
         val vendorSize = int32le(payload, cursor)
         cursor += 4
-        if (vendorSize < 0 || cursor + vendorSize > payload.size) return null
+        if (vendorSize < 0 || vendorSize > payload.size - cursor) return null
         val vendor = payload.copyOfRange(cursor, cursor + vendorSize)
         cursor += vendorSize
         if (cursor + 4 > payload.size) return null
@@ -329,7 +329,7 @@ internal object LocalEmbeddedTagWriter {
             if (cursor + 4 > payload.size) return null
             val size = int32le(payload, cursor)
             cursor += 4
-            if (size < 0 || cursor + size > payload.size) return null
+            if (size < 0 || size > payload.size - cursor) return null
             val entry = String(payload, cursor, size, StandardCharsets.UTF_8)
             cursor += size
             val key = entry.substringBefore('=', "").trim().uppercase(Locale.ROOT)
