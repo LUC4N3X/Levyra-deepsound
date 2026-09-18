@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 21
+const val LEVYRA_DATABASE_VERSION = 22
 
 @Database(
     entities = [
@@ -31,7 +31,9 @@ const val LEVYRA_DATABASE_VERSION = 21
         PlaylistTagEntity::class,
         PlaylistTagLinkEntity::class,
         ExcludedArtistEntity::class,
-        RecommendationFeedbackEntity::class
+        RecommendationFeedbackEntity::class,
+        QueueSpaceEntity::class,
+        LocalMediaEntity::class
     ],
     version = LEVYRA_DATABASE_VERSION,
     exportSchema = true
@@ -54,6 +56,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun playlistTagsDao(): PlaylistTagsDao
     abstract fun excludedArtistsDao(): ExcludedArtistsDao
     abstract fun recommendationFeedbackDao(): RecommendationFeedbackDao
+    abstract fun localMediaDao(): LocalMediaDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -609,6 +612,76 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val now = System.currentTimeMillis()
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS queue_spaces (" +
+                        "id TEXT NOT NULL, name TEXT NOT NULL, createdAt INTEGER NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, lastActiveAt INTEGER NOT NULL, isActive INTEGER NOT NULL, " +
+                        "trackCount INTEGER NOT NULL, durationMs INTEGER NOT NULL, artworkUrls TEXT NOT NULL, " +
+                        "PRIMARY KEY(id))"
+                )
+                db.execSQL(
+                    "INSERT OR IGNORE INTO queue_spaces " +
+                        "(id, name, createdAt, updatedAt, lastActiveAt, isActive, trackCount, durationMs, artworkUrls) " +
+                        "VALUES (?, '', ?, ?, ?, 1, (SELECT COUNT(*) FROM playback_queue_items), 0, '')",
+                    arrayOf<Any>(DEFAULT_QUEUE_SPACE_ID, now, now, now)
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS playback_queue_items_v22 (" +
+                        "spaceId TEXT NOT NULL, position INTEGER NOT NULL, payload TEXT NOT NULL, " +
+                        "identity TEXT NOT NULL, PRIMARY KEY(spaceId, position), " +
+                        "FOREIGN KEY(spaceId) REFERENCES queue_spaces(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL(
+                    "INSERT INTO playback_queue_items_v22 (spaceId, position, payload, identity) " +
+                        "SELECT ?, position, payload, identity FROM playback_queue_items",
+                    arrayOf<Any>(DEFAULT_QUEUE_SPACE_ID)
+                )
+                db.execSQL("DROP TABLE playback_queue_items")
+                db.execSQL("ALTER TABLE playback_queue_items_v22 RENAME TO playback_queue_items")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS playback_queue_state_v22 (" +
+                        "spaceId TEXT NOT NULL, currentIndex INTEGER NOT NULL, positionMs INTEGER NOT NULL, " +
+                        "shuffleEnabled INTEGER NOT NULL, shuffleOrder TEXT NOT NULL, shuffleCursor INTEGER NOT NULL, " +
+                        "history TEXT NOT NULL, repeatMode TEXT NOT NULL, radioEnabled INTEGER NOT NULL, " +
+                        "generation INTEGER NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(spaceId), " +
+                        "FOREIGN KEY(spaceId) REFERENCES queue_spaces(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL(
+                    "INSERT INTO playback_queue_state_v22 (spaceId, currentIndex, positionMs, shuffleEnabled, " +
+                        "shuffleOrder, shuffleCursor, history, repeatMode, radioEnabled, generation, updatedAt) " +
+                        "SELECT ?, currentIndex, positionMs, shuffleEnabled, shuffleOrder, shuffleCursor, history, " +
+                        "repeatMode, radioEnabled, generation, updatedAt FROM playback_queue_state " +
+                        "ORDER BY singletonId ASC LIMIT 1",
+                    arrayOf<Any>(DEFAULT_QUEUE_SPACE_ID)
+                )
+                db.execSQL("DROP TABLE playback_queue_state")
+                db.execSQL("ALTER TABLE playback_queue_state_v22 RENAME TO playback_queue_state")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS local_media (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, identityKey TEXT NOT NULL, " +
+                        "contentUri TEXT NOT NULL, volumeName TEXT NOT NULL, mediaStoreId INTEGER NOT NULL, " +
+                        "filePath TEXT NOT NULL, relativePath TEXT NOT NULL, displayName TEXT NOT NULL, " +
+                        "folderKey TEXT NOT NULL, folderName TEXT NOT NULL, title TEXT NOT NULL, " +
+                        "artist TEXT NOT NULL, album TEXT NOT NULL, albumArtist TEXT NOT NULL, genre TEXT NOT NULL, " +
+                        "year INTEGER NOT NULL, trackNumber INTEGER NOT NULL, discNumber INTEGER NOT NULL, " +
+                        "durationMs INTEGER NOT NULL, mimeType TEXT NOT NULL, bitrate INTEGER NOT NULL, " +
+                        "sizeBytes INTEGER NOT NULL, dateAddedMs INTEGER NOT NULL, dateModifiedMs INTEGER NOT NULL, " +
+                        "albumId INTEGER NOT NULL, albumKey TEXT NOT NULL, artistKey TEXT NOT NULL, " +
+                        "contentFingerprint TEXT NOT NULL, levyraTrackId TEXT NOT NULL, " +
+                        "isLevyraDownload INTEGER NOT NULL, available INTEGER NOT NULL, " +
+                        "missingSince INTEGER NOT NULL, lastSeenAt INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_local_media_identityKey ON local_media(identityKey)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_local_media_contentUri ON local_media(contentUri)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_local_media_folderKey ON local_media(folderKey)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_local_media_albumKey ON local_media(albumKey)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_local_media_artistKey ON local_media(artistKey)")
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -629,7 +702,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_17_18,
             MIGRATION_18_19,
             MIGRATION_19_20,
-            MIGRATION_20_21
+            MIGRATION_20_21,
+            MIGRATION_21_22
         )
 
         fun get(context: Context): LevyraDatabase {

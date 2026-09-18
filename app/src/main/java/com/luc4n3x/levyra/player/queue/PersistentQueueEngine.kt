@@ -1,20 +1,27 @@
 package com.luc4n3x.levyra.player.queue
 
 import android.content.Context
+import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
 import kotlin.random.Random
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 private val YOUTUBE_VIDEO_ID_PATTERN =
@@ -79,6 +86,27 @@ internal fun queueUndoCurrentIndex(insertionIndex: Int, currentIndex: Int): Int 
     else -> currentIndex
 }
 
+internal fun queueSpaceAfterAppend(
+    existing: PersistentQueueSnapshot,
+    nextTracks: List<Track>,
+    now: Long
+): PersistentQueueSnapshot {
+    val wasEmpty = existing.tracks.isEmpty()
+    return existing.copy(
+        tracks = nextTracks,
+        currentIndex = if (wasEmpty) 0 else existing.currentIndex.coerceIn(0, nextTracks.lastIndex),
+        positionMs = if (wasEmpty) 0L else existing.positionMs,
+        shuffleOrder = if (existing.shuffleEnabled) {
+            existing.shuffleOrder + (existing.tracks.size until nextTracks.size)
+        } else {
+            emptyList()
+        },
+        history = if (wasEmpty) emptyList() else existing.history,
+        generation = existing.generation + 1L,
+        updatedAt = now
+    )
+}
+
 internal fun replacementQueuePositionMs(
     previousIdentity: String?,
     nextIdentity: String?,
@@ -134,10 +162,14 @@ internal fun radioInsertionIndex(currentIndex: Int, queueSize: Int, afterCurrent
 private fun radioTitleKey(track: Track): String =
     "${track.artist.trim().lowercase(Locale.ROOT)}|${track.title.trim().lowercase(Locale.ROOT)}"
 
-class PersistentQueueEngine private constructor(context: Context) {
-    private val store = PlaybackQueueStore(context.applicationContext)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+class PersistentQueueEngine internal constructor(
+    private val store: QueueSpaceStorage,
+    dispatcher: CoroutineDispatcher = Dispatchers.IO
+) {
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val lock = Any()
+    private val switchMutex = Mutex()
+    private val persistMutex = Mutex()
     private val _state = MutableStateFlow(PlaybackQueueSnapshot())
     private var persistJob: Job? = null
     private var positionPersistJob: Job? = null
@@ -146,6 +178,8 @@ class PersistentQueueEngine private constructor(context: Context) {
 
     val state: StateFlow<PlaybackQueueSnapshot> = _state.asStateFlow()
 
+    val spaces: Flow<List<QueueSpaceSummary>> = store.spaces
+
     suspend fun restore(
         fallbackTracks: List<Track>,
         fallbackIndex: Int,
@@ -153,35 +187,148 @@ class PersistentQueueEngine private constructor(context: Context) {
         fallbackRepeatMode: RepeatMode = RepeatMode.Off,
         fallbackShuffleEnabled: Boolean = false,
         fallbackRadioEnabled: Boolean = false
-    ): PlaybackQueueSnapshot {
+    ): PlaybackQueueSnapshot = switchMutex.withLock {
         transientPlaybackActive = false
-        val restored = runCatching { store.load() }
+        val restored = runCatching { store.load(store.activeSpaceId()) }
             .onFailure { Timber.w(it, "Persistent queue restore failed") }
             .getOrNull()
-        val snapshot = if (restored != null && restored.tracks.isNotEmpty()) {
-            restored.toRuntimeSnapshot()
-        } else {
-            buildSnapshot(
-                tracks = fallbackTracks,
-                currentIndex = fallbackIndex,
-                positionMs = fallbackPositionMs,
-                repeatMode = fallbackRepeatMode,
-                shuffleEnabled = fallbackShuffleEnabled,
-                radioEnabled = fallbackRadioEnabled,
-                generation = 1L
-            )
-        }
-        synchronized(lock) {
-            _state.value = snapshot
+        val spaceId = restored?.spaceId ?: _state.value.spaceId
+        val snapshot = restored?.toRuntimeSnapshot() ?: buildSnapshot(
+            tracks = fallbackTracks,
+            currentIndex = fallbackIndex,
+            positionMs = fallbackPositionMs,
+            repeatMode = fallbackRepeatMode,
+            shuffleEnabled = fallbackShuffleEnabled,
+            radioEnabled = fallbackRadioEnabled,
+            generation = 1L
+        ).copy(spaceId = spaceId)
+        val restoredState = synchronized(lock) {
             undoRemoval = null
+            snapshot.copy(generation = maxOf(snapshot.generation, _state.value.generation + 1L), undoAvailable = false)
+                .also { _state.value = it }
         }
         schedulePersist(immediate = true)
-        return snapshot
+        restoredState
+    }
+
+    suspend fun switchSpace(targetSpaceId: String, outgoingPositionMs: Long? = null): PlaybackQueueSnapshot? =
+        switchMutex.withLock {
+            withContext(NonCancellable) {
+                if (transientPlaybackActive) return@withContext null
+                val current = _state.value
+                if (current.spaceId == targetSpaceId) return@withContext current
+                val outgoing = synchronized(lock) {
+                    val latest = _state.value
+                    val positioned = outgoingPositionMs
+                        ?.takeIf { latest.currentTrack != null }
+                        ?.let { latest.copy(positionMs = it.coerceAtLeast(0L), updatedAt = System.currentTimeMillis()) }
+                        ?: latest
+                    _state.value = positioned
+                    positioned
+                }
+                persistJob?.cancel()
+                positionPersistJob?.cancel()
+                val target = runCatching { store.load(targetSpaceId) }
+                    .onFailure { Timber.w(it, "Queue space load failed") }
+                    .getOrNull()
+                    ?: return@withContext null
+                if (!saveDurable(outgoing)) return@withContext null
+                if (!runCatching { store.activate(targetSpaceId) }.getOrDefault(false)) return@withContext null
+                var lateOutgoing: PlaybackQueueSnapshot? = null
+                val switched = synchronized(lock) {
+                    val latest = _state.value
+                    if (latest !== outgoing && latest.spaceId == outgoing.spaceId) lateOutgoing = latest
+                    undoRemoval = null
+                    target.toRuntimeSnapshot()
+                        .copy(generation = maxOf(latest.generation, target.generation) + 1L)
+                        .also { _state.value = it }
+                }
+                lateOutgoing?.let { saveDurable(it) }
+                switched
+            }
+        }
+
+    suspend fun createSpace(name: String, tracks: List<Track> = emptyList()): QueueSpaceSummary? =
+        switchMutex.withLock {
+            val created = runCatching { store.create(name) }
+                .onFailure { Timber.w(it, "Queue space create failed") }
+                .getOrNull()
+                ?: return@withLock null
+            queueSpaceSeed(created.id, tracks)?.let { saveDurable(it) }
+            created
+        }
+
+    suspend fun renameSpace(spaceId: String, name: String): Boolean =
+        switchMutex.withLock { runCatching { store.rename(spaceId, name) }.getOrDefault(false) }
+
+    suspend fun duplicateSpace(spaceId: String, name: String): QueueSpaceSummary? = switchMutex.withLock {
+        val current = _state.value
+        if (current.spaceId == spaceId && !transientPlaybackActive) saveDurable(current)
+        runCatching { store.duplicate(spaceId, name) }
+            .onFailure { Timber.w(it, "Queue space duplicate failed") }
+            .getOrNull()
+    }
+
+    suspend fun clearSpace(spaceId: String): Boolean = switchMutex.withLock {
+        if (_state.value.spaceId == spaceId) {
+            if (transientPlaybackActive) return@withLock false
+            clear()
+            persistJob?.cancel()
+            saveDurable(_state.value)
+        } else {
+            runCatching { store.clear(spaceId) }
+                .onFailure { Timber.w(it, "Queue space clear failed") }
+                .isSuccess
+        }
+    }
+
+    suspend fun deleteSpace(spaceId: String): Boolean = switchMutex.withLock {
+        if (_state.value.spaceId == spaceId) return@withLock false
+        runCatching { store.delete(spaceId) }.getOrDefault(false)
+    }
+
+    suspend fun appendToSpace(spaceId: String, tracks: List<Track>): Boolean = switchMutex.withLock {
+        if (tracks.isEmpty()) return@withLock false
+        if (_state.value.spaceId == spaceId) {
+            if (transientPlaybackActive) return@withLock false
+            addLast(tracks)
+            return@withLock true
+        }
+        val existing = runCatching { store.load(spaceId) }.getOrNull() ?: return@withLock false
+        val nextTracks = queueTracksAfterAddLast(existing.tracks, tracks)
+        if (nextTracks.size == existing.tracks.size) return@withLock true
+        val updated = queueSpaceAfterAppend(existing, nextTracks, System.currentTimeMillis())
+        persistMutex.withLock {
+            runCatching { store.save(updated) }
+                .onFailure { Timber.w(it, "Queue space append failed") }
+                .getOrDefault(false)
+        }
+    }
+
+    private fun queueSpaceSeed(spaceId: String, tracks: List<Track>): PlaybackQueueSnapshot? {
+        val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
+        if (normalized.isEmpty()) return null
+        return buildSnapshot(
+            tracks = normalized,
+            currentIndex = 0,
+            positionMs = 0L,
+            repeatMode = RepeatMode.Off,
+            shuffleEnabled = false,
+            radioEnabled = false,
+            generation = 1L
+        ).copy(spaceId = spaceId, undoAvailable = false)
+    }
+
+    private suspend fun saveDurable(snapshot: PlaybackQueueSnapshot): Boolean = persistMutex.withLock {
+        runCatching { store.save(snapshot.toPersistent()) }
+            .onFailure { Timber.w(it, "Queue space save failed") }
+            .getOrDefault(false)
     }
 
     fun clear(): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         undoRemoval = null
         PlaybackQueueSnapshot(
+            spaceId = current.spaceId,
             tracks = emptyList(),
             currentIndex = -1,
             positionMs = 0L,
@@ -237,8 +384,10 @@ class PersistentQueueEngine private constructor(context: Context) {
         val durableSnapshot = preservedSnapshot.toPersistent()
         transientPlaybackActive = true
         scope.launch {
-            runCatching { store.save(durableSnapshot) }
-                .onFailure { Timber.w(it, "Unable to preserve durable queue before transient playback") }
+            persistMutex.withLock {
+                runCatching { store.save(durableSnapshot) }
+                    .onFailure { Timber.w(it, "Unable to preserve durable queue before transient playback") }
+            }
         }
         return replaceTransient(tracks, currentIndex, positionMs)
     }
@@ -283,6 +432,7 @@ class PersistentQueueEngine private constructor(context: Context) {
                 else -> stableShuffleOrder(tracks, currentIndex, current.generation + 1L)
             }
             PlaybackQueueSnapshot(
+                spaceId = current.spaceId,
                 tracks = tracks,
                 currentIndex = currentIndex,
                 positionMs = snapshot.positionMs.coerceAtLeast(0L),
@@ -660,9 +810,14 @@ class PersistentQueueEngine private constructor(context: Context) {
         if (!queuePersistenceAllowed(transientPlaybackActive)) return
         persistJob?.cancel()
         positionPersistJob?.cancel()
+        persistLatest()
+    }
+
+    private suspend fun persistLatest() = persistMutex.withLock {
+        if (!queuePersistenceAllowed(transientPlaybackActive)) return@withLock
         val snapshot = _state.value.toPersistent()
         runCatching { store.save(snapshot) }
-            .onFailure { Timber.w(it, "Persistent queue flush failed") }
+            .onFailure { Timber.w(it, "Persistent queue save failed") }
     }
 
     fun flushBlocking() {
@@ -700,9 +855,7 @@ class PersistentQueueEngine private constructor(context: Context) {
         persistJob?.cancel()
         persistJob = scope.launch {
             if (!immediate) delay(delayMs.coerceAtLeast(100L))
-            val snapshot = _state.value.toPersistent()
-            runCatching { store.save(snapshot) }
-                .onFailure { Timber.w(it, "Persistent queue save failed") }
+            persistLatest()
         }
     }
 
@@ -711,10 +864,18 @@ class PersistentQueueEngine private constructor(context: Context) {
         positionPersistJob?.cancel()
         positionPersistJob = scope.launch {
             delay(1_500L)
-            val current = _state.value
-            if (current.generation != snapshot.generation || current.currentIndex != snapshot.currentIndex) return@launch
-            runCatching { store.updatePosition(current.positionMs, current.updatedAt) }
-                .onFailure { Timber.w(it, "Persistent queue position save failed") }
+            persistMutex.withLock {
+                val current = _state.value
+                if (
+                    current.spaceId != snapshot.spaceId ||
+                    current.generation != snapshot.generation ||
+                    current.currentIndex != snapshot.currentIndex
+                ) {
+                    return@withLock
+                }
+                runCatching { store.updatePosition(current.spaceId, current.positionMs, current.updatedAt) }
+                    .onFailure { Timber.w(it, "Persistent queue position save failed") }
+            }
         }
     }
 
@@ -731,6 +892,7 @@ class PersistentQueueEngine private constructor(context: Context) {
         val safeIndex = if (tracks.isEmpty()) -1 else currentIndex.coerceIn(0, tracks.lastIndex)
         val order = if (shuffleEnabled) stableShuffleOrder(tracks, safeIndex, generation) else emptyList()
         return PlaybackQueueSnapshot(
+            spaceId = _state.value.spaceId,
             tracks = tracks.map { it.queueStoredCopy() },
             currentIndex = safeIndex,
             positionMs = positionMs.coerceAtLeast(0L),
@@ -808,6 +970,7 @@ class PersistentQueueEngine private constructor(context: Context) {
         val safeOrder = shuffleOrder.filter { it in tracks.indices }.distinct()
         val order = if (shuffleEnabled && safeOrder.size != tracks.size) stableShuffleOrder(tracks, currentIndex, generation) else safeOrder
         return PlaybackQueueSnapshot(
+            spaceId = spaceId,
             tracks = tracks.map { it.queueStoredCopy() },
             currentIndex = currentIndex,
             positionMs = positionMs,
@@ -824,6 +987,7 @@ class PersistentQueueEngine private constructor(context: Context) {
     }
 
     private fun PlaybackQueueSnapshot.toPersistent(): PersistentQueueSnapshot = PersistentQueueSnapshot(
+        spaceId = spaceId,
         tracks = tracks,
         currentIndex = currentIndex,
         positionMs = positionMs,
@@ -847,12 +1011,13 @@ class PersistentQueueEngine private constructor(context: Context) {
         private var instance: PersistentQueueEngine? = null
 
         fun get(context: Context): PersistentQueueEngine = instance ?: synchronized(this) {
-            instance ?: PersistentQueueEngine(context.applicationContext).also { instance = it }
+            instance ?: PersistentQueueEngine(PlaybackQueueStore(context.applicationContext)).also { instance = it }
         }
     }
 }
 
 data class PlaybackQueueSnapshot(
+    val spaceId: String = DEFAULT_QUEUE_SPACE_ID,
     val tracks: List<Track> = emptyList(),
     val currentIndex: Int = -1,
     val positionMs: Long = 0L,

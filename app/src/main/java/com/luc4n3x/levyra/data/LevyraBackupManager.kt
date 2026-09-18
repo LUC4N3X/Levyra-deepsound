@@ -10,6 +10,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.room.withTransaction
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LEVYRA_DATABASE_VERSION
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -17,6 +18,7 @@ import com.luc4n3x.levyra.data.local.ListenEventEntity
 import com.luc4n3x.levyra.data.local.PlaybackQueueItemEntity
 import com.luc4n3x.levyra.data.local.PlaybackQueueStateEntity
 import com.luc4n3x.levyra.data.local.PlaylistEntity
+import com.luc4n3x.levyra.data.local.QueueSpaceEntity
 import com.luc4n3x.levyra.data.local.toFavoriteTrackEntity
 import com.luc4n3x.levyra.data.local.toPlaylistTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
@@ -366,14 +368,21 @@ class LevyraBackupManager(private val context: Context) {
                 writer.write(settingsToJson(preferences.snapshot()).toString())
             }
             sections[QUEUE_ENTRY] = writeJsonSection(zip, QUEUE_ENTRY) { writer ->
-                val queueItems = database.playbackQueueDao().items()
-                val queueState = database.playbackQueueDao().state()
+                val queue = currentQueueBackup()
+                val activeId = queue.spaces.firstOrNull { it.isActive }?.id
+                val itemsBySpace = queue.items.groupBy { it.spaceId }
+                val statesBySpace = queue.states.associateBy { it.spaceId }
                 writer.write("{\"items\":")
-                writeJsonArray(writer, queueItems) {
-                    JSONObject().put("position", it.position).put("payload", it.payload).put("identity", it.identity).toString()
-                }
+                writeJsonArray(writer, itemsBySpace[activeId].orEmpty()) { queueItemToJson(it).toString() }
                 writer.write(",\"state\":")
-                writer.write(queueState?.let(::queueStateToJson)?.toString() ?: "null")
+                writer.write(activeId?.let(statesBySpace::get)?.let(::queueStateToJson)?.toString() ?: "null")
+                writer.write(",\"spaces\":")
+                writeJsonArray(writer, queue.spaces) { space ->
+                    queueSpaceToJson(space)
+                        .put("items", JSONArray(itemsBySpace[space.id].orEmpty().map(::queueItemToJson)))
+                        .put("state", statesBySpace[space.id]?.let(::queueStateToJson) ?: JSONObject.NULL)
+                        .toString()
+                }
                 writer.write("}")
             }
             val manifest = JSONObject()
@@ -501,8 +510,7 @@ class LevyraBackupManager(private val context: Context) {
             playlists = parsePlaylists(entries[PLAYLISTS_ENTRY].toJsonArray(), entries),
             history = parseHistory(entries[HISTORY_ENTRY].toJsonArray()),
             downloads = parseDownloads(entries[DOWNLOADS_ENTRY].toJsonArray()),
-            queueItems = parseQueueItems(queueJson),
-            queueState = parseQueueState(queueJson)
+            queue = parseQueueBackup(queueJson)
         )
     }
 
@@ -528,8 +536,7 @@ class LevyraBackupManager(private val context: Context) {
             playlists = parsePlaylists(root.optJSONArray("playlists") ?: JSONArray()),
             history = parseHistory(root.optJSONArray("history")),
             downloads = emptyList(),
-            queueItems = parseQueueItems(queue),
-            queueState = parseQueueState(queue)
+            queue = parseQueueBackup(queue)
         )
     }
 
@@ -590,8 +597,7 @@ class LevyraBackupManager(private val context: Context) {
             playlists = playlists,
             history = database.listenEventsDao().all(),
             downloads = database.downloadedTracksDao().all(),
-            queueItems = database.playbackQueueDao().items(),
-            queueState = database.playbackQueueDao().state()
+            queue = currentQueueBackup()
         )
     }
 
@@ -615,7 +621,7 @@ class LevyraBackupManager(private val context: Context) {
                 restorePlaylistTags(payload.playlistTags, payload.playlists)
                 database.listenEventsDao().replaceAll(payload.history)
                 database.downloadedTracksDao().replaceAll(downloads)
-                restoreQueue(payload.queueItems, payload.queueState)
+                restoreQueue(payload.queue)
             }
             invalidateFavoriteTimestampSnapshots()
         }
@@ -841,30 +847,97 @@ class LevyraBackupManager(private val context: Context) {
         }
     }
 
-    private suspend fun restoreQueue(items: List<PlaybackQueueItemEntity>, state: PlaybackQueueStateEntity?) {
+    private suspend fun currentQueueBackup(): QueueBackup {
         val dao = database.playbackQueueDao()
-        if (state == null) {
-            dao.clear()
-        } else {
-            dao.replace(items, state)
-        }
+        return QueueBackup(spaces = dao.spaces(), items = dao.allItems(), states = dao.allStates())
     }
 
-    private fun parseQueueItems(json: JSONObject?): List<PlaybackQueueItemEntity> {
-        if (json == null) return emptyList()
-        val itemsArray = json.optJSONArray("items") ?: return emptyList()
+    private suspend fun restoreQueue(queue: QueueBackup) {
+        database.playbackQueueDao().replaceAllSpaces(queue.spaces, queue.items, queue.states)
+    }
+
+    private fun queueItemToJson(item: PlaybackQueueItemEntity): JSONObject = JSONObject()
+        .put("position", item.position)
+        .put("payload", item.payload)
+        .put("identity", item.identity)
+
+    private fun queueSpaceToJson(space: QueueSpaceEntity): JSONObject = JSONObject()
+        .put("id", space.id)
+        .put("name", space.name)
+        .put("createdAt", space.createdAt)
+        .put("updatedAt", space.updatedAt)
+        .put("lastActiveAt", space.lastActiveAt)
+        .put("isActive", space.isActive)
+        .put("trackCount", space.trackCount)
+        .put("durationMs", space.durationMs)
+        .put("artworkUrls", space.artworkUrls)
+
+    private fun parseQueueBackup(json: JSONObject?): QueueBackup {
+        if (json == null) return QueueBackup.EMPTY
+        val spacesArray = json.optJSONArray("spaces")
+        if (spacesArray == null) {
+            val state = parseQueueState(json.optJSONObject("state"), DEFAULT_QUEUE_SPACE_ID) ?: return QueueBackup.EMPTY
+            val items = parseQueueItems(json.optJSONArray("items"), DEFAULT_QUEUE_SPACE_ID)
+            val now = System.currentTimeMillis()
+            val space = QueueSpaceEntity(
+                id = DEFAULT_QUEUE_SPACE_ID,
+                name = "",
+                createdAt = now,
+                updatedAt = state.updatedAt.takeIf { it > 0L } ?: now,
+                lastActiveAt = now,
+                isActive = true,
+                trackCount = items.size,
+                durationMs = 0L,
+                artworkUrls = ""
+            )
+            return QueueBackup(listOf(space), items, listOf(state))
+        }
+        val spaces = ArrayList<QueueSpaceEntity>()
+        val items = ArrayList<PlaybackQueueItemEntity>()
+        val states = ArrayList<PlaybackQueueStateEntity>()
+        for (index in 0 until spacesArray.length()) {
+            val spaceJson = spacesArray.optJSONObject(index) ?: continue
+            val id = spaceJson.optString("id").trim()
+            if (id.isEmpty() || spaces.any { it.id == id }) continue
+            val spaceItems = parseQueueItems(spaceJson.optJSONArray("items"), id)
+            spaces += QueueSpaceEntity(
+                id = id,
+                name = spaceJson.optString("name"),
+                createdAt = spaceJson.optLong("createdAt"),
+                updatedAt = spaceJson.optLong("updatedAt"),
+                lastActiveAt = spaceJson.optLong("lastActiveAt"),
+                isActive = spaceJson.optBoolean("isActive"),
+                trackCount = spaceItems.size,
+                durationMs = spaceJson.optLong("durationMs").coerceAtLeast(0L),
+                artworkUrls = spaceJson.optString("artworkUrls")
+            )
+            items += spaceItems
+            parseQueueState(spaceJson.optJSONObject("state"), id)?.let(states::add)
+        }
+        return QueueBackup(normalizeRestoredQueueSpaces(spaces), items, states)
+    }
+
+    private fun parseQueueItems(itemsArray: JSONArray?, spaceId: String): List<PlaybackQueueItemEntity> {
+        if (itemsArray == null) return emptyList()
         return buildList {
             for (index in 0 until itemsArray.length()) {
                 val item = itemsArray.optJSONObject(index) ?: continue
-                add(PlaybackQueueItemEntity(item.optInt("position"), item.optString("payload"), item.optString("identity")))
+                add(
+                    PlaybackQueueItemEntity(
+                        spaceId = spaceId,
+                        position = item.optInt("position"),
+                        payload = item.optString("payload"),
+                        identity = item.optString("identity")
+                    )
+                )
             }
-        }
+        }.distinctBy { it.position }
     }
 
-    private fun parseQueueState(json: JSONObject?): PlaybackQueueStateEntity? {
-        if (json == null) return null
-        val stateJson = json.optJSONObject("state") ?: return null
+    private fun parseQueueState(stateJson: JSONObject?, spaceId: String): PlaybackQueueStateEntity? {
+        if (stateJson == null) return null
         return PlaybackQueueStateEntity(
+            spaceId = spaceId,
             currentIndex = stateJson.optInt("currentIndex", -1),
             positionMs = stateJson.optLong("positionMs"),
             shuffleEnabled = stateJson.optBoolean("shuffleEnabled"),
@@ -1272,9 +1345,18 @@ class LevyraBackupManager(private val context: Context) {
         val playlists: List<PlaylistBackup>,
         val history: List<ListenEventEntity>,
         val downloads: List<DownloadEntity>,
-        val queueItems: List<PlaybackQueueItemEntity>,
-        val queueState: PlaybackQueueStateEntity?
+        val queue: QueueBackup
     )
+
+    private data class QueueBackup(
+        val spaces: List<QueueSpaceEntity>,
+        val items: List<PlaybackQueueItemEntity>,
+        val states: List<PlaybackQueueStateEntity>
+    ) {
+        companion object {
+            val EMPTY = QueueBackup(emptyList(), emptyList(), emptyList())
+        }
+    }
 
     private class ByteCounterOutputStream(private val delegate: OutputStream) : OutputStream() {
         var count: Long = 0L
@@ -1430,6 +1512,12 @@ internal fun parseDownloads(array: JSONArray?): List<DownloadEntity> {
     }
 }
 
+internal fun normalizeRestoredQueueSpaces(spaces: List<QueueSpaceEntity>): List<QueueSpaceEntity> {
+    if (spaces.isEmpty()) return spaces
+    val activeId = spaces.firstOrNull { it.isActive }?.id ?: spaces.maxBy { it.lastActiveAt }.id
+    return spaces.map { it.copy(isActive = it.id == activeId) }
+}
+
 internal fun reconcileDownloadedTracks(
     backedUp: List<DownloadEntity>,
     discovered: List<DownloadEntity>,
@@ -1448,6 +1536,7 @@ internal fun reconcileDownloadedTracks(
             val backup = metadataIndex.takeIf { it >= 0 }?.let(unmatched::removeAt)
             val candidate = backup?.copy(
                 id = 0L,
+                trackId = backup.trackId.ifBlank { available.trackId },
                 title = backup.title.ifBlank { available.title },
                 artist = backup.artist.ifBlank { available.artist },
                 album = backup.album.ifBlank { available.album },

@@ -220,6 +220,121 @@ class LevyraDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate21To22MovesTheExistingQueueIntoTheDefaultQueueSpace() {
+        helper.createDatabase(TEST_DB, 21).use { db ->
+            db.execSQL(
+                "INSERT INTO playlists (id, name, coverUrl, createdAt, updatedAt, hidden, coverMode) " +
+                    "VALUES ('p6', 'Kept playlist', '', 10, 20, 0, 'AUTO')"
+            )
+            db.execSQL(
+                "INSERT INTO playback_queue_items (position, payload, identity) " +
+                    "VALUES (0, '{\"id\":\"a\"}', 'yt:a'), (1, '{\"id\":\"b\"}', 'yt:b')"
+            )
+            db.execSQL(
+                "INSERT INTO playback_queue_state (singletonId, currentIndex, positionMs, shuffleEnabled, " +
+                    "shuffleOrder, shuffleCursor, history, repeatMode, radioEnabled, generation, updatedAt) " +
+                    "VALUES (1, 1, 45000, 0, '', -1, '0', 'All', 1, 7, 1234)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 22, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT name FROM playlists WHERE id = 'p6'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Kept playlist", cursor.getString(0))
+        }
+        migrated.query("SELECT id, isActive, trackCount FROM queue_spaces").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(DEFAULT_QUEUE_SPACE_ID, cursor.getString(0))
+            assertEquals(1, cursor.getInt(1))
+            assertEquals(2, cursor.getInt(2))
+            assertEquals(1, cursor.count)
+        }
+        migrated.query("SELECT spaceId, position, identity FROM playback_queue_items ORDER BY position ASC")
+            .use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(DEFAULT_QUEUE_SPACE_ID, cursor.getString(0))
+                assertEquals(0, cursor.getInt(1))
+                assertEquals("yt:a", cursor.getString(2))
+                assertTrue(cursor.moveToNext())
+                assertEquals("yt:b", cursor.getString(2))
+                assertEquals(2, cursor.count)
+            }
+        migrated.query(
+            "SELECT spaceId, currentIndex, positionMs, repeatMode, radioEnabled, generation FROM playback_queue_state"
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(DEFAULT_QUEUE_SPACE_ID, cursor.getString(0))
+            assertEquals(1, cursor.getInt(1))
+            assertEquals(45_000L, cursor.getLong(2))
+            assertEquals("All", cursor.getString(3))
+            assertEquals(1, cursor.getInt(4))
+            assertEquals(7L, cursor.getLong(5))
+            assertEquals(1, cursor.count)
+        }
+        migrated.query("SELECT COUNT(*) FROM local_media").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrate21To22WithoutAnyQueueStillCreatesTheDefaultQueueSpace() {
+        helper.createDatabase(TEST_DB, 21).use { db ->
+            db.execSQL(
+                "INSERT INTO favorite_tracks (id, title, artist, album, durationMs, streamUrl, " +
+                    "videoUrl, thumbnailUrl, largeThumbnailUrl, source, moodTags, energy, vocal, " +
+                    "replayScore, cacheScore, accentStart, accentEnd, youtubeLoudnessDb, " +
+                    "youtubePerceptualLoudnessDb, isrc, upc, releaseDate, year, trackNumber, " +
+                    "discNumber, explicit, albumBrowseId, artistBrowseIds, counterpartVideoId, " +
+                    "videoType, metadataProvider, metadataConfidence, canonicalAlbumUrl, createdAt) " +
+                    "VALUES ('f9', 'Kept favorite', 'Artist', 'Album', 200000, '', '', '', '', 'yt', '', 50, 50, " +
+                    "50, 50, 0, 0, 0.0, 0.0, '', '', '', 0, 0, 0, 0, '', '', '', '', '', 0.0, '', 10)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 22, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT title FROM favorite_tracks WHERE id = 'f9'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Kept favorite", cursor.getString(0))
+        }
+        migrated.query("SELECT id, trackCount FROM queue_spaces").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(DEFAULT_QUEUE_SPACE_ID, cursor.getString(0))
+            assertEquals(0, cursor.getInt(1))
+        }
+        migrated.query("SELECT COUNT(*) FROM playback_queue_state").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrateFrom15To22KeepsTheWholeUpgradePathValid() {
+        helper.createDatabase(TEST_DB, 15).use { db ->
+            db.execSQL(
+                "INSERT INTO playlists (id, name, coverUrl, createdAt, updatedAt) " +
+                    "VALUES ('p7', 'Long path', '', 1, 2)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 22, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT name FROM playlists WHERE id = 'p7'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Long path", cursor.getString(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM queue_spaces").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
     private companion object {
         const val TEST_DB = "levyra-migration-test.db"
     }

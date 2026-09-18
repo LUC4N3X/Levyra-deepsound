@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
+import com.luc4n3x.levyra.data.locallibrary.LocalLibraryCatalog
+import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import android.net.Uri
 import androidx.compose.runtime.Immutable
 import com.luc4n3x.levyra.data.VaultPreview
@@ -69,6 +72,15 @@ enum class DetailReturnTarget {
 }
 
 @Immutable
+data class LocalLibraryUiState(
+    val permissionGranted: Boolean = false,
+    val scanning: Boolean = false,
+    val lastScanAt: Long = 0L,
+    val message: String = "",
+    val excludedFolders: Set<String> = emptySet(),
+    val catalog: LocalLibraryCatalog = LocalLibraryCatalog()
+)
+
 data class LevyraUiState(
     val selectedTab: LevyraTab = LevyraTab.Home,
     val moods: List<Mood> = emptyList(),
@@ -109,6 +121,12 @@ data class LevyraUiState(
     val tracks: List<Track> = emptyList(),
     val queue: List<Track> = emptyList(),
     val queueCurrentIndex: Int = -1,
+    val queueSpaces: List<QueueSpaceSummary> = emptyList(),
+    val activeQueueSpaceId: String = DEFAULT_QUEUE_SPACE_ID,
+    val pendingQueueAddTracks: List<Track> = emptyList(),
+    val queueSwitching: Boolean = false,
+    val queueUnavailableUris: Set<String> = emptySet(),
+    val localLibrary: LocalLibraryUiState = LocalLibraryUiState(),
     val queueUndoAvailable: Boolean = false,
     val queueHistoryCount: Int = 0,
     val radioEnabled: Boolean = true,
