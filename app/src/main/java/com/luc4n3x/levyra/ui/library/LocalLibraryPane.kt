@@ -54,6 +54,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LocalLibraryUiState
+import java.util.Locale
 
 internal enum class LocalLibraryTab { Songs, Albums, Artists, Folders }
 
@@ -445,7 +446,7 @@ private fun LocalFolderGroup.filteredByLocalQuality(
 }
 
 private fun LocalMediaEntity.localAudioSummary(): String? {
-    val extension = displayName.substringAfterLast('.', "").uppercase()
+    val extension = displayName.substringAfterLast('.', "").uppercase(Locale.ROOT)
     val format = when {
         extension.isNotBlank() -> extension
         mimeType.contains("mpeg", ignoreCase = true) -> "MP3"
@@ -453,7 +454,7 @@ private fun LocalMediaEntity.localAudioSummary(): String? {
         mimeType.contains("wav", ignoreCase = true) -> "WAV"
         mimeType.contains("ogg", ignoreCase = true) -> "OGG"
         mimeType.contains("opus", ignoreCase = true) -> "OPUS"
-        else -> mimeType.substringAfter('/').substringBefore(';').uppercase()
+        else -> mimeType.substringAfter('/').substringBefore(';').uppercase(Locale.ROOT)
     }
     val bitrateLabel = bitrate
         .takeIf { it > 0 }
