@@ -1,11 +1,16 @@
 package com.luc4n3x.levyra.ui.library
 
 import android.Manifest
+import android.app.Activity
 import android.os.Build
+import com.luc4n3x.levyra.data.local.LocalMediaEntity
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
+import com.luc4n3x.levyra.data.locallibrary.LocalTagEdits
+import com.luc4n3x.levyra.data.locallibrary.LocalTagWriteResult
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -310,6 +315,50 @@ internal fun LevyraLibraryScreen(
     var localTabName by rememberSaveable { mutableStateOf(LocalLibraryTab.Songs.name) }
     val localTab = LocalLibraryTab.entries.firstOrNull { it.name == localTabName } ?: LocalLibraryTab.Songs
     var expandedLocalGroupKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var localTagEditorTarget by remember { mutableStateOf<LocalMediaEntity?>(null) }
+    var localTagEditorSaving by remember { mutableStateOf(false) }
+    var localTagEditorError by remember { mutableStateOf<String?>(null) }
+    var pendingLocalTagWrite by remember { mutableStateOf<Pair<LocalMediaEntity, LocalTagEdits>?>(null) }
+
+    fun handleTagWriteResult(
+        target: LocalMediaEntity,
+        edits: LocalTagEdits,
+        result: LocalTagWriteResult,
+        allowPermissionRequest: Boolean,
+        permissionLauncher: ((android.content.IntentSender) -> Unit)?
+    ) {
+        when (result) {
+            is LocalTagWriteResult.Success -> {
+                localTagEditorSaving = false
+                localTagEditorError = null
+                localTagEditorTarget = null
+                pendingLocalTagWrite = null
+            }
+            is LocalTagWriteResult.PermissionRequired -> {
+                localTagEditorSaving = false
+                if (allowPermissionRequest && permissionLauncher != null) {
+                    pendingLocalTagWrite = target to edits
+                    permissionLauncher(result.intentSender)
+                } else {
+                    localTagEditorError = strings.localTagPermissionDenied
+                }
+            }
+            LocalTagWriteResult.UnsupportedFormat -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagUnsupported
+            }
+            LocalTagWriteResult.FileTooLarge -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagTooLarge
+            }
+            LocalTagWriteResult.FileUnavailable,
+            LocalTagWriteResult.Failed -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagWriteFailed
+            }
+        }
+    }
+
     val localMediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
     } else {
@@ -318,7 +367,30 @@ internal fun LevyraLibraryScreen(
     val localPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { viewModel.refreshLocalLibraryAccess() }
-    val localLibraryCallbacks = remember(viewModel) {
+    val localTagWritePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        val pending = pendingLocalTagWrite
+        pendingLocalTagWrite = null
+        if (activityResult.resultCode == Activity.RESULT_OK && pending != null) {
+            val (target, edits) = pending
+            localTagEditorSaving = true
+            localTagEditorError = null
+            viewModel.saveLocalAudioTags(target.identityKey, edits) { retry ->
+                handleTagWriteResult(
+                    target = target,
+                    edits = edits,
+                    result = retry,
+                    allowPermissionRequest = false,
+                    permissionLauncher = null
+                )
+            }
+        } else if (pending != null) {
+            localTagEditorSaving = false
+            localTagEditorError = strings.localTagPermissionDenied
+        }
+    }
+    val localLibraryCallbacks = remember(viewModel, state.localLibrary.catalog.mediaByUri) {
         LocalLibraryCallbacks(
             onPlay = viewModel::playLocalTracks,
             onAddToQueue = viewModel::addTracksToQueue,
@@ -327,7 +399,13 @@ internal fun LevyraLibraryScreen(
             onFullScan = { viewModel.requestLocalLibraryScan(LocalScanMode.Full) },
             onRebuildLevyra = { viewModel.requestLocalLibraryScan(LocalScanMode.RebuildLevyra) },
             onGrantPermission = { localPermissionLauncher.launch(localMediaPermission) },
-            onToggleFolderHidden = viewModel::setLocalFolderHidden
+            onToggleFolderHidden = viewModel::setLocalFolderHidden,
+            onEditTags = { track ->
+                state.localLibrary.catalog.mediaByUri[track.streamUrl]?.let { media ->
+                    localTagEditorTarget = media
+                    localTagEditorError = null
+                }
+            }
         )
     }
     LaunchedEffect(category) {
@@ -429,7 +507,14 @@ internal fun LevyraLibraryScreen(
                         focusedTrailingIconColor = LevyraMuted,
                         unfocusedTrailingIconColor = LevyraMuted
                     ),
-                    placeholder = { Text(strings.searchPlaceholder, color = LevyraMuted, fontSize = 14.sp) },
+                    placeholder = {
+                        Text(
+                            if (category == LibraryCategory.Device) strings.localFullTagSearchHint else strings.searchPlaceholder,
+                            color = LevyraMuted,
+                            fontSize = 14.sp,
+                            maxLines = 1
+                        )
+                    },
                     leadingIcon = {
                         Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp))
                     },
@@ -906,6 +991,38 @@ internal fun LevyraLibraryScreen(
                 onClose = { openSmartCollectionName = null }
             )
         }
+    }
+
+    localTagEditorTarget?.let { target ->
+        LocalTagEditorSheet(
+            media = target,
+            saving = localTagEditorSaving,
+            error = localTagEditorError,
+            onDismiss = {
+                if (!localTagEditorSaving) {
+                    localTagEditorTarget = null
+                    localTagEditorError = null
+                    pendingLocalTagWrite = null
+                }
+            },
+            onSave = { edits ->
+                localTagEditorSaving = true
+                localTagEditorError = null
+                viewModel.saveLocalAudioTags(target.identityKey, edits) { result ->
+                    handleTagWriteResult(
+                        target = target,
+                        edits = edits,
+                        result = result,
+                        allowPermissionRequest = true,
+                        permissionLauncher = { sender ->
+                            localTagWritePermissionLauncher.launch(
+                                IntentSenderRequest.Builder(sender).build()
+                            )
+                        }
+                    )
+                }
+            }
+        )
     }
 
     if (showImportPlaylist) {
