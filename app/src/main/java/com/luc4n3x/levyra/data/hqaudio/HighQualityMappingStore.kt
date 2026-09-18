@@ -89,8 +89,8 @@ class HighQualityMappingStore(
             return null
         }
         if (mapping.providerId != providerId) return null
-        storage.remove(legacyKey)
         storage.write(storageKey(identityKey, providerId), encode(mapping))
+        storage.remove(legacyKey)
         return mapping
     }
 

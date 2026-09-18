@@ -25,11 +25,11 @@ internal class ProviderCircuitBreaker(
     val currentState: State
         get() = synchronized(lock) { state }
 
-    fun snapshot(backend: String = providerId): ProviderBackendHealth = synchronized(lock) {
+    fun snapshot(ownerProviderId: String): ProviderBackendHealth = synchronized(lock) {
         val now = clock()
         ProviderBackendHealth(
-            providerId = providerId,
-            backend = backend,
+            providerId = ownerProviderId,
+            backend = providerId,
             state = if (state == State.OPEN && now >= openUntilMs) State.HALF_OPEN.name else state.name,
             cooldownRemainingMs = if (state == State.OPEN) (openUntilMs - now).coerceAtLeast(0L) else 0L,
             consecutiveFailures = consecutiveFailures,

@@ -78,8 +78,8 @@ internal class JioSaavnAudioProvider(
         }
 
     override fun health(): List<ProviderBackendHealth> = listOf(
-        catalogCircuitBreaker.snapshot(CATALOG_CIRCUIT),
-        authorizationCircuitBreaker.snapshot(AUTHORIZATION_CIRCUIT)
+        catalogCircuitBreaker.snapshot(id),
+        authorizationCircuitBreaker.snapshot(id)
     )
 
     override suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome {
