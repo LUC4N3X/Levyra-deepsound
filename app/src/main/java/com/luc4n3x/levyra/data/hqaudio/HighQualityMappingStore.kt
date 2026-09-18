@@ -4,6 +4,7 @@ import android.content.Context
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.util.Locale
 import org.json.JSONObject
 
 interface HighQualityMappingStorage {
@@ -51,35 +52,54 @@ class HighQualityMappingStore(
 ) {
     private val lock = Any()
 
-    fun load(identityKey: String, queryFingerprint: String): StoredAlternativeMapping? = synchronized(lock) {
-        val key = storageKey(identityKey)
-        val raw = storage.read(key) ?: return null
-        val mapping = decode(raw)
-        val now = clock()
-        val usable = mapping != null &&
-            mapping.queryFingerprint == queryFingerprint &&
-            now - mapping.storedAtMs <= ttlMs &&
-            mapping.storedAtMs <= now + CLOCK_SKEW_TOLERANCE_MS &&
-            isPersistable(mapping)
-        if (!usable) {
-            storage.remove(key)
-            return null
+    fun load(identityKey: String, providerId: String, queryFingerprint: String): StoredAlternativeMapping? =
+        synchronized(lock) {
+            val key = storageKey(identityKey, providerId)
+            val raw = storage.read(key) ?: return migrateLegacy(identityKey, providerId, queryFingerprint)
+            val mapping = decode(raw)
+            if (mapping == null || mapping.providerId != providerId || !usable(mapping, queryFingerprint)) {
+                storage.remove(key)
+                return null
+            }
+            mapping
         }
-        mapping
-    }
 
     fun save(identityKey: String, mapping: StoredAlternativeMapping): Boolean = synchronized(lock) {
         if (!isPersistable(mapping)) return false
-        val key = storageKey(identityKey)
+        val key = storageKey(identityKey, mapping.providerId)
         evictBeforeInsert(key)
         storage.write(key, encode(mapping))
         true
     }
 
-    fun remove(identityKey: String) {
+    fun remove(identityKey: String, providerId: String) {
         synchronized(lock) {
-            storage.remove(storageKey(identityKey))
+            storage.remove(storageKey(identityKey, providerId))
+            val legacyKey = legacyStorageKey(identityKey)
+            if (storage.read(legacyKey)?.let(::decode)?.providerId == providerId) storage.remove(legacyKey)
         }
+    }
+
+    private fun migrateLegacy(identityKey: String, providerId: String, queryFingerprint: String): StoredAlternativeMapping? {
+        val legacyKey = legacyStorageKey(identityKey)
+        val raw = storage.read(legacyKey) ?: return null
+        val mapping = decode(raw)
+        if (mapping == null || !usable(mapping, queryFingerprint)) {
+            storage.remove(legacyKey)
+            return null
+        }
+        if (mapping.providerId != providerId) return null
+        storage.write(storageKey(identityKey, providerId), encode(mapping))
+        storage.remove(legacyKey)
+        return mapping
+    }
+
+    private fun usable(mapping: StoredAlternativeMapping, queryFingerprint: String): Boolean {
+        val now = clock()
+        return mapping.queryFingerprint == queryFingerprint &&
+            now - mapping.storedAtMs <= ttlMs &&
+            mapping.storedAtMs <= now + CLOCK_SKEW_TOLERANCE_MS &&
+            isPersistable(mapping)
     }
 
     private fun evictBeforeInsert(incomingKey: String) {
@@ -105,7 +125,7 @@ class HighQualityMappingStore(
 
     private fun decode(raw: String): StoredAlternativeMapping? = runCatching {
         val json = JSONObject(raw)
-        if (json.optInt("schema", -1) != SCHEMA_VERSION) return@runCatching null
+        if (json.optInt("schema", -1) !in SUPPORTED_SCHEMAS) return@runCatching null
         val verdict = AlternativeMatchVerdict.entries.firstOrNull { it.name == json.optString("verdict") }
             ?: return@runCatching null
         StoredAlternativeMapping(
@@ -119,13 +139,20 @@ class HighQualityMappingStore(
         ).takeIf { it.providerId.isNotBlank() && it.providerTrackId.isNotBlank() }
     }.getOrNull()
 
-    private fun storageKey(identityKey: String): String = "hq-v1:${sha256(identityKey).take(40)}"
+    private fun storageKey(identityKey: String, providerId: String): String =
+        "hq-v2:${providerKeySegment(providerId)}:${sha256(identityKey).take(40)}"
+
+    private fun legacyStorageKey(identityKey: String): String = "hq-v1:${sha256(identityKey).take(40)}"
+
+    private fun providerKeySegment(providerId: String): String =
+        providerId.lowercase(Locale.ROOT).filter { it in 'a'..'z' || it in '0'..'9' || it == '-' }.take(24)
 
     companion object {
         const val DEFAULT_MAX_ENTRIES = 400
         const val DEFAULT_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
         private const val CLOCK_SKEW_TOLERANCE_MS = 5L * 60L * 1_000L
-        private const val SCHEMA_VERSION = 1
+        private const val SCHEMA_VERSION = 2
+        private val SUPPORTED_SCHEMAS = setOf(1, SCHEMA_VERSION)
 
         fun isPersistable(mapping: StoredAlternativeMapping): Boolean =
             mapping.verdict == AlternativeMatchVerdict.EXACT ||

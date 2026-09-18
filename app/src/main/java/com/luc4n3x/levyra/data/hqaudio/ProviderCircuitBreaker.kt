@@ -17,9 +17,28 @@ internal class ProviderCircuitBreaker(
     private var openUntilMs = 0L
     private var openDurationMs = baseOpenMs
     private var probeInFlight = false
+    private var lastSuccessAtMs = 0L
+    private var lastFailureAtMs = 0L
+    private var lastFailure = ""
+    private var lastLatencyMs = -1L
 
     val currentState: State
         get() = synchronized(lock) { state }
+
+    fun snapshot(ownerProviderId: String): ProviderBackendHealth = synchronized(lock) {
+        val now = clock()
+        ProviderBackendHealth(
+            providerId = ownerProviderId,
+            backend = providerId,
+            state = if (state == State.OPEN && now >= openUntilMs) State.HALF_OPEN.name else state.name,
+            cooldownRemainingMs = if (state == State.OPEN) (openUntilMs - now).coerceAtLeast(0L) else 0L,
+            consecutiveFailures = consecutiveFailures,
+            lastSuccessAtMs = lastSuccessAtMs,
+            lastFailureAtMs = lastFailureAtMs,
+            lastFailure = lastFailure,
+            lastLatencyMs = lastLatencyMs
+        )
+    }
 
     fun acquire(): Permit {
         var probing = false
@@ -47,8 +66,10 @@ internal class ProviderCircuitBreaker(
         return permit
     }
 
-    fun onSuccess(permit: Permit) {
+    fun onSuccess(permit: Permit, latencyMs: Long = -1L) {
         val recovered = synchronized(lock) {
+            lastSuccessAtMs = clock()
+            lastLatencyMs = latencyMs
             when {
                 permit == Permit.PROBE && state == State.HALF_OPEN -> {
                     state = State.CLOSED
@@ -67,8 +88,10 @@ internal class ProviderCircuitBreaker(
         if (recovered) HighQualityAudioDiagnostics.circuit(providerId, State.CLOSED.name, "recovered")
     }
 
-    fun onFailure(permit: Permit) {
+    fun onFailure(permit: Permit, cause: String = "") {
         val openedForMs = synchronized(lock) {
+            lastFailureAtMs = clock()
+            lastFailure = cause
             when {
                 permit == Permit.PROBE && state == State.HALF_OPEN -> {
                     openDurationMs = (openDurationMs * 2).coerceAtMost(maxOpenMs)
@@ -81,7 +104,9 @@ internal class ProviderCircuitBreaker(
                 else -> null
             }
         }
-        openedForMs?.let { HighQualityAudioDiagnostics.circuit(providerId, State.OPEN.name, "openMs=$it") }
+        openedForMs?.let {
+            HighQualityAudioDiagnostics.circuit(providerId, State.OPEN.name, "openMs=$it cause=${cause.ifBlank { "-" }}")
+        }
     }
 
     fun release(permit: Permit) {

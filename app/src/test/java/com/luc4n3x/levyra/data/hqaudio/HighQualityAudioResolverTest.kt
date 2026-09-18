@@ -276,4 +276,48 @@ class HighQualityAudioResolverTest {
         admitted.forEach { it.cancel() }
     }
 
+    @Test
+    fun exactIsrcMatchIsDecisiveEvenOnACompilationAlbum() {
+        val provider = FakeHighQualityProvider(
+            searchOutcome = {
+                ProviderSearchOutcome.Found(listOf(candidate(album = "Greatest Hits 2020", isrc = "USUG11904206")))
+            }
+        )
+        val result = resolver(provider).resolveNow(query(isrc = "USUG11904206"))
+        assertEquals(100, (result as HighQualityResolution.Selected).evaluation.confidence)
+        assertEquals(1, provider.searches.size)
+    }
+
+    @Test
+    fun conflictingIsrcIsNeverSelected() {
+        val provider = FakeHighQualityProvider(
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate(isrc = "GBAYE0000001"))) }
+        )
+        val result = resolver(provider).resolveNow(query(isrc = "USUG11904206"))
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (result as HighQualityResolution.Fallback).reason)
+        assertTrue(provider.streamRequests.isEmpty())
+    }
+
+    @Test
+    fun cancellingTheLookupStopsTheProviderAndAllowsAFreshLookup() {
+        val cancelled = java.util.concurrent.atomic.AtomicBoolean(false)
+        val provider = FakeHighQualityProvider(searchOutcome = {
+            try {
+                kotlinx.coroutines.awaitCancellation()
+            } finally {
+                cancelled.set(true)
+            }
+        })
+        val resolver = resolver(provider)
+        val pending = resolver.begin(identity, query())
+        runBlocking {
+            delay(100L)
+            pending.cancel()
+            pending.join()
+        }
+        assertTrue(cancelled.get())
+        val retry = resolver.begin(identity, query())
+        assertTrue(retry !== pending)
+        retry.cancel()
+    }
 }

@@ -124,8 +124,9 @@ class AlternativeTrackMatcher {
         if (expectedExplicit != null && candidateExplicit != null && expectedExplicit != candidateExplicit) {
             return rejected(MatchRejection.EXPLICIT_MISMATCH)
         }
+        val isrcConfirmed = expectedIsrc.isNotEmpty() && expectedIsrc == candidateIsrc
         val relation = albumRelation(query.album, candidate.album, expectedTitle, candidateTitle)
-        if (relation == AlbumRelation.REMASTER_CONFLICT || relation == AlbumRelation.MISMATCH) {
+        if (!isrcConfirmed && (relation == AlbumRelation.REMASTER_CONFLICT || relation == AlbumRelation.MISMATCH)) {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
         if (delta > MAXIMUM_DURATION_DELTA_SECONDS) return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
@@ -138,7 +139,6 @@ class AlternativeTrackMatcher {
         if (delta > EXCELLENT_DURATION_DELTA_SECONDS && !(relation == AlbumRelation.SAME && artistsExact)) {
             return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
         }
-        val isrcConfirmed = expectedIsrc.isNotEmpty() && expectedIsrc == candidateIsrc
         val titleExact = expectedTitle.fullNormalized == candidateTitle.fullNormalized
         val confidence = confidence(titleExact, artistsExact, relation, delta, isrcConfirmed)
         val verdict = when {
