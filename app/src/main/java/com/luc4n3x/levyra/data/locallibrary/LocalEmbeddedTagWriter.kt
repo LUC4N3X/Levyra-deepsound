@@ -71,35 +71,75 @@ internal object LocalEmbeddedTagWriter {
         val source = runCatching { input.readBytes() }.getOrElse {
             return LocalEmbeddedTagWriteResult(false, "read_failed")
         }
-        if (source.size < 4) return LocalEmbeddedTagWriteResult(false, "invalid_mp3")
+        return when (val preparation = prepareMp3(source)) {
+            is Mp3Preparation.Failed ->
+                LocalEmbeddedTagWriteResult(false, preparation.reason)
 
-        val hasId3 = source.size >= 10 && source[0] == 'I'.code.toByte() &&
-            source[1] == 'D'.code.toByte() && source[2] == '3'.code.toByte()
-        val version = if (hasId3) source[3].toInt() and 0xFF else 4
-        if (version !in 3..4) return LocalEmbeddedTagWriteResult(false, "unsupported_id3_version")
-        val flags = if (hasId3) source[5].toInt() and 0xFF else 0
-        if ((flags and 0xD0) != 0) return LocalEmbeddedTagWriteResult(false, "unsupported_id3_flags")
-
-        val oldTagEnd = if (hasId3) {
-            val payloadSize = syncSafeInt(source, 6)
-            (10L + payloadSize.toLong()).takeIf { it <= source.size }?.toInt()
-                ?: return LocalEmbeddedTagWriteResult(false, "invalid_id3")
-        } else {
-            0
+            is Mp3Preparation.Ready -> {
+                val tag = buildId3Tag(preparation.version, preparation.preservedFrames, edits)
+                val body = source.copyOfRange(preparation.oldTagEnd, preparation.audioEnd)
+                val id3v1 = if (preparation.hasId3v1) {
+                    rewriteId3v1(source.copyOfRange(preparation.audioEnd, source.size), edits)
+                } else {
+                    ByteArray(0)
+                }
+                output.parentFile?.mkdirs()
+                output.writeBytes(tag + body + id3v1)
+                LocalEmbeddedTagWriteResult(output.isFile && output.length() > 0L, "ok")
+            }
         }
+    }
 
+    private fun prepareMp3(source: ByteArray): Mp3Preparation {
+        if (source.size < 4) return Mp3Preparation.Failed("invalid_mp3")
+
+        val hasId3 = source.size >= 10 && source.copyOfRange(0, 3)
+            .contentEquals("ID3".toByteArray(StandardCharsets.ISO_8859_1))
+        val version = if (hasId3) source[3].toInt() and 0xFF else 4
+        if (version !in 3..4) return Mp3Preparation.Failed("unsupported_id3_version")
+
+        val flags = if (hasId3) source[5].toInt() and 0xFF else 0
+        if (flags and 0xD0 != 0) return Mp3Preparation.Failed("unsupported_id3_flags")
+
+        val oldTagEnd = existingId3End(source, hasId3)
+            ?: return Mp3Preparation.Failed("invalid_id3")
         val preserved = if (hasId3) {
             parsePreservedId3Frames(source, 10, oldTagEnd, version)
-                ?: return LocalEmbeddedTagWriteResult(false, "invalid_id3")
+                ?: return Mp3Preparation.Failed("invalid_id3")
         } else {
             emptyList()
         }
+        val hasId3v1 = hasId3v1(source)
+        val audioEnd = if (hasId3v1) source.size - 128 else source.size
+        if (oldTagEnd > audioEnd) return Mp3Preparation.Failed("invalid_mp3")
 
+        return Mp3Preparation.Ready(
+            version = version,
+            oldTagEnd = oldTagEnd,
+            audioEnd = audioEnd,
+            hasId3v1 = hasId3v1,
+            preservedFrames = preserved
+        )
+    }
+
+    private fun existingId3End(source: ByteArray, hasId3: Boolean): Int? {
+        if (!hasId3) return 0
+        val payloadSize = syncSafeInt(source, 6)
+        return (10L + payloadSize.toLong())
+            .takeIf { it <= source.size }
+            ?.toInt()
+    }
+
+    private fun buildId3Tag(
+        version: Int,
+        preserved: List<ByteArray>,
+        edits: LocalTagEdits
+    ): ByteArray {
         val frames = ByteArrayOutputStream()
         preserved.forEach { frames.write(it) }
         buildId3EditFrames(edits, version).forEach { frames.write(it) }
         val frameBytes = frames.toByteArray()
-        val tag = ByteArrayOutputStream(frameBytes.size + 10).apply {
+        return ByteArrayOutputStream(frameBytes.size + 10).apply {
             write("ID3".toByteArray(StandardCharsets.ISO_8859_1))
             write(version)
             write(0)
@@ -107,14 +147,6 @@ internal object LocalEmbeddedTagWriter {
             write(syncSafe(frameBytes.size))
             write(frameBytes)
         }.toByteArray()
-
-        val audioEnd = if (hasId3v1(source)) source.size - 128 else source.size
-        if (oldTagEnd > audioEnd) return LocalEmbeddedTagWriteResult(false, "invalid_mp3")
-        val body = source.copyOfRange(oldTagEnd, audioEnd)
-        val id3v1 = if (hasId3v1(source)) rewriteId3v1(source.copyOfRange(audioEnd, source.size), edits) else ByteArray(0)
-        output.parentFile?.mkdirs()
-        output.writeBytes(tag + body + id3v1)
-        return LocalEmbeddedTagWriteResult(output.isFile && output.length() > 0L, "ok")
     }
 
     private fun parsePreservedId3Frames(
@@ -232,7 +264,7 @@ internal object LocalEmbeddedTagWriter {
         while (!last) {
             if (cursor + 4 > source.size) return LocalEmbeddedTagWriteResult(false, "invalid_flac")
             val header = source[cursor].toInt() and 0xFF
-            last = (header and 0x80) != 0
+            last = header and 0x80 != 0
             val type = header and 0x7F
             val size = ((source[cursor + 1].toInt() and 0xFF) shl 16) or
                 ((source[cursor + 2].toInt() and 0xFF) shl 8) or
@@ -401,6 +433,18 @@ internal object LocalEmbeddedTagWriter {
         (value ushr 16).toByte(),
         (value ushr 24).toByte()
     )
+
+    private sealed interface Mp3Preparation {
+        data class Ready(
+            val version: Int,
+            val oldTagEnd: Int,
+            val audioEnd: Int,
+            val hasId3v1: Boolean,
+            val preservedFrames: List<ByteArray>
+        ) : Mp3Preparation
+
+        data class Failed(val reason: String) : Mp3Preparation
+    }
 
     private data class FlacBlock(val type: Int, val payload: ByteArray)
 
