@@ -619,33 +619,39 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
 
 <table width="100%">
   <tr>
-    <td width="125" align="center" valign="middle">
-      <a href="https://github.com/LUC4N3X">
-        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=260&w=260&fit=cover&mask=circle&maxage=7d" width="88" height="88" alt="LUC4N3X" />
-      </a>
-    </td>
-    <td valign="middle">
-      <h3 style="margin: 0 0 6px 0;">
-        <a href="https://github.com/LUC4N3X">LUC4N3X</a> &nbsp;·&nbsp; <code>Lead Systems Architect & Creator</code>
-      </h3>
-      <p style="margin: 0 0 10px 0;">
+    <td width="70%" valign="middle">
+      <table>
+        <tr>
+          <td valign="middle">
+            <h2><a href="https://github.com/LUC4N3X">LUC4N3X</a></h2>
+          </td>
+          <td valign="middle">
+            <code>Creator & Lead Developer</code>
+          </td>
+        </tr>
+      </table>
+      <p>
         I started Levyra and I still build most of it myself. The work is mainly Kotlin: Media3 / ExoPlayer on Android, libvlc on Windows, local SQLite data, lyrics, downloads, and all the less glamorous playback/reliability stuff around them.
       </p>
-      <div>
-        <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="GitHub Profile" /></a>&nbsp;
-        <img src="https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=flat-square&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Kotlin Multiplatform" />&nbsp;
-        <img src="https://img.shields.io/badge/Android-Media3%20%2F%20Compose-38BDF8?style=flat-square&logo=android&logoColor=white&labelColor=0d1117" alt="Android Media3" />&nbsp;
-        <img src="https://img.shields.io/badge/Desktop-libvlc%20Core-FF8800?style=flat-square&logo=vlcmediaplayer&logoColor=white&labelColor=0d1117" alt="libvlc Desktop" />&nbsp;
-      </div>
+      <p>
+        <code>Kotlin</code>&nbsp;&nbsp;
+        <code>Media3 / Compose</code>&nbsp;&nbsp;
+        <code>libvlc</code>&nbsp;&nbsp;
+        <code>SQLite</code>
+      </p>
+    </td>
+    <td width="30%" align="center" valign="middle">
+      <a href="https://github.com/LUC4N3X">
+        <img src="docs/assets/levyra-signature.png" width="230" alt="LUC4N3X — Levyra creator signature" />
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <sub>Branding credit · Thanks to <a href="https://github.com/gauravbhindwar">@gauravbhindwar</a> for designing and contributing Levyra's new app logo in <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525">#525</a>.</sub>
     </td>
   </tr>
 </table>
-
-<br>
-
-<p align="center">
-  <sub><b>Branding credit</b> · Thanks to <a href="https://github.com/gauravbhindwar"><b>@gauravbhindwar</b></a> for designing and contributing Levyra's new app logo in <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525"><b>#525</b></a>.</sub>
-</p>
 
 ### Built With & Inspired By
 
@@ -665,6 +671,4 @@ For third-party rights, lawful use, user responsibilities, warranty, and liabili
 
 <div align="center">
   <sub><b>🇮🇹 Made in Italy. Built for the world.</b></sub>
-  <br><br>
-  <img src="docs/assets/levyra-signature.png" width="480" alt="LUC4N3X — Levyra signature" />
 </div>
