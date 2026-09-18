@@ -31,8 +31,11 @@ internal class LocalAudioTagEditor(context: Context) {
         val input = File.createTempFile("source-", ".m4a", workspace)
         val output = File.createTempFile("edited-", ".m4a", workspace)
         try {
-            if (!copySource(uri, input)) return@withContext LocalTagWriteResult.FileUnavailable
-            if (input.length() > LevyraM4aTagWriter.MAX_INPUT_BYTES) return@withContext LocalTagWriteResult.FileTooLarge
+            when (copySource(uri, input)) {
+                CopySourceResult.Ok -> Unit
+                CopySourceResult.TooLarge -> return@withContext LocalTagWriteResult.FileTooLarge
+                CopySourceResult.Unavailable -> return@withContext LocalTagWriteResult.FileUnavailable
+            }
 
             val writerResult = LevyraM4aTagWriter.writeTags(
                 input = input,
@@ -82,9 +85,12 @@ internal class LocalAudioTagEditor(context: Context) {
                 }
             }
 
+            val edited = row.withTagEdits(edits, deepTags)
+            val writtenSize = output.length()
             LocalTagWriteResult.Success(
-                row.withTagEdits(edits, deepTags).copy(
-                    sizeBytes = output.length(),
+                edited.copy(
+                    sizeBytes = writtenSize,
+                    contentFingerprint = localContentFingerprint(writtenSize, edited.durationMs, edited.title),
                     dateModifiedMs = System.currentTimeMillis(),
                     lastSeenAt = System.currentTimeMillis()
                 )
@@ -95,25 +101,28 @@ internal class LocalAudioTagEditor(context: Context) {
         }
     }
 
-    private fun copySource(uri: Uri, target: File): Boolean = runCatching {
-        resolver.openInputStream(uri)?.use { input ->
-            target.outputStream().buffered().use { output ->
-                val buffer = ByteArray(COPY_BUFFER)
-                var total = 0L
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read < 0) break
-                    if (read == 0) continue
-                    total += read
-                    if (total > LevyraM4aTagWriter.MAX_INPUT_BYTES) throw InputTooLargeException()
-                    output.write(buffer, 0, read)
+    private fun copySource(uri: Uri, target: File): CopySourceResult {
+        return try {
+            val stream = resolver.openInputStream(uri) ?: return CopySourceResult.Unavailable
+            stream.use { input ->
+                target.outputStream().buffered().use { output ->
+                    val buffer = ByteArray(COPY_BUFFER)
+                    var total = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        if (read == 0) continue
+                        total += read
+                        if (total > LevyraM4aTagWriter.MAX_INPUT_BYTES) return CopySourceResult.TooLarge
+                        output.write(buffer, 0, read)
+                    }
                 }
             }
-        } ?: return false
-        target.isFile && target.length() > 0L
-    }.getOrElse { error ->
-        if (error !is InputTooLargeException) Timber.d(error, "Local tag source unavailable")
-        false
+            if (target.isFile && target.length() > 0L) CopySourceResult.Ok else CopySourceResult.Unavailable
+        } catch (error: Exception) {
+            Timber.d(error, "Local tag source unavailable")
+            CopySourceResult.Unavailable
+        }
     }
 
     @Throws(IOException::class, SecurityException::class)
@@ -151,7 +160,7 @@ internal class LocalAudioTagEditor(context: Context) {
         return null
     }
 
-    private class InputTooLargeException : IOException()
+    private enum class CopySourceResult { Ok, TooLarge, Unavailable }
 
     private companion object {
         const val COPY_BUFFER = 128 * 1024
