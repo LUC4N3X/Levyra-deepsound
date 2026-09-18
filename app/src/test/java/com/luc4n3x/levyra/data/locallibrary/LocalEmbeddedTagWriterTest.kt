@@ -47,6 +47,33 @@ class LocalEmbeddedTagWriterTest {
     }
 
     @Test
+    fun mp3V23EditWritesReadableUtf16Comments() {
+        val input = File.createTempFile("levyra-v23-input", ".mp3")
+        val output = File.createTempFile("levyra-v23-output", ".mp3")
+        try {
+            val oldFrame = v23Frame(
+                "TIT2",
+                byteArrayOf(1) + "Old title".toByteArray(StandardCharsets.UTF_16)
+            )
+            input.writeBytes(id3v23(oldFrame) + byteArrayOf(0xFF.toByte(), 0xFB.toByte(), 0x90.toByte(), 0x64))
+
+            val result = LocalEmbeddedTagWriter.write(
+                input = input,
+                output = output,
+                format = LocalEditableTagFormat.Mp3,
+                edits = edits(title = "New title", composer = "Composer").copy(comment = "Commento UTF16")
+            )
+
+            assertTrue(result.success)
+            val deep = LocalDeepTagReader.read(output)
+            assertTrue(deep.comment.contains("Commento UTF16"))
+        } finally {
+            input.delete()
+            output.delete()
+        }
+    }
+
+    @Test
     fun flacEditPreservesReplayGainLyricsAndUnknownComments() {
         val input = File.createTempFile("levyra-tag-input", ".flac")
         val output = File.createTempFile("levyra-tag-output", ".flac")
@@ -103,6 +130,20 @@ class LocalEmbeddedTagWriterTest {
         copyright = "2026 Example"
     )
 
+    private fun id3v23(frames: ByteArray): ByteArray = concat(
+        "ID3".toByteArray(StandardCharsets.ISO_8859_1),
+        byteArrayOf(3, 0, 0),
+        syncSafe(frames.size),
+        frames
+    )
+
+    private fun v23Frame(id: String, payload: ByteArray): ByteArray = concat(
+        id.toByteArray(StandardCharsets.ISO_8859_1),
+        int32be(payload.size),
+        byteArrayOf(0, 0),
+        payload
+    )
+
     private fun id3v24(frames: ByteArray): ByteArray = concat(
         "ID3".toByteArray(StandardCharsets.ISO_8859_1),
         byteArrayOf(4, 0, 0),
@@ -149,6 +190,13 @@ class LocalEmbeddedTagWriterTest {
             write(payload.size and 0xFF)
             write(payload)
         }.toByteArray()
+
+    private fun int32be(value: Int): ByteArray = byteArrayOf(
+        (value ushr 24).toByte(),
+        (value ushr 16).toByte(),
+        (value ushr 8).toByte(),
+        value.toByte()
+    )
 
     private fun int32le(value: Int): ByteArray = byteArrayOf(
         value.toByte(),
