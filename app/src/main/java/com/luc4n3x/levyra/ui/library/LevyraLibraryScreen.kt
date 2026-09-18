@@ -314,6 +314,10 @@ internal fun LevyraLibraryScreen(
     }
     var localTabName by rememberSaveable { mutableStateOf(LocalLibraryTab.Songs.name) }
     val localTab = LocalLibraryTab.entries.firstOrNull { it.name == localTabName } ?: LocalLibraryTab.Songs
+    var localQualityFilterName by rememberSaveable { mutableStateOf(LocalLibraryQualityFilter.All.name) }
+    val localQualityFilter = LocalLibraryQualityFilter.entries
+        .firstOrNull { it.name == localQualityFilterName }
+        ?: LocalLibraryQualityFilter.All
     var expandedLocalGroupKey by rememberSaveable { mutableStateOf<String?>(null) }
     var localTagEditorTarget by remember { mutableStateOf<LocalMediaEntity?>(null) }
     var localTagEditorSaving by remember { mutableStateOf(false) }
@@ -831,6 +835,8 @@ internal fun LevyraLibraryScreen(
                     library = state.localLibrary,
                     tab = localTab,
                     onTab = { localTabName = it.name },
+                    qualityFilter = localQualityFilter,
+                    onQualityFilter = { localQualityFilterName = it.name },
                     expandedGroupKey = expandedLocalGroupKey,
                     onExpandGroup = { expandedLocalGroupKey = it },
                     query = query,
