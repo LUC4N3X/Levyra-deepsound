@@ -17,6 +17,7 @@ internal data class LocalSearchMatch(
 
 internal object LocalSearchAffinity {
     const val RECENT = 90
+    const val LOCAL_MEDIA = 85
     const val FAVORITE = 80
     const val ORBIT = 70
     const val QUEUE = 60
