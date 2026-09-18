@@ -1478,24 +1478,9 @@ class PlaybackService : MediaLibraryService() {
             val resolved = awaitPreparedQueueTrackForTransition(currentIdentity, targetIdentity)
                 ?: withContext(Dispatchers.IO) { resolveQueueTrack(target) }
             if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
-            secondary = buildTransitionPlayer(resolved).also { transitionPlayer = it }
-            secondary.setPlaybackParameters(
-                PlaybackParameters(currentAudioSettings.playbackSpeed, currentAudioSettings.pitch)
-            )
-            secondary.volume = 0f
-            secondary.setMediaItem(LevyraMediaItemFactory.build(resolved))
-            RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
-            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
-            secondary.prepare()
-            val prepared = withTimeoutOrNull(TRANSITION_PREPARE_TIMEOUT_MS) {
-                while (secondary.playbackState != Player.STATE_READY) {
-                    if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return@withTimeoutOrNull false
-                    if (secondary.playerError != null) return@withTimeoutOrNull false
-                    delay(50L)
-                }
-                true
-            } == true
-            if (!prepared) return
+            secondary = prepareTransitionPlayerWithDecoderFallback(resolved) {
+                transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)
+            } ?: return
 
             while (primary.duration > 0L && primary.duration - primary.currentPosition > plan.transitionMs) {
                 if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
@@ -1549,6 +1534,45 @@ class PlaybackService : MediaLibraryService() {
             primary.volume = 1f
             releaseTransitionPlayer(secondary)
         }
+    }
+
+    private suspend fun prepareTransitionPlayerWithDecoderFallback(
+        track: Track,
+        transitionIsValid: () -> Boolean
+    ): ExoPlayer? {
+        repeat(2) { attempt ->
+            val candidate = buildTransitionPlayer(track).also { transitionPlayer = it }
+            candidate.setPlaybackParameters(
+                PlaybackParameters(currentAudioSettings.playbackSpeed, currentAudioSettings.pitch)
+            )
+            candidate.volume = 0f
+            candidate.setMediaItem(LevyraMediaItemFactory.build(track))
+            RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
+            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
+            candidate.prepare()
+
+            val prepared = withTimeoutOrNull(TRANSITION_PREPARE_TIMEOUT_MS) {
+                while (candidate.playbackState != Player.STATE_READY) {
+                    if (!transitionIsValid()) return@withTimeoutOrNull false
+                    if (candidate.playerError != null) return@withTimeoutOrNull false
+                    delay(50L)
+                }
+                true
+            } == true
+            if (prepared) return candidate
+
+            val decoderError = candidate.playerError
+            releaseTransitionPlayer(candidate)
+            if (
+                attempt == 0 &&
+                decoderError != null &&
+                NativeAudioIntegration.redirectFailedBackgroundDecoder(decoderError) != null
+            ) {
+                continue
+            }
+            return null
+        }
+        return null
     }
 
     private suspend fun awaitPrimaryHandoffReady(
