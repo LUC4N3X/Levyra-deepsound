@@ -47,6 +47,7 @@ import com.luc4n3x.levyra.data.locallibrary.matchesFullTagQuery
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.localLibraryRecentFilterLabel
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -55,6 +56,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LocalLibraryUiState
 
 internal enum class LocalLibraryTab { Songs, Albums, Artists, Folders }
+
+internal enum class LocalLibraryQualityFilter { All, Lossless, HighBitrate, Recent }
 
 internal fun LocalLibraryTab.label(strings: LevyraStrings): String = when (this) {
     LocalLibraryTab.Songs -> strings.songsPlain
@@ -79,6 +82,8 @@ internal fun LazyListScope.localLibrarySection(
     library: LocalLibraryUiState,
     tab: LocalLibraryTab,
     onTab: (LocalLibraryTab) -> Unit,
+    qualityFilter: LocalLibraryQualityFilter,
+    onQualityFilter: (LocalLibraryQualityFilter) -> Unit,
     expandedGroupKey: String?,
     onExpandGroup: (String?) -> Unit,
     query: String,
@@ -98,22 +103,13 @@ internal fun LazyListScope.localLibrarySection(
         return
     }
     item(key = "local-tabs", contentType = "local-tabs") {
-        val strings = LocalLevyraStrings.current
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LocalLibraryTab.entries.forEach { entry ->
-                LibraryCategoryChip(
-                    label = entry.label(strings),
-                    selected = entry == tab,
-                    onClick = {
-                        onExpandGroup(null)
-                        onTab(entry)
-                    }
-                )
+        LocalLibraryTabs(
+            selected = tab,
+            onSelect = { entry ->
+                onExpandGroup(null)
+                onTab(entry)
             }
-        }
+        )
     }
     if (library.catalog.totalCount == 0) {
         item(key = "local-empty", contentType = "local-empty") {
@@ -121,9 +117,24 @@ internal fun LazyListScope.localLibrarySection(
         }
         return
     }
+    val availableQualityFilters = localLibraryQualityFilters(
+        library.catalog.mediaByUri.values,
+        System.currentTimeMillis()
+    )
+    if (availableQualityFilters.size > 1) {
+        item(key = "local-quality-filters", contentType = "local-quality-filters") {
+            LocalLibraryQualityFilters(
+                filters = availableQualityFilters,
+                selected = qualityFilter,
+                onSelect = onQualityFilter
+            )
+        }
+    }
     when (tab) {
         LocalLibraryTab.Songs -> {
-            val songs = library.catalog.songs.filterLocalTracks(query, library.catalog.mediaByUri)
+            val songs = library.catalog.songs
+                .filterLocalTracks(query, library.catalog.mediaByUri)
+                .filterByLocalQuality(qualityFilter, library.catalog.mediaByUri)
             localTrackItems(
                 keyPrefix = "local-song",
                 tracks = songs,
@@ -137,7 +148,9 @@ internal fun LazyListScope.localLibrarySection(
             )
         }
         LocalLibraryTab.Albums -> items(
-            library.catalog.albums.filterLocalAlbums(query, library.catalog.mediaByUri),
+            library.catalog.albums
+                .filterLocalAlbums(query, library.catalog.mediaByUri)
+                .mapNotNull { it.filteredByLocalQuality(qualityFilter, library.catalog.mediaByUri) },
             key = { "local-album-${it.key}" },
             contentType = { "local-group" }
         ) { album ->
@@ -159,7 +172,9 @@ internal fun LazyListScope.localLibrarySection(
             )
         }
         LocalLibraryTab.Artists -> items(
-            library.catalog.artists.filterLocalArtists(query, library.catalog.mediaByUri),
+            library.catalog.artists
+                .filterLocalArtists(query, library.catalog.mediaByUri)
+                .mapNotNull { it.filteredByLocalQuality(qualityFilter, library.catalog.mediaByUri) },
             key = { "local-artist-${it.key}" },
             contentType = { "local-group" }
         ) { artist ->
@@ -186,7 +201,9 @@ internal fun LazyListScope.localLibrarySection(
             )
         }
         LocalLibraryTab.Folders -> items(
-            library.catalog.folders.filterLocalFolders(query, library.catalog.mediaByUri),
+            library.catalog.folders
+                .filterLocalFolders(query, library.catalog.mediaByUri)
+                .mapNotNull { it.filteredByLocalQuality(qualityFilter, library.catalog.mediaByUri) },
             key = { "local-folder-${it.key}" },
             contentType = { "local-group" }
         ) { folder ->
@@ -246,7 +263,7 @@ private fun LazyListScope.localTrackItems(
             metadata = if (track.streamUrl in unavailableUris) {
                 LocalLevyraStrings.current.localFileUnavailable
             } else {
-                null
+                mediaByUri[track.streamUrl]?.localAudioSummary()
             },
             onClick = { callbacks.onPlay(context, track) },
             onLongClick = { callbacks.onAddToQueue(listOf(track)) },
@@ -259,6 +276,192 @@ private fun LazyListScope.localTrackItems(
         )
     }
 }
+
+@Composable
+private fun LocalLibraryTabs(
+    selected: LocalLibraryTab,
+    onSelect: (LocalLibraryTab) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(22.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        LocalLibraryTab.entries.forEach { entry ->
+            val active = entry == selected
+            Column(
+                modifier = Modifier.clickable { onSelect(entry) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = entry.label(strings),
+                    color = if (active) LevyraText else LevyraMuted,
+                    fontSize = 13.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold
+                )
+                Box(
+                    modifier = Modifier
+                        .size(width = 28.dp, height = 2.dp)
+                        .background(
+                            if (active) LevyraCyan else Color.Transparent,
+                            RoundedCornerShape(99.dp)
+                        )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocalLibraryQualityFilters(
+    filters: List<LocalLibraryQualityFilter>,
+    selected: LocalLibraryQualityFilter,
+    onSelect: (LocalLibraryQualityFilter) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        filters.forEach { filter ->
+            val active = filter == selected
+            val label = when (filter) {
+                LocalLibraryQualityFilter.All -> strings.all
+                LocalLibraryQualityFilter.Lossless -> "LOSSLESS"
+                LocalLibraryQualityFilter.HighBitrate -> "320K+"
+                LocalLibraryQualityFilter.Recent -> strings.localLibraryRecentFilterLabel()
+            }
+            Surface(
+                color = if (active) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent,
+                border = BorderStroke(
+                    1.dp,
+                    if (active) LevyraCyan.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.08f)
+                ),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.clickable { onSelect(filter) }
+            ) {
+                Text(
+                    text = label,
+                    color = if (active) LevyraCyan else LevyraMuted,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+internal fun localLibraryQualityFilters(
+    media: Collection<LocalMediaEntity>,
+    nowMs: Long
+): List<LocalLibraryQualityFilter> = buildList {
+    add(LocalLibraryQualityFilter.All)
+    if (media.any(LocalMediaEntity::isLosslessLocalMedia)) add(LocalLibraryQualityFilter.Lossless)
+    if (media.any { it.bitrate >= LOCAL_HIGH_BITRATE_BPS }) add(LocalLibraryQualityFilter.HighBitrate)
+    if (media.any { it.dateAddedMs >= nowMs - LOCAL_RECENT_WINDOW_MS }) add(LocalLibraryQualityFilter.Recent)
+}
+
+internal fun LocalMediaEntity.matchesLocalQualityFilter(
+    filter: LocalLibraryQualityFilter,
+    nowMs: Long = System.currentTimeMillis()
+): Boolean = when (filter) {
+    LocalLibraryQualityFilter.All -> true
+    LocalLibraryQualityFilter.Lossless -> isLosslessLocalMedia()
+    LocalLibraryQualityFilter.HighBitrate -> bitrate >= LOCAL_HIGH_BITRATE_BPS
+    LocalLibraryQualityFilter.Recent -> dateAddedMs >= nowMs - LOCAL_RECENT_WINDOW_MS
+}
+
+private fun LocalMediaEntity.isLosslessLocalMedia(): Boolean {
+    val mime = mimeType.lowercase()
+    val extension = displayName.substringAfterLast('.', "").lowercase()
+    return mime.contains("flac") ||
+        mime.contains("alac") ||
+        mime.contains("wav") ||
+        mime.contains("aiff") ||
+        mime.contains("ape") ||
+        extension in LOCAL_LOSSLESS_EXTENSIONS
+}
+
+private fun List<Track>.filterByLocalQuality(
+    filter: LocalLibraryQualityFilter,
+    mediaByUri: Map<String, LocalMediaEntity>
+): List<Track> {
+    if (filter == LocalLibraryQualityFilter.All) return this
+    val nowMs = System.currentTimeMillis()
+    return filter { track -> mediaByUri[track.streamUrl]?.matchesLocalQualityFilter(filter, nowMs) == true }
+}
+
+private fun LocalAlbumGroup.filteredByLocalQuality(
+    filter: LocalLibraryQualityFilter,
+    mediaByUri: Map<String, LocalMediaEntity>
+): LocalAlbumGroup? {
+    val filtered = tracks.filterByLocalQuality(filter, mediaByUri)
+    if (filtered.isEmpty()) return null
+    return copy(
+        artworkModel = filtered.firstOrNull()?.thumbnailUrl.orEmpty(),
+        durationMs = filtered.sumOf { it.durationMs.coerceAtLeast(0L) },
+        tracks = filtered
+    )
+}
+
+private fun LocalArtistGroup.filteredByLocalQuality(
+    filter: LocalLibraryQualityFilter,
+    mediaByUri: Map<String, LocalMediaEntity>
+): LocalArtistGroup? {
+    val filtered = tracks.filterByLocalQuality(filter, mediaByUri)
+    if (filtered.isEmpty()) return null
+    return copy(
+        artworkModel = filtered.firstOrNull()?.thumbnailUrl.orEmpty(),
+        albumCount = filtered.map { it.album.trim().lowercase() }.filter(String::isNotEmpty).distinct().size,
+        tracks = filtered
+    )
+}
+
+private fun LocalFolderGroup.filteredByLocalQuality(
+    filter: LocalLibraryQualityFilter,
+    mediaByUri: Map<String, LocalMediaEntity>
+): LocalFolderGroup? {
+    val filtered = tracks.filterByLocalQuality(filter, mediaByUri)
+    if (filtered.isEmpty()) return null
+    return copy(
+        durationMs = filtered.sumOf { it.durationMs.coerceAtLeast(0L) },
+        tracks = filtered
+    )
+}
+
+private fun LocalMediaEntity.localAudioSummary(): String? {
+    val extension = displayName.substringAfterLast('.', "").uppercase()
+    val format = when {
+        extension.isNotBlank() -> extension
+        mimeType.contains("mpeg", ignoreCase = true) -> "MP3"
+        mimeType.contains("flac", ignoreCase = true) -> "FLAC"
+        mimeType.contains("wav", ignoreCase = true) -> "WAV"
+        mimeType.contains("ogg", ignoreCase = true) -> "OGG"
+        mimeType.contains("opus", ignoreCase = true) -> "OPUS"
+        else -> mimeType.substringAfter('/').substringBefore(';').uppercase()
+    }
+    val bitrateLabel = bitrate
+        .takeIf { it > 0 }
+        ?.div(1_000)
+        ?.let { "$it kbps" }
+    return listOf(format, bitrateLabel)
+        .filterNotNull()
+        .filter(String::isNotBlank)
+        .joinToString(" · ")
+        .takeIf(String::isNotBlank)
+}
+
+private const val LOCAL_HIGH_BITRATE_BPS = 320_000
+private const val LOCAL_RECENT_WINDOW_MS = 30L * 24L * 60L * 60L * 1_000L
+private val LOCAL_LOSSLESS_EXTENSIONS = setOf("flac", "alac", "wav", "wave", "aiff", "aif", "ape")
 
 @Composable
 private fun LocalLibraryActions(library: LocalLibraryUiState, callbacks: LocalLibraryCallbacks) {
