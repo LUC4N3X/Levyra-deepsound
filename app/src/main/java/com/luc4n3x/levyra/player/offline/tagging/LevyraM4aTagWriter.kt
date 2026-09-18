@@ -11,6 +11,36 @@ object LevyraM4aTagWriter {
     val isAvailable: Boolean = true
 
     fun write(input: File, output: File, metadata: LevyraM4aMetadata): LevyraM4aTagResult {
+        val metadataItems = buildMetadataItems(metadata)
+        if (metadataItems.isEmpty()) return LevyraM4aTagResult(false, false, "metadata_empty")
+        return writeInternal(
+            input = input,
+            output = output,
+            metadataItems = metadataItems,
+            replacementTypes = Atom.REPLACED_TAGS,
+            replacementFreeformNames = LEVYRA_FREEFORM_NAMES,
+            artworkEmbedded = metadata.artworkData?.let(::artworkType) != null
+        )
+    }
+
+    fun writeTags(input: File, output: File, edits: LevyraM4aTagEdits): LevyraM4aTagResult =
+        writeInternal(
+            input = input,
+            output = output,
+            metadataItems = buildTagEditItems(edits),
+            replacementTypes = Atom.EDITABLE_TAGS,
+            replacementFreeformNames = setOf(FREEFORM_LYRICIST),
+            artworkEmbedded = false
+        )
+
+    private fun writeInternal(
+        input: File,
+        output: File,
+        metadataItems: List<ByteArray>,
+        replacementTypes: Set<Int>,
+        replacementFreeformNames: Set<String>,
+        artworkEmbedded: Boolean
+    ): LevyraM4aTagResult {
         if (!input.exists() || !input.isFile) return LevyraM4aTagResult(false, false, "input_missing")
         if (input.length() <= 0L) return LevyraM4aTagResult(false, false, "input_empty")
         if (input.length() > MAX_INPUT_BYTES) return LevyraM4aTagResult(false, false, "input_too_large")
@@ -19,10 +49,10 @@ object LevyraM4aTagWriter {
             return LevyraM4aTagResult(false, false, "invalid_mp4")
         }
         val moov = boxes.firstOrNull { it.type == Atom.MOOV } ?: return LevyraM4aTagResult(false, false, "moov_missing")
-        val metadataItems = buildMetadataItems(metadata)
-        if (metadataItems.isEmpty()) return LevyraM4aTagResult(false, false, "metadata_empty")
         val firstMdat = boxes.firstOrNull { it.type == Atom.MDAT }
-        val initialMoov = runCatching { rebuildMoov(source, moov, metadataItems, 0L) }.getOrElse {
+        val initialMoov = runCatching {
+            rebuildMoov(source, moov, metadataItems, 0L, replacementTypes, replacementFreeformNames)
+        }.getOrElse {
             return LevyraM4aTagResult(false, false, "moov_rebuild_failed")
         }
         val offsetDelta = if (firstMdat != null && moov.start < firstMdat.start) {
@@ -30,29 +60,27 @@ object LevyraM4aTagWriter {
         } else {
             0L
         }
-        val finalMoov = runCatching { rebuildMoov(source, moov, metadataItems, offsetDelta) }.getOrElse {
+        val finalMoov = runCatching {
+            rebuildMoov(source, moov, metadataItems, offsetDelta, replacementTypes, replacementFreeformNames)
+        }.getOrElse {
             return LevyraM4aTagResult(false, false, "offset_patch_failed")
         }
         val out = ByteArrayOutputStream(source.size + max(0, finalMoov.size - moov.length))
         for (box in boxes) {
-            if (box.type == Atom.MOOV) {
-                out.write(finalMoov)
-            } else {
-                out.write(source, box.start, box.length)
-            }
+            if (box.type == Atom.MOOV) out.write(finalMoov) else out.write(source, box.start, box.length)
         }
         output.parentFile?.mkdirs()
         output.writeBytes(out.toByteArray())
-        return LevyraM4aTagResult(output.exists() && output.length() > 0L, metadata.artworkData?.let(::artworkType) != null, "ok")
+        return LevyraM4aTagResult(output.exists() && output.length() > 0L, artworkEmbedded, "ok")
     }
 
-    private fun rebuildMoov(source: ByteArray, moov: Mp4Box, metadataItems: List<ByteArray>, offsetDelta: Long): ByteArray {
+    private fun rebuildMoov(source: ByteArray, moov: Mp4Box, metadataItems: List<ByteArray>, offsetDelta: Long, replacementTypes: Set<Int>, replacementFreeformNames: Set<String>): ByteArray {
         val children = parseBoxes(source, moov.payloadStart, moov.end)
         val payload = ByteArrayOutputStream(moov.length + 4096)
         var hasUdta = false
         for (child in children) {
             if (child.type == Atom.UDTA) {
-                payload.write(rebuildUdta(source, child, metadataItems, offsetDelta))
+                payload.write(rebuildUdta(source, child, metadataItems, offsetDelta, replacementTypes, replacementFreeformNames))
                 hasUdta = true
             } else {
                 payload.write(rebuildWithOffsetPatch(source, child, offsetDelta))
@@ -62,13 +90,13 @@ object LevyraM4aTagWriter {
         return atom(Atom.MOOV, payload.toByteArray())
     }
 
-    private fun rebuildUdta(source: ByteArray, udta: Mp4Box, metadataItems: List<ByteArray>, offsetDelta: Long): ByteArray {
+    private fun rebuildUdta(source: ByteArray, udta: Mp4Box, metadataItems: List<ByteArray>, offsetDelta: Long, replacementTypes: Set<Int>, replacementFreeformNames: Set<String>): ByteArray {
         val children = parseBoxes(source, udta.payloadStart, udta.end)
         val payload = ByteArrayOutputStream(udta.length + 4096)
         var hasMeta = false
         for (child in children) {
             if (child.type == Atom.META) {
-                payload.write(rebuildMeta(source, child, metadataItems, offsetDelta))
+                payload.write(rebuildMeta(source, child, metadataItems, offsetDelta, replacementTypes, replacementFreeformNames))
                 hasMeta = true
             } else {
                 payload.write(rebuildWithOffsetPatch(source, child, offsetDelta))
@@ -78,7 +106,7 @@ object LevyraM4aTagWriter {
         return atom(Atom.UDTA, payload.toByteArray())
     }
 
-    private fun rebuildMeta(source: ByteArray, meta: Mp4Box, metadataItems: List<ByteArray>, offsetDelta: Long): ByteArray {
+    private fun rebuildMeta(source: ByteArray, meta: Mp4Box, metadataItems: List<ByteArray>, offsetDelta: Long, replacementTypes: Set<Int>, replacementFreeformNames: Set<String>): ByteArray {
         val payloadStart = meta.payloadStart
         val prefixEnd = payloadStart + 4
         val fullBoxHeader = if (prefixEnd <= meta.end) source.copyOfRange(payloadStart, prefixEnd) else ByteArray(4)
@@ -96,7 +124,7 @@ object LevyraM4aTagWriter {
                     hasHdlr = true
                 }
                 Atom.ILST -> {
-                    payload.write(rebuildIlst(source, child, metadataItems))
+                    payload.write(rebuildIlst(source, child, metadataItems, replacementTypes, replacementFreeformNames))
                     hasIlst = true
                 }
                 else -> payload.write(rebuildWithOffsetPatch(source, child, offsetDelta))
@@ -107,11 +135,11 @@ object LevyraM4aTagWriter {
         return atom(Atom.META, payload.toByteArray())
     }
 
-    private fun rebuildIlst(source: ByteArray, ilst: Mp4Box, metadataItems: List<ByteArray>): ByteArray {
+    private fun rebuildIlst(source: ByteArray, ilst: Mp4Box, metadataItems: List<ByteArray>, replacementTypes: Set<Int>, replacementFreeformNames: Set<String>): ByteArray {
         val payload = ByteArrayOutputStream(ilst.length + 4096)
         val children = runCatching { parseBoxes(source, ilst.payloadStart, ilst.end) }.getOrDefault(emptyList())
         for (child in children) {
-            if (!shouldReplaceMetadataItem(source, child)) payload.write(source, child.start, child.length)
+            if (!shouldReplaceMetadataItem(source, child, replacementTypes, replacementFreeformNames)) payload.write(source, child.start, child.length)
         }
         for (item in metadataItems) payload.write(item)
         return atom(Atom.ILST, payload.toByteArray())
@@ -241,10 +269,32 @@ object LevyraM4aTagWriter {
         return items
     }
 
-    private fun shouldReplaceMetadataItem(source: ByteArray, item: Mp4Box): Boolean {
-        if (item.type in Atom.REPLACED_TAGS) return true
+    private fun buildTagEditItems(edits: LevyraM4aTagEdits): List<ByteArray> {
+        val items = ArrayList<ByteArray>()
+        edits.title.cleanTag()?.let { items += textItem(Atom.NAM, it) }
+        edits.artist.cleanTag()?.let { items += textItem(Atom.ART, it) }
+        edits.album.cleanTag()?.let { items += textItem(Atom.ALB, it) }
+        edits.albumArtist.cleanTag()?.let { items += textItem(Atom.AART, it) }
+        edits.year.cleanTag()?.let { items += textItem(Atom.DAY, it) }
+        edits.genre.cleanTag()?.let { items += textItem(Atom.GENRE, it) }
+        if (edits.trackNumber > 0) items += pairItem(Atom.TRACK_NUMBER, edits.trackNumber, 0, trailingReserved = true)
+        if (edits.discNumber > 0) items += pairItem(Atom.DISC_NUMBER, edits.discNumber, 0, trailingReserved = false)
+        edits.composer.cleanTag()?.let { items += textItem(Atom.COMPOSER, it) }
+        edits.comment.cleanMultilineTag()?.let { items += textItem(Atom.COMMENT, it) }
+        edits.copyright.cleanTag()?.let { items += textItem(Atom.COPYRIGHT, it) }
+        edits.lyricist.cleanTag()?.let { items += freeformItem(FREEFORM_LYRICIST, it) }
+        return items
+    }
+
+    private fun shouldReplaceMetadataItem(
+        source: ByteArray,
+        item: Mp4Box,
+        replacementTypes: Set<Int>,
+        replacementFreeformNames: Set<String>
+    ): Boolean {
+        if (item.type in replacementTypes) return true
         if (item.type != Atom.FREEFORM) return false
-        return freeformName(source, item) in LEVYRA_FREEFORM_NAMES
+        return freeformName(source, item) in replacementFreeformNames
     }
 
     private fun freeformName(source: ByteArray, item: Mp4Box): String? {
@@ -405,6 +455,7 @@ object LevyraM4aTagWriter {
     private const val FREEFORM_ALBUM_URL = "ALBUM_URL"
     private const val FREEFORM_COUNTERPART_ID = "COUNTERPART_ID"
     private const val FREEFORM_MEDIA_TYPE = "MEDIA_TYPE"
+    private const val FREEFORM_LYRICIST = "LYRICIST"
     private val LEVYRA_FREEFORM_NAMES = setOf(
         FREEFORM_ISRC,
         FREEFORM_UPC,
@@ -420,6 +471,21 @@ object LevyraM4aTagWriter {
         FREEFORM_MEDIA_TYPE
     )
 }
+
+data class LevyraM4aTagEdits(
+    val title: String,
+    val artist: String,
+    val album: String,
+    val albumArtist: String,
+    val genre: String,
+    val year: String,
+    val trackNumber: Int,
+    val discNumber: Int,
+    val composer: String,
+    val lyricist: String,
+    val comment: String,
+    val copyright: String
+)
 
 data class LevyraM4aMetadata(
     val title: String,
@@ -496,6 +562,9 @@ private object Atom {
     val LYRICS = fourCc(0xA9, 'l'.code, 'y'.code, 'r'.code)
     val ENCODER = fourCc(0xA9, 't'.code, 'o'.code, 'o'.code)
     val AART = ascii("aART")
+    val COMPOSER = fourCc(0xA9, 'w'.code, 'r'.code, 't'.code)
+    val COMMENT = fourCc(0xA9, 'c'.code, 'm'.code, 't'.code)
+    val COPYRIGHT = ascii("cprt")
     val COVR = ascii("covr")
     val TRACK_NUMBER = ascii("trkn")
     val DISC_NUMBER = ascii("disk")
@@ -503,6 +572,19 @@ private object Atom {
     val FREEFORM = ascii("----")
     val MEAN = ascii("mean")
     val NAME = ascii("name")
+    val EDITABLE_TAGS = setOf(
+        NAM,
+        ART,
+        ALB,
+        DAY,
+        GENRE,
+        AART,
+        TRACK_NUMBER,
+        DISC_NUMBER,
+        COMPOSER,
+        COMMENT,
+        COPYRIGHT
+    )
     val REPLACED_TAGS = setOf(
         NAM,
         ART,
