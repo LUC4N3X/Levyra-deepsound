@@ -2501,6 +2501,12 @@ fun LevyraApp(
                 QueueOverlay(
                     state = state,
                     onPlay = viewModel::playQueueTrack,
+                    onSwitchQueueSpace = viewModel::switchQueueSpace,
+                    onCreateQueueSpace = { name -> viewModel.createQueueSpace(name) },
+                    onRenameQueueSpace = viewModel::renameQueueSpace,
+                    onDuplicateQueueSpace = viewModel::duplicateQueueSpace,
+                    onClearQueueSpace = viewModel::clearQueueSpace,
+                    onDeleteQueueSpace = viewModel::deleteQueueSpace,
                     onPlayNext = viewModel::playNext,
                     onRemove = viewModel::removeFromQueue,
                     onRemoveSelected = viewModel::removeTracksFromQueue,
@@ -2729,6 +2735,15 @@ fun LevyraApp(
                 )
             }
 
+            if (state.pendingQueueAddTracks.isNotEmpty()) {
+                QueueSpaceDestinationDialog(
+                    spaces = state.queueSpaces,
+                    activeSpaceId = state.activeQueueSpaceId,
+                    onDismiss = viewModel::dismissQueueDestinationPicker,
+                    onSelect = viewModel::addPendingTrackToQueueSpace
+                )
+            }
+
             trackActionTarget?.let { target ->
                 val download = remember(state.downloads, target.id) {
                     state.downloads.firstOrNull { it.trackId == target.id }
@@ -2750,7 +2765,12 @@ fun LevyraApp(
                     isArtistExcluded = state.artistExclusions.excludesTrack(target),
                     onDismiss = { trackActionTarget = null },
                     onPlayNext = { viewModel.playNext(target) },
-                    onAddToQueue = { viewModel.addToQueue(target) },
+                    onAddToQueue = {
+                        viewModel.addTracksToQueueSpace(state.activeQueueSpaceId, listOf(target))
+                    },
+                    queueSpaces = state.queueSpaces,
+                    activeQueueSpaceId = state.activeQueueSpaceId,
+                    onAddToQueueSpace = { spaceId -> viewModel.addTracksToQueueSpace(spaceId, listOf(target)) },
                     onAddToPlaylist = { trackActionPlaylistTarget = target },
                     onToggleFavorite = { viewModel.toggleFavorite(target) },
                     onDownload = { viewModel.exportTrack(target) },
@@ -5642,6 +5662,12 @@ private val queueSelectionSaver = listSaver<Set<String>, String>(
 private fun QueueOverlay(
     state: LevyraUiState,
     onPlay: (Track) -> Unit,
+    onSwitchQueueSpace: (String) -> Unit,
+    onCreateQueueSpace: (String) -> Unit,
+    onRenameQueueSpace: (String, String) -> Unit,
+    onDuplicateQueueSpace: (String) -> Unit,
+    onClearQueueSpace: (String) -> Unit,
+    onDeleteQueueSpace: (String) -> Unit,
     onPlayNext: (Track) -> Unit,
     onRemove: (Int) -> Unit,
     onRemoveSelected: (List<Int>) -> Unit,
@@ -5680,7 +5706,6 @@ private fun QueueOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-            .consumeOverlayTouches()
     ) {
         LazyColumn(
             modifier = Modifier
@@ -5714,6 +5739,22 @@ private fun QueueOverlay(
                         tint = LevyraText,
                         background = Color.White.copy(alpha = 0.1f),
                         onClick = onClose
+                    )
+                }
+            }
+            item(contentType = "queue-spaces") {
+                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                    QueueSpacesPanel(
+                        spaces = state.queueSpaces,
+                        activeSpaceId = state.activeQueueSpaceId,
+                        switching = state.queueSwitching,
+                        accent = queueAccent,
+                        onSwitch = onSwitchQueueSpace,
+                        onCreate = onCreateQueueSpace,
+                        onRename = onRenameQueueSpace,
+                        onDuplicate = onDuplicateQueueSpace,
+                        onClear = onClearQueueSpace,
+                        onDelete = onDeleteQueueSpace
                     )
                 }
             }

@@ -1,12 +1,12 @@
 package com.luc4n3x.levyra.player
 
 import android.content.Context
-import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.luc4n3x.levyra.data.ChartsRepository
+import com.luc4n3x.levyra.data.locallibrary.mediaSessionArtworkUri
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
@@ -248,7 +248,7 @@ class AndroidAutoLibrary(context: Context) {
             .setIsPlayable(true)
             .setDurationMs(track.durationMs.takeIf { it > 0L } ?: C.TIME_UNSET)
             .setExtras(extras)
-            .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
+            .apply { mediaSessionArtworkUri(art)?.let(::setArtworkUri) }
             .build()
         return MediaItem.Builder()
             .setMediaId(mediaId)
@@ -316,11 +316,11 @@ class AndroidAutoLibrary(context: Context) {
             .setIsPlayable(true)
             .setDurationMs(track.durationMs.takeIf { it > 0L } ?: C.TIME_UNSET)
             .setExtras(extras)
-            .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
+            .apply { mediaSessionArtworkUri(art)?.let(::setArtworkUri) }
             .build()
         return MediaItem.Builder()
             .setUri(track.streamUrl)
-            .setMediaId(trackMediaId(track))
+            .setMediaId(LevyraMediaItemFactory.mediaId(track))
             .setMediaMetadata(metadata)
             .apply { if (!track.streamUrl.isLocalUri()) setCustomCacheKey(LevyraPlaybackCacheKey.stream(track)) }
             .build()

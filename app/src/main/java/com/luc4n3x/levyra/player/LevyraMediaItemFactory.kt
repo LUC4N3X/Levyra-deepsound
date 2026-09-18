@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import com.luc4n3x.levyra.data.locallibrary.mediaSessionArtworkUri
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 
@@ -119,7 +120,7 @@ object LevyraMediaItemFactory {
             .setArtist(track.artist)
             .setSubtitle(track.artist)
             .setAlbumTitle(track.album.ifBlank { "Levyra" })
-            .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
+            .apply { mediaSessionArtworkUri(art)?.let(::setArtworkUri) }
             .setExtras(extras)
         if (track.isLiveRadio()) {
             builder.setIsPlayable(true)
@@ -128,7 +129,7 @@ object LevyraMediaItemFactory {
         return builder.build()
     }
 
-    private fun mediaId(track: Track): String {
+    fun mediaId(track: Track): String {
         return track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}-${track.title}" } }
     }
 }

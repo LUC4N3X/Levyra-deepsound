@@ -47,6 +47,7 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
@@ -93,6 +94,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
+import com.luc4n3x.levyra.ui.player.queueSpaceLabel
 import com.luc4n3x.levyra.ui.StableRemoteArtwork
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
@@ -138,6 +141,9 @@ internal fun LevyraTrackActionSheet(
     onDismiss: () -> Unit,
     onPlayNext: () -> Unit,
     onAddToQueue: () -> Unit,
+    queueSpaces: List<QueueSpaceSummary> = emptyList(),
+    activeQueueSpaceId: String = "",
+    onAddToQueueSpace: (String) -> Unit = {},
     onAddToPlaylist: () -> Unit,
     onToggleFavorite: () -> Unit,
     onDownload: () -> Unit,
@@ -154,6 +160,10 @@ internal fun LevyraTrackActionSheet(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val dragOffset = remember { Animatable(0f) }
+    var queueSpacePickerVisible by remember { mutableStateOf(false) }
+    val queueSpaceChoices = remember(queueSpaces, activeQueueSpaceId) {
+        queueSpaces.sortedBy { it.id != activeQueueSpaceId }
+    }
     val dismissDistancePx = remember(density) { with(density) { TrackActionSheetDismissDistance.toPx() } }
     var visible by remember { mutableStateOf(false) }
     var closing by remember { mutableStateOf(false) }
@@ -323,7 +333,13 @@ internal fun LevyraTrackActionSheet(
                                 label = strings.addToQueue,
                                 animationsEnabled = animationsEnabled,
                                 modifier = Modifier.weight(1f),
-                                onClick = { perform(onAddToQueue) }
+                                onClick = {
+                                    if (queueSpaceChoices.size > 1) {
+                                        queueSpacePickerVisible = !queueSpacePickerVisible
+                                    } else {
+                                        perform(onAddToQueue)
+                                    }
+                                }
                             )
                             TrackActionTile(
                                 icon = Icons.Rounded.Share,
@@ -351,6 +367,24 @@ internal fun LevyraTrackActionSheet(
                         TrackActionDivider()
 
                         Column(modifier = Modifier.padding(top = 6.dp, bottom = 14.dp)) {
+                            if (queueSpacePickerVisible && queueSpaceChoices.size > 1) {
+                                queueSpaceChoices.forEach { space ->
+                                    TrackActionRow(
+                                        icon = Icons.Rounded.Add,
+                                        label = queueSpaceLabel(space, strings),
+                                        tint = LevyraCyan,
+                                        onClick = {
+                                            perform {
+                                                if (space.id == activeQueueSpaceId) {
+                                                    onAddToQueue()
+                                                } else {
+                                                    onAddToQueueSpace(space.id)
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                             TrackActionRow(
                                 icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                                 label = strings.addToPlaylist,

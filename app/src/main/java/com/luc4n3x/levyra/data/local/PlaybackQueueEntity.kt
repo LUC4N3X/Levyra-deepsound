@@ -1,18 +1,56 @@
 package com.luc4n3x.levyra.data.local
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "playback_queue_items")
+const val DEFAULT_QUEUE_SPACE_ID = "default"
+
+@Entity(tableName = "queue_spaces")
+data class QueueSpaceEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val lastActiveAt: Long,
+    val isActive: Boolean,
+    val trackCount: Int,
+    val durationMs: Long,
+    val artworkUrls: String
+)
+
+@Entity(
+    tableName = "playback_queue_items",
+    primaryKeys = ["spaceId", "position"],
+    foreignKeys = [
+        ForeignKey(
+            entity = QueueSpaceEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["spaceId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
 data class PlaybackQueueItemEntity(
-    @PrimaryKey val position: Int,
+    val spaceId: String,
+    val position: Int,
     val payload: String,
     val identity: String
 )
 
-@Entity(tableName = "playback_queue_state")
+@Entity(
+    tableName = "playback_queue_state",
+    foreignKeys = [
+        ForeignKey(
+            entity = QueueSpaceEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["spaceId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
 data class PlaybackQueueStateEntity(
-    @PrimaryKey val singletonId: Int = 1,
+    @PrimaryKey val spaceId: String,
     val currentIndex: Int,
     val positionMs: Long,
     val shuffleEnabled: Boolean,

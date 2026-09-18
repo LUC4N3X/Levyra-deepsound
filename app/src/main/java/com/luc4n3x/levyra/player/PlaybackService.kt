@@ -697,7 +697,13 @@ class PlaybackService : MediaLibraryService() {
         }
         serviceScope.launch {
             while (isActive) {
-                if (player.mediaItemCount > 0) queueEngine.updatePosition(player.currentPosition)
+                val queueTrack = queueEngine.state.value.currentTrack
+                if (
+                    queueTrack != null &&
+                    player.currentMediaItem?.mediaId == LevyraMediaItemFactory.mediaId(queueTrack)
+                ) {
+                    queueEngine.updatePosition(player.currentPosition)
+                }
                 delay(2_000L)
             }
         }

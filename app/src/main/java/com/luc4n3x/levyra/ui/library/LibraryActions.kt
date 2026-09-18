@@ -1131,6 +1131,7 @@ internal fun LibraryCategory.libraryLabel(strings: LevyraStrings): String = when
     LibraryCategory.Artists -> strings.artists
     LibraryCategory.Songs -> strings.songsPlain
     LibraryCategory.Offline -> strings.offline
+    LibraryCategory.Device -> strings.localOnDevice
 }
 
 internal fun LibrarySort.libraryLabel(strings: LevyraStrings): String = when (this) {
