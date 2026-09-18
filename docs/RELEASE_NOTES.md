@@ -1,76 +1,86 @@
-# Levyra 2.5.8
+# Levyra 2.5.9
 
 ## Highlights
 
-Levyra 2.5.8 is a broad Android update focused on the parts you notice every day: how music sounds, how reliably playback recovers, how you discover something new, and how much of your listening history the app can turn into something useful.
+2.5.9 is one of those releases where a lot changed under the hood, but the goal is simple: make Levyra feel better to use every day.
 
-Audio Intelligence 3.0 brings more accurate volume normalization, better continuity for albums that are meant to flow without a break, and a searchable AutoEQ headphone catalog. Listening Recap and Listening Insights make local history far more useful, while Explore, Live Radio, Search, Home, playlists, downloads and Motion Artwork all received meaningful upgrades.
+Queues are no longer something you lose when you move between listening sessions. Local music is treated like a real part of the library instead of a side feature. Search starts returning useful results sooner. The player has more ways to look and behave without splitting into separate playback systems. There is also a fair amount of work here that you will hopefully never notice directly: safer audio fallback, better recovery paths, stricter queue handling and more defensive playback code.
 
-This is still Levyra: no account requirement was added, personal listening stats remain on-device, and the Android and Desktop release lines stay independent.
+## Queue Spaces and Local Library 2.0
 
-## ✦ Audio Intelligence 3.0
+Levyra can now keep multiple persistent Queue Spaces. You can move between them without throwing away what was already queued, and empty queues are preserved instead of silently disappearing.
 
-Volume normalization now uses YouTube loudness information correctly instead of treating every track as if it needed the same adjustment.
+Local Library 2.0 is a much larger pass over local music support. Levyra now keeps a proper local catalog, reads and reconciles metadata more carefully, handles local artwork, and has stronger support for editing and preserving tags. Local tracks fit into the same library and playback flow more naturally instead of feeling bolted on.
 
-Album playback is also smarter. Consecutive tracks from the same release can continue cleanly even when crossfade is enabled, which matters for live albums, DJ mixes and records designed as one continuous listen. When playback leaves that album sequence, normal crossfade behavior remains available.
+## Player Deck and Playlist Studio
 
-AutoEQ is easier to use too: the headphone correction catalog is searchable, so finding and applying a profile no longer depends on knowing exactly where a model sits in the catalog.
+The player now has Player Deck: a single place to switch between Levyra's player presentations with live previews. Editorial and Pulse join the existing layouts while still using the same playback state, queue, actions, lyrics and gestures underneath.
 
-## ✦ Listening Recap and deeper Insights
+Playlist Studio is the new full-screen playlist editor. It brings cover previews, generated artwork, local-library search, drag reorder, undo, playlist stats and a safer save flow. Playlist edits are committed together so a failed save does not leave half of the playlist changed.
 
-Levyra can now turn your local listening history into a much richer picture of what you have actually been playing.
+## Faster search and better discovery flow
 
-Listening Recap adds a more visual summary of your listening, while Listening Insights brings period-based analytics, chronological 24-hour activity, listening rhythm, top music, discovery highlights and searchable history.
+Search has been rebuilt around a dedicated Levyra search engine. Local matching, request pooling, memoization and progressive merging let the screen publish useful results earlier instead of waiting for every source to finish.
 
-The important part is where this data lives: the feature is built on Levyra's existing local listening history. It does not require a Levyra account or a new analytics service.
+The goal here is not to make search look busier. It is to make it feel immediate, especially when the answer is already in your local library or cache.
 
-## ✦ Explore, Live Radio and Search
+## Audio and playback
 
-Explore has been reorganized to make discovery easier to scan and faster to use. Levyra Live Radio now sits inside that experience with worldwide and locale-based station discovery.
+2.5.9 adds an optional native audio path for upstream builds using Oboe/AAudio. It stays opt-in and falls back to the normal Android audio path if the native output cannot be used safely.
 
-Home has also been polished with a new Personal Orbit layout and lighter scrolling work, while Search gets a stronger top-result card with direct actions and track context instead of feeling like a plain result list.
+There is also an FFmpeg decoder fallback for audio formats that the device decoder fails to handle. Levyra can retry through FFmpeg instead of simply giving up on the track.
 
-Together these changes make discovery feel less like a collection of separate screens and more like one connected path from curiosity to playback.
+High-quality audio routing has been tightened as well. Provider failures are isolated more cleanly, stale mappings are handled more carefully and the fallback path is less likely to get stuck retrying the same bad source.
 
-## ✦ Better playlists, downloads and artwork
+## Sleep Timer, WaveSeek and output controls
 
-Playlist Pro adds fast local search across title, artist and album, stable multi-select actions, ordered queue operations and custom square playlist covers. Custom covers are preserved through Levyra backup and restore.
+Sleep Timer 2.0 adds a cleaner timer flow with optional fade-out and scheduling support.
 
-Downloads can now be saved to a folder you choose, including supported SD-card locations, so storage is no longer tied to one fixed destination.
+WaveSeek adds a waveform-backed seek experience built around captured playback envelopes rather than a decorative fake waveform.
 
-Motion Artwork has a stronger fallback chain for Canvas sources, with an optional Wi-Fi-only policy for people who want tighter control over mobile data usage. Normal behavior remains available without forcing Wi-Fi-only loading.
+The new Output Hub also gives audio routing and output-related controls a clearer home instead of scattering them around the player and settings.
 
-## ✦ Playback resilience and high-quality audio
+## Jam, Ambient and Theme Studio
 
-The high-quality audio path has been hardened further. JioSaavn resolution is more resilient, startup work is tighter, and new installs now default to High audio quality.
+Levyra Jam now has real host moderation. Guests can wait for approval, hosts can accept or reject them, remove or block participants, lock a session and keep track of who added music to the queue.
 
-The YouTube player-config path is also harder to break. Levyra now validates an ordered source chain and keeps last-known-good data before falling back to the bundled configuration, so a bad or unreachable remote config cannot simply replace a working one.
+Ambient has grown into a proper standby surface with multiple layouts, optional clock and playback information, OLED-friendly presentation and artwork-driven accents.
 
-These are deliberately fallback-oriented changes: optional providers and remote configuration should improve playback when they work, not become new single points of failure.
+Theme Studio moves theme selection into its own screen with live preview and a larger preset/accent system, while keeping existing saved themes compatible.
+
+## Lyrics, artwork and smaller improvements
+
+Lyrics handling gained broader romanization support and latency profiles, plus more work around sharing and rendering lyric cards.
+
+Motion Artwork received more defensive source handling and priority behavior. Player visuals, artwork transitions, haptics and motion tokens were also cleaned up so the different player surfaces behave more consistently.
+
+There are many smaller fixes across Android Auto, backups, playlists, downloads, localization, radio, artwork caching and playback recovery. They are not glamorous individually, but together they remove quite a few rough edges.
 
 ## Validation
 
-Levyra 2.5.8 is published through the repository's signed Android release workflow. Before GitHub can publish the release, that workflow validates the release metadata and required note structure, runs Android release lint, builds the signed release APK, checks the APK version name and version code, verifies the signing certificate, generates a SHA-256 checksum, uploads both artifacts and verifies the published download again.
+The 2.5.9 release uses Levyra's normal signed Android release pipeline. The workflow validates the release metadata, runs release lint, builds the signed APK, checks the APK version and signing certificate, generates the SHA-256 checksum and verifies the published artifact.
 
-The feature work included in 2.5.8 also carries focused automated coverage across audio intelligence behavior, AutoEQ catalog handling, listening recap and analytics, playlist operations and backup behavior, player-config fallback, high-quality audio resilience and Motion Artwork policies.
+Feature work in this release also includes focused automated coverage for persistent queues, local-library reconciliation and tags, search behavior, Playlist Studio recovery, Jam moderation, WaveSeek policies, native audio fallback, Motion Artwork and backup/restore behavior.
 
-These notes do not claim a new full physical-device matrix, Android Auto pass, Bluetooth matrix or long-session OEM test for every feature in the release.
+As usual, automated coverage is not the same thing as testing every phone, ROM, Bluetooth device or Android Auto setup in existence. If something behaves differently on your device, opening an issue with the device and Android version is genuinely useful.
 
 ## Versioning
 
-- Version name: `2.5.8`
-- Version code: `2050800`
+- Version name: `2.5.9`
+- Version code: `2050900`
 
-This is an Android release. Levyra Desktop remains independently versioned and is not bumped by 2.5.8.
+This is an Android release. Levyra Desktop keeps its own independent release line.
 
 ## Upgrade notes
 
 No manual migration is required.
 
-Existing favorites, playlists, custom playlist covers, listening history, queue state, settings and other supported local data continue through Levyra's normal database migration and backup/restore paths.
+Existing favorites, playlists, queue state, listening history, settings and other supported local data continue through Levyra's normal migrations and backup/restore paths.
 
-GitHub users can update through the normal signed Levyra release. F-Droid, IzzyOnDroid and other third-party distribution channels follow their own build and indexing schedules, so 2.5.8 may appear there later than on GitHub.
+GitHub users can update with the signed APK from the release page. Third-party stores and repositories publish on their own schedules.
 
 ## Final note
 
-2.5.8 makes Levyra feel more complete without changing what the project is built around: better playback, more useful local data, stronger discovery and fewer fragile paths between pressing Play and hearing the right track.
+2.5.9 is mostly about making the pieces Levyra already has work together more naturally: online and local music, queues that survive, a player that can change shape without changing behavior, and playback that has more than one way to recover when Android or a provider gets in the way.
+
+That is the direction I want Levyra to keep moving in.
