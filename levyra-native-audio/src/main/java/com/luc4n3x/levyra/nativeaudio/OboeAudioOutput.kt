@@ -31,7 +31,6 @@ internal class OboeAudioOutput private constructor(
     private val listeners = CopyOnWriteArraySet<AudioOutput.Listener>()
     private val ownerHandler = Handler(Looper.myLooper() ?: Looper.getMainLooper())
     private val audioSessionId = OboeNative.nativeGetSessionId(handle).takeIf { it > 0 } ?: requestedAudioSessionId
-    private val openedDeviceId = OboeNative.nativeGetDeviceId(handle)
     private val bufferSizeInFrames = OboeNative.nativeGetBufferSizeInFrames(handle).toLong()
 
     private var released = false
