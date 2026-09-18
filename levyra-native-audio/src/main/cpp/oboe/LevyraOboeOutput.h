@@ -69,6 +69,7 @@ private:
     std::atomic<int32_t> underrunCount_{0};
     std::atomic<int32_t> errorCode_{0};
     std::atomic<bool> endOfStream_{false};
+    std::atomic<bool> stopRequested_{false};
     std::atomic<bool> playing_{false};
     std::atomic<float> targetVolume_{1.0f};
 
