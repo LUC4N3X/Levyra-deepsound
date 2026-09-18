@@ -209,7 +209,7 @@ class LocalLibraryRepository private constructor(context: Context) {
                 if (mode == LocalScanMode.Quick && unchanged && previous.fullTagSearchText.isNotBlank()) {
                     row.withDeepTagsFrom(previous)
                 } else {
-                    row.withDeepTags(LocalDeepTagReader.read(row))
+                    row.withDeepTags(LocalDeepTagReader.read(appContext, row))
                 }
             }
         val plan = planLocalLibraryReconcile(
