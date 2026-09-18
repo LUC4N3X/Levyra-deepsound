@@ -121,11 +121,13 @@ internal fun LazyListScope.localLibrarySection(
         library.catalog.mediaByUri.values,
         System.currentTimeMillis()
     )
+    val effectiveQualityFilter = qualityFilter.takeIf { it in availableQualityFilters }
+        ?: LocalLibraryQualityFilter.All
     if (availableQualityFilters.size > 1) {
         item(key = "local-quality-filters", contentType = "local-quality-filters") {
             LocalLibraryQualityFilters(
                 filters = availableQualityFilters,
-                selected = qualityFilter,
+                selected = effectiveQualityFilter,
                 onSelect = onQualityFilter
             )
         }
@@ -134,7 +136,7 @@ internal fun LazyListScope.localLibrarySection(
         LocalLibraryTab.Songs -> {
             val songs = library.catalog.songs
                 .filterLocalTracks(query, library.catalog.mediaByUri)
-                .filterByLocalQuality(qualityFilter, library.catalog.mediaByUri)
+                .filterByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri)
             localTrackItems(
                 keyPrefix = "local-song",
                 tracks = songs,
@@ -150,7 +152,7 @@ internal fun LazyListScope.localLibrarySection(
         LocalLibraryTab.Albums -> items(
             library.catalog.albums
                 .filterLocalAlbums(query, library.catalog.mediaByUri)
-                .mapNotNull { it.filteredByLocalQuality(qualityFilter, library.catalog.mediaByUri) },
+                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri) },
             key = { "local-album-${it.key}" },
             contentType = { "local-group" }
         ) { album ->
@@ -174,7 +176,7 @@ internal fun LazyListScope.localLibrarySection(
         LocalLibraryTab.Artists -> items(
             library.catalog.artists
                 .filterLocalArtists(query, library.catalog.mediaByUri)
-                .mapNotNull { it.filteredByLocalQuality(qualityFilter, library.catalog.mediaByUri) },
+                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri) },
             key = { "local-artist-${it.key}" },
             contentType = { "local-group" }
         ) { artist ->
@@ -203,7 +205,7 @@ internal fun LazyListScope.localLibrarySection(
         LocalLibraryTab.Folders -> items(
             library.catalog.folders
                 .filterLocalFolders(query, library.catalog.mediaByUri)
-                .mapNotNull { it.filteredByLocalQuality(qualityFilter, library.catalog.mediaByUri) },
+                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri) },
             key = { "local-folder-${it.key}" },
             contentType = { "local-group" }
         ) { folder ->
@@ -418,9 +420,14 @@ private fun LocalArtistGroup.filteredByLocalQuality(
 ): LocalArtistGroup? {
     val filtered = tracks.filterByLocalQuality(filter, mediaByUri)
     if (filtered.isEmpty()) return null
+    val filteredAlbumCount = filtered
+        .map { it.album.trim().lowercase() }
+        .filter(String::isNotEmpty)
+        .distinct()
+        .size
     return copy(
         artworkModel = filtered.firstOrNull()?.thumbnailUrl.orEmpty(),
-        albumCount = filtered.map { it.album.trim().lowercase() }.filter(String::isNotEmpty).distinct().size,
+        albumCount = filteredAlbumCount.takeIf { it > 0 } ?: albumCount,
         tracks = filtered
     )
 }
@@ -621,7 +628,11 @@ private fun LocalGroupBlock(
                     isFavorite = track.id in favoriteIds,
                     isDownloaded = true,
                     downloadProgress = null,
-                    metadata = if (track.streamUrl in unavailableUris) strings.localFileUnavailable else null,
+                    metadata = if (track.streamUrl in unavailableUris) {
+                        strings.localFileUnavailable
+                    } else {
+                        mediaByUri[track.streamUrl]?.localAudioSummary()
+                    },
                     onClick = { callbacks.onPlay(tracks, track) },
                     onLongClick = { callbacks.onAddToQueue(listOf(track)) },
                     onFavorite = { callbacks.onToggleFavorite(track) },
