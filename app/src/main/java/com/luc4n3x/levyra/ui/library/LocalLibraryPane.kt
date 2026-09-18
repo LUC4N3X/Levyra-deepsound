@@ -506,9 +506,15 @@ internal fun localLibraryAlphabetIndex(
     tab: LocalLibraryTab,
     qualityFilter: LocalLibraryQualityFilter,
     query: String,
-    nowMs: Long
+    nowMs: Long,
+    songsAlphabetical: Boolean
 ): LocalLibraryAlphabetIndex {
-    if (!library.permissionGranted || library.catalog.totalCount == 0) {
+    if (
+        !library.permissionGranted ||
+        library.catalog.totalCount == 0 ||
+        tab == LocalLibraryTab.Folders ||
+        tab == LocalLibraryTab.Songs && !songsAlphabetical
+    ) {
         return LocalLibraryAlphabetIndex()
     }
     val availableFilters = localLibraryQualityFilters(library.catalog.mediaByUri.values, nowMs)
@@ -526,10 +532,7 @@ internal fun localLibraryAlphabetIndex(
             .filterLocalArtists(query, library.catalog.mediaByUri)
             .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri) }
             .map(LocalArtistGroup::name)
-        LocalLibraryTab.Folders -> library.catalog.folders
-            .filterLocalFolders(query, library.catalog.mediaByUri)
-            .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri) }
-            .map(LocalFolderGroup::name)
+        LocalLibraryTab.Folders -> emptyList()
     }
     val targets = buildList {
         var previous: Char? = null
@@ -600,7 +603,9 @@ internal fun LocalLibraryAlphabetRail(
 }
 
 private fun localAlphabetLetter(value: String): Char? = normalizeLibraryText(value)
-    .firstOrNull { it in 'a'..'z' }
+    .trimStart()
+    .firstOrNull()
+    ?.takeIf { it in 'a'..'z' }
     ?.uppercaseChar()
 
 private const val LOCAL_ALPHABET_MIN_ITEMS = 50
