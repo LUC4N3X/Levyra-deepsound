@@ -148,6 +148,8 @@ internal fun AudioSettingsPanel(
     onTempo: (Float) -> Unit,
     onPitch: (Float) -> Unit,
     onGapless: (Boolean) -> Unit,
+    aaudioOutputAvailable: Boolean,
+    onAaudioOutput: (Boolean) -> Unit,
     onResetEqualizer: () -> Unit,
     onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
     onSaveAutoEqPreset: (String, AutoEqImporter.ImportedProfile) -> Unit,
@@ -380,6 +382,16 @@ internal fun AudioSettingsPanel(
                         checked = audioSettings.gaplessEnabled,
                         onCheckedChange = onGapless
                     )
+                }
+                if (aaudioOutputAvailable) {
+                    item {
+                        AudioToggleRow(
+                            title = strings.audioOutputAaudio,
+                            subtitle = strings.audioOutputAaudioSubtitle,
+                            checked = audioSettings.aaudioOutputEnabled,
+                            onCheckedChange = onAaudioOutput
+                        )
+                    }
                 }
                 item {
                     AudioSliderRow(

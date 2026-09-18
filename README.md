@@ -266,6 +266,8 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
       <p><b>Fast, native, interruption-free.</b><br><sub>The player is kept close to the platform, with low overhead and direct control over the playback session on Android and Windows.</sub></p>
       <ul>
         <li><b>Native Engines:</b> Media3 / ExoPlayer on Android and an isolated libvlc player on Windows.</li>
+        <li><b>AAudio / Oboe Output:</b> Upstream Android builds can use an optional native AAudio output on supported devices. It stays behind the existing DSP chain and falls back to the normal AudioTrack path if the native output cannot be used safely.</li>
+        <li><b>FFmpeg Decoder Fallback:</b> When Android's platform decoder genuinely cannot handle a supported audio stream, Levyra can retry through its bundled FFmpeg audio decoder instead of giving up on the track. Network, source-resolution, and DRM failures stay outside this fallback.</li>
         <li><b>Verified HQ Audio:</b> Android can use a verified alternative source up to 320 kbps without changing the original Levyra/YouTube track identity. If verification fails, it falls back normally.</li>
         <li><b>Gapless & Queue:</b> Gapless transitions, shuffle/repeat, queue Undo, and album continuity that avoids crossfading between consecutive tracks from the same release.</li>
         <li><b>Queue Spaces:</b> Keep several named queues instead of one disposable list. Spaces survive restarts and backups, and you can create, rename, duplicate, switch, clear, delete, or send tracks to another space without rebuilding everything.</li>
@@ -445,7 +447,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
     </tr>
     <tr valign="top">
       <td><b>Playback</b><br><sub>Runtime core</sub></td>
-      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a></b><br><sub>Media3 / ExoPlayer foreground service, MediaSession, queues, and Android playback ownership.</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a> + <a href="levyra-native-audio"><code>levyra-native-audio/</code></a></b><br><sub>Media3 / ExoPlayer owns the playback session, while the optional native layer adds AAudio / Oboe output and FFmpeg decoder fallback for upstream Android builds.</sub></td>
       <td><b><a href="desktop/player"><code>player/</code></a></b><br><sub>libvlc playback, hardware acceleration, tray controls, and global hotkeys.</sub></td>
     </tr>
     <tr valign="top">

@@ -1613,6 +1613,7 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("playbackSpeed", value.playbackSpeed.toDouble())
     .put("pitch", value.pitch.toDouble())
     .put("gaplessEnabled", value.gaplessEnabled)
+    .put("aaudioOutputEnabled", value.aaudioOutputEnabled)
     .put("customPresets", JSONArray().apply { value.customPresets.forEach { put(customPresetToJson(it)) } })
 
 internal fun backupAudioQualityFromJson(settings: JSONObject): String =
@@ -1646,6 +1647,7 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         playbackSpeed = json.optDouble("playbackSpeed", 1.0).toFloat(),
         pitch = json.optDouble("pitch", 1.0).toFloat(),
         gaplessEnabled = json.optBoolean("gaplessEnabled", true),
+        aaudioOutputEnabled = json.optBoolean("aaudioOutputEnabled", false),
         customPresets = customPresets
     ).normalized()
 }

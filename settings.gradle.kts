@@ -38,3 +38,4 @@ rootProject.name = "Levyra"
 include(":app")
 include(":baselineprofile")
 include(":levyra-recognition")
+include(":levyra-native-audio")

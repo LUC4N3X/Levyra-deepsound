@@ -36,6 +36,7 @@ jobs:
       publish: ${{ steps.version.outputs.publish }}
     env:
       LEVYRA_SIGNING_CERT_SHA256: 90221b5db83ec605c349fb256efe6801a4b0f2e6ed5da19e18dba6fa1f23e97b
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
 
     steps:
       - name: Checkout
@@ -158,7 +159,9 @@ jobs:
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
             "platforms;android-37.0" \
-            "build-tools;36.0.0"
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
 
       - name: Setup Gradle
         if: steps.version.outputs.publish == 'true'
