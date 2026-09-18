@@ -661,10 +661,10 @@ Levyra is provided under the **[GNU GPL v3.0](LICENSE)**.
 
 For third-party rights, lawful use, user responsibilities, warranty, and liability terms, see the complete **[Legal Notice](docs/legal/LEGAL.md)**.
 
+---
+
 <div align="center">
-  <sub>🇮🇹 <b>Made in Italy. Built for the world.</b></sub>
-  <br><br>
-  <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
+  <sub><b>🇮🇹 Made in Italy. Built for the world.</b></sub>
   <br><br>
   <img src="docs/assets/levyra-signature.png" width="480" alt="LUC4N3X — Levyra signature" />
 </div>
