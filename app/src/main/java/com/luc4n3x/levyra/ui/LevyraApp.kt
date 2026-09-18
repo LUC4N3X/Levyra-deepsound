@@ -11684,8 +11684,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         SearchHeader(
             query = state.query,
@@ -11722,7 +11722,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 188.dp else 100.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             if (queryClean.isEmpty()) {
                 if (state.recentSearches.isNotEmpty()) {
@@ -12041,8 +12041,7 @@ private fun SearchHeader(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val data = result.data
-            val matches = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
             if (!matches.isNullOrEmpty()) {
                 val spokenText = matches[0]
                 onQuery(spokenText)
@@ -12050,11 +12049,16 @@ private fun SearchHeader(
             }
         }
     }
+    val microphonePermission = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) onRecognize()
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(top = 8.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -12068,52 +12072,36 @@ private fun SearchHeader(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = LocalLevyraStrings.current.back,
+                contentDescription = strings.back,
                 tint = LevyraText
             )
         }
 
-        val searchShape = RoundedCornerShape(20.dp)
         Surface(
-            color = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color(0xFF11131A),
+            color = if (LevyraIsLight) Color.White.copy(alpha = 0.94f) else Color(0xFF11131A),
             border = BorderStroke(
                 Dp.Hairline,
-                if (LevyraIsLight) Color(0x1811131F) else Color.White.copy(alpha = 0.09f)
+                if (LevyraIsLight) Color(0x1411131F) else Color.White.copy(alpha = 0.075f)
             ),
-            shape = searchShape,
-            shadowElevation = if (LevyraIsLight) 3.dp else 8.dp,
+            shape = RoundedCornerShape(18.dp),
+            shadowElevation = if (LevyraIsLight) 2.dp else 0.dp,
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 58.dp)
+                .heightIn(min = 52.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 9.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                    .padding(start = 14.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    LevyraCyan.copy(alpha = 0.22f),
-                                    LevyraViolet.copy(alpha = 0.14f)
-                                )
-                            ),
-                            RoundedCornerShape(13.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = LevyraCyan,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(19.dp)
+                )
 
                 BasicTextField(
                     value = query,
@@ -12131,9 +12119,9 @@ private fun SearchHeader(
                             if (query.isEmpty()) {
                                 Text(
                                     text = strings.searchPlaceholder,
-                                    color = LevyraMuted.copy(alpha = 0.86f),
+                                    color = LevyraMuted.copy(alpha = 0.82f),
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 14.5.sp,
+                                    fontSize = 14.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -12145,19 +12133,14 @@ private fun SearchHeader(
 
                 if (isSearching) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
                         color = LevyraCyan
                     )
                 } else if (query.isNotEmpty()) {
                     IconButton(
                         onClick = onClear,
-                        modifier = Modifier
-                            .size(34.dp)
-                            .background(
-                                if (LevyraIsLight) Color(0x0D11131F) else Color.White.copy(alpha = 0.05f),
-                                RoundedCornerShape(12.dp)
-                            )
+                        modifier = Modifier.size(38.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
@@ -12167,64 +12150,55 @@ private fun SearchHeader(
                         )
                     }
                 }
-            }
-        }
 
-        IconButton(
-            onClick = {
-                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.forLanguageTag(strings.code).toLanguageTag())
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, Locale.forLanguageTag(strings.code).toLanguageTag())
-                    putExtra(RecognizerIntent.EXTRA_PROMPT, strings.listeningPrompt)
+                IconButton(
+                    onClick = {
+                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.forLanguageTag(strings.code).toLanguageTag())
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, Locale.forLanguageTag(strings.code).toLanguageTag())
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, strings.listeningPrompt)
+                        }
+                        try {
+                            speechRecognizerLauncher.launch(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, strings.voiceSearchUnsupported, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Mic,
+                        contentDescription = strings.voice,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(19.dp)
+                    )
                 }
-                try {
-                    speechRecognizerLauncher.launch(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, strings.voiceSearchUnsupported, Toast.LENGTH_SHORT).show()
-                }
-            },
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color.White.copy(alpha = 0.05f), CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Mic,
-                contentDescription = strings.voice,
-                tint = LevyraText,
-                modifier = Modifier.size(20.dp)
-            )
-        }
 
-        if (recognitionAvailable) {
-            val microphonePermission = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.RequestPermission()
-            ) { granted ->
-                if (granted) onRecognize()
-            }
-            IconButton(
-                onClick = {
-                    if (recognitionBusy) {
-                        onCancelRecognition()
-                    } else if (
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-                        PackageManager.PERMISSION_GRANTED
+                if (recognitionAvailable) {
+                    IconButton(
+                        onClick = {
+                            if (recognitionBusy) {
+                                onCancelRecognition()
+                            } else if (
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                                PackageManager.PERMISSION_GRANTED
+                            ) {
+                                onRecognize()
+                            } else {
+                                microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        modifier = Modifier.size(38.dp)
                     ) {
-                        onRecognize()
-                    } else {
-                        microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+                        Icon(
+                            imageVector = Icons.Rounded.GraphicEq,
+                            contentDescription = strings.recognizeMusic,
+                            tint = if (recognitionBusy) LevyraCyan else LevyraMuted,
+                            modifier = Modifier.size(19.dp)
+                        )
                     }
-                },
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.GraphicEq,
-                    contentDescription = strings.recognizeMusic,
-                    tint = if (recognitionBusy) LevyraCyan else LevyraText,
-                    modifier = Modifier.size(20.dp)
-                )
+                }
             }
         }
     }
@@ -12247,72 +12221,71 @@ private fun RecentSearchesRow(
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = strings.recentSearches,
             color = LevyraText,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
         )
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(end = 16.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(end = 12.dp)
         ) {
             items(tracks, key = { "recent-${it.id}" }) { track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
                 val isFavorite = track.id in favoriteIds
                 val isDownloaded = track.id in downloadedTrackIds
 
-                Column(
+                Surface(
+                    color = LevyraPanelSoft.copy(alpha = 0.62f),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.055f)),
                     modifier = Modifier
-                        .width(140.dp)
-                        .clickable { onTrackClick(track) },
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .width(218.dp)
+                        .clickable { onTrackClick(track) }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1.5f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White.copy(alpha = 0.04f))
+                    Row(
+                        modifier = Modifier.padding(start = 7.dp, top = 7.dp, bottom = 7.dp, end = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(9.dp)
                     ) {
                         CoverImage(
                             track = track,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)))),
-                            contentAlignment = Alignment.Center
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(11.dp))
+                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                                    .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.PlayArrow,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                            Text(
+                                text = track.title,
+                                color = LevyraText,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = track.artist,
+                                color = LevyraMuted,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                        Box {
                             IconButton(
                                 onClick = { menuExpanded = true },
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .size(32.dp)
-                                    .background(Color.Black.copy(alpha = 0.58f), CircleShape)
+                                modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.MoreVert,
                                     contentDescription = strings.actions,
-                                    tint = Color.White,
+                                    tint = LevyraMuted,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -12397,22 +12370,6 @@ private fun RecentSearchesRow(
                             }
                         }
                     }
-                    Text(
-                        text = track.title,
-                        color = LevyraText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.artist,
-                        color = LevyraMuted,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 }
             }
         }
@@ -12428,36 +12385,25 @@ private fun SearchQueryChips(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         suggestions.forEach { suggestion ->
             Surface(
-                color = CinematicGlass.copy(alpha = 0.72f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = CircleShape,
+                color = Color.White.copy(alpha = 0.035f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.075f)),
+                shape = RoundedCornerShape(11.dp),
                 modifier = Modifier.pressable(onClick = { onClick(suggestion) })
             ) {
-                Row(
-                    modifier = Modifier.padding(start = 10.dp, end = 13.dp, top = 9.dp, bottom = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = LevyraCyan,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = suggestion,
-                        color = LevyraText,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = suggestion,
+                    color = LevyraMuted,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
+                )
             }
         }
     }
@@ -20497,22 +20443,25 @@ private fun SearchFilterChips(
     }
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         chips.forEach { (filter, label) ->
             val active = filter == selected
             Surface(
-                color = if (active) LevyraText else Color.White.copy(alpha = 0.06f),
-                shape = RoundedCornerShape(99.dp),
-                border = if (active) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                color = if (active) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (active) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.075f)
+                ),
                 modifier = Modifier.clickable { onSelect(filter) }
             ) {
                 Text(
                     text = label,
-                    color = if (active) LevyraBlack else LevyraText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    color = if (active) LevyraCyan else LevyraMuted,
+                    fontSize = 11.5.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
         }
