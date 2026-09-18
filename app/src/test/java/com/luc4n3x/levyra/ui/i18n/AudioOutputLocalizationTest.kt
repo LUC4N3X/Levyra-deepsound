@@ -22,7 +22,18 @@ class AudioOutputLocalizationTest {
     }
 
     @Test
+    fun subtitleNamesTheOutputPathWithoutLatencyOrBatteryClaims() {
+        val latencyOrBatteryTerms = listOf("latency", "latenza", "battery", "batteria", "低延迟", "低遅延", "저지연")
+        LevyraStrings.all().forEach { strings ->
+            val subtitle = strings.audioOutputAaudioSubtitle
+            assertTrue(strings.code, subtitle.contains("AAudio") && subtitle.contains("Oboe"))
+            assertTrue(strings.code, latencyOrBatteryTerms.none { subtitle.contains(it, ignoreCase = true) })
+        }
+    }
+
+    @Test
     fun italianCopyIsTranslated() {
         assertEquals("Uscita AAudio (Oboe)", LevyraStrings.forCode("it").audioOutputAaudio)
+        assertEquals("Uscita audio nativa tramite AAudio e Oboe", LevyraStrings.forCode("it").audioOutputAaudioSubtitle)
     }
 }

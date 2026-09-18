@@ -59,7 +59,9 @@ internal class OboeAudioOutput private constructor(
     override fun pause() {
         if (released || stopped) return
         playing = false
-        OboeNative.nativePause(handle)
+        if (OboeNative.nativePause(handle) < 0) {
+            markOutputLost()
+        }
     }
 
     override fun write(buffer: ByteBuffer, encodedAccessUnitCount: Int, presentationTimeUs: Long): Boolean {
