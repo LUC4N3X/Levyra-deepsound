@@ -328,4 +328,4 @@ internal fun qobuzStreamBody(url: String, bitDepth: Int = 24, samplingRateKhz: D
     .toString()
 
 internal fun qobuzMediaUrl(format: Int, expiresAtSeconds: Long = System.currentTimeMillis() / 1_000L + 1_800L) =
-    "https://streaming-qobuz-std.akamaized.net/file?uid=1&fmt=$format&etsp=$expiresAtSeconds&hmac=secret"
+    "https://streaming-qobuz-std.akamaized.net/file?uid=1&fmt=$format&etsp=$expiresAtSeconds&hmac=signature"
