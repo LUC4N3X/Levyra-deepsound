@@ -294,6 +294,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui.text.googlefonts)
     implementation(libs.androidx.media3.exoplayer)
+    if (!isFdroidBuild) implementation(project(":levyra-native-audio"))
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.session)
