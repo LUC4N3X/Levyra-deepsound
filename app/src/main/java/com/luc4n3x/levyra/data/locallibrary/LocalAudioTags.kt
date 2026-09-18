@@ -100,42 +100,60 @@ internal object LocalDeepTagReader {
         if (version !in 2..4) return emptyMap()
         val size = syncSafeInt(header, 6).coerceAtMost(MAX_ID3_BYTES)
         if (size <= 0) return emptyMap()
+
         var payload = ByteArray(size)
         source.readFully(payload)
-        if ((header[5].toInt() and 0x80) != 0) payload = deUnsynchronize(payload)
-        var cursor = id3FramesStart(payload, version, header[5].toInt() and 0xFF)
+        if (header[5].toInt() and 0x80 != 0) payload = deUnsynchronize(payload)
+        val cursor = id3FramesStart(payload, version, header[5].toInt() and 0xFF)
+        return if (version == 2) {
+            readId3v22Frames(payload, cursor)
+        } else {
+            readId3v23PlusFrames(payload, cursor, version)
+        }
+    }
+
+    private fun readId3v22Frames(payload: ByteArray, start: Int): Map<String, String> {
         val result = linkedMapOf<String, String>()
-        while (cursor < payload.size) {
-            if (version == 2) {
-                if (cursor + 6 > payload.size) break
-                val id = ascii(payload, cursor, 3)
-                if (!validFrameId(id)) break
-                val frameSize = ((payload[cursor + 3].toInt() and 0xFF) shl 16) or
-                    ((payload[cursor + 4].toInt() and 0xFF) shl 8) or
-                    (payload[cursor + 5].toInt() and 0xFF)
-                cursor += 6
-                if (frameSize <= 0 || cursor + frameSize > payload.size) break
-                readId3Frame(id3v22ToV23(id), payload.copyOfRange(cursor, cursor + frameSize), result)
-                cursor += frameSize
-            } else {
-                if (cursor + 10 > payload.size) break
-                val id = ascii(payload, cursor, 4)
-                if (!validFrameId(id)) break
-                val frameSize = if (version == 4) syncSafeInt(payload, cursor + 4) else int32be(payload, cursor + 4)
-                val flags = ((payload[cursor + 8].toInt() and 0xFF) shl 8) or (payload[cursor + 9].toInt() and 0xFF)
-                cursor += 10
-                if (frameSize <= 0 || cursor + frameSize > payload.size) break
-                var frame = payload.copyOfRange(cursor, cursor + frameSize)
-                if (version == 4 && (flags and 0x0002) != 0) frame = deUnsynchronize(frame)
-                readId3Frame(id, frame, result)
-                cursor += frameSize
-            }
+        var cursor = start
+        while (cursor + 6 <= payload.size) {
+            val id = ascii(payload, cursor, 3)
+            if (!validFrameId(id)) break
+            val frameSize = ((payload[cursor + 3].toInt() and 0xFF) shl 16) or
+                ((payload[cursor + 4].toInt() and 0xFF) shl 8) or
+                (payload[cursor + 5].toInt() and 0xFF)
+            cursor += 6
+            if (frameSize <= 0 || cursor + frameSize > payload.size) break
+            readId3Frame(id3v22ToV23(id), payload.copyOfRange(cursor, cursor + frameSize), result)
+            cursor += frameSize
+        }
+        return result
+    }
+
+    private fun readId3v23PlusFrames(
+        payload: ByteArray,
+        start: Int,
+        version: Int
+    ): Map<String, String> {
+        val result = linkedMapOf<String, String>()
+        var cursor = start
+        while (cursor + 10 <= payload.size) {
+            val id = ascii(payload, cursor, 4)
+            if (!validFrameId(id)) break
+            val frameSize = if (version == 4) syncSafeInt(payload, cursor + 4) else int32be(payload, cursor + 4)
+            val flags = ((payload[cursor + 8].toInt() and 0xFF) shl 8) or
+                (payload[cursor + 9].toInt() and 0xFF)
+            cursor += 10
+            if (frameSize <= 0 || cursor + frameSize > payload.size) break
+            var frame = payload.copyOfRange(cursor, cursor + frameSize)
+            if (version == 4 && flags and 0x0002 != 0) frame = deUnsynchronize(frame)
+            readId3Frame(id, frame, result)
+            cursor += frameSize
         }
         return result
     }
 
     private fun id3FramesStart(payload: ByteArray, version: Int, flags: Int): Int {
-        if ((flags and 0x40) == 0 || payload.size < 4 || version == 2) return 0
+        if (flags and 0x40 == 0 || payload.size < 4 || version == 2) return 0
         val declared = if (version == 4) syncSafeInt(payload, 0) else int32be(payload, 0)
         return when (version) {
             3 -> (declared + 4).coerceIn(0, payload.size)
@@ -217,7 +235,7 @@ internal object LocalDeepTagReader {
         while (!last && blocks++ < 128 && source.position + 4 <= source.length) {
             val header = ByteArray(4)
             source.readFully(header)
-            last = (header[0].toInt() and 0x80) != 0
+            last = header[0].toInt() and 0x80 != 0
             val type = header[0].toInt() and 0x7F
             val size = ((header[1].toInt() and 0xFF) shl 16) or
                 ((header[2].toInt() and 0xFF) shl 8) or
