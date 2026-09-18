@@ -5855,7 +5855,7 @@ private fun QueueOverlay(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .background(
-                                            Color.White.copy(alpha = if (selectionActive) 0.025f else 0.05f),
+                                            LevyraMuted.copy(alpha = if (selectionActive) 0.04f else 0.09f),
                                             RoundedCornerShape(10.dp)
                                         )
                                         .then(reorderModifier),
@@ -12484,8 +12484,8 @@ private fun SearchQueryChips(
     ) {
         suggestions.forEach { suggestion ->
             Surface(
-                color = Color.White.copy(alpha = 0.035f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.075f)),
+                color = LevyraMuted.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, LevyraMuted.copy(alpha = 0.15f)),
                 shape = RoundedCornerShape(11.dp),
                 modifier = Modifier.pressable(onClick = { onClick(suggestion) })
             ) {
@@ -20546,7 +20546,7 @@ private fun SearchFilterChips(
                 shape = RoundedCornerShape(10.dp),
                 border = BorderStroke(
                     1.dp,
-                    if (active) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.075f)
+                    if (active) LevyraCyan.copy(alpha = 0.42f) else LevyraMuted.copy(alpha = 0.15f)
                 ),
                 modifier = Modifier.clickable { onSelect(filter) }
             ) {
