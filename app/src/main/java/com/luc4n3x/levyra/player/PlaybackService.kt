@@ -144,6 +144,7 @@ class PlaybackService : MediaLibraryService() {
 
     @Volatile
     private var aaudioOutputRequested = false
+    private var primaryAudioSink: AudioSink? = null
     private var currentAudioNormalization = false
     private val normalizationProcessor = NormalizationAudioProcessor()
     private val equalizerProcessor = LevyraEqualizerAudioProcessor()
@@ -398,8 +399,9 @@ class PlaybackService : MediaLibraryService() {
         aaudioOutputRequested = requested
         if (!NativeAudioIntegration.isAaudioOutputSupported()) return
         val player = activePlayer ?: return
-        if (player.playbackState == Player.STATE_IDLE || player.currentMediaItem == null || player.isCurrentMediaItemLive) return
-        player.seekTo(player.currentMediaItemIndex, player.currentPosition)
+        val sink = primaryAudioSink ?: return
+        val provider = NativeAudioIntegration.audioOutputProvider(this) { aaudioOutputRequested } ?: return
+        player.createMessage { _, _ -> sink.setAudioOutputProvider(provider) }.send()
     }
 
     private fun activateServiceAndApplyPendingAudioSettings() {
@@ -550,6 +552,7 @@ class PlaybackService : MediaLibraryService() {
                     )
                     .withLevyraAudioOutput(context)
                     .build()
+                    .also { primaryAudioSink = it }
             }
         }
         renderersFactory.setEnableDecoderFallback(true)
