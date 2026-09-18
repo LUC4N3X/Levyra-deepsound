@@ -137,7 +137,7 @@ object LevyraM4aTagWriter {
 
     private fun rebuildIlst(source: ByteArray, ilst: Mp4Box, metadataItems: List<ByteArray>, replacementTypes: Set<Int>, replacementFreeformNames: Set<String>): ByteArray {
         val payload = ByteArrayOutputStream(ilst.length + 4096)
-        val children = runCatching { parseBoxes(source, ilst.payloadStart, ilst.end) }.getOrDefault(emptyList())
+        val children = parseBoxes(source, ilst.payloadStart, ilst.end)
         for (child in children) {
             if (!shouldReplaceMetadataItem(source, child, replacementTypes, replacementFreeformNames)) payload.write(source, child.start, child.length)
         }
