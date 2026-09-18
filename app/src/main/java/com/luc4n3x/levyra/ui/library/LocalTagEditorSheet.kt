@@ -105,11 +105,11 @@ internal fun LocalTagEditorSheet(
             }
             Text(strings.localTagEditorSubtitle, color = LevyraMuted, fontSize = 12.sp)
 
-            TagField(strings.localTagTitle, title, { title = it }, saving)
-            TagField(strings.localTagArtist, artist, { artist = it }, saving)
-            TagField(strings.localTagAlbum, album, { album = it }, saving)
-            TagField(strings.localTagAlbumArtist, albumArtist, { albumArtist = it }, saving)
-            TagField(strings.localTagGenre, genre, { genre = it }, saving)
+            TagField(strings.localTagTitle, title, { title = it }, !saving)
+            TagField(strings.localTagArtist, artist, { artist = it }, !saving)
+            TagField(strings.localTagAlbum, album, { album = it }, !saving)
+            TagField(strings.localTagAlbumArtist, albumArtist, { albumArtist = it }, !saving)
+            TagField(strings.localTagGenre, genre, { genre = it }, !saving)
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TagField(
@@ -152,8 +152,8 @@ internal fun LocalTagEditorSheet(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            TagField(strings.localTagComposer, composer, { composer = it }, saving)
-            TagField(strings.localTagLyricist, lyricist, { lyricist = it }, saving)
+            TagField(strings.localTagComposer, composer, { composer = it }, !saving)
+            TagField(strings.localTagLyricist, lyricist, { lyricist = it }, !saving)
             TagField(
                 label = strings.localTagComment,
                 value = comment,
@@ -162,7 +162,7 @@ internal fun LocalTagEditorSheet(
                 singleLine = false,
                 minLines = 2
             )
-            TagField(strings.localTagCopyright, copyright, { copyright = it }, saving)
+            TagField(strings.localTagCopyright, copyright, { copyright = it }, !saving)
 
             if (!error.isNullOrBlank()) {
                 Text(error, color = LevyraPink, fontSize = 12.sp)
