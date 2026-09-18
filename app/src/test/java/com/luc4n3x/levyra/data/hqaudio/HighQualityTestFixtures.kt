@@ -270,7 +270,7 @@ internal fun flacProbeBody(
         totalSamples
     val streamInfo = ByteArray(34)
     for (index in 0 until 8) {
-        streamInfo[10 + index] = (packed ushr (56 - index * 8)).toByte()
+        streamInfo[10 + index] = (packed ushr 56 - index * 8).toByte()
     }
     return "fLaC".toByteArray(Charsets.US_ASCII) + byteArrayOf(0, 0, 0, 34) + streamInfo + ByteArray(64)
 }

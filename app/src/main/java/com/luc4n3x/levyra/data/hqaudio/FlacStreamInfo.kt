@@ -30,7 +30,7 @@ internal data class FlacStreamInfo(
             val start = markerOffset(body) ?: return null
             val header = start + flacMarker.size
             if (body.size < header + 4 + STREAMINFO_BYTES) return null
-            if ((u8(body, header) and 0x7F) != STREAMINFO_TYPE) return null
+            if (u8(body, header) and 0x7F != STREAMINFO_TYPE) return null
             val length = (u8(body, header + 1) shl 16) or (u8(body, header + 2) shl 8) or u8(body, header + 3)
             if (length < STREAMINFO_BYTES) return null
             val info = header + 4
@@ -52,7 +52,7 @@ internal data class FlacStreamInfo(
             ) {
                 val size = ((u8(body, 6) and 0x7F) shl 21) or ((u8(body, 7) and 0x7F) shl 14) or
                     ((u8(body, 8) and 0x7F) shl 7) or (u8(body, 9) and 0x7F)
-                val footer = if ((u8(body, 5) and ID3_FOOTER_FLAG) != 0) ID3_HEADER_BYTES else 0
+                val footer = if (u8(body, 5) and ID3_FOOTER_FLAG != 0) ID3_HEADER_BYTES else 0
                 offset = ID3_HEADER_BYTES + size + footer
             }
             if (body.size < offset + flacMarker.size) return null

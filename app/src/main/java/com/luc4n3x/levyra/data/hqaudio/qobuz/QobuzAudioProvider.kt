@@ -87,39 +87,41 @@ internal class QobuzAudioProvider(
         val probedUrls = HashSet<String>()
         var failure = ProviderFailure.CIRCUIT_OPEN
         for (format in ladder) {
-            var answered = false
-            for (backend in backends) {
-                currentCoroutineContext().ensureActive()
-                val url = backend.streamUrl(candidate.providerTrackId, format)
-                val grant = when (val result = call(backend, OPERATION_STREAM, url, MAX_STREAM_BODY_BYTES, ::interpretStream)) {
-                    is BackendResult.Failed -> {
-                        failure = moreInformative(failure, result.failure)
-                        continue
-                    }
-                    is BackendResult.Answered -> result.value
-                }
-                answered = true
-                if (grant !is QobuzStreamPayload.Granted) {
-                    rejections += StreamRejection.NO_MEDIA
-                    break
-                }
-                if (!probedUrls.add(grant.url)) break
-                when (val media = probeMedia(candidate, format, grant.url)) {
-                    is MediaProbe.Accepted -> return ProviderStreamOutcome.Resolved(media.stream)
-                    is MediaProbe.Rejected -> {
-                        rejections += media.rejection
-                        if (media.rejection in terminalRejections) return ProviderStreamOutcome.Unavailable(rejections)
-                    }
-                }
-                break
+            val grant = requestFormat(candidate, format) { failure = moreInformative(failure, it) } ?: break
+            if (grant !is QobuzStreamPayload.Granted) {
+                rejections += StreamRejection.NO_MEDIA
+                continue
             }
-            if (!answered) break
+            if (!probedUrls.add(grant.url)) continue
+            when (val media = probeMedia(candidate, format, grant.url)) {
+                is MediaProbe.Accepted -> return ProviderStreamOutcome.Resolved(media.stream)
+                is MediaProbe.Rejected -> {
+                    rejections += media.rejection
+                    if (media.rejection in terminalRejections) return ProviderStreamOutcome.Unavailable(rejections)
+                }
+            }
         }
         return if (rejections.isNotEmpty()) {
             ProviderStreamOutcome.Unavailable(rejections)
         } else {
             ProviderStreamOutcome.Failed(failure)
         }
+    }
+
+    private suspend fun requestFormat(
+        candidate: AlternativeTrackCandidate,
+        format: QobuzFormat,
+        onFailure: (ProviderFailure) -> Unit
+    ): QobuzStreamPayload? {
+        for (backend in backends) {
+            currentCoroutineContext().ensureActive()
+            val url = backend.streamUrl(candidate.providerTrackId, format)
+            when (val result = call(backend, OPERATION_STREAM, url, MAX_STREAM_BODY_BYTES, ::interpretStream)) {
+                is BackendResult.Answered -> return result.value
+                is BackendResult.Failed -> onFailure(result.failure)
+            }
+        }
+        return null
     }
 
     override fun health(): List<ProviderBackendHealth> =

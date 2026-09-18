@@ -152,77 +152,35 @@ class HighQualityAudioResolver(
         query: AlternativeTrackQuery,
         preference: HighQualityPreference
     ): HighQualityResolution {
-        val deadline = TimeSource.Monotonic.markNow() + lookupBudgetMs.milliseconds
         val candidates = eligibleLanes(identityKey, preference)
         if (candidates.isEmpty()) return HighQualityResolution.Fallback(HighQualityFallbackReason.QUARANTINED)
-        val started = ArrayList<Deferred<HighQualityResolution>>(candidates.size)
-        val strongResultReady = CompletableDeferred<Unit>()
-        fun launchLane(index: Int) {
-            val lane = candidates[index]
-            HighQualityAudioDiagnostics.routeAttempt(lane.provider.id, index + 1, candidates.size, preference)
-            started += scope.async {
-                val result = withTimeoutOrNull(providerBudgetMs) { lane.resolve(identityKey, query, preference) }
-                    ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "provider budget")
-                if (result is HighQualityResolution.Selected && HighQualityTierPolicy.isStrong(result.stream.quality)) {
-                    strongResultReady.complete(Unit)
-                }
-                result
-            }
-        }
-        if (preference == HighQualityPreference.MAXIMUM || hedgeDelayMs <= 0L) candidates.indices.forEach(::launchLane)
-        var best: HighQualityResolution.Selected? = null
-        val failures = ArrayList<Pair<String, HighQualityResolution.Fallback>>(candidates.size)
-        var expired = false
+        val run = RouteRun(identityKey, query, preference, candidates, TimeSource.Monotonic.markNow() + lookupBudgetMs.milliseconds)
+        if (preference == HighQualityPreference.MAXIMUM || hedgeDelayMs <= 0L) candidates.indices.forEach(run::launch)
         try {
             for (index in candidates.indices) {
-                if (started.size <= index) launchLane(index)
-                val providerId = candidates[index].provider.id
-                val remaining = -deadline.elapsedNow().inWholeMilliseconds
-                val hedgeNext = index + 1 < candidates.size && started.size == index + 1 && hedgeDelayMs in 1 until remaining
-                val result = if (hedgeNext) {
-                    withTimeoutOrNull(hedgeDelayMs) { started[index].await() } ?: run {
-                        HighQualityAudioDiagnostics.routeHedge(providerId, candidates[index + 1].provider.id, hedgeDelayMs)
-                        launchLane(index + 1)
-                        awaitPreferredLane(started[index], strongResultReady, deadline)
-                    }
-                } else {
-                    awaitPreferredLane(started[index], strongResultReady, deadline)
-                }
+                val result = awaitLane(run, index)
                 if (result == null) {
-                    expired = true
+                    run.expired = true
                     break
                 }
-                when (result) {
-                    is HighQualityResolution.Selected -> {
-                        HighQualityAudioDiagnostics.routeOutcome(providerId, "SELECTED", result.stream.quality.label)
-                        if (HighQualityTierPolicy.isStrong(result.stream.quality)) {
-                            best = result
-                            break
-                        }
-                        val current = best
-                        if (current == null || result.stream.quality.rank > current.stream.quality.rank) best = result
-                    }
-                    is HighQualityResolution.Fallback -> {
-                        HighQualityAudioDiagnostics.routeOutcome(providerId, result.reason.name, result.detail)
-                        failures += providerId to result
-                    }
-                }
+                if (run.record(candidates[index].provider.id, result)) break
             }
         } catch (error: CancellationException) {
-            started.forEach { it.cancel() }
+            run.cancelAll()
             throw error
         }
-        val chosen = best
-        return when {
-            chosen != null -> {
-                if (mode.enabled) rememberStream(identityKey, chosen)
-                chosen
-            }
-            expired && failures.isEmpty() ->
-                HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
-            failures.size == 1 && !expired -> failures.single().second
-            else -> combinedFallback(failures, expired)
-        }
+        return run.outcome()
+    }
+
+    private suspend fun awaitLane(run: RouteRun, index: Int): HighQualityResolution? {
+        if (run.started.size <= index) run.launch(index)
+        val remaining = -run.deadline.elapsedNow().inWholeMilliseconds
+        val hedgeNext = index + 1 < run.candidates.size && run.started.size == index + 1 && hedgeDelayMs in 1 until remaining
+        if (!hedgeNext) return awaitPreferredLane(run.started[index], run.strongResultReady, run.deadline)
+        withTimeoutOrNull(hedgeDelayMs) { run.started[index].await() }?.let { return it }
+        HighQualityAudioDiagnostics.routeHedge(run.candidates[index].provider.id, run.candidates[index + 1].provider.id, hedgeDelayMs)
+        run.launch(index + 1)
+        return awaitPreferredLane(run.started[index], run.strongResultReady, run.deadline)
     }
 
     private suspend fun awaitPreferredLane(
@@ -244,6 +202,65 @@ class HighQualityAudioResolver(
         if (left <= 0L) return null
         return withTimeoutOrNull(minOf(upgradeGraceMs, left)) { pending.await() }
             ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "upgrade grace")
+    }
+
+    private inner class RouteRun(
+        val identityKey: String,
+        val query: AlternativeTrackQuery,
+        val preference: HighQualityPreference,
+        val candidates: List<HighQualityProviderLane>,
+        val deadline: TimeMark
+    ) {
+        val started = ArrayList<Deferred<HighQualityResolution>>(candidates.size)
+        val strongResultReady = CompletableDeferred<Unit>()
+        private val failures = ArrayList<Pair<String, HighQualityResolution.Fallback>>(candidates.size)
+        private var best: HighQualityResolution.Selected? = null
+        var expired = false
+
+        fun launch(index: Int) {
+            val lane = candidates[index]
+            HighQualityAudioDiagnostics.routeAttempt(lane.provider.id, index + 1, candidates.size, preference)
+            started += scope.async {
+                val result = withTimeoutOrNull(providerBudgetMs) { lane.resolve(identityKey, query, preference) }
+                    ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "provider budget")
+                if (result is HighQualityResolution.Selected && HighQualityTierPolicy.isStrong(result.stream.quality)) {
+                    strongResultReady.complete(Unit)
+                }
+                result
+            }
+        }
+
+        fun record(providerId: String, result: HighQualityResolution): Boolean = when (result) {
+            is HighQualityResolution.Selected -> {
+                HighQualityAudioDiagnostics.routeOutcome(providerId, "SELECTED", result.stream.quality.label)
+                val current = best
+                if (current == null || result.stream.quality.rank > current.stream.quality.rank) best = result
+                HighQualityTierPolicy.isStrong(result.stream.quality)
+            }
+            is HighQualityResolution.Fallback -> {
+                HighQualityAudioDiagnostics.routeOutcome(providerId, result.reason.name, result.detail)
+                failures += providerId to result
+                false
+            }
+        }
+
+        fun cancelAll() {
+            started.forEach { it.cancel() }
+        }
+
+        fun outcome(): HighQualityResolution {
+            val chosen = best
+            return when {
+                chosen != null -> {
+                    if (mode.enabled) rememberStream(identityKey, chosen)
+                    chosen
+                }
+                expired && failures.isEmpty() ->
+                    HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
+                failures.size == 1 && !expired -> failures.single().second
+                else -> combinedFallback(failures, expired)
+            }
+        }
     }
 
     private fun combinedFallback(

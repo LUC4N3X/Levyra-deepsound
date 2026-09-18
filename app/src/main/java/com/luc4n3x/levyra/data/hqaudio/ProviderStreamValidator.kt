@@ -191,7 +191,7 @@ internal object ProviderStreamValidator {
     private fun startsLikeMp3(body: ByteArray): Boolean {
         if (body.size < 4) return false
         if (body[0] == 'I'.code.toByte() && body[1] == 'D'.code.toByte() && body[2] == '3'.code.toByte()) return true
-        return (body[0].toInt() and 0xFF) == 0xFF && (body[1].toInt() and 0xE0) == 0xE0
+        return body[0].toInt() and 0xFF == 0xFF && body[1].toInt() and 0xE0 == 0xE0
     }
 
     fun bitrateMatches(estimatedKbps: Int, tier: AudioQualityTier): Boolean = bitrateMatches(estimatedKbps, tier.kbps)
