@@ -165,13 +165,17 @@ internal object LocalEmbeddedTagWriter {
     }
 
     private fun id3CommentFrame(value: String, version: Int): ByteArray {
-        val encoding = if (version == 4) 3 else 1
-        val charset = if (version == 4) StandardCharsets.UTF_8 else StandardCharsets.UTF_16
-        val terminator = if (version == 4) byteArrayOf(0) else byteArrayOf(0, 0)
-        val payload = byteArrayOf(encoding.toByte()) +
-            "eng".toByteArray(StandardCharsets.ISO_8859_1) +
-            terminator +
-            value.toByteArray(charset)
+        val payload = if (version == 4) {
+            byteArrayOf(3) +
+                "eng".toByteArray(StandardCharsets.ISO_8859_1) +
+                byteArrayOf(0) +
+                value.toByteArray(StandardCharsets.UTF_8)
+        } else {
+            byteArrayOf(1) +
+                "eng".toByteArray(StandardCharsets.ISO_8859_1) +
+                byteArrayOf(0xFE.toByte(), 0xFF.toByte(), 0, 0) +
+                value.toByteArray(StandardCharsets.UTF_16BE)
+        }
         return id3Frame("COMM", payload, version)
     }
 
