@@ -617,21 +617,33 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
 
 ## ✦ Author & Credits
 
-<a href="https://github.com/LUC4N3X">
-  <img src="docs/assets/levyra-signature.png" align="right" width="235" alt="LUC4N3X — Levyra creator signature" />
-</a>
-
-### [LUC4N3X](https://github.com/LUC4N3X)
-
-<sub>Lead Systems Architect & Creator</sub>
-
-I started Levyra and I still build most of it myself. The work is mainly Kotlin: Media3 / ExoPlayer on Android, libvlc on Windows, local SQLite data, lyrics, downloads, and all the less glamorous playback/reliability stuff around them.
-
-<sub><code>Kotlin</code> · <code>Media3 / Compose</code> · <code>libvlc</code> · <code>SQLite</code></sub>
-
-<br clear="right">
-
-<sub>Branding credit · Thanks to <a href="https://github.com/gauravbhindwar">@gauravbhindwar</a> for designing and contributing Levyra's new app logo in <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525">#525</a>.</sub>
+<table width="100%">
+  <tr>
+    <td width="68%" valign="middle">
+      <h3><a href="https://github.com/LUC4N3X">LUC4N3X</a></h3>
+      <p><sub>Lead Systems Architect & Creator</sub></p>
+      <p>
+        I started Levyra and I still build most of it myself. The work is mainly Kotlin: Media3 / ExoPlayer on Android, libvlc on Windows, local SQLite data, lyrics, downloads, and all the less glamorous playback/reliability stuff around them.
+      </p>
+      <p>
+        <code>Kotlin</code> &nbsp;·&nbsp;
+        <code>Media3 / Compose</code> &nbsp;·&nbsp;
+        <code>libvlc</code> &nbsp;·&nbsp;
+        <code>SQLite</code>
+      </p>
+    </td>
+    <td width="32%" align="center" valign="middle">
+      <a href="https://github.com/LUC4N3X">
+        <img src="docs/assets/levyra-signature.png" width="220" alt="LUC4N3X — Levyra creator signature" />
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <sub>Branding credit · Thanks to <a href="https://github.com/gauravbhindwar">@gauravbhindwar</a> for designing and contributing Levyra's new app logo in <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525">#525</a>.</sub>
+    </td>
+  </tr>
+</table>
 
 ### Built With & Inspired By
 
