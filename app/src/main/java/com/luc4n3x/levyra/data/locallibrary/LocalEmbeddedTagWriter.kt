@@ -4,8 +4,6 @@ import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagEdits
 import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriter
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
-import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
@@ -111,6 +109,7 @@ internal object LocalEmbeddedTagWriter {
         }.toByteArray()
 
         val audioEnd = if (hasId3v1(source)) source.size - 128 else source.size
+        if (oldTagEnd > audioEnd) return LocalEmbeddedTagWriteResult(false, "invalid_mp3")
         val body = source.copyOfRange(oldTagEnd, audioEnd)
         val id3v1 = if (hasId3v1(source)) rewriteId3v1(source.copyOfRange(audioEnd, source.size), edits) else ByteArray(0)
         output.parentFile?.mkdirs()
