@@ -197,7 +197,7 @@ class LocalLibraryRepository private constructor(context: Context) {
                 val unchanged = previous != null &&
                     previous.sizeBytes == row.sizeBytes &&
                     previous.dateModifiedMs == row.dateModifiedMs
-                if (mode == LocalScanMode.Quick && unchanged) {
+                if (mode == LocalScanMode.Quick && unchanged && previous.fullTagSearchText.isNotBlank()) {
                     row.withDeepTagsFrom(previous)
                 } else {
                     row.withDeepTags(LocalDeepTagReader.read(row))
