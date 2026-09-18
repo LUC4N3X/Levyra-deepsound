@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui.library
 
+import android.Manifest
+import android.os.Build
+import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -304,6 +307,35 @@ internal fun LevyraLibraryScreen(
             recencyProvider = catalog::recencyOf
         )
     }
+    var localTabName by rememberSaveable { mutableStateOf(LocalLibraryTab.Songs.name) }
+    val localTab = LocalLibraryTab.entries.firstOrNull { it.name == localTabName } ?: LocalLibraryTab.Songs
+    var expandedLocalGroupKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val localMediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_AUDIO
+    } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+    val localPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.refreshLocalLibraryAccess() }
+    val localLibraryCallbacks = remember(viewModel) {
+        LocalLibraryCallbacks(
+            onPlay = viewModel::playLocalTracks,
+            onAddToQueue = viewModel::addTracksToQueue,
+            onToggleFavorite = viewModel::toggleFavorite,
+            onQuickScan = { viewModel.requestLocalLibraryScan(LocalScanMode.Quick) },
+            onFullScan = { viewModel.requestLocalLibraryScan(LocalScanMode.Full) },
+            onRebuildLevyra = { viewModel.requestLocalLibraryScan(LocalScanMode.RebuildLevyra) },
+            onGrantPermission = { localPermissionLauncher.launch(localMediaPermission) },
+            onToggleFolderHidden = viewModel::setLocalFolderHidden
+        )
+    }
+    LaunchedEffect(category) {
+        if (category == LibraryCategory.Device) {
+            viewModel.refreshLocalLibraryAccess()
+        }
+    }
+
     val visibleOffline = remember(catalog.offlineItems, query, sort, direction) {
         filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
     }
@@ -322,6 +354,7 @@ internal fun LevyraLibraryScreen(
             LibraryCategory.Offline -> catalog.offlineItems
                 .filter { it.key in selectedKeys }
                 .map { it.track }
+            LibraryCategory.Device -> emptyList()
             LibraryCategory.Overview, LibraryCategory.Songs -> catalog.tracks.filter { libraryTrackKey(it) in selectedKeys }
         }.distinctBy(::libraryTrackKey)
     }
@@ -366,6 +399,8 @@ internal fun LevyraLibraryScreen(
                         LibraryCategory.Artists -> "${catalog.artists.size} ${strings.artists}"
                         LibraryCategory.Offline ->
                             strings.formatDownloadedTrackCount(state.downloads.size)
+                        LibraryCategory.Device ->
+                            strings.formatTrackCount(state.localLibrary.catalog.totalCount)
                     }
                 )
             }
@@ -443,7 +478,9 @@ internal fun LevyraLibraryScreen(
                                 LibraryCategory.Albums -> visibleAlbums.mapTo(linkedSetOf()) { "album:${it.key}" }
                                 LibraryCategory.Artists -> visibleArtists.mapTo(linkedSetOf()) { "artist:${it.key}" }
                                 LibraryCategory.Offline -> visibleOffline.mapTo(linkedSetOf()) { it.key }
-                                LibraryCategory.Overview, LibraryCategory.Songs -> visibleTracks.mapTo(linkedSetOf(), ::libraryTrackKey)
+                                LibraryCategory.Device -> linkedSetOf()
+                                LibraryCategory.Overview, LibraryCategory.Songs ->
+                                    visibleTracks.mapTo(linkedSetOf(), ::libraryTrackKey)
                             }
                         }
                     )
@@ -704,6 +741,20 @@ internal fun LevyraLibraryScreen(
                         }
                     }
                 }
+
+                LibraryCategory.Device -> localLibrarySection(
+                    library = state.localLibrary,
+                    tab = localTab,
+                    onTab = { localTabName = it.name },
+                    expandedGroupKey = expandedLocalGroupKey,
+                    onExpandGroup = { expandedLocalGroupKey = it },
+                    query = query,
+                    currentTrack = state.currentTrack,
+                    isPlaying = state.isPlaying,
+                    favoriteIds = state.favoriteIds,
+                    unavailableUris = state.queueUnavailableUris,
+                    callbacks = localLibraryCallbacks
+                )
 
                 LibraryCategory.Offline -> {
                     item(key = "offline-storage") {
