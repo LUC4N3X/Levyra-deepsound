@@ -4,13 +4,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -34,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +64,19 @@ internal enum class LocalLibraryTab { Songs, Albums, Artists, Folders }
 
 internal enum class LocalLibraryQualityFilter { All, Lossless, HighBitrate, Recent }
 
+internal data class LocalLibraryAlphabetTarget(
+    val letter: Char,
+    val contentIndex: Int
+)
+
+internal data class LocalLibraryAlphabetIndex(
+    val targets: List<LocalLibraryAlphabetTarget> = emptyList(),
+    val itemCount: Int = 0
+) {
+    val visible: Boolean
+        get() = itemCount >= LOCAL_ALPHABET_MIN_ITEMS && targets.size >= LOCAL_ALPHABET_MIN_LETTERS
+}
+
 internal fun LocalLibraryTab.label(strings: LevyraStrings): String = when (this) {
     LocalLibraryTab.Songs -> strings.songsPlain
     LocalLibraryTab.Albums -> strings.albumsPlain
@@ -85,6 +102,7 @@ internal fun LazyListScope.localLibrarySection(
     onTab: (LocalLibraryTab) -> Unit,
     qualityFilter: LocalLibraryQualityFilter,
     onQualityFilter: (LocalLibraryQualityFilter) -> Unit,
+    nowMs: Long,
     expandedGroupKey: String?,
     onExpandGroup: (String?) -> Unit,
     query: String,
@@ -120,7 +138,7 @@ internal fun LazyListScope.localLibrarySection(
     }
     val availableQualityFilters = localLibraryQualityFilters(
         library.catalog.mediaByUri.values,
-        System.currentTimeMillis()
+        nowMs
     )
     val effectiveQualityFilter = qualityFilter.takeIf { it in availableQualityFilters }
         ?: LocalLibraryQualityFilter.All
@@ -470,6 +488,123 @@ private fun LocalMediaEntity.localAudioSummary(): String? {
 private const val LOCAL_HIGH_BITRATE_BPS = 320_000
 private const val LOCAL_RECENT_WINDOW_MS = 30L * 24L * 60L * 60L * 1_000L
 private val LOCAL_LOSSLESS_EXTENSIONS = setOf("flac", "alac", "wav", "wave", "aiff", "aif", "ape")
+
+internal fun localLibraryLeadingItemCount(
+    library: LocalLibraryUiState,
+    nowMs: Long
+): Int {
+    if (!library.permissionGranted || library.catalog.totalCount == 0) return 0
+    val qualityFilterCount = localLibraryQualityFilters(
+        library.catalog.mediaByUri.values,
+        nowMs
+    ).size
+    return 2 + if (qualityFilterCount > 1) 1 else 0
+}
+
+internal fun localLibraryAlphabetIndex(
+    library: LocalLibraryUiState,
+    tab: LocalLibraryTab,
+    qualityFilter: LocalLibraryQualityFilter,
+    query: String,
+    nowMs: Long
+): LocalLibraryAlphabetIndex {
+    if (!library.permissionGranted || library.catalog.totalCount == 0) {
+        return LocalLibraryAlphabetIndex()
+    }
+    val availableFilters = localLibraryQualityFilters(library.catalog.mediaByUri.values, nowMs)
+    val effectiveFilter = qualityFilter.takeIf { it in availableFilters } ?: LocalLibraryQualityFilter.All
+    val labels = when (tab) {
+        LocalLibraryTab.Songs -> library.catalog.songs
+            .filterLocalTracks(query, library.catalog.mediaByUri)
+            .filterByLocalQuality(effectiveFilter, library.catalog.mediaByUri)
+            .map(Track::title)
+        LocalLibraryTab.Albums -> library.catalog.albums
+            .filterLocalAlbums(query, library.catalog.mediaByUri)
+            .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri) }
+            .map(LocalAlbumGroup::title)
+        LocalLibraryTab.Artists -> library.catalog.artists
+            .filterLocalArtists(query, library.catalog.mediaByUri)
+            .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri) }
+            .map(LocalArtistGroup::name)
+        LocalLibraryTab.Folders -> library.catalog.folders
+            .filterLocalFolders(query, library.catalog.mediaByUri)
+            .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri) }
+            .map(LocalFolderGroup::name)
+    }
+    val targets = buildList {
+        var previous: Char? = null
+        labels.forEachIndexed { index, label ->
+            val letter = localAlphabetLetter(label) ?: return@forEachIndexed
+            if (letter != previous) {
+                add(LocalLibraryAlphabetTarget(letter, index))
+                previous = letter
+            }
+        }
+    }
+    return LocalLibraryAlphabetIndex(targets = targets, itemCount = labels.size)
+}
+
+@Composable
+internal fun LocalLibraryAlphabetRail(
+    index: LocalLibraryAlphabetIndex,
+    activeLetter: Char?,
+    onJump: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!index.visible) return
+    fun jumpAt(y: Float, height: Int) {
+        if (height <= 0 || index.targets.isEmpty()) return
+        val slot = height.toFloat() / index.targets.size
+        val targetIndex = (y / slot).toInt().coerceIn(0, index.targets.lastIndex)
+        onJump(index.targets[targetIndex].contentIndex)
+    }
+    Surface(
+        color = LevyraPanelSoft.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, LevyraMuted.copy(alpha = 0.14f)),
+        shape = RoundedCornerShape(14.dp),
+        modifier = modifier
+            .width(28.dp)
+            .pointerInput(index.targets) {
+                detectDragGestures(
+                    onDragStart = { offset -> jumpAt(offset.y, size.height) },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        jumpAt(change.position.y, size.height)
+                    }
+                )
+            }
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            index.targets.forEach { target ->
+                val active = target.letter == activeLetter
+                Box(
+                    modifier = Modifier
+                        .width(26.dp)
+                        .height(14.dp)
+                        .clickable { onJump(target.contentIndex) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = target.letter.toString(),
+                        color = if (active) LevyraCyan else LevyraMuted,
+                        fontSize = 8.5.sp,
+                        fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun localAlphabetLetter(value: String): Char? = normalizeLibraryText(value)
+    .firstOrNull { it in 'a'..'z' }
+    ?.uppercaseChar()
+
+private const val LOCAL_ALPHABET_MIN_ITEMS = 50
+private const val LOCAL_ALPHABET_MIN_LETTERS = 5
 
 @Composable
 private fun LocalLibraryActions(library: LocalLibraryUiState, callbacks: LocalLibraryCallbacks) {
