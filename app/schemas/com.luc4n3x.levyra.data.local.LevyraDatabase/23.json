@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 23,
-    "identityHash": "46ca8c2f3e1da2fec66a15f926df4a74",
+    "identityHash": "2c8c99c8b53b8789a18bfb868fa51758",
     "entities": [
       {
         "tableName": "favorite_tracks",
@@ -2114,7 +2114,7 @@
       },
       {
         "tableName": "local_media",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `identityKey` TEXT NOT NULL, `contentUri` TEXT NOT NULL, `volumeName` TEXT NOT NULL, `mediaStoreId` INTEGER NOT NULL, `filePath` TEXT NOT NULL, `relativePath` TEXT NOT NULL, `displayName` TEXT NOT NULL, `folderKey` TEXT NOT NULL, `folderName` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `albumArtist` TEXT NOT NULL, `genre` TEXT NOT NULL, `composer` TEXT NOT NULL, `lyricist` TEXT NOT NULL, `comment` TEXT NOT NULL, `copyright` TEXT NOT NULL, `customTags` TEXT NOT NULL, `fullTagSearchText` TEXT NOT NULL, `year` INTEGER NOT NULL, `trackNumber` INTEGER NOT NULL, `discNumber` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `mimeType` TEXT NOT NULL, `bitrate` INTEGER NOT NULL, `sizeBytes` INTEGER NOT NULL, `dateAddedMs` INTEGER NOT NULL, `dateModifiedMs` INTEGER NOT NULL, `albumId` INTEGER NOT NULL, `albumKey` TEXT NOT NULL, `artistKey` TEXT NOT NULL, `contentFingerprint` TEXT NOT NULL, `levyraTrackId` TEXT NOT NULL, `isLevyraDownload` INTEGER NOT NULL, `available` INTEGER NOT NULL, `missingSince` INTEGER NOT NULL, `lastSeenAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `identityKey` TEXT NOT NULL, `contentUri` TEXT NOT NULL, `volumeName` TEXT NOT NULL, `mediaStoreId` INTEGER NOT NULL, `filePath` TEXT NOT NULL, `relativePath` TEXT NOT NULL, `displayName` TEXT NOT NULL, `folderKey` TEXT NOT NULL, `folderName` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `albumArtist` TEXT NOT NULL, `genre` TEXT NOT NULL, `composer` TEXT NOT NULL DEFAULT '', `lyricist` TEXT NOT NULL DEFAULT '', `comment` TEXT NOT NULL DEFAULT '', `copyright` TEXT NOT NULL DEFAULT '', `customTags` TEXT NOT NULL DEFAULT '', `fullTagSearchText` TEXT NOT NULL DEFAULT '', `year` INTEGER NOT NULL, `trackNumber` INTEGER NOT NULL, `discNumber` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `mimeType` TEXT NOT NULL, `bitrate` INTEGER NOT NULL, `sizeBytes` INTEGER NOT NULL, `dateAddedMs` INTEGER NOT NULL, `dateModifiedMs` INTEGER NOT NULL, `albumId` INTEGER NOT NULL, `albumKey` TEXT NOT NULL, `artistKey` TEXT NOT NULL, `contentFingerprint` TEXT NOT NULL, `levyraTrackId` TEXT NOT NULL, `isLevyraDownload` INTEGER NOT NULL, `available` INTEGER NOT NULL, `missingSince` INTEGER NOT NULL, `lastSeenAt` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -2210,37 +2210,43 @@
             "fieldPath": "composer",
             "columnName": "composer",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "''"
           },
           {
             "fieldPath": "lyricist",
             "columnName": "lyricist",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "''"
           },
           {
             "fieldPath": "comment",
             "columnName": "comment",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "''"
           },
           {
             "fieldPath": "copyright",
             "columnName": "copyright",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "''"
           },
           {
             "fieldPath": "customTags",
             "columnName": "customTags",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "''"
           },
           {
             "fieldPath": "fullTagSearchText",
             "columnName": "fullTagSearchText",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "''"
           },
           {
             "fieldPath": "year",
@@ -2408,7 +2414,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '46ca8c2f3e1da2fec66a15f926df4a74')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2c8c99c8b53b8789a18bfb868fa51758')"
     ]
   }
 }
