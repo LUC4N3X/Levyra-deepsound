@@ -642,7 +642,7 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
     </td>
     <td width="30%" align="center" valign="middle">
       <a href="https://github.com/LUC4N3X">
-        <img src="docs/assets/levyra-signature.png" width="230" alt="LUC4N3X — Levyra creator signature" />
+        <img src="docs/assets/levyra-signature.webp" width="230" alt="LUC4N3X — Levyra creator signature" />
       </a>
     </td>
   </tr>
