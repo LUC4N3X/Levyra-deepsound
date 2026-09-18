@@ -5707,7 +5707,7 @@ private fun QueueOverlay(
     val selectionActive = selectedTracks.isNotEmpty()
     val allSelected = state.queue.isNotEmpty() && selectedTracks.size == state.queue.size
 
-    val queueTrackRow: @Composable (Int, Track) -> Unit = { index, track -> index, track ->
+    val queueTrackRow: @Composable (Int, Track) -> Unit = { index, track ->
                     val isCurrent = index == state.queueCurrentIndex
                     val wasPlayed = state.queueCurrentIndex >= 0 && index < state.queueCurrentIndex
                     val rowKey = rowSelectionKeys[index]
