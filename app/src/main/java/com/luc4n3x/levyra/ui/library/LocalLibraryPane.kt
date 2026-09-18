@@ -40,7 +40,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.locallibrary.LocalAlbumGroup
 import com.luc4n3x.levyra.data.locallibrary.LocalArtistGroup
+import com.luc4n3x.levyra.data.local.LocalMediaEntity
 import com.luc4n3x.levyra.data.locallibrary.LocalFolderGroup
+import com.luc4n3x.levyra.data.locallibrary.isSafeTagEditorFormat
+import com.luc4n3x.levyra.data.locallibrary.matchesFullTagQuery
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -68,7 +71,8 @@ internal data class LocalLibraryCallbacks(
     val onFullScan: () -> Unit,
     val onRebuildLevyra: () -> Unit,
     val onGrantPermission: () -> Unit,
-    val onToggleFolderHidden: (String, Boolean) -> Unit
+    val onToggleFolderHidden: (String, Boolean) -> Unit,
+    val onEditTags: (Track) -> Unit
 )
 
 internal fun LazyListScope.localLibrarySection(
@@ -119,7 +123,7 @@ internal fun LazyListScope.localLibrarySection(
     }
     when (tab) {
         LocalLibraryTab.Songs -> {
-            val songs = library.catalog.songs.filterLocalTracks(query)
+            val songs = library.catalog.songs.filterLocalTracks(query, library.catalog.mediaByUri)
             localTrackItems(
                 keyPrefix = "local-song",
                 tracks = songs,
@@ -128,11 +132,12 @@ internal fun LazyListScope.localLibrarySection(
                 isPlaying = isPlaying,
                 favoriteIds = favoriteIds,
                 unavailableUris = unavailableUris,
+                mediaByUri = library.catalog.mediaByUri,
                 callbacks = callbacks
             )
         }
         LocalLibraryTab.Albums -> items(
-            library.catalog.albums.filterLocalAlbums(query),
+            library.catalog.albums.filterLocalAlbums(query, library.catalog.mediaByUri),
             key = { "local-album-${it.key}" },
             contentType = { "local-group" }
         ) { album ->
@@ -149,11 +154,12 @@ internal fun LazyListScope.localLibrarySection(
                 isPlaying = isPlaying,
                 favoriteIds = favoriteIds,
                 unavailableUris = unavailableUris,
+                mediaByUri = library.catalog.mediaByUri,
                 callbacks = callbacks
             )
         }
         LocalLibraryTab.Artists -> items(
-            library.catalog.artists.filterLocalArtists(query),
+            library.catalog.artists.filterLocalArtists(query, library.catalog.mediaByUri),
             key = { "local-artist-${it.key}" },
             contentType = { "local-group" }
         ) { artist ->
@@ -175,11 +181,12 @@ internal fun LazyListScope.localLibrarySection(
                 isPlaying = isPlaying,
                 favoriteIds = favoriteIds,
                 unavailableUris = unavailableUris,
+                mediaByUri = library.catalog.mediaByUri,
                 callbacks = callbacks
             )
         }
         LocalLibraryTab.Folders -> items(
-            library.catalog.folders.filterLocalFolders(query),
+            library.catalog.folders.filterLocalFolders(query, library.catalog.mediaByUri),
             key = { "local-folder-${it.key}" },
             contentType = { "local-group" }
         ) { folder ->
@@ -196,6 +203,7 @@ internal fun LazyListScope.localLibrarySection(
                 isPlaying = isPlaying,
                 favoriteIds = favoriteIds,
                 unavailableUris = unavailableUris,
+                mediaByUri = library.catalog.mediaByUri,
                 callbacks = callbacks,
                 onHide = { callbacks.onToggleFolderHidden(folder.key, true) }
             )
@@ -222,6 +230,7 @@ private fun LazyListScope.localTrackItems(
     isPlaying: Boolean,
     favoriteIds: Set<String>,
     unavailableUris: Set<String>,
+    mediaByUri: Map<String, LocalMediaEntity>,
     callbacks: LocalLibraryCallbacks
 ) {
     items(tracks, key = { "$keyPrefix-${it.streamUrl}" }, contentType = { "local-track" }) { track ->
@@ -243,7 +252,10 @@ private fun LazyListScope.localTrackItems(
             onLongClick = { callbacks.onAddToQueue(listOf(track)) },
             onFavorite = { callbacks.onToggleFavorite(track) },
             onDownload = {},
-            onQueue = { callbacks.onAddToQueue(listOf(track)) }
+            onQueue = { callbacks.onAddToQueue(listOf(track)) },
+            onEditTags = mediaByUri[track.streamUrl]
+                ?.takeIf { it.isSafeTagEditorFormat() }
+                ?.let { { callbacks.onEditTags(track) } }
         )
     }
 }
@@ -329,6 +341,7 @@ private fun LocalGroupBlock(
     isPlaying: Boolean,
     favoriteIds: Set<String>,
     unavailableUris: Set<String>,
+    mediaByUri: Map<String, LocalMediaEntity>,
     callbacks: LocalLibraryCallbacks,
     onHide: (() -> Unit)? = null
 ) {
@@ -411,6 +424,9 @@ private fun LocalGroupBlock(
                     onFavorite = { callbacks.onToggleFavorite(track) },
                     onDownload = {},
                     onQueue = { callbacks.onAddToQueue(listOf(track)) },
+                    onEditTags = mediaByUri[track.streamUrl]
+                        ?.takeIf { it.isSafeTagEditorFormat() }
+                        ?.let { { callbacks.onEditTags(track) } },
                     modifier = Modifier.padding(start = 16.dp)
                 )
             }
@@ -424,34 +440,54 @@ private fun localGroupSubtitle(detail: String, trackCount: Int, year: String): S
     year.trim()
 ).filter { it.isNotEmpty() }.joinToString(" · ")
 
-internal fun List<Track>.filterLocalTracks(query: String): List<Track> {
+internal fun List<Track>.filterLocalTracks(
+    query: String,
+    mediaByUri: Map<String, LocalMediaEntity>
+): List<Track> {
     val clean = normalizeLibraryText(query)
     if (clean.isEmpty()) return this
     return filter { track ->
-        normalizeLibraryText(track.title).contains(clean) ||
+        mediaByUri[track.streamUrl]?.matchesFullTagQuery(query) == true ||
+            normalizeLibraryText(track.title).contains(clean) ||
             normalizeLibraryText(track.artist).contains(clean) ||
             normalizeLibraryText(track.album).contains(clean)
     }
 }
 
-internal fun List<LocalAlbumGroup>.filterLocalAlbums(query: String): List<LocalAlbumGroup> {
+internal fun List<LocalAlbumGroup>.filterLocalAlbums(
+    query: String,
+    mediaByUri: Map<String, LocalMediaEntity>
+): List<LocalAlbumGroup> {
     val clean = normalizeLibraryText(query)
     if (clean.isEmpty()) return this
     return filter { group ->
-        normalizeLibraryText(group.title).contains(clean) || normalizeLibraryText(group.artist).contains(clean)
+        normalizeLibraryText(group.title).contains(clean) ||
+            normalizeLibraryText(group.artist).contains(clean) ||
+            group.tracks.any { mediaByUri[it.streamUrl]?.matchesFullTagQuery(query) == true }
     }
 }
 
-internal fun List<LocalArtistGroup>.filterLocalArtists(query: String): List<LocalArtistGroup> {
-    val clean = normalizeLibraryText(query)
-    if (clean.isEmpty()) return this
-    return filter { group -> normalizeLibraryText(group.name).contains(clean) }
-}
-
-internal fun List<LocalFolderGroup>.filterLocalFolders(query: String): List<LocalFolderGroup> {
+internal fun List<LocalArtistGroup>.filterLocalArtists(
+    query: String,
+    mediaByUri: Map<String, LocalMediaEntity>
+): List<LocalArtistGroup> {
     val clean = normalizeLibraryText(query)
     if (clean.isEmpty()) return this
     return filter { group ->
-        normalizeLibraryText(group.name).contains(clean) || normalizeLibraryText(group.path).contains(clean)
+        normalizeLibraryText(group.name).contains(clean) ||
+            group.tracks.any { mediaByUri[it.streamUrl]?.matchesFullTagQuery(query) == true }
+    }
+}
+
+internal fun List<LocalFolderGroup>.filterLocalFolders(
+    query: String,
+    mediaByUri: Map<String, LocalMediaEntity>
+): List<LocalFolderGroup> {
+    val clean = normalizeLibraryText(query)
+    if (clean.isEmpty()) return this
+    return filter { group ->
+        normalizeLibraryText(group.name).contains(clean) ||
+            normalizeLibraryText(group.path).contains(clean) ||
+            group.tracks.any { mediaByUri[it.streamUrl]?.matchesFullTagQuery(query) == true }
     }
 }

@@ -5009,6 +5009,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         localLibrary.requestScan(mode, force)
     }
 
+    fun saveLocalAudioTags(
+        identityKey: String,
+        edits: com.luc4n3x.levyra.data.locallibrary.LocalTagEdits,
+        onResult: (com.luc4n3x.levyra.data.locallibrary.LocalTagWriteResult) -> Unit
+    ) {
+        viewModelScope.launch {
+            onResult(localLibrary.saveTags(identityKey, edits))
+        }
+    }
+
     fun refreshLocalLibraryAccess() {
         if (localLibrary.refreshPermission()) localLibrary.requestScan(LocalScanMode.Quick)
     }
