@@ -152,6 +152,8 @@ class LevyraM4aTagWriterTest {
                 output = seeded,
                 metadata = LevyraM4aMetadata(
                     title = "Song",
+                    artist = "Artist",
+                    album = "Album",
                     trackNumber = 3,
                     trackTotal = 12,
                     discNumber = 1,
@@ -207,6 +209,8 @@ class LevyraM4aTagWriterTest {
                     output = seeded,
                     metadata = LevyraM4aMetadata(
                         title = "Keep me",
+                        artist = "Artist",
+                        album = "Album",
                         lyrics = "Keep these lyrics",
                         trackNumber = 1,
                         trackTotal = 9
