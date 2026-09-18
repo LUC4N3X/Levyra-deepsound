@@ -136,6 +136,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -185,6 +186,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -541,6 +543,7 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.queueSectionCopy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
@@ -5661,6 +5664,7 @@ private val queueSelectionSaver = listSaver<Set<String>, String>(
     restore = { it.toSet() }
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun QueueOverlay(
     state: LevyraUiState,
@@ -5703,135 +5707,9 @@ private fun QueueOverlay(
     val selectionActive = selectedTracks.isNotEmpty()
     val allSelected = state.queue.isNotEmpty() && selectedTracks.size == state.queue.size
 
-    BackHandler(enabled = selectionActive) { selectedQueueKeys = emptySet() }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(
-                start = 18.dp,
-                end = 18.dp,
-                top = 18.dp,
-                bottom = if (selectionActive) 210.dp else 120.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(connectedStyle.gap)
-        ) {
-            item(contentType = "queue-header") {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(strings.queue, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                        Text(
-                            strings.formatQueueSummary(state.queue.size, state.queueHistoryCount),
-                            color = LevyraMuted,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = LevyraText,
-                        background = Color.White.copy(alpha = 0.1f),
-                        onClick = onClose
-                    )
-                }
-            }
-            item(contentType = "queue-spaces") {
-                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                    QueueSpacesPanel(
-                        spaces = state.queueSpaces,
-                        activeSpaceId = state.activeQueueSpaceId,
-                        switching = state.queueSwitching,
-                        accent = queueAccent,
-                        onSwitch = onSwitchQueueSpace,
-                        onCreate = onCreateQueueSpace,
-                        onRename = onRenameQueueSpace,
-                        onDuplicate = onDuplicateQueueSpace,
-                        onClear = onClearQueueSpace,
-                        onDelete = onDeleteQueueSpace
-                    )
-                }
-            }
-            item(contentType = "queue-radio") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 10.dp)
-                        .levyraConnectedSurface(LevyraConnectedPosition.Single, connectedStyle)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Rounded.Bolt, null, tint = if (state.radioEnabled) LevyraCyan else LevyraMuted, modifier = Modifier.size(20.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(strings.continuousRadio, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                            Text(strings.continuousRadioSubtitle, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        Switch(checked = state.radioEnabled, onCheckedChange = { onToggleRadio() })
-                        if (state.queueUndoAvailable) {
-                            IconButton(onClick = onUndo) {
-                                Icon(Icons.AutoMirrored.Rounded.Undo, strings.undoRemoval, tint = LevyraCyan)
-                            }
-                        }
-                    }
-                }
-            }
-            if (state.activeMix != null && state.queue.size > 1) {
-                val mixName = state.activeMix.label.ifBlank { strings.levyraMix }
-                item(contentType = "queue-save") {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 10.dp)
-                            .levyraConnectedSurface(LevyraConnectedPosition.Single, connectedStyle)
-                            .levyraPressable(
-                                onClick = { onSaveSelection(mixName) },
-                                pressedScale = LevyraPressScale.Row,
-                                role = Role.Button,
-                                onClickLabel = strings.saveSelection,
-                                haptic = LevyraHapticAction.Confirm
-                            )
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.BookmarkAdd,
-                            contentDescription = null,
-                            tint = queueAccent,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = strings.saveSelection,
-                            color = LevyraText,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-            if (state.queue.isEmpty()) {
-                item { Text(strings.queueEmpty, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
-            } else {
-                itemsIndexed(
-                    state.queue,
-                    key = { _, track -> "q-${System.identityHashCode(track)}-${track.id}-${track.videoUrl}" },
-                    contentType = { _, _ -> "queue-track" }
-                ) { index, track ->
+    val queueTrackRow: @Composable (Int, Track) -> Unit = { index, track -> index, track ->
                     val isCurrent = index == state.queueCurrentIndex
+                    val wasPlayed = state.queueCurrentIndex >= 0 && index < state.queueCurrentIndex
                     val rowKey = rowSelectionKeys[index]
                     val rowSelected = rowKey in selectedQueueKeys
                     var dragDistance by remember(track) { mutableFloatStateOf(0f) }
@@ -5963,22 +5841,51 @@ private fun QueueOverlay(
                                         )
                                     }
                                 }
-                                Icon(
-                                    Icons.Rounded.DragHandle,
-                                    if (selectionActive) null else strings.dragToReorder,
-                                    tint = if (selectionActive) {
-                                        LevyraMuted.copy(alpha = 0.35f)
-                                    } else {
-                                        LevyraMuted
-                                    },
+                                Box(
                                     modifier = Modifier
-                                        .size(24.dp)
-                                        .then(reorderModifier)
+                                        .size(36.dp)
+                                        .background(
+                                            Color.White.copy(alpha = if (selectionActive) 0.025f else 0.05f),
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .then(reorderModifier),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.DragHandle,
+                                        if (selectionActive) null else strings.dragToReorder,
+                                        tint = if (selectionActive) LevyraMuted.copy(alpha = 0.3f) else LevyraMuted,
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
+                                CoverImage(
+                                    track,
+                                    Modifier
+                                        .size(48.dp)
+                                        .clip(LevyraPlayerDesign.ShapeXs)
+                                        .alpha(if (wasPlayed && !isCurrent) 0.58f else 1f)
                                 )
-                                CoverImage(track, Modifier.size(48.dp).clip(LevyraPlayerDesign.ShapeXs))
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(track.title, color = if (isCurrent) queueAccent else LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        track.title,
+                                        color = when {
+                                            isCurrent -> queueAccent
+                                            wasPlayed -> LevyraMuted
+                                            else -> LevyraText
+                                        },
+                                        fontSize = 14.sp,
+                                        fontWeight = if (isCurrent) FontWeight.Black else FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        track.artist,
+                                        color = LevyraMuted.copy(alpha = if (wasPlayed) 0.62f else 1f),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                                 if (isCurrent) {
                                     LevyraPlayingIndicator(
@@ -6009,6 +5916,165 @@ private fun QueueOverlay(
                                 }
                             }
                         }
+                    }
+                
+    }
+
+    BackHandler(enabled = selectionActive) { selectedQueueKeys = emptySet() }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(
+                start = 18.dp,
+                end = 18.dp,
+                top = 18.dp,
+                bottom = if (selectionActive) 210.dp else 120.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(connectedStyle.gap)
+        ) {
+            item(contentType = "queue-header") {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(strings.queue, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            strings.formatQueueSummary(state.queue.size, state.queueHistoryCount),
+                            color = LevyraMuted,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    CircleIconButton(
+                        icon = Icons.Rounded.Close,
+                        tint = LevyraText,
+                        background = Color.White.copy(alpha = 0.1f),
+                        onClick = onClose
+                    )
+                }
+            }
+            item(contentType = "queue-spaces") {
+                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                    QueueSpacesPanel(
+                        spaces = state.queueSpaces,
+                        activeSpaceId = state.activeQueueSpaceId,
+                        switching = state.queueSwitching,
+                        accent = queueAccent,
+                        onSwitch = onSwitchQueueSpace,
+                        onCreate = onCreateQueueSpace,
+                        onRename = onRenameQueueSpace,
+                        onDuplicate = onDuplicateQueueSpace,
+                        onClear = onClearQueueSpace,
+                        onDelete = onDeleteQueueSpace
+                    )
+                }
+            }
+            item(contentType = "queue-radio") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .levyraConnectedSurface(LevyraConnectedPosition.Single, connectedStyle)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(Icons.Rounded.Bolt, null, tint = if (state.radioEnabled) LevyraCyan else LevyraMuted, modifier = Modifier.size(20.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(strings.continuousRadio, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Text(strings.continuousRadioSubtitle, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Switch(checked = state.radioEnabled, onCheckedChange = { onToggleRadio() })
+                        if (state.queueUndoAvailable) {
+                            IconButton(onClick = onUndo) {
+                                Icon(Icons.AutoMirrored.Rounded.Undo, strings.undoRemoval, tint = LevyraCyan)
+                            }
+                        }
+                    }
+                }
+            }
+            if (state.activeMix != null && state.queue.size > 1) {
+                val mixName = state.activeMix.label.ifBlank { strings.levyraMix }
+                item(contentType = "queue-save") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                            .levyraConnectedSurface(LevyraConnectedPosition.Single, connectedStyle)
+                            .levyraPressable(
+                                onClick = { onSaveSelection(mixName) },
+                                pressedScale = LevyraPressScale.Row,
+                                role = Role.Button,
+                                onClickLabel = strings.saveSelection,
+                                haptic = LevyraHapticAction.Confirm
+                            )
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.BookmarkAdd,
+                            contentDescription = null,
+                            tint = queueAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = strings.saveSelection,
+                            color = LevyraText,
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+            if (state.queue.isEmpty()) {
+                item { Text(strings.queueEmpty, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+            } else {
+                val currentIndex = state.queueCurrentIndex.takeIf { it in state.queue.indices }
+                if (currentIndex != null && currentIndex > 0) {
+                    stickyHeader(key = "queue-played-header", contentType = "queue-section-header") {
+                        QueueSectionHeader(strings.queueSectionCopy().played, currentIndex, queueAccent)
+                    }
+                    itemsIndexed(
+                        state.queue.take(currentIndex),
+                        key = { _, track -> "q-${System.identityHashCode(track)}-${track.id}-${track.videoUrl}" },
+                        contentType = { _, _ -> "queue-track" }
+                    ) { index, track ->
+                        queueTrackRow(index, track)
+                    }
+                }
+                if (currentIndex != null) {
+                    item(
+                        key = "q-${System.identityHashCode(state.queue[currentIndex])}-${state.queue[currentIndex].id}-${state.queue[currentIndex].videoUrl}",
+                        contentType = "queue-current"
+                    ) {
+                        queueTrackRow(currentIndex, state.queue[currentIndex])
+                    }
+                }
+                val upNextStart = currentIndex?.plus(1) ?: 0
+                if (upNextStart < state.queue.size) {
+                    stickyHeader(key = "queue-up-next-header", contentType = "queue-section-header") {
+                        QueueSectionHeader(strings.queueSectionCopy().upNext, state.queue.size - upNextStart, queueAccent)
+                    }
+                    itemsIndexed(
+                        state.queue.drop(upNextStart),
+                        key = { _, track -> "q-${System.identityHashCode(track)}-${track.id}-${track.videoUrl}" },
+                        contentType = { _, _ -> "queue-track" }
+                    ) { relativeIndex, track ->
+                        queueTrackRow(upNextStart + relativeIndex, track)
                     }
                 }
             }
@@ -6061,6 +6127,24 @@ private fun QueueOverlay(
         )
     }
 }
+
+@Composable
+private fun QueueSectionHeader(label: String, count: Int, accent: Color) {
+    Surface(
+        color = LevyraInk.copy(alpha = 0.97f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(top = 13.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(label, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(count.toString(), color = accent, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
 
 @Composable
 private fun QueueSelectionBar(
