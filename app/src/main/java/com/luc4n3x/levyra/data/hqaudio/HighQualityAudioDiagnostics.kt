@@ -78,7 +78,7 @@ internal object HighQualityAudioDiagnostics {
         )
     }
 
-    fun matchRejected(query: AlternativeTrackQuery, selection: AlternativeMatchSelection.Rejected) {
+    fun matchRejected(providerId: String, query: AlternativeTrackQuery, selection: AlternativeMatchSelection.Rejected) {
         val breakdown = selection.evaluations
             .mapNotNull { it.rejection }
             .groupingBy { it }
@@ -87,7 +87,8 @@ internal object HighQualityAudioDiagnostics {
             .joinToString(",") { "${it.key}=${it.value}" }
             .ifBlank { "-" }
         Timber.d(
-            "HQ_PROVIDER_MATCH_REJECTED reason=%s candidates=%d expectedTitle=\"%s\" expectedArtist=\"%s\" breakdown=%s",
+            "HQ_PROVIDER_MATCH_REJECTED provider=%s reason=%s candidates=%d expectedTitle=\"%s\" expectedArtist=\"%s\" breakdown=%s",
+            providerId,
             selection.reason,
             selection.evaluations.size,
             query.title.take(MAX_TEXT),
