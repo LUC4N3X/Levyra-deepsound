@@ -32,12 +32,23 @@ object NativeAudioIntegration {
 
     fun isAaudioOutputSupported(): Boolean = OboeAudioOutputProvider.isOboeSupported()
 
-    fun redirectFailedPlatformDecoder(error: PlaybackException): String? {
+    fun redirectFailedPlatformDecoder(error: PlaybackException): String? =
+        redirectFailedPlatformDecoder(error, rememberControllerError = true)
+
+    fun redirectFailedBackgroundDecoder(error: PlaybackException): String? =
+        redirectFailedPlatformDecoder(error, rememberControllerError = false)
+
+    private fun redirectFailedPlatformDecoder(
+        error: PlaybackException,
+        rememberControllerError: Boolean
+    ): String? {
         val mimeType = AudioDecoderFallbackPolicy.failedPlatformAudioMimeType(error) ?: return null
         if (!decoderFallbackRegistry.redirect(mimeType)) return null
-        synchronized(pendingControllerErrorLock) {
-            pendingControllerErrorCode = error.errorCode
-            pendingControllerErrorElapsedMs = SystemClock.elapsedRealtime()
+        if (rememberControllerError) {
+            synchronized(pendingControllerErrorLock) {
+                pendingControllerErrorCode = error.errorCode
+                pendingControllerErrorElapsedMs = SystemClock.elapsedRealtime()
+            }
         }
         return mimeType
     }
