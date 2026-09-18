@@ -141,6 +141,10 @@ class PlaybackService : MediaLibraryService() {
     private var transitionPlayer: ExoPlayer? = null
     private var transitionNormalization: NormalizationAudioProcessor? = null
     private var currentAudioSettings = LevyraAudioSettings()
+
+    @Volatile
+    private var aaudioOutputRequested = false
+    private var primaryAudioSink: AudioSink? = null
     private var currentAudioNormalization = false
     private val normalizationProcessor = NormalizationAudioProcessor()
     private val equalizerProcessor = LevyraEqualizerAudioProcessor()
@@ -383,6 +387,21 @@ class PlaybackService : MediaLibraryService() {
             (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
                 normalized.replayGainEnabled || audioNormalization)
         updateQueueTransitionSettings(normalized, audioNormalization)
+        updateAaudioOutputRequest(normalized.aaudioOutputEnabled)
+    }
+
+    private fun DefaultAudioSink.Builder.withLevyraAudioOutput(context: Context): DefaultAudioSink.Builder = apply {
+        NativeAudioIntegration.audioOutputProvider(context) { aaudioOutputRequested }?.let(::setAudioOutputProvider)
+    }
+
+    private fun updateAaudioOutputRequest(requested: Boolean) {
+        if (aaudioOutputRequested == requested) return
+        aaudioOutputRequested = requested
+        if (!NativeAudioIntegration.isAaudioOutputSupported()) return
+        val player = activePlayer ?: return
+        val sink = primaryAudioSink ?: return
+        val provider = NativeAudioIntegration.audioOutputProvider(this) { aaudioOutputRequested } ?: return
+        player.createMessage { _, _ -> sink.setAudioOutputProvider(provider) }.send()
     }
 
     private fun activateServiceAndApplyPendingAudioSettings() {
@@ -531,10 +550,14 @@ class PlaybackService : MediaLibraryService() {
                             pcm16OutputProcessor
                         )
                     )
+                    .withLevyraAudioOutput(context)
                     .build()
+                    .also { primaryAudioSink = it }
             }
         }
         renderersFactory.setEnableDecoderFallback(true)
+        renderersFactory.setMediaCodecSelector(NativeAudioIntegration.mediaCodecSelector)
+        renderersFactory.setExtensionRendererMode(NativeAudioIntegration.EXTENSION_RENDERER_MODE)
 
         val player = ExoPlayer.Builder(this)
             .setLoadControl(loadControl)
@@ -636,6 +659,11 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                NativeAudioIntegration.redirectFailedPlatformDecoder(error)?.let { mimeType ->
+                    Timber.w("Platform audio decoder failed for %s; retrying with FFmpeg", mimeType)
+                    player.prepare()
+                    return
+                }
                 updatePlaybackProtection(player)
                 discardIncompatiblePlaybackCache(error)
                 val failureKind = classifyPlaybackFailureReason(playbackFailureReasonOf(error))
@@ -1453,24 +1481,9 @@ class PlaybackService : MediaLibraryService() {
             val resolved = awaitPreparedQueueTrackForTransition(currentIdentity, targetIdentity)
                 ?: withContext(Dispatchers.IO) { resolveQueueTrack(target) }
             if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
-            secondary = buildTransitionPlayer(resolved).also { transitionPlayer = it }
-            secondary.setPlaybackParameters(
-                PlaybackParameters(currentAudioSettings.playbackSpeed, currentAudioSettings.pitch)
-            )
-            secondary.volume = 0f
-            secondary.setMediaItem(LevyraMediaItemFactory.build(resolved))
-            RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
-            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
-            secondary.prepare()
-            val prepared = withTimeoutOrNull(TRANSITION_PREPARE_TIMEOUT_MS) {
-                while (secondary.playbackState != Player.STATE_READY) {
-                    if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return@withTimeoutOrNull false
-                    if (secondary.playerError != null) return@withTimeoutOrNull false
-                    delay(50L)
-                }
-                true
-            } == true
-            if (!prepared) return
+            secondary = prepareTransitionPlayerWithDecoderFallback(resolved) {
+                transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)
+            } ?: return
 
             while (primary.duration > 0L && primary.duration - primary.currentPosition > plan.transitionMs) {
                 if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
@@ -1524,6 +1537,45 @@ class PlaybackService : MediaLibraryService() {
             primary.volume = 1f
             releaseTransitionPlayer(secondary)
         }
+    }
+
+    private suspend fun prepareTransitionPlayerWithDecoderFallback(
+        track: Track,
+        transitionIsValid: () -> Boolean
+    ): ExoPlayer? {
+        for (attempt in 0 until 2) {
+            val candidate = buildTransitionPlayer(track).also { transitionPlayer = it }
+            candidate.setPlaybackParameters(
+                PlaybackParameters(currentAudioSettings.playbackSpeed, currentAudioSettings.pitch)
+            )
+            candidate.volume = 0f
+            candidate.setMediaItem(LevyraMediaItemFactory.build(track))
+            RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
+            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
+            candidate.prepare()
+
+            val prepared = withTimeoutOrNull(TRANSITION_PREPARE_TIMEOUT_MS) {
+                while (candidate.playbackState != Player.STATE_READY) {
+                    if (!transitionIsValid()) return@withTimeoutOrNull false
+                    if (candidate.playerError != null) return@withTimeoutOrNull false
+                    delay(50L)
+                }
+                true
+            } == true
+            if (prepared) return candidate
+
+            val decoderError = candidate.playerError
+            releaseTransitionPlayer(candidate)
+            if (
+                attempt == 0 &&
+                decoderError != null &&
+                NativeAudioIntegration.redirectFailedBackgroundDecoder(decoderError) != null
+            ) {
+                continue
+            }
+            return null
+        }
+        return null
     }
 
     private suspend fun awaitPrimaryHandoffReady(
@@ -1654,8 +1706,13 @@ class PlaybackService : MediaLibraryService() {
                         Pcm16OutputAudioProcessor()
                     )
                 )
+                .withLevyraAudioOutput(context)
                 .build()
-        }.apply { setEnableDecoderFallback(true) }
+        }.apply {
+            setEnableDecoderFallback(true)
+            setMediaCodecSelector(NativeAudioIntegration.mediaCodecSelector)
+            setExtensionRendererMode(NativeAudioIntegration.EXTENSION_RENDERER_MODE)
+        }
         return ExoPlayer.Builder(this)
             .setRenderersFactory(renderers)
             .setMediaSourceFactory(sharedMediaSourceFactory)

@@ -431,6 +431,7 @@ import com.luc4n3x.levyra.data.findVerifiedTopResultArtist
 import com.luc4n3x.levyra.data.deduplicateSearchSongs
 import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.player.LevyraPipBridge
+import com.luc4n3x.levyra.player.NativeAudioIntegration
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistBiography
@@ -2483,6 +2484,8 @@ fun LevyraApp(
                     onTempo = viewModel::setPlaybackSpeed,
                     onPitch = viewModel::setPitch,
                     onGapless = viewModel::setGaplessEnabled,
+                    aaudioOutputAvailable = remember { NativeAudioIntegration.isAaudioOutputSupported() },
+                    onAaudioOutput = viewModel::setAaudioOutputEnabled,
                     onResetEqualizer = viewModel::resetEqualizer,
                     onApplyAutoEq = viewModel::applyAutoEqImport,
                     onSaveAutoEqPreset = viewModel::saveAutoEqCustomPreset,
