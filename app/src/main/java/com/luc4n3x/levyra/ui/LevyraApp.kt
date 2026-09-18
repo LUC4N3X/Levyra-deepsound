@@ -6067,6 +6067,9 @@ private fun QueueOverlay(
                     }
                 }
                 if (currentIndex != null) {
+                    stickyHeader(key = "queue-current-header", contentType = "queue-section-header") {
+                        QueueSectionHeader(strings.nowPlaying, null, queueAccent)
+                    }
                     item(
                         key = "q-${System.identityHashCode(state.queue[currentIndex])}-${state.queue[currentIndex].id}-${state.queue[currentIndex].videoUrl}",
                         contentType = "queue-current"
@@ -6139,7 +6142,7 @@ private fun QueueOverlay(
 }
 
 @Composable
-private fun QueueSectionHeader(label: String, count: Int, accent: Color) {
+private fun QueueSectionHeader(label: String, count: Int?, accent: Color) {
     Surface(
         color = LevyraInk.copy(alpha = 0.97f),
         modifier = Modifier.fillMaxWidth()
@@ -6150,7 +6153,9 @@ private fun QueueSectionHeader(label: String, count: Int, accent: Color) {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(label, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text(count.toString(), color = accent, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            if (count != null) {
+                Text(count.toString(), color = accent, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
