@@ -491,4 +491,3 @@ internal fun List<LocalFolderGroup>.filterLocalFolders(
             group.tracks.any { mediaByUri[it.streamUrl]?.matchesFullTagQuery(query) == true }
     }
 }
-
