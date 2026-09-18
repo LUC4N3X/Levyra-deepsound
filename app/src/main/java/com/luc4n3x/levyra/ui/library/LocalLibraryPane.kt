@@ -86,7 +86,6 @@ internal fun LazyListScope.localLibrarySection(
     isPlaying: Boolean,
     favoriteIds: Set<String>,
     unavailableUris: Set<String>,
-    mediaByUri: Map<String, LocalMediaEntity>,
     callbacks: LocalLibraryCallbacks
 ) {
     item(key = "local-actions", contentType = "local-actions") {
@@ -231,6 +230,7 @@ private fun LazyListScope.localTrackItems(
     isPlaying: Boolean,
     favoriteIds: Set<String>,
     unavailableUris: Set<String>,
+    mediaByUri: Map<String, LocalMediaEntity>,
     callbacks: LocalLibraryCallbacks
 ) {
     items(tracks, key = { "$keyPrefix-${it.streamUrl}" }, contentType = { "local-track" }) { track ->
