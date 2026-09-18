@@ -115,6 +115,37 @@ class LocalEmbeddedTagWriterTest {
         }
     }
 
+    @Test
+    fun flacRejectsOverflowingVorbisLengthsWithoutThrowing() {
+        val input = File.createTempFile("levyra-overflow-input", ".flac")
+        val output = File.createTempFile("levyra-overflow-output", ".flac")
+        try {
+            val malformedComment = byteArrayOf(
+                0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0x7F,
+                0, 0, 0, 0
+            )
+            input.writeBytes(
+                "fLaC".toByteArray(StandardCharsets.ISO_8859_1) +
+                    flacBlock(type = 0, last = false, payload = ByteArray(34)) +
+                    flacBlock(type = 4, last = true, payload = malformedComment) +
+                    ByteArray(16)
+            )
+
+            val result = LocalEmbeddedTagWriter.write(
+                input = input,
+                output = output,
+                format = LocalEditableTagFormat.Flac,
+                edits = edits(title = "New title", composer = "Composer")
+            )
+
+            assertFalse(result.success)
+            assertTrue(result.reason == "invalid_vorbis_comment")
+        } finally {
+            input.delete()
+            output.delete()
+        }
+    }
+
     private fun edits(title: String, composer: String) = LocalTagEdits(
         title = title,
         artist = "Artist",
