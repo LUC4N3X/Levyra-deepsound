@@ -8,7 +8,7 @@
 
 # Hear every layer. No limits.
 
-**A native music player for Android & Windows with streaming, downloads, and a private offline library.**
+**A native music player for Android & Windows with streaming, local files, downloads, and a private offline library.**
 
 
 <p align="center">
@@ -248,7 +248,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
 
 <div align="center">
   <h3>🎧 <b>Everything in the signal path. Nothing in the way.</b></h3>
-  <p><sub>Playback, discovery, radio, lyrics, downloads, recognition, local sync, privacy, and networking all live in the same native app instead of being split across separate services.</sub></p>
+  <p><sub>Playback, discovery, radio, lyrics, downloads, local music, Queue Spaces, recognition, local sync, privacy, and networking all live in the same native app.</sub></p>
   <p>
     <code>12 CORE SYSTEMS</code> &nbsp;·&nbsp;
     <code>ANDROID + WINDOWS</code> &nbsp;·&nbsp;
@@ -268,6 +268,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
         <li><b>Native Engines:</b> Media3 / ExoPlayer on Android and an isolated libvlc player on Windows.</li>
         <li><b>Verified HQ Audio:</b> Android can use a verified alternative source up to 320 kbps without changing the original Levyra/YouTube track identity. If verification fails, it falls back normally.</li>
         <li><b>Gapless & Queue:</b> Gapless transitions, shuffle/repeat, queue Undo, and album continuity that avoids crossfading between consecutive tracks from the same release.</li>
+        <li><b>Queue Spaces:</b> Keep several named queues instead of one disposable list. Spaces survive restarts and backups, and you can create, rename, duplicate, switch, clear, delete, or send tracks to another space without rebuilding everything.</li>
         <li><b>Tempo & Timing:</b> Speed and pitch controls, plus a built-in sleep timer.</li>
         <li><b>Android Auto:</b> Playback works with Android's car-focused media controls.</li>
         <li><b>Loudness Normalization:</b> Attenuation-only leveling from track loudness data, with a gated BS.1770-4-style meter when the track has no loudness metadata.</li>
@@ -278,12 +279,14 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
     </td>
     <td width="50%">
       <h3>💾 <b>Offline Vault</b></h3>
-      <p><b>Your offline library stays portable.</b><br><sub>Downloads stay as normal audio files, and local backups do not require a Levyra account.</sub></p>
+      <p><b>Your offline library stays portable.</b><br><sub>Downloads stay as normal audio files, while music already on your device can live in the same library without a Levyra account.</sub></p>
       <ul>
         <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics can be embedded directly in the file.</li>
         <li><b>Configurable Download Storage:</b> Pick where Levyra saves music, including supported SD card locations. Artist / Album folders stay relative to the location you choose.</li>
         <li><b>Local-First Playback:</b> Existing downloads play directly from <code>Music/Levyra</code> or your chosen download folder.</li>
-        <li><b>Levyra Vault:</b> Versioned <code>.levyra</code> backups can include settings, favorites, playlists, followed artists, history, and queue data without an online account.</li>
+        <li><b>Device Library:</b> Android can index music already stored on the device through MediaStore, keep its local artwork and metadata, and make those tracks available for normal browsing and search.</li>
+        <li><b>Library Scan:</b> The scanner reconciles storage changes, avoids duplicate entries, respects excluded folders, and handles files that disappear or move instead of leaving stale tracks behind.</li>
+        <li><b>Levyra Vault:</b> Versioned <code>.levyra</code> backups can include settings, favorites, playlists, followed artists, history, and Queue Spaces without an online account.</li>
         <li><b>Verified Restore:</b> Restores check the manifest, SHA-256 checksums, compatibility, required sections, and rollback state before replacing local data.</li>
         <li><b>Automatic Protection:</b> Manual, scheduled, and pre-update backups support 3/5/10 retention and optional Android SAF destinations, with internal storage as the fallback.</li>
       </ul>
@@ -389,8 +392,10 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
     </td>
     <td width="50%">
       <h3>🗂️ <b>Library Organization</b></h3>
-      <p><b>Shape the library around how you actually listen.</b><br><sub>Tags, hidden playlists, and recommendation controls are local, reversible, and included in Levyra Vault backups.</sub></p>
+      <p><b>Shape the library around how you actually listen.</b><br><sub>Playlists, tags, on-device music, and recommendation controls stay local and under your control.</sub></p>
       <ul>
+        <li><b>Local Library 2.0:</b> Browse and search music already on your phone alongside Levyra content, with local artwork and metadata kept intact.</li>
+        <li><b>Local Tracks Everywhere:</b> On-device tracks work with playback, favorites, queues, MediaSession, Android Auto, search, and the rest of the normal library flow.</li>
         <li><b>Playlist Tags:</b> Create your own tags such as Rap, Gym, Relax, or Auto, and put more than one tag on a playlist.</li>
         <li><b>Tag Filtering:</b> Filter the Library by one or more tags without leaving the playlist view.</li>
         <li><b>Hidden Playlists:</b> Hide a playlist without deleting it, then bring it back from the dedicated filter. Tracks and metadata stay untouched.</li>
