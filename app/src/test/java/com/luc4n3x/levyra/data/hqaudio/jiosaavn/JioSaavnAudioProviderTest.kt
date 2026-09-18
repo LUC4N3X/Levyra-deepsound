@@ -118,7 +118,7 @@ class JioSaavnAudioProviderTest {
         val provider = provider(exchange)
         val outcome = runBlocking { provider.resolveStream(candidate(duration = 200)) }
         val stream = (outcome as ProviderStreamOutcome.Resolved).stream
-        assertEquals(320, stream.quality.effectiveKbps)
+        assertEquals(AudioQualityTier.KBPS_320, stream.tier)
         assertEquals("https://aac.saavncdn.com/820/abcdef_320.mp4", stream.url)
         assertEquals(320, stream.estimatedKbps)
         assertEquals("audio/mp4", stream.mimeType)
@@ -144,14 +144,14 @@ class JioSaavnAudioProviderTest {
             }
         }
         val stream = (runBlocking { provider(exchange).resolveStream(candidate(duration = 200)) } as ProviderStreamOutcome.Resolved).stream
-        assertEquals(160, stream.quality.effectiveKbps)
+        assertEquals(AudioQualityTier.KBPS_160, stream.tier)
     }
 
     @Test
     fun unavailable320IsNotEvenRequested() {
         val exchange = streamExchange { tier -> if (tier == 160) validFor(160) else htmlResponse(404) }
         val stream = (runBlocking { provider(exchange).resolveStream(candidate(duration = 200, offers320 = false)) } as ProviderStreamOutcome.Resolved).stream
-        assertEquals(160, stream.quality.effectiveKbps)
+        assertEquals(AudioQualityTier.KBPS_160, stream.tier)
         assertFalse(exchange.requests.any { it.url.endsWith("_320.mp4") })
     }
 
@@ -213,7 +213,7 @@ class JioSaavnAudioProviderTest {
         val outcome = runBlocking { provider(exchange).resolveStream(localCandidate) }
         val stream = (outcome as ProviderStreamOutcome.Resolved).stream
         assertEquals("https://aac.saavncdn.com/396/$REAL_MEDIA_STEM" + "_320.mp4", stream.url)
-        assertEquals(320, stream.quality.effectiveKbps)
+        assertEquals(AudioQualityTier.KBPS_320, stream.tier)
         assertEquals(320, stream.estimatedKbps)
         assertEquals("mp4a", stream.codec)
         assertEquals(clockMs + JioSaavnAudioProvider.OPEN_MEDIA_TTL_MS, stream.expiresAtMs)
@@ -248,7 +248,7 @@ class JioSaavnAudioProviderTest {
         }
         val stream = (runBlocking { provider(exchange).resolveStream(localCandidate) } as ProviderStreamOutcome.Resolved).stream
         assertEquals("https://aac.saavncdn.com/396/$REAL_MEDIA_STEM" + "_160.mp4", stream.url)
-        assertEquals(160, stream.quality.effectiveKbps)
+        assertEquals(AudioQualityTier.KBPS_160, stream.tier)
     }
 
     @Test

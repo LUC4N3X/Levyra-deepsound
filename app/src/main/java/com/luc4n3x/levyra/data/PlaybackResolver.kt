@@ -18,7 +18,6 @@ import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
 import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
-import com.luc4n3x.levyra.data.hqaudio.qobuz.QobuzAudioProvider
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.LevyraContentLocales
@@ -353,13 +352,9 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
     private val sourceMatchMutationMutex = Mutex()
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val highQualityExchange = OkHttpProviderExchange(HighQualityProviderHttpClient::client)
     private val highQualityPlayback = HighQualityPlaybackCoordinator(
         HighQualityAudioResolver(
-            providers = listOf(
-                JioSaavnAudioProvider(highQualityExchange),
-                QobuzAudioProvider(highQualityExchange)
-            ),
+            provider = JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope
         )

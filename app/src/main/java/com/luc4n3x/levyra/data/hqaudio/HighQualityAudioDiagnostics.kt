@@ -48,35 +48,8 @@ internal object HighQualityAudioDiagnostics {
         )
     }
 
-    fun cacheHit(providerId: String, providerTrackId: String, manual: Boolean) {
-        Timber.d("HQ_PROVIDER_CACHE_HIT provider=%s id=%s manual=%s", providerId, providerTrackId, manual)
-    }
-
-    fun manualPin(providerId: String, providerTrackId: String) {
-        Timber.d("HQ_PROVIDER_MANUAL_PIN provider=%s id=%s", providerId, providerTrackId)
-    }
-
-    fun routeAttempt(providerId: String, position: Int, total: Int, preference: HighQualityPreference) {
-        Timber.d("HQ_ROUTER_TRY provider=%s position=%d/%d preference=%s", providerId, position, total, preference)
-    }
-
-    fun routeHedge(slowProviderId: String, nextProviderId: String, afterMs: Long) {
-        Timber.d("HQ_ROUTER_HEDGE slow=%s next=%s afterMs=%d", slowProviderId, nextProviderId, afterMs)
-    }
-
-    fun routeOutcome(providerId: String, outcome: String, detail: String) {
-        Timber.d("HQ_ROUTER_RESULT provider=%s outcome=%s detail=%s", providerId, outcome, detail.ifBlank { "-" }.take(MAX_TEXT))
-    }
-
-    fun backend(providerId: String, backend: String, operation: String, outcome: String, latencyMs: Long) {
-        Timber.d(
-            "HQ_PROVIDER_BACKEND provider=%s backend=%s op=%s outcome=%s latencyMs=%d",
-            providerId,
-            backend,
-            operation,
-            outcome,
-            latencyMs
-        )
+    fun cacheHit(providerId: String, providerTrackId: String) {
+        Timber.d("HQ_PROVIDER_CACHE_HIT provider=%s id=%s", providerId, providerTrackId)
     }
 
     fun staleMapping(providerId: String, providerTrackId: String, cause: String) {
@@ -127,16 +100,15 @@ internal object HighQualityAudioDiagnostics {
     fun streamValid(
         providerId: String,
         providerTrackId: String,
-        requested: String,
+        tier: AudioQualityTier,
         host: String,
         validation: StreamValidation.Valid
     ) {
         Timber.d(
-            "HQ_PROVIDER_STREAM_VALID provider=%s id=%s requested=%s quality=\"%s\" estimated=%dkbps mime=%s container=%s codec=%s bytes=%d host=%s",
+            "HQ_PROVIDER_STREAM_VALID provider=%s id=%s quality=%dkbps estimated=%dkbps mime=%s container=%s codec=%s bytes=%d host=%s",
             providerId,
             providerTrackId,
-            requested,
-            validation.quality.label,
+            tier.kbps,
             validation.estimatedKbps,
             validation.mimeType,
             validation.container,
@@ -149,16 +121,16 @@ internal object HighQualityAudioDiagnostics {
     fun streamInvalid(
         providerId: String,
         providerTrackId: String,
-        requested: String,
+        tier: AudioQualityTier,
         host: String,
         rejection: StreamRejection,
         statusCode: Int
     ) {
         Timber.d(
-            "HQ_PROVIDER_STREAM_INVALID provider=%s id=%s requested=%s reason=%s status=%d host=%s",
+            "HQ_PROVIDER_STREAM_INVALID provider=%s id=%s quality=%dkbps reason=%s status=%d host=%s",
             providerId,
             providerTrackId,
-            requested,
+            tier.kbps,
             rejection,
             statusCode,
             host
@@ -167,10 +139,10 @@ internal object HighQualityAudioDiagnostics {
 
     fun selected(stream: ResolvedHighQualityStream, evaluation: AlternativeMatchEvaluation, waitedMs: Long) {
         Timber.d(
-            "HQ_PROVIDER_SELECTED provider=%s id=%s quality=\"%s\" estimated=%dkbps mime=%s host=%s verdict=%s confidence=%d waitedMs=%d",
+            "HQ_PROVIDER_SELECTED provider=%s id=%s quality=%dkbps estimated=%dkbps mime=%s host=%s verdict=%s confidence=%d waitedMs=%d",
             stream.providerId,
             stream.providerTrackId,
-            stream.quality.label,
+            stream.tier.kbps,
             stream.estimatedKbps,
             stream.mimeType,
             stream.host,

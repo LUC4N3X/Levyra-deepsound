@@ -24,7 +24,6 @@ internal fun query(
 
 internal fun candidate(
     id: String = "pW-kkdqr",
-    providerId: String = "jiosaavn",
     title: String = "Blinding Lights",
     primary: List<String> = listOf("The Weeknd"),
     featured: List<String> = emptyList(),
@@ -34,7 +33,7 @@ internal fun candidate(
     offers320: Boolean = true,
     isrc: String = ""
 ) = AlternativeTrackCandidate(
-    providerId = providerId,
+    providerId = "jiosaavn",
     providerTrackId = id,
     title = title,
     primaryArtists = primary,
@@ -55,35 +54,12 @@ internal fun resolvedStream(
     providerId = candidate.providerId,
     providerTrackId = candidate.providerTrackId,
     url = "https://aac.saavncdn.com/820/${candidate.providerTrackId}_${tier.kbps}.mp4",
-    quality = HighQualityStreamQuality.lossy(HighQualityCodec.AAC, tier.kbps, tier.kbps),
+    tier = tier,
     mimeType = "audio/mp4",
     container = "mp4",
     codec = "mp4a",
     contentLength = bytesFor(tier.kbps, candidate.durationSeconds),
-    expiresAtMs = expiresAtMs
-)
-
-internal fun losslessStream(
-    candidate: AlternativeTrackCandidate,
-    bitDepth: Int = 24,
-    sampleRateHz: Int = 96_000,
-    expiresAtMs: Long = System.currentTimeMillis() + 3_600_000L
-) = ResolvedHighQualityStream(
-    providerId = candidate.providerId,
-    providerTrackId = candidate.providerTrackId,
-    url = "https://streaming-qobuz-std.akamaized.net/file?uid=${candidate.providerTrackId}&fmt=7",
-    quality = HighQualityStreamQuality(
-        codec = HighQualityCodec.FLAC,
-        nominalKbps = null,
-        estimatedKbps = 2_400,
-        sampleRateHz = sampleRateHz,
-        bitDepth = bitDepth,
-        channels = 2
-    ),
-    mimeType = "audio/flac",
-    container = "flac",
-    codec = "flac",
-    contentLength = 60_000_000L,
+    estimatedKbps = tier.kbps,
     expiresAtMs = expiresAtMs
 )
 
@@ -221,16 +197,15 @@ internal class InMemoryMappingStorage : HighQualityMappingStorage {
 }
 
 internal class FakeHighQualityProvider(
-    override val id: String = "jiosaavn",
-    override val displayName: String = "JioSaavn",
-    override val losslessCapable: Boolean = false,
-    override val supportsLookup: Boolean = true,
     var searchOutcome: suspend (String) -> ProviderSearchOutcome = { ProviderSearchOutcome.Found(emptyList()) },
     var lookupOutcome: suspend (String) -> ProviderLookupOutcome = { ProviderLookupOutcome.Missing },
     var streamOutcome: suspend (AlternativeTrackCandidate) -> ProviderStreamOutcome = {
         ProviderStreamOutcome.Resolved(resolvedStream(it))
     }
 ) : HighQualityAudioProvider {
+    override val id: String = "jiosaavn"
+    override val displayName: String = "JioSaavn"
+
     val searches = CopyOnWriteArrayList<String>()
     val lookups = CopyOnWriteArrayList<String>()
     val streamRequests = CopyOnWriteArrayList<String>()
@@ -245,87 +220,8 @@ internal class FakeHighQualityProvider(
         return lookupOutcome(providerTrackId)
     }
 
-    val preferences = CopyOnWriteArrayList<HighQualityPreference>()
-
-    override suspend fun resolveStream(
-        candidate: AlternativeTrackCandidate,
-        preference: HighQualityPreference
-    ): ProviderStreamOutcome {
+    override suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome {
         streamRequests += candidate.providerTrackId
-        preferences += preference
         return streamOutcome(candidate)
     }
 }
-
-internal fun flacProbeBody(
-    sampleRateHz: Int = 96_000,
-    bitDepth: Int = 24,
-    channels: Int = 2,
-    seconds: Int = 200
-): ByteArray {
-    val totalSamples = sampleRateHz.toLong() * seconds
-    val packed = (sampleRateHz.toLong() shl 44) or
-        ((channels - 1).toLong() shl 41) or
-        ((bitDepth - 1).toLong() shl 36) or
-        totalSamples
-    val streamInfo = ByteArray(34)
-    for (index in 0 until 8) {
-        streamInfo[10 + index] = (packed ushr 56 - index * 8).toByte()
-    }
-    return "fLaC".toByteArray(Charsets.US_ASCII) + byteArrayOf(0, 0, 0, 34) + streamInfo + ByteArray(64)
-}
-
-internal fun flacResponse(
-    totalBytes: Long,
-    body: ByteArray = flacProbeBody(),
-    contentType: String = "audio/flac",
-    code: Int = 206
-) = ProviderHttpResponse(
-    code = code,
-    headers = mapOf("Content-Type" to contentType, "Content-Range" to "bytes 0-8191/$totalBytes"),
-    body = body
-)
-
-internal fun mp3Response(totalBytes: Long, contentType: String = "audio/mpeg") = ProviderHttpResponse(
-    code = 206,
-    headers = mapOf("Content-Type" to contentType, "Content-Range" to "bytes 0-8191/$totalBytes"),
-    body = byteArrayOf(0xFF.toByte(), 0xFB.toByte(), 0x90.toByte(), 0x64) + ByteArray(128)
-)
-
-internal fun qobuzTrack(
-    id: Long,
-    title: String = "Blinding Lights",
-    version: String? = null,
-    performer: String = "The Weeknd",
-    album: String = "After Hours",
-    duration: Int = 200,
-    isrc: String = "USUG11904206",
-    explicit: Boolean = false,
-    bitDepth: Int = 24,
-    samplingRateKhz: Double = 96.0,
-    streamable: Boolean = true
-): JSONObject = JSONObject()
-    .put("id", id)
-    .put("title", title)
-    .put("version", version ?: JSONObject.NULL)
-    .put("duration", duration)
-    .put("isrc", isrc)
-    .put("parental_warning", explicit)
-    .put("streamable", streamable)
-    .put("maximum_bit_depth", bitDepth)
-    .put("maximum_sampling_rate", samplingRateKhz)
-    .put("performer", JSONObject().put("name", performer))
-    .put("album", JSONObject().put("title", album).put("artist", JSONObject().put("name", performer)))
-
-internal fun qobuzSearchBody(vararg tracks: JSONObject): String = JSONObject()
-    .put("success", true)
-    .put("data", JSONObject().put("tracks", JSONObject().put("items", JSONArray(tracks.toList()))))
-    .toString()
-
-internal fun qobuzStreamBody(url: String, bitDepth: Int = 24, samplingRateKhz: Double = 96.0): String = JSONObject()
-    .put("success", true)
-    .put("data", JSONObject().put("url", url).put("bit_depth", bitDepth).put("sampling_rate", samplingRateKhz))
-    .toString()
-
-internal fun qobuzMediaUrl(format: Int, expiresAtSeconds: Long = System.currentTimeMillis() / 1_000L + 1_800L) =
-    "https://streaming-qobuz-std.akamaized.net/file?uid=1&fmt=$format&etsp=$expiresAtSeconds&hmac=signature"

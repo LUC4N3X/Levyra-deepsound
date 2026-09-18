@@ -4,7 +4,6 @@ import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackCandidate
 import com.luc4n3x.levyra.data.hqaudio.AudioQualityTier
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioDiagnostics
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioProvider
-import com.luc4n3x.levyra.data.hqaudio.HighQualityPreference
 import com.luc4n3x.levyra.data.hqaudio.ProviderBackendHealth
 import com.luc4n3x.levyra.data.hqaudio.ProviderCircuitBreaker
 import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
@@ -83,10 +82,7 @@ internal class JioSaavnAudioProvider(
         authorizationCircuitBreaker.snapshot(AUTHORIZATION_CIRCUIT)
     )
 
-    override suspend fun resolveStream(
-        candidate: AlternativeTrackCandidate,
-        preference: HighQualityPreference
-    ): ProviderStreamOutcome {
+    override suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome {
         if (candidate.mediaToken.isBlank()) return ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
         val tiers = tiersFor(candidate)
         val rejections = mutableListOf<StreamRejection>()
@@ -140,17 +136,18 @@ internal class JioSaavnAudioProvider(
                 val host = HighQualityAudioDiagnostics.hostOf(url)
                 when (val validation = probe(url, tier, candidate.durationSeconds)) {
                     is StreamValidation.Valid -> {
-                        HighQualityAudioDiagnostics.streamValid(id, candidate.providerTrackId, "${tier.kbps}kbps", host, validation)
+                        HighQualityAudioDiagnostics.streamValid(id, candidate.providerTrackId, tier, host, validation)
                         return ProviderStreamOutcome.Resolved(
                             ResolvedHighQualityStream(
                                 providerId = id,
                                 providerTrackId = candidate.providerTrackId,
                                 url = url,
-                                quality = validation.quality,
+                                tier = tier,
                                 mimeType = validation.mimeType,
                                 container = validation.container,
                                 codec = validation.codec,
                                 contentLength = validation.contentLength,
+                                estimatedKbps = validation.estimatedKbps,
                                 expiresAtMs = expiresAtFor(location, url)
                             )
                         )
@@ -160,7 +157,7 @@ internal class JioSaavnAudioProvider(
                         HighQualityAudioDiagnostics.streamInvalid(
                             id,
                             candidate.providerTrackId,
-                            "${tier.kbps}kbps",
+                            tier,
                             host,
                             validation.rejection,
                             validation.statusCode

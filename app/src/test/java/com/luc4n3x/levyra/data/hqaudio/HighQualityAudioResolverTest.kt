@@ -29,7 +29,7 @@ class HighQualityAudioResolverTest {
         budgetMs: Long = 5_000L,
         mode: HighQualityAudioMode = HighQualityAudioMode.AUTOMATIC
     ) = HighQualityAudioResolver(
-        providers = listOf(provider),
+        provider = provider,
         mappingStore = HighQualityMappingStore(storage),
         scope = scope,
         lookupBudgetMs = budgetMs
@@ -57,7 +57,7 @@ class HighQualityAudioResolverTest {
         val result = resolver(provider).resolveNow()
         assertTrue(result is HighQualityResolution.Selected)
         assertEquals(AlternativeMatchVerdict.EXACT, (result as HighQualityResolution.Selected).evaluation.verdict)
-        assertEquals(320, result.stream.quality.effectiveKbps)
+        assertEquals(AudioQualityTier.KBPS_320, result.stream.tier)
         assertEquals(1, provider.searches.size)
         assertEquals(1, storage.values.size)
     }
@@ -133,7 +133,7 @@ class HighQualityAudioResolverTest {
     fun retainedMappingStillExpiresWithItsOriginalTtl() {
         var nowMs = 1_800_000_000_000L
         fun timedResolver(provider: FakeHighQualityProvider) = HighQualityAudioResolver(
-            providers = listOf(provider),
+            provider = provider,
             mappingStore = HighQualityMappingStore(storage, clock = { nowMs }),
             scope = scope,
             clock = { nowMs },
@@ -245,7 +245,7 @@ class HighQualityAudioResolverTest {
         val provider = exactProvider()
         val resolver = resolver(provider)
         resolver.resolveNow()
-        resolver.reportPlaybackFailure(identity, "jiosaavn", "pW-kkdqr", "HTTP 403")
+        resolver.reportPlaybackFailure(identity, "pW-kkdqr", "HTTP 403")
         assertTrue(storage.values.isEmpty())
         assertNull(resolver.cachedSelection(identity))
         val result = resolver.resolveNow()
@@ -276,4 +276,48 @@ class HighQualityAudioResolverTest {
         admitted.forEach { it.cancel() }
     }
 
+    @Test
+    fun exactIsrcMatchIsDecisiveEvenOnACompilationAlbum() {
+        val provider = FakeHighQualityProvider(
+            searchOutcome = {
+                ProviderSearchOutcome.Found(listOf(candidate(album = "Greatest Hits 2020", isrc = "USUG11904206")))
+            }
+        )
+        val result = resolver(provider).resolveNow(query(isrc = "USUG11904206"))
+        assertEquals(100, (result as HighQualityResolution.Selected).evaluation.confidence)
+        assertEquals(1, provider.searches.size)
+    }
+
+    @Test
+    fun conflictingIsrcIsNeverSelected() {
+        val provider = FakeHighQualityProvider(
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate(isrc = "GBAYE0000001"))) }
+        )
+        val result = resolver(provider).resolveNow(query(isrc = "USUG11904206"))
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (result as HighQualityResolution.Fallback).reason)
+        assertTrue(provider.streamRequests.isEmpty())
+    }
+
+    @Test
+    fun cancellingTheLookupStopsTheProviderAndAllowsAFreshLookup() {
+        val cancelled = java.util.concurrent.atomic.AtomicBoolean(false)
+        val provider = FakeHighQualityProvider(searchOutcome = {
+            try {
+                kotlinx.coroutines.awaitCancellation()
+            } finally {
+                cancelled.set(true)
+            }
+        })
+        val resolver = resolver(provider)
+        val pending = resolver.begin(identity, query())
+        runBlocking {
+            delay(100L)
+            pending.cancel()
+            pending.join()
+        }
+        assertTrue(cancelled.get())
+        val retry = resolver.begin(identity, query())
+        assertTrue(retry !== pending)
+        retry.cancel()
+    }
 }

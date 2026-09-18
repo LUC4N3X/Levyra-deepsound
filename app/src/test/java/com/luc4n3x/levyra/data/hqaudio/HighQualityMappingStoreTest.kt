@@ -72,11 +72,11 @@ class HighQualityMappingStoreTest {
     @Test
     fun providersKeepIndependentMappingsForTheSameTrack() {
         store.save("track-a", mapping(id = "saavn-1"))
-        store.save("track-a", mapping(id = "qobuz-1").copy(providerId = "qobuz"))
+        store.save("track-a", mapping(id = "other-1").copy(providerId = "other"))
         assertEquals("saavn-1", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
-        assertEquals("qobuz-1", store.load("track-a", "qobuz", "query-fp")?.providerTrackId)
-        store.remove("track-a", "qobuz")
-        assertNull(store.load("track-a", "qobuz", "query-fp"))
+        assertEquals("other-1", store.load("track-a", "other", "query-fp")?.providerTrackId)
+        store.remove("track-a", "other")
+        assertNull(store.load("track-a", "other", "query-fp"))
         assertEquals("saavn-1", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
     }
 
@@ -96,21 +96,10 @@ class HighQualityMappingStoreTest {
             .put("confidence", 100)
             .put("storedAtMs", now)
             .toString()
-        assertNull(store.load("track-a", "qobuz", "query-fp"))
+        assertNull(store.load("track-a", "other", "query-fp"))
         assertTrue(storage.values.containsKey(legacyKey))
         assertEquals("legacy-id", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
         assertFalse(storage.values.containsKey(legacyKey))
         assertEquals("legacy-id", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
-    }
-
-    @Test
-    fun snapshotAndManualFlagRoundTrip() {
-        val snapshot = candidate(id = "q-1", providerId = "qobuz").copy(maxBitDepth = 24, maxSampleRateHz = 96_000, mediaToken = "")
-        val manual = mapping(id = "q-1", verdict = AlternativeMatchVerdict.HIGH, confidence = 70)
-            .copy(providerId = "qobuz", manual = true, snapshot = snapshot)
-        assertTrue(store.save("track-a", manual))
-        val loaded = store.load("track-a", "qobuz", "query-fp")!!
-        assertTrue(loaded.manual)
-        assertEquals(snapshot, loaded.snapshot)
     }
 }

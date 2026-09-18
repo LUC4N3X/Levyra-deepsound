@@ -88,18 +88,18 @@ internal class ProviderCircuitBreaker(
         if (recovered) HighQualityAudioDiagnostics.circuit(providerId, State.CLOSED.name, "recovered")
     }
 
-    fun onFailure(permit: Permit, cause: String = "", tripImmediately: Boolean = false, minimumOpenMs: Long = 0L) {
+    fun onFailure(permit: Permit, cause: String = "") {
         val openedForMs = synchronized(lock) {
             lastFailureAtMs = clock()
             lastFailure = cause
             when {
                 permit == Permit.PROBE && state == State.HALF_OPEN -> {
                     openDurationMs = (openDurationMs * 2).coerceAtMost(maxOpenMs)
-                    open(minimumOpenMs)
+                    open()
                 }
                 state == State.CLOSED -> {
                     consecutiveFailures += 1
-                    if (tripImmediately || consecutiveFailures >= failureThreshold) open(minimumOpenMs) else null
+                    if (consecutiveFailures >= failureThreshold) open() else null
                 }
                 else -> null
             }
@@ -115,13 +115,12 @@ internal class ProviderCircuitBreaker(
         }
     }
 
-    private fun open(minimumOpenMs: Long): Long {
-        val duration = maxOf(openDurationMs, minimumOpenMs.coerceAtMost(maxOpenMs))
+    private fun open(): Long {
         state = State.OPEN
-        openUntilMs = clock() + duration
+        openUntilMs = clock() + openDurationMs
         consecutiveFailures = 0
         probeInFlight = false
-        return duration
+        return openDurationMs
     }
 
     companion object {

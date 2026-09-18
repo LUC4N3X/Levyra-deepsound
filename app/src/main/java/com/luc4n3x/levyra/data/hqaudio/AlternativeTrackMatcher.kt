@@ -25,9 +25,7 @@ data class AlternativeTrackCandidate(
     val explicit: Boolean?,
     val isrc: String = "",
     val offers320: Boolean = false,
-    val mediaToken: String = "",
-    val maxBitDepth: Int = 0,
-    val maxSampleRateHz: Int = 0
+    val mediaToken: String = ""
 )
 
 enum class MatchRejection {
@@ -183,15 +181,10 @@ class AlternativeTrackMatcher {
             .maxWith(
                 compareBy<AlternativeMatchEvaluation> { it.candidate.explicit != true }
                     .thenBy { it.candidate.offers320 }
-                    .thenBy { it.candidate.maxBitDepth }
-                    .thenBy { it.candidate.maxSampleRateHz }
                     .thenBy { it.confidence }
             )
         return AlternativeMatchSelection.Accepted(chosen, evaluations)
     }
-
-    fun acceptsManualPin(evaluation: AlternativeMatchEvaluation): Boolean =
-        evaluation.accepted || evaluation.rejection in manuallyOverridableRejections
 
     private fun sameRecording(
         left: AlternativeMatchEvaluation,
@@ -282,10 +275,6 @@ class AlternativeTrackMatcher {
         const val AMBIGUITY_MARGIN = 8
 
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
-        private val manuallyOverridableRejections = setOf(
-            MatchRejection.LOW_CONFIDENCE,
-            MatchRejection.ALBUM_MISMATCH
-        )
         internal val untrustedAlbumNames = setOf(
             "levyra",
             "youtube",

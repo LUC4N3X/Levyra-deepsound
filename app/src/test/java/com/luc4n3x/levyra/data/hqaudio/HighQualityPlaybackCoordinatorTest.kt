@@ -33,7 +33,7 @@ class HighQualityPlaybackCoordinatorTest {
         provider: FakeHighQualityProvider,
         mode: HighQualityAudioMode = HighQualityAudioMode.AUTOMATIC
     ) = HighQualityPlaybackCoordinator(
-        HighQualityAudioResolver(listOf(provider), HighQualityMappingStore(InMemoryMappingStorage()), scope)
+        HighQualityAudioResolver(provider, HighQualityMappingStore(InMemoryMappingStorage()), scope)
     ).apply { this.mode = mode }
 
     private fun exactProvider(tier: AudioQualityTier = AudioQualityTier.KBPS_320) = FakeHighQualityProvider(
@@ -167,77 +167,5 @@ class HighQualityPlaybackCoordinatorTest {
         val searchesBefore = provider.searches.size
         assertNull(coordinator.queryFor(alternative, isVideoMode = false, audioQuality = "Auto"))
         assertEquals(searchesBefore, provider.searches.size)
-    }
-
-    private fun qobuzCoordinator(
-        mode: HighQualityAudioMode = HighQualityAudioMode.AUTOMATIC,
-        stream: (AlternativeTrackCandidate) -> ResolvedHighQualityStream = { losslessStream(it) },
-        search: suspend (String) -> ProviderSearchOutcome = {
-            ProviderSearchOutcome.Found(listOf(candidate(id = "9001", providerId = "qobuz")))
-        }
-    ) = HighQualityPlaybackCoordinator(
-        HighQualityAudioResolver(
-            listOf(
-                FakeHighQualityProvider(searchOutcome = { ProviderSearchOutcome.Found(emptyList()) }),
-                FakeHighQualityProvider(
-                    id = "qobuz",
-                    displayName = "Qobuz",
-                    losslessCapable = true,
-                    supportsLookup = false,
-                    searchOutcome = search,
-                    streamOutcome = { ProviderStreamOutcome.Resolved(stream(it)) }
-                )
-            ),
-            HighQualityMappingStore(InMemoryMappingStorage()),
-            scope,
-            hedgeDelayMs = 0L
-        )
-    ).apply { this.mode = mode }
-
-    @Test
-    fun losslessQobuzStreamIsDescribedTruthfully() {
-        val result = qobuzCoordinator(mode = HighQualityAudioMode.PREFER_320).play(normal = { normalTrack(averageBitrate = 256_000) })
-        val manifest = result.playbackManifest!!
-        val descriptor = manifest.streams.single()
-        assertEquals("Levyra HQ · Qobuz FLAC 24-bit 96 kHz", result.source)
-        assertEquals("audio/flac", descriptor.mimeType)
-        assertEquals(2_400_000, descriptor.bitrate)
-        assertEquals(96_000, descriptor.sampleRate)
-        assertEquals(24, descriptor.bitDepth)
-        assertEquals("FLAC · 24-bit · 96 kHz", descriptor.qualityLabel)
-        val source = manifest.alternativeSource!!
-        assertEquals("qobuz", source.providerId)
-        assertTrue(source.lossless)
-        assertEquals(24, source.bitDepth)
-        assertEquals(96_000, source.sampleRateHz)
-        assertNotEquals(320, source.bitrateKbps)
-    }
-
-    @Test
-    fun differentLosslessFormatsUseDifferentMediaCacheKeys() {
-        val hiRes = qobuzCoordinator().play()
-        val cd = qobuzCoordinator(stream = { losslessStream(it, bitDepth = 16, sampleRateHz = 44_100) }).play()
-        assertNotEquals(LevyraPlaybackCacheKey.stream(hiRes), LevyraPlaybackCacheKey.stream(cd))
-    }
-
-    @Test
-    fun jioSaavnSourceLabelKeepsItsBitrate() {
-        val result = coordinator(exactProvider()).play()
-        assertEquals("Levyra HQ · JioSaavn 320 kbps", result.source)
-        assertEquals("AAC 320 kbps", result.playbackManifest!!.streams.single().qualityLabel)
-    }
-
-    @Test
-    fun normalSourceWinsWhenHighQualityCannotResolveInTheAutomaticWindow() {
-        val coordinator = qobuzCoordinator(search = {
-            kotlinx.coroutines.delay(8_000L)
-            ProviderSearchOutcome.Found(emptyList())
-        })
-        val started = System.nanoTime()
-        val result = coordinator.play()
-        val elapsedMs = (System.nanoTime() - started) / 1_000_000L
-        assertEquals(YOUTUBE_AUDIO_URL, result.streamUrl)
-        assertNull(result.playbackManifest?.alternativeSource)
-        assertTrue("elapsed=$elapsedMs", elapsedMs < HighQualityPlaybackCoordinator.AUTOMATIC_WAIT_MS + 1_000L)
     }
 }

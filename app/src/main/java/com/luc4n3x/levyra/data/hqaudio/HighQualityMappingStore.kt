@@ -5,7 +5,6 @@ import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
-import org.json.JSONArray
 import org.json.JSONObject
 
 interface HighQualityMappingStorage {
@@ -42,9 +41,7 @@ data class StoredAlternativeMapping(
     val candidateFingerprint: String,
     val verdict: AlternativeMatchVerdict,
     val confidence: Int,
-    val storedAtMs: Long,
-    val manual: Boolean = false,
-    val snapshot: AlternativeTrackCandidate? = null
+    val storedAtMs: Long
 )
 
 class HighQualityMappingStore(
@@ -124,8 +121,6 @@ class HighQualityMappingStore(
         .put("verdict", mapping.verdict.name)
         .put("confidence", mapping.confidence)
         .put("storedAtMs", mapping.storedAtMs)
-        .put("manual", mapping.manual)
-        .put("snapshot", mapping.snapshot?.let(::encodeSnapshot))
         .toString()
 
     private fun decode(raw: String): StoredAlternativeMapping? = runCatching {
@@ -133,55 +128,16 @@ class HighQualityMappingStore(
         if (json.optInt("schema", -1) !in SUPPORTED_SCHEMAS) return@runCatching null
         val verdict = AlternativeMatchVerdict.entries.firstOrNull { it.name == json.optString("verdict") }
             ?: return@runCatching null
-        val providerId = json.optString("providerId")
-        val providerTrackId = json.optString("providerTrackId")
         StoredAlternativeMapping(
-            providerId = providerId,
-            providerTrackId = providerTrackId,
+            providerId = json.optString("providerId"),
+            providerTrackId = json.optString("providerTrackId"),
             queryFingerprint = json.optString("queryFingerprint"),
             candidateFingerprint = json.optString("candidateFingerprint"),
             verdict = verdict,
             confidence = json.optInt("confidence", 0),
-            storedAtMs = json.optLong("storedAtMs", 0L),
-            manual = json.optBoolean("manual", false),
-            snapshot = json.optJSONObject("snapshot")?.let { decodeSnapshot(it, providerId, providerTrackId) }
+            storedAtMs = json.optLong("storedAtMs", 0L)
         ).takeIf { it.providerId.isNotBlank() && it.providerTrackId.isNotBlank() }
     }.getOrNull()
-
-    private fun encodeSnapshot(candidate: AlternativeTrackCandidate): JSONObject = JSONObject()
-        .put("title", candidate.title)
-        .put("primaryArtists", JSONArray(candidate.primaryArtists))
-        .put("featuredArtists", JSONArray(candidate.featuredArtists))
-        .put("album", candidate.album)
-        .put("durationSeconds", candidate.durationSeconds)
-        .put("explicit", candidate.explicit ?: JSONObject.NULL)
-        .put("isrc", candidate.isrc)
-        .put("offers320", candidate.offers320)
-        .put("maxBitDepth", candidate.maxBitDepth)
-        .put("maxSampleRateHz", candidate.maxSampleRateHz)
-
-    private fun decodeSnapshot(json: JSONObject, providerId: String, providerTrackId: String): AlternativeTrackCandidate? {
-        val candidate = AlternativeTrackCandidate(
-            providerId = providerId,
-            providerTrackId = providerTrackId,
-            title = json.optString("title"),
-            primaryArtists = json.optJSONArray("primaryArtists").strings(),
-            featuredArtists = json.optJSONArray("featuredArtists").strings(),
-            album = json.optString("album"),
-            durationSeconds = json.optInt("durationSeconds", 0),
-            explicit = if (!json.has("explicit") || json.isNull("explicit")) null else json.optBoolean("explicit"),
-            isrc = json.optString("isrc"),
-            offers320 = json.optBoolean("offers320", false),
-            maxBitDepth = json.optInt("maxBitDepth", 0),
-            maxSampleRateHz = json.optInt("maxSampleRateHz", 0)
-        )
-        return candidate.takeIf { it.title.isNotBlank() && it.primaryArtists.isNotEmpty() && it.durationSeconds > 0 }
-    }
-
-    private fun JSONArray?.strings(): List<String> {
-        if (this == null) return emptyList()
-        return (0 until length()).mapNotNull { index -> optString(index).trim().takeIf(String::isNotEmpty) }
-    }
 
     private fun storageKey(identityKey: String, providerId: String): String =
         "hq-v2:${providerKeySegment(providerId)}:${sha256(identityKey).take(40)}"
@@ -199,8 +155,7 @@ class HighQualityMappingStore(
         private val SUPPORTED_SCHEMAS = setOf(1, SCHEMA_VERSION)
 
         fun isPersistable(mapping: StoredAlternativeMapping): Boolean =
-            mapping.manual ||
-                mapping.verdict == AlternativeMatchVerdict.EXACT ||
+            mapping.verdict == AlternativeMatchVerdict.EXACT ||
                 (mapping.verdict == AlternativeMatchVerdict.HIGH &&
                     mapping.confidence >= AlternativeTrackMatcher.PERSISTABLE_CONFIDENCE)
     }
