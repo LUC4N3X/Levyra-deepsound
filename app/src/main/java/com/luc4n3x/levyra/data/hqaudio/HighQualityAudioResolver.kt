@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.data.hqaudio
 
-import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -42,10 +41,13 @@ class HighQualityAudioResolver(
     private val provider: HighQualityAudioProvider,
     private val mappingStore: HighQualityMappingStore,
     private val scope: CoroutineScope,
-    private val matcher: AlternativeTrackMatcher = AlternativeTrackMatcher(),
+    matcher: AlternativeTrackMatcher = AlternativeTrackMatcher(),
     private val clock: () -> Long = System::currentTimeMillis,
     private val lookupBudgetMs: Long = LOOKUP_BUDGET_MS
 ) {
+    private val lane = HighQualityProviderLane(provider, mappingStore, matcher, clock) { providerTrackId ->
+        isQuarantined(quarantinedProviderTracks, providerTrackId)
+    }
     private val streams = ConcurrentHashMap<String, HighQualityResolution.Selected>()
     private val quarantinedIdentities = ConcurrentHashMap<String, Long>()
     private val quarantinedProviderTracks = ConcurrentHashMap<String, Long>()
@@ -64,6 +66,8 @@ class HighQualityAudioResolver(
 
     val providerName: String
         get() = provider.displayName
+
+    fun providerHealth(): List<ProviderBackendHealth> = provider.health()
 
     fun cachedSelection(identityKey: String): HighQualityResolution.Selected? {
         if (!mode.enabled || isQuarantined(quarantinedIdentities, identityKey)) return null
@@ -84,10 +88,8 @@ class HighQualityAudioResolver(
         val lookup = synchronized(inFlightLock) {
             inFlight[identityKey]?.let { return it }
             if (inFlight.size >= MAX_IN_FLIGHT_LOOKUPS) return completed(HighQualityFallbackReason.BUSY)
-            scope.async(start = CoroutineStart.LAZY) {
-                withTimeoutOrNull(lookupBudgetMs) { lookup(identityKey, query) }
-                    ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
-            }.also { inFlight[identityKey] = it }
+            scope.async(start = CoroutineStart.LAZY) { lookup(identityKey, query) }
+                .also { inFlight[identityKey] = it }
         }
         lookup.invokeOnCompletion {
             synchronized(inFlightLock) {
@@ -115,134 +117,15 @@ class HighQualityAudioResolver(
         streams.remove(identityKey)
         quarantine(quarantinedIdentities, identityKey, until)
         if (providerTrackId.isNotBlank()) quarantine(quarantinedProviderTracks, providerTrackId, until)
-        mappingStore.remove(identityKey)
+        mappingStore.remove(identityKey, provider.id)
         HighQualityAudioDiagnostics.fallback(HighQualityFallbackReason.QUARANTINED, "playback failure: ${reason.take(80)}", providerTrackId)
     }
 
-    private suspend fun lookup(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution = try {
-        val queryFingerprint = AlternativeTrackFingerprint.of(query)
-        val stored = mappingStore.load(identityKey, queryFingerprint)
-        val refreshed = stored?.let { refreshStoredMapping(identityKey, query, it) }
-        refreshed ?: searchAndResolve(identityKey, query, queryFingerprint)
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Exception) {
-        HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, error.javaClass.simpleName)
-    }
-
-    private suspend fun refreshStoredMapping(
-        identityKey: String,
-        query: AlternativeTrackQuery,
-        mapping: StoredAlternativeMapping
-    ): HighQualityResolution? {
-        if (mapping.providerId != provider.id || isQuarantined(quarantinedProviderTracks, mapping.providerTrackId)) {
-            mappingStore.remove(identityKey)
-            return null
-        }
-        return when (val outcome = provider.lookup(mapping.providerTrackId)) {
-            is ProviderLookupOutcome.Found -> {
-                val evaluation = matcher.evaluate(query, outcome.candidate)
-                val unchanged = AlternativeTrackFingerprint.of(outcome.candidate) == mapping.candidateFingerprint
-                if (!unchanged || !evaluation.accepted) {
-                    HighQualityAudioDiagnostics.staleMapping(
-                        provider.id,
-                        mapping.providerTrackId,
-                        if (!unchanged) "metadata changed" else "${evaluation.rejection}"
-                    )
-                    mappingStore.remove(identityKey)
-                    null
-                } else {
-                    HighQualityAudioDiagnostics.cacheHit(provider.id, mapping.providerTrackId)
-                    resolveStream(identityKey, evaluation, mapping.queryFingerprint)
-                }
-            }
-            ProviderLookupOutcome.Missing -> {
-                HighQualityAudioDiagnostics.staleMapping(provider.id, mapping.providerTrackId, "provider track missing")
-                mappingStore.remove(identityKey)
-                null
-            }
-            is ProviderLookupOutcome.Failed -> {
-                HighQualityAudioDiagnostics.mappingRetained(provider.id, mapping.providerTrackId, outcome.failure.name)
-                HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
-            }
-        }
-    }
-
-    private suspend fun searchAndResolve(
-        identityKey: String,
-        query: AlternativeTrackQuery,
-        queryFingerprint: String
-    ): HighQualityResolution {
-        val collected = LinkedHashMap<String, AlternativeTrackCandidate>()
-        var selection: AlternativeMatchSelection = AlternativeMatchSelection.Rejected(MatchRejection.NO_CANDIDATES, emptyList())
-        for ((index, text) in AlternativeSearchPlan.queries(query).withIndex()) {
-            currentCoroutineContext().ensureActive()
-            when (val outcome = provider.search(text)) {
-                is ProviderSearchOutcome.Failed ->
-                    return HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
-                is ProviderSearchOutcome.Found -> {
-                    HighQualityAudioDiagnostics.search(provider.id, index + 1, text, outcome.candidates.size)
-                    outcome.candidates
-                        .filterNot { isQuarantined(quarantinedProviderTracks, it.providerTrackId) }
-                        .forEach { collected.putIfAbsent(it.providerTrackId, it) }
-                }
-            }
-            selection = matcher.select(query, collected.values.toList())
-            val decisive = when (val current = selection) {
-                is AlternativeMatchSelection.Accepted ->
-                    current.evaluation.verdict == AlternativeMatchVerdict.EXACT || index >= 1
-                is AlternativeMatchSelection.Rejected -> current.reason == MatchRejection.AMBIGUOUS
-            }
-            if (decisive) break
-        }
-        return when (val finalSelection = selection) {
-            is AlternativeMatchSelection.Rejected -> {
-                HighQualityAudioDiagnostics.matchRejected(query, finalSelection)
-                val reason = if (finalSelection.reason == MatchRejection.AMBIGUOUS) {
-                    HighQualityFallbackReason.AMBIGUOUS
-                } else {
-                    HighQualityFallbackReason.NO_MATCH
-                }
-                HighQualityResolution.Fallback(reason, finalSelection.reason.name)
-            }
-            is AlternativeMatchSelection.Accepted -> {
-                HighQualityAudioDiagnostics.matchAccepted(query, finalSelection.evaluation)
-                resolveStream(identityKey, finalSelection.evaluation, queryFingerprint)
-            }
-        }
-    }
-
-    private suspend fun resolveStream(
-        identityKey: String,
-        evaluation: AlternativeMatchEvaluation,
-        queryFingerprint: String
-    ): HighQualityResolution = when (val outcome = provider.resolveStream(evaluation.candidate)) {
-        is ProviderStreamOutcome.Resolved -> {
-            val selection = HighQualityResolution.Selected(outcome.stream, evaluation)
-            if (mode.enabled) rememberStream(identityKey, selection)
-            mappingStore.save(
-                identityKey,
-                StoredAlternativeMapping(
-                    providerId = provider.id,
-                    providerTrackId = evaluation.candidate.providerTrackId,
-                    queryFingerprint = queryFingerprint,
-                    candidateFingerprint = AlternativeTrackFingerprint.of(evaluation.candidate),
-                    verdict = evaluation.verdict,
-                    confidence = evaluation.confidence,
-                    storedAtMs = clock()
-                )
-            )
-            selection
-        }
-        is ProviderStreamOutcome.Unavailable -> {
-            mappingStore.remove(identityKey)
-            HighQualityResolution.Fallback(
-                HighQualityFallbackReason.STREAM_UNAVAILABLE,
-                outcome.rejections.joinToString(",") { it.name }
-            )
-        }
-        is ProviderStreamOutcome.Failed ->
-            HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
+    private suspend fun lookup(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution {
+        val resolution = withTimeoutOrNull(lookupBudgetMs) { lane.resolve(identityKey, query) }
+            ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
+        if (resolution is HighQualityResolution.Selected && mode.enabled) rememberStream(identityKey, resolution)
+        return resolution
     }
 
     private fun rememberStream(identityKey: String, selection: HighQualityResolution.Selected) {

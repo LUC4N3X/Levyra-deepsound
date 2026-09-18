@@ -791,6 +791,22 @@ class PlaybackResolver private constructor(private val context: Context) {
         strategyHealth.snapshot().forEach { (key, value) -> strategyHealthJson.put(key, value) }
         diagnostics.put("strategyHealth", strategyHealthJson)
         diagnostics.put("highQualityAudioMode", highQualityPlayback.mode.name)
+        val highQualityProviders = JSONArray()
+        highQualityPlayback.providerHealth().forEach { health ->
+            highQualityProviders.put(
+                JSONObject()
+                    .put("provider", health.providerId)
+                    .put("backend", health.backend)
+                    .put("state", health.state)
+                    .put("cooldownRemainingMs", health.cooldownRemainingMs)
+                    .put("consecutiveFailures", health.consecutiveFailures)
+                    .put("lastSuccessAtMs", health.lastSuccessAtMs)
+                    .put("lastFailureAtMs", health.lastFailureAtMs)
+                    .put("lastFailure", health.lastFailure)
+                    .put("lastLatencyMs", health.lastLatencyMs)
+            )
+        }
+        diagnostics.put("highQualityProviders", highQualityProviders)
         return diagnostics.toString(2)
     }
 
