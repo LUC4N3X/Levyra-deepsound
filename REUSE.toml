@@ -36,3 +36,21 @@ SPDX-FileCopyrightText = [
   "2026 LUC4N3X",
 ]
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [
+  "levyra-native-audio/src/main/java/androidx/media3/decoder/ffmpeg/FfmpegAudioDecoder.java",
+  "levyra-native-audio/src/main/java/androidx/media3/decoder/ffmpeg/FfmpegAudioRenderer.java",
+  "levyra-native-audio/src/main/java/androidx/media3/decoder/ffmpeg/FfmpegDecoderException.java",
+  "levyra-native-audio/src/main/java/androidx/media3/decoder/ffmpeg/FfmpegLibrary.java",
+  "levyra-native-audio/src/main/cpp/ffmpeg/ffmpeg_jni.cc",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2016 The Android Open Source Project"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "levyra-native-audio/src/main/java/androidx/media3/decoder/ffmpeg/package-info.java"
+precedence = "override"
+SPDX-FileCopyrightText = "2019 The Android Open Source Project"
+SPDX-License-Identifier = "Apache-2.0"

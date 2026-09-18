@@ -3682,6 +3682,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateAudioSettings(_state.value.audioSettings.copy(gaplessEnabled = value))
     }
 
+    fun setAaudioOutputEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(aaudioOutputEnabled = value))
+    }
+
     private fun updateAudioSettings(next: LevyraAudioSettings, audioNormalization: Boolean = _state.value.audioNormalization) {
         val normalized = next.normalized()
         audioSettingsPersistJob?.cancel()

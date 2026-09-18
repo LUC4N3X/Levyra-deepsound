@@ -23,6 +23,7 @@ data class LevyraAudioSettings(
     val playbackSpeed: Float = 1f,
     val pitch: Float = 1f,
     val gaplessEnabled: Boolean = true,
+    val aaudioOutputEnabled: Boolean = false,
     val customPresets: List<LevyraAudioPreset> = emptyList()
 ) {
     fun withNeutralEqualizer(): LevyraAudioSettings {
