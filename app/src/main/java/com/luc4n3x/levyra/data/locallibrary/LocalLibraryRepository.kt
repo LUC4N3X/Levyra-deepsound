@@ -165,7 +165,16 @@ class LocalLibraryRepository private constructor(context: Context) {
         val excluded = _status.value.excludedFolders
         val tokenKey = changeVersion?.let { "$it|${excluded.sorted().joinToString(",")}" }
         val previousToken = preferences.getString(KEY_CHANGE_TOKEN, null)
-        if (mode == LocalScanMode.Quick && !force && tokenKey != null && tokenKey == previousToken && dao.count() > 0) {
+        val deepTagIndexCurrent =
+            preferences.getInt(KEY_DEEP_TAG_INDEX_VERSION, 0) >= DEEP_TAG_INDEX_VERSION
+        if (
+            mode == LocalScanMode.Quick &&
+            !force &&
+            tokenKey != null &&
+            tokenKey == previousToken &&
+            deepTagIndexCurrent &&
+            dao.count() > 0
+        ) {
             return LocalScanResult(mode = mode, skippedUnchanged = true, finishedAt = now)
         }
         val scanned = scanner.scan(volumes)
@@ -217,6 +226,7 @@ class LocalLibraryRepository private constructor(context: Context) {
         preferences.edit()
             .putString(KEY_CHANGE_TOKEN, tokenKey)
             .putLong(KEY_LAST_SCAN_AT, now)
+            .putInt(KEY_DEEP_TAG_INDEX_VERSION, DEEP_TAG_INDEX_VERSION)
             .apply()
         return LocalScanResult(
             mode = mode,
@@ -287,6 +297,8 @@ class LocalLibraryRepository private constructor(context: Context) {
         private const val SQL_CHUNK = 400
         private const val TAG_READ_BUFFER = 64 * 1024
         private const val DEEP_TAG_CANCELLATION_INTERVAL = 32
+        private const val KEY_DEEP_TAG_INDEX_VERSION = "deep_tag_index_version"
+        private const val DEEP_TAG_INDEX_VERSION = 1
 
         @Volatile
         private var instance: LocalLibraryRepository? = null
