@@ -80,7 +80,7 @@ internal object LocalEmbeddedTagWriter {
         val version = if (hasId3) source[3].toInt() and 0xFF else 4
         if (version !in 3..4) return LocalEmbeddedTagWriteResult(false, "unsupported_id3_version")
         val flags = if (hasId3) source[5].toInt() and 0xFF else 0
-        if ((flags and 0xC0) != 0) return LocalEmbeddedTagWriteResult(false, "unsupported_id3_flags")
+        if ((flags and 0xD0) != 0) return LocalEmbeddedTagWriteResult(false, "unsupported_id3_flags")
 
         val oldTagEnd = if (hasId3) {
             val payloadSize = syncSafeInt(source, 6)
@@ -246,11 +246,13 @@ internal object LocalEmbeddedTagWriter {
         var replacedComment = false
         val rewritten = ArrayList<FlacBlock>(blocks.size + 1)
         blocks.forEach { block ->
-            if (block.type == 4 && !replacedComment) {
-                val payload = rewriteVorbisComment(block.payload, edits)
-                    ?: return LocalEmbeddedTagWriteResult(false, "invalid_vorbis_comment")
-                rewritten += FlacBlock(4, payload)
-                replacedComment = true
+            if (block.type == 4) {
+                if (!replacedComment) {
+                    val payload = rewriteVorbisComment(block.payload, edits)
+                        ?: return LocalEmbeddedTagWriteResult(false, "invalid_vorbis_comment")
+                    rewritten += FlacBlock(4, payload)
+                    replacedComment = true
+                }
             } else {
                 rewritten += block
             }
