@@ -150,7 +150,7 @@ class HighQualityPlaybackCoordinator(
             streamUrl = stream.url,
             videoStreamUrl = "",
             videoSubtitleTracks = emptyList(),
-            source = "$label · ${sourceQualityLabel(quality)}",
+            source = "$label ${sourceQualityLabel(quality)}",
             youtubeLoudnessDb = null,
             youtubePerceptualLoudnessDb = null,
             playbackManifest = manifest

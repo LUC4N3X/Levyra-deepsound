@@ -199,7 +199,7 @@ class HighQualityPlaybackCoordinatorTest {
         val result = qobuzCoordinator(mode = HighQualityAudioMode.PREFER_320).play(normal = { normalTrack(averageBitrate = 256_000) })
         val manifest = result.playbackManifest!!
         val descriptor = manifest.streams.single()
-        assertEquals("Levyra HQ · Qobuz · FLAC 24-bit 96 kHz", result.source)
+        assertEquals("Levyra HQ · Qobuz FLAC 24-bit 96 kHz", result.source)
         assertEquals("audio/flac", descriptor.mimeType)
         assertEquals(2_400_000, descriptor.bitrate)
         assertEquals(96_000, descriptor.sampleRate)
@@ -223,7 +223,7 @@ class HighQualityPlaybackCoordinatorTest {
     @Test
     fun jioSaavnSourceLabelKeepsItsBitrate() {
         val result = coordinator(exactProvider()).play()
-        assertEquals("Levyra HQ · JioSaavn · 320 kbps", result.source)
+        assertEquals("Levyra HQ · JioSaavn 320 kbps", result.source)
         assertEquals("AAC 320 kbps", result.playbackManifest!!.streams.single().qualityLabel)
     }
 
