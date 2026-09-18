@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.player.offline.tagging
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.charset.StandardCharsets
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -134,6 +135,132 @@ class LevyraM4aTagWriterTest {
             edited.delete()
         }
     }
+
+    @Test
+    fun selectiveEditorPreservesTrackAndDiscTotals() {
+        val input = File.createTempFile("levyra-pairs-input", ".m4a")
+        val seeded = File.createTempFile("levyra-pairs-seeded", ".m4a")
+        val edited = File.createTempFile("levyra-pairs-edited", ".m4a")
+        input.writeBytes(
+            atom("ftyp", "M4A ".toByteArray(StandardCharsets.US_ASCII)) +
+                atom("moov", byteArrayOf()) +
+                atom("mdat", ByteArray(32) { it.toByte() })
+        )
+        try {
+            val seededResult = LevyraM4aTagWriter.write(
+                input = input,
+                output = seeded,
+                metadata = LevyraM4aMetadata(
+                    title = "Song",
+                    trackNumber = 3,
+                    trackTotal = 12,
+                    discNumber = 1,
+                    discTotal = 2
+                )
+            )
+            assertTrue(seededResult.success)
+
+            val editResult = LevyraM4aTagWriter.writeTags(
+                input = seeded,
+                output = edited,
+                edits = LevyraM4aTagEdits(
+                    title = "Song",
+                    artist = "",
+                    album = "",
+                    albumArtist = "",
+                    genre = "",
+                    year = "",
+                    trackNumber = 4,
+                    discNumber = 2,
+                    composer = "",
+                    lyricist = "",
+                    comment = "",
+                    copyright = ""
+                )
+            )
+
+            assertTrue(editResult.success)
+            assertEquals(4 to 12, readPair(edited.readBytes(), "trkn"))
+            assertEquals(2 to 2, readPair(edited.readBytes(), "disk"))
+        } finally {
+            input.delete()
+            seeded.delete()
+            edited.delete()
+        }
+    }
+
+    @Test
+    fun selectiveEditorRejectsMalformedIlstInsteadOfDroppingMetadata() {
+        val input = File.createTempFile("levyra-corrupt-input", ".m4a")
+        val seeded = File.createTempFile("levyra-corrupt-seeded", ".m4a")
+        val corrupted = File.createTempFile("levyra-corrupt-source", ".m4a")
+        val edited = File.createTempFile("levyra-corrupt-edited", ".m4a")
+        input.writeBytes(
+            atom("ftyp", "M4A ".toByteArray(StandardCharsets.US_ASCII)) +
+                atom("moov", byteArrayOf()) +
+                atom("mdat", ByteArray(32) { it.toByte() })
+        )
+        try {
+            assertTrue(
+                LevyraM4aTagWriter.write(
+                    input = input,
+                    output = seeded,
+                    metadata = LevyraM4aMetadata(
+                        title = "Keep me",
+                        lyrics = "Keep these lyrics",
+                        trackNumber = 1,
+                        trackTotal = 9
+                    )
+                ).success
+            )
+            val bytes = seeded.readBytes()
+            val ilstType = indexOf(bytes, "ilst".toByteArray(StandardCharsets.US_ASCII))
+            assertTrue(ilstType >= 4)
+            val firstChildSize = ilstType + 4
+            bytes[firstChildSize] = 0x7F
+            bytes[firstChildSize + 1] = 0xFF.toByte()
+            bytes[firstChildSize + 2] = 0xFF.toByte()
+            bytes[firstChildSize + 3] = 0xFF.toByte()
+            corrupted.writeBytes(bytes)
+
+            val result = LevyraM4aTagWriter.writeTags(
+                input = corrupted,
+                output = edited,
+                edits = LevyraM4aTagEdits(
+                    title = "Changed",
+                    artist = "",
+                    album = "",
+                    albumArtist = "",
+                    genre = "",
+                    year = "",
+                    trackNumber = 1,
+                    discNumber = 0,
+                    composer = "",
+                    lyricist = "",
+                    comment = "",
+                    copyright = ""
+                )
+            )
+
+            assertFalse(result.success)
+            assertEquals(0L, edited.length())
+        } finally {
+            input.delete()
+            seeded.delete()
+            corrupted.delete()
+            edited.delete()
+        }
+    }
+
+    private fun readPair(bytes: ByteArray, type: String): Pair<Int, Int> {
+        val typeOffset = indexOf(bytes, type.toByteArray(StandardCharsets.US_ASCII))
+        require(typeOffset >= 4) { "Missing $type atom" }
+        val valueStart = typeOffset + 20
+        return readUInt16(bytes, valueStart + 2) to readUInt16(bytes, valueStart + 4)
+    }
+
+    private fun readUInt16(bytes: ByteArray, offset: Int): Int =
+        ((bytes[offset].toInt() and 0xFF) shl 8) or (bytes[offset + 1].toInt() and 0xFF)
 
     private fun indexOf(haystack: ByteArray, needle: ByteArray): Int {
         if (needle.isEmpty() || haystack.size < needle.size) return -1
