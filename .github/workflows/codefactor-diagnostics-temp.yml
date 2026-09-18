@@ -1,0 +1,20 @@
+name: CodeFactor Diagnostics Temp
+
+on:
+  push:
+    branches:
+      - feat/local-tag-editor-full-tag-search
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  annotations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump CodeFactor annotations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api             repos/${{ github.repository }}/check-runs/105515510799/annotations             --paginate
