@@ -1111,6 +1111,30 @@ class LevyraStrings private constructor(
     val localShowFolder: String get() = value("localShowFolder")
     val localFileUnavailable: String get() = value("localFileUnavailable")
     val localDuplicatesHidden: String get() = value("localDuplicatesHidden")
+    val localFullTagSearchHint: String get() = value("localFullTagSearchHint")
+    val localEditTags: String get() = value("localEditTags")
+    val localTagEditorTitle: String get() = value("localTagEditorTitle")
+    val localTagEditorSubtitle: String get() = value("localTagEditorSubtitle")
+    val localTagTitle: String get() = value("localTagTitle")
+    val localTagArtist: String get() = value("localTagArtist")
+    val localTagAlbum: String get() = value("localTagAlbum")
+    val localTagAlbumArtist: String get() = value("localTagAlbumArtist")
+    val localTagGenre: String get() = value("localTagGenre")
+    val localTagYear: String get() = value("localTagYear")
+    val localTagTrack: String get() = value("localTagTrack")
+    val localTagDisc: String get() = value("localTagDisc")
+    val localTagComposer: String get() = value("localTagComposer")
+    val localTagLyricist: String get() = value("localTagLyricist")
+    val localTagComment: String get() = value("localTagComment")
+    val localTagCopyright: String get() = value("localTagCopyright")
+    val localTagCredits: String get() = value("localTagCredits")
+    val localTagSave: String get() = value("localTagSave")
+    val localTagSaving: String get() = value("localTagSaving")
+    val localTagSaved: String get() = value("localTagSaved")
+    val localTagWriteFailed: String get() = value("localTagWriteFailed")
+    val localTagUnsupported: String get() = value("localTagUnsupported")
+    val localTagTooLarge: String get() = value("localTagTooLarge")
+    val localTagPermissionDenied: String get() = value("localTagPermissionDenied")
     fun formatReplayPeriod(days: Int): String {
         val value = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
             .format(days.coerceAtLeast(0))
@@ -1790,8 +1814,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

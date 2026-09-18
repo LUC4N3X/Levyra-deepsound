@@ -314,7 +314,43 @@ class LevyraDatabaseMigrationTest {
     }
 
     @Test
-    fun migrateFrom15To22KeepsTheWholeUpgradePathValid() {
+    fun migrate22To23KeepsLocalMediaAndAddsDeepTagColumns() {
+        helper.createDatabase(TEST_DB, 22).use { db ->
+            db.execSQL(
+                "INSERT INTO local_media (" +
+                    "identityKey, contentUri, volumeName, mediaStoreId, filePath, relativePath, displayName, " +
+                    "folderKey, folderName, title, artist, album, albumArtist, genre, year, trackNumber, " +
+                    "discNumber, durationMs, mimeType, bitrate, sizeBytes, dateAddedMs, dateModifiedMs, albumId, " +
+                    "albumKey, artistKey, contentFingerprint, levyraTrackId, isLevyraDownload, available, " +
+                    "missingSince, lastSeenAt) VALUES (" +
+                    "'ms:external_primary:10', 'content://media/external_primary/audio/media/10', " +
+                    "'external_primary', 10, '/storage/emulated/0/Music/test.m4a', 'Music/', 'test.m4a', " +
+                    "'external_primary:music/', 'Music', 'Kept local song', 'Artist', 'Album', 'Artist', " +
+                    "'Ambient', 2026, 3, 1, 180000, 'audio/mp4', 256000, 4000000, 1, 2, 9, " +
+                    "'artist:artist|album', 'artist', '4000000:180:kept local song', '', 0, 1, 0, 2)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 23, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query(
+            "SELECT title, composer, lyricist, comment, copyright, customTags, fullTagSearchText " +
+                "FROM local_media WHERE identityKey = 'ms:external_primary:10'"
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Kept local song", cursor.getString(0))
+            assertEquals("", cursor.getString(1))
+            assertEquals("", cursor.getString(2))
+            assertEquals("", cursor.getString(3))
+            assertEquals("", cursor.getString(4))
+            assertEquals("", cursor.getString(5))
+            assertEquals("", cursor.getString(6))
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrateFrom15To23KeepsTheWholeUpgradePathValid() {
         helper.createDatabase(TEST_DB, 15).use { db ->
             db.execSQL(
                 "INSERT INTO playlists (id, name, coverUrl, createdAt, updatedAt) " +
@@ -322,7 +358,7 @@ class LevyraDatabaseMigrationTest {
             )
         }
 
-        val migrated = helper.runMigrationsAndValidate(TEST_DB, 22, true, *LevyraDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 23, true, *LevyraDatabase.MIGRATIONS)
 
         migrated.query("SELECT name FROM playlists WHERE id = 'p7'").use { cursor ->
             assertTrue(cursor.moveToFirst())

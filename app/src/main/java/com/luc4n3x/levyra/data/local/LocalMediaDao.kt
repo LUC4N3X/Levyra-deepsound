@@ -19,6 +19,9 @@ interface LocalMediaDao {
     @Query("SELECT COUNT(*) FROM local_media")
     suspend fun count(): Int
 
+    @Query("SELECT * FROM local_media WHERE identityKey = :identityKey LIMIT 1")
+    suspend fun byIdentityKey(identityKey: String): LocalMediaEntity?
+
     @Query("SELECT contentUri FROM local_media WHERE available = 0 AND contentUri IN (:uris)")
     suspend fun unavailableAmong(uris: List<String>): List<String>
 

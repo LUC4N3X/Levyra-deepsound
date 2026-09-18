@@ -48,6 +48,7 @@ data class LocalLibraryCatalog(
     val albums: List<LocalAlbumGroup> = emptyList(),
     val artists: List<LocalArtistGroup> = emptyList(),
     val folders: List<LocalFolderGroup> = emptyList(),
+    val mediaByUri: Map<String, LocalMediaEntity> = emptyMap(),
     val totalCount: Int = 0,
     val levyraDownloadCount: Int = 0,
     val hiddenDuplicateCount: Int = 0
@@ -157,6 +158,7 @@ fun buildLocalLibraryCatalog(
         albums = albums,
         artists = artists,
         folders = folders,
+        mediaByUri = visible.associateBy { it.contentUri },
         totalCount = entries.size,
         levyraDownloadCount = entries.count { it.isLevyraDownload },
         hiddenDuplicateCount = rows.size - visible.size
