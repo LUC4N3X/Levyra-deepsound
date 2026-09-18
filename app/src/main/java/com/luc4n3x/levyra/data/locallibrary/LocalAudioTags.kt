@@ -1,7 +1,12 @@
 package com.luc4n3x.levyra.data.locallibrary
 
+import android.content.Context
+import android.net.Uri
+import android.os.ParcelFileDescriptor
 import com.luc4n3x.levyra.data.local.LocalMediaEntity
+import java.io.Closeable
 import java.io.File
+import java.io.FileInputStream
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -48,32 +53,44 @@ internal object LocalDeepTagReader {
     private const val MAX_CUSTOM_VALUE = 4_096
     private const val MAX_CUSTOM_TEXT = 24_000
 
-    fun read(row: LocalMediaEntity): LocalDeepTags {
+    fun read(context: Context, row: LocalMediaEntity): LocalDeepTags {
         val path = row.filePath.trim()
-        if (path.isEmpty()) return LocalDeepTags()
-        val file = File(path)
-        if (!file.isFile || file.length() <= 0L) return LocalDeepTags()
-        return runCatching { read(file) }.getOrDefault(LocalDeepTags())
-    }
-
-    internal fun read(file: File): LocalDeepTags {
-        RandomAccessFile(file, "r").use { source ->
-            if (source.length() < 4L) return LocalDeepTags()
-            val head = ByteArray(minOf(16L, source.length()).toInt())
-            source.seek(0L)
-            source.readFully(head)
-            val tags = when {
-                startsWith(head, "ID3") -> readId3(source)
-                startsWith(head, "fLaC") -> readFlac(source, 0L)
-                startsWith(head, "OggS") -> readOgg(source)
-                head.size >= 8 && ascii(head, 4, 4) == "ftyp" -> readMp4(source)
-                else -> emptyMap()
+        if (path.isNotEmpty()) {
+            val file = File(path)
+            if (file.isFile && file.canRead() && file.length() > 0L) {
+                runCatching { return read(file) }
             }
-            return tags.toDeepTags()
         }
+        val uri = runCatching { Uri.parse(row.contentUri) }.getOrNull() ?: return LocalDeepTags()
+        if (!uri.scheme.equals("content", ignoreCase = true)) return LocalDeepTags()
+        return runCatching {
+            val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
+                ?: return@runCatching LocalDeepTags()
+            ChannelTagSource(ParcelFileDescriptor.AutoCloseInputStream(descriptor)).use(::readSource)
+        }.getOrDefault(LocalDeepTags())
     }
 
-    private fun readId3(source: RandomAccessFile): Map<String, String> {
+    internal fun read(file: File): LocalDeepTags =
+        runCatching {
+            RandomAccessTagSource(RandomAccessFile(file, "r")).use(::readSource)
+        }.getOrDefault(LocalDeepTags())
+
+    private fun readSource(source: SeekableTagSource): LocalDeepTags {
+        if (source.length < 4L) return LocalDeepTags()
+        val head = ByteArray(minOf(16L, source.length).toInt())
+        source.seek(0L)
+        source.readFully(head)
+        val tags = when {
+            startsWith(head, "ID3") -> readId3(source)
+            startsWith(head, "fLaC") -> readFlac(source, 0L)
+            startsWith(head, "OggS") -> readOgg(source)
+            head.size >= 8 && ascii(head, 4, 4) == "ftyp" -> readMp4(source)
+            else -> emptyMap()
+        }
+        return tags.toDeepTags()
+    }
+
+    private fun readId3(source: SeekableTagSource): Map<String, String> {
         source.seek(0L)
         val header = ByteArray(10)
         if (source.read(header) != header.size || !startsWith(header, "ID3")) return emptyMap()
@@ -189,13 +206,13 @@ internal object LocalDeepTagReader {
             .trimEnd('\u0000')
     }
 
-    private fun readFlac(source: RandomAccessFile, start: Long): Map<String, String> {
+    private fun readFlac(source: SeekableTagSource, start: Long): Map<String, String> {
         source.seek(start)
         val magic = ByteArray(4)
         if (source.read(magic) != 4 || !startsWith(magic, "fLaC")) return emptyMap()
         var last = false
         var blocks = 0
-        while (!last && blocks++ < 128 && source.filePointer + 4 <= source.length()) {
+        while (!last && blocks++ < 128 && source.position + 4 <= source.length) {
             val header = ByteArray(4)
             source.readFully(header)
             last = (header[0].toInt() and 0x80) != 0
@@ -203,19 +220,19 @@ internal object LocalDeepTagReader {
             val size = ((header[1].toInt() and 0xFF) shl 16) or
                 ((header[2].toInt() and 0xFF) shl 8) or
                 (header[3].toInt() and 0xFF)
-            if (size < 0 || source.filePointer + size > source.length()) break
+            if (size < 0 || source.position + size > source.length) break
             if (type == 4 && size <= MAX_COMMENT_BYTES) {
                 val payload = ByteArray(size)
                 source.readFully(payload)
                 return parseVorbisComments(payload, 0)
             }
-            source.seek(source.filePointer + size)
+            source.seek(source.position + size)
         }
         return emptyMap()
     }
 
-    private fun readOgg(source: RandomAccessFile): Map<String, String> {
-        val size = minOf(source.length(), MAX_OGG_PREFIX_BYTES.toLong()).toInt()
+    private fun readOgg(source: SeekableTagSource): Map<String, String> {
+        val size = minOf(source.length, MAX_OGG_PREFIX_BYTES.toLong()).toInt()
         val bytes = ByteArray(size)
         source.seek(0L)
         source.readFully(bytes)
@@ -251,8 +268,8 @@ internal object LocalDeepTagReader {
         return result
     }
 
-    private fun readMp4(source: RandomAccessFile): Map<String, String> {
-        val moov = findChild(source, 0L, source.length(), MP4_MOOV) ?: return emptyMap()
+    private fun readMp4(source: SeekableTagSource): Map<String, String> {
+        val moov = findChild(source, 0L, source.length, MP4_MOOV) ?: return emptyMap()
         val udta = findChild(source, moov.payloadStart, moov.end, MP4_UDTA)
         val meta = when {
             udta != null -> findChild(source, udta.payloadStart, udta.end, MP4_META)
@@ -278,7 +295,7 @@ internal object LocalDeepTagReader {
         return result
     }
 
-    private fun mp4DataText(source: RandomAccessFile, parent: Mp4Box): String? {
+    private fun mp4DataText(source: SeekableTagSource, parent: Mp4Box): String? {
         val data = findChild(source, parent.payloadStart, parent.end, MP4_DATA) ?: return null
         val start = data.payloadStart + 8
         if (start >= data.end || data.end - start > MAX_CUSTOM_VALUE * 4L) return null
@@ -288,7 +305,7 @@ internal object LocalDeepTagReader {
         return String(bytes, StandardCharsets.UTF_8).trim('\u0000', ' ', '\r', '\n').takeIf { it.isNotEmpty() }
     }
 
-    private fun mp4Freeform(source: RandomAccessFile, parent: Mp4Box): Pair<String, String>? {
+    private fun mp4Freeform(source: SeekableTagSource, parent: Mp4Box): Pair<String, String>? {
         var name = ""
         var value = ""
         var cursor = parent.payloadStart
@@ -311,7 +328,7 @@ internal object LocalDeepTagReader {
         return if (name.isNotBlank() && value.isNotBlank()) name to value else null
     }
 
-    private fun mp4FullBoxText(source: RandomAccessFile, box: Mp4Box): String {
+    private fun mp4FullBoxText(source: SeekableTagSource, box: Mp4Box): String {
         val start = box.payloadStart + 4
         if (start >= box.end || box.end - start > 1024L) return ""
         val bytes = ByteArray((box.end - start).toInt())
@@ -320,7 +337,7 @@ internal object LocalDeepTagReader {
         return String(bytes, StandardCharsets.UTF_8).trim('\u0000', ' ', '\r', '\n')
     }
 
-    private fun findChild(source: RandomAccessFile, start: Long, end: Long, type: Int): Mp4Box? {
+    private fun findChild(source: SeekableTagSource, start: Long, end: Long, type: Int): Mp4Box? {
         var cursor = start
         var guard = 0
         while (cursor + 8 <= end && guard++ < 100_000) {
@@ -332,8 +349,8 @@ internal object LocalDeepTagReader {
         return null
     }
 
-    private fun readMp4Box(source: RandomAccessFile, start: Long, parentEnd: Long): Mp4Box? {
-        if (start < 0L || start + 8 > parentEnd || start + 8 > source.length()) return null
+    private fun readMp4Box(source: SeekableTagSource, start: Long, parentEnd: Long): Mp4Box? {
+        if (start < 0L || start + 8 > parentEnd || start + 8 > source.length) return null
         source.seek(start)
         val header = ByteArray(16)
         val count = source.read(header)
@@ -357,7 +374,7 @@ internal object LocalDeepTagReader {
                 size = shortSize
             }
         }
-        if (size < headerSize || start + size > parentEnd || start + size > source.length()) return null
+        if (size < headerSize || start + size > parentEnd || start + size > source.length) return null
         return Mp4Box(start, start + size, headerSize, type)
     }
 
@@ -493,6 +510,63 @@ internal object LocalDeepTagReader {
             if (match) return start
         }
         return -1
+    }
+
+    private interface SeekableTagSource : Closeable {
+        val length: Long
+        val position: Long
+        fun seek(position: Long)
+        fun read(bytes: ByteArray): Int
+        fun readFully(bytes: ByteArray)
+    }
+
+    private class RandomAccessTagSource(
+        private val file: RandomAccessFile
+    ) : SeekableTagSource {
+        override val length: Long get() = file.length()
+        override val position: Long get() = file.filePointer
+
+        override fun seek(position: Long) {
+            file.seek(position.coerceIn(0L, length))
+        }
+
+        override fun read(bytes: ByteArray): Int = file.read(bytes)
+
+        override fun readFully(bytes: ByteArray) {
+            file.readFully(bytes)
+        }
+
+        override fun close() {
+            file.close()
+        }
+    }
+
+    private class ChannelTagSource(
+        private val input: FileInputStream
+    ) : SeekableTagSource {
+        private val channel = input.channel
+        override val length: Long get() = channel.size()
+        override val position: Long get() = channel.position()
+
+        override fun seek(position: Long) {
+            channel.position(position.coerceIn(0L, length))
+        }
+
+        override fun read(bytes: ByteArray): Int = input.read(bytes)
+
+        override fun readFully(bytes: ByteArray) {
+            var offset = 0
+            while (offset < bytes.size) {
+                val read = input.read(bytes, offset, bytes.size - offset)
+                if (read < 0) throw java.io.EOFException("Unexpected end of audio file")
+                if (read == 0) continue
+                offset += read
+            }
+        }
+
+        override fun close() {
+            input.close()
+        }
     }
 
     private data class Mp4Box(val start: Long, val end: Long, val headerSize: Int, val type: Int) {
