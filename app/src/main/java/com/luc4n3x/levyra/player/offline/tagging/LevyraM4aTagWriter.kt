@@ -16,7 +16,7 @@ object LevyraM4aTagWriter {
         return writeInternal(
             input = input,
             output = output,
-            metadataItems = metadataItems,
+            metadataItemsFactory = { _, _ -> metadataItems },
             replacementTypes = Atom.REPLACED_TAGS,
             replacementFreeformNames = LEVYRA_FREEFORM_NAMES,
             artworkEmbedded = metadata.artworkData?.let(::artworkType) != null
@@ -27,7 +27,10 @@ object LevyraM4aTagWriter {
         writeInternal(
             input = input,
             output = output,
-            metadataItems = buildTagEditItems(edits),
+            metadataItemsFactory = { source, boxes ->
+                val totals = readExistingPairTotals(source, boxes)
+                buildTagEditItems(edits, totals.trackTotal, totals.discTotal)
+            },
             replacementTypes = Atom.EDITABLE_TAGS,
             replacementFreeformNames = setOf(FREEFORM_LYRICIST),
             artworkEmbedded = false
@@ -36,7 +39,7 @@ object LevyraM4aTagWriter {
     private fun writeInternal(
         input: File,
         output: File,
-        metadataItems: List<ByteArray>,
+        metadataItemsFactory: (ByteArray, List<Mp4Box>) -> List<ByteArray>,
         replacementTypes: Set<Int>,
         replacementFreeformNames: Set<String>,
         artworkEmbedded: Boolean
@@ -47,6 +50,9 @@ object LevyraM4aTagWriter {
         val source = input.readBytes()
         val boxes = runCatching { parseBoxes(source, 0, source.size) }.getOrElse {
             return LevyraM4aTagResult(false, false, "invalid_mp4")
+        }
+        val metadataItems = runCatching { metadataItemsFactory(source, boxes) }.getOrElse {
+            return LevyraM4aTagResult(false, false, "metadata_parse_failed")
         }
         val moov = boxes.firstOrNull { it.type == Atom.MOOV } ?: return LevyraM4aTagResult(false, false, "moov_missing")
         val firstMdat = boxes.firstOrNull { it.type == Atom.MDAT }
@@ -269,7 +275,48 @@ object LevyraM4aTagWriter {
         return items
     }
 
-    private fun buildTagEditItems(edits: LevyraM4aTagEdits): List<ByteArray> {
+    private fun readExistingPairTotals(
+        source: ByteArray,
+        topLevel: List<Mp4Box>
+    ): PairTotals {
+        val moov = topLevel.firstOrNull { it.type == Atom.MOOV } ?: return PairTotals()
+        val udta = parseBoxes(source, moov.payloadStart, moov.end)
+            .firstOrNull { it.type == Atom.UDTA } ?: return PairTotals()
+        val meta = parseBoxes(source, udta.payloadStart, udta.end)
+            .firstOrNull { it.type == Atom.META } ?: return PairTotals()
+        val childrenStart = (meta.payloadStart + 4).coerceAtMost(meta.end)
+        val ilst = parseBoxes(source, childrenStart, meta.end)
+            .firstOrNull { it.type == Atom.ILST } ?: return PairTotals()
+        val items = parseBoxes(source, ilst.payloadStart, ilst.end)
+        return PairTotals(
+            trackTotal = items.firstOrNull { it.type == Atom.TRACK_NUMBER }
+                ?.let { readPairTotal(source, it, trailingReserved = true) } ?: 0,
+            discTotal = items.firstOrNull { it.type == Atom.DISC_NUMBER }
+                ?.let { readPairTotal(source, it, trailingReserved = false) } ?: 0
+        )
+    }
+
+    private fun readPairTotal(
+        source: ByteArray,
+        item: Mp4Box,
+        trailingReserved: Boolean
+    ): Int {
+        val data = parseBoxes(source, item.payloadStart, item.end)
+            .firstOrNull { it.type == Atom.DATA }
+            ?: throw IOException("pair_data_missing")
+        val valueStart = data.payloadStart + 8
+        val required = if (trailingReserved) 8 else 6
+        if (valueStart < data.payloadStart || valueStart > data.end - required) {
+            throw IOException("pair_data_invalid")
+        }
+        return readUInt16(source, valueStart + 4)
+    }
+
+    private fun buildTagEditItems(
+        edits: LevyraM4aTagEdits,
+        trackTotal: Int,
+        discTotal: Int
+    ): List<ByteArray> {
         val items = ArrayList<ByteArray>()
         edits.title.cleanTag()?.let { items += textItem(Atom.NAM, it) }
         edits.artist.cleanTag()?.let { items += textItem(Atom.ART, it) }
@@ -277,8 +324,12 @@ object LevyraM4aTagWriter {
         edits.albumArtist.cleanTag()?.let { items += textItem(Atom.AART, it) }
         edits.year.cleanTag()?.let { items += textItem(Atom.DAY, it) }
         edits.genre.cleanTag()?.let { items += textItem(Atom.GENRE, it) }
-        if (edits.trackNumber > 0) items += pairItem(Atom.TRACK_NUMBER, edits.trackNumber, 0, trailingReserved = true)
-        if (edits.discNumber > 0) items += pairItem(Atom.DISC_NUMBER, edits.discNumber, 0, trailingReserved = false)
+        if (edits.trackNumber > 0) {
+            items += pairItem(Atom.TRACK_NUMBER, edits.trackNumber, trackTotal, trailingReserved = true)
+        }
+        if (edits.discNumber > 0) {
+            items += pairItem(Atom.DISC_NUMBER, edits.discNumber, discTotal, trailingReserved = false)
+        }
         edits.composer.cleanTag()?.let { items += textItem(Atom.COMPOSER, it) }
         edits.comment.cleanMultilineTag()?.let { items += textItem(Atom.COMMENT, it) }
         edits.copyright.cleanTag()?.let { items += textItem(Atom.COPYRIGHT, it) }
@@ -405,6 +456,12 @@ object LevyraM4aTagWriter {
         return value.take(MAX_LYRICS_CHARS)
     }
 
+    private fun readUInt16(source: ByteArray, offset: Int): Int {
+        if (offset < 0 || offset > source.size - 2) throw IOException("uint16_out_of_range")
+        return ((source[offset].toInt() and 0xFF) shl 8) or
+            (source[offset + 1].toInt() and 0xFF)
+    }
+
     private fun readInt32(source: ByteArray, offset: Int): Int {
         return ((source[offset].toInt() and 0xFF) shl 24) or
             ((source[offset + 1].toInt() and 0xFF) shl 16) or
@@ -521,6 +578,11 @@ data class LevyraM4aTagResult(
     val success: Boolean,
     val artworkEmbedded: Boolean,
     val reason: String
+)
+
+private data class PairTotals(
+    val trackTotal: Int = 0,
+    val discTotal: Int = 0
 )
 
 private data class Mp4Box(
