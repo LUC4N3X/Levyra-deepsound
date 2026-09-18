@@ -345,7 +345,7 @@ private fun LocalLibraryQualityFilters(
                 color = if (active) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent,
                 border = BorderStroke(
                     1.dp,
-                    if (active) LevyraCyan.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.08f)
+                    if (active) LevyraCyan.copy(alpha = 0.48f) else LevyraMuted.copy(alpha = 0.16f)
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.clickable { onSelect(filter) }
