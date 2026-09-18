@@ -155,7 +155,7 @@ internal fun LazyListScope.localLibrarySection(
         LocalLibraryTab.Songs -> {
             val songs = library.catalog.songs
                 .filterLocalTracks(query, library.catalog.mediaByUri)
-                .filterByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri)
+                .filterByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri, nowMs)
             localTrackItems(
                 keyPrefix = "local-song",
                 tracks = songs,
@@ -171,7 +171,7 @@ internal fun LazyListScope.localLibrarySection(
         LocalLibraryTab.Albums -> items(
             library.catalog.albums
                 .filterLocalAlbums(query, library.catalog.mediaByUri)
-                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri) },
+                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri, nowMs) },
             key = { "local-album-${it.key}" },
             contentType = { "local-group" }
         ) { album ->
@@ -195,7 +195,7 @@ internal fun LazyListScope.localLibrarySection(
         LocalLibraryTab.Artists -> items(
             library.catalog.artists
                 .filterLocalArtists(query, library.catalog.mediaByUri)
-                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri) },
+                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri, nowMs) },
             key = { "local-artist-${it.key}" },
             contentType = { "local-group" }
         ) { artist ->
@@ -224,7 +224,7 @@ internal fun LazyListScope.localLibrarySection(
         LocalLibraryTab.Folders -> items(
             library.catalog.folders
                 .filterLocalFolders(query, library.catalog.mediaByUri)
-                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri) },
+                .mapNotNull { it.filteredByLocalQuality(effectiveQualityFilter, library.catalog.mediaByUri, nowMs) },
             key = { "local-folder-${it.key}" },
             contentType = { "local-group" }
         ) { folder ->
@@ -413,18 +413,19 @@ private fun LocalMediaEntity.isLosslessLocalMedia(): Boolean {
 
 private fun List<Track>.filterByLocalQuality(
     filter: LocalLibraryQualityFilter,
-    mediaByUri: Map<String, LocalMediaEntity>
+    mediaByUri: Map<String, LocalMediaEntity>,
+    nowMs: Long
 ): List<Track> {
     if (filter == LocalLibraryQualityFilter.All) return this
-    val nowMs = System.currentTimeMillis()
     return filter { track -> mediaByUri[track.streamUrl]?.matchesLocalQualityFilter(filter, nowMs) == true }
 }
 
 private fun LocalAlbumGroup.filteredByLocalQuality(
     filter: LocalLibraryQualityFilter,
-    mediaByUri: Map<String, LocalMediaEntity>
+    mediaByUri: Map<String, LocalMediaEntity>,
+    nowMs: Long
 ): LocalAlbumGroup? {
-    val filtered = tracks.filterByLocalQuality(filter, mediaByUri)
+    val filtered = tracks.filterByLocalQuality(filter, mediaByUri, nowMs)
     if (filtered.isEmpty()) return null
     return copy(
         artworkModel = filtered.firstOrNull()?.thumbnailUrl.orEmpty(),
@@ -435,9 +436,10 @@ private fun LocalAlbumGroup.filteredByLocalQuality(
 
 private fun LocalArtistGroup.filteredByLocalQuality(
     filter: LocalLibraryQualityFilter,
-    mediaByUri: Map<String, LocalMediaEntity>
+    mediaByUri: Map<String, LocalMediaEntity>,
+    nowMs: Long
 ): LocalArtistGroup? {
-    val filtered = tracks.filterByLocalQuality(filter, mediaByUri)
+    val filtered = tracks.filterByLocalQuality(filter, mediaByUri, nowMs)
     if (filtered.isEmpty()) return null
     val filteredAlbumCount = filtered
         .map { it.album.trim().lowercase() }
@@ -453,9 +455,10 @@ private fun LocalArtistGroup.filteredByLocalQuality(
 
 private fun LocalFolderGroup.filteredByLocalQuality(
     filter: LocalLibraryQualityFilter,
-    mediaByUri: Map<String, LocalMediaEntity>
+    mediaByUri: Map<String, LocalMediaEntity>,
+    nowMs: Long
 ): LocalFolderGroup? {
-    val filtered = tracks.filterByLocalQuality(filter, mediaByUri)
+    val filtered = tracks.filterByLocalQuality(filter, mediaByUri, nowMs)
     if (filtered.isEmpty()) return null
     return copy(
         durationMs = filtered.sumOf { it.durationMs.coerceAtLeast(0L) },
