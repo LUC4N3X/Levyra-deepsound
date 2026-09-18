@@ -1540,7 +1540,7 @@ class PlaybackService : MediaLibraryService() {
         track: Track,
         transitionIsValid: () -> Boolean
     ): ExoPlayer? {
-        repeat(2) { attempt ->
+        for (attempt in 0 until 2) {
             val candidate = buildTransitionPlayer(track).also { transitionPlayer = it }
             candidate.setPlaybackParameters(
                 PlaybackParameters(currentAudioSettings.playbackSpeed, currentAudioSettings.pitch)
