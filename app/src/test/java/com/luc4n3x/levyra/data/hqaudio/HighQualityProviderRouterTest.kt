@@ -193,6 +193,25 @@ class HighQualityProviderRouterTest {
     }
 
     @Test
+    fun deadPreferredProviderOnlyDelaysAReadyStreamByTheUpgradeGrace() {
+        val qobuzFinished = AtomicBoolean(false)
+        val qobuz = qobuz().apply {
+            searchOutcome = {
+                delay(2_500L)
+                qobuzFinished.set(true)
+                ProviderSearchOutcome.Failed(ProviderFailure.TIMEOUT)
+            }
+        }
+        val started = System.nanoTime()
+        val result = router(jioSaavn(), qobuz, mode = HighQualityAudioMode.PREFER_320).resolveNow()
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000L
+        assertEquals("jiosaavn", result.selectedProvider())
+        assertTrue("elapsed=$elapsedMs", elapsedMs < HighQualityAudioResolver.UPGRADE_GRACE_MS + 800L)
+        runBlocking { delay(2_000L) }
+        assertTrue(qobuzFinished.get())
+    }
+
+    @Test
     fun maximumQualityFallsBackToJioSaavnWhenQobuzFails() {
         val qobuz = qobuz().apply { searchOutcome = { ProviderSearchOutcome.Failed(ProviderFailure.FORBIDDEN) } }
         assertEquals("jiosaavn", router(jioSaavn(), qobuz, mode = HighQualityAudioMode.PREFER_320).resolveNow().selectedProvider())

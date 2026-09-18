@@ -11,9 +11,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
 
 enum class HighQualityFallbackReason {
@@ -49,7 +49,8 @@ class HighQualityAudioResolver(
     private val clock: () -> Long = System::currentTimeMillis,
     private val lookupBudgetMs: Long = LOOKUP_BUDGET_MS,
     private val providerBudgetMs: Long = PROVIDER_BUDGET_MS,
-    private val hedgeDelayMs: Long = HEDGE_DELAY_MS
+    private val hedgeDelayMs: Long = HEDGE_DELAY_MS,
+    private val upgradeGraceMs: Long = UPGRADE_GRACE_MS
 ) {
     private val lanes = providers
         .distinctBy { it.id }
@@ -150,17 +151,22 @@ class HighQualityAudioResolver(
         identityKey: String,
         query: AlternativeTrackQuery,
         preference: HighQualityPreference
-    ): HighQualityResolution = coroutineScope {
+    ): HighQualityResolution {
         val deadline = TimeSource.Monotonic.markNow() + lookupBudgetMs.milliseconds
         val candidates = eligibleLanes(identityKey, preference)
-        if (candidates.isEmpty()) return@coroutineScope HighQualityResolution.Fallback(HighQualityFallbackReason.QUARANTINED)
+        if (candidates.isEmpty()) return HighQualityResolution.Fallback(HighQualityFallbackReason.QUARANTINED)
         val started = ArrayList<Deferred<HighQualityResolution>>(candidates.size)
+        val strongResultReady = CompletableDeferred<Unit>()
         fun launchLane(index: Int) {
             val lane = candidates[index]
             HighQualityAudioDiagnostics.routeAttempt(lane.provider.id, index + 1, candidates.size, preference)
-            started += async {
-                withTimeoutOrNull(providerBudgetMs) { lane.resolve(identityKey, query, preference) }
+            started += scope.async {
+                val result = withTimeoutOrNull(providerBudgetMs) { lane.resolve(identityKey, query, preference) }
                     ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "provider budget")
+                if (result is HighQualityResolution.Selected && HighQualityTierPolicy.isStrong(result.stream.quality)) {
+                    strongResultReady.complete(Unit)
+                }
+                result
             }
         }
         if (preference == HighQualityPreference.MAXIMUM || hedgeDelayMs <= 0L) candidates.indices.forEach(::launchLane)
@@ -177,10 +183,10 @@ class HighQualityAudioResolver(
                     withTimeoutOrNull(hedgeDelayMs) { started[index].await() } ?: run {
                         HighQualityAudioDiagnostics.routeHedge(providerId, candidates[index + 1].provider.id, hedgeDelayMs)
                         launchLane(index + 1)
-                        awaitWithin(started[index], deadline)
+                        awaitPreferredLane(started[index], strongResultReady, deadline)
                     }
                 } else {
-                    awaitWithin(started[index], deadline)
+                    awaitPreferredLane(started[index], strongResultReady, deadline)
                 }
                 if (result == null) {
                     expired = true
@@ -202,11 +208,12 @@ class HighQualityAudioResolver(
                     }
                 }
             }
-        } finally {
+        } catch (error: CancellationException) {
             started.forEach { it.cancel() }
+            throw error
         }
         val chosen = best
-        when {
+        return when {
             chosen != null -> {
                 if (mode.enabled) rememberStream(identityKey, chosen)
                 chosen
@@ -218,13 +225,25 @@ class HighQualityAudioResolver(
         }
     }
 
-    private suspend fun awaitWithin(
+    private suspend fun awaitPreferredLane(
         pending: Deferred<HighQualityResolution>,
+        strongResultReady: Deferred<Unit>,
         deadline: TimeMark
     ): HighQualityResolution? {
         val remaining = -deadline.elapsedNow().inWholeMilliseconds
         if (remaining <= 0L) return if (pending.isCompleted) pending.await() else null
-        return withTimeoutOrNull(remaining) { pending.await() }
+        val first = withTimeoutOrNull(remaining) {
+            select<HighQualityResolution?> {
+                pending.onAwait { it }
+                strongResultReady.onAwait { null }
+            }
+        }
+        if (first != null) return first
+        if (pending.isCompleted) return pending.await()
+        val left = -deadline.elapsedNow().inWholeMilliseconds
+        if (left <= 0L) return null
+        return withTimeoutOrNull(minOf(upgradeGraceMs, left)) { pending.await() }
+            ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "upgrade grace")
     }
 
     private fun combinedFallback(
@@ -291,6 +310,7 @@ class HighQualityAudioResolver(
         const val LOOKUP_BUDGET_MS = 10_000L
         const val PROVIDER_BUDGET_MS = 6_500L
         const val HEDGE_DELAY_MS = 2_000L
+        const val UPGRADE_GRACE_MS = 1_200L
         const val STREAM_REFRESH_MARGIN_MS = 90_000L
         const val FAILURE_QUARANTINE_MS = 30L * 60L * 1_000L
         const val MAX_IN_FLIGHT_LOOKUPS = 4
