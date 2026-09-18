@@ -58,7 +58,9 @@ internal object LocalDeepTagReader {
         if (path.isNotEmpty()) {
             val file = File(path)
             if (file.isFile && file.canRead() && file.length() > 0L) {
-                runCatching { return read(file) }
+                runCatching {
+                    RandomAccessTagSource(RandomAccessFile(file, "r")).use(::readSource)
+                }.getOrNull()?.let { return it }
             }
         }
         val uri = runCatching { Uri.parse(row.contentUri) }.getOrNull() ?: return LocalDeepTags()
