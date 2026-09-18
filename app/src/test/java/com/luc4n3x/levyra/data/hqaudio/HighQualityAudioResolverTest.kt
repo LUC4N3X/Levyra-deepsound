@@ -29,7 +29,7 @@ class HighQualityAudioResolverTest {
         budgetMs: Long = 5_000L,
         mode: HighQualityAudioMode = HighQualityAudioMode.AUTOMATIC
     ) = HighQualityAudioResolver(
-        provider = provider,
+        providers = listOf(provider),
         mappingStore = HighQualityMappingStore(storage),
         scope = scope,
         lookupBudgetMs = budgetMs
@@ -57,7 +57,7 @@ class HighQualityAudioResolverTest {
         val result = resolver(provider).resolveNow()
         assertTrue(result is HighQualityResolution.Selected)
         assertEquals(AlternativeMatchVerdict.EXACT, (result as HighQualityResolution.Selected).evaluation.verdict)
-        assertEquals(AudioQualityTier.KBPS_320, result.stream.tier)
+        assertEquals(320, result.stream.quality.effectiveKbps)
         assertEquals(1, provider.searches.size)
         assertEquals(1, storage.values.size)
     }
@@ -133,7 +133,7 @@ class HighQualityAudioResolverTest {
     fun retainedMappingStillExpiresWithItsOriginalTtl() {
         var nowMs = 1_800_000_000_000L
         fun timedResolver(provider: FakeHighQualityProvider) = HighQualityAudioResolver(
-            provider = provider,
+            providers = listOf(provider),
             mappingStore = HighQualityMappingStore(storage, clock = { nowMs }),
             scope = scope,
             clock = { nowMs },
@@ -245,7 +245,7 @@ class HighQualityAudioResolverTest {
         val provider = exactProvider()
         val resolver = resolver(provider)
         resolver.resolveNow()
-        resolver.reportPlaybackFailure(identity, "pW-kkdqr", "HTTP 403")
+        resolver.reportPlaybackFailure(identity, "jiosaavn", "pW-kkdqr", "HTTP 403")
         assertTrue(storage.values.isEmpty())
         assertNull(resolver.cachedSelection(identity))
         val result = resolver.resolveNow()

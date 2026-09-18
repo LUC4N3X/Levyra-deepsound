@@ -23,7 +23,7 @@ class HighQualityMappingStoreTest {
     @Test
     fun verifiedMappingRoundTrips() {
         assertTrue(store.save("track-a", mapping()))
-        assertEquals("pW-kkdqr", store.load("track-a", "query-fp")?.providerTrackId)
+        assertEquals("pW-kkdqr", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
     }
 
     @Test
@@ -38,14 +38,14 @@ class HighQualityMappingStoreTest {
     fun staleMappingExpires() {
         store.save("track-a", mapping())
         now += 10_001L
-        assertNull(store.load("track-a", "query-fp"))
+        assertNull(store.load("track-a", "jiosaavn", "query-fp"))
         assertTrue(storage.values.isEmpty())
     }
 
     @Test
     fun changedLevyraMetadataInvalidatesMapping() {
         store.save("track-a", mapping())
-        assertNull(store.load("track-a", "different-fp"))
+        assertNull(store.load("track-a", "jiosaavn", "different-fp"))
         assertTrue(storage.values.isEmpty())
     }
 
@@ -57,15 +57,60 @@ class HighQualityMappingStoreTest {
         }
         store.save("d", mapping(id = "d"))
         assertEquals(3, storage.values.size)
-        assertNull(store.load("a", "query-fp"))
-        assertNotNull(store.load("d", "query-fp"))
+        assertNull(store.load("a", "jiosaavn", "query-fp"))
+        assertNotNull(store.load("d", "jiosaavn", "query-fp"))
     }
 
     @Test
     fun corruptEntryIsDiscarded() {
         store.save("track-a", mapping())
         storage.values.keys.forEach { storage.values[it] = "{not json" }
-        assertNull(store.load("track-a", "query-fp"))
+        assertNull(store.load("track-a", "jiosaavn", "query-fp"))
         assertTrue(storage.values.isEmpty())
+    }
+
+    @Test
+    fun providersKeepIndependentMappingsForTheSameTrack() {
+        store.save("track-a", mapping(id = "saavn-1"))
+        store.save("track-a", mapping(id = "qobuz-1").copy(providerId = "qobuz"))
+        assertEquals("saavn-1", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
+        assertEquals("qobuz-1", store.load("track-a", "qobuz", "query-fp")?.providerTrackId)
+        store.remove("track-a", "qobuz")
+        assertNull(store.load("track-a", "qobuz", "query-fp"))
+        assertEquals("saavn-1", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
+    }
+
+    @Test
+    fun legacySingleProviderMappingIsMigratedOnlyForItsProvider() {
+        val legacyKey = "hq-v1:" + java.security.MessageDigest.getInstance("SHA-256")
+            .digest("track-a".toByteArray())
+            .joinToString("") { "%02x".format(it) }
+            .take(40)
+        storage.values[legacyKey] = org.json.JSONObject()
+            .put("schema", 1)
+            .put("providerId", "jiosaavn")
+            .put("providerTrackId", "legacy-id")
+            .put("queryFingerprint", "query-fp")
+            .put("candidateFingerprint", "candidate-fp")
+            .put("verdict", "EXACT")
+            .put("confidence", 100)
+            .put("storedAtMs", now)
+            .toString()
+        assertNull(store.load("track-a", "qobuz", "query-fp"))
+        assertTrue(storage.values.containsKey(legacyKey))
+        assertEquals("legacy-id", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
+        assertFalse(storage.values.containsKey(legacyKey))
+        assertEquals("legacy-id", store.load("track-a", "jiosaavn", "query-fp")?.providerTrackId)
+    }
+
+    @Test
+    fun snapshotAndManualFlagRoundTrip() {
+        val snapshot = candidate(id = "q-1", providerId = "qobuz").copy(maxBitDepth = 24, maxSampleRateHz = 96_000, mediaToken = "")
+        val manual = mapping(id = "q-1", verdict = AlternativeMatchVerdict.HIGH, confidence = 70)
+            .copy(providerId = "qobuz", manual = true, snapshot = snapshot)
+        assertTrue(store.save("track-a", manual))
+        val loaded = store.load("track-a", "qobuz", "query-fp")!!
+        assertTrue(loaded.manual)
+        assertEquals(snapshot, loaded.snapshot)
     }
 }

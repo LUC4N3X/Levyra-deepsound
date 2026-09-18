@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.hqaudio
 
+import com.luc4n3x.levyra.data.hqaudio.qobuz.QobuzBackends
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
 import java.io.IOException
@@ -45,12 +46,15 @@ fun interface ProviderHttpExchange {
 }
 
 internal object ProviderDestinationPolicy {
-    private val allowedDomains = setOf("jiosaavn.com", "saavncdn.com")
+    private val allowedDomains = setOf("jiosaavn.com", "saavncdn.com", "qobuz.com")
+    private val qobuzMediaHost = Regex("streaming-qobuz-[a-z0-9-]+\\.akamaized\\.net")
 
     fun allows(url: HttpUrl): Boolean {
         if (!url.isHttps) return false
         val host = url.host.lowercase(Locale.ROOT).trimEnd('.')
-        return allowedDomains.any { domain -> host == domain || host.endsWith(".$domain") }
+        return host in QobuzBackends.hosts ||
+            qobuzMediaHost.matches(host) ||
+            allowedDomains.any { domain -> host == domain || host.endsWith(".$domain") }
     }
 
     fun requireAllowed(url: String): HttpUrl {

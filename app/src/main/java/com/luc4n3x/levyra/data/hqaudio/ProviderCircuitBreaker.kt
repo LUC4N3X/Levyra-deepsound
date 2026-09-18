@@ -17,9 +17,28 @@ internal class ProviderCircuitBreaker(
     private var openUntilMs = 0L
     private var openDurationMs = baseOpenMs
     private var probeInFlight = false
+    private var lastSuccessAtMs = 0L
+    private var lastFailureAtMs = 0L
+    private var lastFailure = ""
+    private var lastLatencyMs = -1L
 
     val currentState: State
         get() = synchronized(lock) { state }
+
+    fun snapshot(backend: String = providerId): ProviderBackendHealth = synchronized(lock) {
+        val now = clock()
+        ProviderBackendHealth(
+            providerId = providerId,
+            backend = backend,
+            state = if (state == State.OPEN && now >= openUntilMs) State.HALF_OPEN.name else state.name,
+            cooldownRemainingMs = if (state == State.OPEN) (openUntilMs - now).coerceAtLeast(0L) else 0L,
+            consecutiveFailures = consecutiveFailures,
+            lastSuccessAtMs = lastSuccessAtMs,
+            lastFailureAtMs = lastFailureAtMs,
+            lastFailure = lastFailure,
+            lastLatencyMs = lastLatencyMs
+        )
+    }
 
     fun acquire(): Permit {
         var probing = false
@@ -47,8 +66,10 @@ internal class ProviderCircuitBreaker(
         return permit
     }
 
-    fun onSuccess(permit: Permit) {
+    fun onSuccess(permit: Permit, latencyMs: Long = -1L) {
         val recovered = synchronized(lock) {
+            lastSuccessAtMs = clock()
+            lastLatencyMs = latencyMs
             when {
                 permit == Permit.PROBE && state == State.HALF_OPEN -> {
                     state = State.CLOSED
@@ -67,21 +88,25 @@ internal class ProviderCircuitBreaker(
         if (recovered) HighQualityAudioDiagnostics.circuit(providerId, State.CLOSED.name, "recovered")
     }
 
-    fun onFailure(permit: Permit) {
+    fun onFailure(permit: Permit, cause: String = "", tripImmediately: Boolean = false, minimumOpenMs: Long = 0L) {
         val openedForMs = synchronized(lock) {
+            lastFailureAtMs = clock()
+            lastFailure = cause
             when {
                 permit == Permit.PROBE && state == State.HALF_OPEN -> {
                     openDurationMs = (openDurationMs * 2).coerceAtMost(maxOpenMs)
-                    open()
+                    open(minimumOpenMs)
                 }
                 state == State.CLOSED -> {
                     consecutiveFailures += 1
-                    if (consecutiveFailures >= failureThreshold) open() else null
+                    if (tripImmediately || consecutiveFailures >= failureThreshold) open(minimumOpenMs) else null
                 }
                 else -> null
             }
         }
-        openedForMs?.let { HighQualityAudioDiagnostics.circuit(providerId, State.OPEN.name, "openMs=$it") }
+        openedForMs?.let {
+            HighQualityAudioDiagnostics.circuit(providerId, State.OPEN.name, "openMs=$it cause=${cause.ifBlank { "-" }}")
+        }
     }
 
     fun release(permit: Permit) {
@@ -90,12 +115,13 @@ internal class ProviderCircuitBreaker(
         }
     }
 
-    private fun open(): Long {
+    private fun open(minimumOpenMs: Long): Long {
+        val duration = maxOf(openDurationMs, minimumOpenMs.coerceAtMost(maxOpenMs))
         state = State.OPEN
-        openUntilMs = clock() + openDurationMs
+        openUntilMs = clock() + duration
         consecutiveFailures = 0
         probeInFlight = false
-        return openDurationMs
+        return duration
     }
 
     companion object {

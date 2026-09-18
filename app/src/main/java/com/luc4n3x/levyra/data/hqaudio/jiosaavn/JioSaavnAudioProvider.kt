@@ -4,6 +4,8 @@ import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackCandidate
 import com.luc4n3x.levyra.data.hqaudio.AudioQualityTier
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioDiagnostics
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.HighQualityPreference
+import com.luc4n3x.levyra.data.hqaudio.ProviderBackendHealth
 import com.luc4n3x.levyra.data.hqaudio.ProviderCircuitBreaker
 import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
@@ -76,7 +78,15 @@ internal class JioSaavnAudioProvider(
             }
         }
 
-    override suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome {
+    override fun health(): List<ProviderBackendHealth> = listOf(
+        catalogCircuitBreaker.snapshot(CATALOG_CIRCUIT),
+        authorizationCircuitBreaker.snapshot(AUTHORIZATION_CIRCUIT)
+    )
+
+    override suspend fun resolveStream(
+        candidate: AlternativeTrackCandidate,
+        preference: HighQualityPreference
+    ): ProviderStreamOutcome {
         if (candidate.mediaToken.isBlank()) return ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
         val tiers = tiersFor(candidate)
         val rejections = mutableListOf<StreamRejection>()
@@ -130,18 +140,17 @@ internal class JioSaavnAudioProvider(
                 val host = HighQualityAudioDiagnostics.hostOf(url)
                 when (val validation = probe(url, tier, candidate.durationSeconds)) {
                     is StreamValidation.Valid -> {
-                        HighQualityAudioDiagnostics.streamValid(id, candidate.providerTrackId, tier, host, validation)
+                        HighQualityAudioDiagnostics.streamValid(id, candidate.providerTrackId, "${tier.kbps}kbps", host, validation)
                         return ProviderStreamOutcome.Resolved(
                             ResolvedHighQualityStream(
                                 providerId = id,
                                 providerTrackId = candidate.providerTrackId,
                                 url = url,
-                                tier = tier,
+                                quality = validation.quality,
                                 mimeType = validation.mimeType,
                                 container = validation.container,
                                 codec = validation.codec,
                                 contentLength = validation.contentLength,
-                                estimatedKbps = validation.estimatedKbps,
                                 expiresAtMs = expiresAtFor(location, url)
                             )
                         )
@@ -151,7 +160,7 @@ internal class JioSaavnAudioProvider(
                         HighQualityAudioDiagnostics.streamInvalid(
                             id,
                             candidate.providerTrackId,
-                            tier,
+                            "${tier.kbps}kbps",
                             host,
                             validation.rejection,
                             validation.statusCode
@@ -202,12 +211,13 @@ internal class JioSaavnAudioProvider(
         var settled = false
         try {
             val attempts = if (permit == ProviderCircuitBreaker.Permit.PROBE) 1 else MAX_API_ATTEMPTS
+            val startedAt = clock()
             val result = attemptApi(url, attempts)
             settled = true
             if (result is ApiResult.Failure && result.failure != ProviderFailure.NOT_FOUND) {
-                circuitBreaker.onFailure(permit)
+                circuitBreaker.onFailure(permit, result.failure.name)
             } else {
-                circuitBreaker.onSuccess(permit)
+                circuitBreaker.onSuccess(permit, clock() - startedAt)
             }
             return result
         } finally {
@@ -234,7 +244,7 @@ internal class JioSaavnAudioProvider(
                 response.code == HTTP_NOT_FOUND -> return ApiResult.Failure(ProviderFailure.NOT_FOUND)
                 isProfileRejection(response) -> {
                     rejectProfile(session, response.code)
-                    lastFailure = if (response.code == HTTP_FORBIDDEN) ProviderFailure.FORBIDDEN else ProviderFailure.HTTP_ERROR
+                    lastFailure = if (response.code == HTTP_FORBIDDEN) ProviderFailure.FORBIDDEN else ProviderFailure.RATE_LIMITED
                 }
                 response.code >= HTTP_SERVER_ERROR -> lastFailure = ProviderFailure.HTTP_ERROR
                 else -> return ApiResult.Failure(ProviderFailure.HTTP_ERROR)

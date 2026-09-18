@@ -40,7 +40,8 @@ object LevyraPlaybackCacheKey {
 
     private fun streamVariant(track: Track): String {
         val alternative = track.playbackManifest?.alternativeSource ?: return variant(track.streamUrl)
-        val identity = "${alternative.providerId}\u0000${alternative.providerTrackId}\u0000${alternative.bitrateKbps}"
+        val lossless = if (alternative.lossless) "\u0000lossless-${alternative.bitDepth}-${alternative.sampleRateHz}" else ""
+        val identity = "${alternative.providerId}\u0000${alternative.providerTrackId}\u0000${alternative.bitrateKbps}$lossless"
         return "alt-${sha256(identity)}"
     }
 

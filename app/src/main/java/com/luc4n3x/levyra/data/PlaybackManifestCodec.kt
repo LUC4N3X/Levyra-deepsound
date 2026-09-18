@@ -150,6 +150,10 @@ private fun AlternativeAudioSource.toJson(): JSONObject = JSONObject()
     .put("bitrateKbps", bitrateKbps)
     .put("verdict", verdict.name)
     .put("confidence", confidence)
+    .put("qualityLabel", qualityLabel)
+    .put("lossless", lossless)
+    .put("bitDepth", bitDepth)
+    .put("sampleRateHz", sampleRateHz)
 
 private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
     val providerId = optString("providerId")
@@ -161,7 +165,11 @@ private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
         providerTrackId = providerTrackId,
         bitrateKbps = optInt("bitrateKbps", 0),
         verdict = verdict,
-        confidence = optInt("confidence", 0)
+        confidence = optInt("confidence", 0),
+        qualityLabel = optString("qualityLabel"),
+        lossless = optBoolean("lossless", false),
+        bitDepth = optInt("bitDepth", 0),
+        sampleRateHz = optInt("sampleRateHz", 0)
     )
 }
 

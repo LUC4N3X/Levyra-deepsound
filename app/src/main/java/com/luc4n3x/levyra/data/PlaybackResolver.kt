@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
 import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.qobuz.QobuzAudioProvider
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.LevyraContentLocales
@@ -352,9 +353,13 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
     private val sourceMatchMutationMutex = Mutex()
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val highQualityExchange = OkHttpProviderExchange(HighQualityProviderHttpClient::client)
     private val highQualityPlayback = HighQualityPlaybackCoordinator(
         HighQualityAudioResolver(
-            provider = JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
+            providers = listOf(
+                JioSaavnAudioProvider(highQualityExchange),
+                QobuzAudioProvider(highQualityExchange)
+            ),
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope
         )
@@ -791,6 +796,22 @@ class PlaybackResolver private constructor(private val context: Context) {
         strategyHealth.snapshot().forEach { (key, value) -> strategyHealthJson.put(key, value) }
         diagnostics.put("strategyHealth", strategyHealthJson)
         diagnostics.put("highQualityAudioMode", highQualityPlayback.mode.name)
+        val highQualityProviders = JSONArray()
+        highQualityPlayback.providerHealth().forEach { health ->
+            highQualityProviders.put(
+                JSONObject()
+                    .put("provider", health.providerId)
+                    .put("backend", health.backend)
+                    .put("state", health.state)
+                    .put("cooldownRemainingMs", health.cooldownRemainingMs)
+                    .put("consecutiveFailures", health.consecutiveFailures)
+                    .put("lastSuccessAtMs", health.lastSuccessAtMs)
+                    .put("lastFailureAtMs", health.lastFailureAtMs)
+                    .put("lastFailure", health.lastFailure)
+                    .put("lastLatencyMs", health.lastLatencyMs)
+            )
+        }
+        diagnostics.put("highQualityProviders", highQualityProviders)
         return diagnostics.toString(2)
     }
 

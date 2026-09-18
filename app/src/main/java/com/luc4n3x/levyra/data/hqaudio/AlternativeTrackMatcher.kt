@@ -25,7 +25,9 @@ data class AlternativeTrackCandidate(
     val explicit: Boolean?,
     val isrc: String = "",
     val offers320: Boolean = false,
-    val mediaToken: String = ""
+    val mediaToken: String = "",
+    val maxBitDepth: Int = 0,
+    val maxSampleRateHz: Int = 0
 )
 
 enum class MatchRejection {
@@ -124,8 +126,9 @@ class AlternativeTrackMatcher {
         if (expectedExplicit != null && candidateExplicit != null && expectedExplicit != candidateExplicit) {
             return rejected(MatchRejection.EXPLICIT_MISMATCH)
         }
+        val isrcConfirmed = expectedIsrc.isNotEmpty() && expectedIsrc == candidateIsrc
         val relation = albumRelation(query.album, candidate.album, expectedTitle, candidateTitle)
-        if (relation == AlbumRelation.REMASTER_CONFLICT || relation == AlbumRelation.MISMATCH) {
+        if (!isrcConfirmed && (relation == AlbumRelation.REMASTER_CONFLICT || relation == AlbumRelation.MISMATCH)) {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
         if (delta > MAXIMUM_DURATION_DELTA_SECONDS) return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
@@ -138,7 +141,6 @@ class AlternativeTrackMatcher {
         if (delta > EXCELLENT_DURATION_DELTA_SECONDS && !(relation == AlbumRelation.SAME && artistsExact)) {
             return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
         }
-        val isrcConfirmed = expectedIsrc.isNotEmpty() && expectedIsrc == candidateIsrc
         val titleExact = expectedTitle.fullNormalized == candidateTitle.fullNormalized
         val confidence = confidence(titleExact, artistsExact, relation, delta, isrcConfirmed)
         val verdict = when {
@@ -181,10 +183,15 @@ class AlternativeTrackMatcher {
             .maxWith(
                 compareBy<AlternativeMatchEvaluation> { it.candidate.explicit != true }
                     .thenBy { it.candidate.offers320 }
+                    .thenBy { it.candidate.maxBitDepth }
+                    .thenBy { it.candidate.maxSampleRateHz }
                     .thenBy { it.confidence }
             )
         return AlternativeMatchSelection.Accepted(chosen, evaluations)
     }
+
+    fun acceptsManualPin(evaluation: AlternativeMatchEvaluation): Boolean =
+        evaluation.accepted || evaluation.rejection in manuallyOverridableRejections
 
     private fun sameRecording(
         left: AlternativeMatchEvaluation,
@@ -275,6 +282,10 @@ class AlternativeTrackMatcher {
         const val AMBIGUITY_MARGIN = 8
 
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
+        private val manuallyOverridableRejections = setOf(
+            MatchRejection.LOW_CONFIDENCE,
+            MatchRejection.ALBUM_MISMATCH
+        )
         internal val untrustedAlbumNames = setOf(
             "levyra",
             "youtube",
