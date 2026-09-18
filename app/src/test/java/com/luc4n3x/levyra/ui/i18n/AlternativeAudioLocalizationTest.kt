@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -15,7 +16,8 @@ class AlternativeAudioLocalizationTest {
             assertTrue(strings.code, strings.alternativeAudioSubtitle.isNotBlank())
             assertTrue(strings.code, strings.alternativeAudioOff.isNotBlank())
             assertTrue(strings.code, strings.alternativeAudioAutomatic.isNotBlank())
-            assertTrue(strings.code, strings.alternativeAudioPrefer320.contains("320"))
+            assertTrue(strings.code, strings.alternativeAudioPrefer320.isNotBlank())
+            assertFalse(strings.code, strings.alternativeAudioPrefer320.contains("320"))
         }
     }
 
