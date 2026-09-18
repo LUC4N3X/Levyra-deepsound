@@ -29,11 +29,11 @@ internal data class QobuzBackend(
         .toString()
 }
 
-internal enum class QobuzFormat(val code: Int, val lossless: Boolean, val nominalKbps: Int) {
-    HI_RES_192(27, true, 0),
-    HI_RES_96(7, true, 0),
-    CD(6, true, 0),
-    MP3_320(5, false, 320);
+internal enum class QobuzFormat(val code: Int, val lossless: Boolean, val hiRes: Boolean, val nominalKbps: Int) {
+    HI_RES_192(27, true, true, 0),
+    HI_RES_96(7, true, true, 0),
+    CD(6, true, false, 0),
+    MP3_320(5, false, false, 320);
 
     companion object {
         fun ladder(maxBitDepth: Int, maxSampleRateHz: Int, maximum: Boolean): List<QobuzFormat> {

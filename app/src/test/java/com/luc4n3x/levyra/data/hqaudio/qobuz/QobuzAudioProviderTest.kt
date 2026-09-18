@@ -298,7 +298,7 @@ class QobuzAudioProviderTest {
         val provider = provider(exchange)
         val outcome = runBlocking { provider.resolveStream(candidate(), HighQualityPreference.MAXIMUM) }
         assertTrue(outcome is ProviderStreamOutcome.Resolved)
-        assertEquals(listOf(7, 6), exchange.requests.mapNotNull { it.quality() })
+        assertEquals(listOf(7, 7, 6), exchange.requests.mapNotNull { it.quality() })
         assertEquals(0, provider.health().first().consecutiveFailures)
         assertEquals(ProviderCircuitBreaker.State.CLOSED.name, provider.health().first().state)
     }
@@ -415,6 +415,76 @@ class QobuzAudioProviderTest {
             }
         }
         runBlocking { provider(exchange).resolveStream(candidate(sampleRateHz = 192_000), HighQualityPreference.MAXIMUM) }
-        assertTrue(exchange.requests.size <= QobuzFormat.entries.size * 2)
+        assertTrue(exchange.requests.size <= QobuzFormat.entries.size * 2 * 2)
+    }
+
+    @Test
+    fun trypTRootLevelStreamWithoutSuccessFlagIsGranted() {
+        val trypt = JSONObject().put("url", qobuzMediaUrl(7)).put("bit_depth", 24).put("sampling_rate", 96.0).toString()
+        val payload = QobuzPayloadParser.stream(trypt)
+        assertEquals(qobuzMediaUrl(7), (payload as QobuzStreamPayload.Granted).url)
+        assertEquals(24, payload.bitDepth)
+        assertEquals(96_000, payload.sampleRateHz)
+        val refused = JSONObject().put("success", false).put("error", "no").toString()
+        assertEquals(QobuzStreamPayload.FormatUnavailable, QobuzPayloadParser.stream(refused))
+        val preview = JSONObject().put("directUrl", qobuzMediaUrl(6)).put("previewDetected", true).toString()
+        assertEquals(QobuzStreamPayload.FormatUnavailable, QobuzPayloadParser.stream(preview))
+    }
+
+    @Test
+    fun emptyCatalogOnOneBackendContinuesToTheNext() {
+        val exchange = RoutedExchange { request ->
+            if (request.isPrimary()) jsonResponse(qobuzSearchBody()) else searchOk()
+        }
+        val outcome = runBlocking { provider(exchange).search("a") }
+        assertEquals(listOf("12345"), (outcome as ProviderSearchOutcome.Found).candidates.map { it.providerTrackId })
+        assertEquals(1, exchange.count(secondary.host, "get-music"))
+    }
+
+    @Test
+    fun unavailableFormatIsRetriedOnTheNextBackendBeforeLoweringQuality() {
+        val refused = jsonResponse(JSONObject().put("success", false).put("error", "format unavailable").toString())
+        val exchange = RoutedExchange { request ->
+            when {
+                request.isMedia() -> flacResponse(60_000_000L)
+                request.isPrimary() -> refused
+                else -> jsonResponse(JSONObject().put("url", qobuzMediaUrl(request.quality() ?: 0)).toString())
+            }
+        }
+        val quality = (runBlocking { provider(exchange).resolveStream(candidate(), HighQualityPreference.MAXIMUM) }
+            as ProviderStreamOutcome.Resolved).stream.quality
+        assertEquals(24, quality.bitDepth)
+        assertEquals(listOf(7, 7), exchange.requests.mapNotNull { it.quality() })
+    }
+
+    @Test
+    fun maximumKeepsCdFallbackButPicksRealHiResFromAnotherBackend() {
+        val exchange = RoutedExchange { request ->
+            when {
+                request.isMedia() && request.url.contains("uid=cd") ->
+                    flacResponse(22_500_000L, flacProbeBody(sampleRateHz = 44_100, bitDepth = 16))
+                request.isMedia() -> flacResponse(60_000_000L)
+                request.isPrimary() -> jsonResponse(qobuzStreamBody(qobuzMediaUrl(7).replace("uid=1", "uid=cd")))
+                else -> jsonResponse(qobuzStreamBody(qobuzMediaUrl(7)))
+            }
+        }
+        val quality = (runBlocking { provider(exchange).resolveStream(candidate(), HighQualityPreference.MAXIMUM) }
+            as ProviderStreamOutcome.Resolved).stream.quality
+        assertTrue(quality.isHiRes)
+        assertEquals(96_000, quality.sampleRateHz)
+    }
+
+    @Test
+    fun maximumReturnsTheCdFallbackWhenNoBackendHasRealHiRes() {
+        val exchange = RoutedExchange { request ->
+            when {
+                request.isMedia() -> flacResponse(22_500_000L, flacProbeBody(sampleRateHz = 44_100, bitDepth = 16))
+                else -> jsonResponse(qobuzStreamBody(qobuzMediaUrl(7).replace("uid=1", "uid=${request.url.hashCode()}")))
+            }
+        }
+        val quality = (runBlocking { provider(exchange).resolveStream(candidate(), HighQualityPreference.MAXIMUM) }
+            as ProviderStreamOutcome.Resolved).stream.quality
+        assertTrue(quality.isCdQuality)
+        assertTrue(exchange.requests.mapNotNull { it.quality() }.all { it == 7 })
     }
 }

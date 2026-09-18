@@ -63,13 +63,17 @@ internal class QobuzAudioProvider(
 
     override suspend fun search(query: String): ProviderSearchOutcome {
         var failure = ProviderFailure.CIRCUIT_OPEN
+        var answered = false
         for (backend in backends) {
             when (val result = call(backend, OPERATION_SEARCH, backend.searchUrl(query), MAX_SEARCH_BODY_BYTES, ::interpretSearch)) {
-                is BackendResult.Answered -> return ProviderSearchOutcome.Found(result.value)
+                is BackendResult.Answered -> {
+                    if (result.value.isNotEmpty()) return ProviderSearchOutcome.Found(result.value)
+                    answered = true
+                }
                 is BackendResult.Failed -> failure = moreInformative(failure, result.failure)
             }
         }
-        return ProviderSearchOutcome.Failed(failure)
+        return if (answered) ProviderSearchOutcome.Found(emptyList()) else ProviderSearchOutcome.Failed(failure)
     }
 
     override suspend fun lookup(providerTrackId: String): ProviderLookupOutcome = ProviderLookupOutcome.Missing
@@ -78,50 +82,79 @@ internal class QobuzAudioProvider(
         candidate: AlternativeTrackCandidate,
         preference: HighQualityPreference
     ): ProviderStreamOutcome {
-        val ladder = QobuzFormat.ladder(
-            candidate.maxBitDepth,
-            candidate.maxSampleRateHz,
-            maximum = preference == HighQualityPreference.MAXIMUM
-        )
-        val rejections = mutableListOf<StreamRejection>()
-        val probedUrls = HashSet<String>()
-        var failure = ProviderFailure.CIRCUIT_OPEN
-        for (format in ladder) {
-            val grant = requestFormat(candidate, format) { failure = moreInformative(failure, it) } ?: break
-            if (grant !is QobuzStreamPayload.Granted) {
-                rejections += StreamRejection.NO_MEDIA
-                continue
-            }
-            if (!probedUrls.add(grant.url)) continue
-            when (val media = probeMedia(candidate, format, grant.url)) {
-                is MediaProbe.Accepted -> return ProviderStreamOutcome.Resolved(media.stream)
-                is MediaProbe.Rejected -> {
-                    rejections += media.rejection
-                    if (media.rejection in terminalRejections) return ProviderStreamOutcome.Unavailable(rejections)
-                }
-            }
+        val maximum = preference == HighQualityPreference.MAXIMUM
+        val attempt = StreamAttempt(candidate, wantsHiRes = maximum && advertisesHiRes(candidate))
+        for (format in QobuzFormat.ladder(candidate.maxBitDepth, candidate.maxSampleRateHz, maximum)) {
+            if (attempt.fallback != null && !format.hiRes) break
+            val answered = tryFormatOnEveryBackend(attempt, format)
+            attempt.result?.let { return it }
+            if (!answered && attempt.fallback == null) break
         }
-        return if (rejections.isNotEmpty()) {
-            ProviderStreamOutcome.Unavailable(rejections)
+        attempt.fallback?.let { return ProviderStreamOutcome.Resolved(it) }
+        return if (attempt.rejections.isNotEmpty()) {
+            ProviderStreamOutcome.Unavailable(attempt.rejections)
         } else {
-            ProviderStreamOutcome.Failed(failure)
+            ProviderStreamOutcome.Failed(attempt.failure)
         }
     }
 
-    private suspend fun requestFormat(
-        candidate: AlternativeTrackCandidate,
-        format: QobuzFormat,
-        onFailure: (ProviderFailure) -> Unit
-    ): QobuzStreamPayload? {
+    private suspend fun tryFormatOnEveryBackend(attempt: StreamAttempt, format: QobuzFormat): Boolean {
+        var answered = false
         for (backend in backends) {
+            if (attempt.hiResWindowClosed(clock())) break
             currentCoroutineContext().ensureActive()
-            val url = backend.streamUrl(candidate.providerTrackId, format)
-            when (val result = call(backend, OPERATION_STREAM, url, MAX_STREAM_BODY_BYTES, ::interpretStream)) {
-                is BackendResult.Answered -> return result.value
-                is BackendResult.Failed -> onFailure(result.failure)
+            val url = backend.streamUrl(attempt.candidate.providerTrackId, format)
+            val grant = when (val result = call(backend, OPERATION_STREAM, url, MAX_STREAM_BODY_BYTES, ::interpretStream)) {
+                is BackendResult.Failed -> {
+                    attempt.failure = moreInformative(attempt.failure, result.failure)
+                    continue
+                }
+                is BackendResult.Answered -> result.value
+            }
+            answered = true
+            if (grant !is QobuzStreamPayload.Granted) {
+                attempt.rejections += StreamRejection.NO_MEDIA
+                continue
+            }
+            if (!attempt.probedUrls.add(grant.url)) continue
+            when (val media = probeMedia(attempt.candidate, format, grant.url)) {
+                is MediaProbe.Accepted -> if (attempt.accept(media.stream, format, clock())) return true
+                is MediaProbe.Rejected -> {
+                    attempt.rejections += media.rejection
+                    if (media.rejection in terminalRejections) {
+                        attempt.result = ProviderStreamOutcome.Unavailable(attempt.rejections.toList())
+                        return true
+                    }
+                }
             }
         }
-        return null
+        return answered
+    }
+
+    private fun advertisesHiRes(candidate: AlternativeTrackCandidate): Boolean =
+        candidate.maxBitDepth > CD_BIT_DEPTH || candidate.maxSampleRateHz > CD_MAX_SAMPLE_RATE_HZ
+
+    private class StreamAttempt(val candidate: AlternativeTrackCandidate, val wantsHiRes: Boolean) {
+        val rejections = mutableListOf<StreamRejection>()
+        val probedUrls = HashSet<String>()
+        var failure = ProviderFailure.CIRCUIT_OPEN
+        var fallback: ResolvedHighQualityStream? = null
+        var result: ProviderStreamOutcome? = null
+        private var hiResDeadlineMs = Long.MAX_VALUE
+
+        fun accept(stream: ResolvedHighQualityStream, format: QobuzFormat, nowMs: Long): Boolean {
+            val current = fallback
+            val best = if (current == null || stream.quality.rank > current.quality.rank) stream else current
+            if (!wantsHiRes || !format.hiRes || best.quality.isHiRes) {
+                result = ProviderStreamOutcome.Resolved(best)
+                return true
+            }
+            if (current == null) hiResDeadlineMs = nowMs + HI_RES_UPGRADE_WINDOW_MS
+            fallback = best
+            return false
+        }
+
+        fun hiResWindowClosed(nowMs: Long): Boolean = fallback != null && nowMs > hiResDeadlineMs
     }
 
     override fun health(): List<ProviderBackendHealth> =
@@ -315,6 +348,9 @@ internal class QobuzAudioProvider(
         const val EXPIRY_SAFETY_MARGIN_MS = 120_000L
         const val MAX_SEARCH_BODY_BYTES = 1_048_576
         const val MAX_STREAM_BODY_BYTES = 65_536
+        const val HI_RES_UPGRADE_WINDOW_MS = 2_500L
+        private const val CD_BIT_DEPTH = 16
+        private const val CD_MAX_SAMPLE_RATE_HZ = 48_000
         private const val ISRC_LENGTH = 12
         private const val EXPIRY_PARAMETER = "etsp"
         private const val OPERATION_SEARCH = "search"

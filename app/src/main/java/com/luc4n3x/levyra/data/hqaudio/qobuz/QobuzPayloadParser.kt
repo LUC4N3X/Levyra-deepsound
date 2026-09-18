@@ -31,11 +31,11 @@ internal object QobuzPayloadParser {
 
     fun search(body: String, providerId: String): QobuzSearchPayload {
         val root = parse(body) ?: return QobuzSearchPayload.Malformed
-        if (!root.optBoolean("success", false)) {
+        if (!root.optBoolean("success", true)) {
             return if (mentionsCaptcha(root)) QobuzSearchPayload.Captcha else QobuzSearchPayload.Rejected
         }
-        val items = root.optJSONObject("data")?.optJSONObject("tracks")?.optJSONArray("items")
-            ?: return QobuzSearchPayload.Malformed
+        val tracks = root.optJSONObject("data")?.optJSONObject("tracks") ?: root.optJSONObject("tracks")
+        val items = tracks?.optJSONArray("items") ?: return QobuzSearchPayload.Malformed
         val candidates = (0 until items.length()).mapNotNull { index ->
             items.optJSONObject(index)?.let { candidate(it, providerId) }
         }
@@ -44,16 +44,25 @@ internal object QobuzPayloadParser {
 
     fun stream(body: String): QobuzStreamPayload {
         val root = parse(body) ?: return QobuzStreamPayload.Malformed
-        if (!root.optBoolean("success", false)) {
-            return if (mentionsCaptcha(root)) QobuzStreamPayload.Captcha else QobuzStreamPayload.FormatUnavailable
+        if (mentionsCaptcha(root)) return QobuzStreamPayload.Captcha
+        if (!root.optBoolean("success", true) || root.optBoolean("previewDetected", false)) {
+            return QobuzStreamPayload.FormatUnavailable
         }
-        val data = root.optJSONObject("data") ?: return QobuzStreamPayload.Malformed
-        val url = text(data, "url") ?: return QobuzStreamPayload.FormatUnavailable
+        val data = root.optJSONObject("data")
+        val url = data?.let { text(it, "url") ?: text(it, "directUrl") }
+            ?: text(root, "directUrl")
+            ?: text(root, "url")
+            ?: return if (data == null && text(root, "error") == null) {
+                QobuzStreamPayload.Malformed
+            } else {
+                QobuzStreamPayload.FormatUnavailable
+            }
         if (!url.startsWith("https://", ignoreCase = true)) return QobuzStreamPayload.Malformed
+        val details = data ?: root
         return QobuzStreamPayload.Granted(
             url = url,
-            bitDepth = positiveInt(data, "bit_depth"),
-            sampleRateHz = sampleRateHz(data, "sampling_rate")
+            bitDepth = positiveInt(details, "bit_depth") ?: positiveInt(root, "bit_depth"),
+            sampleRateHz = sampleRateHz(details, "sampling_rate") ?: sampleRateHz(root, "sampling_rate")
         )
     }
 
