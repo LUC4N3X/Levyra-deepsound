@@ -28,6 +28,23 @@ class LevyraNewFeatureLocalizationTest {
     }
 
     @Test
+    fun localTagEditorCoversEveryCatalogLanguageWithoutEnglishFallback() {
+        val codes = LevyraLanguageCatalog.languages.map { it.code }
+        assertEquals(codes.toSet(), localTagLocalizationCodes())
+        val english = localTagLocalizationEntries("en")
+        codes.forEach { code ->
+            val entries = localTagLocalizationEntries(code)
+            assertEquals(localTagKeys, entries.keys)
+            entries.forEach { (key, value) ->
+                assertTrue("$code/$key is blank", value.isNotBlank())
+            }
+            if (code != "en") {
+                assertNotEquals("Local tag strings fall back to English for $code", english, entries)
+            }
+        }
+    }
+
+    @Test
     fun placeholdersStaySafeAcrossLanguages() {
         LevyraLanguageCatalog.languages.map { it.code }.forEach { code ->
             val strings = LevyraStrings.forCode(code)
