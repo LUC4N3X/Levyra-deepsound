@@ -47,7 +47,7 @@ internal class OboeAudioOutput private constructor(
     private var heapCopyBuffer: ByteBuffer? = null
 
     override fun play() {
-        if (released) return
+        if (released || stopped) return
         playing = true
         positionAdvancingReported = false
         lastProgressElapsedMs = SystemClock.elapsedRealtime()
@@ -57,7 +57,7 @@ internal class OboeAudioOutput private constructor(
     }
 
     override fun pause() {
-        if (released) return
+        if (released || stopped) return
         playing = false
         OboeNative.nativePause(handle)
     }
