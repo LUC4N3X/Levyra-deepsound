@@ -676,5 +676,5 @@ For third-party rights, lawful use, user responsibilities, warranty, and liabili
   <br><br>
   <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
   <br><br>
-  <img src="https://capsule-render.vercel.app/api?type=waving&height=120&section=footer&color=0:4A00E0,35:6C5CE7,70:7F52FF,100:00D2FF" width="480" alt="Levyra Acoustic Waves" />
+  <img src="docs/assets/levyra-signature.svg" width="820" alt="LUC4N3X — Levyra signature" />
 </div>
