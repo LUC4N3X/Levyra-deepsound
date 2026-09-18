@@ -238,7 +238,7 @@ class LevyraDatabaseMigrationTest {
             )
         }
 
-        val migrated = helper.runMigrationsAndValidate(TEST_DB, 23, true, *LevyraDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 22, true, *LevyraDatabase.MIGRATIONS)
 
         migrated.query("SELECT name FROM playlists WHERE id = 'p6'").use { cursor ->
             assertTrue(cursor.moveToFirst())
@@ -358,7 +358,7 @@ class LevyraDatabaseMigrationTest {
             )
         }
 
-        val migrated = helper.runMigrationsAndValidate(TEST_DB, 22, true, *LevyraDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 23, true, *LevyraDatabase.MIGRATIONS)
 
         migrated.query("SELECT name FROM playlists WHERE id = 'p7'").use { cursor ->
             assertTrue(cursor.moveToFirst())
