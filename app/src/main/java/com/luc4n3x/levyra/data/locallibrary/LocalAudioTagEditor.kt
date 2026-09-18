@@ -19,13 +19,28 @@ internal class LocalAudioTagEditor(context: Context) {
     private val appContext = context.applicationContext
     private val resolver = appContext.contentResolver
 
-    suspend fun write(row: LocalMediaEntity, edits: LocalTagEdits): LocalTagWriteResult = withContext(Dispatchers.IO) {
+    suspend fun write(row: LocalMediaEntity, edits: LocalTagEdits): LocalTagWriteResult =
+        withContext(Dispatchers.IO) {
+            writeInternal(row, edits)
+        }
+
+    private fun writeInternal(row: LocalMediaEntity, edits: LocalTagEdits): LocalTagWriteResult {
         val format = LocalEmbeddedTagWriter.formatOf(row.mimeType, row.displayName)
-        if (format == LocalEditableTagFormat.Unsupported) return@withContext LocalTagWriteResult.UnsupportedFormat
-        if (row.sizeBytes > LocalEmbeddedTagWriter.MAX_INPUT_BYTES) return@withContext LocalTagWriteResult.FileTooLarge
+        if (format == LocalEditableTagFormat.Unsupported) return LocalTagWriteResult.UnsupportedFormat
+        if (row.sizeBytes > LocalEmbeddedTagWriter.MAX_INPUT_BYTES) return LocalTagWriteResult.FileTooLarge
 
         val uri = runCatching { Uri.parse(row.contentUri) }.getOrNull()
-            ?: return@withContext LocalTagWriteResult.FileUnavailable
+            ?: return LocalTagWriteResult.FileUnavailable
+        val session = createSession(uri, format)
+        return try {
+            writeSession(row, edits, session)
+        } finally {
+            session.input.delete()
+            session.output.delete()
+        }
+    }
+
+    private fun createSession(uri: Uri, format: LocalEditableTagFormat): EditSession {
         val workspace = File(appContext.cacheDir, "local-tag-editor").apply { mkdirs() }
         val extension = when (format) {
             LocalEditableTagFormat.M4a -> ".m4a"
@@ -33,77 +48,110 @@ internal class LocalAudioTagEditor(context: Context) {
             LocalEditableTagFormat.Flac -> ".flac"
             LocalEditableTagFormat.Unsupported -> ".audio"
         }
-        val input = File.createTempFile("source-", extension, workspace)
-        val output = File.createTempFile("edited-", extension, workspace)
-        try {
-            when (copySource(uri, input)) {
-                CopySourceResult.Ok -> Unit
-                CopySourceResult.TooLarge -> return@withContext LocalTagWriteResult.FileTooLarge
-                CopySourceResult.Unavailable -> return@withContext LocalTagWriteResult.FileUnavailable
-            }
+        return EditSession(
+            uri = uri,
+            format = format,
+            input = File.createTempFile("source-", extension, workspace),
+            output = File.createTempFile("edited-", extension, workspace)
+        )
+    }
 
-            val writerResult = LocalEmbeddedTagWriter.write(
-                input = input,
-                output = output,
-                format = format,
-                edits = edits
-            )
-            if (!writerResult.success || output.length() <= 0L) {
-                return@withContext when (writerResult.reason) {
-                    "input_too_large" -> LocalTagWriteResult.FileTooLarge
-                    "unsupported_format", "unsupported_id3_version", "unsupported_id3_flags" ->
-                        LocalTagWriteResult.UnsupportedFormat
-                    else -> LocalTagWriteResult.Failed
-                }
-            }
-
-            val deepTags = LocalDeepTagReader.read(output)
-            val writable = try {
-                resolver.openFileDescriptor(uri, "rw")
-            } catch (denied: SecurityException) {
-                return@withContext permissionResult(uri, denied) ?: LocalTagWriteResult.Failed
-            } ?: return@withContext LocalTagWriteResult.FileUnavailable
-
-            try {
-                writable.use { descriptor -> replaceContent(descriptor.fileDescriptor, output) }
-            } catch (error: Exception) {
-                Timber.w(error, "Local tag write failed, restoring original")
-                val restored = runCatching {
-                    resolver.openFileDescriptor(uri, "rw")?.use { descriptor ->
-                        replaceContent(descriptor.fileDescriptor, input)
-                    } ?: false
-                }.getOrDefault(false)
-                if (!restored) Timber.e("Local tag restore failed for %s", row.identityKey)
-                return@withContext LocalTagWriteResult.Failed
-            }
-
-            if (row.filePath.isNotBlank()) {
-                runCatching {
-                    val mimeTypes = row.mimeType
-                        .takeIf { it.isNotBlank() }
-                        ?.let { arrayOf(it) }
-                    MediaScannerConnection.scanFile(
-                        appContext,
-                        arrayOf(row.filePath),
-                        mimeTypes
-                    ) { _, _ -> }
-                }
-            }
-
-            val edited = row.withTagEdits(edits, deepTags)
-            val writtenSize = output.length()
-            LocalTagWriteResult.Success(
-                edited.copy(
-                    sizeBytes = writtenSize,
-                    contentFingerprint = localContentFingerprint(writtenSize, edited.durationMs, edited.title),
-                    dateModifiedMs = System.currentTimeMillis(),
-                    lastSeenAt = System.currentTimeMillis()
-                )
-            )
-        } finally {
-            input.delete()
-            output.delete()
+    private fun writeSession(
+        row: LocalMediaEntity,
+        edits: LocalTagEdits,
+        session: EditSession
+    ): LocalTagWriteResult {
+        val sourceFailure = when (copySource(session.uri, session.input)) {
+            CopySourceResult.Ok -> null
+            CopySourceResult.TooLarge -> LocalTagWriteResult.FileTooLarge
+            CopySourceResult.Unavailable -> LocalTagWriteResult.FileUnavailable
         }
+        if (sourceFailure != null) return sourceFailure
+
+        val writerResult = LocalEmbeddedTagWriter.write(
+            input = session.input,
+            output = session.output,
+            format = session.format,
+            edits = edits
+        )
+        writerFailure(writerResult, session.output)?.let { return it }
+
+        val deepTags = LocalDeepTagReader.read(session.output)
+        replaceMedia(row, session)?.let { return it }
+        rescanEditedFile(row)
+        return successResult(row, edits, deepTags, session.output)
+    }
+
+    private fun writerFailure(
+        result: LocalEmbeddedTagWriteResult,
+        output: File
+    ): LocalTagWriteResult? {
+        if (result.success && output.length() > 0L) return null
+        return when (result.reason) {
+            "input_too_large" -> LocalTagWriteResult.FileTooLarge
+            "unsupported_format", "unsupported_id3_version", "unsupported_id3_flags" ->
+                LocalTagWriteResult.UnsupportedFormat
+            else -> LocalTagWriteResult.Failed
+        }
+    }
+
+    private fun replaceMedia(row: LocalMediaEntity, session: EditSession): LocalTagWriteResult? {
+        val writable = try {
+            resolver.openFileDescriptor(session.uri, "rw")
+        } catch (denied: SecurityException) {
+            return permissionResult(session.uri, denied) ?: LocalTagWriteResult.Failed
+        } ?: return LocalTagWriteResult.FileUnavailable
+
+        return try {
+            writable.use { descriptor -> replaceContent(descriptor.fileDescriptor, session.output) }
+            null
+        } catch (error: Exception) {
+            Timber.w(error, "Local tag write failed, restoring original")
+            restoreOriginal(row, session)
+            LocalTagWriteResult.Failed
+        }
+    }
+
+    private fun restoreOriginal(row: LocalMediaEntity, session: EditSession) {
+        val restored = runCatching {
+            resolver.openFileDescriptor(session.uri, "rw")?.use { descriptor ->
+                replaceContent(descriptor.fileDescriptor, session.input)
+            } ?: false
+        }.getOrDefault(false)
+        if (!restored) Timber.e("Local tag restore failed for %s", row.identityKey)
+    }
+
+    private fun rescanEditedFile(row: LocalMediaEntity) {
+        if (row.filePath.isBlank()) return
+        runCatching {
+            val mimeTypes = row.mimeType
+                .takeIf { it.isNotBlank() }
+                ?.let { arrayOf(it) }
+            MediaScannerConnection.scanFile(
+                appContext,
+                arrayOf(row.filePath),
+                mimeTypes
+            ) { _, _ -> }
+        }
+    }
+
+    private fun successResult(
+        row: LocalMediaEntity,
+        edits: LocalTagEdits,
+        deepTags: LocalDeepTags,
+        output: File
+    ): LocalTagWriteResult.Success {
+        val edited = row.withTagEdits(edits, deepTags)
+        val writtenSize = output.length()
+        val now = System.currentTimeMillis()
+        return LocalTagWriteResult.Success(
+            edited.copy(
+                sizeBytes = writtenSize,
+                contentFingerprint = localContentFingerprint(writtenSize, edited.durationMs, edited.title),
+                dateModifiedMs = now,
+                lastSeenAt = now
+            )
+        )
     }
 
     private fun copySource(uri: Uri, target: File): CopySourceResult {
@@ -162,6 +210,13 @@ internal class LocalAudioTagEditor(context: Context) {
         }
         return null
     }
+
+    private data class EditSession(
+        val uri: Uri,
+        val format: LocalEditableTagFormat,
+        val input: File,
+        val output: File
+    )
 
     private enum class CopySourceResult { Ok, TooLarge, Unavailable }
 
