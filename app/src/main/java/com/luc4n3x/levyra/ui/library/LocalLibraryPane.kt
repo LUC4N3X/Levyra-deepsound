@@ -367,7 +367,7 @@ internal fun localLibraryQualityFilters(
     nowMs: Long
 ): List<LocalLibraryQualityFilter> = buildList {
     add(LocalLibraryQualityFilter.All)
-    if (media.any(LocalMediaEntity::isLosslessLocalMedia)) add(LocalLibraryQualityFilter.Lossless)
+    if (media.any { it.isLosslessLocalMedia() }) add(LocalLibraryQualityFilter.Lossless)
     if (media.any { it.bitrate >= LOCAL_HIGH_BITRATE_BPS }) add(LocalLibraryQualityFilter.HighBitrate)
     if (media.any { it.dateAddedMs >= nowMs - LOCAL_RECENT_WINDOW_MS }) add(LocalLibraryQualityFilter.Recent)
 }
