@@ -1,11 +1,11 @@
 package com.luc4n3x.levyra.ui.i18n
 
-data class QueueSectionCopy(
+internal data class QueueSectionCopy(
     val played: String,
     val upNext: String
 )
 
-fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (code) {
+internal fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (code) {
     "it" -> QueueSectionCopy("Riprodotti", "Prossimi")
     "es" -> QueueSectionCopy("Reproducidos", "A continuación")
     "fr" -> QueueSectionCopy("Déjà lus", "À suivre")
@@ -34,7 +34,7 @@ fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (code) {
     else -> QueueSectionCopy("Played", "Up next")
 }
 
-fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (code) {
+internal fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (code) {
     "it" -> "RECENTI"
     "es" -> "RECIENTES"
     "fr" -> "RÉCENTS"
