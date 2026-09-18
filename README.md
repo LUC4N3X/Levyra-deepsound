@@ -619,15 +619,12 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
 
 <table width="100%">
   <tr>
-    <td width="68%" valign="middle">
-      <p>
-        <a href="https://github.com/LUC4N3X">
-          <img src="app/src/main/res/drawable/levyra_logo.png" width="42" align="left" alt="Levyra" />
-        </a>
-        <b><a href="https://github.com/LUC4N3X">LUC4N3X</a></b><br>
-        <code>Creator & Lead Developer</code>
-      </p>
-      <br clear="left">
+    <td width="70%" valign="middle">
+      <h2>
+        <a href="https://github.com/LUC4N3X"><img src="app/src/main/res/drawable/levyra_logo.png" width="36" alt="Levyra" /></a>
+        <a href="https://github.com/LUC4N3X">LUC4N3X</a>
+        <sub><code>Creator & Lead Developer</code></sub>
+      </h2>
       <p>
         I started Levyra and I still build most of it myself. The work is mainly Kotlin: Media3 / ExoPlayer on Android, libvlc on Windows, local SQLite data, lyrics, downloads, and all the less glamorous playback/reliability stuff around them.
       </p>
@@ -638,7 +635,7 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
         <code>SQLite</code>
       </p>
     </td>
-    <td width="32%" align="center" valign="middle">
+    <td width="30%" align="center" valign="middle">
       <a href="https://github.com/LUC4N3X">
         <img src="docs/assets/levyra-signature.png" width="230" alt="LUC4N3X — Levyra creator signature" />
       </a>
