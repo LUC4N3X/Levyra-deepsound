@@ -130,5 +130,5 @@ class LocalAudioTagsTest {
     )
 
     private fun concat(vararg parts: ByteArray): ByteArray =
-        ByteArrayOutputStream().apply { parts.forEach(::write) }.toByteArray()
+        ByteArrayOutputStream().apply { parts.forEach { write(it) } }.toByteArray()
 }
