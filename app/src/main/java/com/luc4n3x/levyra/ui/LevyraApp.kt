@@ -5716,7 +5716,18 @@ private fun QueueOverlay(
                     val latestQueue by rememberUpdatedState(state.queue)
                     val latestMove by rememberUpdatedState(onMove)
                     val latestRemove by rememberUpdatedState(onRemove)
-                    val queuePosition = LevyraConnectedPosition.of(index, state.queue.size)
+                    val queuePosition = when {
+                        isCurrent -> LevyraConnectedPosition.Single
+                        state.queueCurrentIndex >= 0 && index < state.queueCurrentIndex ->
+                            LevyraConnectedPosition.of(index, state.queueCurrentIndex)
+                        else -> {
+                            val upcomingStart = (state.queueCurrentIndex + 1).coerceAtLeast(0)
+                            LevyraConnectedPosition.of(
+                                index - upcomingStart,
+                                state.queue.size - upcomingStart
+                            )
+                        }
+                    }
                     val dismissState = rememberSwipeToDismissBoxState()
                     LaunchedEffect(dismissState.currentValue) {
                         if (isCurrent || dismissState.currentValue != SwipeToDismissBoxValue.EndToStart) return@LaunchedEffect
