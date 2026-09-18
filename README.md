@@ -621,9 +621,9 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
   <tr>
     <td width="70%" valign="middle">
       <h2>
-        <a href="https://github.com/LUC4N3X"><img src="app/src/main/res/drawable/levyra_logo.png" width="36" alt="Levyra" /></a>
-        <a href="https://github.com/LUC4N3X">LUC4N3X</a>
-        <sub><code>Creator & Lead Developer</code></sub>
+        <a href="https://github.com/LUC4N3X"><img src="app/src/main/res/drawable/levyra_logo.png" width="34" align="middle" alt="Levyra" /></a>&nbsp;
+        <a href="https://github.com/LUC4N3X">LUC4N3X</a>&nbsp;
+        <sup><code>Creator & Lead Developer</code></sup>
       </h2>
       <p>
         I started Levyra and I still build most of it myself. The work is mainly Kotlin: Media3 / ExoPlayer on Android, libvlc on Windows, local SQLite data, lyrics, downloads, and all the less glamorous playback/reliability stuff around them.
