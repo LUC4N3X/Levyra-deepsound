@@ -61,6 +61,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -109,6 +110,7 @@ private val playlistSelectionSaver = listSaver<Set<String>, String>(
 
 private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
 private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
+private const val DEVICE_LIBRARY_PARENT_LEADING_ITEMS = 4
 
 private data class PlaylistDragUpdate(
     val targetIndex: Int = -1,
@@ -318,6 +320,40 @@ internal fun LevyraLibraryScreen(
     val localQualityFilter = LocalLibraryQualityFilter.entries
         .firstOrNull { it.name == localQualityFilterName }
         ?: LocalLibraryQualityFilter.All
+    val localFilterNowMs = remember(state.localLibrary.catalog.mediaByUri) { System.currentTimeMillis() }
+    val localAlphabetIndex = remember(
+        state.localLibrary,
+        localTab,
+        localQualityFilter,
+        query,
+        localFilterNowMs,
+        sort,
+        direction
+    ) {
+        localLibraryAlphabetIndex(
+            library = state.localLibrary,
+            tab = localTab,
+            qualityFilter = localQualityFilter,
+            query = query,
+            nowMs = localFilterNowMs,
+            songsAlphabetical = sort == LibrarySort.Title &&
+                direction == LibrarySortDirection.Ascending
+        )
+    }
+    val localContentStartIndex = remember(state.localLibrary, localFilterNowMs) {
+        DEVICE_LIBRARY_PARENT_LEADING_ITEMS +
+            localLibraryLeadingItemCount(state.localLibrary, localFilterNowMs)
+    }
+    val localActiveAlphabetLetter by remember(localAlphabetIndex, localContentStartIndex) {
+        derivedStateOf {
+            localAlphabetIndex.targets
+                .lastOrNull { target ->
+                    localContentStartIndex + target.contentIndex <= listState.firstVisibleItemIndex
+                }
+                ?.letter
+                ?: localAlphabetIndex.targets.firstOrNull()?.letter
+        }
+    }
     var expandedLocalGroupKey by rememberSaveable { mutableStateOf<String?>(null) }
     var localTagEditorTarget by remember { mutableStateOf<LocalMediaEntity?>(null) }
     var localTagEditorSaving by remember { mutableStateOf(false) }
@@ -837,6 +873,7 @@ internal fun LevyraLibraryScreen(
                     onTab = { localTabName = it.name },
                     qualityFilter = localQualityFilter,
                     onQualityFilter = { localQualityFilterName = it.name },
+                    nowMs = localFilterNowMs,
                     expandedGroupKey = expandedLocalGroupKey,
                     onExpandGroup = { expandedLocalGroupKey = it },
                     query = query,
@@ -929,6 +966,19 @@ internal fun LevyraLibraryScreen(
                     }
                 }
             }
+        }
+
+        if (category == LibraryCategory.Device && localAlphabetIndex.visible) {
+            LocalLibraryAlphabetRail(
+                index = localAlphabetIndex,
+                activeLetter = localActiveAlphabetLetter,
+                onJump = { contentIndex ->
+                    listState.requestScrollToItem(localContentStartIndex + contentIndex)
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 3.dp)
+            )
         }
 
         AnimatedVisibility(
