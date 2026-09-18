@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -30,12 +31,12 @@ data class LocalMediaEntity(
     val album: String,
     val albumArtist: String,
     val genre: String,
-    val composer: String,
-    val lyricist: String,
-    val comment: String,
-    val copyright: String,
-    val customTags: String,
-    val fullTagSearchText: String,
+    @ColumnInfo(defaultValue = "''") val composer: String,
+    @ColumnInfo(defaultValue = "''") val lyricist: String,
+    @ColumnInfo(defaultValue = "''") val comment: String,
+    @ColumnInfo(defaultValue = "''") val copyright: String,
+    @ColumnInfo(defaultValue = "''") val customTags: String,
+    @ColumnInfo(defaultValue = "''") val fullTagSearchText: String,
     val year: Int,
     val trackNumber: Int,
     val discNumber: Int,
