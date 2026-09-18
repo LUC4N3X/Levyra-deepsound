@@ -676,5 +676,5 @@ For third-party rights, lawful use, user responsibilities, warranty, and liabili
   <br><br>
   <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
   <br><br>
-  <img src="docs/assets/levyra-signature.svg" width="820" alt="LUC4N3X — Levyra signature" />
+  <img src="docs/assets/levyra-signature.png" width="820" alt="LUC4N3X — Levyra signature" />
 </div>
