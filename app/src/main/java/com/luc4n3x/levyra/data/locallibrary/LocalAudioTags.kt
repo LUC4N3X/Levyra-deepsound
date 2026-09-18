@@ -663,8 +663,5 @@ internal fun LocalMediaEntity.matchesFullTagQuery(query: String): Boolean {
     return clean.isEmpty() || fullTagSearchText.contains(clean)
 }
 
-internal fun LocalMediaEntity.isSafeTagEditorFormat(): Boolean {
-    val mime = mimeType.lowercase(Locale.ROOT)
-    val name = displayName.lowercase(Locale.ROOT)
-    return mime.contains("mp4") || mime.contains("m4a") || name.endsWith(".m4a") || name.endsWith(".mp4")
-}
+internal fun LocalMediaEntity.isSafeTagEditorFormat(): Boolean =
+    LocalEmbeddedTagWriter.formatOf(mimeType, displayName) != LocalEditableTagFormat.Unsupported
