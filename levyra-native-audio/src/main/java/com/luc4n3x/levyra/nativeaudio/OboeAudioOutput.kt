@@ -19,6 +19,7 @@ internal class OboeAudioOutput private constructor(
     private val sampleRate: Int,
     private val frameSizeBytes: Int,
     requestedAudioSessionId: Int,
+    private val requestedPreferredDeviceId: Int,
     private val events: Events
 ) : AudioOutput {
 
@@ -167,7 +168,7 @@ internal class OboeAudioOutput private constructor(
     override fun setPreferredDevice(preferredDevice: AudioDeviceInfo?) {
         val deviceId = preferredDevice?.id ?: 0
         events.onPreferredDeviceChanged(deviceId)
-        if (deviceId != 0 && deviceId != openedDeviceId) {
+        if (deviceId != requestedPreferredDeviceId) {
             routeChangeRequested = true
         }
     }
@@ -263,7 +264,16 @@ internal class OboeAudioOutput private constructor(
             if (handle == 0L) {
                 return Result.failure(IllegalStateException("Oboe stream open failed: ${error[0]}"))
             }
-            return Result.success(OboeAudioOutput(handle, sampleRate, channelCount * 2, audioSessionId, events))
+            return Result.success(
+                OboeAudioOutput(
+                    handle,
+                    sampleRate,
+                    channelCount * 2,
+                    audioSessionId,
+                    preferredDeviceId,
+                    events
+                )
+            )
         }
     }
 }
