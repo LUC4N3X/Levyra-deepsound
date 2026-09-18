@@ -7,8 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.luc4n3x.levyra.data.local.LocalMediaEntity
-import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagEdits
-import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriter
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -22,14 +20,21 @@ internal class LocalAudioTagEditor(context: Context) {
     private val resolver = appContext.contentResolver
 
     suspend fun write(row: LocalMediaEntity, edits: LocalTagEdits): LocalTagWriteResult = withContext(Dispatchers.IO) {
-        if (!row.isSafeTagEditorFormat()) return@withContext LocalTagWriteResult.UnsupportedFormat
-        if (row.sizeBytes > LevyraM4aTagWriter.MAX_INPUT_BYTES) return@withContext LocalTagWriteResult.FileTooLarge
+        val format = LocalEmbeddedTagWriter.formatOf(row.mimeType, row.displayName)
+        if (format == LocalEditableTagFormat.Unsupported) return@withContext LocalTagWriteResult.UnsupportedFormat
+        if (row.sizeBytes > LocalEmbeddedTagWriter.MAX_INPUT_BYTES) return@withContext LocalTagWriteResult.FileTooLarge
 
         val uri = runCatching { Uri.parse(row.contentUri) }.getOrNull()
             ?: return@withContext LocalTagWriteResult.FileUnavailable
         val workspace = File(appContext.cacheDir, "local-tag-editor").apply { mkdirs() }
-        val input = File.createTempFile("source-", ".m4a", workspace)
-        val output = File.createTempFile("edited-", ".m4a", workspace)
+        val extension = when (format) {
+            LocalEditableTagFormat.M4a -> ".m4a"
+            LocalEditableTagFormat.Mp3 -> ".mp3"
+            LocalEditableTagFormat.Flac -> ".flac"
+            LocalEditableTagFormat.Unsupported -> ".audio"
+        }
+        val input = File.createTempFile("source-", extension, workspace)
+        val output = File.createTempFile("edited-", extension, workspace)
         try {
             when (copySource(uri, input)) {
                 CopySourceResult.Ok -> Unit
@@ -37,29 +42,18 @@ internal class LocalAudioTagEditor(context: Context) {
                 CopySourceResult.Unavailable -> return@withContext LocalTagWriteResult.FileUnavailable
             }
 
-            val writerResult = LevyraM4aTagWriter.writeTags(
+            val writerResult = LocalEmbeddedTagWriter.write(
                 input = input,
                 output = output,
-                edits = LevyraM4aTagEdits(
-                    title = edits.title.trim(),
-                    artist = edits.artist.trim(),
-                    album = edits.album.trim(),
-                    albumArtist = edits.albumArtist.trim(),
-                    genre = edits.genre.trim(),
-                    year = edits.year.trim(),
-                    trackNumber = edits.trackNumber.trim().toIntOrNull()?.coerceIn(0, 9_999) ?: 0,
-                    discNumber = edits.discNumber.trim().toIntOrNull()?.coerceIn(0, 999) ?: 0,
-                    composer = edits.composer.trim(),
-                    lyricist = edits.lyricist.trim(),
-                    comment = edits.comment.trim(),
-                    copyright = edits.copyright.trim()
-                )
+                format = format,
+                edits = edits
             )
             if (!writerResult.success || output.length() <= 0L) {
-                return@withContext if (writerResult.reason == "input_too_large") {
-                    LocalTagWriteResult.FileTooLarge
-                } else {
-                    LocalTagWriteResult.Failed
+                return@withContext when (writerResult.reason) {
+                    "input_too_large" -> LocalTagWriteResult.FileTooLarge
+                    "unsupported_format", "unsupported_id3_version", "unsupported_id3_flags" ->
+                        LocalTagWriteResult.UnsupportedFormat
+                    else -> LocalTagWriteResult.Failed
                 }
             }
 
@@ -121,7 +115,7 @@ internal class LocalAudioTagEditor(context: Context) {
                         if (read < 0) break
                         if (read == 0) continue
                         total += read
-                        if (total > LevyraM4aTagWriter.MAX_INPUT_BYTES) return CopySourceResult.TooLarge
+                        if (total > LocalEmbeddedTagWriter.MAX_INPUT_BYTES) return CopySourceResult.TooLarge
                         output.write(buffer, 0, read)
                     }
                 }
