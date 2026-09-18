@@ -147,7 +147,13 @@ int32_t LevyraOboeOutput::flush() {
     if (!stream_) {
         return static_cast<int32_t>(oboe::Result::ErrorClosed);
     }
-    oboe::Result result = stream_->pause(kControlTimeoutNanos);
+    oboe::Result result = oboe::Result::OK;
+    const oboe::StreamState state = stream_->getState();
+    if (state == oboe::StreamState::Started ||
+        state == oboe::StreamState::Starting ||
+        state == oboe::StreamState::Pausing) {
+        result = stream_->pause(kControlTimeoutNanos);
+    }
     if (result == oboe::Result::OK) {
         result = stream_->flush(kControlTimeoutNanos);
     }
@@ -160,6 +166,7 @@ int32_t LevyraOboeOutput::flush() {
     lastPlayedFrames_ = written;
     flushBaseFrames_.store(written, std::memory_order_relaxed);
     endOfStream_.store(false, std::memory_order_relaxed);
+    stopRequested_.store(false, std::memory_order_relaxed);
     return static_cast<int32_t>(result);
 }
 
@@ -208,6 +215,20 @@ int64_t LevyraOboeOutput::playedFrames() {
     const int64_t inFlight = std::max<int64_t>(0, contentEnd - presentedStreamFrames(delivered));
     const int64_t played = std::clamp<int64_t>(consumed - inFlight, lastPlayedFrames_, consumed);
     lastPlayedFrames_ = played;
+    if (stream_ &&
+        errorCode_.load(std::memory_order_acquire) == 0 &&
+        endOfStream_.load(std::memory_order_relaxed) &&
+        inFlight == 0 &&
+        consumed >= writtenFrames_.load(std::memory_order_acquire) &&
+        !stopRequested_.exchange(true, std::memory_order_acq_rel)) {
+        const oboe::Result stopResult = stream_->requestStop();
+        if (stopResult != oboe::Result::OK) {
+            stopRequested_.store(false, std::memory_order_release);
+            errorCode_.store(static_cast<int32_t>(stopResult), std::memory_order_release);
+        } else {
+            playing_.store(false, std::memory_order_relaxed);
+        }
+    }
     return played - flushBaseFrames_.load(std::memory_order_relaxed);
 }
 
@@ -274,7 +295,8 @@ bool LevyraOboeOutput::onError(oboe::AudioStream *, oboe::Result error) {
     const int32_t code = static_cast<int32_t>(error);
     errorCode_.store(code == 0 ? static_cast<int32_t>(oboe::Result::ErrorInternal) : code,
                      std::memory_order_release);
-    return true;
+    playing_.store(false, std::memory_order_relaxed);
+    return false;
 }
 
 }  // namespace levyra
