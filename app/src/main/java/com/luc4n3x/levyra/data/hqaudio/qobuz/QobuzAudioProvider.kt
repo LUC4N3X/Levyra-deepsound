@@ -310,7 +310,7 @@ internal class QobuzAudioProvider(
         const val BACKEND_OPEN_MS = 60_000L
         const val MAX_RETRY_AFTER_MS = 10L * 60L * 1_000L
         const val UNSIGNED_STREAM_TTL_MS = 10L * 60L * 1_000L
-        const val EXPIRY_SAFETY_MARGIN_MS = 60_000L
+        const val EXPIRY_SAFETY_MARGIN_MS = 120_000L
         const val MAX_SEARCH_BODY_BYTES = 1_048_576
         const val MAX_STREAM_BODY_BYTES = 65_536
         private const val ISRC_LENGTH = 12
