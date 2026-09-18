@@ -565,6 +565,7 @@ private object Atom {
     val COMPOSER = fourCc(0xA9, 'w'.code, 'r'.code, 't'.code)
     val COMMENT = fourCc(0xA9, 'c'.code, 'm'.code, 't'.code)
     val COPYRIGHT = ascii("cprt")
+    val COPYRIGHT_ALT = fourCc(0xA9, 'c'.code, 'p'.code, 'y'.code)
     val COVR = ascii("covr")
     val TRACK_NUMBER = ascii("trkn")
     val DISC_NUMBER = ascii("disk")
@@ -583,7 +584,8 @@ private object Atom {
         DISC_NUMBER,
         COMPOSER,
         COMMENT,
-        COPYRIGHT
+        COPYRIGHT,
+        COPYRIGHT_ALT
     )
     val REPLACED_TAGS = setOf(
         NAM,
