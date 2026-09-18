@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">LUC4N3X — Levyra signature</title>
+  <desc id="desc">A transparent tech signature for Levyra with a laptop, sleeping cat, equalizer, headphones and the LUC4N3X wordmark.</desc>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9CC8FF"/>
+      <stop offset=".45" stop-color="#6D86FF"/>
+      <stop offset="1" stop-color="#23B7FF"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#DCE8FF"/>
+      <stop offset=".5" stop-color="#8EB5FF"/>
+      <stop offset="1" stop-color="#EAF3FF"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <!-- horizon -->
+  <path d="M70 345 H1130" stroke="#6E8FFF" stroke-opacity=".38" stroke-width="2"/>
+
+  <!-- books -->
+  <g transform="translate(65 275)">
+    <rect x="0" y="0" width="178" height="34" rx="7" fill="#111827" stroke="#4E70D9" stroke-width="2"/>
+    <rect x="0" y="39" width="178" height="34" rx="7" fill="#111827" stroke="#3E5FBF" stroke-width="2"/>
+    <rect x="0" y="78" width="178" height="34" rx="7" fill="#111827" stroke="#314C99" stroke-width="2"/>
+    <text x="20" y="23" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#83B6FF">BETTER MUSIC</text>
+    <text x="20" y="62" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#6EA3FF">OPEN SOURCE</text>
+    <text x="20" y="101" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="1.6" fill="#5B8EEA">BUILT TO LAST</text>
+  </g>
+
+  <!-- laptop -->
+  <g transform="translate(210 185)">
+    <path d="M0 28 Q0 8 20 8 H255 Q275 8 278 28 L296 198 H-18 Z" fill="#0D1424" stroke="#7597FF" stroke-width="3"/>
+    <path d="M-40 205 H320 L292 225 H-18 Z" fill="#111B30" stroke="#5576D8" stroke-width="2"/>
+    <g transform="translate(122 95)" filter="url(#glow)">
+      <path d="M0 0 L32 35 L63 0 L54 53 L31 75 L8 54 Z" fill="url(#blue)"/>
+    </g>
+  </g>
+
+  <!-- equalizer -->
+  <g transform="translate(505 255)" stroke="url(#blue)" stroke-linecap="round" filter="url(#glow)">
+    <path d="M0 64 V35" stroke-width="7"/><path d="M20 64 V20" stroke-width="7"/>
+    <path d="M40 64 V42" stroke-width="7"/><path d="M60 64 V5" stroke-width="7"/>
+    <path d="M80 64 V28" stroke-width="7"/><path d="M100 64 V13" stroke-width="7"/>
+    <path d="M120 64 V36" stroke-width="7"/><path d="M140 64 V47" stroke-width="7"/>
+    <path d="M160 64 V25" stroke-width="7"/><path d="M180 64 V41" stroke-width="7"/>
+    <path d="M200 64 V30" stroke-width="7"/>
+  </g>
+
+  <!-- sleeping cat -->
+  <g transform="translate(470 310)">
+    <ellipse cx="130" cy="27" rx="95" ry="35" fill="#0B1020" stroke="#536FC8" stroke-width="2"/>
+    <circle cx="55" cy="18" r="34" fill="#0B1020" stroke="#536FC8" stroke-width="2"/>
+    <path d="M31 -1 L42 -29 L57 -2 M66 -2 L82 -29 L86 6" fill="#0B1020" stroke="#536FC8" stroke-width="2"/>
+    <path d="M162 10 C210 -5 229 13 215 33 C202 52 177 47 162 37" fill="none" stroke="#536FC8" stroke-width="8" stroke-linecap="round"/>
+    <path d="M41 22 q8 7 16 0 M65 22 q8 7 16 0" fill="none" stroke="#7393F4" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- headphones -->
+  <g transform="translate(760 255)">
+    <path d="M25 80 C25 7 175 7 175 80" fill="none" stroke="#5F7EDD" stroke-width="18"/>
+    <rect x="5" y="68" width="48" height="84" rx="20" fill="#10182B" stroke="#6F93FF" stroke-width="4"/>
+    <rect x="147" y="68" width="48" height="84" rx="20" fill="#10182B" stroke="#6F93FF" stroke-width="4"/>
+    <circle cx="29" cy="108" r="14" fill="url(#blue)" filter="url(#glow)"/>
+    <circle cx="171" cy="108" r="14" fill="url(#blue)" filter="url(#glow)"/>
+  </g>
+
+  <!-- mug + plant -->
+  <g transform="translate(980 255)">
+    <path d="M25 0 C10 -20 14 -42 35 -55 C38 -32 52 -20 62 0 M56 0 C46 -28 58 -54 86 -66 C85 -38 96 -17 88 0" fill="#13223C" stroke="#4D70D3" stroke-width="2"/>
+    <rect x="0" y="20" width="120" height="118" rx="12" fill="#101726" stroke="#5576D8" stroke-width="3"/>
+    <path d="M120 48 h16 q32 0 32 30 q0 30 -32 30 h-16" fill="none" stroke="#5576D8" stroke-width="6"/>
+    <text x="24" y="58" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="2" fill="#7FA7FF">
+      <tspan x="24" dy="0">GOOD</tspan><tspan x="24" dy="22">MUSIC</tspan><tspan x="24" dy="22">BETTER</tspan><tspan x="24" dy="22">PEOPLE</tspan>
+    </text>
+  </g>
+
+  <!-- handwritten signature -->
+  <g transform="translate(745 115) rotate(-6)" filter="url(#glow)">
+    <text x="0" y="0" font-family="Segoe Script,Brush Script MT,cursive" font-size="54" font-style="italic" fill="#7FA4FF" stroke="#1A2442" stroke-width="1.5" paint-order="stroke">LUC4N3X</text>
+    <path d="M15 17 C95 28 173 12 265 15" fill="none" stroke="#7FA4FF" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- message -->
+  <g transform="translate(600 445)" text-anchor="middle">
+    <path d="M-470 0 H-260 M260 0 H470" stroke="#6E8FFF" stroke-width="3" stroke-linecap="round"/>
+    <text x="0" y="8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="28" letter-spacing="7" fill="#BFD1FF" stroke="#0D1117" stroke-width="2" paint-order="stroke">THANKS FOR SUPPORTING LEVYRA</text>
+    <text x="0" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" letter-spacing="5" fill="#7896E8">OPEN SOURCE · BETTER MUSIC · TOGETHER</text>
+  </g>
+
+  <!-- LUC4N3X brand -->
+  <g transform="translate(600 555)" text-anchor="middle">
+    <g transform="translate(-295 -48)" filter="url(#glow)">
+      <path d="M0 0 L40 48 L78 4 L68 70 L38 98 L8 70 Z" fill="none" stroke="url(#metal)" stroke-width="12" stroke-linejoin="miter"/>
+      <path d="M40 48 L68 70" stroke="#6EA3FF" stroke-width="12"/>
+    </g>
+    <text x="45" y="7" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="72" font-weight="800" letter-spacing="3" fill="url(#metal)" stroke="#111827" stroke-width="3" paint-order="stroke">LUC4N3X</text>
+    <text x="45" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="20" font-weight="600" letter-spacing="9" fill="#90A9E8">SOFTWARE &amp; IT</text>
+  </g>
+</svg>
