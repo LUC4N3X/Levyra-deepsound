@@ -36,3 +36,12 @@ SPDX-FileCopyrightText = [
   "2026 LUC4N3X",
 ]
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [
+  "levyra-native-audio/src/main/java/androidx/media3/decoder/ffmpeg/**",
+  "levyra-native-audio/src/main/cpp/ffmpeg/**",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2016-2021 The Android Open Source Project"
+SPDX-License-Identifier = "Apache-2.0"

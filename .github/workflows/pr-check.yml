@@ -25,6 +25,7 @@ jobs:
     timeout-minutes: 75
     env:
       YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
       LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
       LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
       LEVYRA_KEY_ALIAS: levyra_ci
@@ -51,12 +52,20 @@ jobs:
           "${SDKMANAGER}" --channel=3 \
             "platform-tools" \
             "platforms;android-37.0" \
-            "build-tools;36.0.0"
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6.3.0
         with:
           cache-disabled: true
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
 
       - name: Validate Build Inputs
         shell: bash
@@ -133,6 +142,9 @@ jobs:
 
       - name: Android Full Unit Test Suite
         run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Native Audio Unit Tests
+        run: ./gradlew --no-daemon :levyra-native-audio:testDebugUnitTest
 
       - name: PR Diagnostics Unit Tests
         run: ./gradlew --no-daemon :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*'

@@ -141,6 +141,9 @@ class PlaybackService : MediaLibraryService() {
     private var transitionPlayer: ExoPlayer? = null
     private var transitionNormalization: NormalizationAudioProcessor? = null
     private var currentAudioSettings = LevyraAudioSettings()
+
+    @Volatile
+    private var aaudioOutputRequested = false
     private var currentAudioNormalization = false
     private val normalizationProcessor = NormalizationAudioProcessor()
     private val equalizerProcessor = LevyraEqualizerAudioProcessor()
@@ -383,6 +386,20 @@ class PlaybackService : MediaLibraryService() {
             (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
                 normalized.replayGainEnabled || audioNormalization)
         updateQueueTransitionSettings(normalized, audioNormalization)
+        updateAaudioOutputRequest(normalized.aaudioOutputEnabled)
+    }
+
+    private fun DefaultAudioSink.Builder.withLevyraAudioOutput(context: Context): DefaultAudioSink.Builder = apply {
+        NativeAudioIntegration.audioOutputProvider(context) { aaudioOutputRequested }?.let(::setAudioOutputProvider)
+    }
+
+    private fun updateAaudioOutputRequest(requested: Boolean) {
+        if (aaudioOutputRequested == requested) return
+        aaudioOutputRequested = requested
+        if (!NativeAudioIntegration.isAaudioOutputSupported()) return
+        val player = activePlayer ?: return
+        if (player.playbackState == Player.STATE_IDLE || player.currentMediaItem == null || player.isCurrentMediaItemLive) return
+        player.seekTo(player.currentMediaItemIndex, player.currentPosition)
     }
 
     private fun activateServiceAndApplyPendingAudioSettings() {
@@ -531,10 +548,13 @@ class PlaybackService : MediaLibraryService() {
                             pcm16OutputProcessor
                         )
                     )
+                    .withLevyraAudioOutput(context)
                     .build()
             }
         }
         renderersFactory.setEnableDecoderFallback(true)
+        renderersFactory.setMediaCodecSelector(NativeAudioIntegration.mediaCodecSelector)
+        renderersFactory.setExtensionRendererMode(NativeAudioIntegration.EXTENSION_RENDERER_MODE)
 
         val player = ExoPlayer.Builder(this)
             .setLoadControl(loadControl)
@@ -636,6 +656,11 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                NativeAudioIntegration.redirectFailedPlatformDecoder(error)?.let { mimeType ->
+                    Timber.w("Platform audio decoder failed for %s; retrying with FFmpeg", mimeType)
+                    player.prepare()
+                    return
+                }
                 updatePlaybackProtection(player)
                 discardIncompatiblePlaybackCache(error)
                 val failureKind = classifyPlaybackFailureReason(playbackFailureReasonOf(error))
@@ -1654,8 +1679,13 @@ class PlaybackService : MediaLibraryService() {
                         Pcm16OutputAudioProcessor()
                     )
                 )
+                .withLevyraAudioOutput(context)
                 .build()
-        }.apply { setEnableDecoderFallback(true) }
+        }.apply {
+            setEnableDecoderFallback(true)
+            setMediaCodecSelector(NativeAudioIntegration.mediaCodecSelector)
+            setExtensionRendererMode(NativeAudioIntegration.EXTENSION_RENDERER_MODE)
+        }
         return ExoPlayer.Builder(this)
             .setRenderersFactory(renderers)
             .setMediaSourceFactory(sharedMediaSourceFactory)

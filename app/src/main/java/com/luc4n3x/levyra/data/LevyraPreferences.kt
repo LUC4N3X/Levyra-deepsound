@@ -166,6 +166,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_SPEED] = normalizedAudio.playbackSpeed
             mutable[KEY_AUDIO_PITCH] = normalizedAudio.pitch
             mutable[KEY_AUDIO_GAPLESS] = normalizedAudio.gaplessEnabled
+            mutable[KEY_AUDIO_AAUDIO_OUTPUT] = normalizedAudio.aaudioOutputEnabled
             mutable[KEY_UI_COMPACT_HOME] = normalizedInterface.compactHome
             mutable[KEY_UI_PERSONAL_ORBIT] = normalizedInterface.showPersonalOrbit
             mutable[KEY_UI_RESONANCE] = normalizedInterface.showResonance
@@ -440,6 +441,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_SPEED] = normalized.playbackSpeed
             it[KEY_AUDIO_PITCH] = normalized.pitch
             it[KEY_AUDIO_GAPLESS] = normalized.gaplessEnabled
+            it[KEY_AUDIO_AAUDIO_OUTPUT] = normalized.aaudioOutputEnabled
         }
     }
 
@@ -817,6 +819,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             playbackSpeed = preferences[KEY_AUDIO_SPEED] ?: 1f,
             pitch = preferences[KEY_AUDIO_PITCH] ?: 1f,
             gaplessEnabled = preferences[KEY_AUDIO_GAPLESS] ?: true,
+            aaudioOutputEnabled = preferences[KEY_AUDIO_AAUDIO_OUTPUT] ?: false,
             customPresets = customPresets
         ).normalized()
     }
@@ -953,6 +956,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_SPEED = floatPreferencesKey("audio_speed")
         val KEY_AUDIO_PITCH = floatPreferencesKey("audio_pitch")
         val KEY_AUDIO_GAPLESS = booleanPreferencesKey("audio_gapless")
+        val KEY_AUDIO_AAUDIO_OUTPUT = booleanPreferencesKey("audio_aaudio_output")
         val KEY_LISTENING_PULSE_LAST_PRUNE = longPreferencesKey("listening_pulse_last_prune")
         val KEY_LISTENING_LIFETIME_BACKFILL = intPreferencesKey("listening_lifetime_backfill")
         val KEY_UI_COMPACT_HOME = booleanPreferencesKey("ui_compact_home")
