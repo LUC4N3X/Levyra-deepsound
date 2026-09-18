@@ -79,10 +79,13 @@ internal class LocalAudioTagEditor(context: Context) {
 
             if (row.filePath.isNotBlank()) {
                 runCatching {
+                    val mimeTypes = row.mimeType
+                        .takeIf { it.isNotBlank() }
+                        ?.let { arrayOf(it) }
                     MediaScannerConnection.scanFile(
                         appContext,
                         arrayOf(row.filePath),
-                        arrayOf(row.mimeType.takeIf { it.isNotBlank() })
+                        mimeTypes
                     ) { _, _ -> }
                 }
             }
