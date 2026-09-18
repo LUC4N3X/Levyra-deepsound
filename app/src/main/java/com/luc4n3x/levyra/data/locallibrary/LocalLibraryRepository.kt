@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.local.LocalMediaEntity
 import com.luc4n3x.levyra.data.reconcileDownloadedTracks
 import java.io.File
 import java.util.Locale
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -54,6 +56,7 @@ class LocalLibraryRepository private constructor(context: Context) {
     private val database = LevyraDatabase.get(appContext)
     private val dao = database.localMediaDao()
     private val scanner = LocalMediaStoreScanner(appContext)
+    private val tagEditor = LocalAudioTagEditor(appContext)
     private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val scanMutex = Mutex()
@@ -105,6 +108,16 @@ class LocalLibraryRepository private constructor(context: Context) {
         val candidates = uris.filter { it.startsWith("content://", ignoreCase = true) }.distinct()
         if (candidates.isEmpty()) return emptySet()
         return candidates.chunked(SQL_CHUNK).flatMapTo(hashSetOf()) { dao.unavailableAmong(it) }
+    }
+
+    suspend fun saveTags(identityKey: String, edits: LocalTagEdits): LocalTagWriteResult = scanMutex.withLock {
+        val row = dao.byIdentityKey(identityKey) ?: return@withLock LocalTagWriteResult.FileUnavailable
+        val result = tagEditor.write(row, edits)
+        if (result is LocalTagWriteResult.Success) {
+            dao.updateAll(listOf(result.media))
+            preferences.edit().remove(KEY_CHANGE_TOKEN).apply()
+        }
+        result
     }
 
     private suspend fun runScanLoop(initialMode: LocalScanMode, initialForce: Boolean) {
@@ -168,6 +181,8 @@ class LocalLibraryRepository private constructor(context: Context) {
                 download.trackId.takeIf { it.isNotBlank() }?.let { identityKey to it }
             }
             .toMap()
+        val existing = dao.all()
+        val existingByIdentity = existing.associateBy { it.identityKey }
         val candidates = scanned
             .map { audio ->
                 audio.toLocalMediaEntity(
@@ -176,8 +191,20 @@ class LocalLibraryRepository private constructor(context: Context) {
                 )
             }
             .filter { localFolderAllowed(it.folderKey, excluded) }
+            .mapIndexed { index, row ->
+                if (index % DEEP_TAG_CANCELLATION_INTERVAL == 0) coroutineContext.ensureActive()
+                val previous = existingByIdentity[row.identityKey]
+                val unchanged = previous != null &&
+                    previous.sizeBytes == row.sizeBytes &&
+                    previous.dateModifiedMs == row.dateModifiedMs
+                if (mode == LocalScanMode.Quick && unchanged) {
+                    row.withDeepTagsFrom(previous)
+                } else {
+                    row.withDeepTags(LocalDeepTagReader.read(row))
+                }
+            }
         val plan = planLocalLibraryReconcile(
-            existing = dao.all(),
+            existing = existing,
             scanned = candidates,
             mountedVolumes = volumes,
             fullScan = mode != LocalScanMode.Quick,
@@ -259,6 +286,7 @@ class LocalLibraryRepository private constructor(context: Context) {
         private const val KEY_EXCLUDED_FOLDERS = "excluded_folders"
         private const val SQL_CHUNK = 400
         private const val TAG_READ_BUFFER = 64 * 1024
+        private const val DEEP_TAG_CANCELLATION_INTERVAL = 32
 
         @Volatile
         private var instance: LocalLibraryRepository? = null
