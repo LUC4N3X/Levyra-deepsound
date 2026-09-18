@@ -64,13 +64,21 @@ internal class LocalAudioTagEditor(context: Context) {
             }
 
             val deepTags = LocalDeepTagReader.read(output)
-            try {
-                replaceContent(uri, output)
+            val writable = try {
+                resolver.openFileDescriptor(uri, "rw")
             } catch (denied: SecurityException) {
                 return@withContext permissionResult(uri, denied) ?: LocalTagWriteResult.Failed
-            } catch (error: IOException) {
+            } ?: return@withContext LocalTagWriteResult.FileUnavailable
+
+            try {
+                writable.use { descriptor -> replaceContent(descriptor.fileDescriptor, output) }
+            } catch (error: Exception) {
                 Timber.w(error, "Local tag write failed, restoring original")
-                val restored = runCatching { replaceContent(uri, input) }.isSuccess
+                val restored = runCatching {
+                    resolver.openFileDescriptor(uri, "rw")?.use { descriptor ->
+                        replaceContent(descriptor.fileDescriptor, input)
+                    } ?: false
+                }.getOrDefault(false)
                 if (!restored) Timber.e("Local tag restore failed for %s", row.identityKey)
                 return@withContext LocalTagWriteResult.Failed
             }
@@ -125,27 +133,25 @@ internal class LocalAudioTagEditor(context: Context) {
         }
     }
 
-    @Throws(IOException::class, SecurityException::class)
-    private fun replaceContent(uri: Uri, source: File) {
-        val descriptor = resolver.openFileDescriptor(uri, "rw") ?: throw IOException("media_unavailable")
-        descriptor.use { pfd ->
-            FileOutputStream(pfd.fileDescriptor).use { output ->
-                val channel = output.channel
-                channel.truncate(0L)
-                FileInputStream(source).use { input ->
-                    var position = 0L
-                    val size = source.length()
-                    while (position < size) {
-                        val copied = input.channel.transferTo(position, size - position, channel)
-                        if (copied <= 0L) throw IOException("media_copy_stalled")
-                        position += copied
-                    }
+    @Throws(IOException::class)
+    private fun replaceContent(fileDescriptor: java.io.FileDescriptor, source: File): Boolean {
+        FileOutputStream(fileDescriptor).use { output ->
+            val channel = output.channel
+            channel.truncate(0L)
+            FileInputStream(source).use { input ->
+                var position = 0L
+                val size = source.length()
+                while (position < size) {
+                    val copied = input.channel.transferTo(position, size - position, channel)
+                    if (copied <= 0L) throw IOException("media_copy_stalled")
+                    position += copied
                 }
-                channel.truncate(source.length())
-                channel.force(true)
-                output.fd.sync()
             }
+            channel.truncate(source.length())
+            channel.force(true)
+            output.fd.sync()
         }
+        return true
     }
 
     private fun permissionResult(uri: Uri, error: SecurityException): LocalTagWriteResult.PermissionRequired? {
