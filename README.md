@@ -625,7 +625,7 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
           <img src="app/src/main/res/drawable/levyra_logo.png" width="42" align="left" alt="Levyra" />
         </a>
         <b><a href="https://github.com/LUC4N3X">LUC4N3X</a></b><br>
-        <sub><i>Lead Systems Architect & Creator</i></sub>
+        <sub><i>Creator & Lead Developer</i></sub>
       </p>
       <br clear="left">
       <p>
