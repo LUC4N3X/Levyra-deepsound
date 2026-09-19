@@ -163,62 +163,75 @@ object AppleMetadataMatcher {
     ): Pair<Int, Boolean> {
         val refAlbum = reference.album.trim()
         val candAlbum = candidate.albumName.trim()
-        if (refAlbum.isBlank() || candAlbum.isBlank() || isGenericAlbum(refAlbum)) {
-            return 0 to false
-        }
+        if (!hasUsableReleaseIdentity(refAlbum, candAlbum)) return 0 to false
+        if (isCompilationMismatch(refAlbum, candAlbum)) return -30 to false
 
         val refAlbumId = AlternativeTrackText.album(refAlbum)
         val candAlbumId = AlternativeTrackText.album(candAlbum)
-
-        val refIsComp = isCompilationAlbum(refAlbum)
-        val candIsComp = isCompilationAlbum(candAlbum)
-        if (!refIsComp && candIsComp) {
-            return -30 to false
-        }
-
-        var releaseScore = 0
-        var isReleaseMatch = false
-
         val coresMatch = refAlbumId.core.isNotBlank() && refAlbumId.core == candAlbumId.core
-        val coreCoverage = if (!coresMatch && refAlbumId.core.isNotBlank() && candAlbumId.core.isNotBlank()) {
-            tokenCoverage(refAlbumId.core, candAlbumId.core)
-        } else 0.0
+        val (baseScore, releaseMatch) = scoreAlbumReleaseIdentity(
+            refCore = refAlbumId.core,
+            candCore = candAlbumId.core,
+            refEditions = refAlbumId.editions,
+            candEditions = candAlbumId.editions,
+            coresMatch = coresMatch
+        )
+        val trackPositionAdjustment = scoreReleaseTrackPosition(
+            coresMatch = coresMatch,
+            releaseMatch = releaseMatch,
+            referenceTrackNumber = reference.trackNumber,
+            candidateTrackNumber = candidate.trackNumber
+        )
+        return (baseScore + trackPositionAdjustment) to releaseMatch
+    }
 
-        if (coresMatch) {
-            val sameEditions = refAlbumId.editions == candAlbumId.editions
-            if (sameEditions) {
-                releaseScore += 30
-                isReleaseMatch = true
-            } else if (refAlbumId.editions.isEmpty() && candAlbumId.editions.isNotEmpty()) {
-                releaseScore += 10
-                isReleaseMatch = false
-            } else if (refAlbumId.editions.isNotEmpty() && candAlbumId.editions.isEmpty()) {
-                releaseScore += 10
-                isReleaseMatch = false
-            } else {
-                releaseScore += 5
-                isReleaseMatch = false
-            }
-        } else if (coreCoverage >= 0.75) {
-            releaseScore += 12
-            isReleaseMatch = refAlbumId.editions == candAlbumId.editions
-        } else if (coreCoverage >= 0.50) {
-            releaseScore += 5
-            isReleaseMatch = false
-        } else {
-            releaseScore -= 20
-            isReleaseMatch = false
+    private fun hasUsableReleaseIdentity(refAlbum: String, candAlbum: String): Boolean =
+        refAlbum.isNotBlank() && candAlbum.isNotBlank() && !isGenericAlbum(refAlbum)
+
+    private fun isCompilationMismatch(refAlbum: String, candAlbum: String): Boolean =
+        !isCompilationAlbum(refAlbum) && isCompilationAlbum(candAlbum)
+
+    private fun scoreAlbumReleaseIdentity(
+        refCore: String,
+        candCore: String,
+        refEditions: Set<com.luc4n3x.levyra.data.hqaudio.AlbumEdition>,
+        candEditions: Set<com.luc4n3x.levyra.data.hqaudio.AlbumEdition>,
+        coresMatch: Boolean
+    ): Pair<Int, Boolean> {
+        if (coresMatch) return scoreMatchingAlbumCores(refEditions, candEditions)
+        if (refCore.isBlank() || candCore.isBlank()) return -20 to false
+
+        val forwardCoverage = tokenCoverage(refCore, candCore)
+        val reverseCoverage = tokenCoverage(candCore, refCore)
+        val mutualCoverage = minOf(forwardCoverage, reverseCoverage)
+        val sameEditions = refEditions == candEditions
+
+        return when {
+            mutualCoverage >= 0.90 && sameEditions -> 18 to true
+            mutualCoverage >= 0.75 -> 12 to false
+            mutualCoverage >= 0.50 -> 5 to false
+            else -> -20 to false
         }
+    }
 
-        if (coresMatch && reference.trackNumber > 0 && candidate.trackNumber > 0) {
-            if (reference.trackNumber == candidate.trackNumber) {
-                releaseScore += 5
-            } else if (!isReleaseMatch) {
-                releaseScore -= 5
-            }
-        }
+    private fun scoreMatchingAlbumCores(
+        refEditions: Set<com.luc4n3x.levyra.data.hqaudio.AlbumEdition>,
+        candEditions: Set<com.luc4n3x.levyra.data.hqaudio.AlbumEdition>
+    ): Pair<Int, Boolean> {
+        if (refEditions == candEditions) return 30 to true
+        if (refEditions.isEmpty() xor candEditions.isEmpty()) return 10 to false
+        return 5 to false
+    }
 
-        return releaseScore to isReleaseMatch
+    private fun scoreReleaseTrackPosition(
+        coresMatch: Boolean,
+        releaseMatch: Boolean,
+        referenceTrackNumber: Int,
+        candidateTrackNumber: Int
+    ): Int {
+        if (!coresMatch || referenceTrackNumber <= 0 || candidateTrackNumber <= 0) return 0
+        if (referenceTrackNumber == candidateTrackNumber) return 5
+        return if (releaseMatch) 0 else -5
     }
 
     private fun evaluateDuration(
