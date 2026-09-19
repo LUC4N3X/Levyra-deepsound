@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="126" height="40" viewBox="0 0 145 46" role="img" aria-label="DOWNLOAD FOR Windows">
+<svg xmlns="http://www.w3.org/2000/svg" width="126" height="31.0154" viewBox="0 0 130 32" role="img" aria-label="DOWNLOAD FOR Windows">
   <title>DOWNLOAD FOR Windows</title>
-  <rect x=".75" y=".75" width="143.5" height="44.5" rx="9" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
-  <g transform="translate(10 10) scale(0.48)" fill="#0078D4"><rect x="0" y="0" width="24" height="24" rx="2.5"/><rect x="28" y="0" width="24" height="24" rx="2.5"/><rect x="0" y="28" width="24" height="24" rx="2.5"/><rect x="28" y="28" width="24" height="24" rx="2.5"/></g>
-  <text x="45" y="17.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7" font-weight="700" letter-spacing=".7">DOWNLOAD FOR</text>
-  <text x="45" y="33.5" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="700">Windows</text>
+  <rect x=".75" y=".75" width="128.5" height="30.5" rx="8" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
+  <g transform="translate(4 4) scale(0.46)" fill="#0078D4"><rect x="0" y="0" width="24" height="24" rx="2.5"/><rect x="28" y="0" width="24" height="24" rx="2.5"/><rect x="0" y="28" width="24" height="24" rx="2.5"/><rect x="28" y="28" width="24" height="24" rx="2.5"/></g>
+  <text x="35" y="12.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="6.2" font-weight="700" letter-spacing=".65">DOWNLOAD FOR</text>
+  <text x="35" y="24.5" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="700">Windows</text>
 </svg>
