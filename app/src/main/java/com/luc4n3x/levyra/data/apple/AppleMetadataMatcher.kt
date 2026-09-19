@@ -44,12 +44,8 @@ object AppleMetadataMatcher {
         val expectedTitleIdentity = AlternativeTrackText.title(refTitle)
         val candidateTitleIdentity = AlternativeTrackText.title(candTitle)
         validateIdentity(
-            refTitle = refTitle,
-            candTitle = candTitle,
-            refArtist = refArtist,
-            candArtist = candArtist,
-            refExplicit = reference.explicit,
-            candExplicit = candidate.explicit,
+            reference = reference,
+            candidateMetadata = candidate,
             expected = expectedTitleIdentity,
             candidate = candidateTitleIdentity
         )?.let { reason ->
@@ -99,19 +95,19 @@ object AppleMetadataMatcher {
     }
 
     private fun validateIdentity(
-        refTitle: String,
-        candTitle: String,
-        refArtist: String,
-        candArtist: String,
-        refExplicit: Boolean,
-        candExplicit: Boolean,
+        reference: Track,
+        candidateMetadata: AppleTrackMetadata,
         expected: TitleIdentity,
         candidate: TitleIdentity
     ): String? {
-        if (hasBlankIdentity(refTitle, candTitle, refArtist, candArtist)) return "blank_identity"
+        if (hasBlankIdentity(reference.title, candidateMetadata.name, reference.artist, candidateMetadata.artistName)) {
+            return "blank_identity"
+        }
         checkVersionMismatch(expected, candidate)?.let { return it }
-        if (isExplicitMismatched(refExplicit, expected, candExplicit, candidate)) return "explicit_mismatch"
-        if (!areArtistsCompatible(refArtist, candArtist)) return "artist_mismatch"
+        if (isExplicitMismatched(reference.explicit, expected, candidateMetadata.explicit, candidate)) {
+            return "explicit_mismatch"
+        }
+        if (!areArtistsCompatible(reference.artist, candidateMetadata.artistName)) return "artist_mismatch"
         return null
     }
 
