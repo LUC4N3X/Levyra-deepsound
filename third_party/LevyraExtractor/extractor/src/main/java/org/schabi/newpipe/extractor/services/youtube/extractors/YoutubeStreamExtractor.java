@@ -2400,6 +2400,26 @@ public class YoutubeStreamExtractor extends StreamExtractor {
 
 
 
+    private static boolean isAgeRestrictionReason(@Nonnull final String reason) {
+        final String normalized = reason.toLowerCase(Locale.ROOT);
+        return normalized.contains("inappropriate for some users")
+                || normalized.contains("confirm your age")
+                || normalized.contains("age-restricted")
+                || normalized.contains("age restricted");
+    }
+
+    private static boolean anyPlayabilityMessageContains(@Nonnull final JsonObject playabilityStatus,
+                                                         @Nonnull final String needle) {
+        final JsonArray messages = playabilityStatus.getArray("messages");
+        for (int i = 0; i < messages.size(); i++) {
+            final Object message = messages.get(i);
+            if (message instanceof String && ((String) message).contains(needle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static JsonObject checkPlayabilityStatus(@Nonnull JsonObject playabilityStatus, String videoId)
             throws ParsingException {
         String status = playabilityStatus.getString("status");
@@ -2410,14 +2430,12 @@ public class YoutubeStreamExtractor extends StreamExtractor {
         final String reason = playabilityStatus.getString("reason");
 
         if (status.equalsIgnoreCase("login_required")) {
-            if (reason == null) {
-                final String message = playabilityStatus.getArray("messages").getString(0);
-                if (message != null && message.contains("private")) {
-                    throw new PrivateContentException("This video is private");
-                }
-            } else if (reason.contains("age")) {
+            if (reason != null && isAgeRestrictionReason(reason)) {
                 throw new AgeRestrictedContentException(
                         "This age-restricted video cannot be watched anonymously");
+            }
+            if (anyPlayabilityMessageContains(playabilityStatus, "private")) {
+                throw new PrivateContentException("This video is private");
             }
         }
 
@@ -2431,7 +2449,7 @@ public class YoutubeStreamExtractor extends StreamExtractor {
                 throw new PaidContentException("This video is a paid video");
             }
 
-            if (reason.contains("members-only")) {
+            if (reason.contains("members")) {
                 throw new PaidContentException("This video is only available"
                         + " for members of the channel of this video");
             }
