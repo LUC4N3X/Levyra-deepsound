@@ -18,6 +18,16 @@ class LevyraExperienceSettingsTest {
     }
 
     @Test
+    fun gestureActionsRestoreCaseInsensitivelyAndRejectUnknownValuesSafely() {
+        assertEquals(PlayerDoubleTapAction.PlayPause, PlayerDoubleTapAction.from("playpause"))
+        assertEquals(PlayerLongPressAction.Queue, PlayerLongPressAction.from("QUEUE"))
+        assertEquals(PlayerVerticalSwipeAction.Volume, PlayerVerticalSwipeAction.from("volume"))
+        assertEquals(PlayerDoubleTapAction.Seek, PlayerDoubleTapAction.from("unknown"))
+        assertEquals(PlayerLongPressAction.Speed, PlayerLongPressAction.from("unknown"))
+        assertEquals(PlayerVerticalSwipeAction.BrightnessAndVolume, PlayerVerticalSwipeAction.from("unknown"))
+    }
+
+    @Test
     fun downloadSettingsClampConcurrency() {
         assertEquals(1, LevyraDownloadSettings(maxConcurrentDownloads = 0).normalized().maxConcurrentDownloads)
         assertEquals(4, LevyraDownloadSettings(maxConcurrentDownloads = 12).normalized().maxConcurrentDownloads)

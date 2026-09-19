@@ -117,6 +117,23 @@ class LevyraStrings private constructor(
     val playerBackgroundBlur: String get() = value("playerBackgroundBlur")
     val playerBackgroundDark: String get() = value("playerBackgroundDark")
     val playerBackgroundPureBlack: String get() = value("playerBackgroundPureBlack")
+    val playerGestureHorizontalSwipe: String get() = value("playerGestureHorizontalSwipe")
+    val playerGestureHorizontalSwipeSubtitle: String get() = value("playerGestureHorizontalSwipeSubtitle")
+    val playerGestureDoubleTapAction: String get() = value("playerGestureDoubleTapAction")
+    val playerGestureDoubleTapActionSubtitle: String get() = value("playerGestureDoubleTapActionSubtitle")
+    val playerGestureLongPressAction: String get() = value("playerGestureLongPressAction")
+    val playerGestureLongPressActionSubtitle: String get() = value("playerGestureLongPressActionSubtitle")
+    val playerGestureVerticalSwipe: String get() = value("playerGestureVerticalSwipe")
+    val playerGestureVerticalSwipeSubtitle: String get() = value("playerGestureVerticalSwipeSubtitle")
+    val gestureActionSeek: String get() = value("gestureActionSeek")
+    val gestureActionPlayPause: String get() = value("gestureActionPlayPause")
+    val gestureActionFavorite: String get() = value("gestureActionFavorite")
+    val gestureActionQueue: String get() = value("gestureActionQueue")
+    val gestureActionLyrics: String get() = value("gestureActionLyrics")
+    val gestureActionSpeed: String get() = value("gestureActionSpeed")
+    val gestureActionBrightnessVolume: String get() = value("gestureActionBrightnessVolume")
+    val gestureActionVolume: String get() = value("gestureActionVolume")
+    val gestureActionDisabled: String get() = value("gestureActionDisabled")
     val enterImmersive: String get() = value("enterImmersive")
     val exitImmersive: String get() = value("exitImmersive")
     val forgottenFavorites: String get() = value("forgottenFavorites")
@@ -1817,8 +1834,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
