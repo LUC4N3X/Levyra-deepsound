@@ -100,6 +100,10 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
       <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="48">
     </a>
   </p>
+  <p>
+    <sub><b>CHINESE DEVELOPER MEDIA COVERAGE</b></sub><br>
+    <sub><a href="https://www.oschina.net/news/502584">OSCHINA 开源中国</a> &nbsp;·&nbsp; <a href="https://blog.csdn.net/techforward/article/details/165886477">CSDN</a></sub>
+  </p>
   <p><sub><b>OPEN-SOURCE QUALITY, TRUST &amp; COMPLIANCE</b></sub></p>
   <p>
     <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor — A"></a> <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices — Passing"></a> <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
