@@ -257,7 +257,9 @@ class AppleMetadataEnricher(private val context: Context) {
                     response.body.string().let { JSONObject(it) }
                 }
             }
-        } catch (_: IOException) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
             null
         }
     }

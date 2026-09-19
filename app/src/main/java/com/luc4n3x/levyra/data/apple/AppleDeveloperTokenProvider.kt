@@ -118,7 +118,11 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
     private fun jwtExpiration(token: String): Long? = runCatching {
         val parts = token.split('.')
         if (parts.size < 2) return@runCatching null
-        val payloadBytes = Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        val payloadBytes = try {
+            java.util.Base64.getUrlDecoder().decode(parts[1])
+        } catch (_: Throwable) {
+            Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        }
         val payloadJson = JSONObject(String(payloadBytes, Charsets.UTF_8))
         val expSeconds = payloadJson.optLong("exp", 0L)
         if (expSeconds <= 0L) null else expSeconds * 1000L
