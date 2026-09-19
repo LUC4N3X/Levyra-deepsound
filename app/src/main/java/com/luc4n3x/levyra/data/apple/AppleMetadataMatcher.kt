@@ -36,53 +36,69 @@ object AppleMetadataMatcher {
     )
 
     fun evaluate(reference: Track, candidate: AppleTrackMetadata): Evaluation {
-        val refTitle = reference.title.trim()
-        val candTitle = candidate.name.trim()
-        val refArtist = reference.artist.trim()
-        val candArtist = candidate.artistName.trim()
-
-        val expectedTitleIdentity = AlternativeTrackText.title(refTitle)
-        val candidateTitleIdentity = AlternativeTrackText.title(candTitle)
+        val expectedTitleIdentity = AlternativeTrackText.title(reference.title.trim())
+        val candidateTitleIdentity = AlternativeTrackText.title(candidate.name.trim())
         validateIdentity(
             reference = reference,
             candidateMetadata = candidate,
             expected = expectedTitleIdentity,
             candidate = candidateTitleIdentity
         )?.let { reason ->
-            return Evaluation(false, 0, rejectionReason = reason)
+            return rejected(reason)
         }
+        return evaluateValidatedCandidate(reference, candidate, expectedTitleIdentity, candidateTitleIdentity)
+    }
 
+    private fun evaluateValidatedCandidate(
+        reference: Track,
+        candidate: AppleTrackMetadata,
+        expectedTitleIdentity: TitleIdentity,
+        candidateTitleIdentity: TitleIdentity
+    ): Evaluation {
         val (titleScore, titleReason) = scoreTitle(expectedTitleIdentity.core, candidateTitleIdentity.core)
-        if (titleReason != null) {
-            return Evaluation(false, 0, rejectionReason = titleReason)
-        }
+        if (titleReason != null) return rejected(titleReason)
 
         val isrcMatch = recordingIdentityMatch(reference.isrc, candidate.isrc)
-        if (isrcMatch == RecordingIdentityMatch.Conflict) {
-            return Evaluation(false, 0, rejectionReason = "isrc_conflict")
-        }
+        if (isrcMatch == RecordingIdentityMatch.Conflict) return rejected("isrc_conflict")
         val isExactIsrc = isrcMatch == RecordingIdentityMatch.Exact
 
-        val (durationDeltaScore, durationReason) = evaluateDuration(reference.durationMs, candidate.durationMs, isExactIsrc)
-        if (durationReason != null) {
-            return Evaluation(false, 0, rejectionReason = durationReason)
-        }
+        val (durationScore, durationReason) = evaluateDuration(reference.durationMs, candidate.durationMs, isExactIsrc)
+        if (durationReason != null) return rejected(durationReason)
 
         val (releaseScore, isReleaseMatch) = evaluateRelease(reference, candidate)
-
-        if (isExactIsrc) {
-            val totalScore = (EXACT_ISRC_BASE_CONFIDENCE + releaseScore + durationDeltaScore).coerceIn(MIN_ACCEPTED_CONFIDENCE, 100)
-            return Evaluation(
-                accepted = true,
-                confidence = totalScore,
-                isRecordingMatch = true,
-                isReleaseMatch = isReleaseMatch,
-                releaseConfidence = releaseScore
-            )
+        return if (isExactIsrc) {
+            exactIsrcEvaluation(releaseScore, durationScore, isReleaseMatch)
+        } else {
+            fuzzyEvaluation(reference, candidate, titleScore, releaseScore, durationScore, isReleaseMatch)
         }
+    }
 
-        val artistScore = scoreArtist(refArtist, candArtist)
-        val totalScore = (35 + titleScore + artistScore + releaseScore + durationDeltaScore).coerceIn(0, 100)
+    private fun exactIsrcEvaluation(
+        releaseScore: Int,
+        durationScore: Int,
+        isReleaseMatch: Boolean
+    ): Evaluation {
+        val totalScore = (EXACT_ISRC_BASE_CONFIDENCE + releaseScore + durationScore)
+            .coerceIn(MIN_ACCEPTED_CONFIDENCE, 100)
+        return Evaluation(
+            accepted = true,
+            confidence = totalScore,
+            isRecordingMatch = true,
+            isReleaseMatch = isReleaseMatch,
+            releaseConfidence = releaseScore
+        )
+    }
+
+    private fun fuzzyEvaluation(
+        reference: Track,
+        candidate: AppleTrackMetadata,
+        titleScore: Int,
+        releaseScore: Int,
+        durationScore: Int,
+        isReleaseMatch: Boolean
+    ): Evaluation {
+        val artistScore = scoreArtist(reference.artist, candidate.artistName)
+        val totalScore = (35 + titleScore + artistScore + releaseScore + durationScore).coerceIn(0, 100)
         val accepted = totalScore >= MIN_ACCEPTED_CONFIDENCE
         return Evaluation(
             accepted = accepted,
@@ -93,6 +109,9 @@ object AppleMetadataMatcher {
             rejectionReason = if (accepted) null else "insufficient_confidence"
         )
     }
+
+    private fun rejected(reason: String): Evaluation =
+        Evaluation(false, 0, rejectionReason = reason)
 
     private fun validateIdentity(
         reference: Track,
