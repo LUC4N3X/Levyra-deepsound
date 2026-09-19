@@ -1,0 +1,28 @@
+package com.luc4n3x.levyra.data.apple
+
+data class AppleTrackMetadata(
+    val songId: String = "",
+    val albumId: String = "",
+    val name: String = "",
+    val artistName: String = "",
+    val albumName: String = "",
+    val albumArtistName: String = "",
+    val composerName: String = "",
+    val genreNames: List<String> = emptyList(),
+    val releaseDate: String = "",
+    val albumReleaseDate: String = "",
+    val trackNumber: Int = 0,
+    val trackTotal: Int = 0,
+    val discNumber: Int = 0,
+    val discTotal: Int = 0,
+    val isrc: String = "",
+    val upc: String = "",
+    val copyright: String = "",
+    val explicit: Boolean = false,
+    val canonicalAlbumUrl: String = "",
+    val artworkUrl: String = "",
+    val highResArtworkUrl: String = "",
+    val durationMs: Long = 0L,
+    val confidence: Int = 0,
+    val isReleaseMatch: Boolean = false
+)
