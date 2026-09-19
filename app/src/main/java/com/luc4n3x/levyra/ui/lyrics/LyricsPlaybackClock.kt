@@ -106,6 +106,7 @@ fun rememberLyricsPlaybackClock(
 }
 
 const val KARAOKE_VISUAL_LEAD_MS = 55L
+const val LYRICS_LINE_LINGER_MS = 90L
 const val LYRICS_INSTRUMENTAL_DOT_COUNT = 3
 const val LYRICS_INSTRUMENTAL_CYCLES = 6f
 
@@ -120,6 +121,9 @@ data class TimedLyricWord(
     val startMs: Long,
     val endMs: Long
 )
+
+fun lyricsLineFocusPositionMs(positionMs: Long, smoothingEnabled: Boolean): Long =
+    (positionMs - if (smoothingEnabled) LYRICS_LINE_LINGER_MS else 0L).coerceAtLeast(0L)
 
 fun Char.isPunctuationWithoutLeadingSpace(): Boolean =
     this in charArrayOf(',', '.', ';', ':', '!', '?', ')', ']', '}', '’', '\'', '…')

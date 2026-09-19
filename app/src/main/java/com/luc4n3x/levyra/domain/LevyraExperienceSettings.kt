@@ -94,6 +94,42 @@ enum class PlayerBackgroundMode {
     }
 }
 
+enum class PlayerDoubleTapAction {
+    Seek,
+    PlayPause,
+    Favorite,
+    Disabled;
+
+    companion object {
+        fun from(value: String): PlayerDoubleTapAction =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Seek
+    }
+}
+
+enum class PlayerLongPressAction {
+    Speed,
+    Favorite,
+    Queue,
+    Lyrics,
+    Disabled;
+
+    companion object {
+        fun from(value: String): PlayerLongPressAction =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Speed
+    }
+}
+
+enum class PlayerVerticalSwipeAction {
+    BrightnessAndVolume,
+    Volume,
+    Disabled;
+
+    companion object {
+        fun from(value: String): PlayerVerticalSwipeAction =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: BrightnessAndVolume
+    }
+}
+
 data class LevyraInterfaceSettings(
     val compactHome: Boolean = false,
     val showPersonalOrbit: Boolean = true,
@@ -104,8 +140,12 @@ data class LevyraInterfaceSettings(
     val showCharts: Boolean = true,
     val fontPreset: LevyraFontPreset = LevyraFontPreset.Outfit,
     val playerGesturesEnabled: Boolean = true,
+    val swipeTrackChangeEnabled: Boolean = true,
+    val doubleTapAction: PlayerDoubleTapAction = PlayerDoubleTapAction.Seek,
     val doubleTapSeekSeconds: Int = 10,
+    val longPressAction: PlayerLongPressAction = PlayerLongPressAction.Speed,
     val longPressSpeed: Float = 2f,
+    val verticalSwipeAction: PlayerVerticalSwipeAction = PlayerVerticalSwipeAction.BrightnessAndVolume,
     val canvasQuality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
     val motionArtworkWifiOnly: Boolean = false,
