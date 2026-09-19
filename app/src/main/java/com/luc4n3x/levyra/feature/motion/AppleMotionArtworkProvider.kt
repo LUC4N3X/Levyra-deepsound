@@ -17,6 +17,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
 import java.util.Locale
+import com.luc4n3x.levyra.data.apple.AppleDeveloperTokenProvider
 import java.util.concurrent.TimeUnit
 
 class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
@@ -28,13 +29,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         .callTimeout(25, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
-    private val scriptClient: OkHttpClient = client.newBuilder()
-        .followRedirects(false)
-        .followSslRedirects(false)
-        .build()
-    private val tokenMutex = Mutex()
-    private var cachedToken: String? = null
-    private var tokenExpiresAt: Long = 0L
+    private val tokenProvider = AppleDeveloperTokenProvider.get(context)
 
     suspend fun findArtistMotion(artistName: String): MotionArtworkCandidate? {
         val clean = artistName.trim()
@@ -407,45 +402,14 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         )
     }
 
-    private suspend fun developerToken(): String = tokenMutex.withLock {
-        val now = System.currentTimeMillis()
-        cachedToken?.takeIf { tokenExpiresAt > now + TOKEN_EXPIRY_MARGIN_MS }?.let {
-            Timber.d("Apple motion developer token cache hit expiresInMin=%d", (tokenExpiresAt - now) / 60_000L)
-            return@withLock it
+    private suspend fun developerToken(): String {
+        return try {
+            tokenProvider.requireDeveloperToken()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            throw MotionProviderException("Apple Music developer token unavailable", error)
         }
-
-        Timber.d("Apple motion developer token discovery start")
-        val html = requestText(APPLE_BROWSE_URL)
-        val scripts = appleMusicScriptUrls(html).take(MAX_TOKEN_SCRIPT_CANDIDATES)
-        Timber.d("Apple motion developer token scripts=%d", scripts.size)
-        var lastFailure: Throwable? = null
-        for ((index, script) in scripts.withIndex()) {
-            val source = try {
-                requestTrustedScriptText(script)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                Timber.d(error, "Apple motion developer token script failed index=%d", index)
-                lastFailure = error
-                continue
-            }
-            for (match in JWT_REGEX.findAll(source)) {
-                val developerTokenValue = match.value
-                val expiration = jwtExpiration(developerTokenValue) ?: continue
-                if (expiration > now + TOKEN_EXPIRY_MARGIN_MS) {
-                    cachedToken = developerTokenValue
-                    tokenExpiresAt = expiration
-                    Timber.d(
-                        "Apple motion developer token discovered scriptIndex=%d expiresInMin=%d",
-                        index,
-                        (expiration - now) / 60_000L
-                    )
-                    return@withLock developerTokenValue
-                }
-            }
-        }
-        Timber.d(lastFailure, "Apple motion developer token unavailable scripts=%d", scripts.size)
-        throw MotionProviderException("Apple Music developer token unavailable", lastFailure)
     }
 
     private suspend fun requestJson(url: String, token: String): JSONObject {
@@ -467,61 +431,6 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             .header("User-Agent", USER_AGENT)
             .build()
         return executeText(request)
-    }
-
-    private suspend fun requestTrustedScriptText(url: String): String = withContext(Dispatchers.IO) {
-        var currentUrl = trustedAppleMusicScriptUrl(url)?.toHttpUrlOrNull()
-            ?: throw MotionProviderException("Blocked Apple Music script URL")
-        var redirects = 0
-        try {
-            while (true) {
-                val request = Request.Builder()
-                    .url(currentUrl)
-                    .header("User-Agent", USER_AGENT)
-                    .build()
-                val response = awaitMotionArtworkResponse(scriptClient.newCall(request))
-                try {
-                    if (response.code in SCRIPT_REDIRECT_CODES) {
-                        if (redirects >= MAX_TOKEN_SCRIPT_REDIRECTS) {
-                            throw MotionProviderException("Too many Apple Music script redirects")
-                        }
-                        val location = response.header("Location")
-                            ?: throw MotionProviderException("Apple Music script redirect missing location")
-                        currentUrl = trustedAppleMusicScriptRedirectUrl(currentUrl.toString(), location)
-                            ?.toHttpUrlOrNull()
-                            ?: throw MotionProviderException("Blocked Apple Music script redirect")
-                        redirects += 1
-                        continue
-                    }
-                    if (!response.isSuccessful) {
-                        Timber.d(
-                            "Apple motion script HTTP failure host=%s path=%s status=%d",
-                            currentUrl.host,
-                            currentUrl.encodedPath,
-                            response.code
-                        )
-                        throw MotionProviderException("Apple Music HTTP ${response.code}")
-                    }
-                    return@withContext response.body.string().takeIf { it.isNotBlank() }
-                        ?: throw MotionProviderException("Empty Apple Music response")
-                } finally {
-                    response.close()
-                }
-            }
-            throw MotionProviderException("Unreachable Apple Music script request state")
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: MotionProviderException) {
-            throw error
-        } catch (error: Exception) {
-            Timber.d(
-                error,
-                "Apple motion script request failed host=%s path=%s",
-                currentUrl.host,
-                currentUrl.encodedPath
-            )
-            throw MotionProviderException("Apple motion script request failed", error)
-        }
     }
 
     private suspend fun executeText(request: Request): String = withContext(Dispatchers.IO) {
