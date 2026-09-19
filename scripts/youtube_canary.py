@@ -419,6 +419,40 @@ def _extract_signature_timestamp(player_js: str) -> int | None:
     return None
 
 
+def _client_navigation_headers(
+    client_header_name: str,
+    video_id: str,
+    *,
+    client_name: str = "",
+) -> dict[str, str]:
+    header = str(client_header_name).strip()
+    name = client_name.strip().upper()
+    if header in ("3", "5", "21", "28", "101") or name in (
+        "ANDROID",
+        "IOS",
+        "ANDROID_MUSIC",
+        "ANDROID_VR",
+        "VISIONOS",
+    ):
+        return {}
+    if header == "67" or name == "WEB_REMIX":
+        return {
+            "Origin": "https://music.youtube.com",
+            "Referer": f"https://music.youtube.com/watch?v={video_id}",
+        }
+    if header == "56" or name == "WEB_EMBEDDED_PLAYER":
+        return {
+            "Origin": "https://www.youtube.com",
+            "Referer": f"https://www.youtube.com/embed/{video_id}",
+        }
+    if header == "1" or name == "WEB":
+        return {
+            "Origin": "https://www.youtube.com",
+            "Referer": f"https://www.youtube.com/watch?v={video_id}",
+        }
+    return {}
+
+
 def _player_api_request(
     *,
     video_id: str,
@@ -455,18 +489,24 @@ def _player_api_request(
         "https://www.youtube.com/youtubei/v1/player?"
         + urllib.parse.urlencode({"key": innertube_query_value, "prettyPrint": "false"})
     )
+    headers: dict[str, str] = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": user_agent,
+        "X-YouTube-Client-Name": client_header_name,
+        "X-YouTube-Client-Version": client_version,
+    }
+    headers.update(
+        _client_navigation_headers(
+            client_header_name,
+            video_id,
+            client_name=str(context_client.get("clientName") or ""),
+        )
+    )
     result = _bounded_request(
         endpoint,
         data=json.dumps(body, separators=(",", ":")).encode("utf-8"),
-        headers={
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Origin": "https://www.youtube.com",
-            "Referer": f"https://www.youtube.com/watch?v={video_id}",
-            "User-Agent": user_agent,
-            "X-YouTube-Client-Name": client_header_name,
-            "X-YouTube-Client-Version": client_version,
-        },
+        headers=headers,
         max_bytes=PLAYER_JSON_MAX_BYTES,
     )
     if result.status < 200 or result.status >= 300:
