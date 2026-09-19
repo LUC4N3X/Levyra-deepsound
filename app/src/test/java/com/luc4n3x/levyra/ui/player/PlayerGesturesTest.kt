@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
+import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -96,6 +99,47 @@ class PlayerGesturesTest {
     fun `seek direction mirrors in right to left layouts`() {
         assertEquals(10_000L, playerSeekDeltaMs(PlayerTapSide.Leading, 10, rightToLeft = true))
         assertEquals(-10_000L, playerSeekDeltaMs(PlayerTapSide.Trailing, 10, rightToLeft = true))
+    }
+
+    @Test
+    fun `double tap preferences map to one shared command set`() {
+        assertEquals(
+            PlayerGestureCommand.SeekLeading,
+            playerDoubleTapCommand(PlayerDoubleTapAction.Seek, PlayerTapSide.Leading)
+        )
+        assertEquals(
+            PlayerGestureCommand.SeekTrailing,
+            playerDoubleTapCommand(PlayerDoubleTapAction.Seek, PlayerTapSide.Trailing)
+        )
+        assertEquals(
+            PlayerGestureCommand.TogglePlayback,
+            playerDoubleTapCommand(PlayerDoubleTapAction.PlayPause, PlayerTapSide.Leading)
+        )
+        assertEquals(
+            PlayerGestureCommand.ToggleFavorite,
+            playerDoubleTapCommand(PlayerDoubleTapAction.Favorite, PlayerTapSide.Trailing)
+        )
+        assertEquals(
+            PlayerGestureCommand.None,
+            playerDoubleTapCommand(PlayerDoubleTapAction.Disabled, PlayerTapSide.Leading)
+        )
+    }
+
+    @Test
+    fun `long press preferences map without depending on a player skin`() {
+        assertEquals(PlayerGestureCommand.TemporarySpeed, playerLongPressCommand(PlayerLongPressAction.Speed))
+        assertEquals(PlayerGestureCommand.ToggleFavorite, playerLongPressCommand(PlayerLongPressAction.Favorite))
+        assertEquals(PlayerGestureCommand.OpenQueue, playerLongPressCommand(PlayerLongPressAction.Queue))
+        assertEquals(PlayerGestureCommand.OpenLyrics, playerLongPressCommand(PlayerLongPressAction.Lyrics))
+        assertEquals(PlayerGestureCommand.None, playerLongPressCommand(PlayerLongPressAction.Disabled))
+    }
+
+    @Test
+    fun `mini player track swipes require both gesture switches and a non live track`() {
+        assertTrue(miniPlayerHorizontalGesturesEnabled(true, true, liveRadio = false))
+        assertFalse(miniPlayerHorizontalGesturesEnabled(true, false, liveRadio = false))
+        assertFalse(miniPlayerHorizontalGesturesEnabled(false, true, liveRadio = false))
+        assertFalse(miniPlayerHorizontalGesturesEnabled(true, true, liveRadio = true))
     }
 
     @Test

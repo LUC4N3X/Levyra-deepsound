@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
+import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import kotlin.math.abs
 
 enum class PlayerGestureZone {
@@ -30,6 +32,17 @@ enum class PlayerTapSide {
     Trailing
 }
 
+enum class PlayerGestureCommand {
+    SeekLeading,
+    SeekTrailing,
+    TogglePlayback,
+    ToggleFavorite,
+    TemporarySpeed,
+    OpenQueue,
+    OpenLyrics,
+    None
+}
+
 const val PlayerEdgeZoneFraction: Float = 0.18f
 const val PlayerDragSlopPx: Float = 12f
 
@@ -38,7 +51,6 @@ private const val SwipeVelocity = 620f
 private const val MiniDismissDistanceFraction = 0.62f
 private const val MiniDismissVelocity = 1_100f
 
-/** Resolves the brightness, centre and volume zones, mirroring their meaning in RTL layouts. */
 fun playerGestureZone(xFraction: Float, rightToLeft: Boolean = false): PlayerGestureZone {
     val clamped = xFraction.finiteOr(0.5f).coerceIn(0f, 1f)
     val normalized = if (rightToLeft) 1f - clamped else clamped
@@ -49,7 +61,6 @@ fun playerGestureZone(xFraction: Float, rightToLeft: Boolean = false): PlayerGes
     }
 }
 
-/** Locks a drag to its dominant axis only after the configured touch slop has been crossed. */
 fun resolvePlayerDragAxis(
     totalX: Float,
     totalY: Float,
@@ -62,13 +73,6 @@ fun resolvePlayerDragAxis(
     return if (horizontal >= vertical) PlayerDragAxis.Horizontal else PlayerDragAxis.Vertical
 }
 
-/**
- * Resolves a horizontal track swipe.
- *
- * Once the distance threshold has been crossed, displacement owns the direction. This prevents a
- * small counter-flick while releasing from selecting the opposite track. Velocity is used only for
- * short flings that have not already committed by distance.
- */
 fun resolvePlayerSwipe(offsetPx: Float, velocityPx: Float, widthPx: Float): PlayerSwipeResult {
     val safeOffset = offsetPx.finiteOr(0f)
     val safeVelocity = velocityPx.finiteOr(0f)
@@ -82,7 +86,6 @@ fun resolvePlayerSwipe(offsetPx: Float, velocityPx: Float, widthPx: Float): Play
     return if (direction < 0f) PlayerSwipeResult.Next else PlayerSwipeResult.Previous
 }
 
-/** Requires an intentional downward mini-player gesture before dismissing playback. */
 fun resolveMiniPlayerDismiss(offsetPx: Float, velocityPx: Float, heightPx: Float): PlayerVerticalResult {
     val safeOffset = offsetPx.finiteOr(0f)
     if (safeOffset <= 0f) return PlayerVerticalResult.Settle
@@ -93,7 +96,6 @@ fun resolveMiniPlayerDismiss(offsetPx: Float, velocityPx: Float, heightPx: Float
     return if (committed) PlayerVerticalResult.Collapse else PlayerVerticalResult.Settle
 }
 
-/** Maps a tap to the logical leading or trailing half of the artwork. */
 fun playerTapSide(xFraction: Float): PlayerTapSide =
     if (xFraction.finiteOr(0.5f).coerceIn(0f, 1f) < 0.5f) {
         PlayerTapSide.Leading
@@ -101,7 +103,34 @@ fun playerTapSide(xFraction: Float): PlayerTapSide =
         PlayerTapSide.Trailing
     }
 
-/** Returns a bounded seek delta, with logical direction mirrored for RTL layouts. */
+fun playerDoubleTapCommand(
+    action: PlayerDoubleTapAction,
+    side: PlayerTapSide
+): PlayerGestureCommand = when (action) {
+    PlayerDoubleTapAction.Seek -> if (side == PlayerTapSide.Leading) {
+        PlayerGestureCommand.SeekLeading
+    } else {
+        PlayerGestureCommand.SeekTrailing
+    }
+    PlayerDoubleTapAction.PlayPause -> PlayerGestureCommand.TogglePlayback
+    PlayerDoubleTapAction.Favorite -> PlayerGestureCommand.ToggleFavorite
+    PlayerDoubleTapAction.Disabled -> PlayerGestureCommand.None
+}
+
+fun playerLongPressCommand(action: PlayerLongPressAction): PlayerGestureCommand = when (action) {
+    PlayerLongPressAction.Speed -> PlayerGestureCommand.TemporarySpeed
+    PlayerLongPressAction.Favorite -> PlayerGestureCommand.ToggleFavorite
+    PlayerLongPressAction.Queue -> PlayerGestureCommand.OpenQueue
+    PlayerLongPressAction.Lyrics -> PlayerGestureCommand.OpenLyrics
+    PlayerLongPressAction.Disabled -> PlayerGestureCommand.None
+}
+
+fun miniPlayerHorizontalGesturesEnabled(
+    gesturesEnabled: Boolean,
+    swipeTrackChangeEnabled: Boolean,
+    liveRadio: Boolean
+): Boolean = gesturesEnabled && swipeTrackChangeEnabled && !liveRadio
+
 fun playerSeekDeltaMs(side: PlayerTapSide, seekSeconds: Int, rightToLeft: Boolean = false): Long {
     val magnitude = seekSeconds.coerceIn(5, 30).toLong() * 1_000L
     val forward = side == PlayerTapSide.Trailing
@@ -109,14 +138,12 @@ fun playerSeekDeltaMs(side: PlayerTapSide, seekSeconds: Int, rightToLeft: Boolea
     return if (directed) magnitude else -magnitude
 }
 
-/** Keeps swiped content attached to the mini player instead of allowing it to leave the surface. */
 fun playerSwipeContentOffset(offsetPx: Float, widthPx: Float): Float {
     val safeWidth = widthPx.finiteOr(1f).coerceAtLeast(1f)
     val limit = safeWidth * 0.34f
     return offsetPx.finiteOr(0f).coerceIn(-limit, limit)
 }
 
-/** Fades swiped content without making the active track disappear completely. */
 fun playerSwipeContentAlpha(offsetPx: Float, widthPx: Float): Float {
     val safeWidth = widthPx.finiteOr(1f).coerceAtLeast(1f)
     val limit = safeWidth * 0.34f
@@ -143,6 +170,7 @@ data class PlayerGestureConfig(
 
 data class PlayerGestureMediaActions(
     val seekBy: (Long) -> Unit,
+    val togglePlay: () -> Unit,
     val next: () -> Unit,
     val previous: () -> Unit,
     val swipeOffset: (Float) -> Unit,
@@ -152,6 +180,9 @@ data class PlayerGestureMediaActions(
 data class PlayerGestureUiActions(
     val feedback: (String) -> Unit,
     val haptic: () -> Unit,
+    val toggleFavorite: () -> Unit,
+    val openQueue: () -> Unit,
+    val openLyrics: () -> Unit,
     val collapse: PlayerCollapseActions,
     val artworkPreview: (() -> Unit)? = null
 )
