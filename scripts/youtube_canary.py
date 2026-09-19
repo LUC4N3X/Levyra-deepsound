@@ -42,11 +42,13 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
             "clientName": "VISIONOS",
             "clientVersion": "1.04",
             "deviceMake": "Apple",
-            "deviceModel": "RealityDevice14,1",
+            "deviceModel": "RealityDevice17,1",
             "osName": "visionOS",
-            "osVersion": "1.0.3.21O566",
+            "osVersion": "26.6.0.23O770",
+            "platform": "MOBILE",
+            "clientScreen": "WATCH",
         },
-        "user_agent": "com.google.ios.youtube/1.04 (RealityDevice14,1; U; CPU visionOS 1_0_3 like Mac OS X)",
+        "user_agent": "com.google.visionos.youtube/1.04(RealityDevice17,1; U; CPU visionOS 26_6_0 like Mac OS X; US)",
         "requires_po_token": False,
     },
     {
@@ -116,7 +118,7 @@ CAPABILITY_KIND_POTOKEN = "potoken"
 
 # Fixed public fixtures. MADE_FOR_KIDS uses a long-standing children's video so the kids-specific
 # protocol branch is exercised even when ordinary playback is healthy; POTOKEN uses the same
-# youtube-dl reference video the sentinels use, probed once with and once without visitor data so
+# reference video the first sentinel uses, probed once with and once without visitor data so
 # the PoToken-free fallback path is observed on its own.
 DEFAULT_CAPABILITY_CHECKS: tuple[dict[str, Any], ...] = (
     {
@@ -127,7 +129,7 @@ DEFAULT_CAPABILITY_CHECKS: tuple[dict[str, Any], ...] = (
     {
         "name": CAPABILITY_POTOKEN,
         "kind": CAPABILITY_KIND_POTOKEN,
-        "video_id": "BaW_jenozKc",
+        "video_id": "dQw4w9WgXcQ",
     },
 )
 
@@ -346,6 +348,47 @@ def _resolve_player_js_url(html: str, ytcfg: dict[str, Any]) -> str:
     return urllib.parse.urljoin("https://www.youtube.com", raw)
 
 
+PLAYER_CONFIGS_PATH = Path(__file__).resolve().parent.parent / "app" / "src" / "main" / "assets" / "player_configs.json"
+PLAYER_HASH_RE = re.compile(r"/s/player/([A-Za-z0-9_-]{8})/")
+URL_FACTORY_RE = re.compile(
+    r"(?<![A-Za-z0-9_$.])([A-Za-z_$][A-Za-z0-9_$]{0,31})\s*=\s*function\([^(){}]{0,120}\)\s*\{"
+    r"([^{}]{0,600}?)\.set\(\s*\"alr\"\s*,"
+    r"\s*\"yes\"\s*\)\s*;\s*[A-Za-z0-9_$]+\s*&&"
+)
+URL_CLASS_RE = re.compile(r"new\s+g\.([A-Za-z0-9_$]{1,8})\(\s*[A-Za-z0-9_$]+\s*,\s*(?:!0|true)\s*\)")
+
+
+def _load_bundled_player_hashes(path: Path = PLAYER_CONFIGS_PATH) -> set[str] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    players = payload.get("players") if isinstance(payload, dict) else None
+    if not isinstance(players, dict):
+        return None
+    hashes: set[str] = set()
+    for key, entry in players.items():
+        hashes.add(str(key))
+        aliases = entry.get("aliases") if isinstance(entry, dict) else None
+        if isinstance(aliases, list):
+            hashes.update(str(alias) for alias in aliases)
+    return hashes
+
+
+def _cipher_coverage(js_url: str, player_js: str, bundled_hashes: set[str] | None) -> dict[str, Any]:
+    hash_match = PLAYER_HASH_RE.search(js_url)
+    player_hash = hash_match.group(1) if hash_match else ""
+    factories = [match for _, match in zip(range(4), URL_FACTORY_RE.finditer(player_js))]
+    factory = factories[0] if len(factories) == 1 else None
+    url_classes = sorted(set(URL_CLASS_RE.findall(factory.group(2)))) if factory else []
+    return {
+        "player_hash": player_hash,
+        "config_covered": None if bundled_hashes is None or not player_hash else player_hash in bundled_hashes,
+        "url_factory_anchor": factory is not None,
+        "url_class_found": len(url_classes) == 1,
+    }
+
+
 def _extract_signature_timestamp(player_js: str) -> int | None:
     patterns = (
         r"signatureTimestamp\s*[:=]\s*(\d{3,})",
@@ -416,6 +459,55 @@ def _player_api_request(
     if not isinstance(parsed, dict):
         raise CanaryError("player response is not an object")
     return parsed
+
+
+def _is_playable_summary(summary: dict[str, Any]) -> bool:
+    return summary.get("playability_status") == "OK" and bool(summary.get("has_streaming_data"))
+
+
+def _sentinel_player(
+    *,
+    video_id: str,
+    innertube_query_value: str,
+    web_client_version: str,
+    visitor_data: str,
+    hl: str,
+    gl: str,
+) -> tuple[str, dict[str, Any]]:
+    web_summary = _summarize_player_response(
+        _player_api_request(
+            video_id=video_id,
+            innertube_query_value=innertube_query_value,
+            client_version=web_client_version,
+            visitor_data=visitor_data,
+            hl=hl,
+            gl=gl,
+        )
+    )
+    if _is_playable_summary(web_summary):
+        return "WEB", web_summary
+    for entry in LEVYRA_CLIENT_MATRIX:
+        if entry.get("requires_po_token"):
+            continue
+        client = dict(entry.get("client") or {})
+        try:
+            candidate = _summarize_player_response(
+                _player_api_request(
+                    video_id=video_id,
+                    innertube_query_value=innertube_query_value,
+                    client_version=str(client.get("clientVersion") or ""),
+                    visitor_data=visitor_data,
+                    hl=hl,
+                    gl=gl,
+                    client=client,
+                    user_agent=str(entry.get("user_agent") or USER_AGENT),
+                )
+            )
+        except CanaryError:
+            continue
+        if _is_playable_summary(candidate):
+            return str(entry.get("name") or ""), candidate
+    return "WEB", web_summary
 
 
 def _format_url_metadata(format_json: dict[str, Any]) -> tuple[str, bool, bool, bool]:
@@ -770,15 +862,14 @@ def _probe_sentinel(
                 "web_client_version": str(ytcfg.get("INNERTUBE_CLIENT_VERSION") or ""),
                 "visitor_data": str(ytcfg.get("VISITOR_DATA") or ""),
             }
-            player = _player_api_request(
+            primary_client, summary = _sentinel_player(
                 video_id=video_id,
                 innertube_query_value=matrix_inputs["innertube_query_value"],
-                client_version=matrix_inputs["web_client_version"],
+                web_client_version=matrix_inputs["web_client_version"],
                 visitor_data=matrix_inputs["visitor_data"],
                 hl=hl,
                 gl=gl,
             )
-            summary = _summarize_player_response(player)
             probe_url = summary.pop("_probe_url", "")
             media = _probe_media_url(probe_url)
             initial_status = ""
@@ -803,8 +894,10 @@ def _probe_sentinel(
                         "sha256": js_sha256,
                         "bytes": len(js_result.body),
                         "signature_timestamp": _extract_signature_timestamp(js_text),
+                        "cipher_coverage": _cipher_coverage(js_url, js_text, _load_bundled_player_hashes()),
                     },
                     "web_client_version": str(ytcfg.get("INNERTUBE_CLIENT_VERSION") or ""),
+                    "primary_client": primary_client,
                     "watch_initial_playability_status": initial_status,
                     "player": summary,
                     "media_probe": media,
@@ -1311,6 +1404,25 @@ def _classify(
         if old_js.get("sha256") and new_js.get("sha256") and old_js.get("sha256") != new_js.get("sha256"):
             info.append(f"{name}: player JS hash changed")
         if (
+            old_obs.get("primary_client")
+            and new_obs.get("primary_client")
+            and old_obs.get("primary_client") != new_obs.get("primary_client")
+        ):
+            info.append(
+                f"{name}: primary probe client {old_obs.get('primary_client')} -> {new_obs.get('primary_client')}"
+            )
+        coverage = new_js.get("cipher_coverage") if isinstance(new_js.get("cipher_coverage"), dict) else {}
+        if coverage.get("config_covered") is False and coverage.get("url_factory_anchor") is False:
+            info.append(
+                f"{name}: player {coverage.get('player_hash') or '?'} has no bundled cipher config and no "
+                "URL factory anchor; the app will rely on the semantic analyzer or the remote decoder"
+            )
+        elif coverage.get("config_covered") is False:
+            info.append(
+                f"{name}: player {coverage.get('player_hash') or '?'} has no bundled cipher config yet; "
+                "the URL factory analyzer candidate is available"
+            )
+        if (
             old_obs.get("web_client_version")
             and new_obs.get("web_client_version")
             and old_obs.get("web_client_version") != new_obs.get("web_client_version")
@@ -1425,6 +1537,27 @@ def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str
                 r1="yes" if media.get("continuation_ok") else ("no" if media.get("attempted") else "n/a"),
             )
         )
+    lines += ["", "## Cipher coverage", ""]
+    coverage_lines = []
+    for sentinel in observation.get("sentinels") or []:
+        if not isinstance(sentinel, dict):
+            continue
+        chosen = sentinel.get("observation") if isinstance(sentinel.get("observation"), dict) else {}
+        player_js = chosen.get("player_js") if isinstance(chosen.get("player_js"), dict) else {}
+        coverage = player_js.get("cipher_coverage") if isinstance(player_js.get("cipher_coverage"), dict) else {}
+        if not coverage:
+            continue
+        covered = coverage.get("config_covered")
+        coverage_lines.append(
+            "- {name}: player `{hash}` config={covered} url_factory={factory} url_class={url_class}".format(
+                name=str(sentinel.get("name") or sentinel.get("video_id") or ""),
+                hash=str(coverage.get("player_hash") or "?")[:16],
+                covered="unknown" if covered is None else ("yes" if covered else "no"),
+                factory="yes" if coverage.get("url_factory_anchor") else "no",
+                url_class="yes" if coverage.get("url_class_found") else "no",
+            )
+        )
+    lines.extend(coverage_lines or ["- None"])
     lines += ["", "## Capability checks", ""]
     capability_checks = observation.get("capability_checks") or []
     if not capability_checks:

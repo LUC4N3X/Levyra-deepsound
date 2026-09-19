@@ -311,6 +311,129 @@ class YoutubeCanaryTest(unittest.TestCase):
         self.assertEqual("none", decision["decision"])
         self.assertTrue(any("player JS hash changed" in item for item in decision["informational_changes"]))
 
+    def test_cipher_coverage_detects_url_factory_and_bundled_hash(self):
+        player_js = (
+            'var _yt_player={};(function(g){'
+            'Lt=function(b,W,c){b=new g.VB(b,!0);b.set("alr","yes");c&&(c=Q(c));return b};'
+            'L2m=function(b){var c=HT(b);c.set("alr","yes");c.set("id","")};'
+            '})(_yt_player);'
+        )
+        coverage = canary._cipher_coverage(
+            "https://www.youtube.com/s/player/4fd832e7/player_ias.vflset/en_US/base.js",
+            player_js,
+            {"4fd832e7"},
+        )
+        self.assertEqual(
+            {
+                "player_hash": "4fd832e7",
+                "config_covered": True,
+                "url_factory_anchor": True,
+                "url_class_found": True,
+            },
+            coverage,
+        )
+        es6 = canary._cipher_coverage(
+            "https://www.youtube.com/s/player/4fd832e7/player_es6.vflset/en_US/base.js",
+            'Pq=function(b,W="",c=""){b=new g.AN(b,!0);b.set("alr","yes");c&&(c=vK(c));return b};',
+            {"4fd832e7"},
+        )
+        self.assertTrue(es6["url_factory_anchor"])
+        self.assertTrue(es6["url_class_found"])
+        missing = canary._cipher_coverage("https://www.youtube.com/s/player/deadbeef/base.js", "x", None)
+        self.assertIsNone(missing["config_covered"])
+        self.assertFalse(missing["url_factory_anchor"])
+
+    def test_bundled_player_hashes_include_aliases(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "player_configs.json"
+            path.write_text(
+                json.dumps({"schemaVersion": 1, "players": {"aaaaaaaa": {"aliases": ["bbbbbbbb"]}}}),
+                encoding="utf-8",
+            )
+            self.assertEqual({"aaaaaaaa", "bbbbbbbb"}, canary._load_bundled_player_hashes(path))
+            path.write_text("not json", encoding="utf-8")
+            self.assertIsNone(canary._load_bundled_player_hashes(path))
+
+    def test_uncovered_player_is_informational_and_never_triggers_repair(self):
+        before = self._observation(js="a", ok=True, formats=2)
+        after = self._observation(js="b", ok=True, formats=2)
+        after["sentinels"][0]["observation"]["player_js"]["cipher_coverage"] = {
+            "player_hash": "deadbeef",
+            "config_covered": False,
+            "url_factory_anchor": False,
+            "url_class_found": False,
+        }
+        decision = canary._classify(
+            {"observation": before},
+            after,
+            {"thresholds": {"range_regressions_for_repair": 2}},
+        )
+        self.assertEqual("none", decision["decision"])
+        self.assertTrue(
+            any("no bundled cipher config" in item for item in decision["informational_changes"])
+        )
+        self.assertIn("## Cipher coverage", canary._render_report(after, decision))
+
+    def test_sentinel_falls_back_to_first_playable_potoken_free_client(self):
+        calls = []
+
+        def fake_request(**kwargs):
+            client = kwargs.get("client") or {"clientName": "WEB"}
+            calls.append(client["clientName"])
+            if client["clientName"] == "IOS":
+                return {
+                    "playabilityStatus": {"status": "OK"},
+                    "streamingData": {"adaptiveFormats": [{"mimeType": "audio/mp4", "url": "https://r1.googlevideo.com/v"}]},
+                }
+            return {"playabilityStatus": {"status": "UNPLAYABLE", "reason": "Video unavailable"}}
+
+        original = canary._player_api_request
+        canary._player_api_request = fake_request
+        try:
+            primary, summary = canary._sentinel_player(
+                video_id="dQw4w9WgXcQ",
+                innertube_query_value="key",
+                web_client_version="2.0",
+                visitor_data="",
+                hl="en",
+                gl="US",
+            )
+        finally:
+            canary._player_api_request = original
+
+        self.assertEqual("IOS", primary)
+        self.assertEqual("OK", summary["playability_status"])
+        self.assertNotIn("WEB_REMIX", calls[1:])
+        self.assertEqual("WEB", calls[0])
+
+    def test_sentinel_keeps_web_summary_when_nothing_is_playable(self):
+        original = canary._player_api_request
+        canary._player_api_request = lambda **kwargs: {"playabilityStatus": {"status": "UNPLAYABLE"}}
+        try:
+            primary, summary = canary._sentinel_player(
+                video_id="dQw4w9WgXcQ",
+                innertube_query_value="key",
+                web_client_version="2.0",
+                visitor_data="",
+                hl="en",
+                gl="US",
+            )
+        finally:
+            canary._player_api_request = original
+
+        self.assertEqual("WEB", primary)
+        self.assertEqual("UNPLAYABLE", summary["playability_status"])
+
+    def test_visionos_matrix_entry_mirrors_the_shipped_app_identity(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "VISIONOS")
+        resolver = (
+            Path(__file__).resolve().parents[2]
+            / "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
+        ).read_text(encoding="utf-8")
+        self.assertIn(f'.put("deviceModel", "{entry["client"]["deviceModel"]}")', resolver)
+        self.assertIn(f'.put("osVersion", "{entry["client"]["osVersion"]}")', resolver)
+        self.assertIn("RealityDevice17,1; U; CPU visionOS 26_6_0", entry["user_agent"])
+
     def test_adaptive_video_ladder_disappearing_is_material(self):
         before = self._observation(js="a", ok=True, formats=8, adaptive_video=5, muxed_video=1)
         after = self._observation(js="b", ok=True, formats=2, adaptive_video=0, muxed_video=1)
