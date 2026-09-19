@@ -29,7 +29,7 @@
   <br>
   <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/Obtainium.png" alt="Install Levyra with Obtainium" width="160"></a>
   <a href="https://appteka.store/apps/b5br313609"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/Appteka.png" alt="Get Levyra on Appteka" width="160"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra for Windows" width="160"></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/Windows.png" alt="Get Levyra on Windows" width="160"></a>
 </p>
 <p align="center">🌍 <b>Levyra speaks 36 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
