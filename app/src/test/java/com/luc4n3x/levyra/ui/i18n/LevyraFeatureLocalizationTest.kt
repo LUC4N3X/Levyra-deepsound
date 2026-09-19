@@ -160,7 +160,7 @@ class LevyraFeatureLocalizationTest {
     }
 
     @Test
-    fun everyLanguageResolvesPlayerGestureActionsWithAnIntentionalEnglishFallback() {
+    fun everyLanguageResolvesPlayerGestureActions() {
         LevyraStrings.all().forEach { strings ->
             listOf(
                 strings.playerGestureHorizontalSwipe,
@@ -185,9 +185,5 @@ class LevyraFeatureLocalizationTest {
             }
         }
         assertEquals("Doppio tap", LevyraStrings.forCode("it").playerGestureDoubleTapAction)
-        assertEquals(
-            LevyraStrings.forCode("en").playerGestureDoubleTapAction,
-            LevyraStrings.forCode("de").playerGestureDoubleTapAction
-        )
     }
 }

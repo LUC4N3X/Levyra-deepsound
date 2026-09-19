@@ -6377,7 +6377,12 @@ private fun LyricsOverlay(
             .filter { (_, line) -> line.role == LyricVocalRole.BACKGROUND }
             .map { (index, _) -> index }
     }
-    val activeIndex = remember(visibleLyrics, syncedLyrics, lyricsAnimationsEnabled, lyricsPositionProvider) {
+    val timedActiveIndex = remember(visibleLyrics, syncedLyrics, lyricsPositionProvider) {
+        derivedStateOf {
+            if (syncedLyrics) activeLyricIndex(lyricsPositionProvider(), visibleLyrics) else -1
+        }
+    }.value
+    val visualActiveIndex = remember(visibleLyrics, syncedLyrics, lyricsAnimationsEnabled, lyricsPositionProvider) {
         derivedStateOf {
             if (syncedLyrics) {
                 activeLyricIndex(
@@ -6459,7 +6464,7 @@ private fun LyricsOverlay(
         }
     }
 
-    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: activeIndex
+    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: visualActiveIndex
 
     LaunchedEffect(scrollFocusIndex, lyricsStartIndex, autoScrollEnabled, viewMode, visibleLyrics.size) {
         if (scrollFocusIndex >= 0 && autoScrollEnabled) {
@@ -6920,19 +6925,19 @@ private fun LyricsOverlay(
                 ) { index, line ->
                     val selectionKey = lyricSelectionKey(index, line)
                     val selected = selectionKey in selectedVerseKeys
-                    val timedActive = syncedLyrics && (index == activeIndex || index == backgroundActiveIndex)
+                    val timedActive = syncedLyrics && (index == timedActiveIndex || index == backgroundActiveIndex)
                     val lineInstrumentalGap = instrumentalGap?.takeIf { it.nextLineIndex == index }
                     KaraokeLyricLine(
                         line = line,
                         positionProvider = lyricsPositionProvider,
                         instrumentalGap = lineInstrumentalGap,
                         isActive = timedActive,
-                        isPrimaryActive = index == activeIndex,
+                        isPrimaryActive = index == visualActiveIndex,
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
                         distanceFromActive = when {
                             lineInstrumentalGap != null -> 0
-                            activeIndex >= 0 -> kotlin.math.abs(index - activeIndex)
+                            visualActiveIndex >= 0 -> kotlin.math.abs(index - visualActiveIndex)
                             else -> 0
                         },
                         focusMode = lyricsFocusMode,
@@ -15402,7 +15407,7 @@ private fun PlayerInlineLyricsSection(
         lyrics.isNotEmpty() -> {
             val listState = rememberLazyListState()
             val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
-            val activeIndex = remember(lyrics, positionMs, lyricsAnimationsEnabled) {
+            val visualActiveIndex = remember(lyrics, positionMs, lyricsAnimationsEnabled) {
                 activeLyricIndex(
                     lyricsLineFocusPositionMs(positionMs, lyricsAnimationsEnabled),
                     lyrics
@@ -15420,11 +15425,11 @@ private fun PlayerInlineLyricsSection(
                 }
             }
 
-            LaunchedEffect(activeIndex, inlineAutoScroll, lyricsAnimationsEnabled) {
-                if (activeIndex >= 0 && inlineAutoScroll) {
+            LaunchedEffect(visualActiveIndex, inlineAutoScroll, lyricsAnimationsEnabled) {
+                if (visualActiveIndex >= 0 && inlineAutoScroll) {
                     inlineAutoScrolling = true
                     runCatching {
-                        val target = maxOf(0, activeIndex - 1)
+                        val target = maxOf(0, visualActiveIndex - 1)
                         if (lyricsAnimationsEnabled) {
                             listState.animateScrollToItem(target)
                         } else {
@@ -15453,7 +15458,7 @@ private fun PlayerInlineLyricsSection(
                         items = lyrics,
                         key = { index, line -> "${line.startMs}-${line.role.name}-$index" }
                     ) { index, line ->
-                        val isActive = index == activeIndex
+                        val isActive = index == visualActiveIndex
                         Text(
                             text = line.text,
                             color = if (isActive) primaryContent else Color.White.copy(alpha = 0.48f),
