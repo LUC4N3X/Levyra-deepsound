@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.SystemClock
 import android.app.Application
 import android.net.ConnectivityManager
+import java.util.Locale
 import android.net.NetworkCapabilities
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -7250,6 +7251,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             officialArtworkRepository.find(track, selectedCountry)
         }.getOrNull()
         if (official != null) {
+            val enrichedGenres = official.genres.map { it.lowercase(Locale.ROOT) }.toSet()
+            val combinedMoodTags = (track.moodTags + enrichedGenres).filter { it.isNotBlank() }.toSet()
             return track.copy(
                 album = official.album.ifBlank { track.album },
                 thumbnailUrl = official.thumbnailUrl,
@@ -7260,10 +7263,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 year = official.year.ifBlank { track.year },
                 trackNumber = official.trackNumber.takeIf { it > 0 } ?: track.trackNumber,
                 discNumber = official.discNumber.takeIf { it > 0 } ?: track.discNumber,
+                trackTotal = official.trackTotal.takeIf { it > 0 } ?: track.trackTotal,
+                discTotal = official.discTotal.takeIf { it > 0 } ?: track.discTotal,
+                composer = official.composer.ifBlank { track.composer },
+                albumArtist = official.albumArtist.ifBlank { track.albumArtist },
+                copyright = official.copyright.ifBlank { track.copyright },
+                appleSongId = official.appleSongId.ifBlank { track.appleSongId },
+                appleAlbumId = official.appleAlbumId.ifBlank { track.appleAlbumId },
                 explicit = official.explicit || track.explicit,
                 metadataProvider = official.provider.ifBlank { track.metadataProvider },
                 metadataConfidence = maxOf(track.metadataConfidence, officialMetadataConfidence(official.score)),
-                canonicalAlbumUrl = official.canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl }
+                canonicalAlbumUrl = official.canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
+                moodTags = combinedMoodTags
             )
         }
         val musicMatches = runCatching {
@@ -7300,10 +7311,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     year = enriched.year.ifBlank { item.year },
                     trackNumber = enriched.trackNumber.takeIf { it > 0 } ?: item.trackNumber,
                     discNumber = enriched.discNumber.takeIf { it > 0 } ?: item.discNumber,
+                    trackTotal = enriched.trackTotal.takeIf { it > 0 } ?: item.trackTotal,
+                    discTotal = enriched.discTotal.takeIf { it > 0 } ?: item.discTotal,
+                    composer = enriched.composer.ifBlank { item.composer },
+                    albumArtist = enriched.albumArtist.ifBlank { item.albumArtist },
+                    copyright = enriched.copyright.ifBlank { item.copyright },
+                    appleSongId = enriched.appleSongId.ifBlank { item.appleSongId },
+                    appleAlbumId = enriched.appleAlbumId.ifBlank { item.appleAlbumId },
                     explicit = enriched.explicit || item.explicit,
                     metadataProvider = enriched.metadataProvider.ifBlank { item.metadataProvider },
                     metadataConfidence = maxOf(item.metadataConfidence, enriched.metadataConfidence),
-                    canonicalAlbumUrl = enriched.canonicalAlbumUrl.ifBlank { item.canonicalAlbumUrl }
+                    canonicalAlbumUrl = enriched.canonicalAlbumUrl.ifBlank { item.canonicalAlbumUrl },
+                    moodTags = (item.moodTags + enriched.moodTags).filter { it.isNotBlank() }.toSet()
                 )
             }
 

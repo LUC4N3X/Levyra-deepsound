@@ -24,6 +24,13 @@ object TrackJson {
         .put("year", track.year)
         .put("trackNumber", track.trackNumber)
         .put("discNumber", track.discNumber)
+        .put("trackTotal", track.trackTotal)
+        .put("discTotal", track.discTotal)
+        .put("composer", track.composer)
+        .put("albumArtist", track.albumArtist)
+        .put("copyright", track.copyright)
+        .put("appleSongId", track.appleSongId)
+        .put("appleAlbumId", track.appleAlbumId)
         .put("explicit", track.explicit)
         .put("albumBrowseId", track.albumBrowseId)
         .put("artistBrowseIds", org.json.JSONArray(track.artistBrowseIds))
@@ -68,6 +75,13 @@ object TrackJson {
             year = json.optString("year"),
             trackNumber = json.optInt("trackNumber"),
             discNumber = json.optInt("discNumber"),
+            trackTotal = json.optInt("trackTotal"),
+            discTotal = json.optInt("discTotal"),
+            composer = json.optString("composer"),
+            albumArtist = json.optString("albumArtist"),
+            copyright = json.optString("copyright"),
+            appleSongId = json.optString("appleSongId"),
+            appleAlbumId = json.optString("appleAlbumId"),
             explicit = json.optBoolean("explicit"),
             albumBrowseId = json.optString("albumBrowseId"),
             artistBrowseIds = json.optJSONArray("artistBrowseIds").toStringList(),

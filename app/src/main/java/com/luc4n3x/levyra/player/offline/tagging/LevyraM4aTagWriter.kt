@@ -258,6 +258,8 @@ object LevyraM4aTagWriter {
         if (metadata.trackNumber > 0) items += pairItem(Atom.TRACK_NUMBER, metadata.trackNumber, metadata.trackTotal, trailingReserved = true)
         if (metadata.discNumber > 0) items += pairItem(Atom.DISC_NUMBER, metadata.discNumber, metadata.discTotal, trailingReserved = false)
         if (metadata.explicit) items += binaryItem(Atom.ADVISORY, byteArrayOf(1), DATA_SIGNED_INTEGER)
+        metadata.composer.cleanTag()?.let { items += textItem(Atom.COMPOSER, it) }
+        metadata.copyright.cleanTag()?.let { items += textItem(Atom.COPYRIGHT, it) }
         metadata.isrc.cleanTag()?.let { items += freeformItem(FREEFORM_ISRC, it) }
         metadata.upc.cleanTag()?.let { items += freeformItem(FREEFORM_UPC, it) }
         metadata.sourceUrl.cleanTag(4096)?.let { items += freeformItem(FREEFORM_SOURCE_URL, it) }
@@ -571,7 +573,9 @@ data class LevyraM4aMetadata(
     val counterpartId: String = "",
     val mediaType: String = "",
     val encodedBy: String = "Levyra",
-    val artworkData: ByteArray? = null
+    val artworkData: ByteArray? = null,
+    val composer: String = "",
+    val copyright: String = ""
 )
 
 data class LevyraM4aTagResult(
@@ -661,7 +665,10 @@ private object Atom {
         COVR,
         TRACK_NUMBER,
         DISC_NUMBER,
-        ADVISORY
+        ADVISORY,
+        COMPOSER,
+        COPYRIGHT,
+        COPYRIGHT_ALT
     )
     val CONTAINERS = setOf(MOOV, TRAK, MDIA, MINF, STBL, EDTS, DINF, UDTA, MOOF, TRAF, MVEX)
 

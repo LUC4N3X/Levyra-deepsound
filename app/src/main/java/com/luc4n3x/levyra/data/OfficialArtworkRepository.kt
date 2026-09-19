@@ -131,6 +131,13 @@ class OfficialArtworkRepository(context: Context) {
             val durationMs = item.optLong("trackTimeMillis", 0L)
             val releaseDate = item.optString("releaseDate").trim()
             val score = matchScore(track, title, artist, album, durationMs, item.optString("isrc"))
+            val trackId = item.optLong("trackId", 0L).takeIf { it > 0L }?.toString().orEmpty()
+            val collectionId = item.optLong("collectionId", 0L).takeIf { it > 0L }?.toString().orEmpty()
+            val collectionArtist = item.optString("collectionArtistName").trim()
+            val genre = item.optString("primaryGenreName").trim()
+            val trackCount = item.optInt("trackCount", 0)
+            val discCount = item.optInt("discCount", 0)
+            val trackViewUrl = item.optString("trackViewUrl").trim()
             items += OfficialArtwork(
                 thumbnailUrl = resizeAppleArtwork(artwork, 600),
                 largeThumbnailUrl = resizeAppleArtwork(artwork, 1400),
@@ -143,7 +150,15 @@ class OfficialArtworkRepository(context: Context) {
                 trackNumber = item.optInt("trackNumber", 0),
                 discNumber = item.optInt("discNumber", 0),
                 explicit = item.optString("trackExplicitness").equals("explicit", ignoreCase = true),
-                isrc = item.optString("isrc")
+                isrc = item.optString("isrc"),
+                title = title,
+                artist = artist,
+                albumArtist = collectionArtist,
+                trackTotal = trackCount,
+                discTotal = discCount,
+                genres = if (genre.isNotBlank()) listOf(genre) else emptyList(),
+                appleSongId = trackId,
+                appleAlbumId = collectionId
             )
         }
         return ProviderResponse(items, true)
@@ -484,7 +499,17 @@ class OfficialArtworkRepository(context: Context) {
             releaseDate = primary.releaseDate.ifBlank { supplement.releaseDate },
             year = primary.year.ifBlank { supplement.year },
             explicit = primary.explicit || supplement.explicit,
-            upc = primary.upc.ifBlank { supplement.upc }
+            upc = primary.upc.ifBlank { supplement.upc },
+            title = primary.title.ifBlank { supplement.title },
+            artist = primary.artist.ifBlank { supplement.artist },
+            albumArtist = primary.albumArtist.ifBlank { supplement.albumArtist },
+            composer = primary.composer.ifBlank { supplement.composer },
+            genres = if (primary.genres.isNotEmpty()) primary.genres else supplement.genres,
+            trackTotal = primary.trackTotal.takeIf { it > 0 } ?: supplement.trackTotal,
+            discTotal = primary.discTotal.takeIf { it > 0 } ?: supplement.discTotal,
+            copyright = primary.copyright.ifBlank { supplement.copyright },
+            appleSongId = primary.appleSongId.ifBlank { supplement.appleSongId },
+            appleAlbumId = primary.appleAlbumId.ifBlank { supplement.appleAlbumId }
         )
     }
 
@@ -610,7 +635,17 @@ class OfficialArtworkRepository(context: Context) {
         val discNumber: Int = 0,
         val explicit: Boolean = false,
         val isrc: String = "",
-        val upc: String = ""
+        val upc: String = "",
+        val title: String = "",
+        val artist: String = "",
+        val albumArtist: String = "",
+        val composer: String = "",
+        val genres: List<String> = emptyList(),
+        val trackTotal: Int = 0,
+        val discTotal: Int = 0,
+        val copyright: String = "",
+        val appleSongId: String = "",
+        val appleAlbumId: String = ""
     )
 
     private data class ProviderResponse(
