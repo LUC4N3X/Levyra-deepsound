@@ -19,7 +19,7 @@
   <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg 126w, docs/assets/levyra-wiki-light.svg 130w" sizes="(max-width: 480px) 126px, 130px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 130w" sizes="(max-width: 480px) 126px, 130px"><img src="docs/assets/levyra-wiki.svg" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 130w" sizes="(max-width: 480px) 126px, 130px" alt="Levyra Documentation"></picture></a>
 </p>
 
-<p align="center"><b>DOWNLOAD LEVYRA</b></p>
+<p align="center"><sub><b>✦ &nbsp;GET LEVYRA &nbsp;·&nbsp; OFFICIAL DOWNLOADS &amp; REPOSITORIES&nbsp; ✦</b></sub></p>
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-download-mobile-light.svg 145w, docs/assets/levyra-github-download-light.svg 160w" sizes="(max-width: 480px) 145px, 160px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-github-download-mobile.svg 145w, docs/assets/levyra-github-download.svg 160w" sizes="(max-width: 480px) 145px, 160px"><img src="docs/assets/levyra-github-download.svg" srcset="docs/assets/levyra-github-download-mobile.svg 145w, docs/assets/levyra-github-download.svg 160w" sizes="(max-width: 480px) 145px, 160px" alt="Download Levyra from GitHub Releases"></picture></a>
