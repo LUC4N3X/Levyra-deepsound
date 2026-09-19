@@ -19,6 +19,7 @@ import com.luc4n3x.levyra.data.YoutubeStreamCapability
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.apple.AppleMetadataEnricher
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
@@ -440,6 +441,7 @@ class OfflineAudioExporter(
     private val downloadQualityKey: String = settings.storedQualityKey()
 ) {
     private val rateLimiter = DownloadRateLimiter(settings.effectiveRateKbps)
+    private val appleMetadataEnricher = AppleMetadataEnricher(context)
     val embeddedMetadataWriterReady: Boolean
         get() = LevyraM4aTagWriter.isAvailable
 
@@ -462,6 +464,12 @@ class OfflineAudioExporter(
         Timber.i("Offline export started: %s", track.title)
         cleanupWorkspace(workspace)
         var metadataTrack = mergeOfflineMetadataTrack(track, playable)
+        if (settings.embedMetadata && needsAppleMetadataEnrichment(metadataTrack)) {
+            val enriched = runCatching { appleMetadataEnricher.enrich(metadataTrack) }.getOrNull()
+            if (enriched != null) {
+                metadataTrack = enriched
+            }
+        }
         val metadataSeed = metadataTrack
         val prepareMetadata = settings.embedMetadata && (metadataSeed.durationMs <= 0L || metadataSeed.durationMs <= FAST_METADATA_EMBED_MAX_DURATION_MS)
         val artworkDeferred = if (prepareMetadata && settings.embedArtwork) async(Dispatchers.IO) { downloadArtwork(metadataSeed) } else null
@@ -1225,6 +1233,14 @@ class OfflineAudioExporter(
             null
         } ?: return ""
         return cachedLyricsText(entity.payload)
+    }
+
+    private fun needsAppleMetadataEnrichment(track: Track): Boolean {
+        return track.metadataProvider != "Apple Music" ||
+            track.composer.isBlank() ||
+            track.isrc.isBlank() ||
+            track.copyright.isBlank() ||
+            track.trackNumber <= 0
     }
 
     private suspend fun persistDownload(original: Track, resolved: Track, fileName: String, uri: Uri, container: AudioContainer, embeddedMetadata: Boolean) {

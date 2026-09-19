@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.SystemClock
 import android.app.Application
 import android.net.ConnectivityManager
+import java.util.Locale
 import android.net.NetworkCapabilities
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -7250,6 +7251,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             officialArtworkRepository.find(track, selectedCountry)
         }.getOrNull()
         if (official != null) {
+            val enrichedGenres = official.genres.map { it.lowercase(Locale.ROOT) }.toSet()
+            val combinedMoodTags = (track.moodTags + enrichedGenres).filter { it.isNotBlank() }.toSet()
             return track.copy(
                 album = official.album.ifBlank { track.album },
                 thumbnailUrl = official.thumbnailUrl,
@@ -7260,10 +7263,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 year = official.year.ifBlank { track.year },
                 trackNumber = official.trackNumber.takeIf { it > 0 } ?: track.trackNumber,
                 discNumber = official.discNumber.takeIf { it > 0 } ?: track.discNumber,
+                trackTotal = official.trackTotal.takeIf { it > 0 } ?: track.trackTotal,
+                discTotal = official.discTotal.takeIf { it > 0 } ?: track.discTotal,
+                composer = official.composer.ifBlank { track.composer },
+                albumArtist = official.albumArtist.ifBlank { track.albumArtist },
+                copyright = official.copyright.ifBlank { track.copyright },
+                appleSongId = official.appleSongId.ifBlank { track.appleSongId },
+                appleAlbumId = official.appleAlbumId.ifBlank { track.appleAlbumId },
                 explicit = official.explicit || track.explicit,
                 metadataProvider = official.provider.ifBlank { track.metadataProvider },
                 metadataConfidence = maxOf(track.metadataConfidence, officialMetadataConfidence(official.score)),
-                canonicalAlbumUrl = official.canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl }
+                canonicalAlbumUrl = official.canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
+                moodTags = combinedMoodTags
             )
         }
         val musicMatches = runCatching {
