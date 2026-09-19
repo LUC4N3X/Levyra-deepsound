@@ -394,7 +394,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 3, false),
         ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L, 4, false),
         ClientProfile("WEB_REMIX", "1.20260804.16.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 5, true),
-        ClientProfile("WEB", "2.20260805.01.00", "YouTube Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 6, true),
+        ClientProfile(YoutubeWebClientIdentity.CLIENT_NAME, YoutubeWebClientIdentity.CLIENT_VERSION, "YouTube Web", YoutubeWebClientIdentity.USER_AGENT, false, 0L, 6, true),
         ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 7, false)
     )
 
@@ -1409,7 +1409,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         val status = playability?.optString("status").orEmpty()
         if (status.isNotBlank() && status != "OK") {
             val reason = playability?.optString("reason").orEmpty()
-            throw YoutubePlayerRequestException(null, reason.ifBlank { status })
+            throw YoutubePlayerRequestException(
+                null,
+                reason.ifBlank { status },
+                YoutubeClientFailureAttribution.playabilityScope(playability)
+            )
         }
 
         val streamingData = playerResponse.optJSONObject("streamingData")
@@ -1542,7 +1546,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         val status = playability?.optString("status").orEmpty()
         if (status.isNotBlank() && status != "OK") {
             val reason = playability?.optString("reason").orEmpty()
-            throw YoutubePlayerRequestException(null, reason.ifBlank { status })
+            throw YoutubePlayerRequestException(
+                null,
+                reason.ifBlank { status },
+                YoutubeClientFailureAttribution.playabilityScope(playability)
+            )
         }
         val formats = androidReelFormats(root)
         if (formats.length() == 0) {
@@ -2261,9 +2269,17 @@ class PlaybackResolver private constructor(private val context: Context) {
             clearTransientClientPenalties()
             return
         }
+        val scope = YoutubeClientFailureAttribution.scope(error)
+        if (scope == YoutubeClientFailureScope.NOT_ATTRIBUTABLE) return
         clientHealth.compute(profile.clientName) { name, current ->
             val previous = current ?: ClientHealth()
             val failures = (previous.failures + 1).coerceAtMost(10_000)
+            if (scope == YoutubeClientFailureScope.TRANSIENT) {
+                return@compute previous.copy(
+                    failures = failures,
+                    updatedAtMs = System.currentTimeMillis()
+                ).also { persistClientHealth(name, it) }
+            }
             val consecutive = (previous.consecutiveFailures + 1).coerceAtMost(100)
             val message = error.message.orEmpty().lowercase()
             val hardBlock = message.contains("http 403") || message.contains("http 410") || message.contains("http 429") || message.contains("sign in") || message.contains("login")
@@ -2729,7 +2745,11 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (status.isNotBlank() && status != "OK") {
                 val reason = playability?.optString("reason").orEmpty()
                 val subreason = playability?.optJSONObject("errorScreen")?.toString().orEmpty()
-                throw YoutubePlayerRequestException(null, reason.ifBlank { subreason.ifBlank { status } })
+                throw YoutubePlayerRequestException(
+                    null,
+                    reason.ifBlank { subreason.ifBlank { status } },
+                    YoutubeClientFailureAttribution.playabilityScope(playability)
+                )
             }
             val streamingData = root.optJSONObject("streamingData")
                 ?: throw YoutubePlayerRequestException(null, "Nessun blocco streamingData")
@@ -2951,7 +2971,14 @@ class PlaybackResolver private constructor(private val context: Context) {
                             videoSubtitleTracks = videoSubtitleTracks
                         )
                     }
-                    else -> throw YoutubePlayerRequestException(null, "Nessuno stream video compatibile disponibile")
+                    else -> {
+                        Timber.w(
+                            "InnerTube video unresolved client=%s shape=%s",
+                            profile.clientName,
+                            YoutubeStreamingDataShape.of(streamingData)
+                        )
+                        throw YoutubePlayerRequestException(null, "Nessuno stream video compatibile disponibile")
+                    }
                 }
             }
 
@@ -2959,6 +2986,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
             val sabrAudioStreams = sabrAudioDescriptors(sabrDelivery, sabrCandidates, duration, audioQuality)
             if (bestAudioUrl.isBlank() && sabrAudioStreams.isEmpty()) {
+                Timber.w(
+                    "InnerTube audio unresolved client=%s shape=%s sabrContext=%s",
+                    profile.clientName,
+                    YoutubeStreamingDataShape.of(streamingData),
+                    sabrDelivery != null
+                )
                 throw YoutubePlayerRequestException(null, "URL streaming assente")
             }
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
