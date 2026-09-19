@@ -12375,24 +12375,34 @@ private fun RecentSearchesRow(
                             }
                         }
                         Box(modifier = Modifier.align(Alignment.TopEnd)) {
-                            IconButton(
-                                onClick = { menuExpanded = true },
+                            Box(
                                 modifier = Modifier
-                                    .padding(5.dp)
-                                    .size(30.dp)
-                                    .background(Color.Black.copy(alpha = 0.44f), CircleShape)
-                                    .border(
-                                        Dp.Hairline,
-                                        Color.White.copy(alpha = 0.20f),
-                                        CircleShape
-                                    )
+                                    .padding(top = 5.dp, end = 5.dp)
+                                    .size(40.dp)
+                                    .clickable { menuExpanded = true },
+                                contentAlignment = Alignment.TopEnd
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.MoreVert,
-                                    contentDescription = strings.actions,
-                                    tint = Color.White.copy(alpha = 0.94f),
-                                    modifier = Modifier.size(17.dp)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.36f),
+                                            CircleShape
+                                        )
+                                        .border(
+                                            Dp.Hairline,
+                                            Color.White.copy(alpha = 0.16f),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.MoreVert,
+                                        contentDescription = strings.actions,
+                                        tint = Color.White.copy(alpha = 0.92f),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
                             }
                             DropdownMenu(
                                 expanded = menuExpanded,
