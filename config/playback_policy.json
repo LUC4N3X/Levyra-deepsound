@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "revision": 2026082701,
+  "revision": 2026091901,
   "audioStrategy": [
     "REEL_AUDIO",
     "REEL_MUXED",
@@ -17,6 +17,16 @@
   "clients": {
     "ANDROID_VR": {
       "enabled": false
+    },
+    "ANDROID": {
+      "capabilities": {
+        "player": false
+      }
+    },
+    "WEB_EMBEDDED_PLAYER": {
+      "capabilities": {
+        "player": false
+      }
     }
   }
 }
