@@ -1,14 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="198" height="58" viewBox="0 0 168 50" role="img" aria-label="GET IT ON Appteka">
+<svg xmlns="http://www.w3.org/2000/svg" width="215" height="68" viewBox="0 0 215 68" role="img" aria-label="GET IT ON Appteka">
   <title>GET IT ON Appteka</title>
-  <rect x=".75" y=".75" width="166.5" height="48.5" rx="10" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
-  <rect x=".75" y="13" width="3.5" height="24" rx="1.75" fill="#2F9B04"/>
-  <g transform="translate(11 12) scale(0.24)">
-    <rect width="108" height="108" rx="24" fill="#2F9B04"/>
-    <g transform="translate(33.48 33.48) scale(0.14657143)">
-      <path fill="#F2FFED" d="M25.768,129.575L129.575,25.768C164.08,-8.589 219.727,-8.589 254.232,25.768C288.589,60.126 288.589,115.92 254.232,150.425L150.425,254.232C115.92,288.589 60.126,288.589 25.768,254.232C-8.589,219.727 -8.589,164.08 25.768,129.575ZM46.618,150.425C31.201,165.695 26.062,187.572 31.348,207.1L119.297,119.297L181.552,181.552L233.382,129.575C256.434,106.67 256.434,69.523 233.382,46.618C210.477,23.566 173.33,23.566 150.425,46.618L46.618,150.425Z"/>
-    </g>
+  <defs>
+    <linearGradient id="bg-l-Appteka" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F6F8FA"/>
+    </linearGradient>
+    <radialGradient id="glow-l-Appteka" cx="20%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#34C759" stop-opacity="0.14"/>
+      <stop offset="60%" stop-color="#34C759" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="#34C759" stop-opacity="0.0"/>
+    </radialGradient>
+    <linearGradient id="border-l-Appteka" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34C759" stop-opacity="0.75"/>
+      <stop offset="40%" stop-color="#D0D7DE"/>
+      <stop offset="100%" stop-color="#D8DEE4"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="213" height="66" rx="13" fill="url(#bg-l-Appteka)" stroke="url(#border-l-Appteka)" stroke-width="1.2"/>
+  <rect x="1" y="1" width="213" height="66" rx="13" fill="url(#glow-l-Appteka)"/>
+  <rect x="13" y="13" width="42" height="42" rx="10" fill="#F6F8FA" stroke="#D0D7DE" stroke-width="1"/>
+  <g transform="translate(20 20) scale(0.26)"><rect width="108" height="108" rx="24" fill="#2F9B04"/><g transform="translate(33.48 33.48) scale(0.14657143)"><path fill="#F2FFED" d="M25.768,129.575L129.575,25.768C164.08,-8.589 219.727,-8.589 254.232,25.768C288.589,60.126 288.589,115.92 254.232,150.425L150.425,254.232C115.92,288.589 60.126,288.589 25.768,254.232C-8.589,219.727 -8.589,164.08 25.768,129.575ZM46.618,150.425C31.201,165.695 26.062,187.572 31.348,207.1L119.297,119.297L181.552,181.552L233.382,129.575C256.434,106.67 256.434,69.523 233.382,46.618C210.477,23.566 173.33,23.566 150.425,46.618L46.618,150.425Z"/></g></g>
+  <text x="64" y="27" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700" letter-spacing="1">GET IT ON</text>
+  <text x="64" y="48" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="16" font-weight="800">Appteka</text>
+  <g transform="translate(192 34)">
+    <circle cx="0" cy="0" r="11" fill="#F6F8FA" stroke="#D0D7DE" stroke-width="0.8"/>
+    <path d="M-1.5 -3.5 L2 0 L-1.5 3.5" fill="none" stroke="#57606A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="48" y="18.5" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">GET IT ON</text>
-  <text x="48" y="35.5" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="750">Appteka</text>
-  <path d="M155 22l3 3-3 3" fill="none" stroke="#8C959F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

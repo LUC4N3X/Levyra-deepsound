@@ -1,14 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="126" height="37.8" viewBox="0 0 160 48" role="img" aria-label="DOWNLOAD FOR Windows">
+<svg xmlns="http://www.w3.org/2000/svg" width="158" height="52" viewBox="0 0 158 52" role="img" aria-label="DOWNLOAD FOR Windows">
   <title>DOWNLOAD FOR Windows</title>
-  <rect x=".75" y=".75" width="158.5" height="46.5" rx="10" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
-  <rect x=".75" y="12" width="3.5" height="24" rx="1.75" fill="#0078D4"/>
-  <g transform="translate(10.5 10.5) scale(0.50)" fill="#0078D4">
-    <rect x="0" y="0" width="25" height="25" rx="2.5"/>
-    <rect x="29" y="0" width="25" height="25" rx="2.5"/>
-    <rect x="0" y="29" width="25" height="25" rx="2.5"/>
-    <rect x="29" y="29" width="25" height="25" rx="2.5"/>
+  <defs>
+    <linearGradient id="mbg-Windows" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181D25"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+    <radialGradient id="mglow-Windows" cx="20%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#0078D4" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#0078D4" stop-opacity="0.0"/>
+    </radialGradient>
+    <linearGradient id="mborder-Windows" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0078D4" stop-opacity="0.75"/>
+      <stop offset="35%" stop-color="#38414D"/>
+      <stop offset="100%" stop-color="#21262D"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="156" height="50" rx="11" fill="url(#mbg-Windows)" stroke="url(#mborder-Windows)" stroke-width="1.2"/>
+  <rect x="1" y="1" width="156" height="50" rx="11" fill="url(#mglow-Windows)"/>
+  <rect x="10" y="9" width="34" height="34" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <g transform="translate(16 15) scale(0.46)" fill="#0078D4"><rect x="0" y="0" width="24" height="24" rx="2.5"/><rect x="28" y="0" width="24" height="24" rx="2.5"/><rect x="0" y="28" width="24" height="24" rx="2.5"/><rect x="28" y="28" width="24" height="24" rx="2.5"/></g>
+  <text x="50" y="21" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.8">DOWNLOAD FOR</text>
+  <text x="50" y="37" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="800">Windows</text>
+  <g transform="translate(141 26)">
+    <circle cx="0" cy="0" r="9" fill="#161B22" stroke="#30363D" stroke-width="0.8"/>
+    <path d="M-1.2 -3 L1.5 0 L-1.2 3" fill="none" stroke="#8B949E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="48" y="18" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">DOWNLOAD FOR</text>
-  <text x="48" y="34.5" fill="#F0F6FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="14" font-weight="750">Windows</text>
-  <path d="M147 21l3 3-3 3" fill="none" stroke="#8B949E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
