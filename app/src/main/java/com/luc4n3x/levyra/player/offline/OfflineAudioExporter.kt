@@ -500,7 +500,7 @@ class OfflineAudioExporter(
                 }
                 reportProgress(7)
                 playable = resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
-                metadataTrack = mergeOfflineMetadataTrack(track, playable)
+                metadataTrack = mergeOfflineMetadataTrack(metadataSeed, playable)
                 reportProgress(10)
                 downloadAudio(playable, workspace)
             }

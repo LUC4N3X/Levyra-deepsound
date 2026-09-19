@@ -273,6 +273,13 @@ class AppleMetadataEnrichmentTest {
     }
 
     @Test
+    fun featuredOnlyArtistOverlapIsNotCompatible() {
+        assertFalse(AppleArtistMatcher.areCompatible("Drake feat. Rihanna", "Future feat. Rihanna"))
+        assertTrue(AppleArtistMatcher.areCompatible("Drake feat. Rihanna", "Drake"))
+        assertTrue(AppleArtistMatcher.areCompatible("Rihanna", "Drake feat. Rihanna"))
+    }
+
+    @Test
     fun matchingWithoutIsrcAcceptsWithHighConfidenceWhenMetadataAligns() {
         val reference = sampleTrack(isrc = "")
         val candidate = sampleAppleCandidate(isrc = "")

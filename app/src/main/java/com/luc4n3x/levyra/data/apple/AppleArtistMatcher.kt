@@ -16,8 +16,10 @@ internal object AppleArtistMatcher {
         if (reference.isBlank() || candidate.isBlank()) return false
         if (reference == candidate) return true
         if (hasStructuredCreditOverlap(referenceArtist, candidateArtist)) return true
-        if (hasNameOverlap(referenceArtist, candidateArtist)) return true
-        return hasMutualCoverage(reference, candidate)
+        return hasMutualCoverage(
+            AlternativeTrackText.artistCredit(referenceArtist).primary,
+            AlternativeTrackText.artistCredit(candidateArtist).primary
+        )
     }
 
     private fun hasStructuredCreditOverlap(referenceArtist: String, candidateArtist: String): Boolean {
@@ -26,12 +28,6 @@ internal object AppleArtistMatcher {
         if (reference.primary.isBlank() || candidate.primary.isBlank()) return false
         if (reference.primary == candidate.primary) return true
         return reference.primary in candidate.names || candidate.primary in reference.names
-    }
-
-    private fun hasNameOverlap(referenceArtist: String, candidateArtist: String): Boolean {
-        val referenceNames = AlternativeTrackText.artistNames(referenceArtist)
-        val candidateNames = AlternativeTrackText.artistNames(candidateArtist)
-        return referenceNames.any { it in candidateNames } || candidateNames.any { it in referenceNames }
     }
 
     private fun hasMutualCoverage(reference: String, candidate: String): Boolean {
