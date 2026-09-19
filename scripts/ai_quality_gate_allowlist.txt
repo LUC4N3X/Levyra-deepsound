@@ -59,3 +59,4 @@ desktop/packaging/windows/levyra.ico
 fastlane/metadata/android/en-US/images/icon.png
 docs/assets/Windows.png
 docs/assets/levyra-windows-download.png
+docs/branding/openapk-icon.png
