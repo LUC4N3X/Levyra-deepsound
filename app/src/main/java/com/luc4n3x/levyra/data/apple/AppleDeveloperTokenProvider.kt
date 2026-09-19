@@ -74,7 +74,7 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
                 null
             } ?: continue
 
-            val token = JWT_REGEX.findAll(source)
+            val discoveredToken = JWT_REGEX.findAll(source)
                 .map { it.value }
                 .mapNotNull { candidate ->
                     jwtExpiration(candidate)
@@ -82,7 +82,7 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
                         ?.let { expiration -> candidate to expiration }
                 }
                 .firstOrNull()
-            if (token != null) return token
+            if (discoveredToken != null) return discoveredToken
         }
         return null
     }
