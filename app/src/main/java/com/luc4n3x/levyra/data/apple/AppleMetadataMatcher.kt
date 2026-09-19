@@ -244,7 +244,6 @@ object AppleMetadataMatcher {
         val normCand = AlternativeTrackText.normalizeArtist(candArtist)
         if (normRef.isBlank() || normCand.isBlank()) return false
         if (normRef == normCand) return true
-        if (normRef.contains(normCand) || normCand.contains(normRef)) return true
 
         val refCredit = AlternativeTrackText.artistCredit(refArtist)
         val candCredit = AlternativeTrackText.artistCredit(candArtist)
@@ -258,8 +257,9 @@ object AppleMetadataMatcher {
         val candNames = AlternativeTrackText.artistNames(candArtist)
         if (refNames.any { it in candNames } || candNames.any { it in refNames }) return true
 
-        val coverage = tokenCoverage(normRef, normCand)
-        return coverage >= 0.50
+        val referenceCoverage = tokenCoverage(normRef, normCand)
+        val candidateCoverage = tokenCoverage(normCand, normRef)
+        return minOf(referenceCoverage, candidateCoverage) >= 0.50
     }
 
     private fun tokenCoverage(target: String, candidate: String): Double {

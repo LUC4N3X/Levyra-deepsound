@@ -215,6 +215,29 @@ class AppleMetadataEnrichmentTest {
     }
 
     @Test
+    fun oneSidedArtistSubstringDoesNotMatchTributeBand() {
+        val reference = sampleTrack(
+            title = "One",
+            artist = "U2",
+            album = "Achtung Baby",
+            durationMs = 276_000L,
+            isrc = ""
+        )
+        val tributeCandidate = sampleAppleCandidate(
+            name = "One",
+            artistName = "U2 Tribute Band",
+            albumName = "Achtung Baby",
+            durationMs = 276_000L,
+            isrc = ""
+        )
+
+        val evaluation = AppleMetadataMatcher.evaluate(reference, tributeCandidate)
+
+        assertFalse("One-sided artist substrings must not match tribute artists", evaluation.accepted)
+        assertEquals("artist_mismatch", evaluation.rejectionReason)
+    }
+
+    @Test
     fun unicodeArtistMatchingHandlesInternationalNamesCorrectly() {
         // Japanese artist: Utada Hikaru
         val jpRef = sampleTrack(title = "First Love", artist = "宇多田ヒカル", album = "First Love", isrc = "")

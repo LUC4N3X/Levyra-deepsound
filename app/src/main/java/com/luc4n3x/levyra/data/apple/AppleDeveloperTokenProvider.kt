@@ -5,12 +5,16 @@ import android.util.Base64
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
@@ -78,23 +82,19 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
     suspend fun requireDeveloperToken(): String =
         getDeveloperToken() ?: throw IOException("Apple Music developer token unavailable")
 
-    private fun requestText(url: String): String? {
+    private suspend fun requestText(url: String): String? {
         val request = Request.Builder()
             .url(url)
             .header("User-Agent", USER_AGENT)
             .header("Accept", "*/*")
             .build()
-        val call = client.newCall(request)
-        return try {
-            call.execute().use { response ->
-                if (!response.isSuccessful) null else response.body.string().takeIf(String::isNotBlank)
-            }
-        } catch (_: IOException) {
-            null
+        val response = awaitResponse(client.newCall(request)) ?: return null
+        return response.use {
+            if (!response.isSuccessful) null else response.body.string().takeIf(String::isNotBlank)
         }
     }
 
-    private fun requestTrustedScriptText(url: String): String? {
+    private suspend fun requestTrustedScriptText(url: String): String? {
         var currentUrl = trustedAppleMusicScriptUrl(url)?.toHttpUrlOrNull() ?: return null
         var redirects = 0
         while (redirects <= MAX_TOKEN_SCRIPT_REDIRECTS) {
@@ -102,27 +102,41 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
                 .url(currentUrl)
                 .header("User-Agent", USER_AGENT)
                 .build()
-            val call = scriptClient.newCall(request)
-            try {
-                val response = call.execute()
-                response.use { resp ->
-                    if (resp.code in SCRIPT_REDIRECT_CODES) {
-                        val location = resp.header("Location") ?: return null
-                        val next = trustedAppleMusicScriptRedirectUrl(currentUrl.toString(), location)
-                            ?.toHttpUrlOrNull() ?: return null
-                        currentUrl = next
-                        redirects++
-                    } else if (resp.isSuccessful) {
-                        return resp.body.string().takeIf(String::isNotBlank)
-                    } else {
-                        return null
-                    }
+            val response = awaitResponse(scriptClient.newCall(request)) ?: return null
+            response.use { resp ->
+                if (resp.code in SCRIPT_REDIRECT_CODES) {
+                    val location = resp.header("Location") ?: return null
+                    val next = trustedAppleMusicScriptRedirectUrl(currentUrl.toString(), location)
+                        ?.toHttpUrlOrNull() ?: return null
+                    currentUrl = next
+                    redirects++
+                } else if (resp.isSuccessful) {
+                    return resp.body.string().takeIf(String::isNotBlank)
+                } else {
+                    return null
                 }
-            } catch (_: IOException) {
-                return null
             }
         }
         return null
+    }
+
+    private suspend fun awaitResponse(call: Call): Response? = suspendCancellableCoroutine { continuation ->
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, error: IOException) {
+                if (continuation.isActive) {
+                    continuation.resumeWith(Result.success(null))
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (continuation.isActive) {
+                    continuation.resumeWith(Result.success(response))
+                } else {
+                    response.close()
+                }
+            }
+        })
     }
 
     private fun extractScriptUrls(html: String): List<String> {

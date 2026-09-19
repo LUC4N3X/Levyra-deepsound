@@ -7311,10 +7311,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     year = enriched.year.ifBlank { item.year },
                     trackNumber = enriched.trackNumber.takeIf { it > 0 } ?: item.trackNumber,
                     discNumber = enriched.discNumber.takeIf { it > 0 } ?: item.discNumber,
+                    trackTotal = enriched.trackTotal.takeIf { it > 0 } ?: item.trackTotal,
+                    discTotal = enriched.discTotal.takeIf { it > 0 } ?: item.discTotal,
+                    composer = enriched.composer.ifBlank { item.composer },
+                    albumArtist = enriched.albumArtist.ifBlank { item.albumArtist },
+                    copyright = enriched.copyright.ifBlank { item.copyright },
+                    appleSongId = enriched.appleSongId.ifBlank { item.appleSongId },
+                    appleAlbumId = enriched.appleAlbumId.ifBlank { item.appleAlbumId },
                     explicit = enriched.explicit || item.explicit,
                     metadataProvider = enriched.metadataProvider.ifBlank { item.metadataProvider },
                     metadataConfidence = maxOf(item.metadataConfidence, enriched.metadataConfidence),
-                    canonicalAlbumUrl = enriched.canonicalAlbumUrl.ifBlank { item.canonicalAlbumUrl }
+                    canonicalAlbumUrl = enriched.canonicalAlbumUrl.ifBlank { item.canonicalAlbumUrl },
+                    moodTags = (item.moodTags + enriched.moodTags).filter { it.isNotBlank() }.toSet()
                 )
             }
 

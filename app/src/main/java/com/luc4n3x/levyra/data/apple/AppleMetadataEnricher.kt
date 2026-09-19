@@ -6,14 +6,18 @@ import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -259,18 +263,29 @@ class AppleMetadataEnricher(private val context: Context) {
         return executeJson(request)
     }
 
-    private suspend fun executeJson(request: Request): JSONObject? = withContext(Dispatchers.IO) {
-        try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) null else {
-                    response.body.string().let { JSONObject(it) }
+    private suspend fun executeJson(request: Request): JSONObject? = suspendCancellableCoroutine { continuation ->
+        val call = client.newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, error: IOException) {
+                if (continuation.isActive) {
+                    continuation.resumeWith(Result.success(null))
                 }
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Throwable) {
-            null
-        }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    val parsed = if (!response.isSuccessful) {
+                        null
+                    } else {
+                        runCatching { JSONObject(response.body.string()) }.getOrNull()
+                    }
+                    if (continuation.isActive) {
+                        continuation.resumeWith(Result.success(parsed))
+                    }
+                }
+            }
+        })
     }
 
     private fun resizeAppleArtwork(url: String, size: Int): String =
