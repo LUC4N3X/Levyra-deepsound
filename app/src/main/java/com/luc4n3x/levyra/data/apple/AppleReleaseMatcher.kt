@@ -40,7 +40,7 @@ internal object AppleReleaseMatcher {
             referenceTrackNumber = reference.trackNumber,
             candidateTrackNumber = candidate.trackNumber
         )
-        return (baseScore + trackPositionScore) to releaseMatch
+        return baseScore + trackPositionScore to releaseMatch
     }
 
     private fun hasUsableIdentity(referenceAlbum: String, candidateAlbum: String): Boolean {
