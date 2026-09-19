@@ -27,6 +27,7 @@
   <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/IzzyOnDroid.png" alt="Get Levyra on IzzyOnDroid" width="160"></a>
   <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/OpenAPK.png" alt="Get Levyra on OpenAPK" width="160"></a>
   <br>
+  <a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/AndroidFreeware.png" alt="Get Levyra on AndroidFreeware" width="160"></a>
   <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/Obtainium.png" alt="Install Levyra with Obtainium" width="160"></a>
   <a href="https://appteka.store/apps/b5br313609"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/Appteka.png" alt="Get Levyra on Appteka" width="160"></a>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/Windows.png" alt="Get Levyra on Windows" width="160"></a>
