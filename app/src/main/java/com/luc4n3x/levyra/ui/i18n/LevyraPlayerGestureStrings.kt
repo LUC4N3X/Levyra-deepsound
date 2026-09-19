@@ -427,7 +427,7 @@ private val playerGestureBundles = mapOf(
         "Tria què fa un doble toc",
         "Premuda llarga",
         "Tria què fa mantenir premuda la caràtula",
-        "Cop de dit vertical",
+        "Lliscament vertical",
         "Controls disponibles al llarg de les vores de la caràtula",
         "Avança o retrocedeix",
         "Reprodueix o posa en pausa",
