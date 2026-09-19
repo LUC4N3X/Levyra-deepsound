@@ -86,4 +86,14 @@ class YoutubePlayabilityStatusTest {
                                 + "\"messages\":[42, null]}"), "dQw4w9WgXcQ"));
         assertEquals(ContentNotAvailableException.class, error.getClass());
     }
+
+    @Test
+    void loginRequiredWithoutMessagesDoesNotThrowNullPointerException() {
+        final ContentNotAvailableException error = assertThrows(
+                ContentNotAvailableException.class, () ->
+                        YoutubeStreamExtractor.checkPlayabilityStatus(status("{"
+                                + "\"status\":\"LOGIN_REQUIRED\","
+                                + "\"reason\":\"Something new\"}"), "dQw4w9WgXcQ"));
+        assertEquals(ContentNotAvailableException.class, error.getClass());
+    }
 }

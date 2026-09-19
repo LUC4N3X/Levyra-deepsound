@@ -85,10 +85,12 @@ class YoutubeClientFailureAttributionTest {
                 YoutubeClientFailureAttribution.scope(YoutubePlayerRequestException(code, "HTTP $code"))
             )
         }
-        assertEquals(
-            YoutubeClientFailureScope.TRANSIENT,
-            YoutubeClientFailureAttribution.scope(YoutubePlayerRequestException(503, "HTTP 503"))
-        )
+        listOf(408, 500, 503).forEach { code ->
+            assertEquals(
+                YoutubeClientFailureScope.TRANSIENT,
+                YoutubeClientFailureAttribution.scope(YoutubePlayerRequestException(code, "HTTP $code"))
+            )
+        }
     }
 
     @Test

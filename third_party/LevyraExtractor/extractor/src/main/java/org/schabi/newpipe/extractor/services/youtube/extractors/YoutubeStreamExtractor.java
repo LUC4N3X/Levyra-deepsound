@@ -2411,6 +2411,9 @@ public class YoutubeStreamExtractor extends StreamExtractor {
     private static boolean anyPlayabilityMessageContains(@Nonnull final JsonObject playabilityStatus,
                                                          @Nonnull final String needle) {
         final JsonArray messages = playabilityStatus.getArray("messages");
+        if (messages == null) {
+            return false;
+        }
         for (int i = 0; i < messages.size(); i++) {
             final Object message = messages.get(i);
             if (message instanceof String && ((String) message).contains(needle)) {

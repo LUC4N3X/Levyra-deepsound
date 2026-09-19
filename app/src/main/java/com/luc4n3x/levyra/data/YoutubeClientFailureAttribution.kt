@@ -79,7 +79,11 @@ internal object YoutubeClientFailureAttribution {
         request?.playabilityScope?.let { return it }
         val code = request?.httpCode
         if (code != null) {
-            return if (code >= 500) YoutubeClientFailureScope.TRANSIENT else YoutubeClientFailureScope.CLIENT
+            return if (code == 408 || code >= 500) {
+                YoutubeClientFailureScope.TRANSIENT
+            } else {
+                YoutubeClientFailureScope.CLIENT
+            }
         }
         val text = chain.joinToString(" ") { it.message.orEmpty() }.lowercase(Locale.ROOT)
         if (botMarkers.any(text::contains)) return YoutubeClientFailureScope.CLIENT
