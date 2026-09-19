@@ -22,14 +22,14 @@
 <p align="center"><b>DOWNLOAD LEVYRA</b></p>
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/GitHub.png" alt="Download Levyra from GitHub Releases" width="160"></a>
-  <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/F-Droid.png" alt="Get Levyra on F-Droid" width="160"></a>
-  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/IzzyOnDroid.png" alt="Get Levyra on IzzyOnDroid" width="160"></a>
-  <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/OpenAPK.png" alt="Get Levyra on OpenAPK" width="160"></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/GitHub.png" alt="Download Levyra from GitHub Releases" height="48"></a>
+  <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/F-Droid.png" alt="Get Levyra on F-Droid" height="48"></a>
+  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/IzzyOnDroid.png" alt="Get Levyra on IzzyOnDroid" height="48"></a>
+  <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/OpenAPK.png" alt="Get Levyra on OpenAPK" height="48"></a>
   <br>
-  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/Obtainium.png" alt="Install Levyra with Obtainium" width="160"></a>
-  <a href="https://appteka.store/apps/b5br313609"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/Appteka.png" alt="Get Levyra on Appteka" width="160"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/get-it-on-windows.svg" alt="Download Levyra for Windows" width="160"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/Obtainium.png" alt="Install Levyra with Obtainium" height="48"></a>
+  <a href="https://appteka.store/apps/b5br313609"><img src="https://raw.githubusercontent.com/N-Zik-Group/N-Zik-Website/main/images/get-it-on/Appteka.png" alt="Get Levyra on Appteka" height="48"></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/get-it-on-windows.svg" alt="Download Levyra for Windows" height="48"></a>
 </p>
 <p align="center">🌍 <b>Levyra speaks 36 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
