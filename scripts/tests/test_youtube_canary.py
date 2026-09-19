@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 import sys
@@ -310,6 +311,443 @@ class YoutubeCanaryTest(unittest.TestCase):
         )
         self.assertEqual("none", decision["decision"])
         self.assertTrue(any("player JS hash changed" in item for item in decision["informational_changes"]))
+
+    def test_cipher_coverage_detects_url_factory_and_bundled_hash(self):
+        player_js = (
+            'var _yt_player={};(function(g){'
+            'Lt=function(b,W,c){b=new g.VB(b,!0);b.set("alr","yes");c&&(c=Q(c));return b};'
+            'L2m=function(b){var c=HT(b);c.set("alr","yes");c.set("id","")};'
+            '})(_yt_player);'
+        )
+        coverage = canary._cipher_coverage(
+            "https://www.youtube.com/s/player/4fd832e7/player_ias.vflset/en_US/base.js",
+            player_js,
+            {"4fd832e7"},
+        )
+        self.assertEqual(
+            {
+                "player_hash": "4fd832e7",
+                "config_covered": True,
+                "url_factory_anchor": True,
+                "url_class_found": True,
+            },
+            coverage,
+        )
+        es6 = canary._cipher_coverage(
+            "https://www.youtube.com/s/player/4fd832e7/player_es6.vflset/en_US/base.js",
+            'Pq=function(b,W="",c=""){b=new g.AN(b,!0);b.set("alr","yes");c&&(c=vK(c));return b};',
+            {"4fd832e7"},
+        )
+        self.assertTrue(es6["url_factory_anchor"])
+        self.assertTrue(es6["url_class_found"])
+        missing = canary._cipher_coverage("https://www.youtube.com/s/player/deadbeef/base.js", "x", None)
+        self.assertIsNone(missing["config_covered"])
+        self.assertFalse(missing["url_factory_anchor"])
+
+    def test_bundled_player_hashes_include_aliases(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "player_configs.json"
+            path.write_text(
+                json.dumps({"schemaVersion": 1, "players": {"aaaaaaaa": {"aliases": ["bbbbbbbb"]}}}),
+                encoding="utf-8",
+            )
+            self.assertEqual({"aaaaaaaa", "bbbbbbbb"}, canary._load_bundled_player_hashes(path))
+            path.write_text("not json", encoding="utf-8")
+            self.assertIsNone(canary._load_bundled_player_hashes(path))
+
+    def test_uncovered_player_is_informational_and_never_triggers_repair(self):
+        before = self._observation(js="a", ok=True, formats=2)
+        after = self._observation(js="b", ok=True, formats=2)
+        after["sentinels"][0]["observation"]["player_js"]["cipher_coverage"] = {
+            "player_hash": "deadbeef",
+            "config_covered": False,
+            "url_factory_anchor": False,
+            "url_class_found": False,
+        }
+        decision = canary._classify(
+            {"observation": before},
+            after,
+            {"thresholds": {"range_regressions_for_repair": 2}},
+        )
+        self.assertEqual("none", decision["decision"])
+        self.assertTrue(
+            any("no bundled cipher config" in item for item in decision["informational_changes"])
+        )
+        self.assertIn("## Cipher coverage", canary._render_report(after, decision))
+
+    def test_sentinel_falls_back_to_first_playable_potoken_free_client(self):
+        calls = []
+
+        def fake_request(**kwargs):
+            client = kwargs.get("client") or {"clientName": "WEB"}
+            calls.append(client["clientName"])
+            if client["clientName"] == "IOS":
+                return {
+                    "playabilityStatus": {"status": "OK"},
+                    "streamingData": {"adaptiveFormats": [{"mimeType": "audio/mp4", "url": "https://r1.googlevideo.com/v"}]},
+                }
+            return {"playabilityStatus": {"status": "UNPLAYABLE", "reason": "Video unavailable"}}
+
+        original = canary._player_api_request
+        canary._player_api_request = fake_request
+        try:
+            primary, summary = canary._sentinel_player(
+                video_id="dQw4w9WgXcQ",
+                innertube_query_value="key",
+                web_client_version="2.0",
+                visitor_data="",
+                hl="en",
+                gl="US",
+            )
+        finally:
+            canary._player_api_request = original
+
+        self.assertEqual("IOS", primary)
+        self.assertEqual("OK", summary["playability_status"])
+        self.assertNotIn("WEB_REMIX", calls[1:])
+        self.assertEqual("WEB", calls[0])
+
+    def test_sentinel_keeps_web_summary_when_nothing_is_playable(self):
+        original = canary._player_api_request
+        canary._player_api_request = lambda **kwargs: {"playabilityStatus": {"status": "UNPLAYABLE"}}
+        try:
+            primary, summary = canary._sentinel_player(
+                video_id="dQw4w9WgXcQ",
+                innertube_query_value="key",
+                web_client_version="2.0",
+                visitor_data="",
+                hl="en",
+                gl="US",
+            )
+        finally:
+            canary._player_api_request = original
+
+        self.assertEqual("WEB", primary)
+        self.assertEqual("UNPLAYABLE", summary["playability_status"])
+
+    def _run_sentinel(self, responder):
+        calls = []
+
+        def fake_request(**kwargs):
+            client = kwargs.get("client") or {"clientName": "WEB"}
+            calls.append(
+                (
+                    client["clientName"],
+                    kwargs.get("client_header_name", "1"),
+                    kwargs.get("user_agent", canary.USER_AGENT),
+                )
+            )
+            return responder(client["clientName"])
+
+        original = canary._player_api_request
+        canary._player_api_request = fake_request
+        try:
+            result = canary._sentinel_player(
+                video_id="dQw4w9WgXcQ",
+                innertube_query_value="key",
+                web_client_version="2.0",
+                visitor_data="",
+                hl="en",
+                gl="US",
+            )
+        finally:
+            canary._player_api_request = original
+        return result, calls
+
+    @staticmethod
+    def _playable():
+        return {
+            "playabilityStatus": {"status": "OK"},
+            "streamingData": {"adaptiveFormats": [{"mimeType": "audio/mp4", "url": "https://r1.googlevideo.com/v"}]},
+        }
+
+    def test_web_http_403_still_falls_back_to_ios(self):
+        def responder(name):
+            if name == "WEB":
+                raise canary.CanaryError("player endpoint HTTP 403", status=403)
+            if name == "IOS":
+                return self._playable()
+            return {"playabilityStatus": {"status": "LOGIN_REQUIRED"}}
+
+        (primary, summary), calls = self._run_sentinel(responder)
+
+        self.assertEqual("IOS", primary)
+        self.assertEqual("OK", summary["playability_status"])
+        ios_call = next(call for call in calls if call[0] == "IOS")
+        self.assertEqual("5", ios_call[1])
+        self.assertIn("com.google.ios.youtube", ios_call[2])
+
+    def test_web_http_500_still_falls_back_to_visionos(self):
+        def responder(name):
+            if name == "WEB":
+                raise canary.CanaryError("player endpoint HTTP 500", status=500)
+            return self._playable()
+
+        (primary, _), calls = self._run_sentinel(responder)
+
+        self.assertEqual("VISIONOS", primary)
+        self.assertEqual(("VISIONOS", "101"), calls[1][:2])
+        self.assertIn("com.google.visionos.youtube", calls[1][2])
+
+    def test_web_http_failure_is_reraised_when_every_fallback_fails(self):
+        def responder(name):
+            if name == "WEB":
+                raise canary.CanaryError("player endpoint HTTP 429", status=429)
+            raise canary.CanaryError("player endpoint HTTP 400", status=400)
+
+        with self.assertRaises(canary.CanaryError) as raised:
+            self._run_sentinel(responder)
+
+        self.assertEqual(429, raised.exception.status)
+
+    def test_web_unplayable_200_falls_back_and_keeps_web_when_nothing_plays(self):
+        (primary, summary), _ = self._run_sentinel(
+            lambda name: self._playable() if name == "ANDROID_MUSIC" else {"playabilityStatus": {"status": "UNPLAYABLE"}}
+        )
+        self.assertEqual("ANDROID_MUSIC", primary)
+        self.assertEqual("OK", summary["playability_status"])
+
+        (primary, summary), _ = self._run_sentinel(lambda name: {"playabilityStatus": {"status": "UNPLAYABLE"}})
+        self.assertEqual("WEB", primary)
+        self.assertEqual("UNPLAYABLE", summary["playability_status"])
+
+    def test_player_disabled_clients_are_never_primary_but_stay_in_the_matrix(self):
+        def responder(name):
+            if name in ("ANDROID", "WEB_EMBEDDED_PLAYER"):
+                return self._playable()
+            return {"playabilityStatus": {"status": "UNPLAYABLE"}}
+
+        (primary, _), calls = self._run_sentinel(responder)
+
+        self.assertEqual("WEB", primary)
+        called = [call[0] for call in calls]
+        self.assertNotIn("ANDROID", called)
+        self.assertNotIn("WEB_EMBEDDED_PLAYER", called)
+        self.assertNotIn("WEB_REMIX", called)
+        names = [entry["name"] for entry in canary.LEVYRA_CLIENT_MATRIX]
+        self.assertIn("ANDROID", names)
+        self.assertIn("WEB_EMBEDDED_PLAYER", names)
+
+    def test_every_fallback_sends_its_own_client_header(self):
+        expected = {
+            "WEB": "1",
+            "ANDROID": "3",
+            "IOS": "5",
+            "ANDROID_MUSIC": "21",
+            "WEB_EMBEDDED_PLAYER": "56",
+            "WEB_REMIX": "67",
+            "VISIONOS": "101",
+        }
+        self.assertEqual(
+            expected,
+            {entry["name"]: entry["client_header_name"] for entry in canary.LEVYRA_CLIENT_MATRIX},
+        )
+
+        (_, _), calls = self._run_sentinel(lambda name: {"playabilityStatus": {"status": "UNPLAYABLE"}})
+        for name, header, _ in calls:
+            self.assertEqual(expected[name], header, name)
+
+    def test_player_api_request_puts_the_client_header_on_the_wire(self):
+        captured = {}
+
+        def fake_bounded_request(url, *, data=None, headers=None, max_bytes, **_):
+            captured["headers"] = headers
+            captured["body"] = json.loads(data.decode("utf-8"))
+            return canary.HttpResult(status=200, headers={}, body=b'{"playabilityStatus":{"status":"OK"}}')
+
+        original = canary._bounded_request
+        canary._bounded_request = fake_bounded_request
+        try:
+            canary._player_api_request(
+                video_id="dQw4w9WgXcQ",
+                innertube_query_value="key",
+                client_version="1.04",
+                visitor_data="",
+                hl="en",
+                gl="US",
+                client={"clientName": "VISIONOS"},
+                user_agent="visionos-agent",
+                client_header_name="101",
+            )
+        finally:
+            canary._bounded_request = original
+
+        self.assertEqual("101", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual("1.04", captured["headers"]["X-YouTube-Client-Version"])
+        self.assertEqual("visionos-agent", captured["headers"]["User-Agent"])
+        self.assertEqual("VISIONOS", captured["body"]["context"]["client"]["clientName"])
+        self.assertNotIn("Origin", captured["headers"])
+        self.assertNotIn("Referer", captured["headers"])
+
+    def _capture_player_api_request(self, **kwargs):
+        captured = {}
+
+        def fake_bounded_request(url, *, data=None, headers=None, max_bytes, **_):
+            captured["headers"] = headers
+            captured["body"] = json.loads(data.decode("utf-8")) if data else {}
+            return canary.HttpResult(status=200, headers={}, body=b'{"playabilityStatus":{"status":"OK"}}')
+
+        original = canary._bounded_request
+        canary._bounded_request = fake_bounded_request
+        try:
+            canary._player_api_request(
+                video_id=kwargs.get("video_id", "dQw4w9WgXcQ"),
+                innertube_query_value=kwargs.get("innertube_query_value", "key"),
+                client_version=kwargs.get("client_version", "1.0"),
+                visitor_data=kwargs.get("visitor_data", ""),
+                hl=kwargs.get("hl", "en"),
+                gl=kwargs.get("gl", "US"),
+                client=kwargs.get("client"),
+                user_agent=kwargs.get("user_agent", canary.LEVYRA_WEB_PLAYER_USER_AGENT),
+                client_header_name=kwargs.get("client_header_name", "1"),
+            )
+        finally:
+            canary._bounded_request = original
+        return captured
+
+    def test_web_player_user_agent_mirrors_youtube_web_client_identity(self):
+        source = (
+            Path(__file__).resolve().parents[2]
+            / "app/src/main/java/com/luc4n3x/levyra/data/YoutubeWebClientIdentity.kt"
+        ).read_text(encoding="utf-8")
+        match = re.search(r'const\s+val\s+USER_AGENT\s*=\s*"([^"]+)"', source)
+        self.assertIsNotNone(match)
+        expected_ua = match.group(1)
+        self.assertEqual(expected_ua, canary.LEVYRA_WEB_PLAYER_USER_AGENT)
+        self.assertIn("Chrome/142.0.0.0", canary.LEVYRA_WEB_PLAYER_USER_AGENT)
+        for name in ("WEB", "WEB_REMIX", "WEB_EMBEDDED_PLAYER"):
+            entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == name)
+            self.assertEqual(expected_ua, entry["user_agent"], name)
+
+    def test_player_api_request_visionos_omits_browser_navigation_headers(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "VISIONOS")
+        captured = self._capture_player_api_request(
+            video_id="dQw4w9WgXcQ",
+            client=entry["client"],
+            client_version=entry["client"]["clientVersion"],
+            user_agent=entry["user_agent"],
+            client_header_name=entry["client_header_name"],
+        )
+        self.assertEqual("101", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(entry["user_agent"], captured["headers"]["User-Agent"])
+        self.assertNotIn("Origin", captured["headers"])
+        self.assertNotIn("Referer", captured["headers"])
+
+    def test_player_api_request_ios_omits_browser_navigation_headers(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "IOS")
+        captured = self._capture_player_api_request(
+            video_id="dQw4w9WgXcQ",
+            client=entry["client"],
+            client_version=entry["client"]["clientVersion"],
+            user_agent=entry["user_agent"],
+            client_header_name=entry["client_header_name"],
+        )
+        self.assertEqual("5", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(entry["user_agent"], captured["headers"]["User-Agent"])
+        self.assertNotIn("Origin", captured["headers"])
+        self.assertNotIn("Referer", captured["headers"])
+
+    def test_player_api_request_android_music_omits_browser_navigation_headers(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "ANDROID_MUSIC")
+        captured = self._capture_player_api_request(
+            video_id="dQw4w9WgXcQ",
+            client=entry["client"],
+            client_version=entry["client"]["clientVersion"],
+            user_agent=entry["user_agent"],
+            client_header_name=entry["client_header_name"],
+        )
+        self.assertEqual("21", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(entry["user_agent"], captured["headers"]["User-Agent"])
+        self.assertNotIn("Origin", captured["headers"])
+        self.assertNotIn("Referer", captured["headers"])
+
+    def test_player_api_request_android_omits_browser_navigation_headers(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "ANDROID")
+        captured = self._capture_player_api_request(
+            video_id="dQw4w9WgXcQ",
+            client=entry["client"],
+            client_version=entry["client"]["clientVersion"],
+            user_agent=entry["user_agent"],
+            client_header_name=entry["client_header_name"],
+        )
+        self.assertEqual("3", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(entry["user_agent"], captured["headers"]["User-Agent"])
+        self.assertNotIn("Origin", captured["headers"])
+        self.assertNotIn("Referer", captured["headers"])
+        self.assertFalse(entry["player_enabled"])
+
+    def test_player_api_request_web_sends_youtube_browser_navigation_headers(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "WEB")
+        captured = self._capture_player_api_request(
+            video_id="dQw4w9WgXcQ",
+            client=entry["client"],
+            client_version="2.20260301",
+            user_agent=entry["user_agent"],
+            client_header_name=entry["client_header_name"],
+        )
+        self.assertEqual("1", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(canary.LEVYRA_WEB_PLAYER_USER_AGENT, captured["headers"]["User-Agent"])
+        self.assertEqual("https://www.youtube.com", captured["headers"]["Origin"])
+        self.assertEqual("https://www.youtube.com/watch?v=dQw4w9WgXcQ", captured["headers"]["Referer"])
+
+    def test_player_api_request_web_remix_sends_music_navigation_headers(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "WEB_REMIX")
+        captured = self._capture_player_api_request(
+            video_id="dQw4w9WgXcQ",
+            client=entry["client"],
+            client_version=entry["client"]["clientVersion"],
+            user_agent=entry["user_agent"],
+            client_header_name=entry["client_header_name"],
+        )
+        self.assertEqual("67", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(canary.LEVYRA_WEB_PLAYER_USER_AGENT, captured["headers"]["User-Agent"])
+        self.assertEqual("https://music.youtube.com", captured["headers"]["Origin"])
+        self.assertEqual("https://music.youtube.com/watch?v=dQw4w9WgXcQ", captured["headers"]["Referer"])
+
+    def test_player_api_request_web_embedded_diagnostic_matrix_behavior(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "WEB_EMBEDDED_PLAYER")
+        self.assertEqual("56", entry["client_header_name"])
+        self.assertEqual(canary.LEVYRA_WEB_PLAYER_USER_AGENT, entry["user_agent"])
+        self.assertFalse(entry["player_enabled"])
+        self.assertNotIn(entry, canary._primary_fallback_clients())
+
+        captured = self._capture_player_api_request(
+            video_id="dQw4w9WgXcQ",
+            client=entry["client"],
+            client_version=entry["client"]["clientVersion"],
+            user_agent=entry["user_agent"],
+            client_header_name=entry["client_header_name"],
+        )
+        self.assertEqual("56", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(canary.LEVYRA_WEB_PLAYER_USER_AGENT, captured["headers"]["User-Agent"])
+        self.assertEqual("https://www.youtube.com", captured["headers"]["Origin"])
+        self.assertEqual("https://www.youtube.com/embed/dQw4w9WgXcQ", captured["headers"]["Referer"])
+
+    def test_player_enabled_flags_match_the_published_playback_policy(self):
+        policy = json.loads(
+            (Path(__file__).resolve().parents[2] / "config" / "playback_policy.json").read_text(encoding="utf-8")
+        )
+        clients = policy.get("clients") or {}
+
+        def player_enabled(name):
+            override = clients.get(name) or {}
+            capabilities = override.get("capabilities") or {}
+            if "player" in capabilities:
+                return bool(capabilities["player"])
+            return bool(override.get("enabled", True))
+
+        for entry in canary.LEVYRA_CLIENT_MATRIX:
+            self.assertEqual(player_enabled(entry["name"]), entry["player_enabled"], entry["name"])
+
+    def test_visionos_matrix_entry_mirrors_the_shipped_app_identity(self):
+        entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "VISIONOS")
+        resolver = (
+            Path(__file__).resolve().parents[2]
+            / "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
+        ).read_text(encoding="utf-8")
+        self.assertIn(f'.put("deviceModel", "{entry["client"]["deviceModel"]}")', resolver)
+        self.assertIn(f'.put("osVersion", "{entry["client"]["osVersion"]}")', resolver)
+        self.assertIn("RealityDevice17,1; U; CPU visionOS 26_6_0", entry["user_agent"])
 
     def test_adaptive_video_ladder_disappearing_is_material(self):
         before = self._observation(js="a", ok=True, formats=8, adaptive_video=5, muxed_video=1)

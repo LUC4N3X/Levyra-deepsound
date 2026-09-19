@@ -31,6 +31,10 @@ USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
 )
+LEVYRA_WEB_PLAYER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+)
 VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 # Mirrors the clients Levyra's playback compatibility policy actually uses. ANDROID_VR stays out
@@ -42,12 +46,16 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
             "clientName": "VISIONOS",
             "clientVersion": "1.04",
             "deviceMake": "Apple",
-            "deviceModel": "RealityDevice14,1",
+            "deviceModel": "RealityDevice17,1",
             "osName": "visionOS",
-            "osVersion": "1.0.3.21O566",
+            "osVersion": "26.6.0.23O770",
+            "platform": "MOBILE",
+            "clientScreen": "WATCH",
         },
-        "user_agent": "com.google.ios.youtube/1.04 (RealityDevice14,1; U; CPU visionOS 1_0_3 like Mac OS X)",
+        "user_agent": "com.google.visionos.youtube/1.04(RealityDevice17,1; U; CPU visionOS 26_6_0 like Mac OS X; US)",
         "requires_po_token": False,
+        "client_header_name": "101",
+        "player_enabled": True,
     },
     {
         "name": "ANDROID_MUSIC",
@@ -60,6 +68,8 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
         },
         "user_agent": "com.google.android.apps.youtube.music/8.10.52 (Linux; U; Android 15) gzip",
         "requires_po_token": False,
+        "client_header_name": "21",
+        "player_enabled": True,
     },
     {
         "name": "ANDROID",
@@ -72,6 +82,8 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
         },
         "user_agent": "com.google.android.youtube/19.44.38 (Linux; U; Android 15) gzip",
         "requires_po_token": False,
+        "client_header_name": "3",
+        "player_enabled": False,
     },
     {
         "name": "IOS",
@@ -85,17 +97,32 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
         },
         "user_agent": "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)",
         "requires_po_token": False,
+        "client_header_name": "5",
+        "player_enabled": True,
     },
     {
         "name": "WEB_REMIX",
         "client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260804.16.00"},
+        "user_agent": LEVYRA_WEB_PLAYER_USER_AGENT,
         "requires_po_token": True,
+        "client_header_name": "67",
+        "player_enabled": True,
     },
-    {"name": "WEB", "client": {"clientName": "WEB", "clientVersion": ""}, "requires_po_token": True},
+    {
+        "name": "WEB",
+        "client": {"clientName": "WEB", "clientVersion": ""},
+        "user_agent": LEVYRA_WEB_PLAYER_USER_AGENT,
+        "requires_po_token": True,
+        "client_header_name": "1",
+        "player_enabled": True,
+    },
     {
         "name": "WEB_EMBEDDED_PLAYER",
         "client": {"clientName": "WEB_EMBEDDED_PLAYER", "clientVersion": "1.20260423.01.00"},
+        "user_agent": LEVYRA_WEB_PLAYER_USER_AGENT,
         "requires_po_token": False,
+        "client_header_name": "56",
+        "player_enabled": False,
     },
 )
 
@@ -116,7 +143,7 @@ CAPABILITY_KIND_POTOKEN = "potoken"
 
 # Fixed public fixtures. MADE_FOR_KIDS uses a long-standing children's video so the kids-specific
 # protocol branch is exercised even when ordinary playback is healthy; POTOKEN uses the same
-# youtube-dl reference video the sentinels use, probed once with and once without visitor data so
+# reference video the first sentinel uses, probed once with and once without visitor data so
 # the PoToken-free fallback path is observed on its own.
 DEFAULT_CAPABILITY_CHECKS: tuple[dict[str, Any], ...] = (
     {
@@ -127,7 +154,7 @@ DEFAULT_CAPABILITY_CHECKS: tuple[dict[str, Any], ...] = (
     {
         "name": CAPABILITY_POTOKEN,
         "kind": CAPABILITY_KIND_POTOKEN,
-        "video_id": "BaW_jenozKc",
+        "video_id": "dQw4w9WgXcQ",
     },
 )
 
@@ -346,6 +373,47 @@ def _resolve_player_js_url(html: str, ytcfg: dict[str, Any]) -> str:
     return urllib.parse.urljoin("https://www.youtube.com", raw)
 
 
+PLAYER_CONFIGS_PATH = Path(__file__).resolve().parent.parent / "app" / "src" / "main" / "assets" / "player_configs.json"
+PLAYER_HASH_RE = re.compile(r"/s/player/([A-Za-z0-9_-]{8})/")
+URL_FACTORY_RE = re.compile(
+    r"(?<![A-Za-z0-9_$.])([A-Za-z_$][A-Za-z0-9_$]{0,31})\s*=\s*function\([^(){}]{0,120}\)\s*\{"
+    r"([^{}]{0,600}?)\.set\(\s*\"alr\"\s*,"
+    r"\s*\"yes\"\s*\)\s*;\s*[A-Za-z0-9_$]+\s*&&"
+)
+URL_CLASS_RE = re.compile(r"new\s+g\.([A-Za-z0-9_$]{1,8})\(\s*[A-Za-z0-9_$]+\s*,\s*(?:!0|true)\s*\)")
+
+
+def _load_bundled_player_hashes(path: Path = PLAYER_CONFIGS_PATH) -> set[str] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    players = payload.get("players") if isinstance(payload, dict) else None
+    if not isinstance(players, dict):
+        return None
+    hashes: set[str] = set()
+    for key, entry in players.items():
+        hashes.add(str(key))
+        aliases = entry.get("aliases") if isinstance(entry, dict) else None
+        if isinstance(aliases, list):
+            hashes.update(str(alias) for alias in aliases)
+    return hashes
+
+
+def _cipher_coverage(js_url: str, player_js: str, bundled_hashes: set[str] | None) -> dict[str, Any]:
+    hash_match = PLAYER_HASH_RE.search(js_url)
+    player_hash = hash_match.group(1) if hash_match else ""
+    factories = [match for _, match in zip(range(4), URL_FACTORY_RE.finditer(player_js))]
+    factory = factories[0] if len(factories) == 1 else None
+    url_classes = sorted(set(URL_CLASS_RE.findall(factory.group(2)))) if factory else []
+    return {
+        "player_hash": player_hash,
+        "config_covered": None if bundled_hashes is None or not player_hash else player_hash in bundled_hashes,
+        "url_factory_anchor": factory is not None,
+        "url_class_found": len(url_classes) == 1,
+    }
+
+
 def _extract_signature_timestamp(player_js: str) -> int | None:
     patterns = (
         r"signatureTimestamp\s*[:=]\s*(\d{3,})",
@@ -358,6 +426,40 @@ def _extract_signature_timestamp(player_js: str) -> int | None:
     return None
 
 
+def _client_navigation_headers(
+    client_header_name: str,
+    video_id: str,
+    *,
+    client_name: str = "",
+) -> dict[str, str]:
+    header = str(client_header_name).strip()
+    name = client_name.strip().upper()
+    if header in ("3", "5", "21", "28", "101") or name in (
+        "ANDROID",
+        "IOS",
+        "ANDROID_MUSIC",
+        "ANDROID_VR",
+        "VISIONOS",
+    ):
+        return {}
+    if header == "67" or name == "WEB_REMIX":
+        return {
+            "Origin": "https://music.youtube.com",
+            "Referer": f"https://music.youtube.com/watch?v={video_id}",
+        }
+    if header == "56" or name == "WEB_EMBEDDED_PLAYER":
+        return {
+            "Origin": "https://www.youtube.com",
+            "Referer": f"https://www.youtube.com/embed/{video_id}",
+        }
+    if header == "1" or name == "WEB":
+        return {
+            "Origin": "https://www.youtube.com",
+            "Referer": f"https://www.youtube.com/watch?v={video_id}",
+        }
+    return {}
+
+
 def _player_api_request(
     *,
     video_id: str,
@@ -367,7 +469,8 @@ def _player_api_request(
     hl: str,
     gl: str,
     client: dict[str, Any] | None = None,
-    user_agent: str = USER_AGENT,
+    user_agent: str = LEVYRA_WEB_PLAYER_USER_AGENT,
+    client_header_name: str = "1",
 ) -> dict[str, Any]:
     if not innertube_query_value or not client_version:
         raise CanaryError("watch page did not expose InnerTube API key/client version")
@@ -393,18 +496,24 @@ def _player_api_request(
         "https://www.youtube.com/youtubei/v1/player?"
         + urllib.parse.urlencode({"key": innertube_query_value, "prettyPrint": "false"})
     )
+    headers: dict[str, str] = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": user_agent,
+        "X-YouTube-Client-Name": client_header_name,
+        "X-YouTube-Client-Version": client_version,
+    }
+    headers.update(
+        _client_navigation_headers(
+            client_header_name,
+            video_id,
+            client_name=str(context_client.get("clientName") or ""),
+        )
+    )
     result = _bounded_request(
         endpoint,
         data=json.dumps(body, separators=(",", ":")).encode("utf-8"),
-        headers={
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Origin": "https://www.youtube.com",
-            "Referer": f"https://www.youtube.com/watch?v={video_id}",
-            "User-Agent": user_agent,
-            "X-YouTube-Client-Name": "1",
-            "X-YouTube-Client-Version": client_version,
-        },
+        headers=headers,
         max_bytes=PLAYER_JSON_MAX_BYTES,
     )
     if result.status < 200 or result.status >= 300:
@@ -416,6 +525,72 @@ def _player_api_request(
     if not isinstance(parsed, dict):
         raise CanaryError("player response is not an object")
     return parsed
+
+
+def _is_playable_summary(summary: dict[str, Any]) -> bool:
+    return summary.get("playability_status") == "OK" and bool(summary.get("has_streaming_data"))
+
+
+def _primary_fallback_clients() -> list[dict[str, Any]]:
+    return [
+        entry
+        for entry in LEVYRA_CLIENT_MATRIX
+        if entry.get("player_enabled") and not entry.get("requires_po_token")
+    ]
+
+
+def _sentinel_player(
+    *,
+    video_id: str,
+    innertube_query_value: str,
+    web_client_version: str,
+    visitor_data: str,
+    hl: str,
+    gl: str,
+) -> tuple[str, dict[str, Any]]:
+    web_summary: dict[str, Any] | None = None
+    web_error: CanaryError | None = None
+    try:
+        web_summary = _summarize_player_response(
+            _player_api_request(
+                video_id=video_id,
+                innertube_query_value=innertube_query_value,
+                client_version=web_client_version,
+                visitor_data=visitor_data,
+                hl=hl,
+                gl=gl,
+                user_agent=LEVYRA_WEB_PLAYER_USER_AGENT,
+            )
+        )
+    except CanaryError as error:
+        web_error = error
+    if web_summary is not None and _is_playable_summary(web_summary):
+        return "WEB", web_summary
+    for entry in _primary_fallback_clients():
+        client = dict(entry.get("client") or {})
+        try:
+            candidate = _summarize_player_response(
+                _player_api_request(
+                    video_id=video_id,
+                    innertube_query_value=innertube_query_value,
+                    client_version=str(client.get("clientVersion") or ""),
+                    visitor_data=visitor_data,
+                    hl=hl,
+                    gl=gl,
+                    client=client,
+                    user_agent=str(entry.get("user_agent") or LEVYRA_WEB_PLAYER_USER_AGENT),
+                    client_header_name=str(entry.get("client_header_name") or "1"),
+                )
+            )
+        except CanaryError:
+            continue
+        if _is_playable_summary(candidate):
+            return str(entry.get("name") or ""), candidate
+    if web_summary is not None:
+        return "WEB", web_summary
+    if web_error is not None:
+        raise web_error
+    raise CanaryError("sentinel player request failed")
 
 
 def _format_url_metadata(format_json: dict[str, Any]) -> tuple[str, bool, bool, bool]:
@@ -601,7 +776,8 @@ def _probe_client(
             hl=hl,
             gl=gl,
             client=client,
-            user_agent=str(entry.get("user_agent") or USER_AGENT),
+            user_agent=str(entry.get("user_agent") or LEVYRA_WEB_PLAYER_USER_AGENT),
+            client_header_name=str(entry.get("client_header_name") or "1"),
         )
     except CanaryError as error:
         status = getattr(error, "status", None)
@@ -770,15 +946,14 @@ def _probe_sentinel(
                 "web_client_version": str(ytcfg.get("INNERTUBE_CLIENT_VERSION") or ""),
                 "visitor_data": str(ytcfg.get("VISITOR_DATA") or ""),
             }
-            player = _player_api_request(
+            primary_client, summary = _sentinel_player(
                 video_id=video_id,
                 innertube_query_value=matrix_inputs["innertube_query_value"],
-                client_version=matrix_inputs["web_client_version"],
+                web_client_version=matrix_inputs["web_client_version"],
                 visitor_data=matrix_inputs["visitor_data"],
                 hl=hl,
                 gl=gl,
             )
-            summary = _summarize_player_response(player)
             probe_url = summary.pop("_probe_url", "")
             media = _probe_media_url(probe_url)
             initial_status = ""
@@ -803,8 +978,10 @@ def _probe_sentinel(
                         "sha256": js_sha256,
                         "bytes": len(js_result.body),
                         "signature_timestamp": _extract_signature_timestamp(js_text),
+                        "cipher_coverage": _cipher_coverage(js_url, js_text, _load_bundled_player_hashes()),
                     },
                     "web_client_version": str(ytcfg.get("INNERTUBE_CLIENT_VERSION") or ""),
+                    "primary_client": primary_client,
                     "watch_initial_playability_status": initial_status,
                     "player": summary,
                     "media_probe": media,
@@ -1310,6 +1487,7 @@ def _classify(
         new_js = new_obs.get("player_js") if isinstance(new_obs.get("player_js"), dict) else {}
         if old_js.get("sha256") and new_js.get("sha256") and old_js.get("sha256") != new_js.get("sha256"):
             info.append(f"{name}: player JS hash changed")
+        info.extend(_cipher_and_probe_changes(name, old_obs, new_obs, new_js))
         if (
             old_obs.get("web_client_version")
             and new_obs.get("web_client_version")
@@ -1389,6 +1567,57 @@ def _sanitize_for_baseline(observation: dict[str, Any]) -> dict[str, Any]:
     return json.loads(json.dumps(safe))
 
 
+def _cipher_and_probe_changes(
+    name: str,
+    old_obs: dict[str, Any],
+    new_obs: dict[str, Any],
+    new_js: dict[str, Any],
+) -> list[str]:
+    changes: list[str] = []
+    old_primary = old_obs.get("primary_client")
+    new_primary = new_obs.get("primary_client")
+    if old_primary and new_primary and old_primary != new_primary:
+        changes.append(f"{name}: primary probe client {old_primary} -> {new_primary}")
+    coverage = new_js.get("cipher_coverage") if isinstance(new_js.get("cipher_coverage"), dict) else {}
+    if coverage.get("config_covered") is not False:
+        return changes
+    player_hash = coverage.get("player_hash") or "?"
+    if coverage.get("url_factory_anchor") is False:
+        changes.append(
+            f"{name}: player {player_hash} has no bundled cipher config and no "
+            "URL factory anchor; the app will rely on the semantic analyzer or the remote decoder"
+        )
+    else:
+        changes.append(
+            f"{name}: player {player_hash} has no bundled cipher config yet; "
+            "the URL factory analyzer candidate is available"
+        )
+    return changes
+
+
+def _render_cipher_coverage(observation: dict[str, Any]) -> list[str]:
+    lines = []
+    for sentinel in observation.get("sentinels") or []:
+        if not isinstance(sentinel, dict):
+            continue
+        chosen = sentinel.get("observation") if isinstance(sentinel.get("observation"), dict) else {}
+        player_js = chosen.get("player_js") if isinstance(chosen.get("player_js"), dict) else {}
+        coverage = player_js.get("cipher_coverage") if isinstance(player_js.get("cipher_coverage"), dict) else {}
+        if not coverage:
+            continue
+        covered = coverage.get("config_covered")
+        lines.append(
+            "- {name}: player `{hash}` config={covered} url_factory={factory} url_class={url_class}".format(
+                name=str(sentinel.get("name") or sentinel.get("video_id") or ""),
+                hash=str(coverage.get("player_hash") or "?")[:16],
+                covered="unknown" if covered is None else ("yes" if covered else "no"),
+                factory="yes" if coverage.get("url_factory_anchor") else "no",
+                url_class="yes" if coverage.get("url_class_found") else "no",
+            )
+        )
+    return lines or ["- None"]
+
+
 def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str:
     lines = [
         "# Levyra YouTube Canary",
@@ -1425,6 +1654,8 @@ def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str
                 r1="yes" if media.get("continuation_ok") else ("no" if media.get("attempted") else "n/a"),
             )
         )
+    lines += ["", "## Cipher coverage", ""]
+    lines.extend(_render_cipher_coverage(observation))
     lines += ["", "## Capability checks", ""]
     capability_checks = observation.get("capability_checks") or []
     if not capability_checks:

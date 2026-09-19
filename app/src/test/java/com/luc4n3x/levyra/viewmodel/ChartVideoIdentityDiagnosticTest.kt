@@ -95,6 +95,65 @@ class ChartVideoIdentitySelectionTest {
     }
 
     @Test
+    fun searchEchoOfTheSourceArtTrackWithoutVideoTypeIsNeverSelected() {
+        val target = chartTarget()
+        val echo = track(
+            id = "aaaaaaaaaaa",
+            title = "OSSESSIONE",
+            artist = "Samurai Jay, Vito Salamanca",
+            videoUrl = "https://www.youtube.com/watch?v=aaaaaaaaaaa"
+        )
+
+        assertNull(selectPreferredVideoPlaybackCandidate(target, listOf(echo)))
+        assertEquals(
+            "kqTEc17L2Os",
+            selectPreferredVideoPlaybackCandidate(
+                target,
+                listOf(echo, officialVideo("OSSESSIONE", "Samurai Jay"))
+            )?.let(::videoCandidateId)
+        )
+    }
+
+    @Test
+    fun pairedCounterpartOfAnArtTrackStaysSelectable() {
+        val target = chartTarget().copy(
+            audioVideoId = "aaaaaaaaaaa",
+            counterpartVideoId = "kqTEc17L2Os",
+            videoUrl = "https://www.youtube.com/watch?v=kqTEc17L2Os"
+        )
+
+        assertEquals(
+            "kqTEc17L2Os",
+            selectPreferredVideoPlaybackCandidate(
+                target,
+                listOf(officialVideo("OSSESSIONE", "Samurai Jay"))
+            )?.let(::videoCandidateId)
+        )
+    }
+
+    @Test
+    fun untypedSearchVideoRemainsSelectableForAnOfficialVideoTarget() {
+        val target = track(
+            id = "ccccccccccc",
+            title = "OSSESSIONE",
+            artist = "Samurai Jay",
+            videoUrl = "https://www.youtube.com/watch?v=ccccccccccc",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val sameVideo = track(
+            id = "ccccccccccc",
+            title = "OSSESSIONE",
+            artist = "Samurai Jay",
+            videoUrl = "https://www.youtube.com/watch?v=ccccccccccc"
+        )
+
+        assertEquals(
+            "ccccccccccc",
+            selectPreferredVideoPlaybackCandidate(target, listOf(sameVideo))?.let(::videoCandidateId)
+        )
+    }
+
+    @Test
     fun unverifiedChartIdentityStaysOutOfVideoMode() {
         assertNull(youtubePlayableTrack(chartTarget(), preferVideo = true))
     }

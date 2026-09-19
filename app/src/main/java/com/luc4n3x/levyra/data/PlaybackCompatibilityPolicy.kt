@@ -74,8 +74,9 @@ internal data class PlaybackCompatibilityPolicy(
 ) {
     companion object {
         const val SCHEMA = 1
-        const val BUNDLED_REVISION = 2026082701L
+        const val BUNDLED_REVISION = 2026091901L
         const val DEFAULT_ANDROID_REEL_CLIENT_VERSION = "21.03.36"
+        private val PLAYER_DISABLED = mapOf(PlaybackClientCapability.PLAYER to false)
 
         fun bundled(): PlaybackCompatibilityPolicy = PlaybackCompatibilityPolicy(
             schema = SCHEMA,
@@ -94,7 +95,9 @@ internal data class PlaybackCompatibilityPolicy(
             ),
             androidReelClientVersion = DEFAULT_ANDROID_REEL_CLIENT_VERSION,
             clientOverrides = mapOf(
-                "ANDROID_VR" to PlaybackClientOverride(enabled = false)
+                "ANDROID_VR" to PlaybackClientOverride(enabled = false),
+                "ANDROID" to PlaybackClientOverride(capabilities = PLAYER_DISABLED),
+                "WEB_EMBEDDED_PLAYER" to PlaybackClientOverride(capabilities = PLAYER_DISABLED)
             ),
             expiresAt = 0L,
             minSupportedAppVersion = 0,

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Detect private videos from any `playabilityStatus.messages` entry, as upstream NewPipeExtractor now does.
+- Recognise the current "inappropriate for some users" age-restriction reason and the broader members-only wording.
+
 ## v1.0.0-levyra.10
 
 - Pin the publication fallback version to v1.0.0-levyra.10.
