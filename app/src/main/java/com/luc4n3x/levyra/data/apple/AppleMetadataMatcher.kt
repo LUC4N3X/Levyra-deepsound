@@ -54,7 +54,7 @@ object AppleMetadataMatcher {
         expectedTitleIdentity: TitleIdentity,
         candidateTitleIdentity: TitleIdentity
     ): Evaluation {
-        val (titleScore, titleReason) = scoreTitle(expectedTitleIdentity.core, candidateTitleIdentity.core)
+        val (titleScore, titleReason) = AppleTitleMatcher.score(expectedTitleIdentity.core, candidateTitleIdentity.core)
         if (titleReason != null) return rejected(titleReason)
 
         val isrcMatch = recordingIdentityMatch(reference.isrc, candidate.isrc)
@@ -168,18 +168,6 @@ object AppleMetadataMatcher {
         return false
     }
 
-    private fun scoreTitle(refCore: String, candCore: String): Pair<Int, String?> {
-        if (refCore.isBlank() || candCore.isBlank()) return 0 to "title_core_blank"
-        val coverage = tokenCoverage(refCore, candCore)
-        if (refCore != candCore && coverage < 0.60) return 0 to "title_mismatch"
-        val score = when {
-            refCore == candCore -> 28
-            coverage >= 0.85 -> 20
-            else -> (coverage * 15).toInt()
-        }
-        return score to null
-    }
-
     private fun evaluateDuration(
         refDurationMs: Long,
         candDurationMs: Long,
@@ -198,31 +186,5 @@ object AppleMetadataMatcher {
         }
     }
 
-    private fun tokenCoverage(target: String, candidate: String): Double {
-        val targetTokens = target.split(' ').filter { it.isNotBlank() }.toSet()
-        if (targetTokens.isEmpty()) return 0.0
-        val candidateTokens = candidate.split(' ').filter { it.isNotBlank() }.toSet()
-        if (candidateTokens.isEmpty()) return 0.0
-        return targetTokens.count { it in candidateTokens }.toDouble() / targetTokens.size.toDouble()
-    }
 
-    private fun isCompilationAlbum(album: String): Boolean {
-        val lower = album.lowercase(Locale.ROOT)
-        return COMPILATION_KEYWORDS.any { lower.contains(it) }
-    }
-
-    private fun isGenericAlbum(value: String): Boolean {
-        val lower = value.lowercase(Locale.ROOT).trim()
-        return lower.isBlank() || lower in GENERIC_ALBUMS || lower.startsWith("youtube")
-    }
-
-    private val COMPILATION_KEYWORDS = setOf(
-        "greatest hits", "best of", "the best of", "compilation", "anthology",
-        "the essential", "essentials", "collection", "ultimate collection",
-        "singles collection", "hit collection", "top hits", "soundtrack"
-    )
-
-    private val GENERIC_ALBUMS = setOf(
-        "album", "single", "unknown album", "music", "youtube music", "youtube", "ep"
-    )
 }
