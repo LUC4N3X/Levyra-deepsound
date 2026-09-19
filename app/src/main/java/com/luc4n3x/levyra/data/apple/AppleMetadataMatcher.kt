@@ -6,7 +6,6 @@ import com.luc4n3x.levyra.data.hqaudio.TitleIdentity
 import com.luc4n3x.levyra.data.hqaudio.TrackVersionMarker
 import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.domain.Track
-import java.util.Locale
 import kotlin.math.abs
 
 object AppleMetadataMatcher {
@@ -65,7 +64,7 @@ object AppleMetadataMatcher {
         val (durationScore, durationReason) = evaluateDuration(reference.durationMs, candidate.durationMs, isExactIsrc)
         if (durationReason != null) return rejected(durationReason)
 
-        val (releaseScore, isReleaseMatch) = evaluateRelease(reference, candidate)
+        val (releaseScore, isReleaseMatch) = AppleReleaseMatcher.evaluate(reference, candidate)
         return if (isExactIsrc) {
             exactIsrcEvaluation(releaseScore, durationScore, isReleaseMatch)
         } else {
@@ -97,7 +96,7 @@ object AppleMetadataMatcher {
         durationScore: Int,
         isReleaseMatch: Boolean
     ): Evaluation {
-        val artistScore = scoreArtist(reference.artist, candidate.artistName)
+        val artistScore = AppleArtistMatcher.score(reference.artist, candidate.artistName)
         val totalScore = (35 + titleScore + artistScore + releaseScore + durationScore).coerceIn(0, 100)
         val accepted = totalScore >= MIN_ACCEPTED_CONFIDENCE
         return Evaluation(
@@ -119,23 +118,20 @@ object AppleMetadataMatcher {
         expected: TitleIdentity,
         candidate: TitleIdentity
     ): String? {
-        if (hasBlankIdentity(reference.title, candidateMetadata.name, reference.artist, candidateMetadata.artistName)) {
-            return "blank_identity"
-        }
+        val identityParts = listOf(
+            reference.title,
+            candidateMetadata.name,
+            reference.artist,
+            candidateMetadata.artistName
+        )
+        if (identityParts.any(String::isBlank)) return "blank_identity"
         checkVersionMismatch(expected, candidate)?.let { return it }
         if (isExplicitMismatched(reference.explicit, expected, candidateMetadata.explicit, candidate)) {
             return "explicit_mismatch"
         }
-        if (!areArtistsCompatible(reference.artist, candidateMetadata.artistName)) return "artist_mismatch"
+        if (!AppleArtistMatcher.areCompatible(reference.artist, candidateMetadata.artistName)) return "artist_mismatch"
         return null
     }
-
-    private fun hasBlankIdentity(
-        refTitle: String,
-        candTitle: String,
-        refArtist: String,
-        candArtist: String
-    ): Boolean = listOf(refTitle, candTitle, refArtist, candArtist).any(String::isBlank)
 
     private fun checkVersionMismatch(
         expected: TitleIdentity,
@@ -184,91 +180,6 @@ object AppleMetadataMatcher {
         return score to null
     }
 
-    private fun scoreArtist(refArtist: String, candArtist: String): Int {
-        val normRef = AlternativeTrackText.normalizeArtist(refArtist)
-        val normCand = AlternativeTrackText.normalizeArtist(candArtist)
-        if (normRef == normCand) return 20
-        val coverage = tokenCoverage(normRef, normCand)
-        return (coverage * 15).toInt()
-    }
-
-    private fun evaluateRelease(
-        reference: Track,
-        candidate: AppleTrackMetadata
-    ): Pair<Int, Boolean> {
-        val refAlbum = reference.album.trim()
-        val candAlbum = candidate.albumName.trim()
-        if (!hasUsableReleaseIdentity(refAlbum, candAlbum)) return 0 to false
-        if (isCompilationMismatch(refAlbum, candAlbum)) return -30 to false
-
-        val refAlbumId = AlternativeTrackText.album(refAlbum)
-        val candAlbumId = AlternativeTrackText.album(candAlbum)
-        val coresMatch = refAlbumId.core.isNotBlank() && refAlbumId.core == candAlbumId.core
-        val (baseScore, releaseMatch) = scoreAlbumReleaseIdentity(
-            refCore = refAlbumId.core,
-            candCore = candAlbumId.core,
-            refEditions = refAlbumId.editions,
-            candEditions = candAlbumId.editions,
-            coresMatch = coresMatch
-        )
-        val trackPositionAdjustment = scoreReleaseTrackPosition(
-            coresMatch = coresMatch,
-            releaseMatch = releaseMatch,
-            referenceTrackNumber = reference.trackNumber,
-            candidateTrackNumber = candidate.trackNumber
-        )
-        return (baseScore + trackPositionAdjustment) to releaseMatch
-    }
-
-    private fun hasUsableReleaseIdentity(refAlbum: String, candAlbum: String): Boolean =
-        refAlbum.isNotBlank() && candAlbum.isNotBlank() && !isGenericAlbum(refAlbum)
-
-    private fun isCompilationMismatch(refAlbum: String, candAlbum: String): Boolean =
-        !isCompilationAlbum(refAlbum) && isCompilationAlbum(candAlbum)
-
-    private fun scoreAlbumReleaseIdentity(
-        refCore: String,
-        candCore: String,
-        refEditions: Set<com.luc4n3x.levyra.data.hqaudio.AlbumEdition>,
-        candEditions: Set<com.luc4n3x.levyra.data.hqaudio.AlbumEdition>,
-        coresMatch: Boolean
-    ): Pair<Int, Boolean> {
-        if (coresMatch) return scoreMatchingAlbumCores(refEditions, candEditions)
-        if (refCore.isBlank() || candCore.isBlank()) return -20 to false
-
-        val forwardCoverage = tokenCoverage(refCore, candCore)
-        val reverseCoverage = tokenCoverage(candCore, refCore)
-        val mutualCoverage = minOf(forwardCoverage, reverseCoverage)
-        val sameEditions = refEditions == candEditions
-
-        return when {
-            mutualCoverage >= 0.90 && sameEditions -> 18 to true
-            mutualCoverage >= 0.75 -> 12 to false
-            mutualCoverage >= 0.50 -> 5 to false
-            else -> -20 to false
-        }
-    }
-
-    private fun scoreMatchingAlbumCores(
-        refEditions: Set<com.luc4n3x.levyra.data.hqaudio.AlbumEdition>,
-        candEditions: Set<com.luc4n3x.levyra.data.hqaudio.AlbumEdition>
-    ): Pair<Int, Boolean> {
-        if (refEditions == candEditions) return 30 to true
-        if (refEditions.isEmpty() xor candEditions.isEmpty()) return 10 to false
-        return 5 to false
-    }
-
-    private fun scoreReleaseTrackPosition(
-        coresMatch: Boolean,
-        releaseMatch: Boolean,
-        referenceTrackNumber: Int,
-        candidateTrackNumber: Int
-    ): Int {
-        if (!coresMatch || referenceTrackNumber <= 0 || candidateTrackNumber <= 0) return 0
-        if (referenceTrackNumber == candidateTrackNumber) return 5
-        return if (releaseMatch) 0 else -5
-    }
-
     private fun evaluateDuration(
         refDurationMs: Long,
         candDurationMs: Long,
@@ -285,36 +196,6 @@ object AppleMetadataMatcher {
             }
             else -> 0 to "duration_out_of_range"
         }
-    }
-
-    private fun areArtistsCompatible(refArtist: String, candArtist: String): Boolean {
-        val normRef = AlternativeTrackText.normalizeArtist(refArtist)
-        val normCand = AlternativeTrackText.normalizeArtist(candArtist)
-        if (normRef.isBlank() || normCand.isBlank()) return false
-        if (normRef == normCand) return true
-        if (hasStructuredArtistOverlap(refArtist, candArtist)) return true
-        if (hasArtistNameOverlap(refArtist, candArtist)) return true
-        return hasMutualArtistCoverage(normRef, normCand)
-    }
-
-    private fun hasStructuredArtistOverlap(refArtist: String, candArtist: String): Boolean {
-        val refCredit = AlternativeTrackText.artistCredit(refArtist)
-        val candCredit = AlternativeTrackText.artistCredit(candArtist)
-        if (refCredit.primary.isBlank() || candCredit.primary.isBlank()) return false
-        if (refCredit.primary == candCredit.primary) return true
-        return refCredit.primary in candCredit.names || candCredit.primary in refCredit.names
-    }
-
-    private fun hasArtistNameOverlap(refArtist: String, candArtist: String): Boolean {
-        val refNames = AlternativeTrackText.artistNames(refArtist)
-        val candNames = AlternativeTrackText.artistNames(candArtist)
-        return refNames.any { it in candNames } || candNames.any { it in refNames }
-    }
-
-    private fun hasMutualArtistCoverage(normRef: String, normCand: String): Boolean {
-        val referenceCoverage = tokenCoverage(normRef, normCand)
-        val candidateCoverage = tokenCoverage(normCand, normRef)
-        return minOf(referenceCoverage, candidateCoverage) >= 0.50
     }
 
     private fun tokenCoverage(target: String, candidate: String): Double {
