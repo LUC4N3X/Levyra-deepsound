@@ -52,6 +52,7 @@ import com.luc4n3x.levyra.ui.lyrics.karaokeCharacterProgress
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalDotIntensity
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
+import com.luc4n3x.levyra.ui.lyrics.lyricsLineFocusPositionMs
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
@@ -60,6 +61,9 @@ import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.player.*
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
+import com.luc4n3x.levyra.domain.PlayerLongPressAction
+import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.CloudOff
@@ -134,7 +138,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
@@ -249,6 +252,9 @@ import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Swipe
+import androidx.compose.material.icons.rounded.SwipeVertical
+import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
@@ -1028,36 +1034,6 @@ private fun RowScope.TabButton(
     }
 }
 @Composable
-private fun rememberEqualizerBar(
-    isPlaying: Boolean,
-    idleValue: Float,
-    minimumValue: Float,
-    maximumValue: Float,
-    durationMillis: Int
-): Animatable<Float, AnimationVector1D> {
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val bar = remember { Animatable(idleValue) }
-    LaunchedEffect(animationsEnabled, isPlaying, idleValue, minimumValue, maximumValue, durationMillis) {
-        if (!animationsEnabled || !isPlaying) {
-            bar.snapTo(idleValue)
-            return@LaunchedEffect
-        }
-        bar.snapTo(minimumValue)
-        while (true) {
-            bar.animateTo(
-                targetValue = maximumValue,
-                animationSpec = tween(durationMillis = durationMillis, easing = LinearEasing)
-            )
-            bar.animateTo(
-                targetValue = minimumValue,
-                animationSpec = tween(durationMillis = durationMillis, easing = LinearEasing)
-            )
-        }
-    }
-    return bar
-}
-
-@Composable
 private fun ActiveTrackEqualizer(
     modifier: Modifier = Modifier,
     color: Color = LevyraCyan,
@@ -1065,26 +1041,13 @@ private fun ActiveTrackEqualizer(
     width: Dp = 18.dp,
     height: Dp = 14.dp
 ) {
-    val bar1 = rememberEqualizerBar(isPlaying, 0.4f, 0.2f, 1f, 550)
-    val bar2 = rememberEqualizerBar(isPlaying, 0.6f, 0.3f, 0.9f, 380)
-    val bar3 = rememberEqualizerBar(isPlaying, 0.3f, 0.15f, 0.95f, 460)
-    val bar4 = rememberEqualizerBar(isPlaying, 0.5f, 0.25f, 0.85f, 620)
-    val bars = remember(bar1, bar2, bar3, bar4) { listOf(bar1, bar2, bar3, bar4) }
-
-    Canvas(modifier = modifier.size(width = width, height = height)) {
-        val gap = 1.5.dp.toPx()
-        val barWidth = (size.width - gap * (bars.size - 1)) / bars.size
-        val cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx(), 1.dp.toPx())
-        bars.forEachIndexed { index, bar ->
-            val barHeight = size.height * bar.value.coerceIn(0f, 1f)
-            drawRoundRect(
-                color = color,
-                topLeft = androidx.compose.ui.geometry.Offset(index * (barWidth + gap), size.height - barHeight),
-                size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
-                cornerRadius = cornerRadius
-            )
-        }
-    }
+    LevyraPlayingIndicator(
+        playing = isPlaying,
+        modifier = modifier,
+        color = color,
+        width = width,
+        height = height
+    )
 }
 @Composable
 private fun HomePlayAllButton(onClick: () -> Unit, size: Dp = 36.dp) {
@@ -2177,7 +2140,8 @@ fun LevyraApp(
                                         bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
                                         liveNowPlaying = state.liveRadioNowPlaying,
                                         animated = state.animationsEnabled,
-                                        gesturesEnabled = state.interfaceSettings.playerGesturesEnabled
+                                        gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
+                                        swipeTrackChangeEnabled = state.interfaceSettings.swipeTrackChangeEnabled
                                     ),
                                     morphAnchors = morphAnchors,
                                     playbackActions = MiniPlayerPlaybackActions(
@@ -6413,9 +6377,21 @@ private fun LyricsOverlay(
             .filter { (_, line) -> line.role == LyricVocalRole.BACKGROUND }
             .map { (index, _) -> index }
     }
-    val activeIndex = remember(visibleLyrics, syncedLyrics, lyricsPositionProvider) {
+    val timedActiveIndex = remember(visibleLyrics, syncedLyrics, lyricsPositionProvider) {
         derivedStateOf {
             if (syncedLyrics) activeLyricIndex(lyricsPositionProvider(), visibleLyrics) else -1
+        }
+    }.value
+    val visualActiveIndex = remember(visibleLyrics, syncedLyrics, lyricsAnimationsEnabled, lyricsPositionProvider) {
+        derivedStateOf {
+            if (syncedLyrics) {
+                activeLyricIndex(
+                    lyricsLineFocusPositionMs(lyricsPositionProvider(), lyricsAnimationsEnabled),
+                    visibleLyrics
+                )
+            } else {
+                -1
+            }
         }
     }.value
     val backgroundActiveIndex = remember(visibleLyrics, backgroundLineIndices, syncedLyrics, lyricsPositionProvider) {
@@ -6488,7 +6464,7 @@ private fun LyricsOverlay(
         }
     }
 
-    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: activeIndex
+    val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: visualActiveIndex
 
     LaunchedEffect(scrollFocusIndex, lyricsStartIndex, autoScrollEnabled, viewMode, visibleLyrics.size) {
         if (scrollFocusIndex >= 0 && autoScrollEnabled) {
@@ -6499,7 +6475,7 @@ private fun LyricsOverlay(
                 centerLyricsItem(
                     listState = listState,
                     index = targetIndex,
-                    animate = initialLyricsPositioned && targetVisible,
+                    animate = lyricsAnimationsEnabled && initialLyricsPositioned && targetVisible,
                     anchorFraction = anchorFraction
                 )
                 initialLyricsPositioned = true
@@ -6515,7 +6491,7 @@ private fun LyricsOverlay(
             centerLyricsItem(
                 listState = listState,
                 index = lyricsStartIndex + requested,
-                animate = true,
+                animate = lyricsAnimationsEnabled,
                 anchorFraction = anchorFraction
             )
         }
@@ -6949,23 +6925,24 @@ private fun LyricsOverlay(
                 ) { index, line ->
                     val selectionKey = lyricSelectionKey(index, line)
                     val selected = selectionKey in selectedVerseKeys
-                    val timedActive = syncedLyrics && (index == activeIndex || index == backgroundActiveIndex)
+                    val timedActive = syncedLyrics && (index == timedActiveIndex || index == backgroundActiveIndex)
                     val lineInstrumentalGap = instrumentalGap?.takeIf { it.nextLineIndex == index }
                     KaraokeLyricLine(
                         line = line,
                         positionProvider = lyricsPositionProvider,
                         instrumentalGap = lineInstrumentalGap,
                         isActive = timedActive,
-                        isPrimaryActive = index == activeIndex,
+                        isPrimaryActive = index == visualActiveIndex,
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
                         distanceFromActive = when {
                             lineInstrumentalGap != null -> 0
-                            activeIndex >= 0 -> kotlin.math.abs(index - activeIndex)
+                            visualActiveIndex >= 0 -> kotlin.math.abs(index - visualActiveIndex)
                             else -> 0
                         },
                         focusMode = lyricsFocusMode,
                         blurEnabled = lyricsAnimationsEnabled,
+                        animationsEnabled = lyricsAnimationsEnabled,
                         sectionLabel = sectionStarts[index]?.let { lyricSectionLabel(strings, it) },
                         showRomanization = showRomanization,
                         accentEnd = accentEnd,
@@ -7273,6 +7250,7 @@ private fun KaraokeLyricLine(
     distanceFromActive: Int,
     focusMode: Boolean,
     blurEnabled: Boolean,
+    animationsEnabled: Boolean,
     sectionLabel: String?,
     showRomanization: Boolean,
     accentEnd: Color,
@@ -7311,7 +7289,7 @@ private fun KaraokeLyricLine(
     }
     val activeScale by animateFloatAsState(
         targetValue = if (isPrimaryActive) 1.008f else 1f,
-        animationSpec = tween(durationMillis = 120, easing = LinearOutSlowInEasing),
+        animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.expressive),
         label = "lyrics-line-scale"
     )
     val targetAlpha = lyricsFocusAlpha(
@@ -7322,12 +7300,12 @@ private fun KaraokeLyricLine(
     )
     val lineAlpha by animateFloatAsState(
         targetValue = targetAlpha,
-        animationSpec = tween(durationMillis = 110),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = 110)),
         label = "lyrics-line-alpha"
     )
     val lineBlur by animateDpAsState(
         targetValue = lyricsFocusBlurDp(distanceFromActive, focusMode, synced, blurEnabled).dp,
-        animationSpec = tween(durationMillis = 160),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = 160)),
         label = "lyrics-line-blur"
     )
     val baseFontSizeSp = when {
@@ -15428,7 +15406,13 @@ private fun PlayerInlineLyricsSection(
 
         lyrics.isNotEmpty() -> {
             val listState = rememberLazyListState()
-            val activeIndex = remember(lyrics, positionMs) { activeLyricIndex(positionMs, lyrics) }
+            val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
+            val visualActiveIndex = remember(lyrics, positionMs, lyricsAnimationsEnabled) {
+                activeLyricIndex(
+                    lyricsLineFocusPositionMs(positionMs, lyricsAnimationsEnabled),
+                    lyrics
+                )
+            }
             var inlineAutoScroll by remember(trackId) { mutableStateOf(true) }
             var inlineAutoScrolling by remember(trackId) { mutableStateOf(false) }
 
@@ -15441,10 +15425,17 @@ private fun PlayerInlineLyricsSection(
                 }
             }
 
-            LaunchedEffect(activeIndex, inlineAutoScroll) {
-                if (activeIndex >= 0 && inlineAutoScroll) {
+            LaunchedEffect(visualActiveIndex, inlineAutoScroll, lyricsAnimationsEnabled) {
+                if (visualActiveIndex >= 0 && inlineAutoScroll) {
                     inlineAutoScrolling = true
-                    runCatching { listState.animateScrollToItem(maxOf(0, activeIndex - 1)) }
+                    runCatching {
+                        val target = maxOf(0, visualActiveIndex - 1)
+                        if (lyricsAnimationsEnabled) {
+                            listState.animateScrollToItem(target)
+                        } else {
+                            listState.scrollToItem(target)
+                        }
+                    }
                     inlineAutoScrolling = false
                 }
             }
@@ -15467,7 +15458,7 @@ private fun PlayerInlineLyricsSection(
                         items = lyrics,
                         key = { index, line -> "${line.startMs}-${line.role.name}-$index" }
                     ) { index, line ->
-                        val isActive = index == activeIndex
+                        val isActive = index == visualActiveIndex
                         Text(
                             text = line.text,
                             color = if (isActive) primaryContent else Color.White.copy(alpha = 0.48f),
@@ -15524,7 +15515,8 @@ private data class MiniPlayerModel(
     val bufferedProgress: Float,
     val liveNowPlaying: String,
     val animated: Boolean,
-    val gesturesEnabled: Boolean
+    val gesturesEnabled: Boolean,
+    val swipeTrackChangeEnabled: Boolean
 )
 
 private data class MiniPlayerPlaybackActions(
@@ -15708,62 +15700,76 @@ private fun PlayerGestureLayer(
         zoomModifier
             .pointerInput(
                 config.trackId,
+                config.settings.doubleTapAction,
                 config.settings.doubleTapSeekSeconds,
+                config.settings.longPressAction,
                 config.settings.longPressSpeed,
-                environment.rightToLeft
+                environment.rightToLeft,
+                uiActions.artworkPreview != null
             ) {
                 detectTapGestures(
                     onPress = {
-                        val originalSpeed = currentPlaybackSpeed
-                        val openArtworkPreview = uiActions.artworkPreview
-                        coroutineScope {
-                            var boosted = false
-                            val speedJob = launch {
-                                delay(PLAYER_LONG_PRESS_SPEED_MS)
-                                boosted = true
-                                mediaActions.temporarySpeed(config.settings.longPressSpeed)
-                                uiActions.haptic()
-                                uiActions.feedback(
-                                    "${String.format(Locale.US, "%.1f", config.settings.longPressSpeed)}×"
-                                )
-                                if (openArtworkPreview != null) {
-                                    delay(PLAYER_LONG_PRESS_ARTWORK_MS - PLAYER_LONG_PRESS_SPEED_MS)
-                                    mediaActions.temporarySpeed(originalSpeed)
-                                    boosted = false
-                                    uiActions.haptic()
-                                    openArtworkPreview()
+                        val command = playerLongPressCommand(config.settings.longPressAction)
+                        if (command != PlayerGestureCommand.None) {
+                            val originalSpeed = currentPlaybackSpeed
+                            val openArtworkPreview = uiActions.artworkPreview
+                            coroutineScope {
+                                var boosted = false
+                                val actionJob = launch {
+                                    delay(PLAYER_LONG_PRESS_SPEED_MS)
+                                    if (command == PlayerGestureCommand.TemporarySpeed) {
+                                        boosted = true
+                                        mediaActions.temporarySpeed(config.settings.longPressSpeed)
+                                        uiActions.haptic()
+                                        uiActions.feedback(
+                                            "${String.format(Locale.US, "%.1f", config.settings.longPressSpeed)}×"
+                                        )
+                                        if (openArtworkPreview != null) {
+                                            delay(PLAYER_LONG_PRESS_ARTWORK_MS - PLAYER_LONG_PRESS_SPEED_MS)
+                                            mediaActions.temporarySpeed(originalSpeed)
+                                            boosted = false
+                                            uiActions.haptic()
+                                            openArtworkPreview()
+                                        }
+                                    } else {
+                                        performPlayerGestureCommand(
+                                            command = command,
+                                            config = config,
+                                            mediaActions = mediaActions,
+                                            uiActions = uiActions
+                                        )
+                                    }
                                 }
-                            }
-                            try {
-                                tryAwaitRelease()
-                            } finally {
-                                speedJob.cancel()
-                                if (boosted) mediaActions.temporarySpeed(originalSpeed)
+                                try {
+                                    tryAwaitRelease()
+                                } finally {
+                                    actionJob.cancel()
+                                    if (boosted) mediaActions.temporarySpeed(originalSpeed)
+                                }
                             }
                         }
                     },
                     onDoubleTap = { offset ->
                         val width = size.width.coerceAtLeast(1).toFloat()
                         val side = playerTapSide(offset.x / width)
-                        mediaActions.seekBy(
-                            playerSeekDeltaMs(
-                                side,
-                                config.settings.doubleTapSeekSeconds,
-                                environment.rightToLeft
-                            )
+                        performPlayerGestureCommand(
+                            command = playerDoubleTapCommand(config.settings.doubleTapAction, side),
+                            config = config,
+                            mediaActions = mediaActions,
+                            uiActions = uiActions
                         )
                     }
                 )
             }
             .playerAxisDragGestures(
-                key = config.trackId,
+                key = "${config.trackId}:${config.settings.swipeTrackChangeEnabled}:${config.settings.verticalSwipeAction}",
                 enabled = true,
                 rightToLeft = environment.rightToLeft,
-                edgeZonesEnabled = true
+                edgeZonesEnabled = config.settings.verticalSwipeAction != PlayerVerticalSwipeAction.Disabled
             ) { event ->
                 handlePlayerGestureEvent(
                     event = event,
-                    environment = environment,
+                    config = config,
                     mediaActions = mediaActions,
                     uiActions = uiActions,
                     volumeAccumulator = volumeAccumulator
@@ -15777,20 +15783,69 @@ private fun PlayerGestureLayer(
     )
 }
 
+private fun performPlayerGestureCommand(
+    command: PlayerGestureCommand,
+    config: PlayerGestureConfig,
+    mediaActions: PlayerGestureMediaActions,
+    uiActions: PlayerGestureUiActions
+) {
+    when (command) {
+        PlayerGestureCommand.SeekLeading -> mediaActions.seekBy(
+            playerSeekDeltaMs(
+                PlayerTapSide.Leading,
+                config.settings.doubleTapSeekSeconds,
+                config.environment.rightToLeft
+            )
+        )
+        PlayerGestureCommand.SeekTrailing -> mediaActions.seekBy(
+            playerSeekDeltaMs(
+                PlayerTapSide.Trailing,
+                config.settings.doubleTapSeekSeconds,
+                config.environment.rightToLeft
+            )
+        )
+        PlayerGestureCommand.TogglePlayback -> {
+            mediaActions.togglePlay()
+            uiActions.haptic()
+        }
+        PlayerGestureCommand.ToggleFavorite -> {
+            uiActions.toggleFavorite()
+            uiActions.haptic()
+        }
+        PlayerGestureCommand.OpenQueue -> {
+            uiActions.openQueue()
+            uiActions.haptic()
+        }
+        PlayerGestureCommand.OpenLyrics -> {
+            uiActions.openLyrics()
+            uiActions.haptic()
+        }
+        PlayerGestureCommand.TemporarySpeed,
+        PlayerGestureCommand.None -> Unit
+    }
+}
+
 private fun handlePlayerGestureEvent(
     event: PlayerDragEvent,
-    environment: PlayerGestureEnvironment,
+    config: PlayerGestureConfig,
     mediaActions: PlayerGestureMediaActions,
     uiActions: PlayerGestureUiActions,
     volumeAccumulator: MutableState<Float>
 ) {
     when (event) {
-        is PlayerDragEvent.HorizontalOffset -> mediaActions.swipeOffset(event.offsetPx)
-        is PlayerDragEvent.HorizontalSettled -> settlePlayerHorizontalGesture(event, mediaActions)
+        is PlayerDragEvent.HorizontalOffset -> if (config.settings.swipeTrackChangeEnabled) {
+            mediaActions.swipeOffset(event.offsetPx)
+        }
+        is PlayerDragEvent.HorizontalSettled -> if (config.settings.swipeTrackChangeEnabled) {
+            settlePlayerHorizontalGesture(event, mediaActions)
+        } else {
+            mediaActions.swipeOffset(0f)
+        }
         is PlayerDragEvent.VerticalStart -> startPlayerVerticalGesture(event, uiActions)
         is PlayerDragEvent.VerticalDrag -> handlePlayerVerticalDrag(
             event,
-            environment,
+            config.environment,
+            config.settings.verticalSwipeAction,
             uiActions,
             volumeAccumulator
         )
@@ -15829,17 +15884,29 @@ private fun startPlayerVerticalGesture(
 private fun handlePlayerVerticalDrag(
     event: PlayerDragEvent.VerticalDrag,
     environment: PlayerGestureEnvironment,
+    action: PlayerVerticalSwipeAction,
     uiActions: PlayerGestureUiActions,
     volumeAccumulator: MutableState<Float>
 ) {
     when (event.zone) {
-        PlayerGestureZone.BrightnessEdge -> applyBrightnessDrag(
-            activity = environment.activity,
-            deltaPx = event.deltaPx,
-            heightPx = event.heightPx,
-            label = environment.brightnessLabel,
-            onFeedback = uiActions.feedback
-        )
+        PlayerGestureZone.BrightnessEdge -> if (action == PlayerVerticalSwipeAction.Volume) {
+            volumeAccumulator.value = applyVolumeDrag(
+                audioManager = environment.audioManager,
+                deltaPx = event.deltaPx,
+                heightPx = event.heightPx,
+                accumulator = volumeAccumulator.value,
+                label = environment.volumeLabel,
+                onFeedback = uiActions.feedback
+            )
+        } else {
+            applyBrightnessDrag(
+                activity = environment.activity,
+                deltaPx = event.deltaPx,
+                heightPx = event.heightPx,
+                label = environment.brightnessLabel,
+                onFeedback = uiActions.feedback
+            )
+        }
         PlayerGestureZone.VolumeEdge -> volumeAccumulator.value = applyVolumeDrag(
             audioManager = environment.audioManager,
             deltaPx = event.deltaPx,
@@ -17840,23 +17907,95 @@ private fun SettingsOverlay(
                             }
                             if (interfaceSettings.playerGesturesEnabled) {
                                 item {
+                                    SettingsToggle(
+                                        icon = Icons.Rounded.Swipe,
+                                        title = strings.playerGestureHorizontalSwipe,
+                                        subtitle = strings.playerGestureHorizontalSwipeSubtitle,
+                                        checked = interfaceSettings.swipeTrackChangeEnabled,
+                                        onCheckedChange = {
+                                            onInterfaceSettings(interfaceSettings.copy(swipeTrackChangeEnabled = it))
+                                        }
+                                    )
+                                }
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.TouchApp,
+                                        title = strings.playerGestureDoubleTapAction,
+                                        subtitle = strings.playerGestureDoubleTapActionSubtitle,
+                                        options = listOf(
+                                            PlayerDoubleTapAction.Seek.name to strings.gestureActionSeek,
+                                            PlayerDoubleTapAction.PlayPause.name to strings.gestureActionPlayPause,
+                                            PlayerDoubleTapAction.Favorite.name to strings.gestureActionFavorite,
+                                            PlayerDoubleTapAction.Disabled.name to strings.gestureActionDisabled
+                                        ),
+                                        selected = interfaceSettings.doubleTapAction.name,
+                                        onSelect = { value ->
+                                            onInterfaceSettings(
+                                                interfaceSettings.copy(doubleTapAction = PlayerDoubleTapAction.from(value))
+                                            )
+                                        }
+                                    )
+                                }
+                                if (interfaceSettings.doubleTapAction == PlayerDoubleTapAction.Seek) item {
                                     SettingsChoiceRow(
                                         icon = Icons.Rounded.SkipNext,
                                         title = strings.doubleTapSeek,
                                         subtitle = strings.doubleTapSeekSubtitle,
                                         options = listOf("5" to "5 s", "10" to "10 s", "15" to "15 s", "30" to "30 s"),
                                         selected = interfaceSettings.doubleTapSeekSeconds.toString(),
-                                        onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(doubleTapSeekSeconds = value.toInt())) }
+                                        onSelect = { value ->
+                                            onInterfaceSettings(interfaceSettings.copy(doubleTapSeekSeconds = value.toInt()))
+                                        }
                                     )
                                 }
                                 item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.TouchApp,
+                                        title = strings.playerGestureLongPressAction,
+                                        subtitle = strings.playerGestureLongPressActionSubtitle,
+                                        options = listOf(
+                                            PlayerLongPressAction.Speed.name to strings.gestureActionSpeed,
+                                            PlayerLongPressAction.Favorite.name to strings.gestureActionFavorite,
+                                            PlayerLongPressAction.Queue.name to strings.gestureActionQueue,
+                                            PlayerLongPressAction.Lyrics.name to strings.gestureActionLyrics,
+                                            PlayerLongPressAction.Disabled.name to strings.gestureActionDisabled
+                                        ),
+                                        selected = interfaceSettings.longPressAction.name,
+                                        onSelect = { value ->
+                                            onInterfaceSettings(
+                                                interfaceSettings.copy(longPressAction = PlayerLongPressAction.from(value))
+                                            )
+                                        }
+                                    )
+                                }
+                                if (interfaceSettings.longPressAction == PlayerLongPressAction.Speed) item {
                                     SettingsChoiceRow(
                                         icon = Icons.Rounded.Speed,
                                         title = strings.longPress,
                                         subtitle = strings.longPressSubtitle,
                                         options = listOf("1.5" to "1.5×", "2.0" to "2×", "2.5" to "2.5×", "3.0" to "3×"),
                                         selected = String.format(Locale.US, "%.1f", interfaceSettings.longPressSpeed),
-                                        onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(longPressSpeed = value.toFloat())) }
+                                        onSelect = { value ->
+                                            onInterfaceSettings(interfaceSettings.copy(longPressSpeed = value.toFloat()))
+                                        }
+                                    )
+                                }
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.SwipeVertical,
+                                        title = strings.playerGestureVerticalSwipe,
+                                        subtitle = strings.playerGestureVerticalSwipeSubtitle,
+                                        options = listOf(
+                                            PlayerVerticalSwipeAction.BrightnessAndVolume.name to strings.gestureActionBrightnessVolume,
+                                            PlayerVerticalSwipeAction.Volume.name to strings.gestureActionVolume,
+                                            PlayerVerticalSwipeAction.Disabled.name to strings.gestureActionDisabled
+                                        ),
+                                        selected = interfaceSettings.verticalSwipeAction.name,
+                                        onSelect = { value ->
+                                            onInterfaceSettings(
+                                                interfaceSettings.copy(verticalSwipeAction = PlayerVerticalSwipeAction.from(value))
+                                            )
+                                        }
                                     )
                                 }
                             }
@@ -21592,7 +21731,11 @@ private fun MiniPlayer(
         topStart = LevyraPlayerDesign.DockTrayCorner,
         topEnd = LevyraPlayerDesign.DockTrayCorner
     )
-    val horizontalGesturesEnabled = gesturesEnabled && !liveRadio
+    val horizontalGesturesEnabled = miniPlayerHorizontalGesturesEnabled(
+        gesturesEnabled = gesturesEnabled,
+        swipeTrackChangeEnabled = model.swipeTrackChangeEnabled,
+        liveRadio = liveRadio
+    )
 
     Surface(
         color = miniPlayerTrayColor,
@@ -21660,7 +21803,7 @@ private fun MiniPlayer(
                     }
                     .border(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.08f), cardShape)
                     .playerAxisDragGestures(
-                        key = track.id,
+                        key = "${track.id}:$horizontalGesturesEnabled",
                         enabled = gesturesEnabled,
                         rightToLeft = miniRightToLeft,
                         edgeZonesEnabled = false

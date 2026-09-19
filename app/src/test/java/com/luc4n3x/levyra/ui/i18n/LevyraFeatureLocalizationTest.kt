@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.i18n
 
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -157,5 +158,45 @@ class LevyraFeatureLocalizationTest {
             assertTrue("Moved copy for ${strings.code}", moved.contains("Halo") && !moved.contains("{title}"))
         }
         assertEquals("Rimosso Halo", LevyraStrings.forCode("it").playlistStudioRemoved("Halo"))
+    }
+
+    @Test
+    fun everyLanguageResolvesPlayerGestureActions() {
+        LevyraStrings.all().forEach { strings ->
+            listOf(
+                strings.playerGestureHorizontalSwipe,
+                strings.playerGestureHorizontalSwipeSubtitle,
+                strings.playerGestureDoubleTapAction,
+                strings.playerGestureDoubleTapActionSubtitle,
+                strings.playerGestureLongPressAction,
+                strings.playerGestureLongPressActionSubtitle,
+                strings.playerGestureVerticalSwipe,
+                strings.playerGestureVerticalSwipeSubtitle,
+                strings.gestureActionSeek,
+                strings.gestureActionPlayPause,
+                strings.gestureActionFavorite,
+                strings.gestureActionQueue,
+                strings.gestureActionLyrics,
+                strings.gestureActionSpeed,
+                strings.gestureActionBrightnessVolume,
+                strings.gestureActionVolume,
+                strings.gestureActionDisabled
+            ).forEach { value ->
+                assertTrue("Blank player gesture copy for ${strings.code}", value.isNotBlank())
+            }
+        }
+        assertEquals("Doppio tap", LevyraStrings.forCode("it").playerGestureDoubleTapAction)
+    }
+
+    @Test
+    fun playerGesturesDoNotFallBackToEnglishForAnyCatalogLanguage() {
+        val english = playerGestureLocalizationEntries("en")
+        LevyraLanguageCatalog.languages.map { it.code }.forEach { code ->
+            val entries = playerGestureLocalizationEntries(code)
+            assertEquals("Missing player gesture keys for $code", playerGestureKeys, entries.keys)
+            if (code != "en") {
+                assertFalse("Player gestures fall back to English for $code", entries == english)
+            }
+        }
     }
 }

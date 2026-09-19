@@ -639,6 +639,7 @@ fun LevyraNowPlaying(
                                 mediaSeekFeedbackMs = delta
                                 mediaSeekFeedbackEvent += 1
                             },
+                            togglePlay = viewModel::togglePlay,
                             next = viewModel::next,
                             previous = viewModel::previous,
                             swipeOffset = { swipeOffsetPx = it },
@@ -652,6 +653,9 @@ fun LevyraNowPlaying(
                             haptic = {
                                 hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
                             },
+                            toggleFavorite = { viewModel.toggleFavorite(activeTrack) },
+                            openQueue = viewModel::openQueue,
+                            openLyrics = viewModel::openLyrics,
                             collapse = collapseActions,
                             artworkPreview = if (artworkPreviewAvailable) {
                                 { showArtworkPreview = true }
@@ -1065,6 +1069,7 @@ fun LevyraNowPlaying(
                                 mediaSeekFeedbackMs = delta
                                 mediaSeekFeedbackEvent += 1
                             },
+                            togglePlay = viewModel::togglePlay,
                             next = viewModel::next,
                             previous = viewModel::previous,
                             swipeOffset = { swipeOffsetPx = it },
@@ -1078,6 +1083,9 @@ fun LevyraNowPlaying(
                             haptic = {
                                 hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
                             },
+                            toggleFavorite = { viewModel.toggleFavorite(track) },
+                            openQueue = viewModel::openQueue,
+                            openLyrics = viewModel::openLyrics,
                             collapse = collapseActions
                         ),
                         videoTransform,

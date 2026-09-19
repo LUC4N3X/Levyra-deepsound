@@ -33,17 +33,19 @@ fun LevyraPlayingIndicator(
     modifier: Modifier = Modifier,
     color: Color = Color.White,
     size: Dp = 16.dp,
+    width: Dp = size,
+    height: Dp = size,
     barWidth: Dp = 2.5.dp,
     contentDescription: String? = null
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    val bars = rememberPlayingIndicatorBars(playing && animationsEnabled)
+    val bars = rememberPlayingIndicatorBars(playingIndicatorAnimates(playing, animationsEnabled))
     val semanticsModifier = if (contentDescription != null) {
         Modifier.clearAndSetSemantics { this.contentDescription = contentDescription }
     } else {
         Modifier
     }
-    Canvas(modifier = modifier.size(size).then(semanticsModifier)) {
+    Canvas(modifier = modifier.size(width = width, height = height).then(semanticsModifier)) {
         val width = this.size.width
         val height = this.size.height
         if (width <= 0f || height <= 0f) return@Canvas
@@ -62,6 +64,9 @@ fun LevyraPlayingIndicator(
         }
     }
 }
+
+internal fun playingIndicatorAnimates(playing: Boolean, animationsEnabled: Boolean): Boolean =
+    playing && animationsEnabled
 
 @Composable
 private fun rememberPlayingIndicatorBars(animate: Boolean): List<State<Float>> {

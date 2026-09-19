@@ -35,6 +35,9 @@ import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
+import com.luc4n3x.levyra.domain.PlayerLongPressAction
+import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
@@ -176,8 +179,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_CHARTS] = normalizedInterface.showCharts
             mutable[KEY_UI_FONT_PRESET] = normalizedInterface.fontPreset.name
             mutable[KEY_UI_PLAYER_GESTURES] = normalizedInterface.playerGesturesEnabled
+            mutable[KEY_UI_SWIPE_TRACK_CHANGE] = normalizedInterface.swipeTrackChangeEnabled
+            mutable[KEY_UI_DOUBLE_TAP_ACTION] = normalizedInterface.doubleTapAction.name
             mutable[KEY_UI_DOUBLE_TAP_SECONDS] = normalizedInterface.doubleTapSeekSeconds
+            mutable[KEY_UI_LONG_PRESS_ACTION] = normalizedInterface.longPressAction.name
             mutable[KEY_UI_LONG_PRESS_SPEED] = normalizedInterface.longPressSpeed
+            mutable[KEY_UI_VERTICAL_SWIPE_ACTION] = normalizedInterface.verticalSwipeAction.name
             mutable[KEY_UI_CANVAS_QUALITY] = normalizedInterface.canvasQuality.name
             mutable[KEY_UI_CANVAS_SOURCE] = normalizedInterface.canvasSource.name
             mutable[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalizedInterface.motionArtworkWifiOnly
@@ -320,8 +327,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_CHARTS] = normalized.showCharts
             it[KEY_UI_FONT_PRESET] = normalized.fontPreset.name
             it[KEY_UI_PLAYER_GESTURES] = normalized.playerGesturesEnabled
+            it[KEY_UI_SWIPE_TRACK_CHANGE] = normalized.swipeTrackChangeEnabled
+            it[KEY_UI_DOUBLE_TAP_ACTION] = normalized.doubleTapAction.name
             it[KEY_UI_DOUBLE_TAP_SECONDS] = normalized.doubleTapSeekSeconds
+            it[KEY_UI_LONG_PRESS_ACTION] = normalized.longPressAction.name
             it[KEY_UI_LONG_PRESS_SPEED] = normalized.longPressSpeed
+            it[KEY_UI_VERTICAL_SWIPE_ACTION] = normalized.verticalSwipeAction.name
             it[KEY_UI_CANVAS_QUALITY] = normalized.canvasQuality.name
             it[KEY_UI_CANVAS_SOURCE] = normalized.canvasSource.name
             it[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalized.motionArtworkWifiOnly
@@ -671,8 +682,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             showCharts = preferences[KEY_UI_CHARTS] ?: true,
             fontPreset = LevyraFontPreset.from(preferences[KEY_UI_FONT_PRESET].orEmpty()),
             playerGesturesEnabled = preferences[KEY_UI_PLAYER_GESTURES] ?: true,
+            swipeTrackChangeEnabled = preferences[KEY_UI_SWIPE_TRACK_CHANGE] ?: true,
+            doubleTapAction = PlayerDoubleTapAction.from(preferences[KEY_UI_DOUBLE_TAP_ACTION].orEmpty()),
             doubleTapSeekSeconds = preferences[KEY_UI_DOUBLE_TAP_SECONDS] ?: 10,
+            longPressAction = PlayerLongPressAction.from(preferences[KEY_UI_LONG_PRESS_ACTION].orEmpty()),
             longPressSpeed = preferences[KEY_UI_LONG_PRESS_SPEED] ?: 2f,
+            verticalSwipeAction = PlayerVerticalSwipeAction.from(preferences[KEY_UI_VERTICAL_SWIPE_ACTION].orEmpty()),
             canvasQuality = LevyraCanvasQuality.from(preferences[KEY_UI_CANVAS_QUALITY].orEmpty()),
             canvasSource = LevyraCanvasSource.from(preferences[KEY_UI_CANVAS_SOURCE].orEmpty()),
             motionArtworkWifiOnly = preferences[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] ?: false,
@@ -968,10 +983,14 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_CHARTS = booleanPreferencesKey("ui_show_charts")
         val KEY_UI_FONT_PRESET = stringPreferencesKey("ui_font_preset")
         val KEY_UI_PLAYER_GESTURES = booleanPreferencesKey("ui_player_gestures")
+        val KEY_UI_SWIPE_TRACK_CHANGE = booleanPreferencesKey("ui_swipe_track_change")
+        val KEY_UI_DOUBLE_TAP_ACTION = stringPreferencesKey("ui_double_tap_action")
         val KEY_UI_PURE_BLACK = booleanPreferencesKey("ui_pure_black")
         val KEY_UI_HAPTIC_FEEDBACK = booleanPreferencesKey("ui_haptic_feedback")
         val KEY_UI_DOUBLE_TAP_SECONDS = intPreferencesKey("ui_double_tap_seconds")
+        val KEY_UI_LONG_PRESS_ACTION = stringPreferencesKey("ui_long_press_action")
         val KEY_UI_LONG_PRESS_SPEED = floatPreferencesKey("ui_long_press_speed")
+        val KEY_UI_VERTICAL_SWIPE_ACTION = stringPreferencesKey("ui_vertical_swipe_action")
         val KEY_UI_CANVAS_QUALITY = stringPreferencesKey("ui_canvas_quality")
         val KEY_UI_CANVAS_SOURCE = stringPreferencesKey("ui_canvas_source")
         val KEY_UI_MOTION_ARTWORK_WIFI_ONLY = booleanPreferencesKey("ui_motion_artwork_wifi_only")

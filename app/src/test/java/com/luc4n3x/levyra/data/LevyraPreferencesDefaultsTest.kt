@@ -5,6 +5,9 @@ import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
+import com.luc4n3x.levyra.domain.PlayerLongPressAction
+import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import org.json.JSONObject
@@ -76,6 +79,33 @@ class LevyraPreferencesDefaultsTest {
         assertTrue(restored.enhanceVideoMetadata)
         assertEquals(PlayerVisualMode.CanvasCard, restored.playerVisualMode)
         assertEquals(PlayerBackgroundMode.Blur, restored.playerBackground)
+    }
+
+    @Test
+    fun backupRoundTripPreservesPlayerGestureActions() {
+        val original = LevyraInterfaceSettings(
+            swipeTrackChangeEnabled = false,
+            doubleTapAction = PlayerDoubleTapAction.Favorite,
+            longPressAction = PlayerLongPressAction.Lyrics,
+            verticalSwipeAction = PlayerVerticalSwipeAction.Volume
+        )
+
+        val restored = backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original))
+
+        assertFalse(restored.swipeTrackChangeEnabled)
+        assertEquals(PlayerDoubleTapAction.Favorite, restored.doubleTapAction)
+        assertEquals(PlayerLongPressAction.Lyrics, restored.longPressAction)
+        assertEquals(PlayerVerticalSwipeAction.Volume, restored.verticalSwipeAction)
+    }
+
+    @Test
+    fun legacyBackupKeepsProfessionalGestureDefaults() {
+        val restored = backupInterfaceSettingsFromJson(JSONObject())
+
+        assertTrue(restored.swipeTrackChangeEnabled)
+        assertEquals(PlayerDoubleTapAction.Seek, restored.doubleTapAction)
+        assertEquals(PlayerLongPressAction.Speed, restored.longPressAction)
+        assertEquals(PlayerVerticalSwipeAction.BrightnessAndVolume, restored.verticalSwipeAction)
     }
 
     @Test
