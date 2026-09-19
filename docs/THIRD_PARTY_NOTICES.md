@@ -31,6 +31,10 @@ Upstream project: https://github.com/ZemerTeam/zemer-cipher
 
 Upstream license: GNU General Public License v3.0
 
+The analyzer candidate anchored on the player's URL builder (the function that writes `alr=yes`) follows the approach of the yt-dlp EJS `n` solver, as proposed for NewPipeExtractor in TeamNewPipe/NewPipeExtractor#1545. It was reimplemented as a candidate generator for Levyra's existing verified WebView runtime; no EJS or NewPipeExtractor source is vendored for it.
+
+Reference projects: https://github.com/yt-dlp/ejs (Unlicense), https://github.com/TeamNewPipe/NewPipeExtractor (GPL-3.0)
+
 ## Metrolist Attribution
 
 Two Levyra behaviors are adapted from the Metrolist project. The consecutive-failure and half-open backoff window that gates rebuilding the local decoder's WebView runtime follows the policy of Metrolist's `RendererRecoveryPolicy`; the surrounding renderer recovery described in the section above remains the zemer-cipher-derived integration. The TTML lyrics parser's global `lyricOffset` handling, line-timing recovery from the earliest child `span`, and namespace-prefix-agnostic attribute lookup follow the behavior of Metrolist's BetterLyrics `TTMLParser`. Both were reimplemented against Levyra's existing decoder and lyric models rather than vendored as separate stacks.

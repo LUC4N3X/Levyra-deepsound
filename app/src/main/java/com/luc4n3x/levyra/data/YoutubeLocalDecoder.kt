@@ -1559,15 +1559,16 @@ internal object YoutubePlayerJsAnalyzer {
     fun analyzeCandidates(hash: String, javascript: String): List<YoutubePlayerCipherConfig> {
         if (!YoutubePlayerConfigParser.isValidHash(hash)) return emptyList()
         val sts = extractSignatureTimestamp(javascript) ?: return emptyList()
+        val anchored = YoutubePlayerUrlFactoryAnalyzer.discover(javascript)
         val semantic = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
-        val signatures = mergeExpressions(
+        val signatures = anchored.signatures + mergeExpressions(
             semantic.signatures,
             expressions(javascript, signatureRules)
-        )
-        val nExpressions = mergeExpressions(
+        ).filterNot { candidate -> anchored.signatures.any { it.expression == candidate.expression } }
+        val nExpressions = anchored.nTransforms + mergeExpressions(
             semantic.nTransforms,
             expressions(javascript, nRules)
-        )
+        ).filterNot { candidate -> anchored.nTransforms.any { it.expression == candidate.expression } }
         if (signatures.isEmpty() || nExpressions.isEmpty()) return emptyList()
 
         val combinations = ArrayList<Pair<YoutubeSemanticTransformCandidate, YoutubeSemanticTransformCandidate>>()
