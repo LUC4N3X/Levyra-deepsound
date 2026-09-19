@@ -1,15 +1,12 @@
 package com.luc4n3x.levyra.data.network
 
+import com.luc4n3x.levyra.data.YoutubeWebClientIdentity
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
 
 internal object YoutubeClientIdentityInterceptor : Interceptor {
-    internal const val PO_TOKEN_WEB_USER_AGENT =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-
     private const val HEADER_CLIENT_NAME = "X-Youtube-Client-Name"
     private const val HEADER_CLIENT_VERSION = "X-Youtube-Client-Version"
     private const val HEADER_ORIGIN = "Origin"
@@ -83,7 +80,7 @@ internal object YoutubeClientIdentityInterceptor : Interceptor {
             clientName == CLIENT_WEB ||
                 clientName == CLIENT_WEB_REMIX ||
                 clientName == CLIENT_WEB_EMBEDDED -> {
-                builder.header(HEADER_USER_AGENT, PO_TOKEN_WEB_USER_AGENT)
+                builder.header(HEADER_USER_AGENT, YoutubeWebClientIdentity.USER_AGENT)
                 normalizeBrowserNavigationHeaders(request, builder, clientName)
             }
 
