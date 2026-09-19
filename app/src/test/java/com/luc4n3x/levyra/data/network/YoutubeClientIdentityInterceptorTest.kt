@@ -1,9 +1,11 @@
 package com.luc4n3x.levyra.data.network
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
+import com.luc4n3x.levyra.data.YoutubeWebClientIdentity
 import okhttp3.Request
 
 class YoutubeClientIdentityInterceptorTest {
@@ -12,7 +14,7 @@ class YoutubeClientIdentityInterceptorTest {
     fun webPlayerUsesTheSameBrowserIdentityAsBotGuardMinting() {
         val request = playerRequest(
             clientName = "1",
-            clientVersion = "2.20260630.01.00",
+            clientVersion = YoutubeWebClientIdentity.CLIENT_VERSION,
             userAgent = "Mozilla/5.0 Chrome/142.0.0.0",
             origin = "https://www.youtube.com",
             referer = "https://www.youtube.com/watch?v=abcdefghijk"
@@ -21,7 +23,7 @@ class YoutubeClientIdentityInterceptorTest {
         val normalized = YoutubeClientIdentityInterceptor.normalize(request)
 
         assertEquals(
-            YoutubeClientIdentityInterceptor.PO_TOKEN_WEB_USER_AGENT,
+            YoutubeWebClientIdentity.USER_AGENT,
             normalized.header("User-Agent")
         )
         assertEquals("https://www.youtube.com", normalized.header("Origin"))
@@ -32,18 +34,36 @@ class YoutubeClientIdentityInterceptorTest {
     }
 
     @Test
+    fun webPlayerRequestBuiltFromTheSharedIdentityIsLeftUntouched() {
+        val request = playerRequest(
+            clientName = "1",
+            clientVersion = YoutubeWebClientIdentity.CLIENT_VERSION,
+            userAgent = YoutubeWebClientIdentity.USER_AGENT,
+            origin = "https://www.youtube.com",
+            referer = "https://www.youtube.com/watch?v=abcdefghijk"
+        )
+
+        val normalized = YoutubeClientIdentityInterceptor.normalize(request)
+
+        assertEquals(YoutubeWebClientIdentity.USER_AGENT, normalized.header("User-Agent"))
+        assertEquals(YoutubeWebClientIdentity.CLIENT_VERSION, normalized.header("X-Youtube-Client-Version"))
+        assertEquals("1", normalized.header("X-Youtube-Client-Name"))
+        assertFalse(normalized.header("User-Agent").orEmpty().contains("Chrome/131"))
+    }
+
+    @Test
     fun visitorRequestChangesOnlyTheWebUserAgent() {
         val request = Request.Builder()
             .url("https://youtubei.googleapis.com/youtubei/v1/visitor_id")
             .header("User-Agent", "Mozilla/5.0 Chrome/142.0.0.0")
             .header("X-Youtube-Client-Name", "1")
-            .header("X-Youtube-Client-Version", "2.20260630.01.00")
+            .header("X-Youtube-Client-Version", YoutubeWebClientIdentity.CLIENT_VERSION)
             .build()
 
         val normalized = YoutubeClientIdentityInterceptor.normalize(request)
 
         assertEquals(
-            YoutubeClientIdentityInterceptor.PO_TOKEN_WEB_USER_AGENT,
+            YoutubeWebClientIdentity.USER_AGENT,
             normalized.header("User-Agent")
         )
         assertNull(normalized.header("Origin"))

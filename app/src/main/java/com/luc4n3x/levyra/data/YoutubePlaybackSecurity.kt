@@ -70,7 +70,8 @@ internal data class YoutubePoTokens(
 
 internal class YoutubePlayerRequestException(
     val httpCode: Int?,
-    message: String
+    message: String,
+    val playabilityScope: YoutubeClientFailureScope? = null
 ) : IllegalStateException(message)
 
 internal class YoutubePoTokenRuntimeUnavailableException(
@@ -270,8 +271,8 @@ internal class YoutubePlaybackSecurity private constructor(
     private suspend fun fetchVisitorData(): String {
         val locale = LevyraContentLocales.forLanguage(preferences.languageCode())
         val client = JSONObject()
-            .put("clientName", "WEB")
-            .put("clientVersion", WEB_CLIENT_VERSION)
+            .put("clientName", YoutubeWebClientIdentity.CLIENT_NAME)
+            .put("clientVersion", YoutubeWebClientIdentity.CLIENT_VERSION)
             .put("hl", locale.hl)
             .put("gl", locale.gl)
             .put("utcOffsetMinutes", 0)
@@ -285,9 +286,9 @@ internal class YoutubePlaybackSecurity private constructor(
             .post(body)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .header("User-Agent", WEB_USER_AGENT)
+            .header("User-Agent", YoutubeWebClientIdentity.USER_AGENT)
             .header("X-Youtube-Client-Name", "1")
-            .header("X-Youtube-Client-Version", WEB_CLIENT_VERSION)
+            .header("X-Youtube-Client-Version", YoutubeWebClientIdentity.CLIENT_VERSION)
             .build()
         return httpClient.awaitVisitorData(request)
     }
@@ -321,7 +322,11 @@ internal class YoutubePlaybackSecurity private constructor(
         }
         val requestError = chain.filterIsInstance<YoutubePlayerRequestException>().firstOrNull()
         val blob = chain.joinToString(" ") { it.message.orEmpty() }.lowercase()
-        return evaluateFailure(blob, requestError?.httpCode)
+        val decision = evaluateFailure(blob, requestError?.httpCode)
+        if (decision.rotate && YoutubeClientFailureAttribution.scope(error) == YoutubeClientFailureScope.NOT_ATTRIBUTABLE) {
+            return RotationDecision(rotate = false, immediate = false, resetCounter = false)
+        }
+        return decision
     }
 
     private data class RotationDecision(
@@ -356,8 +361,6 @@ internal class YoutubePlaybackSecurity private constructor(
             }
         }
 
-        private const val WEB_CLIENT_VERSION = "2.20260630.01.00"
-        private const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val GEO_MARKERS = listOf(
             "not available in your country",
@@ -1190,7 +1193,7 @@ internal class YoutubePoTokenRuntime private constructor(
         private val botguardApiKey = "AIzaSyDyT5W0Jh49F30Pqq" + "tyfdf7pDLFKLJoAnw"
         private const val CREATE_URL = "https://www.youtube.com/api/jnn/v1/Create"
         private const val GENERATE_URL = "https://www.youtube.com/api/jnn/v1/GenerateIT"
-        private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        private const val USER_AGENT = YoutubeWebClientIdentity.USER_AGENT
         private const val INIT_TIMEOUT_MS = 20_000L
         private const val TOKEN_TIMEOUT_MS = 12_000L
         private const val MAX_BINDING_LENGTH = 4096

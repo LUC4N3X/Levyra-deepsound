@@ -12,6 +12,8 @@ LevyraExtractor is a GPL-3.0 downstream extractor project.
 
 The multi-client Android VR, Safari and TVHTML5 resolution strategy and the aggregation of audio, muxed video and video-only formats were adapted from the open-source MetrolistExtractor approach and integrated into LevyraExtractor's existing SABR-aware architecture.
 
+Playability classification for private and age-restricted videos follows the NewPipeExtractor fix "[YouTube] Fix detection of private videos" (commit 96a19f0) and its current age-restriction reason matching.
+
 All original copyright headers remain in the relevant source files. The full project is distributed under GPL-3.0, and derivative distributions must preserve the corresponding license and notices.
 
 ## Libraries

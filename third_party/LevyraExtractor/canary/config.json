@@ -12,8 +12,8 @@
   },
   "sentinels": [
     {
-      "name": "youtube-dl-test",
-      "video_id": "BaW_jenozKc",
+      "name": "stable-music-video",
+      "video_id": "dQw4w9WgXcQ",
       "required": true,
       "expect_adaptive_video": true
     },
@@ -38,7 +38,7 @@
     {
       "name": "POTOKEN",
       "kind": "potoken",
-      "video_id": "BaW_jenozKc"
+      "video_id": "dQw4w9WgXcQ"
     }
   ],
   "upstreams": [

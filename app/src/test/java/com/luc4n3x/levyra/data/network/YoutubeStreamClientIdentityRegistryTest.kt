@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.network
 
+import com.luc4n3x.levyra.data.YoutubeWebClientIdentity
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -19,8 +20,8 @@ class YoutubeStreamClientIdentityRegistryTest {
     private val web = YoutubeStreamClientIdentity(
         clientName = "WEB",
         clientHeaderName = "1",
-        clientVersion = "2.20260805.01.00",
-        userAgent = YoutubeClientIdentityInterceptor.PO_TOKEN_WEB_USER_AGENT,
+        clientVersion = YoutubeWebClientIdentity.CLIENT_VERSION,
+        userAgent = YoutubeWebClientIdentity.USER_AGENT,
         requiresPoToken = true,
         videoId = "dQw4w9WgXcQ"
     )
@@ -88,7 +89,7 @@ class YoutubeStreamClientIdentityRegistryTest {
     fun webClientMediaHeadersCarryOriginAndReferer() {
         val headers = web.mediaRequestHeaders()
 
-        assertEquals(YoutubeClientIdentityInterceptor.PO_TOKEN_WEB_USER_AGENT, headers["User-Agent"])
+        assertEquals(YoutubeWebClientIdentity.USER_AGENT, headers["User-Agent"])
         assertEquals("https://www.youtube.com", headers["Origin"])
         assertEquals("https://www.youtube.com/", headers["Referer"])
         assertEquals("cross-site", headers["Sec-Fetch-Site"])
