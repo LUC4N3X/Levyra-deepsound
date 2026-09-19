@@ -14,6 +14,9 @@ import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
+import com.luc4n3x.levyra.domain.PlayerLongPressAction
+import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CompletableDeferred
@@ -169,6 +172,22 @@ class LevyraPreferencesStoreTest {
         assertFalse(reopened.dynamicColor())
         assertTrue(reopened.skipSilence())
         assertEquals("DJ Luca", reopened.jamDisplayName())
+    }
+
+    @Test
+    fun playerGestureActionsSurviveRecreation() {
+        val (store, preferences) = open()
+        val configured = LevyraInterfaceSettings(
+            swipeTrackChangeEnabled = false,
+            doubleTapAction = PlayerDoubleTapAction.PlayPause,
+            longPressAction = PlayerLongPressAction.Queue,
+            verticalSwipeAction = PlayerVerticalSwipeAction.Volume
+        )
+
+        preferences.setInterfaceSettings(configured)
+        flush(store)
+
+        assertEquals(configured, reopen().interfaceSettings())
     }
 
     @Test

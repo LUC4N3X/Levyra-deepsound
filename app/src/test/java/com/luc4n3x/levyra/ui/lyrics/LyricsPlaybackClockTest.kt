@@ -74,4 +74,11 @@ class LyricsPlaybackClockTest {
         assertTrue(corrected < 10_200L)
         assertTrue(corrected >= 10_200L - LYRICS_CLOCK_MAX_CONVERGENCE_MS)
     }
+
+    @Test
+    fun `line focus lingers briefly only when lyric motion is enabled`() {
+        assertEquals(9_910L, lyricsLineFocusPositionMs(10_000L, smoothingEnabled = true))
+        assertEquals(10_000L, lyricsLineFocusPositionMs(10_000L, smoothingEnabled = false))
+        assertEquals(0L, lyricsLineFocusPositionMs(40L, smoothingEnabled = true))
+    }
 }

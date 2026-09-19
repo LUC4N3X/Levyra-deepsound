@@ -158,4 +158,36 @@ class LevyraFeatureLocalizationTest {
         }
         assertEquals("Rimosso Halo", LevyraStrings.forCode("it").playlistStudioRemoved("Halo"))
     }
+
+    @Test
+    fun everyLanguageResolvesPlayerGestureActionsWithAnIntentionalEnglishFallback() {
+        LevyraStrings.all().forEach { strings ->
+            listOf(
+                strings.playerGestureHorizontalSwipe,
+                strings.playerGestureHorizontalSwipeSubtitle,
+                strings.playerGestureDoubleTapAction,
+                strings.playerGestureDoubleTapActionSubtitle,
+                strings.playerGestureLongPressAction,
+                strings.playerGestureLongPressActionSubtitle,
+                strings.playerGestureVerticalSwipe,
+                strings.playerGestureVerticalSwipeSubtitle,
+                strings.gestureActionSeek,
+                strings.gestureActionPlayPause,
+                strings.gestureActionFavorite,
+                strings.gestureActionQueue,
+                strings.gestureActionLyrics,
+                strings.gestureActionSpeed,
+                strings.gestureActionBrightnessVolume,
+                strings.gestureActionVolume,
+                strings.gestureActionDisabled
+            ).forEach { value ->
+                assertTrue("Blank player gesture copy for ${strings.code}", value.isNotBlank())
+            }
+        }
+        assertEquals("Doppio tap", LevyraStrings.forCode("it").playerGestureDoubleTapAction)
+        assertEquals(
+            LevyraStrings.forCode("en").playerGestureDoubleTapAction,
+            LevyraStrings.forCode("de").playerGestureDoubleTapAction
+        )
+    }
 }

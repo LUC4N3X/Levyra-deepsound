@@ -46,6 +46,9 @@ import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
+import com.luc4n3x.levyra.domain.PlayerLongPressAction
+import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import java.io.ByteArrayOutputStream
@@ -1662,8 +1665,12 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("showCharts", value.showCharts)
     .put("fontPreset", value.fontPreset.name)
     .put("playerGesturesEnabled", value.playerGesturesEnabled)
+    .put("swipeTrackChangeEnabled", value.swipeTrackChangeEnabled)
+    .put("doubleTapAction", value.doubleTapAction.name)
     .put("doubleTapSeekSeconds", value.doubleTapSeekSeconds)
+    .put("longPressAction", value.longPressAction.name)
     .put("longPressSpeed", value.longPressSpeed.toDouble())
+    .put("verticalSwipeAction", value.verticalSwipeAction.name)
     .put("canvasQuality", value.canvasQuality.name)
     .put("canvasSource", value.canvasSource.name)
     .put("motionArtworkWifiOnly", value.motionArtworkWifiOnly)
@@ -1700,8 +1707,12 @@ internal fun backupInterfaceSettingsFromJson(
         showCharts = json.optBoolean("showCharts", true),
         fontPreset = LevyraFontPreset.from(json.optString("fontPreset")),
         playerGesturesEnabled = json.optBoolean("playerGesturesEnabled", true),
+        swipeTrackChangeEnabled = json.optBoolean("swipeTrackChangeEnabled", true),
+        doubleTapAction = PlayerDoubleTapAction.from(json.optString("doubleTapAction")),
         doubleTapSeekSeconds = json.optInt("doubleTapSeekSeconds", 10),
+        longPressAction = PlayerLongPressAction.from(json.optString("longPressAction")),
         longPressSpeed = json.optDouble("longPressSpeed", 2.0).toFloat(),
+        verticalSwipeAction = PlayerVerticalSwipeAction.from(json.optString("verticalSwipeAction")),
         canvasQuality = LevyraCanvasQuality.from(json.optString("canvasQuality")),
         canvasSource = LevyraCanvasSource.from(json.optString("canvasSource")),
         motionArtworkWifiOnly = json.optBoolean("motionArtworkWifiOnly", false),
