@@ -65,11 +65,19 @@ object AppleMetadataMatcher {
         if (durationReason != null) return rejected(durationReason)
 
         val (releaseScore, isReleaseMatch) = AppleReleaseMatcher.evaluate(reference, candidate)
-        return if (isExactIsrc) {
-            exactIsrcEvaluation(releaseScore, durationScore, isReleaseMatch)
-        } else {
-            fuzzyEvaluation(reference, candidate, titleScore, releaseScore, durationScore, isReleaseMatch)
-        }
+        if (isExactIsrc) return exactIsrcEvaluation(releaseScore, durationScore, isReleaseMatch)
+
+        val artistScore = AppleArtistMatcher.score(reference.artist, candidate.artistName)
+        val totalScore = (35 + titleScore + artistScore + releaseScore + durationScore).coerceIn(0, 100)
+        val accepted = totalScore >= MIN_ACCEPTED_CONFIDENCE
+        return Evaluation(
+            accepted = accepted,
+            confidence = totalScore,
+            isRecordingMatch = accepted,
+            isReleaseMatch = isReleaseMatch,
+            releaseConfidence = releaseScore,
+            rejectionReason = if (accepted) null else "insufficient_confidence"
+        )
     }
 
     private fun exactIsrcEvaluation(
@@ -85,27 +93,6 @@ object AppleMetadataMatcher {
             isRecordingMatch = true,
             isReleaseMatch = isReleaseMatch,
             releaseConfidence = releaseScore
-        )
-    }
-
-    private fun fuzzyEvaluation(
-        reference: Track,
-        candidate: AppleTrackMetadata,
-        titleScore: Int,
-        releaseScore: Int,
-        durationScore: Int,
-        isReleaseMatch: Boolean
-    ): Evaluation {
-        val artistScore = AppleArtistMatcher.score(reference.artist, candidate.artistName)
-        val totalScore = (35 + titleScore + artistScore + releaseScore + durationScore).coerceIn(0, 100)
-        val accepted = totalScore >= MIN_ACCEPTED_CONFIDENCE
-        return Evaluation(
-            accepted = accepted,
-            confidence = totalScore,
-            isRecordingMatch = accepted,
-            isReleaseMatch = isReleaseMatch,
-            releaseConfidence = releaseScore,
-            rejectionReason = if (accepted) null else "insufficient_confidence"
         )
     }
 
