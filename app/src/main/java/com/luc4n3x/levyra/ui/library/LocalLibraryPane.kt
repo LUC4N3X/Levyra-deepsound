@@ -525,15 +525,15 @@ internal fun localLibraryAlphabetIndex(
     val labels = when (tab) {
         LocalLibraryTab.Songs -> library.catalog.songs
             .filterLocalTracks(query, library.catalog.mediaByUri)
-            .filterByLocalQuality(effectiveFilter, library.catalog.mediaByUri)
+            .filterByLocalQuality(effectiveFilter, library.catalog.mediaByUri, nowMs)
             .map(Track::title)
         LocalLibraryTab.Albums -> library.catalog.albums
             .filterLocalAlbums(query, library.catalog.mediaByUri)
-            .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri) }
+            .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri, nowMs) }
             .map(LocalAlbumGroup::title)
         LocalLibraryTab.Artists -> library.catalog.artists
             .filterLocalArtists(query, library.catalog.mediaByUri)
-            .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri) }
+            .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri, nowMs) }
             .map(LocalArtistGroup::name)
         LocalLibraryTab.Folders -> emptyList()
     }
