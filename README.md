@@ -277,6 +277,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
         <li><b>Gapless & Queue:</b> Gapless transitions, shuffle/repeat, queue Undo, and album continuity that avoids crossfading between consecutive tracks from the same release.</li>
         <li><b>Queue Spaces:</b> Keep several named queues instead of one disposable list. Spaces survive restarts and backups, and you can create, rename, duplicate, switch, clear, delete, or send tracks to another space without rebuilding everything.</li>
         <li><b>Tempo & Timing:</b> Speed and pitch controls, plus a built-in sleep timer.</li>
+        <li><b>Configurable Player Gestures:</b> Customize artwork swipes, double-tap and long-press actions, seek steps, temporary speed, and edge controls for brightness or volume. The same gesture mapping is shared across player skins, with horizontal track swipes applied consistently to the full player and mini-player, and preferences preserved across restarts and Levyra backups.</li>
         <li><b>Android Auto:</b> Playback works with Android's car-focused media controls.</li>
         <li><b>Loudness Normalization:</b> Attenuation-only leveling from track loudness data, with a gated BS.1770-4-style meter when the track has no loudness metadata.</li>
         <li><b>Equalizer & AutoEQ:</b> 10-band EQ with presets, bass boost, virtualizer, preamp, and a searchable headphone correction catalog.</li>
@@ -315,7 +316,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
       <h3>🎙️ <b>Lyrics & Visual Immersion</b></h3>
       <p><b>Lyrics that move with the music.</b><br><sub>Synced lyrics, lyric sharing, artwork motion, and Canvas are all handled inside the player.</sub></p>
       <ul>
-        <li><b>Synced Lyrics:</b> LRCLIB lyrics with millisecond timing and tap-to-seek highlighting.</li>
+        <li><b>Synced Lyrics:</b> LRCLIB lyrics with millisecond timing, tap-to-seek highlighting, a short active-line linger, and motion that follows Levyra's global animation setting. When animations are disabled, lyric transitions and scrolling stay non-animated.</li>
         <li><b>Route-Aware Latency:</b> On supported Android versions you can save Bluetooth lyric timing per device, with a normal global offset when the active route cannot be identified reliably.</li>
         <li><b>Multi-Script Romanization:</b> Offline readable forms for Cyrillic, Greek and polytonic Greek, Arabic, Hebrew, Georgian, Devanagari, Gurmukhi, Bengali, plus the existing CJK, Kana, and Hangul paths.</li>
         <li><b>Lyric Sharing:</b> Select verses, copy or share them, or export 1080×1080 square and 1080×1920 story cards with RTL-aware layout and Unicode-safe text.</li>
