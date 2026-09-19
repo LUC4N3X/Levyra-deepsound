@@ -41,23 +41,19 @@ object AppleMetadataMatcher {
         val refArtist = reference.artist.trim()
         val candArtist = candidate.artistName.trim()
 
-        if (refTitle.isBlank() || candTitle.isBlank() || refArtist.isBlank() || candArtist.isBlank()) {
-            return Evaluation(false, 0, rejectionReason = "blank_identity")
-        }
-
         val expectedTitleIdentity = AlternativeTrackText.title(refTitle)
         val candidateTitleIdentity = AlternativeTrackText.title(candTitle)
-
-        checkVersionMismatch(expectedTitleIdentity, candidateTitleIdentity)?.let { reason ->
+        validateIdentity(
+            refTitle = refTitle,
+            candTitle = candTitle,
+            refArtist = refArtist,
+            candArtist = candArtist,
+            refExplicit = reference.explicit,
+            candExplicit = candidate.explicit,
+            expected = expectedTitleIdentity,
+            candidate = candidateTitleIdentity
+        )?.let { reason ->
             return Evaluation(false, 0, rejectionReason = reason)
-        }
-
-        if (isExplicitMismatched(reference.explicit, expectedTitleIdentity, candidate.explicit, candidateTitleIdentity)) {
-            return Evaluation(false, 0, rejectionReason = "explicit_mismatch")
-        }
-
-        if (!areArtistsCompatible(refArtist, candArtist)) {
-            return Evaluation(false, 0, rejectionReason = "artist_mismatch")
         }
 
         val (titleScore, titleReason) = scoreTitle(expectedTitleIdentity.core, candidateTitleIdentity.core)
@@ -101,6 +97,30 @@ object AppleMetadataMatcher {
             rejectionReason = if (accepted) null else "insufficient_confidence"
         )
     }
+
+    private fun validateIdentity(
+        refTitle: String,
+        candTitle: String,
+        refArtist: String,
+        candArtist: String,
+        refExplicit: Boolean,
+        candExplicit: Boolean,
+        expected: TitleIdentity,
+        candidate: TitleIdentity
+    ): String? {
+        if (hasBlankIdentity(refTitle, candTitle, refArtist, candArtist)) return "blank_identity"
+        checkVersionMismatch(expected, candidate)?.let { return it }
+        if (isExplicitMismatched(refExplicit, expected, candExplicit, candidate)) return "explicit_mismatch"
+        if (!areArtistsCompatible(refArtist, candArtist)) return "artist_mismatch"
+        return null
+    }
+
+    private fun hasBlankIdentity(
+        refTitle: String,
+        candTitle: String,
+        refArtist: String,
+        candArtist: String
+    ): Boolean = listOf(refTitle, candTitle, refArtist, candArtist).any(String::isBlank)
 
     private fun checkVersionMismatch(
         expected: TitleIdentity,
@@ -257,19 +277,26 @@ object AppleMetadataMatcher {
         val normCand = AlternativeTrackText.normalizeArtist(candArtist)
         if (normRef.isBlank() || normCand.isBlank()) return false
         if (normRef == normCand) return true
+        if (hasStructuredArtistOverlap(refArtist, candArtist)) return true
+        if (hasArtistNameOverlap(refArtist, candArtist)) return true
+        return hasMutualArtistCoverage(normRef, normCand)
+    }
 
+    private fun hasStructuredArtistOverlap(refArtist: String, candArtist: String): Boolean {
         val refCredit = AlternativeTrackText.artistCredit(refArtist)
         val candCredit = AlternativeTrackText.artistCredit(candArtist)
+        if (refCredit.primary.isBlank() || candCredit.primary.isBlank()) return false
+        if (refCredit.primary == candCredit.primary) return true
+        return refCredit.primary in candCredit.names || candCredit.primary in refCredit.names
+    }
 
-        if (refCredit.primary.isNotBlank() && candCredit.primary.isNotBlank()) {
-            if (refCredit.primary == candCredit.primary) return true
-            if (refCredit.primary in candCredit.names || candCredit.primary in refCredit.names) return true
-        }
-
+    private fun hasArtistNameOverlap(refArtist: String, candArtist: String): Boolean {
         val refNames = AlternativeTrackText.artistNames(refArtist)
         val candNames = AlternativeTrackText.artistNames(candArtist)
-        if (refNames.any { it in candNames } || candNames.any { it in refNames }) return true
+        return refNames.any { it in candNames } || candNames.any { it in refNames }
+    }
 
+    private fun hasMutualArtistCoverage(normRef: String, normCand: String): Boolean {
         val referenceCoverage = tokenCoverage(normRef, normCand)
         val candidateCoverage = tokenCoverage(normCand, normRef)
         return minOf(referenceCoverage, candidateCoverage) >= 0.50
