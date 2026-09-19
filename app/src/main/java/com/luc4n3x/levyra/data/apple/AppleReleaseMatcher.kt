@@ -6,12 +6,35 @@ import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
 
 internal object AppleReleaseMatcher {
+    private const val COMPILATION_MISMATCH_SCORE = -30
+    private const val CORE_MISMATCH_SCORE = -20
+    private const val EXACT_RELEASE_SCORE = 30
+    private const val EDITION_VARIANT_SCORE = 10
+    private const val PARTIAL_RELEASE_SCORE = 5
+    private const val STRONG_COVERAGE_SCORE = 18
+    private const val GOOD_COVERAGE_SCORE = 12
+    private const val MATCHING_TRACK_BONUS = 5
+    private const val MISMATCHED_TRACK_PENALTY = -5
+    private const val STRONG_COVERAGE_THRESHOLD = 0.90
+    private const val GOOD_COVERAGE_THRESHOLD = 0.75
+    private const val MIN_COVERAGE_THRESHOLD = 0.50
+
     fun evaluate(reference: Track, candidate: AppleTrackMetadata): Pair<Int, Boolean> {
         val referenceAlbum = reference.album.trim()
         val candidateAlbum = candidate.albumName.trim()
-        if (!hasUsableIdentity(referenceAlbum, candidateAlbum)) return 0 to false
-        if (isCompilationMismatch(referenceAlbum, candidateAlbum)) return -30 to false
+        return when {
+            !hasUsableIdentity(referenceAlbum, candidateAlbum) -> 0 to false
+            isCompilationMismatch(referenceAlbum, candidateAlbum) -> COMPILATION_MISMATCH_SCORE to false
+            else -> evaluateComparableRelease(reference, candidate, referenceAlbum, candidateAlbum)
+        }
+    }
 
+    private fun evaluateComparableRelease(
+        reference: Track,
+        candidate: AppleTrackMetadata,
+        referenceAlbum: String,
+        candidateAlbum: String
+    ): Pair<Int, Boolean> {
         val referenceIdentity = AlternativeTrackText.album(referenceAlbum)
         val candidateIdentity = AlternativeTrackText.album(candidateAlbum)
         val coresMatch = referenceIdentity.core.isNotBlank() &&
@@ -23,12 +46,13 @@ internal object AppleReleaseMatcher {
             candidateEditions = candidateIdentity.editions,
             coresMatch = coresMatch
         )
-        return (baseScore + scoreTrackPosition(
+        val trackPositionScore = scoreTrackPosition(
             coresMatch = coresMatch,
             releaseMatch = releaseMatch,
             referenceTrackNumber = reference.trackNumber,
             candidateTrackNumber = candidate.trackNumber
-        )) to releaseMatch
+        )
+        return (baseScore + trackPositionScore) to releaseMatch
     }
 
     private fun hasUsableIdentity(referenceAlbum: String, candidateAlbum: String): Boolean =
@@ -43,30 +67,35 @@ internal object AppleReleaseMatcher {
         referenceEditions: Set<AlbumEdition>,
         candidateEditions: Set<AlbumEdition>,
         coresMatch: Boolean
-    ): Pair<Int, Boolean> {
-        if (coresMatch) return scoreMatchingCores(referenceEditions, candidateEditions)
-        if (referenceCore.isBlank() || candidateCore.isBlank()) return -20 to false
-
-        val mutualCoverage = minOf(
-            AppleMatchScoring.tokenCoverage(referenceCore, candidateCore),
-            AppleMatchScoring.tokenCoverage(candidateCore, referenceCore)
+    ): Pair<Int, Boolean> = when {
+        coresMatch -> scoreMatchingCores(referenceEditions, candidateEditions)
+        referenceCore.isBlank() || candidateCore.isBlank() -> CORE_MISMATCH_SCORE to false
+        else -> scoreCoverage(
+            mutualCoverage = minOf(
+                AppleMatchScoring.tokenCoverage(referenceCore, candidateCore),
+                AppleMatchScoring.tokenCoverage(candidateCore, referenceCore)
+            ),
+            sameEditions = referenceEditions == candidateEditions
         )
-        val sameEditions = referenceEditions == candidateEditions
-        return when {
-            mutualCoverage >= 0.90 && sameEditions -> 18 to true
-            mutualCoverage >= 0.75 -> 12 to false
-            mutualCoverage >= 0.50 -> 5 to false
-            else -> -20 to false
-        }
+    }
+
+    private fun scoreCoverage(
+        mutualCoverage: Double,
+        sameEditions: Boolean
+    ): Pair<Int, Boolean> = when {
+        mutualCoverage >= STRONG_COVERAGE_THRESHOLD && sameEditions -> STRONG_COVERAGE_SCORE to true
+        mutualCoverage >= GOOD_COVERAGE_THRESHOLD -> GOOD_COVERAGE_SCORE to false
+        mutualCoverage >= MIN_COVERAGE_THRESHOLD -> PARTIAL_RELEASE_SCORE to false
+        else -> CORE_MISMATCH_SCORE to false
     }
 
     private fun scoreMatchingCores(
         referenceEditions: Set<AlbumEdition>,
         candidateEditions: Set<AlbumEdition>
-    ): Pair<Int, Boolean> {
-        if (referenceEditions == candidateEditions) return 30 to true
-        if (referenceEditions.isEmpty() xor candidateEditions.isEmpty()) return 10 to false
-        return 5 to false
+    ): Pair<Int, Boolean> = when {
+        referenceEditions == candidateEditions -> EXACT_RELEASE_SCORE to true
+        referenceEditions.isEmpty() xor candidateEditions.isEmpty() -> EDITION_VARIANT_SCORE to false
+        else -> PARTIAL_RELEASE_SCORE to false
     }
 
     private fun scoreTrackPosition(
@@ -74,10 +103,11 @@ internal object AppleReleaseMatcher {
         releaseMatch: Boolean,
         referenceTrackNumber: Int,
         candidateTrackNumber: Int
-    ): Int {
-        if (!coresMatch || referenceTrackNumber <= 0 || candidateTrackNumber <= 0) return 0
-        if (referenceTrackNumber == candidateTrackNumber) return 5
-        return if (releaseMatch) 0 else -5
+    ): Int = when {
+        !coresMatch || referenceTrackNumber <= 0 || candidateTrackNumber <= 0 -> 0
+        referenceTrackNumber == candidateTrackNumber -> MATCHING_TRACK_BONUS
+        releaseMatch -> 0
+        else -> MISMATCHED_TRACK_PENALTY
     }
 
     private fun isCompilationAlbum(album: String): Boolean {
