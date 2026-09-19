@@ -48,8 +48,8 @@ internal object AppleReleaseMatcher {
         if (referenceCore.isBlank() || candidateCore.isBlank()) return -20 to false
 
         val mutualCoverage = minOf(
-            tokenCoverage(referenceCore, candidateCore),
-            tokenCoverage(candidateCore, referenceCore)
+            AppleMatchScoring.tokenCoverage(referenceCore, candidateCore),
+            AppleMatchScoring.tokenCoverage(candidateCore, referenceCore)
         )
         val sameEditions = referenceEditions == candidateEditions
         return when {
@@ -78,14 +78,6 @@ internal object AppleReleaseMatcher {
         if (!coresMatch || referenceTrackNumber <= 0 || candidateTrackNumber <= 0) return 0
         if (referenceTrackNumber == candidateTrackNumber) return 5
         return if (releaseMatch) 0 else -5
-    }
-
-    private fun tokenCoverage(target: String, candidate: String): Double {
-        val targetTokens = target.split(' ').filter { it.isNotBlank() }.toSet()
-        if (targetTokens.isEmpty()) return 0.0
-        val candidateTokens = candidate.split(' ').filter { it.isNotBlank() }.toSet()
-        if (candidateTokens.isEmpty()) return 0.0
-        return targetTokens.count { it in candidateTokens }.toDouble() / targetTokens.size.toDouble()
     }
 
     private fun isCompilationAlbum(album: String): Boolean {

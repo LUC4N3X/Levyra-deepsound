@@ -7,7 +7,7 @@ internal object AppleArtistMatcher {
         val reference = AlternativeTrackText.normalizeArtist(referenceArtist)
         val candidate = AlternativeTrackText.normalizeArtist(candidateArtist)
         if (reference == candidate) return 20
-        return (tokenCoverage(reference, candidate) * 15).toInt()
+        return (AppleMatchScoring.tokenCoverage(reference, candidate) * 15).toInt()
     }
 
     fun areCompatible(referenceArtist: String, candidateArtist: String): Boolean {
@@ -35,16 +35,9 @@ internal object AppleArtistMatcher {
     }
 
     private fun hasMutualCoverage(reference: String, candidate: String): Boolean {
-        val referenceCoverage = tokenCoverage(reference, candidate)
-        val candidateCoverage = tokenCoverage(candidate, reference)
+        val referenceCoverage = AppleMatchScoring.tokenCoverage(reference, candidate)
+        val candidateCoverage = AppleMatchScoring.tokenCoverage(candidate, reference)
         return minOf(referenceCoverage, candidateCoverage) >= 0.50
     }
 
-    private fun tokenCoverage(target: String, candidate: String): Double {
-        val targetTokens = target.split(' ').filter { it.isNotBlank() }.toSet()
-        if (targetTokens.isEmpty()) return 0.0
-        val candidateTokens = candidate.split(' ').filter { it.isNotBlank() }.toSet()
-        if (candidateTokens.isEmpty()) return 0.0
-        return targetTokens.count { it in candidateTokens }.toDouble() / targetTokens.size.toDouble()
-    }
 }
