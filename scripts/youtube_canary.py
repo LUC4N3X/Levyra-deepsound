@@ -1403,25 +1403,7 @@ def _classify(
         new_js = new_obs.get("player_js") if isinstance(new_obs.get("player_js"), dict) else {}
         if old_js.get("sha256") and new_js.get("sha256") and old_js.get("sha256") != new_js.get("sha256"):
             info.append(f"{name}: player JS hash changed")
-        if (
-            old_obs.get("primary_client")
-            and new_obs.get("primary_client")
-            and old_obs.get("primary_client") != new_obs.get("primary_client")
-        ):
-            info.append(
-                f"{name}: primary probe client {old_obs.get('primary_client')} -> {new_obs.get('primary_client')}"
-            )
-        coverage = new_js.get("cipher_coverage") if isinstance(new_js.get("cipher_coverage"), dict) else {}
-        if coverage.get("config_covered") is False and coverage.get("url_factory_anchor") is False:
-            info.append(
-                f"{name}: player {coverage.get('player_hash') or '?'} has no bundled cipher config and no "
-                "URL factory anchor; the app will rely on the semantic analyzer or the remote decoder"
-            )
-        elif coverage.get("config_covered") is False:
-            info.append(
-                f"{name}: player {coverage.get('player_hash') or '?'} has no bundled cipher config yet; "
-                "the URL factory analyzer candidate is available"
-            )
+        info.extend(_cipher_and_probe_changes(name, old_obs, new_obs, new_js))
         if (
             old_obs.get("web_client_version")
             and new_obs.get("web_client_version")
@@ -1501,6 +1483,57 @@ def _sanitize_for_baseline(observation: dict[str, Any]) -> dict[str, Any]:
     return json.loads(json.dumps(safe))
 
 
+def _cipher_and_probe_changes(
+    name: str,
+    old_obs: dict[str, Any],
+    new_obs: dict[str, Any],
+    new_js: dict[str, Any],
+) -> list[str]:
+    changes: list[str] = []
+    old_primary = old_obs.get("primary_client")
+    new_primary = new_obs.get("primary_client")
+    if old_primary and new_primary and old_primary != new_primary:
+        changes.append(f"{name}: primary probe client {old_primary} -> {new_primary}")
+    coverage = new_js.get("cipher_coverage") if isinstance(new_js.get("cipher_coverage"), dict) else {}
+    if coverage.get("config_covered") is not False:
+        return changes
+    player_hash = coverage.get("player_hash") or "?"
+    if coverage.get("url_factory_anchor") is False:
+        changes.append(
+            f"{name}: player {player_hash} has no bundled cipher config and no "
+            "URL factory anchor; the app will rely on the semantic analyzer or the remote decoder"
+        )
+    else:
+        changes.append(
+            f"{name}: player {player_hash} has no bundled cipher config yet; "
+            "the URL factory analyzer candidate is available"
+        )
+    return changes
+
+
+def _render_cipher_coverage(observation: dict[str, Any]) -> list[str]:
+    lines = []
+    for sentinel in observation.get("sentinels") or []:
+        if not isinstance(sentinel, dict):
+            continue
+        chosen = sentinel.get("observation") if isinstance(sentinel.get("observation"), dict) else {}
+        player_js = chosen.get("player_js") if isinstance(chosen.get("player_js"), dict) else {}
+        coverage = player_js.get("cipher_coverage") if isinstance(player_js.get("cipher_coverage"), dict) else {}
+        if not coverage:
+            continue
+        covered = coverage.get("config_covered")
+        lines.append(
+            "- {name}: player `{hash}` config={covered} url_factory={factory} url_class={url_class}".format(
+                name=str(sentinel.get("name") or sentinel.get("video_id") or ""),
+                hash=str(coverage.get("player_hash") or "?")[:16],
+                covered="unknown" if covered is None else ("yes" if covered else "no"),
+                factory="yes" if coverage.get("url_factory_anchor") else "no",
+                url_class="yes" if coverage.get("url_class_found") else "no",
+            )
+        )
+    return lines or ["- None"]
+
+
 def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str:
     lines = [
         "# Levyra YouTube Canary",
@@ -1538,26 +1571,7 @@ def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str
             )
         )
     lines += ["", "## Cipher coverage", ""]
-    coverage_lines = []
-    for sentinel in observation.get("sentinels") or []:
-        if not isinstance(sentinel, dict):
-            continue
-        chosen = sentinel.get("observation") if isinstance(sentinel.get("observation"), dict) else {}
-        player_js = chosen.get("player_js") if isinstance(chosen.get("player_js"), dict) else {}
-        coverage = player_js.get("cipher_coverage") if isinstance(player_js.get("cipher_coverage"), dict) else {}
-        if not coverage:
-            continue
-        covered = coverage.get("config_covered")
-        coverage_lines.append(
-            "- {name}: player `{hash}` config={covered} url_factory={factory} url_class={url_class}".format(
-                name=str(sentinel.get("name") or sentinel.get("video_id") or ""),
-                hash=str(coverage.get("player_hash") or "?")[:16],
-                covered="unknown" if covered is None else ("yes" if covered else "no"),
-                factory="yes" if coverage.get("url_factory_anchor") else "no",
-                url_class="yes" if coverage.get("url_class_found") else "no",
-            )
-        )
-    lines.extend(coverage_lines or ["- None"])
+    lines.extend(_render_cipher_coverage(observation))
     lines += ["", "## Capability checks", ""]
     capability_checks = observation.get("capability_checks") or []
     if not capability_checks:
