@@ -6,6 +6,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class PlaybackCompatibilityPolicyTest {
     @Test
@@ -32,9 +33,56 @@ class PlaybackCompatibilityPolicyTest {
         )
         assertEquals("21.03.36", policy.androidReelClientVersion)
         assertEquals(
-            mapOf("ANDROID_VR" to PlaybackClientOverride(enabled = false)),
+            mapOf(
+                "ANDROID_VR" to PlaybackClientOverride(enabled = false),
+                "ANDROID" to PlaybackClientOverride(
+                    capabilities = mapOf(PlaybackClientCapability.PLAYER to false)
+                ),
+                "WEB_EMBEDDED_PLAYER" to PlaybackClientOverride(
+                    capabilities = mapOf(PlaybackClientCapability.PLAYER to false)
+                )
+            ),
             policy.clientOverrides
         )
+    }
+
+    @Test
+    fun disabledAndroidPlayerProfileKeepsReelStreamingAndBrowseAlive() {
+        val policy = PlaybackCompatibilityPolicy.bundled()
+
+        assertFalse(policy.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.PLAYER))
+        assertTrue(policy.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.STREAMING))
+        assertTrue(policy.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.BROWSE))
+        assertFalse(policy.isClientCapabilityEnabled("WEB_EMBEDDED_PLAYER", PlaybackClientCapability.PLAYER))
+        assertTrue(policy.isClientCapabilityEnabled("IOS", PlaybackClientCapability.PLAYER))
+        assertTrue(policy.isClientCapabilityEnabled("ANDROID_MUSIC", PlaybackClientCapability.PLAYER))
+    }
+
+    @Test
+    fun publishedRemotePolicyMatchesTheBundledPolicy() {
+        val file = listOf(File("../config/playback_policy.json"), File("config/playback_policy.json"))
+            .first { it.isFile }
+        val bundled = PlaybackCompatibilityPolicy.bundled()
+
+        val published = PlaybackCompatibilityPolicyParser.parse(file.readText(), bundled)
+
+        assertNotNull(published)
+        assertEquals(bundled.revision, published!!.revision)
+        assertEquals(bundled.clientOverrides, published.clientOverrides)
+        assertEquals(bundled.audioStrategies, published.audioStrategies)
+        assertEquals(bundled.videoStrategies, published.videoStrategies)
+    }
+
+    @Test
+    fun remotePolicyCanReEnableAClientDisabledByTheBundledPolicy() {
+        val parsed = PlaybackCompatibilityPolicyParser.parse(
+            """{"schema":1,"revision":2026091902,"clients":{"ANDROID":{"capabilities":{"player":true}}}}""",
+            PlaybackCompatibilityPolicy.bundled()
+        )
+
+        assertNotNull(parsed)
+        assertTrue(parsed!!.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.PLAYER))
+        assertFalse(parsed.isClientCapabilityEnabled("WEB_EMBEDDED_PLAYER", PlaybackClientCapability.PLAYER))
     }
 
     @Test
@@ -413,7 +461,7 @@ class PlaybackCompatibilityPolicyTest {
         assertTrue(parsed.isClientCapabilityEnabled("VISIONOS", PlaybackClientCapability.PLAYER))
         assertFalse(parsed.isClientCapabilityEnabled("VISIONOS", PlaybackClientCapability.STREAMING))
 
-        assertTrue(parsed.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.PLAYER))
+        assertTrue(parsed.isClientCapabilityEnabled("ANDROID_MUSIC", PlaybackClientCapability.PLAYER))
         assertTrue(parsed.isClientCapabilityEnabled("IOS", PlaybackClientCapability.STREAMING))
     }
 
@@ -436,7 +484,7 @@ class PlaybackCompatibilityPolicyTest {
         val restored = PlaybackCompatibilityPolicyParser.parse(policy.toJson(), base)
 
         assertNotNull(restored)
-        assertEquals(policy.clientOverrides, restored!!.clientOverrides)
+        assertEquals(base.clientOverrides + policy.clientOverrides, restored!!.clientOverrides)
     }
 
     @Test
@@ -610,7 +658,10 @@ class PlaybackCompatibilityPolicyTest {
 
         assertNotNull(parsed)
         assertFalse(parsed!!.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.STREAMING))
-        assertTrue(parsed.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.PLAYER))
+        assertEquals(
+            base.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.PLAYER),
+            parsed.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.PLAYER)
+        )
         assertTrue(base.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.STREAMING))
     }
 }

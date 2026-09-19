@@ -604,10 +604,17 @@ internal fun selectPreferredVideoPlaybackCandidate(
     candidates: List<Track>,
     authoritativeIds: Set<String> = emptySet()
 ): Track? {
+    val artTrackIds = if (YoutubeMusicVideoType.isArtTrack(target.videoType)) {
+        setOf(target.audioVideoId.trim(), target.id.trim()) - target.counterpartVideoId.trim()
+    } else {
+        emptySet()
+    }
     return candidates.asSequence()
         .mapIndexed { rank, candidate -> rank to candidate }
         .filter { (_, candidate) ->
-            YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoCandidateId(candidate)) &&
+            val candidateId = videoCandidateId(candidate)
+            YOUTUBE_PLAYABLE_VIDEO_ID.matches(candidateId) &&
+                candidateId !in artTrackIds &&
                 !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
         }
         .filter { (_, candidate) -> isPlaybackCandidateCompatible(target, candidate) }
