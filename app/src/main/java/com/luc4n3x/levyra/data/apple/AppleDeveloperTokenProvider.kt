@@ -88,10 +88,8 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
             .header("User-Agent", USER_AGENT)
             .header("Accept", "*/*")
             .build()
-        val response = awaitResponse(client.newCall(request)) ?: return null
-        return response.use {
-            if (!response.isSuccessful) null else response.body.string().takeIf(String::isNotBlank)
-        }
+        val response = awaitTextResponse(client.newCall(request)) ?: return null
+        return if (response.code in 200..299) response.body?.takeIf(String::isNotBlank) else null
     }
 
     private suspend fun requestTrustedScriptText(url: String): String? {
@@ -102,25 +100,23 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
                 .url(currentUrl)
                 .header("User-Agent", USER_AGENT)
                 .build()
-            val response = awaitResponse(scriptClient.newCall(request)) ?: return null
-            response.use { resp ->
-                if (resp.code in SCRIPT_REDIRECT_CODES) {
-                    val location = resp.header("Location") ?: return null
-                    val next = trustedAppleMusicScriptRedirectUrl(currentUrl.toString(), location)
-                        ?.toHttpUrlOrNull() ?: return null
-                    currentUrl = next
-                    redirects++
-                } else if (resp.isSuccessful) {
-                    return resp.body.string().takeIf(String::isNotBlank)
-                } else {
-                    return null
-                }
+            val response = awaitTextResponse(scriptClient.newCall(request)) ?: return null
+            if (response.code in SCRIPT_REDIRECT_CODES) {
+                val location = response.location ?: return null
+                val next = trustedAppleMusicScriptRedirectUrl(currentUrl.toString(), location)
+                    ?.toHttpUrlOrNull() ?: return null
+                currentUrl = next
+                redirects++
+            } else if (response.code in 200..299) {
+                return response.body?.takeIf(String::isNotBlank)
+            } else {
+                return null
             }
         }
         return null
     }
 
-    private suspend fun awaitResponse(call: Call): Response? = suspendCancellableCoroutine { continuation ->
+    private suspend fun awaitTextResponse(call: Call): HttpTextResponse? = suspendCancellableCoroutine { continuation ->
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) {
@@ -130,14 +126,30 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                if (continuation.isActive) {
-                    continuation.resumeWith(Result.success(response))
-                } else {
-                    response.close()
+                response.use {
+                    val body = if (response.code in 200..299) {
+                        runCatching { response.body.string() }.getOrNull()
+                    } else {
+                        null
+                    }
+                    val snapshot = HttpTextResponse(
+                        code = response.code,
+                        location = response.header("Location"),
+                        body = body
+                    )
+                    if (continuation.isActive) {
+                        continuation.resumeWith(Result.success(snapshot))
+                    }
                 }
             }
         })
     }
+
+    private data class HttpTextResponse(
+        val code: Int,
+        val location: String?,
+        val body: String?
+    )
 
     private fun extractScriptUrls(html: String): List<String> {
         val paths = LinkedHashSet<String>()
