@@ -19,15 +19,10 @@ data class AppleTrackMetadata(
     val upc: String = "",
     val copyright: String = "",
     val explicit: Boolean = false,
-    val canonicalSongUrl: String = "",
     val canonicalAlbumUrl: String = "",
     val artworkUrl: String = "",
     val highResArtworkUrl: String = "",
     val durationMs: Long = 0L,
-    val sortName: String = "",
-    val sortArtist: String = "",
-    val sortAlbum: String = "",
-    val sortAlbumArtist: String = "",
-    val sortComposer: String = "",
-    val confidence: Int = 0
+    val confidence: Int = 0,
+    val isReleaseMatch: Boolean = false
 )

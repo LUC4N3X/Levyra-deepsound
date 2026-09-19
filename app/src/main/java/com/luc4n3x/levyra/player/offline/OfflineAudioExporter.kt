@@ -465,7 +465,7 @@ class OfflineAudioExporter(
         cleanupWorkspace(workspace)
         var metadataTrack = mergeOfflineMetadataTrack(track, playable)
         if (settings.embedMetadata && needsAppleMetadataEnrichment(metadataTrack)) {
-            val enriched = runCatching { appleMetadataEnricher.enrich(metadataTrack) }.getOrNull()
+            val enriched = runCatching { appleMetadataEnricher.enrich(metadataTrack, timeoutMs = 3_500L) }.getOrNull()
             if (enriched != null) {
                 metadataTrack = enriched
             }

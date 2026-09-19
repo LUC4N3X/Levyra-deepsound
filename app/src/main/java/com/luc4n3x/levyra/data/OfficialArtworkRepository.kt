@@ -158,8 +158,7 @@ class OfficialArtworkRepository(context: Context) {
                 discTotal = discCount,
                 genres = if (genre.isNotBlank()) listOf(genre) else emptyList(),
                 appleSongId = trackId,
-                appleAlbumId = collectionId,
-                canonicalSongUrl = trackViewUrl
+                appleAlbumId = collectionId
             )
         }
         return ProviderResponse(items, true)
@@ -510,8 +509,7 @@ class OfficialArtworkRepository(context: Context) {
             discTotal = primary.discTotal.takeIf { it > 0 } ?: supplement.discTotal,
             copyright = primary.copyright.ifBlank { supplement.copyright },
             appleSongId = primary.appleSongId.ifBlank { supplement.appleSongId },
-            appleAlbumId = primary.appleAlbumId.ifBlank { supplement.appleAlbumId },
-            canonicalSongUrl = primary.canonicalSongUrl.ifBlank { supplement.canonicalSongUrl }
+            appleAlbumId = primary.appleAlbumId.ifBlank { supplement.appleAlbumId }
         )
     }
 
@@ -647,8 +645,7 @@ class OfficialArtworkRepository(context: Context) {
         val discTotal: Int = 0,
         val copyright: String = "",
         val appleSongId: String = "",
-        val appleAlbumId: String = "",
-        val canonicalSongUrl: String = ""
+        val appleAlbumId: String = ""
     )
 
     private data class ProviderResponse(

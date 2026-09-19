@@ -11,8 +11,7 @@ import kotlin.math.abs
 
 object AppleMetadataMatcher {
     private const val MIN_ACCEPTED_CONFIDENCE = 72
-    private const val DECISIVE_CONFIDENCE = 90
-    private const val MAX_PERMISSIBLE_DURATION_DELTA_MS = 30_000L
+    private const val EXACT_ISRC_BASE_CONFIDENCE = 60
 
     private val CRITICAL_VERSION_MARKERS = setOf(
         TrackVersionMarker.LIVE,
@@ -30,6 +29,9 @@ object AppleMetadataMatcher {
     data class Evaluation(
         val accepted: Boolean,
         val confidence: Int,
+        val isRecordingMatch: Boolean = false,
+        val isReleaseMatch: Boolean = false,
+        val releaseConfidence: Int = 0,
         val rejectionReason: String? = null
     )
 
@@ -40,52 +42,62 @@ object AppleMetadataMatcher {
         val candArtist = candidate.artistName.trim()
 
         if (refTitle.isBlank() || candTitle.isBlank() || refArtist.isBlank() || candArtist.isBlank()) {
-            return Evaluation(false, 0, "blank_identity")
+            return Evaluation(false, 0, rejectionReason = "blank_identity")
         }
 
         val expectedTitleIdentity = AlternativeTrackText.title(refTitle)
         val candidateTitleIdentity = AlternativeTrackText.title(candTitle)
 
         checkVersionMismatch(expectedTitleIdentity, candidateTitleIdentity)?.let { reason ->
-            return Evaluation(false, 0, reason)
+            return Evaluation(false, 0, rejectionReason = reason)
         }
 
-        when (recordingIdentityMatch(reference.isrc, candidate.isrc)) {
-            RecordingIdentityMatch.Exact -> {
-                if (areArtistsCompatible(refArtist, candArtist)) {
-                    return Evaluation(true, 100)
-                }
-            }
-            RecordingIdentityMatch.Conflict -> return Evaluation(false, 0, "isrc_conflict")
-            RecordingIdentityMatch.Unknown -> Unit
-        }
-
-        if (isExplicitMismatched(expectedTitleIdentity, candidateTitleIdentity)) {
-            return Evaluation(false, 0, "explicit_mismatch")
+        if (isExplicitMismatched(reference.explicit, expectedTitleIdentity, candidate.explicit, candidateTitleIdentity)) {
+            return Evaluation(false, 0, rejectionReason = "explicit_mismatch")
         }
 
         if (!areArtistsCompatible(refArtist, candArtist)) {
-            return Evaluation(false, 0, "artist_mismatch")
+            return Evaluation(false, 0, rejectionReason = "artist_mismatch")
         }
 
         val (titleScore, titleReason) = scoreTitle(expectedTitleIdentity.core, candidateTitleIdentity.core)
         if (titleReason != null) {
-            return Evaluation(false, 0, titleReason)
+            return Evaluation(false, 0, rejectionReason = titleReason)
         }
 
-        val (durationDeltaScore, durationReason) = evaluateDuration(reference.durationMs, candidate.durationMs)
+        val isrcMatch = recordingIdentityMatch(reference.isrc, candidate.isrc)
+        if (isrcMatch == RecordingIdentityMatch.Conflict) {
+            return Evaluation(false, 0, rejectionReason = "isrc_conflict")
+        }
+        val isExactIsrc = isrcMatch == RecordingIdentityMatch.Exact
+
+        val (durationDeltaScore, durationReason) = evaluateDuration(reference.durationMs, candidate.durationMs, isExactIsrc)
         if (durationReason != null) {
-            return Evaluation(false, 0, durationReason)
+            return Evaluation(false, 0, rejectionReason = durationReason)
+        }
+
+        val (releaseScore, isReleaseMatch) = evaluateRelease(reference, candidate)
+
+        if (isExactIsrc) {
+            val totalScore = (EXACT_ISRC_BASE_CONFIDENCE + releaseScore + durationDeltaScore).coerceIn(MIN_ACCEPTED_CONFIDENCE, 100)
+            return Evaluation(
+                accepted = true,
+                confidence = totalScore,
+                isRecordingMatch = true,
+                isReleaseMatch = isReleaseMatch,
+                releaseConfidence = releaseScore
+            )
         }
 
         val artistScore = scoreArtist(refArtist, candArtist)
-        val albumScore = scoreAlbum(reference.album, candidate.albumName, reference.durationMs)
-
-        val totalScore = (40 + titleScore + artistScore + albumScore + durationDeltaScore).coerceIn(0, 100)
+        val totalScore = (35 + titleScore + artistScore + releaseScore + durationDeltaScore).coerceIn(0, 100)
         val accepted = totalScore >= MIN_ACCEPTED_CONFIDENCE
         return Evaluation(
             accepted = accepted,
             confidence = totalScore,
+            isRecordingMatch = accepted,
+            isReleaseMatch = isReleaseMatch,
+            releaseConfidence = releaseScore,
             rejectionReason = if (accepted) null else "insufficient_confidence"
         )
     }
@@ -107,12 +119,22 @@ object AppleMetadataMatcher {
     }
 
     private fun isExplicitMismatched(
+        refExplicit: Boolean,
         expected: TitleIdentity,
+        candExplicit: Boolean,
         candidate: TitleIdentity
     ): Boolean {
-        val exp = expected.explicitHint
-        val cand = candidate.explicitHint
-        return exp != null && cand != null && exp != cand
+        val refIsExplicit = refExplicit || expected.explicitHint == true
+        val refIsClean = expected.explicitHint == false
+        val candIsExplicit = candExplicit || candidate.explicitHint == true
+        val candIsClean = candidate.explicitHint == false
+
+        if (refIsExplicit && candIsClean) return true
+        if (refIsClean && candIsExplicit) return true
+        if (expected.explicitHint != null && candidate.explicitHint != null) {
+            return expected.explicitHint != candidate.explicitHint
+        }
+        return false
     }
 
     private fun scoreTitle(refCore: String, candCore: String): Pair<Int, String?> {
@@ -128,43 +150,99 @@ object AppleMetadataMatcher {
     }
 
     private fun scoreArtist(refArtist: String, candArtist: String): Int {
-        val normRef = normalize(refArtist)
-        val normCand = normalize(candArtist)
+        val normRef = AlternativeTrackText.normalizeArtist(refArtist)
+        val normCand = AlternativeTrackText.normalizeArtist(candArtist)
         if (normRef == normCand) return 20
         val coverage = tokenCoverage(normRef, normCand)
         return (coverage * 15).toInt()
     }
 
-    private fun scoreAlbum(refAlbum: String, candAlbum: String, refDurationMs: Long): Int {
-        val cleanRef = refAlbum.trim()
-        val cleanCand = candAlbum.trim()
-        if (cleanRef.isBlank() || cleanCand.isBlank() || isGenericAlbum(cleanRef)) return 0
-        val normRef = normalize(cleanRef)
-        val normCand = normalize(cleanCand)
-        if (normRef == normCand) return 15
-        val coverage = tokenCoverage(normRef, normCand)
-        return when {
-            coverage >= 0.70 -> 10
-            coverage < 0.20 && refDurationMs <= 0L -> -15
-            else -> 0
+    private fun evaluateRelease(
+        reference: Track,
+        candidate: AppleTrackMetadata
+    ): Pair<Int, Boolean> {
+        val refAlbum = reference.album.trim()
+        val candAlbum = candidate.albumName.trim()
+        if (refAlbum.isBlank() || candAlbum.isBlank() || isGenericAlbum(refAlbum)) {
+            return 0 to false
         }
+
+        val refAlbumId = AlternativeTrackText.album(refAlbum)
+        val candAlbumId = AlternativeTrackText.album(candAlbum)
+
+        val refIsComp = isCompilationAlbum(refAlbum)
+        val candIsComp = isCompilationAlbum(candAlbum)
+        if (!refIsComp && candIsComp) {
+            return -30 to false
+        }
+
+        var releaseScore = 0
+        var isReleaseMatch = false
+
+        val coresMatch = refAlbumId.core.isNotBlank() && refAlbumId.core == candAlbumId.core
+        val coreCoverage = if (!coresMatch && refAlbumId.core.isNotBlank() && candAlbumId.core.isNotBlank()) {
+            tokenCoverage(refAlbumId.core, candAlbumId.core)
+        } else 0.0
+
+        if (coresMatch) {
+            val sameEditions = refAlbumId.editions == candAlbumId.editions
+            if (sameEditions) {
+                releaseScore += 30
+                isReleaseMatch = true
+            } else if (refAlbumId.editions.isEmpty() && candAlbumId.editions.isNotEmpty()) {
+                releaseScore += 10
+                isReleaseMatch = false
+            } else if (refAlbumId.editions.isNotEmpty() && candAlbumId.editions.isEmpty()) {
+                releaseScore += 10
+                isReleaseMatch = false
+            } else {
+                releaseScore += 5
+                isReleaseMatch = false
+            }
+        } else if (coreCoverage >= 0.75) {
+            releaseScore += 12
+            isReleaseMatch = refAlbumId.editions == candAlbumId.editions
+        } else if (coreCoverage >= 0.50) {
+            releaseScore += 5
+            isReleaseMatch = false
+        } else {
+            releaseScore -= 20
+            isReleaseMatch = false
+        }
+
+        if (coresMatch && reference.trackNumber > 0 && candidate.trackNumber > 0) {
+            if (reference.trackNumber == candidate.trackNumber) {
+                releaseScore += 5
+            } else if (!isReleaseMatch) {
+                releaseScore -= 5
+            }
+        }
+
+        return releaseScore to isReleaseMatch
     }
 
-    private fun evaluateDuration(refDurationMs: Long, candDurationMs: Long): Pair<Int, String?> {
+    private fun evaluateDuration(
+        refDurationMs: Long,
+        candDurationMs: Long,
+        isExactIsrc: Boolean
+    ): Pair<Int, String?> {
         if (refDurationMs <= 0L || candDurationMs <= 0L) return 0 to null
         val delta = abs(refDurationMs - candDurationMs)
         return when {
             delta <= 3_000L -> 12 to null
-            delta <= 7_000L -> 8 to null
-            delta <= 15_000L -> 2 to null
-            delta > MAX_PERMISSIBLE_DURATION_DELTA_MS -> 0 to "duration_out_of_range"
-            else -> -10 to null
+            delta <= 7_000L -> 6 to null
+            delta <= 12_000L -> -12 to null
+            delta <= 15_000L -> {
+                if (isExactIsrc) -18 to null else 0 to "duration_out_of_range"
+            }
+            else -> 0 to "duration_out_of_range"
         }
     }
 
     private fun areArtistsCompatible(refArtist: String, candArtist: String): Boolean {
-        val normRef = normalize(refArtist)
-        val normCand = normalize(candArtist)
+        val normRef = AlternativeTrackText.normalizeArtist(refArtist)
+        val normCand = AlternativeTrackText.normalizeArtist(candArtist)
+        if (normRef.isBlank() || normCand.isBlank()) return false
         if (normRef == normCand) return true
         if (normRef.contains(normCand) || normCand.contains(normRef)) return true
 
@@ -176,33 +254,37 @@ object AppleMetadataMatcher {
             if (refCredit.primary in candCredit.names || candCredit.primary in refCredit.names) return true
         }
 
+        val refNames = AlternativeTrackText.artistNames(refArtist)
+        val candNames = AlternativeTrackText.artistNames(candArtist)
+        if (refNames.any { it in candNames } || candNames.any { it in refNames }) return true
+
         val coverage = tokenCoverage(normRef, normCand)
         return coverage >= 0.50
     }
 
     private fun tokenCoverage(target: String, candidate: String): Double {
-        val targetTokens = target.split(' ').filter { it.length >= 2 }.toSet()
+        val targetTokens = target.split(' ').filter { it.isNotBlank() }.toSet()
         if (targetTokens.isEmpty()) return 0.0
-        val candidateTokens = candidate.split(' ').filter { it.length >= 2 }.toSet()
+        val candidateTokens = candidate.split(' ').filter { it.isNotBlank() }.toSet()
         if (candidateTokens.isEmpty()) return 0.0
         return targetTokens.count { it in candidateTokens }.toDouble() / targetTokens.size.toDouble()
     }
 
-    private fun normalize(value: String): String = value
-        .lowercase(Locale.ROOT)
-        .replace(NORMALIZE_FEAT_REGEX, " ")
-        .replace(NORMALIZE_SPECIAL_CHARS_REGEX, " ")
-        .replace(NORMALIZE_WHITESPACE_REGEX, " ")
-        .trim()
+    private fun isCompilationAlbum(album: String): Boolean {
+        val lower = album.lowercase(Locale.ROOT)
+        return COMPILATION_KEYWORDS.any { lower.contains(it) }
+    }
 
     private fun isGenericAlbum(value: String): Boolean {
         val lower = value.lowercase(Locale.ROOT).trim()
         return lower.isBlank() || lower in GENERIC_ALBUMS || lower.startsWith("youtube")
     }
 
-    private val NORMALIZE_FEAT_REGEX = Regex("feat\\.?|featuring|ft\\.?")
-    private val NORMALIZE_SPECIAL_CHARS_REGEX = Regex("[^a-z0-9àèéìòóùçñäöüß\\s]")
-    private val NORMALIZE_WHITESPACE_REGEX = Regex("\\s+")
+    private val COMPILATION_KEYWORDS = setOf(
+        "greatest hits", "best of", "the best of", "compilation", "anthology",
+        "the essential", "essentials", "collection", "ultimate collection",
+        "singles collection", "hit collection", "top hits", "soundtrack"
+    )
 
     private val GENERIC_ALBUMS = setOf(
         "album", "single", "unknown album", "music", "youtube music", "youtube", "ep"

@@ -19,11 +19,16 @@ import java.util.concurrent.TimeUnit
 class AppleDeveloperTokenProvider private constructor(context: Context) {
     private val client: OkHttpClient = LevyraHttpClientFactory.general(context.applicationContext)
         .newBuilder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .callTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
+        .callTimeout(10, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
+        .build()
+
+    private val scriptClient: OkHttpClient = client.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
 
     private val tokenMutex = Mutex()
@@ -42,7 +47,7 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
                 val scripts = extractScriptUrls(html).take(MAX_TOKEN_SCRIPT_CANDIDATES)
                 for (script in scripts) {
                     val source = try {
-                        requestText(script)
+                        requestTrustedScriptText(script)
                     } catch (error: CancellationException) {
                         throw error
                     } catch (_: Throwable) {
@@ -70,19 +75,54 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
         }
     }
 
+    suspend fun requireDeveloperToken(): String =
+        getDeveloperToken() ?: throw IOException("Apple Music developer token unavailable")
+
     private fun requestText(url: String): String? {
         val request = Request.Builder()
             .url(url)
             .header("User-Agent", USER_AGENT)
             .header("Accept", "*/*")
             .build()
+        val call = client.newCall(request)
         return try {
-            client.newCall(request).execute().use { response ->
+            call.execute().use { response ->
                 if (!response.isSuccessful) null else response.body.string().takeIf(String::isNotBlank)
             }
         } catch (_: IOException) {
             null
         }
+    }
+
+    private fun requestTrustedScriptText(url: String): String? {
+        var currentUrl = trustedAppleMusicScriptUrl(url)?.toHttpUrlOrNull() ?: return null
+        var redirects = 0
+        while (redirects <= MAX_TOKEN_SCRIPT_REDIRECTS) {
+            val request = Request.Builder()
+                .url(currentUrl)
+                .header("User-Agent", USER_AGENT)
+                .build()
+            val call = scriptClient.newCall(request)
+            try {
+                val response = call.execute()
+                response.use { resp ->
+                    if (resp.code in SCRIPT_REDIRECT_CODES) {
+                        val location = resp.header("Location") ?: return null
+                        val next = trustedAppleMusicScriptRedirectUrl(currentUrl.toString(), location)
+                            ?.toHttpUrlOrNull() ?: return null
+                        currentUrl = next
+                        redirects++
+                    } else if (resp.isSuccessful) {
+                        return resp.body.string().takeIf(String::isNotBlank)
+                    } else {
+                        return null
+                    }
+                }
+            } catch (_: IOException) {
+                return null
+            }
+        }
+        return null
     }
 
     private fun extractScriptUrls(html: String): List<String> {
@@ -115,6 +155,12 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
         return url.toString()
     }
 
+    private fun trustedAppleMusicScriptRedirectUrl(currentUrl: String, location: String): String? {
+        val current = currentUrl.toHttpUrlOrNull() ?: return null
+        val resolved = current.resolve(location) ?: return null
+        return trustedAppleMusicScriptUrl(resolved.toString())
+    }
+
     private fun jwtExpiration(token: String): Long? = runCatching {
         val parts = token.split('.')
         if (parts.size < 2) return@runCatching null
@@ -131,7 +177,9 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
     companion object {
         private const val APPLE_BROWSE_URL = "https://music.apple.com/us/browse"
         private const val TOKEN_EXPIRY_MARGIN_MS = 5L * 60L * 1000L
-        private const val MAX_TOKEN_SCRIPT_CANDIDATES = 12
+        private const val MAX_TOKEN_SCRIPT_CANDIDATES = 6
+        private const val MAX_TOKEN_SCRIPT_REDIRECTS = 4
+        private val SCRIPT_REDIRECT_CODES = setOf(300, 301, 302, 303, 307, 308)
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36"
         private val JWT_REGEX = Regex("ey[a-zA-Z0-9_-]+\\.ey[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+")
         private val APPLE_SCRIPT_SRC_REGEX = Regex("""(?i)<script\b[^>]*\bsrc\s*=\s*[\"']([^\"']+\.js(?:\?[^\"']*)?)[\"']""")

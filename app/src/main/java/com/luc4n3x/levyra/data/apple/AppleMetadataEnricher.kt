@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -48,8 +49,14 @@ class AppleMetadataEnricher(private val context: Context) {
     private val keyLocks = Array(32) { Mutex() }
     private val searchSlots = Semaphore(4)
 
-    suspend fun enrich(track: Track, country: String? = null): Track? {
+    suspend fun enrich(track: Track, country: String? = null, timeoutMs: Long = DEFAULT_ENRICH_TIMEOUT_MS): Track? {
         if (track.title.isBlank() || track.artist.isBlank()) return null
+        return withTimeoutOrNull(timeoutMs) {
+            enrichInternal(track, country)
+        }
+    }
+
+    private suspend fun enrichInternal(track: Track, country: String?): Track? {
         val targetCountry = country?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.length == 2 }
             ?: Locale.getDefault().country.takeIf { it.length == 2 }
             ?: "IT"
@@ -78,7 +85,10 @@ class AppleMetadataEnricher(private val context: Context) {
 
             val evaluated = candidates.map { candidate ->
                 val evaluation = AppleMetadataMatcher.evaluate(track, candidate)
-                candidate.copy(confidence = evaluation.confidence) to evaluation
+                candidate.copy(
+                    confidence = evaluation.confidence,
+                    isReleaseMatch = evaluation.isReleaseMatch
+                ) to evaluation
             }
 
             val best = evaluated
@@ -138,7 +148,6 @@ class AppleMetadataEnricher(private val context: Context) {
                 discTotal = item.optInt("discCount", 0),
                 isrc = item.optString("isrc").trim(),
                 explicit = item.optString("trackExplicitness").equals("explicit", ignoreCase = true),
-                canonicalSongUrl = item.optString("trackViewUrl").trim(),
                 canonicalAlbumUrl = item.optString("collectionViewUrl").trim(),
                 artworkUrl = resizeAppleArtwork(artworkUrl, 600),
                 highResArtworkUrl = resizeAppleArtwork(artworkUrl, 1400),
@@ -323,38 +332,53 @@ class AppleMetadataEnricher(private val context: Context) {
         private const val MISS_CACHE_MAX_ENTRIES = 512
         private const val MISS_SWEEP_INTERVAL = 64
         private const val MISS_TTL_MS = 10 * 60 * 1000L
+        private const val DEFAULT_ENRICH_TIMEOUT_MS = 3_500L
         private val APPLE_ARTWORK_SIZE = Regex("\\d+x\\d+bb")
 
         fun mergeWithAppleMetadata(track: Track, apple: AppleTrackMetadata): Track {
-            val parsedYear = apple.releaseDate.take(4).takeIf { it.all(Char::isDigit) } ?: track.year
+            val effectiveReleaseDate = apple.releaseDate.ifBlank { apple.albumReleaseDate }
+            val parsedYear = effectiveReleaseDate.take(4).takeIf { it.all(Char::isDigit) } ?: track.year
             val resolvedAlbumArtist = apple.albumArtistName.ifBlank { track.albumArtist }.ifBlank { apple.artistName }
 
             val enrichedGenres = apple.genreNames.map { it.lowercase(Locale.ROOT) }.toSet()
             val combinedMoodTags = (track.moodTags + enrichedGenres).filter { it.isNotBlank() }.toSet()
 
-            return track.copy(
-                album = apple.albumName.ifBlank { track.album },
-                albumArtist = resolvedAlbumArtist,
-                composer = apple.composerName.ifBlank { track.composer },
-                trackNumber = apple.trackNumber.takeIf { it > 0 } ?: track.trackNumber,
-                trackTotal = apple.trackTotal.takeIf { it > 0 } ?: track.trackTotal,
-                discNumber = apple.discNumber.takeIf { it > 0 } ?: track.discNumber,
-                discTotal = apple.discTotal.takeIf { it > 0 } ?: track.discTotal,
-                isrc = apple.isrc.ifBlank { track.isrc },
-                upc = apple.upc.ifBlank { track.upc },
-                releaseDate = apple.releaseDate.ifBlank { track.releaseDate },
-                year = parsedYear.ifBlank { track.year },
-                copyright = apple.copyright.ifBlank { track.copyright },
-                explicit = apple.explicit || track.explicit,
-                thumbnailUrl = apple.artworkUrl.ifBlank { track.thumbnailUrl },
-                largeThumbnailUrl = apple.highResArtworkUrl.ifBlank { track.largeThumbnailUrl },
-                canonicalAlbumUrl = apple.canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
-                appleSongId = apple.songId.ifBlank { track.appleSongId },
-                appleAlbumId = apple.albumId.ifBlank { track.appleAlbumId },
-                metadataProvider = "Apple Music",
-                metadataConfidence = maxOf(track.metadataConfidence, apple.confidence),
-                moodTags = combinedMoodTags
-            )
+            return if (apple.isReleaseMatch) {
+                track.copy(
+                    album = apple.albumName.ifBlank { track.album },
+                    albumArtist = resolvedAlbumArtist,
+                    composer = apple.composerName.ifBlank { track.composer },
+                    trackNumber = apple.trackNumber.takeIf { it > 0 } ?: track.trackNumber,
+                    trackTotal = apple.trackTotal.takeIf { it > 0 } ?: track.trackTotal,
+                    discNumber = apple.discNumber.takeIf { it > 0 } ?: track.discNumber,
+                    discTotal = apple.discTotal.takeIf { it > 0 } ?: track.discTotal,
+                    isrc = apple.isrc.ifBlank { track.isrc },
+                    upc = apple.upc.ifBlank { track.upc },
+                    releaseDate = effectiveReleaseDate.ifBlank { track.releaseDate },
+                    year = parsedYear.ifBlank { track.year },
+                    copyright = apple.copyright.ifBlank { track.copyright },
+                    explicit = apple.explicit || track.explicit,
+                    thumbnailUrl = apple.artworkUrl.ifBlank { track.thumbnailUrl },
+                    largeThumbnailUrl = apple.highResArtworkUrl.ifBlank { track.largeThumbnailUrl },
+                    canonicalAlbumUrl = apple.canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
+                    appleSongId = apple.songId.ifBlank { track.appleSongId },
+                    appleAlbumId = apple.albumId.ifBlank { track.appleAlbumId },
+                    metadataProvider = "Apple Music",
+                    metadataConfidence = maxOf(track.metadataConfidence, apple.confidence),
+                    moodTags = combinedMoodTags
+                )
+            } else {
+                track.copy(
+                    composer = apple.composerName.ifBlank { track.composer },
+                    isrc = apple.isrc.ifBlank { track.isrc },
+                    appleSongId = apple.songId.ifBlank { track.appleSongId },
+                    explicit = apple.explicit || track.explicit,
+                    albumArtist = track.albumArtist.ifBlank { resolvedAlbumArtist },
+                    metadataProvider = if (track.metadataProvider.isNotBlank()) track.metadataProvider else "Apple Music (Recording)",
+                    metadataConfidence = maxOf(track.metadataConfidence, apple.confidence),
+                    moodTags = combinedMoodTags
+                )
+            }
         }
     }
 }
