@@ -424,6 +424,174 @@ class YoutubeCanaryTest(unittest.TestCase):
         self.assertEqual("WEB", primary)
         self.assertEqual("UNPLAYABLE", summary["playability_status"])
 
+    def _run_sentinel(self, responder):
+        calls = []
+
+        def fake_request(**kwargs):
+            client = kwargs.get("client") or {"clientName": "WEB"}
+            calls.append(
+                (
+                    client["clientName"],
+                    kwargs.get("client_header_name", "1"),
+                    kwargs.get("user_agent", canary.USER_AGENT),
+                )
+            )
+            return responder(client["clientName"])
+
+        original = canary._player_api_request
+        canary._player_api_request = fake_request
+        try:
+            result = canary._sentinel_player(
+                video_id="dQw4w9WgXcQ",
+                innertube_query_value="key",
+                web_client_version="2.0",
+                visitor_data="",
+                hl="en",
+                gl="US",
+            )
+        finally:
+            canary._player_api_request = original
+        return result, calls
+
+    @staticmethod
+    def _playable():
+        return {
+            "playabilityStatus": {"status": "OK"},
+            "streamingData": {"adaptiveFormats": [{"mimeType": "audio/mp4", "url": "https://r1.googlevideo.com/v"}]},
+        }
+
+    def test_web_http_403_still_falls_back_to_ios(self):
+        def responder(name):
+            if name == "WEB":
+                raise canary.CanaryError("player endpoint HTTP 403", status=403)
+            if name == "IOS":
+                return self._playable()
+            return {"playabilityStatus": {"status": "LOGIN_REQUIRED"}}
+
+        (primary, summary), calls = self._run_sentinel(responder)
+
+        self.assertEqual("IOS", primary)
+        self.assertEqual("OK", summary["playability_status"])
+        ios_call = next(call for call in calls if call[0] == "IOS")
+        self.assertEqual("5", ios_call[1])
+        self.assertIn("com.google.ios.youtube", ios_call[2])
+
+    def test_web_http_500_still_falls_back_to_visionos(self):
+        def responder(name):
+            if name == "WEB":
+                raise canary.CanaryError("player endpoint HTTP 500", status=500)
+            return self._playable()
+
+        (primary, _), calls = self._run_sentinel(responder)
+
+        self.assertEqual("VISIONOS", primary)
+        self.assertEqual(("VISIONOS", "101"), calls[1][:2])
+        self.assertIn("com.google.visionos.youtube", calls[1][2])
+
+    def test_web_http_failure_is_reraised_when_every_fallback_fails(self):
+        def responder(name):
+            if name == "WEB":
+                raise canary.CanaryError("player endpoint HTTP 429", status=429)
+            raise canary.CanaryError("player endpoint HTTP 400", status=400)
+
+        with self.assertRaises(canary.CanaryError) as raised:
+            self._run_sentinel(responder)
+
+        self.assertEqual(429, raised.exception.status)
+
+    def test_web_unplayable_200_falls_back_and_keeps_web_when_nothing_plays(self):
+        (primary, summary), _ = self._run_sentinel(
+            lambda name: self._playable() if name == "ANDROID_MUSIC" else {"playabilityStatus": {"status": "UNPLAYABLE"}}
+        )
+        self.assertEqual("ANDROID_MUSIC", primary)
+        self.assertEqual("OK", summary["playability_status"])
+
+        (primary, summary), _ = self._run_sentinel(lambda name: {"playabilityStatus": {"status": "UNPLAYABLE"}})
+        self.assertEqual("WEB", primary)
+        self.assertEqual("UNPLAYABLE", summary["playability_status"])
+
+    def test_player_disabled_clients_are_never_primary_but_stay_in_the_matrix(self):
+        def responder(name):
+            if name in ("ANDROID", "WEB_EMBEDDED_PLAYER"):
+                return self._playable()
+            return {"playabilityStatus": {"status": "UNPLAYABLE"}}
+
+        (primary, _), calls = self._run_sentinel(responder)
+
+        self.assertEqual("WEB", primary)
+        called = [call[0] for call in calls]
+        self.assertNotIn("ANDROID", called)
+        self.assertNotIn("WEB_EMBEDDED_PLAYER", called)
+        self.assertNotIn("WEB_REMIX", called)
+        names = [entry["name"] for entry in canary.LEVYRA_CLIENT_MATRIX]
+        self.assertIn("ANDROID", names)
+        self.assertIn("WEB_EMBEDDED_PLAYER", names)
+
+    def test_every_fallback_sends_its_own_client_header(self):
+        expected = {
+            "WEB": "1",
+            "ANDROID": "3",
+            "IOS": "5",
+            "ANDROID_MUSIC": "21",
+            "WEB_EMBEDDED_PLAYER": "56",
+            "WEB_REMIX": "67",
+            "VISIONOS": "101",
+        }
+        self.assertEqual(
+            expected,
+            {entry["name"]: entry["client_header_name"] for entry in canary.LEVYRA_CLIENT_MATRIX},
+        )
+
+        (_, _), calls = self._run_sentinel(lambda name: {"playabilityStatus": {"status": "UNPLAYABLE"}})
+        for name, header, _ in calls:
+            self.assertEqual(expected[name], header, name)
+
+    def test_player_api_request_puts_the_client_header_on_the_wire(self):
+        captured = {}
+
+        def fake_bounded_request(url, *, data=None, headers=None, max_bytes, **_):
+            captured["headers"] = headers
+            captured["body"] = json.loads(data.decode("utf-8"))
+            return canary.HttpResult(status=200, headers={}, body=b'{"playabilityStatus":{"status":"OK"}}')
+
+        original = canary._bounded_request
+        canary._bounded_request = fake_bounded_request
+        try:
+            canary._player_api_request(
+                video_id="dQw4w9WgXcQ",
+                innertube_query_value="key",
+                client_version="1.04",
+                visitor_data="",
+                hl="en",
+                gl="US",
+                client={"clientName": "VISIONOS"},
+                user_agent="visionos-agent",
+                client_header_name="101",
+            )
+        finally:
+            canary._bounded_request = original
+
+        self.assertEqual("101", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual("1.04", captured["headers"]["X-YouTube-Client-Version"])
+        self.assertEqual("visionos-agent", captured["headers"]["User-Agent"])
+        self.assertEqual("VISIONOS", captured["body"]["context"]["client"]["clientName"])
+
+    def test_player_enabled_flags_match_the_published_playback_policy(self):
+        policy = json.loads(
+            (Path(__file__).resolve().parents[2] / "config" / "playback_policy.json").read_text(encoding="utf-8")
+        )
+        clients = policy.get("clients") or {}
+
+        def player_enabled(name):
+            override = clients.get(name) or {}
+            capabilities = override.get("capabilities") or {}
+            if "player" in capabilities:
+                return bool(capabilities["player"])
+            return bool(override.get("enabled", True))
+
+        for entry in canary.LEVYRA_CLIENT_MATRIX:
+            self.assertEqual(player_enabled(entry["name"]), entry["player_enabled"], entry["name"])
+
     def test_visionos_matrix_entry_mirrors_the_shipped_app_identity(self):
         entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "VISIONOS")
         resolver = (

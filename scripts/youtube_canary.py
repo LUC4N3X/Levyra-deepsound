@@ -50,6 +50,8 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
         },
         "user_agent": "com.google.visionos.youtube/1.04(RealityDevice17,1; U; CPU visionOS 26_6_0 like Mac OS X; US)",
         "requires_po_token": False,
+        "client_header_name": "101",
+        "player_enabled": True,
     },
     {
         "name": "ANDROID_MUSIC",
@@ -62,6 +64,8 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
         },
         "user_agent": "com.google.android.apps.youtube.music/8.10.52 (Linux; U; Android 15) gzip",
         "requires_po_token": False,
+        "client_header_name": "21",
+        "player_enabled": True,
     },
     {
         "name": "ANDROID",
@@ -74,6 +78,8 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
         },
         "user_agent": "com.google.android.youtube/19.44.38 (Linux; U; Android 15) gzip",
         "requires_po_token": False,
+        "client_header_name": "3",
+        "player_enabled": False,
     },
     {
         "name": "IOS",
@@ -87,17 +93,29 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
         },
         "user_agent": "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)",
         "requires_po_token": False,
+        "client_header_name": "5",
+        "player_enabled": True,
     },
     {
         "name": "WEB_REMIX",
         "client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260804.16.00"},
         "requires_po_token": True,
+        "client_header_name": "67",
+        "player_enabled": True,
     },
-    {"name": "WEB", "client": {"clientName": "WEB", "clientVersion": ""}, "requires_po_token": True},
+    {
+        "name": "WEB",
+        "client": {"clientName": "WEB", "clientVersion": ""},
+        "requires_po_token": True,
+        "client_header_name": "1",
+        "player_enabled": True,
+    },
     {
         "name": "WEB_EMBEDDED_PLAYER",
         "client": {"clientName": "WEB_EMBEDDED_PLAYER", "clientVersion": "1.20260423.01.00"},
         "requires_po_token": False,
+        "client_header_name": "56",
+        "player_enabled": False,
     },
 )
 
@@ -411,6 +429,7 @@ def _player_api_request(
     gl: str,
     client: dict[str, Any] | None = None,
     user_agent: str = USER_AGENT,
+    client_header_name: str = "1",
 ) -> dict[str, Any]:
     if not innertube_query_value or not client_version:
         raise CanaryError("watch page did not expose InnerTube API key/client version")
@@ -445,7 +464,7 @@ def _player_api_request(
             "Origin": "https://www.youtube.com",
             "Referer": f"https://www.youtube.com/watch?v={video_id}",
             "User-Agent": user_agent,
-            "X-YouTube-Client-Name": "1",
+            "X-YouTube-Client-Name": client_header_name,
             "X-YouTube-Client-Version": client_version,
         },
         max_bytes=PLAYER_JSON_MAX_BYTES,
@@ -465,6 +484,14 @@ def _is_playable_summary(summary: dict[str, Any]) -> bool:
     return summary.get("playability_status") == "OK" and bool(summary.get("has_streaming_data"))
 
 
+def _primary_fallback_clients() -> list[dict[str, Any]]:
+    return [
+        entry
+        for entry in LEVYRA_CLIENT_MATRIX
+        if entry.get("player_enabled") and not entry.get("requires_po_token")
+    ]
+
+
 def _sentinel_player(
     *,
     video_id: str,
@@ -474,21 +501,24 @@ def _sentinel_player(
     hl: str,
     gl: str,
 ) -> tuple[str, dict[str, Any]]:
-    web_summary = _summarize_player_response(
-        _player_api_request(
-            video_id=video_id,
-            innertube_query_value=innertube_query_value,
-            client_version=web_client_version,
-            visitor_data=visitor_data,
-            hl=hl,
-            gl=gl,
+    web_summary: dict[str, Any] | None = None
+    web_error: CanaryError | None = None
+    try:
+        web_summary = _summarize_player_response(
+            _player_api_request(
+                video_id=video_id,
+                innertube_query_value=innertube_query_value,
+                client_version=web_client_version,
+                visitor_data=visitor_data,
+                hl=hl,
+                gl=gl,
+            )
         )
-    )
-    if _is_playable_summary(web_summary):
+    except CanaryError as error:
+        web_error = error
+    if web_summary is not None and _is_playable_summary(web_summary):
         return "WEB", web_summary
-    for entry in LEVYRA_CLIENT_MATRIX:
-        if entry.get("requires_po_token"):
-            continue
+    for entry in _primary_fallback_clients():
         client = dict(entry.get("client") or {})
         try:
             candidate = _summarize_player_response(
@@ -501,13 +531,18 @@ def _sentinel_player(
                     gl=gl,
                     client=client,
                     user_agent=str(entry.get("user_agent") or USER_AGENT),
+                    client_header_name=str(entry.get("client_header_name") or "1"),
                 )
             )
         except CanaryError:
             continue
         if _is_playable_summary(candidate):
             return str(entry.get("name") or ""), candidate
-    return "WEB", web_summary
+    if web_summary is not None:
+        return "WEB", web_summary
+    if web_error is not None:
+        raise web_error
+    raise CanaryError("sentinel player request failed")
 
 
 def _format_url_metadata(format_json: dict[str, Any]) -> tuple[str, bool, bool, bool]:
@@ -694,6 +729,7 @@ def _probe_client(
             gl=gl,
             client=client,
             user_agent=str(entry.get("user_agent") or USER_AGENT),
+            client_header_name=str(entry.get("client_header_name") or "1"),
         )
     except CanaryError as error:
         status = getattr(error, "status", None)
