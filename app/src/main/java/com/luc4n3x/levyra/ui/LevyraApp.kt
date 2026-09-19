@@ -12320,72 +12320,78 @@ private fun RecentSearchesRow(
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = strings.recentSearches,
             color = LevyraText,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold
         )
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(end = 12.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(end = 16.dp)
         ) {
             items(tracks, key = { "recent-${it.id}" }) { track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
                 val isFavorite = track.id in favoriteIds
                 val isDownloaded = track.id in downloadedTrackIds
 
-                Surface(
-                    color = LevyraPanelSoft.copy(alpha = 0.62f),
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.055f)),
+                Column(
                     modifier = Modifier
-                        .width(218.dp)
-                        .clickable { onTrackClick(track) }
+                        .width(140.dp)
+                        .clickable { onTrackClick(track) },
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(start = 7.dp, top = 7.dp, bottom = 7.dp, end = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(9.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1.5f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.White.copy(alpha = 0.04f))
                     ) {
                         CoverImage(
                             track = track,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(11.dp))
+                            modifier = Modifier.fillMaxSize()
                         )
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)))),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = track.title,
-                                color = LevyraText,
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = track.artist,
-                                color = LevyraMuted,
-                                fontSize = 10.5.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                    .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PlayArrow,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
-                        Box {
+                        Box(modifier = Modifier.align(Alignment.TopEnd)) {
                             IconButton(
                                 onClick = { menuExpanded = true },
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier
+                                    .padding(5.dp)
+                                    .size(30.dp)
+                                    .background(Color.Black.copy(alpha = 0.44f), CircleShape)
+                                    .border(
+                                        Dp.Hairline,
+                                        Color.White.copy(alpha = 0.20f),
+                                        CircleShape
+                                    )
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.MoreVert,
                                     contentDescription = strings.actions,
-                                    tint = LevyraMuted,
-                                    modifier = Modifier.size(18.dp)
+                                    tint = Color.White.copy(alpha = 0.94f),
+                                    modifier = Modifier.size(17.dp)
                                 )
                             }
                             DropdownMenu(
@@ -12469,6 +12475,22 @@ private fun RecentSearchesRow(
                             }
                         }
                     }
+                    Text(
+                        text = track.title,
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = track.artist,
+                        color = LevyraMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
