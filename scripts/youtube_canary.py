@@ -31,6 +31,10 @@ USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
 )
+LEVYRA_WEB_PLAYER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+)
 VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 # Mirrors the clients Levyra's playback compatibility policy actually uses. ANDROID_VR stays out
@@ -99,6 +103,7 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
     {
         "name": "WEB_REMIX",
         "client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260804.16.00"},
+        "user_agent": LEVYRA_WEB_PLAYER_USER_AGENT,
         "requires_po_token": True,
         "client_header_name": "67",
         "player_enabled": True,
@@ -106,6 +111,7 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
     {
         "name": "WEB",
         "client": {"clientName": "WEB", "clientVersion": ""},
+        "user_agent": LEVYRA_WEB_PLAYER_USER_AGENT,
         "requires_po_token": True,
         "client_header_name": "1",
         "player_enabled": True,
@@ -113,6 +119,7 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
     {
         "name": "WEB_EMBEDDED_PLAYER",
         "client": {"clientName": "WEB_EMBEDDED_PLAYER", "clientVersion": "1.20260423.01.00"},
+        "user_agent": LEVYRA_WEB_PLAYER_USER_AGENT,
         "requires_po_token": False,
         "client_header_name": "56",
         "player_enabled": False,
@@ -462,7 +469,7 @@ def _player_api_request(
     hl: str,
     gl: str,
     client: dict[str, Any] | None = None,
-    user_agent: str = USER_AGENT,
+    user_agent: str = LEVYRA_WEB_PLAYER_USER_AGENT,
     client_header_name: str = "1",
 ) -> dict[str, Any]:
     if not innertube_query_value or not client_version:
@@ -552,6 +559,7 @@ def _sentinel_player(
                 visitor_data=visitor_data,
                 hl=hl,
                 gl=gl,
+                user_agent=LEVYRA_WEB_PLAYER_USER_AGENT,
             )
         )
     except CanaryError as error:
@@ -570,7 +578,7 @@ def _sentinel_player(
                     hl=hl,
                     gl=gl,
                     client=client,
-                    user_agent=str(entry.get("user_agent") or USER_AGENT),
+                    user_agent=str(entry.get("user_agent") or LEVYRA_WEB_PLAYER_USER_AGENT),
                     client_header_name=str(entry.get("client_header_name") or "1"),
                 )
             )
@@ -768,7 +776,7 @@ def _probe_client(
             hl=hl,
             gl=gl,
             client=client,
-            user_agent=str(entry.get("user_agent") or USER_AGENT),
+            user_agent=str(entry.get("user_agent") or LEVYRA_WEB_PLAYER_USER_AGENT),
             client_header_name=str(entry.get("client_header_name") or "1"),
         )
     except CanaryError as error:

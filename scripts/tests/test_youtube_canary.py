@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 import sys
@@ -597,12 +598,26 @@ class YoutubeCanaryTest(unittest.TestCase):
                 hl=kwargs.get("hl", "en"),
                 gl=kwargs.get("gl", "US"),
                 client=kwargs.get("client"),
-                user_agent=kwargs.get("user_agent", canary.USER_AGENT),
+                user_agent=kwargs.get("user_agent", canary.LEVYRA_WEB_PLAYER_USER_AGENT),
                 client_header_name=kwargs.get("client_header_name", "1"),
             )
         finally:
             canary._bounded_request = original
         return captured
+
+    def test_web_player_user_agent_mirrors_youtube_web_client_identity(self):
+        source = (
+            Path(__file__).resolve().parents[2]
+            / "app/src/main/java/com/luc4n3x/levyra/data/YoutubeWebClientIdentity.kt"
+        ).read_text(encoding="utf-8")
+        match = re.search(r'const\s+val\s+USER_AGENT\s*=\s*"([^"]+)"', source)
+        self.assertIsNotNone(match)
+        expected_ua = match.group(1)
+        self.assertEqual(expected_ua, canary.LEVYRA_WEB_PLAYER_USER_AGENT)
+        self.assertIn("Chrome/142.0.0.0", canary.LEVYRA_WEB_PLAYER_USER_AGENT)
+        for name in ("WEB", "WEB_REMIX", "WEB_EMBEDDED_PLAYER"):
+            entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == name)
+            self.assertEqual(expected_ua, entry["user_agent"], name)
 
     def test_player_api_request_visionos_omits_browser_navigation_headers(self):
         entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "VISIONOS")
@@ -667,9 +682,11 @@ class YoutubeCanaryTest(unittest.TestCase):
             video_id="dQw4w9WgXcQ",
             client=entry["client"],
             client_version="2.20260301",
+            user_agent=entry["user_agent"],
             client_header_name=entry["client_header_name"],
         )
         self.assertEqual("1", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(canary.LEVYRA_WEB_PLAYER_USER_AGENT, captured["headers"]["User-Agent"])
         self.assertEqual("https://www.youtube.com", captured["headers"]["Origin"])
         self.assertEqual("https://www.youtube.com/watch?v=dQw4w9WgXcQ", captured["headers"]["Referer"])
 
@@ -679,15 +696,18 @@ class YoutubeCanaryTest(unittest.TestCase):
             video_id="dQw4w9WgXcQ",
             client=entry["client"],
             client_version=entry["client"]["clientVersion"],
+            user_agent=entry["user_agent"],
             client_header_name=entry["client_header_name"],
         )
         self.assertEqual("67", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(canary.LEVYRA_WEB_PLAYER_USER_AGENT, captured["headers"]["User-Agent"])
         self.assertEqual("https://music.youtube.com", captured["headers"]["Origin"])
         self.assertEqual("https://music.youtube.com/watch?v=dQw4w9WgXcQ", captured["headers"]["Referer"])
 
     def test_player_api_request_web_embedded_diagnostic_matrix_behavior(self):
         entry = next(item for item in canary.LEVYRA_CLIENT_MATRIX if item["name"] == "WEB_EMBEDDED_PLAYER")
         self.assertEqual("56", entry["client_header_name"])
+        self.assertEqual(canary.LEVYRA_WEB_PLAYER_USER_AGENT, entry["user_agent"])
         self.assertFalse(entry["player_enabled"])
         self.assertNotIn(entry, canary._primary_fallback_clients())
 
@@ -695,9 +715,11 @@ class YoutubeCanaryTest(unittest.TestCase):
             video_id="dQw4w9WgXcQ",
             client=entry["client"],
             client_version=entry["client"]["clientVersion"],
+            user_agent=entry["user_agent"],
             client_header_name=entry["client_header_name"],
         )
         self.assertEqual("56", captured["headers"]["X-YouTube-Client-Name"])
+        self.assertEqual(canary.LEVYRA_WEB_PLAYER_USER_AGENT, captured["headers"]["User-Agent"])
         self.assertEqual("https://www.youtube.com", captured["headers"]["Origin"])
         self.assertEqual("https://www.youtube.com/embed/dQw4w9WgXcQ", captured["headers"]["Referer"])
 
