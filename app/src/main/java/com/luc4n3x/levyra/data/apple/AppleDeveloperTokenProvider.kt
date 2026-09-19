@@ -45,38 +45,46 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
             return@withLock it
         }
 
-        return withContext(Dispatchers.IO) {
+        val discovered = withContext(Dispatchers.IO) {
             try {
-                val html = requestText(APPLE_BROWSE_URL) ?: return@withContext null
-                val scripts = extractScriptUrls(html).take(MAX_TOKEN_SCRIPT_CANDIDATES)
-                for (script in scripts) {
-                    val source = try {
-                        requestTrustedScriptText(script)
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (_: Throwable) {
-                        null
-                    } ?: continue
-
-                    for (match in JWT_REGEX.findAll(source)) {
-                        val tokenCandidate = match.value
-                        val exp = jwtExpiration(tokenCandidate) ?: continue
-                        if (exp > now + TOKEN_EXPIRY_MARGIN_MS) {
-                            cachedToken = tokenCandidate
-                            tokenExpiresAt = exp
-                            Timber.d("Apple developer token acquired, expires in %d min", (exp - now) / 60_000L)
-                            return@withContext tokenCandidate
-                        }
-                    }
-                }
-                null
+                discoverDeveloperToken(now)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
                 Timber.w(error, "Failed to retrieve Apple Music developer token")
                 null
             }
+        } ?: return@withLock null
+
+        cachedToken = discovered.first
+        tokenExpiresAt = discovered.second
+        Timber.d("Apple developer token acquired, expires in %d min", (discovered.second - now) / 60_000L)
+        discovered.first
+    }
+
+    private suspend fun discoverDeveloperToken(now: Long): Pair<String, Long>? {
+        val html = requestText(APPLE_BROWSE_URL) ?: return null
+        val scripts = extractScriptUrls(html).take(MAX_TOKEN_SCRIPT_CANDIDATES)
+        for (script in scripts) {
+            val source = try {
+                requestTrustedScriptText(script)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                null
+            } ?: continue
+
+            val token = JWT_REGEX.findAll(source)
+                .map { it.value }
+                .mapNotNull { candidate ->
+                    jwtExpiration(candidate)
+                        ?.takeIf { it > now + TOKEN_EXPIRY_MARGIN_MS }
+                        ?.let { expiration -> candidate to expiration }
+                }
+                .firstOrNull()
+            if (token != null) return token
         }
+        return null
     }
 
     suspend fun requireDeveloperToken(): String =
