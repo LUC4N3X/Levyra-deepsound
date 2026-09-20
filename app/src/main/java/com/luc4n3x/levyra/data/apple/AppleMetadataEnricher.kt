@@ -267,7 +267,7 @@ class AppleMetadataEnricher(private val context: Context) {
         val call = client.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
-            override fun onFailure(call: Call, error: IOException) {
+            override fun onFailure(call: Call, e: IOException) {
                 if (continuation.isActive) {
                     continuation.resumeWith(Result.success(null))
                 }

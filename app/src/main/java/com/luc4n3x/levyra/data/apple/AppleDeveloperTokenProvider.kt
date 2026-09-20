@@ -127,7 +127,7 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
     private suspend fun awaitTextResponse(call: Call): HttpTextResponse? = suspendCancellableCoroutine { continuation ->
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
-            override fun onFailure(call: Call, error: IOException) {
+            override fun onFailure(call: Call, e: IOException) {
                 if (continuation.isActive) {
                     continuation.resumeWith(Result.success(null))
                 }
