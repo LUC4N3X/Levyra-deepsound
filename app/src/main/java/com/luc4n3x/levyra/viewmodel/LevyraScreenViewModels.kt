@@ -12,8 +12,6 @@ import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistExclusions
-import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
-import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -24,7 +22,6 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.HomeEditorialCollection
 import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
-import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
@@ -43,7 +40,6 @@ import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.RepeatMode
-import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
@@ -424,8 +420,6 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 }
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
-    val autoEqCatalog: StateFlow<AutoEqCatalogUiState> get() = root.autoEqCatalog
-
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addToQueue(track: Track) = root.addToQueue(track)
     fun closePlayer() = root.closePlayer()
@@ -439,35 +433,6 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun next() = root.next()
     fun openArtist(track: Track) = root.openArtist(track)
     fun openAudioQualityPanel() = root.openAudioQualityPanel()
-    fun closeAudioQualityPanel() = root.closeAudioQualityPanel()
-    fun setAudioQuality(value: String) = root.setAudioQuality(value)
-    fun setHighQualityAudioMode(mode: HighQualityAudioMode) = root.setHighQualityAudioMode(mode)
-    fun setEqualizerEnabled(value: Boolean) = root.setEqualizerEnabled(value)
-    fun setEqualizerPreset(presetId: String) = root.setEqualizerPreset(presetId)
-    fun setEqualizerBand(index: Int, value: Int) = root.setEqualizerBand(index, value)
-    fun setBassBoost(value: Int) = root.setBassBoost(value)
-    fun setVirtualizer(value: Int) = root.setVirtualizer(value)
-    fun setPreampDb(value: Float) = root.setPreampDb(value)
-    fun setLimiterEnabled(value: Boolean) = root.setLimiterEnabled(value)
-    fun setCrossfadeSeconds(value: Int) = root.setCrossfadeSeconds(value)
-    fun setDjSoftMode(value: Boolean) = root.setDjSoftMode(value)
-    fun setReplayGainEnabled(value: Boolean) = root.setReplayGainEnabled(value)
-    fun setReplayGainMode(mode: ReplayGainMode) = root.setReplayGainMode(mode)
-    fun setReplayGainPreampDb(value: Float) = root.setReplayGainPreampDb(value)
-    fun setReplayGainPreventClipping(value: Boolean) = root.setReplayGainPreventClipping(value)
-    fun setPlaybackSpeed(value: Float) = root.setPlaybackSpeed(value)
-    fun setPitch(value: Float) = root.setPitch(value)
-    fun setGaplessEnabled(value: Boolean) = root.setGaplessEnabled(value)
-    fun setAaudioOutputEnabled(value: Boolean) = root.setAaudioOutputEnabled(value)
-    fun resetEqualizer() = root.resetEqualizer()
-    fun applyAutoEqImport(profile: AutoEqImporter.ImportedProfile) = root.applyAutoEqImport(profile)
-    fun saveAutoEqCustomPreset(name: String, profile: AutoEqImporter.ImportedProfile) =
-        root.saveAutoEqCustomPreset(name, profile)
-    fun openAutoEqCatalog() = root.openAutoEqCatalog()
-    fun updateAutoEqCatalogQuery(query: String) = root.updateAutoEqCatalogQuery(query)
-    fun selectAutoEqCatalogEntry(entry: AutoEqCatalogEntry) = root.selectAutoEqCatalogEntry(entry)
-    fun dismissAutoEqCatalogProfile() = root.dismissAutoEqCatalogProfile()
-    fun closeAutoEqCatalog() = root.closeAutoEqCatalog()
     fun openLyrics() = root.openLyrics()
     fun openQueue() = root.openQueue()
     fun openYoutubeComments() = root.openYoutubeComments()
@@ -1301,10 +1266,6 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
 
 internal data class PlayerProjection(
     val animationsEnabled: Boolean,
-    val showAudioQualityPanel: Boolean,
-    val audioQuality: String,
-    val highQualityAudioMode: HighQualityAudioMode,
-    val audioSettings: com.luc4n3x.levyra.domain.LevyraAudioSettings,
     val motionArtworkEnabled: Boolean,
     val motionArtwork: MotionArtwork?,
     val motionArtworkLoading: Boolean,
@@ -1343,10 +1304,6 @@ internal data class PlayerProjection(
 
 internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
     animationsEnabled = state.animationsEnabled,
-    showAudioQualityPanel = state.showAudioQualityPanel,
-    audioQuality = state.audioQuality,
-    highQualityAudioMode = state.highQualityAudioMode,
-    audioSettings = state.audioSettings,
     motionArtworkEnabled = state.motionArtworkEnabled,
     motionArtwork = state.motionArtwork,
     motionArtworkLoading = state.motionArtworkLoading,
