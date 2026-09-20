@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Phát ngẫu nhiên</string>
     <string name="notification_favorite">Yêu thích</string>
     <string name="tile_recognize_music">Nhận diện nhạc</string>
+    <string name="tile_playback">Phát</string>
     <string name="shortcut_search">Tìm kiếm</string>
     <string name="shortcut_library">Thư viện</string>
     <string name="shortcut_recognition">Nhận diện nhạc</string>

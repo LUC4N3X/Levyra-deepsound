@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Véletlenszerű lejátszás</string>
     <string name="notification_favorite">Kedvenc</string>
     <string name="tile_recognize_music">Zene felismerése</string>
+    <string name="tile_playback">Lejátszás</string>
     <string name="shortcut_search">Keresés</string>
     <string name="shortcut_library">Könyvtár</string>
     <string name="shortcut_recognition">Zene felismerése</string>

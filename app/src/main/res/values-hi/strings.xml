@@ -27,6 +27,7 @@
     <string name="notification_shuffle">शफ़ल</string>
     <string name="notification_favorite">पसंदीदा</string>
     <string name="tile_recognize_music">संगीत पहचानें</string>
+    <string name="tile_playback">प्लेबैक</string>
     <string name="shortcut_search">खोजें</string>
     <string name="shortcut_library">लाइब्रेरी</string>
     <string name="shortcut_recognition">संगीत पहचानें</string>

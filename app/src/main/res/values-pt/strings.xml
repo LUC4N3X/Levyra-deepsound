@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Aleatório</string>
     <string name="notification_favorite">Favorito</string>
     <string name="tile_recognize_music">Reconhecer música</string>
+    <string name="tile_playback">Reprodução</string>
     <string name="shortcut_search">Pesquisar</string>
     <string name="shortcut_library">Biblioteca</string>
     <string name="shortcut_recognition">Reconhecer música</string>
