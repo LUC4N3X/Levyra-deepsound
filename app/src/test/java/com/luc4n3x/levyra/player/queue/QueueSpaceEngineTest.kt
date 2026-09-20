@@ -39,6 +39,32 @@ class QueueSpaceEngineTest {
     }
 
     @Test
+    fun restorePreservesExactShuffleTraversalAndCursor() = runBlocking {
+        val storage = FakeQueueSpaceStorage()
+        val savedOrder = listOf(2, 0, 3, 1)
+        storage.put(
+            persisted("shuffle", listOf(track("1"), track("2"), track("3"), track("4")), 3, 18_000L)
+                .copy(
+                    shuffleEnabled = true,
+                    shuffleOrder = savedOrder,
+                    shuffleCursor = 2,
+                    repeatMode = RepeatMode.All
+                )
+        )
+        storage.activeId = "shuffle"
+        val engine = PersistentQueueEngine(storage, ManualDispatcher())
+
+        val restored = engine.restore(emptyList(), -1, 0L)
+
+        assertTrue(restored.shuffleEnabled)
+        assertEquals(savedOrder, restored.shuffleOrder)
+        assertEquals(2, restored.shuffleCursor)
+        assertEquals(3, restored.currentIndex)
+        assertEquals(18_000L, restored.positionMs)
+        assertEquals(RepeatMode.All, restored.repeatMode)
+    }
+
+    @Test
     fun restoreOfAnEmptyActiveSpaceDoesNotInheritFallbackQueue() = runBlocking {
         val storage = FakeQueueSpaceStorage()
         storage.put(persisted("drive", emptyList(), currentIndex = -1, positionMs = 0L))
