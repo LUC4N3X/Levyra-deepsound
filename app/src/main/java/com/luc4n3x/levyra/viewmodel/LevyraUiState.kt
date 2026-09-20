@@ -43,6 +43,7 @@ import com.luc4n3x.levyra.domain.LevyraMixSummary
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
+import com.luc4n3x.levyra.domain.LyricsTranslationState
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.RepeatMode
@@ -184,6 +185,7 @@ data class LevyraUiState(
     val lyricsVersionsLoading: Boolean = false,
     val lyricsManualSelection: Boolean = false,
     val lyricsTranslationEnabled: Boolean = false,
+    val lyricsTranslationState: LyricsTranslationState = LyricsTranslationState.DISABLED,
     val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
     val smartProfile: SmartMusicProfile = SmartMusicProfile(),
     val cacheReport: CacheReport = CacheReport(0, 0, 0, 0),
