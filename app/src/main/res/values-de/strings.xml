@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Zufallswiedergabe</string>
     <string name="notification_favorite">Zu Favoriten</string>
     <string name="tile_recognize_music">Musik erkennen</string>
+    <string name="tile_playback">Wiedergabe</string>
     <string name="shortcut_search">Suche</string>
     <string name="shortcut_library">Mediathek</string>
     <string name="shortcut_recognition">Musik erkennen</string>

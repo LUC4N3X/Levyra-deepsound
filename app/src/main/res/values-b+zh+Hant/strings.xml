@@ -27,6 +27,7 @@
     <string name="notification_shuffle">隨機播放</string>
     <string name="notification_favorite">收藏</string>
     <string name="tile_recognize_music">辨識音樂</string>
+    <string name="tile_playback">播放</string>
     <string name="shortcut_search">搜尋</string>
     <string name="shortcut_library">音樂庫</string>
     <string name="shortcut_recognition">辨識音樂</string>

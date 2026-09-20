@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Τυχαία σειρά</string>
     <string name="notification_favorite">Αγαπημένο</string>
     <string name="tile_recognize_music">Αναγνώριση μουσικής</string>
+    <string name="tile_playback">Αναπαραγωγή</string>
     <string name="shortcut_search">Αναζήτηση</string>
     <string name="shortcut_library">Βιβλιοθήκη</string>
     <string name="shortcut_recognition">Αναγνώριση μουσικής</string>
