@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Rawak</string>
     <string name="notification_favorite">Kegemaran</string>
     <string name="tile_recognize_music">Kenal pasti muzik</string>
+    <string name="tile_playback">Pemutaran</string>
     <string name="shortcut_search">Cari</string>
     <string name="shortcut_library">Pustaka</string>
     <string name="shortcut_recognition">Kenal pasti muzik</string>

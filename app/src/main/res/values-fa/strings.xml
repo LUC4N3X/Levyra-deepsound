@@ -27,6 +27,7 @@
     <string name="notification_shuffle">پخش تصادفی</string>
     <string name="notification_favorite">علاقه‌مندی</string>
     <string name="tile_recognize_music">تشخیص موسیقی</string>
+    <string name="tile_playback">پخش</string>
     <string name="shortcut_search">جستجو</string>
     <string name="shortcut_library">کتابخانه</string>
     <string name="shortcut_recognition">تشخیص موسیقی</string>

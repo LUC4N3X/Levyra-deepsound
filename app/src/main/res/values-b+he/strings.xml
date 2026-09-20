@@ -27,6 +27,7 @@
     <string name="notification_shuffle">ערבוב</string>
     <string name="notification_favorite">מועדף</string>
     <string name="tile_recognize_music">זיהוי מוזיקה</string>
+    <string name="tile_playback">השמעה</string>
     <string name="shortcut_search">חיפוש</string>
     <string name="shortcut_library">ספרייה</string>
     <string name="shortcut_recognition">זיהוי מוזיקה</string>

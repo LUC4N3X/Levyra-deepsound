@@ -46,9 +46,13 @@ import com.luc4n3x.levyra.ui.lyrics.LyricsInstrumentalGap
 import com.luc4n3x.levyra.ui.lyrics.LyricsPlaybackClock
 import com.luc4n3x.levyra.ui.lyrics.TimedLyricText
 import com.luc4n3x.levyra.ui.lyrics.activeLyricsInstrumentalGap
+import com.luc4n3x.levyra.ui.lyrics.activeLyricIndex
+import com.luc4n3x.levyra.ui.lyrics.adjustLyricsOffset
 import com.luc4n3x.levyra.ui.lyrics.adaptiveLyricFontSizeSp
 import com.luc4n3x.levyra.ui.lyrics.buildTimedLyricText
 import com.luc4n3x.levyra.ui.lyrics.karaokeCharacterProgress
+import com.luc4n3x.levyra.ui.lyrics.LYRICS_OFFSET_STEP_MS
+import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetPosition
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalDotIntensity
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
@@ -303,6 +307,7 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material3.Slider
@@ -6371,7 +6376,7 @@ private fun LyricsOverlay(
     )
     val currentLyricsOffsetMs by rememberUpdatedState(lyricsOffsetMs)
     val lyricsPositionProvider: () -> Long = remember(lyricsClock) {
-        { (lyricsClock.positionMs - currentLyricsOffsetMs).coerceAtLeast(0L) }
+        { lyricsOffsetPosition(lyricsClock.positionMs, currentLyricsOffsetMs) }
     }
     val backgroundLineIndices = remember(visibleLyrics) {
         visibleLyrics.withIndex()
@@ -6818,12 +6823,13 @@ private fun LyricsOverlay(
                                 onClick = { showRomanization = !showRomanization }
                             )
                         }
-                        if (lyricsOffsetMs != 0L) {
-                            LyricsControlChip(
-                                label = formatLyricsOffset(lyricsOffsetMs),
-                                selected = true,
-                                icon = Icons.Rounded.Schedule,
-                                onClick = { lyricsOffsetMs = 0L }
+                        if (state.lyricsSynced) {
+                            LyricsOffsetStepper(
+                                offsetMs = lyricsOffsetMs,
+                                onAdjust = { delta ->
+                                    lyricsOffsetMs = adjustLyricsOffset(lyricsOffsetMs, delta)
+                                },
+                                onReset = { lyricsOffsetMs = 0L }
                             )
                         }
                         if (lyricsOffsetMs != storedLyricsOffsetMs) {
@@ -7251,6 +7257,69 @@ private fun LyricsControlChip(
 }
 
 @Composable
+private fun LyricsOffsetStepper(
+    offsetMs: Long,
+    onAdjust: (Long) -> Unit,
+    onReset: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = if (offsetMs != 0L) LevyraCyan.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.06f),
+        border = BorderStroke(1.dp, if (offsetMs != 0L) LevyraCyan.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.08f)),
+        shape = CircleShape
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LyricsOffsetStepperButton(
+                icon = Icons.Rounded.Remove,
+                contentDescription = strings.lyricsOffsetEarlier,
+                onClick = { onAdjust(-LYRICS_OFFSET_STEP_MS) }
+            )
+            Text(
+                text = formatLyricsOffset(offsetMs),
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(46.dp)
+            )
+            LyricsOffsetStepperButton(
+                icon = Icons.Rounded.Add,
+                contentDescription = strings.lyricsOffsetLater,
+                onClick = { onAdjust(LYRICS_OFFSET_STEP_MS) }
+            )
+            if (offsetMs != 0L) {
+                LyricsOffsetStepperButton(
+                    icon = Icons.Rounded.Refresh,
+                    contentDescription = strings.lyricsOffsetReset,
+                    onClick = onReset
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LyricsOffsetStepperButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .pressable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = Color.White.copy(alpha = 0.70f),
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
+@Composable
 private fun KaraokeLyricLine(
     line: LyricLine,
     positionProvider: () -> Long,
@@ -7658,36 +7727,6 @@ private fun Path.addRectangle(left: Float, top: Float, right: Float, bottom: Flo
     close()
 }
 
-
-private fun activeLyricIndex(positionMs: Long, lines: List<LyricLine>): Int {
-    if (lines.isEmpty()) return -1
-    var low = 0
-    var high = lines.lastIndex
-    var candidate = -1
-    while (low <= high) {
-        val middle = (low + high) ushr 1
-        if (lines[middle].startMs <= positionMs) {
-            candidate = middle
-            low = middle + 1
-        } else {
-            high = middle - 1
-        }
-    }
-    if (candidate < 0) return -1
-    val searchStart = (candidate - 16).coerceAtLeast(0)
-    for (index in candidate downTo searchStart) {
-        val line = lines[index]
-        if (line.role != LyricVocalRole.BACKGROUND && positionMs in line.startMs..line.endMs) return index
-    }
-    for (index in candidate downTo searchStart) {
-        val line = lines[index]
-        if (positionMs in line.startMs..line.endMs) return index
-    }
-    for (index in candidate downTo searchStart) {
-        if (lines[index].role != LyricVocalRole.BACKGROUND) return index
-    }
-    return candidate
-}
 
 private fun formatLyricsOffset(offsetMs: Long): String {
     val sign = if (offsetMs >= 0L) "+" else "−"
