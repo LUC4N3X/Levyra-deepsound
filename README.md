@@ -371,6 +371,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
         <li><b>DNS-over-HTTPS:</b> Presets for Cloudflare, Google, AdGuard, and Quad9, plus custom HTTPS resolvers.</li>
         <li><b>HTTP & SOCKS Proxies:</b> Authenticated proxy support with Keystore-encrypted credentials and loop protection.</li>
         <li><b>Stream Bypass & Diagnostics:</b> Audio streams can bypass the proxy when you want them to, and there is an in-app network probe for troubleshooting.</li>
+        <li><b>Verified Playback Recovery:</b> Levyra cross-checks YouTube player configurations from independent sources, keeps a verified last-known-good set, and can use a temporary fallback when YouTube changes unexpectedly without replacing the trusted cache.</li>
       </ul>
     </td>
     <td width="50%">
