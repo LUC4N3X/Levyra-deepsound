@@ -27,6 +27,7 @@
     <string name="notification_shuffle">シャッフル</string>
     <string name="notification_favorite">お気に入り</string>
     <string name="tile_recognize_music">音楽を認識</string>
+    <string name="tile_playback">再生</string>
     <string name="shortcut_search">検索</string>
     <string name="shortcut_library">ライブラリ</string>
     <string name="shortcut_recognition">音楽を認識</string>

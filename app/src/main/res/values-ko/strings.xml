@@ -27,6 +27,7 @@
     <string name="notification_shuffle">셔플</string>
     <string name="notification_favorite">즐겨찾기</string>
     <string name="tile_recognize_music">음악 인식</string>
+    <string name="tile_playback">재생</string>
     <string name="shortcut_search">검색</string>
     <string name="shortcut_library">보관함</string>
     <string name="shortcut_recognition">음악 인식</string>

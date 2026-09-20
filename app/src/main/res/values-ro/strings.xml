@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Aleatoriu</string>
     <string name="notification_favorite">Favorit</string>
     <string name="tile_recognize_music">Recunoaște muzica</string>
+    <string name="tile_playback">Redare</string>
     <string name="shortcut_search">Căutare</string>
     <string name="shortcut_library">Bibliotecă</string>
     <string name="shortcut_recognition">Recunoaște muzica</string>

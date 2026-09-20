@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Перемішати</string>
     <string name="notification_favorite">До обраного</string>
     <string name="tile_recognize_music">Розпізнати музику</string>
+    <string name="tile_playback">Відтворення</string>
     <string name="shortcut_search">Пошук</string>
     <string name="shortcut_library">Бібліотека</string>
     <string name="shortcut_recognition">Розпізнати музику</string>
