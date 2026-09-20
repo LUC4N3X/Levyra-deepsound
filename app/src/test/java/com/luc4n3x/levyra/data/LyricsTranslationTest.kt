@@ -184,9 +184,11 @@ class LyricsTranslationTest {
     }
 
     @Test(expected = CancellationException::class)
-    fun providerIsolationStillPropagatesCancellation() = runBlocking {
-        isolatedLyricsProviderCall(timeoutMs = 1_000L, fallback = { "fallback" }) {
-            throw CancellationException("cancelled")
+    fun providerIsolationStillPropagatesCancellation() {
+        runBlocking {
+            isolatedLyricsProviderCall(timeoutMs = 1_000L, fallback = { "fallback" }) {
+                throw CancellationException("cancelled")
+            }
         }
     }
 
