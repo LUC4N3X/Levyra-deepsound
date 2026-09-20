@@ -7306,7 +7306,7 @@ private fun LyricsOffsetStepperButton(
 ) {
     Box(
         modifier = Modifier
-            .size(34.dp)
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

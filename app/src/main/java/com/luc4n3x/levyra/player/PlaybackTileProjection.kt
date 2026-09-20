@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.player
 
+import androidx.media3.common.Player
+
 enum class PlaybackTileProjectionKind {
     Active,
     Inactive
@@ -26,17 +28,23 @@ data class PlaybackTileProjection(
 fun playbackTileProjection(
     isPlaying: Boolean,
     playWhenReady: Boolean,
+    playbackState: Int = Player.STATE_IDLE,
     mediaItemCount: Int
 ): PlaybackTileProjection {
-    val active = isPlaying || playWhenReady
-    val resumable = mediaItemCount > 0
+    val hasItems = mediaItemCount > 0
+    val isEnded = playbackState == Player.STATE_ENDED
+    val isBufferingWithPlayIntent = playWhenReady && playbackState == Player.STATE_BUFFERING
+    val isActivelyPlaying = isPlaying && !isEnded
+    val active = (isActivelyPlaying || isBufferingWithPlayIntent) && hasItems
+    val isPausedResumable = hasItems && !active && !isEnded && playbackState != Player.STATE_IDLE
+
     return when {
         active -> PlaybackTileProjection(
             kind = PlaybackTileProjectionKind.Active,
             action = PlaybackTileAction.Pause,
             description = PlaybackTileDescription.Playing
         )
-        resumable -> PlaybackTileProjection(
+        isPausedResumable -> PlaybackTileProjection(
             kind = PlaybackTileProjectionKind.Inactive,
             action = PlaybackTileAction.Resume,
             description = PlaybackTileDescription.Paused
@@ -48,3 +56,14 @@ fun playbackTileProjection(
         )
     }
 }
+
+fun playbackTileProjection(
+    isPlaying: Boolean,
+    playWhenReady: Boolean,
+    mediaItemCount: Int
+): PlaybackTileProjection = playbackTileProjection(
+    isPlaying = isPlaying,
+    playWhenReady = playWhenReady,
+    playbackState = if (isPlaying || playWhenReady) Player.STATE_READY else Player.STATE_IDLE,
+    mediaItemCount = mediaItemCount
+)

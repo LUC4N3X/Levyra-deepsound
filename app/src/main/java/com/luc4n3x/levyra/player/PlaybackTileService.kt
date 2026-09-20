@@ -16,10 +16,18 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class PlaybackTileService : TileService() {
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var sessionJob: Job? = null
     private var controller: MediaController? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var pendingToggle = false
@@ -37,29 +45,45 @@ class PlaybackTileService : TileService() {
         super.onStartListening()
         listening = true
         strings = localizedStrings()
-        connect()
+        if (hasActivePlaybackSession()) {
+            connect()
+        } else {
+            renderTile(null)
+        }
+        observeSession()
     }
 
     override fun onStopListening() {
+        sessionJob?.cancel()
+        sessionJob = null
         listening = false
-        releaseController()
+        releaseController(force = false)
         super.onStopListening()
     }
 
     override fun onTileAdded() {
         super.onTileAdded()
         strings = localizedStrings()
-        renderTile(controller)
+        if (hasActivePlaybackSession()) {
+            connect()
+        } else {
+            renderTile(null)
+        }
     }
 
     override fun onTileRemoved() {
-        releaseController()
+        sessionJob?.cancel()
+        sessionJob = null
+        releaseController(force = true)
         super.onTileRemoved()
     }
 
     override fun onDestroy() {
         listening = false
-        releaseController()
+        sessionJob?.cancel()
+        sessionJob = null
+        scope.cancel()
+        releaseController(force = true)
         super.onDestroy()
     }
 
@@ -72,6 +96,23 @@ class PlaybackTileService : TileService() {
         }
         pendingToggle = true
         connect()
+    }
+
+    private fun hasActivePlaybackSession(): Boolean =
+        PlaybackService.activePlayer != null
+
+    private fun observeSession() {
+        sessionJob?.cancel()
+        sessionJob = scope.launch {
+            PlaybackService.activePlayerFlow.collect { player ->
+                if (player != null && controller == null && controllerFuture == null) {
+                    connect()
+                } else if (player == null && controller != null && !pendingToggle) {
+                    releaseController(force = false)
+                    renderTile(null)
+                }
+            }
+        }
     }
 
     private fun connect() {
@@ -91,6 +132,9 @@ class PlaybackTileService : TileService() {
                     pendingToggle = false
                     openApp()
                 }
+                if (!listening) {
+                    releaseController(force = true)
+                }
                 return@addListener
             }
             if (!listening && !pendingToggle) {
@@ -103,11 +147,15 @@ class PlaybackTileService : TileService() {
             if (pendingToggle) {
                 pendingToggle = false
                 performAction(connected)
+                if (!listening) {
+                    releaseController(force = true)
+                }
             }
         }, ContextCompat.getMainExecutor(appContext))
     }
 
-    private fun releaseController() {
+    private fun releaseController(force: Boolean = false) {
+        if (!force && pendingToggle) return
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         controller?.removeListener(playbackListener)
@@ -121,6 +169,7 @@ class PlaybackTileService : TileService() {
         when (playbackTileProjection(
             isPlaying = player.isPlaying,
             playWhenReady = player.playWhenReady,
+            playbackState = player.playbackState,
             mediaItemCount = player.mediaItemCount
         ).action) {
             PlaybackTileAction.Pause -> player.pause()
@@ -135,11 +184,13 @@ class PlaybackTileService : TileService() {
             playbackTileProjection(
                 isPlaying = it.isPlaying,
                 playWhenReady = it.playWhenReady,
+                playbackState = it.playbackState,
                 mediaItemCount = it.mediaItemCount
             )
         } ?: playbackTileProjection(
             isPlaying = false,
             playWhenReady = false,
+            playbackState = Player.STATE_IDLE,
             mediaItemCount = 0
         )
         if (projection == lastProjection) return
