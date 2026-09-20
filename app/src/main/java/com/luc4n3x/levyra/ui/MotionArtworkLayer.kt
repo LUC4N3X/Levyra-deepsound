@@ -140,7 +140,7 @@ internal fun MotionArtworkLayer(
         if (videoArtwork == null) videoReady = false
     }
     LaunchedEffect(motionGatesOpen, artwork?.identityKey) {
-        if (!motionGatesOpen || displayedArtwork?.identityKey != artwork?.identityKey) {
+        if (!motionGatesOpen || displayedArtwork?.identityKey != artwork.identityKey) {
             displayedArtwork = null
         }
     }
