@@ -147,42 +147,9 @@ class LyricsRepository(context: Context? = null) {
         translate: Boolean = false
     ): Flow<LyricsResult> = channelFlow {
         val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return@channelFlow
-        readSelection(query)?.let { selected ->
-            val restored = selected.result.copy(cached = true)
-            send(restored)
-            if (needsLyricsTranslationRetry(restored.translationState, query.translate)) {
-                val refreshed = applyTranslation(restored.copy(cached = false), query)
-                    .copy(cached = false, manualSelection = true)
-                if (shouldUpgrade(restored, refreshed)) {
-                    persistSelection(
-                        query,
-                        selected.id,
-                        selected.title,
-                        selected.artist,
-                        selected.durationSec,
-                        refreshed
-                    )
-                    send(refreshed)
-                }
-            }
-            return@channelFlow
-        }
-        var current: LyricsResult? = null
-        val cached = readCached(query)
-        cached.result?.let { result ->
-            val stable = result.copy(cached = true)
-            current = stable
-            send(stable)
-            if (needsLyricsTranslationRetry(stable.translationState, query.translate)) {
-                val refreshed = applyTranslation(stable.copy(cached = false), query)
-                if (shouldUpgrade(stable, refreshed)) {
-                    current = refreshed
-                    memoryPut(query.key, refreshed, System.currentTimeMillis())
-                    persistPositive(query, refreshed)
-                    send(refreshed)
-                }
-            }
-        }
+        if (emitSelectedResult(query) { send(it) }) return@channelFlow
+        val (cached, restored) = restoreCachedResult(query) { send(it) }
+        var current = restored
         if (cached.negative) return@channelFlow
         if (!cached.refreshRequired) return@channelFlow
 
@@ -212,6 +179,45 @@ class LyricsRepository(context: Context? = null) {
             persistNegative(query)
         }
     }.flowOn(Dispatchers.IO)
+
+    private suspend fun emitSelectedResult(
+        query: QuerySpec,
+        emit: suspend (LyricsResult) -> Unit
+    ): Boolean {
+        val selected = readSelection(query) ?: return false
+        val restored = selected.result.copy(cached = true)
+        emit(restored)
+        if (!needsLyricsTranslationRetry(restored.translationState, query.translate)) return true
+        val refreshed = applyTranslation(restored.copy(cached = false), query)
+            .copy(cached = false, manualSelection = true)
+        if (!shouldUpgrade(restored, refreshed)) return true
+        persistSelection(
+            query,
+            selected.id,
+            selected.title,
+            selected.artist,
+            selected.durationSec,
+            refreshed
+        )
+        emit(refreshed)
+        return true
+    }
+
+    private suspend fun restoreCachedResult(
+        query: QuerySpec,
+        emit: suspend (LyricsResult) -> Unit
+    ): Pair<CacheLookup, LyricsResult?> {
+        val cached = readCached(query)
+        val stable = cached.result?.copy(cached = true) ?: return cached to null
+        emit(stable)
+        if (!needsLyricsTranslationRetry(stable.translationState, query.translate)) return cached to stable
+        val refreshed = applyTranslation(stable.copy(cached = false), query)
+        if (!shouldUpgrade(stable, refreshed)) return cached to stable
+        memoryPut(query.key, refreshed, System.currentTimeMillis())
+        persistPositive(query, refreshed)
+        emit(refreshed)
+        return cached to refreshed
+    }
 
     suspend fun fetch(
         title: String,
@@ -537,18 +543,25 @@ class LyricsRepository(context: Context? = null) {
     internal fun shouldUpgrade(previous: LyricsResult?, current: LyricsResult): Boolean {
         if (current.lines.isEmpty()) return false
         if (previous == null) return true
-        if (sameResult(previous, current)) {
-            return current.confidence > previous.confidence ||
-                (current.confidence == previous.confidence && previous.cached && !current.cached) ||
-                (current.confidence >= previous.confidence && current.translationState != previous.translationState)
-        }
+        if (sameResult(previous, current)) return improvesEquivalentResult(previous, current)
+        return improvesLyricsDetail(previous, current) ||
+            current.confidence >= previous.confidence + MIN_QUALITY_UPGRADE
+    }
+
+    private fun improvesEquivalentResult(previous: LyricsResult, current: LyricsResult): Boolean {
+        return current.confidence > previous.confidence ||
+            (current.confidence == previous.confidence && previous.cached && !current.cached) ||
+            (current.confidence >= previous.confidence && current.translationState != previous.translationState)
+    }
+
+    private fun improvesLyricsDetail(previous: LyricsResult, current: LyricsResult): Boolean {
         val previousWordTimed = previous.lines.any { it.words.isNotEmpty() }
         val currentWordTimed = current.lines.any { it.words.isNotEmpty() }
         if (currentWordTimed && !previousWordTimed && current.confidence >= previous.confidence - 5) return true
         if (current.synced && !previous.synced && current.confidence >= previous.confidence - 3) return true
         if (current.sections.size > previous.sections.size && current.confidence >= previous.confidence) return true
         if (current.lines.any { it.translated.isNotBlank() } && previous.lines.none { it.translated.isNotBlank() } && current.confidence >= previous.confidence) return true
-        return current.confidence >= previous.confidence + MIN_QUALITY_UPGRADE
+        return false
     }
 
     private fun sameResult(left: LyricsResult, right: LyricsResult): Boolean {
