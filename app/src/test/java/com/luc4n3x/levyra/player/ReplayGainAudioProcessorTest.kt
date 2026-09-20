@@ -42,6 +42,23 @@ class ReplayGainAudioProcessorTest {
     }
 
     @Test
+    fun loudnessNormalizationKeepsItsExistingMaximumAttenuation() {
+        val gain = VolumeNormalizationAudioProcessor.attenuationForRelativeLoudness(30f)
+        assertEquals(0.25f, gain, 0.0001f)
+    }
+
+    @Test
+    fun replayGainCanAttenuateBelowTheNormalizationFloor() {
+        val gain = VolumeNormalizationAudioProcessor.replayGainLinear(
+            gainDb = -30f,
+            peak = null,
+            preampDb = 0f,
+            preventClipping = true
+        ) ?: 0f
+        assertTrue(gain < 0.05f)
+    }
+
+    @Test
     fun dedicatedPreampIsIncludedInReplayGainCalculation() {
         val gain = VolumeNormalizationAudioProcessor.replayGainLinear(
             gainDb = -6f,
