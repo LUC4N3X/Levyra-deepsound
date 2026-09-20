@@ -242,14 +242,15 @@ def render_summary(report: PipelineReport, snapshots: Sequence[SourceSnapshot]) 
         "",
         "## Trust policy",
         "",
-        "1. A configuration confirmed by both independent sources.",
-        "2. A valid fresh configuration from the primary source (Zemer).",
-        "3. A valid configuration from the secondary source (Faraday) when the primary lacks it.",
-        "4. The existing last known good configuration.",
+        "1. A logical player confirmed by both independent sources.",
+        "2. A valid configuration from the primary source (Zemer).",
+        "3. The existing last known good configuration.",
+        "4. A valid configuration from the secondary source (Faraday), only when the primary is unavailable.",
         "5. Omission when no safe value exists.",
         "",
-        "A newer timestamp never overrides validation or agreement. When the sources conflict, "
-        "the last known good entry is kept.",
+        "A secondary-only player is not promoted while the primary is healthy. A newer timestamp "
+        "never overrides validation or agreement. When the sources conflict, the last known good "
+        "entry is kept.",
         "",
         "## Security",
         "",

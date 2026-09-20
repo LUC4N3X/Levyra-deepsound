@@ -49,9 +49,10 @@ VERDICT_SINGLE_PRIMARY = "SINGLE_SOURCE_PRIMARY"
 VERDICT_SINGLE_SECONDARY = "SINGLE_SOURCE_SECONDARY"
 VERDICT_CONFLICTING = "CONFLICTING"
 VERDICT_LAST_KNOWN_GOOD = "LAST_KNOWN_GOOD"
+VERDICT_CANDIDATE = "CANDIDATE"
 VERDICT_OMITTED = "OMITTED"
 
-SELECTION_BOTH_CONFIRMED = "BOTH_CONFIRMED"
+SELECTION_DUAL_SOURCE_HEALTHY = "DUAL_SOURCE_HEALTHY"
 SELECTION_PRIMARY = "ZEMER"
 SELECTION_SECONDARY = "FARADAY"
 SELECTION_MIXED = "MIXED"
@@ -476,74 +477,122 @@ class SelectionResult:
     notes: tuple[str, ...]
 
 
-def _candidate_order(
+class _UnionFind:
+    def __init__(self) -> None:
+        self._parent: dict[str, str] = {}
+
+    def find(self, item: str) -> str:
+        self._parent.setdefault(item, item)
+        root = item
+        while self._parent[root] != root:
+            root = self._parent[root]
+        while self._parent[item] != root:
+            self._parent[item], item = root, self._parent[item]
+        return root
+
+    def union(self, left: str, right: str) -> None:
+        left_root, right_root = self.find(left), self.find(right)
+        if left_root != right_root:
+            self._parent[right_root] = left_root
+
+
+def _identifier_index(players: Mapping[str, PlayerConfig]) -> dict[str, PlayerConfig]:
+    index: dict[str, PlayerConfig] = {}
+    for primary_hash, config in players.items():
+        index[primary_hash] = config
+        for alias in config.aliases:
+            index[alias] = config
+    return index
+
+
+@dataclass(frozen=True)
+class _IdentityCluster:
+    identifiers: tuple[str, ...]
+    primary_entries: tuple[PlayerConfig, ...]
+    secondary_entries: tuple[PlayerConfig, ...]
+    existing_entries: tuple[PlayerConfig, ...]
+
+    @property
+    def ambiguous(self) -> bool:
+        return (
+            len(self.primary_entries) > 1
+            or len(self.secondary_entries) > 1
+            or len(self.existing_entries) > 1
+        )
+
+
+def _identity_clusters(
     primary_players: Mapping[str, PlayerConfig],
     secondary_players: Mapping[str, PlayerConfig],
     last_known_good: Mapping[str, PlayerConfig],
-) -> list[str]:
-    order: list[str] = []
-    seen: set[str] = set()
+) -> list[_IdentityCluster]:
+    """Group entries that describe the same logical player across sources.
 
-    def push(key: str) -> None:
-        if key not in seen:
-            seen.add(key)
-            order.append(key)
-
-    for key in primary_players:
-        push(key)
-    for key in last_known_good:
-        push(key)
-    for key in secondary_players:
-        push(key)
-    for key in sorted(set(primary_players) | set(secondary_players) | set(last_known_good)):
-        push(key)
-    return order
-
-
-def _resolve_collisions(
-    picks: Mapping[str, PlayerConfig],
-    verdicts: Mapping[str, str],
-    order: Sequence[str],
-) -> tuple[dict[str, PlayerConfig], list[str], list[str]]:
-    priority = {
-        VERDICT_CONFIRMED: 0,
-        VERDICT_SINGLE_PRIMARY: 1,
-        VERDICT_SINGLE_SECONDARY: 2,
-        VERDICT_LAST_KNOWN_GOOD: 3,
+    A player identity is its primary hash plus its aliases. The same YouTube
+    player can be published under different primary hashes by different sources
+    while still referencing each other through aliases, so identities are
+    resolved by unioning every overlapping identifier before comparison.
+    """
+    union_find = _UnionFind()
+    indexes = {
+        "primary": _identifier_index(primary_players),
+        "secondary": _identifier_index(secondary_players),
+        "existing": _identifier_index(last_known_good),
     }
-    index = {key: position for position, key in enumerate(order)}
-    ordered = sorted(
-        picks.items(),
-        key=lambda item: (priority.get(verdicts.get(item[0], ""), 9), index.get(item[0], 0)),
-    )
-    final: dict[str, PlayerConfig] = {}
-    claimed: set[str] = set()
-    omitted: list[str] = []
-    warnings: list[str] = []
-    for key, config in ordered:
-        if key in claimed:
-            omitted.append(key)
-            warnings.append(f"{key}: dropped because another entry already owns that hash")
-            continue
-        safe_aliases: list[str] = []
-        for alias in config.aliases:
-            if alias in claimed:
-                warnings.append(f"{key}: dropped colliding alias {alias}")
-            else:
-                safe_aliases.append(alias)
-        if len(safe_aliases) != len(config.aliases):
-            config = config.with_aliases(safe_aliases)
-        final[key] = config
-        claimed.add(key)
-        claimed.update(safe_aliases)
-    return final, omitted, warnings
+    for index in indexes.values():
+        for identifier, config in index.items():
+            union_find.find(identifier)
+            for alias in config.aliases:
+                union_find.union(identifier, alias)
+
+    grouped: dict[str, dict[str, list]] = {}
+    for label, index in indexes.items():
+        for identifier, config in index.items():
+            bucket = grouped.setdefault(
+                union_find.find(identifier),
+                {"primary": [], "secondary": [], "existing": [], "identifiers": []},
+            )
+            if config not in bucket[label]:
+                bucket[label].append(config)
+            if identifier not in bucket["identifiers"]:
+                bucket["identifiers"].append(identifier)
+
+    clusters: list[_IdentityCluster] = []
+    for root in sorted(grouped):
+        bucket = grouped[root]
+        clusters.append(
+            _IdentityCluster(
+                identifiers=tuple(sorted(bucket["identifiers"])),
+                primary_entries=tuple(bucket["primary"]),
+                secondary_entries=tuple(bucket["secondary"]),
+                existing_entries=tuple(bucket["existing"]),
+            )
+        )
+    return clusters
 
 
-def _verdict_for(
-    primary_entry: PlayerConfig | None,
-    secondary_entry: PlayerConfig | None,
-    existing: PlayerConfig | None,
+def _single_entry(entries: Sequence[PlayerConfig]) -> PlayerConfig | None:
+    return entries[0] if len(entries) == 1 else None
+
+
+def _canonical_aliases(cluster: _IdentityCluster, chosen: PlayerConfig) -> tuple[str, ...]:
+    aliases = list(chosen.aliases)
+    for identifier in cluster.identifiers:
+        if identifier != chosen.primary_hash and identifier not in aliases:
+            aliases.append(identifier)
+    return tuple(aliases)
+
+
+def _cluster_verdict(
+    cluster: _IdentityCluster,
+    primary_healthy: bool,
 ) -> tuple[str, PlayerConfig | None, bool]:
+    primary_entry = _single_entry(cluster.primary_entries)
+    secondary_entry = _single_entry(cluster.secondary_entries)
+    existing = _single_entry(cluster.existing_entries)
+
+    if cluster.ambiguous:
+        return VERDICT_CONFLICTING, existing, True
     if primary_entry is not None and secondary_entry is not None:
         if primary_entry.capability() == secondary_entry.capability():
             return VERDICT_CONFIRMED, primary_entry, False
@@ -551,15 +600,84 @@ def _verdict_for(
     if primary_entry is not None:
         return VERDICT_SINGLE_PRIMARY, primary_entry, False
     if secondary_entry is not None:
+        if primary_healthy:
+            if existing is not None:
+                return VERDICT_LAST_KNOWN_GOOD, existing, False
+            return VERDICT_CANDIDATE, None, False
         return VERDICT_SINGLE_SECONDARY, secondary_entry, False
     if existing is not None:
         return VERDICT_LAST_KNOWN_GOOD, existing, False
     return "", None, False
 
 
+_COLLISION_PRIORITY = {
+    VERDICT_CONFIRMED: 0,
+    VERDICT_SINGLE_PRIMARY: 1,
+    VERDICT_LAST_KNOWN_GOOD: 2,
+    VERDICT_CONFLICTING: 2,
+    VERDICT_SINGLE_SECONDARY: 3,
+}
+
+
+def _resolve_collisions(
+    picks: Mapping[str, PlayerConfig],
+    verdicts: Mapping[str, str],
+    order: Sequence[str],
+) -> tuple[dict[str, PlayerConfig], list[str], list[str]]:
+    """Final safety pass.
+
+    Identity clustering already guarantees disjoint identifier sets. If two
+    entries still collide, the higher-priority one (confirmed, then primary, then
+    last known good, then secondary-only) keeps its identifiers and the other is
+    dropped whole. Aliases are never silently rewritten.
+    """
+    index = {key: position for position, key in enumerate(order)}
+    ordered = sorted(
+        picks.items(),
+        key=lambda item: (_COLLISION_PRIORITY.get(verdicts.get(item[0], ""), 9), index.get(item[0], 0)),
+    )
+    final: dict[str, PlayerConfig] = {}
+    claimed: set[str] = set()
+    omitted: list[str] = []
+    warnings: list[str] = []
+    for key, config in ordered:
+        identifiers = (key, *config.aliases)
+        if any(identifier in claimed for identifier in identifiers):
+            omitted.append(key)
+            warnings.append(f"{key}: omitted because a higher-priority entry already owns one of its identifiers")
+            continue
+        final[key] = config
+        claimed.update(identifiers)
+    return final, omitted, warnings
+
+
+def _selection_order(
+    picks: Mapping[str, PlayerConfig],
+    clusters: Mapping[str, _IdentityCluster],
+    primary_players: Mapping[str, PlayerConfig],
+    secondary_players: Mapping[str, PlayerConfig],
+    last_known_good: Mapping[str, PlayerConfig],
+) -> list[str]:
+    position: dict[str, int] = {}
+    for source in (primary_players, last_known_good, secondary_players):
+        for key in source:
+            position.setdefault(key, len(position))
+
+    def rank(key: str) -> tuple[int, str]:
+        cluster = clusters.get(key)
+        candidates = (
+            [position[identifier] for identifier in cluster.identifiers if identifier in position]
+            if cluster is not None
+            else []
+        )
+        return (min(candidates) if candidates else len(position), key)
+
+    return sorted(picks, key=rank)
+
+
 def _overall_selection(primary_healthy: bool, secondary_healthy: bool, conflicts: Sequence[str]) -> str:
     if primary_healthy and secondary_healthy:
-        return SELECTION_MIXED if conflicts else SELECTION_BOTH_CONFIRMED
+        return SELECTION_MIXED if conflicts else SELECTION_DUAL_SOURCE_HEALTHY
     if primary_healthy:
         return SELECTION_PRIMARY
     if secondary_healthy:
@@ -597,9 +715,11 @@ def select_configurations(
 ) -> SelectionResult:
     """Compare both sources and select a trusted configuration.
 
-    Policy, highest preference first: a config confirmed by both sources, a valid
-    primary config, a valid secondary config when the primary lacks it, the last
-    known good entry, and finally omission. A conflicting pair never silently
+    Policy, highest preference first: a logical player confirmed by both sources,
+    a valid primary player, a valid secondary player when the primary is
+    unavailable, the last known good entry, and finally omission. A secondary-only
+    player is never promoted while the primary is healthy unless it already
+    exists in the last known good set. A conflicting player never silently
     replaces the last known good entry.
     """
     primary_players = primary.players if primary.healthy else {}
@@ -607,23 +727,22 @@ def select_configurations(
     if not primary_players and not secondary_players:
         return _last_known_good_selection(last_known_good, last_known_good_order)
 
-    order = _candidate_order(primary_players, secondary_players, last_known_good)
+    clusters = _identity_clusters(primary_players, secondary_players, last_known_good)
+    cluster_by_key: dict[str, _IdentityCluster] = {}
     picks: dict[str, PlayerConfig] = {}
     verdicts: dict[str, str] = {}
     conflicts: list[str] = []
     notes: list[str] = []
 
-    for key in order:
-        verdict, pick, is_conflict = _verdict_for(
-            primary_players.get(key),
-            secondary_players.get(key),
-            last_known_good.get(key),
-        )
+    for cluster in clusters:
+        verdict, pick, is_conflict = _cluster_verdict(cluster, primary.healthy)
         if not verdict:
             continue
+        key = pick.primary_hash if pick is not None else cluster.identifiers[0]
+        cluster_by_key[key] = cluster
         verdicts[key] = verdict
         if pick is not None:
-            picks[key] = pick
+            picks[key] = pick.with_aliases(_canonical_aliases(cluster, pick))
         if is_conflict:
             conflicts.append(key)
             notes.append(
@@ -631,6 +750,7 @@ def select_configurations(
                 + ("last known good entry kept" if pick is not None else "entry omitted")
             )
 
+    order = _selection_order(picks, cluster_by_key, primary_players, secondary_players, last_known_good)
     final, omitted, warnings = _resolve_collisions(picks, verdicts, order)
     for key in omitted:
         verdicts[key] = VERDICT_OMITTED

@@ -19,8 +19,8 @@ FARADAY_URL = pipeline.FARADAY_CONFIG_URL
 FARADAY_REGISTRY_URL = pipeline.FARADAY_REGISTRY_URL
 
 
-def entry(sts, n_class="Yx", aliases=()):
-    return {"sig": "Ab(1,2,INPUT)", "nClass": n_class, "sts": sts, "aliases": list(aliases)}
+def entry(sts, n_class="Yx", aliases=(), sig="Ab(1,2,INPUT)"):
+    return {"sig": sig, "nClass": n_class, "sts": sts, "aliases": list(aliases)}
 
 
 def registry(players):
@@ -90,7 +90,7 @@ class SelectionTest(PipelineTestBase):
             FARADAY_URL: registry({"aaaaaaaa": entry(100)}),
         })
         report, snapshots = self.run_pipeline(network)
-        self.assertEqual(pipeline.SELECTION_BOTH_CONFIRMED, report.selection)
+        self.assertEqual(pipeline.SELECTION_DUAL_SOURCE_HEALTHY, report.selection)
         self.assertEqual(1, report.counts.get(pipeline.VERDICT_CONFIRMED))
         self.assertEqual(0, len(report.conflicts))
         self.assertEqual(100, pipeline.load_registry_text(
@@ -177,19 +177,88 @@ class SelectionTest(PipelineTestBase):
         self.assertEqual(pipeline.DECISION_KEEP_LAST_KNOWN_GOOD, report.decision)
         self.assertEqual(before, self.asset_player_bytes())
 
-    def test_union_includes_secondary_only_players(self):
+    def test_primary_healthy_does_not_publish_secondary_only_player(self):
         self.seed({"aaaaaaaa": pipeline.PlayerConfig("aaaaaaaa", "Ab(1,2,INPUT)", "Yx", 100)})
         network = FakeNetwork(**{
             ZEMER_URL: registry({"aaaaaaaa": entry(100)}),
             FARADAY_URL: registry({"bbbbbbbb": entry(200)}),
         })
         report, _ = self.run_pipeline(network)
-        self.assertEqual(1, report.counts.get(pipeline.VERDICT_SINGLE_SECONDARY))
+        self.assertEqual(pipeline.SELECTION_DUAL_SOURCE_HEALTHY, report.selection)
+        self.assertEqual(1, report.counts.get(pipeline.VERDICT_CANDIDATE))
+        players = pipeline.load_registry_text(
+            (self.assets / sync.PLAYER_CONFIGS_ASSET).read_text(encoding="utf-8")
+        )
+        self.assertNotIn("bbbbbbbb", players)
+        self.assertIn("aaaaaaaa", players)
+
+    def test_primary_healthy_keeps_last_known_good_secondary_only_player(self):
+        seeded = {
+            "aaaaaaaa": pipeline.PlayerConfig("aaaaaaaa", "Ab(1,2,INPUT)", "Yx", 100),
+            "bbbbbbbb": pipeline.PlayerConfig("bbbbbbbb", "Cd(3,4,INPUT)", "Zz", 200),
+        }
+        self.seed(seeded)
+        network = FakeNetwork(**{
+            ZEMER_URL: registry({"aaaaaaaa": entry(100)}),
+            FARADAY_URL: registry({"bbbbbbbb": entry(200, n_class="Zz", sig="Cd(3,4,INPUT)")}),
+        })
+        report, _ = self.run_pipeline(network)
+        self.assertEqual(1, report.counts.get(pipeline.VERDICT_LAST_KNOWN_GOOD))
         players = pipeline.load_registry_text(
             (self.assets / sync.PLAYER_CONFIGS_ASSET).read_text(encoding="utf-8")
         )
         self.assertIn("bbbbbbbb", players)
-        self.assertIn("aaaaaaaa", players)
+
+    def test_cross_source_alias_identity_is_confirmed(self):
+        network = FakeNetwork(**{
+            ZEMER_URL: registry({"aaaaaaaa": entry(100, aliases=("bbbbbbbb",))}),
+            FARADAY_URL: registry({"bbbbbbbb": entry(100, aliases=("aaaaaaaa",))}),
+        })
+        report, _ = self.run_pipeline(network)
+        self.assertEqual(pipeline.SELECTION_DUAL_SOURCE_HEALTHY, report.selection)
+        self.assertEqual(1, report.counts.get(pipeline.VERDICT_CONFIRMED))
+        self.assertEqual(0, report.counts.get(pipeline.VERDICT_SINGLE_PRIMARY, 0))
+        self.assertEqual(0, report.counts.get(pipeline.VERDICT_SINGLE_SECONDARY, 0))
+        players = pipeline.load_registry_text(
+            (self.assets / sync.PLAYER_CONFIGS_ASSET).read_text(encoding="utf-8")
+        )
+        self.assertEqual(["aaaaaaaa"], list(players.keys()))
+        self.assertEqual(("bbbbbbbb",), players["aaaaaaaa"].aliases)
+
+    def test_cross_source_alias_conflict_keeps_last_known_good(self):
+        seeded = {
+            "aaaaaaaa": pipeline.PlayerConfig("aaaaaaaa", "Ab(1,2,INPUT)", "Yx", 100, ("bbbbbbbb",))
+        }
+        self.seed(seeded)
+        network = FakeNetwork(**{
+            ZEMER_URL: registry({"aaaaaaaa": entry(100, n_class="Yx", aliases=("bbbbbbbb",))}),
+            FARADAY_URL: registry({"bbbbbbbb": entry(100, n_class="Zz", aliases=("aaaaaaaa",))}),
+        })
+        report, _ = self.run_pipeline(network)
+        self.assertEqual(pipeline.SELECTION_MIXED, report.selection)
+        self.assertEqual(1, len(report.conflicts))
+        players = pipeline.load_registry_text(
+            (self.assets / sync.PLAYER_CONFIGS_ASSET).read_text(encoding="utf-8")
+        )
+        self.assertEqual("Yx", players["aaaaaaaa"].n_class)
+
+    def test_secondary_only_entry_cannot_evict_last_known_good_identity(self):
+        seeded = {
+            "aaaaaaaa": pipeline.PlayerConfig("aaaaaaaa", "Ab(1,2,INPUT)", "Yx", 100, ("bbbbbbbb",))
+        }
+        self.seed(seeded)
+        network = FakeNetwork(**{
+            ZEMER_URL: registry({"cccccccc": entry(300)}),
+            FARADAY_URL: registry({"bbbbbbbb": entry(200, n_class="Zz")}),
+        })
+        report, _ = self.run_pipeline(network)
+        players = pipeline.load_registry_text(
+            (self.assets / sync.PLAYER_CONFIGS_ASSET).read_text(encoding="utf-8")
+        )
+        self.assertEqual("Yx", players["aaaaaaaa"].n_class)
+        self.assertEqual(("bbbbbbbb",), players["aaaaaaaa"].aliases)
+        self.assertNotIn("bbbbbbbb", players)
+        self.assertIn("cccccccc", players)
 
 
 class UnchangedAndAtomicTest(PipelineTestBase):
