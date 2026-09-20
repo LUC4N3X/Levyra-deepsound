@@ -31,48 +31,46 @@ jobs:
           ref: ${{ github.event.inputs.base_branch || 'main' }}
           fetch-depth: 0
 
-      - name: Ensure JSON tools
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Test player config selection pipeline
         shell: bash
         run: |
           set -euo pipefail
-          if ! command -v jq >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y jq
-          fi
+          python -m unittest discover -s scripts/tests -p 'test_player_config_pipeline.py' -v
 
-      - name: Fetch upstream player configs
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/levyra-player-configs
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
-            "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json" \
-            -o /tmp/levyra-player-configs/player_configs.json
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
-            "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/player_dates.json" \
-            -o /tmp/levyra-player-configs/player_dates.json
-          jq empty /tmp/levyra-player-configs/player_configs.json >/dev/null
-          jq empty /tmp/levyra-player-configs/player_dates.json >/dev/null
-
-      - name: Update local assets
+      - name: Synchronize multi-source player configs
         id: sync
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p app/src/main/assets
-          CHANGED="false"
-          if [ ! -f app/src/main/assets/player_configs.json ] || ! cmp -s app/src/main/assets/player_configs.json /tmp/levyra-player-configs/player_configs.json; then
-            cp /tmp/levyra-player-configs/player_configs.json app/src/main/assets/player_configs.json
-            CHANGED="true"
+          rm -rf artifacts/player-config-sync
+          python scripts/sync_player_configs.py \
+            --assets-dir app/src/main/assets \
+            --report artifacts/player-config-sync/report.json \
+            --summary artifacts/player-config-sync/summary.md \
+            --github-output "${GITHUB_OUTPUT}"
+
+      - name: Publish pipeline summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f artifacts/player-config-sync/summary.md ]; then
+            cat artifacts/player-config-sync/summary.md >> "${GITHUB_STEP_SUMMARY}"
           fi
-          if [ ! -f app/src/main/assets/player_dates.json ] || ! cmp -s app/src/main/assets/player_dates.json /tmp/levyra-player-configs/player_dates.json; then
-            cp /tmp/levyra-player-configs/player_dates.json app/src/main/assets/player_dates.json
-            CHANGED="true"
-          fi
-          echo "changed=${CHANGED}" >> "${GITHUB_OUTPUT}"
-          if [ "${CHANGED}" = "true" ]; then
-            git diff -- app/src/main/assets/player_configs.json app/src/main/assets/player_dates.json
-          fi
+
+      - name: Upload sync diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: player-config-sync-${{ github.run_number }}
+          path: artifacts/player-config-sync
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Create pull request
         if: steps.sync.outputs.changed == 'true'
@@ -83,19 +81,18 @@ jobs:
           delete-branch: true
           commit-message: "chore(extractor): sync player configs"
           title: "chore(extractor): sync player configs"
-          body: |
-            Updates Levyra player config assets from the upstream cipher config source.
-
-            Files updated:
-            - app/src/main/assets/player_configs.json
-            - app/src/main/assets/player_dates.json
+          body-path: artifacts/player-config-sync/summary.md
+          add-paths: |
+            app/src/main/assets/player_configs.json
+            app/src/main/assets/player_configs.meta.json
+            app/src/main/assets/player_dates.json
           labels: |
             dependencies
             extractor
 
       - name: No changes
-        if: steps.sync.outputs.changed == 'false'
+        if: steps.sync.outputs.changed != 'true'
         shell: bash
         run: |
           set -euo pipefail
-          echo "Player configs already up to date."
+          echo "Selected player configuration is already current; repository assets left untouched."
