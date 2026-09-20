@@ -103,6 +103,7 @@ import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -159,6 +160,9 @@ internal fun AudioSettingsPanel(
     onSelectAutoEqCatalogEntry: (AutoEqCatalogEntry) -> Unit,
     onDismissAutoEqCatalogProfile: () -> Unit,
     onCloseAutoEqCatalog: () -> Unit,
+    onReplayGainMode: (ReplayGainMode) -> Unit = {},
+    onReplayGainPreamp: (Float) -> Unit = {},
+    onReplayGainPreventClipping: (Boolean) -> Unit = {},
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -348,16 +352,7 @@ internal fun AudioSettingsPanel(
                         onCheckedChange = onLimiter
                     )
                 }
-                item {
-                    AudioToggleRow(
-                        title = strings.replayGain,
-                        subtitle = "",
-                        checked = audioSettings.replayGainEnabled,
-                        onCheckedChange = onReplayGain
-                    )
-                }
-
-                item { AudioSectionLabel(strings.audioSectionPlayback) }
+                item {\n                    AudioToggleRow(\n                        title = strings.replayGain,\n                        subtitle = audioSettings.effectiveReplayGainMode.name.lowercase()\n                            .replaceFirstChar { it.uppercase() },\n                        checked = audioSettings.replayGainActive,\n                        onCheckedChange = onReplayGain\n                    )\n                }\n                if (audioSettings.replayGainActive) {\n                    item {\n                        AudioQualityRow(\n                            selected = audioSettings.effectiveReplayGainMode.storageValue,\n                            labels = listOf(\n                                "Track" to ReplayGainMode.TRACK.storageValue,\n                                "Album" to ReplayGainMode.ALBUM.storageValue,\n                                "Smart" to ReplayGainMode.SMART.storageValue\n                            ),\n                            onSelect = { value ->\n                                val mode = ReplayGainMode.fromStorage(value, legacyEnabled = true)\n                                onReplayGain(mode != ReplayGainMode.OFF)\n                                onReplayGainMode(mode)\n                            }\n                        )\n                    }\n                    item {\n                        AudioSliderRow(\n                            title = "${strings.replayGain} · ${strings.preamp}",\n                            valueLabel = decibels(audioSettings.replayGainPreampDb),\n                            value = audioSettings.replayGainPreampDb,\n                            range = -12f..12f,\n                            onValue = { onReplayGainPreamp((it * 2f).roundToInt() / 2f) }\n                        )\n                    }\n                    item {\n                        AudioToggleRow(\n                            title = "${strings.replayGain} · clip protection",\n                            subtitle = "Peak-aware",\n                            checked = audioSettings.replayGainPreventClipping,\n                            onCheckedChange = onReplayGainPreventClipping\n                        )\n                    }\n                }\n\n                item { AudioSectionLabel(strings.audioSectionPlayback) }
                 item {
                     AudioSliderRow(
                         title = strings.crossfade,
