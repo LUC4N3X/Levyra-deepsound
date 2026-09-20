@@ -279,34 +279,39 @@ def _source_line(snapshot: SourceSnapshot) -> str:
     return f"- **{snapshot.source_id}** ({snapshot.role}): {snapshot.status} - {snapshot.detail}"
 
 
-def render_summary(report: PipelineReport, snapshots: Sequence[SourceSnapshot]) -> str:
-    lines = [
-        "# Player config sync",
-        "",
-        f"- Decision: **{report.decision}**",
-        f"- Selection: `{report.selection}`",
-        f"- Players: {report.player_count}",
-        f"- Content hash: `{report.content_hash}`",
-        "",
-    ]
-    for snapshot in snapshots:
-        label = snapshot.source_id.capitalize()
-        lines.append(f"{label}: {snapshot.status}")
-    lines.append(f"Decision: {report.decision}")
-    lines += ["", "## Counts", ""]
+def _summary_source_status(snapshots: Sequence[SourceSnapshot], decision: str) -> list[str]:
+    lines = [f"{snapshot.source_id.capitalize()}: {snapshot.status}" for snapshot in snapshots]
+    lines.append(f"Decision: {decision}")
+    return lines
+
+
+def _summary_counts(report: PipelineReport) -> list[str]:
+    lines = ["", "## Counts", ""]
     if report.counts:
-        for key in sorted(report.counts):
-            lines.append(f"- {key}: {report.counts[key]}")
+        lines.extend(f"- {key}: {report.counts[key]}" for key in sorted(report.counts))
     else:
         lines.append("- None")
-    lines += ["", "## Sources", ""]
-    lines.extend(_source_line(snapshot) for snapshot in snapshots)
-    lines += ["", "## Notes", ""]
-    lines.extend(f"- {note}" for note in report.notes or ("None",))
+    return lines
+
+
+def _summary_sources(snapshots: Sequence[SourceSnapshot]) -> list[str]:
+    return ["", "## Sources", "", *[_source_line(snapshot) for snapshot in snapshots]]
+
+
+def _summary_notes(report: PipelineReport) -> list[str]:
+    return ["", "## Notes", "", *[f"- {note}" for note in (report.notes or ("None",))]]
+
+
+def _summary_conflicts(report: PipelineReport) -> list[str]:
+    lines: list[str] = []
     if report.conflicts:
         lines += ["", "## Conflicting players (kept last known good)", ""]
         lines.extend(f"- `{key}`" for key in report.conflicts)
-    lines += [
+    return lines
+
+
+def _summary_policy() -> list[str]:
+    return [
         "",
         "## Trust policy",
         "",
@@ -328,6 +333,24 @@ def render_summary(report: PipelineReport, snapshots: Sequence[SourceSnapshot]) 
         "- Repository assets are only replaced atomically after a candidate passes validation.",
         "",
     ]
+
+
+def render_summary(report: PipelineReport, snapshots: Sequence[SourceSnapshot]) -> str:
+    lines = [
+        "# Player config sync",
+        "",
+        f"- Decision: **{report.decision}**",
+        f"- Selection: `{report.selection}`",
+        f"- Players: {report.player_count}",
+        f"- Content hash: `{report.content_hash}`",
+        "",
+    ]
+    lines.extend(_summary_source_status(snapshots, report.decision))
+    lines.extend(_summary_counts(report))
+    lines.extend(_summary_sources(snapshots))
+    lines.extend(_summary_notes(report))
+    lines.extend(_summary_conflicts(report))
+    lines.extend(_summary_policy())
     return "\n".join(lines)
 
 

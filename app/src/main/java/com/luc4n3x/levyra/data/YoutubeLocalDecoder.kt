@@ -1058,47 +1058,70 @@ internal class YoutubePlayerConfigStore(
                 YoutubeConfigFetchResult.Rejected -> reachedServer = true
                 YoutubeConfigFetchResult.NotModified -> {
                     reachedServer = true
-                    withContext(Dispatchers.IO) {
-                        runCatching { writeMetadata(metadataFileFor(source.trust), metadata.copy(checkedAtMs = now)) }
-                            .onFailure { Timber.w(it, "Player config metadata persistence failed") }
-                    }
-                    if (recovery == null) {
-                        return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
-                    }
-                    if (source.trust == YoutubePlayerConfigTrust.PROVISIONAL) {
-                        val overrideChanged = installEmergencyOverride(recovery.requiredHash)
-                        if (overrideChanged != null) {
-                            return YoutubeConfigRefreshOutcome(changed = overrideChanged, reachedServer = true)
-                        }
-                    }
+                    onNotModified(source, metadata, now, recovery)?.let { return it }
                 }
                 is YoutubeConfigFetchResult.Accepted -> {
-                    val published = publishConfig(source, result, now, reason)
-                    if (published == null) {
-                        return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
-                    }
-                    if (recovery == null) {
-                        return YoutubeConfigRefreshOutcome(changed = published, reachedServer = true)
-                    }
-                    if (source.trust == YoutubePlayerConfigTrust.VERIFIED) {
-                        val resolved = if (recovery.priorIdentity == null) {
-                            mergedConfigs.containsKey(recovery.requiredHash)
-                        } else {
-                            mergedConfigs[recovery.requiredHash]?.identity != recovery.priorIdentity
-                        }
-                        if (resolved) {
-                            return YoutubeConfigRefreshOutcome(changed = published, reachedServer = true)
-                        }
-                    } else {
-                        val overrideChanged = installEmergencyOverride(recovery.requiredHash)
-                        if (overrideChanged != null) {
-                            return YoutubeConfigRefreshOutcome(changed = published || overrideChanged, reachedServer = true)
-                        }
-                    }
+                    onAccepted(source, result, now, reason, recovery)?.let { return it }
                 }
             }
         }
         return YoutubeConfigRefreshOutcome(changed = false, reachedServer = reachedServer)
+    }
+
+    /** Handles a 304 for one source during a refresh. Returns a finished outcome, or null
+     * when the recovery loop must continue with the next source. */
+    private suspend fun onNotModified(
+        source: YoutubePlayerConfigSource,
+        metadata: YoutubeConfigMetadata,
+        now: Long,
+        recovery: YoutubeConfigRecovery?
+    ): YoutubeConfigRefreshOutcome? {
+        withContext(Dispatchers.IO) {
+            runCatching { writeMetadata(metadataFileFor(source.trust), metadata.copy(checkedAtMs = now)) }
+                .onFailure { Timber.w(it, "Player config metadata persistence failed") }
+        }
+        if (recovery == null) return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+        if (source.trust == YoutubePlayerConfigTrust.PROVISIONAL) {
+            val overrideChanged = installEmergencyOverride(recovery.requiredHash)
+            if (overrideChanged != null) {
+                return YoutubeConfigRefreshOutcome(changed = overrideChanged, reachedServer = true)
+            }
+        }
+        return null
+    }
+
+    /** Handles an accepted payload for one source during a refresh. Returns a finished
+     * outcome, or null when the recovery loop must continue with the next source. */
+    private suspend fun onAccepted(
+        source: YoutubePlayerConfigSource,
+        result: YoutubeConfigFetchResult.Accepted,
+        now: Long,
+        reason: String,
+        recovery: YoutubeConfigRecovery?
+    ): YoutubeConfigRefreshOutcome? {
+        val published = publishConfig(source, result, now, reason)
+        if (published == null) return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+        if (recovery == null) return YoutubeConfigRefreshOutcome(changed = published, reachedServer = true)
+        if (source.trust == YoutubePlayerConfigTrust.VERIFIED) {
+            if (recoveryResolvedByVerified(recovery)) {
+                return YoutubeConfigRefreshOutcome(changed = published, reachedServer = true)
+            }
+            return null
+        }
+        val overrideChanged = installEmergencyOverride(recovery.requiredHash)
+        if (overrideChanged != null) {
+            return YoutubeConfigRefreshOutcome(changed = published || overrideChanged, reachedServer = true)
+        }
+        return null
+    }
+
+    private fun recoveryResolvedByVerified(recovery: YoutubeConfigRecovery): Boolean {
+        val prior = recovery.priorIdentity
+        return if (prior == null) {
+            mergedConfigs.containsKey(recovery.requiredHash)
+        } else {
+            mergedConfigs[recovery.requiredHash]?.identity != prior
+        }
     }
 
     private fun metadataFileFor(trust: YoutubePlayerConfigTrust): File {
@@ -1281,58 +1304,97 @@ internal class YoutubePlayerConfigStore(
     ): Boolean {
         val parent = configFile.parentFile ?: return false
         if (!parent.exists() && !parent.mkdirs()) return false
-        val suffix = UUID.randomUUID().toString()
-        val stagedConfig = File(parent, ".${configFile.name}.$suffix.tmp")
-        val stagedMeta = File(parent, ".${metaFile.name}.$suffix.tmp")
-        val backupConfig = File(parent, ".${configFile.name}.$suffix.bak")
-        val backupMeta = File(parent, ".${metaFile.name}.$suffix.bak")
-        val metaText = metadata.toJson()
-        return try {
-            if (!writeFsynced(stagedConfig, configText)) return false
-            if (!writeFsynced(stagedMeta, metaText)) return false
-            if (stagedConfig.readText() != configText) return false
-            if (stagedMeta.readText() != metaText) return false
+        val staged = stageConfigPair(parent, configFile, configText, metaFile, metadata.toJson())
+            ?: return false
+        return commitConfigPair(configFile, metaFile, staged.first, staged.second)
+    }
 
-            val hadConfig = configFile.exists()
-            val hadMeta = metaFile.exists()
+    private fun stageConfigPair(
+        parent: File,
+        configFile: File,
+        configText: String,
+        metaFile: File,
+        metaText: String
+    ): Pair<File, File>? {
+        val stagedConfig = File(parent, ".${configFile.name}.${UUID.randomUUID()}.tmp")
+        val stagedMeta = File(parent, ".${metaFile.name}.${UUID.randomUUID()}.tmp")
+        val staged = writeFsynced(stagedConfig, configText) &&
+            writeFsynced(stagedMeta, metaText) &&
+            stagedConfig.readText() == configText &&
+            stagedMeta.readText() == metaText
+        if (!staged) {
+            stagedConfig.delete()
+            stagedMeta.delete()
+            return null
+        }
+        return stagedConfig to stagedMeta
+    }
+
+    private fun commitConfigPair(
+        configFile: File,
+        metaFile: File,
+        stagedConfig: File,
+        stagedMeta: File
+    ): Boolean {
+        val parent = configFile.parentFile ?: return false
+        val backupConfig = File(parent, ".${configFile.name}.${UUID.randomUUID()}.bak")
+        val backupMeta = File(parent, ".${metaFile.name}.${UUID.randomUUID()}.bak")
+        val hadConfig = configFile.exists()
+        val hadMeta = metaFile.exists()
+        try {
             if (hadConfig && !configFile.renameTo(backupConfig)) return false
             if (hadMeta && !metaFile.renameTo(backupMeta)) {
                 if (hadConfig) backupConfig.renameTo(configFile)
                 return false
             }
             if (!stagedConfig.renameTo(configFile)) {
-                if (hadConfig) backupConfig.renameTo(configFile)
-                if (hadMeta) backupMeta.renameTo(metaFile)
+                restoreConfigPair(configFile, metaFile, backupConfig, backupMeta, hadConfig, hadMeta)
                 return false
             }
-            if (failStorageCommit()) {
-                configFile.delete()
-                if (hadConfig) backupConfig.renameTo(configFile)
-                if (hadMeta) backupMeta.renameTo(metaFile)
-                return false
-            }
-            if (!stagedMeta.renameTo(metaFile)) {
-                configFile.delete()
-                if (hadConfig) backupConfig.renameTo(configFile)
-                if (hadMeta) backupMeta.renameTo(metaFile)
+            if (failStorageCommit() || !stagedMeta.renameTo(metaFile)) {
+                restoreConfigPair(configFile, metaFile, backupConfig, backupMeta, hadConfig, hadMeta)
                 return false
             }
             backupConfig.delete()
             backupMeta.delete()
-            true
+            return true
         } finally {
-            stagedConfig.delete()
-            stagedMeta.delete()
-            if (configFile.exists()) {
-                backupConfig.delete()
-            } else if (backupConfig.exists()) {
-                backupConfig.renameTo(configFile)
-            }
-            if (metaFile.exists()) {
-                backupMeta.delete()
-            } else if (backupMeta.exists()) {
-                backupMeta.renameTo(metaFile)
-            }
+            cleanupConfigPair(configFile, metaFile, stagedConfig, stagedMeta, backupConfig, backupMeta)
+        }
+    }
+
+    private fun restoreConfigPair(
+        configFile: File,
+        metaFile: File,
+        backupConfig: File,
+        backupMeta: File,
+        hadConfig: Boolean,
+        hadMeta: Boolean
+    ) {
+        configFile.delete()
+        if (hadConfig) backupConfig.renameTo(configFile)
+        if (hadMeta) backupMeta.renameTo(metaFile)
+    }
+
+    private fun cleanupConfigPair(
+        configFile: File,
+        metaFile: File,
+        stagedConfig: File,
+        stagedMeta: File,
+        backupConfig: File,
+        backupMeta: File
+    ) {
+        stagedConfig.delete()
+        stagedMeta.delete()
+        if (configFile.exists()) {
+            backupConfig.delete()
+        } else if (backupConfig.exists()) {
+            backupConfig.renameTo(configFile)
+        }
+        if (metaFile.exists()) {
+            backupMeta.delete()
+        } else if (backupMeta.exists()) {
+            backupMeta.renameTo(metaFile)
         }
     }
 
