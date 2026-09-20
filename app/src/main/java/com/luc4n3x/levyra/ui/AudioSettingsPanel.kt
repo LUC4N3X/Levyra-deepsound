@@ -354,7 +354,49 @@ internal fun AudioSettingsPanel(
                         onCheckedChange = onLimiter
                     )
                 }
-                item {\n                    AudioToggleRow(\n                        title = strings.replayGain,\n                        subtitle = audioSettings.effectiveReplayGainMode.name.lowercase()\n                            .replaceFirstChar { it.uppercase() },\n                        checked = audioSettings.replayGainActive,\n                        onCheckedChange = onReplayGain\n                    )\n                }\n                if (audioSettings.replayGainActive) {\n                    item {\n                        AudioQualityRow(\n                            selected = audioSettings.effectiveReplayGainMode.storageValue,\n                            labels = listOf(\n                                "Track" to ReplayGainMode.TRACK.storageValue,\n                                "Album" to ReplayGainMode.ALBUM.storageValue,\n                                "Smart" to ReplayGainMode.SMART.storageValue\n                            ),\n                            onSelect = { value ->\n                                val mode = ReplayGainMode.fromStorage(value, legacyEnabled = true)\n                                onReplayGain(mode != ReplayGainMode.OFF)\n                                onReplayGainMode(mode)\n                            }\n                        )\n                    }\n                    item {\n                        AudioSliderRow(\n                            title = "${strings.replayGain} · ${strings.preamp}",\n                            valueLabel = decibels(audioSettings.replayGainPreampDb),\n                            value = audioSettings.replayGainPreampDb,\n                            range = -12f..12f,\n                            onValue = { onReplayGainPreamp((it * 2f).roundToInt() / 2f) }\n                        )\n                    }\n                    item {\n                        AudioToggleRow(\n                            title = "${strings.replayGain} · clip protection",\n                            subtitle = "Peak-aware",\n                            checked = audioSettings.replayGainPreventClipping,\n                            onCheckedChange = onReplayGainPreventClipping\n                        )\n                    }\n                }\n\n                item { AudioSectionLabel(strings.audioSectionPlayback) }
+                item {
+                    AudioToggleRow(
+                        title = strings.replayGain,
+                        subtitle = replayGainCopy.modeLabel(audioSettings.effectiveReplayGainMode),
+                        checked = audioSettings.replayGainActive,
+                        onCheckedChange = onReplayGain
+                    )
+                }
+                if (audioSettings.replayGainActive) {
+                    item {
+                        AudioQualityRow(
+                            selected = audioSettings.effectiveReplayGainMode.storageValue,
+                            labels = listOf(
+                                replayGainCopy.track to ReplayGainMode.TRACK.storageValue,
+                                replayGainCopy.album to ReplayGainMode.ALBUM.storageValue,
+                                replayGainCopy.smart to ReplayGainMode.SMART.storageValue
+                            ),
+                            onSelect = { value ->
+                                val mode = ReplayGainMode.fromStorage(value, legacyEnabled = true)
+                                onReplayGainMode(mode)
+                            }
+                        )
+                    }
+                    item {
+                        AudioSliderRow(
+                            title = "${strings.replayGain} · ${strings.preamp}",
+                            valueLabel = decibels(audioSettings.replayGainPreampDb),
+                            value = audioSettings.replayGainPreampDb,
+                            range = -12f..12f,
+                            onValue = { onReplayGainPreamp((it * 2f).roundToInt() / 2f) }
+                        )
+                    }
+                    item {
+                        AudioToggleRow(
+                            title = "${strings.replayGain} · ${replayGainCopy.clippingProtection}",
+                            subtitle = replayGainCopy.peakAware,
+                            checked = audioSettings.replayGainPreventClipping,
+                            onCheckedChange = onReplayGainPreventClipping
+                        )
+                    }
+                }
+
+                item { AudioSectionLabel(strings.audioSectionPlayback) }
                 item {
                     AudioSliderRow(
                         title = strings.crossfade,
