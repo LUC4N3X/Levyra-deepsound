@@ -447,9 +447,22 @@ class PlaybackService : MediaLibraryService() {
         if (index !in snapshot.tracks.indices) return false
         val identity = replayGainAlbumIdentity(current)
         if (identity.isBlank()) return false
-        return sequenceOf(index - 1, index + 1)
-            .filter { it in snapshot.tracks.indices }
-            .any { replayGainAlbumIdentity(snapshot.tracks[it]) == identity }
+        val neighborIndices = if (snapshot.shuffleEnabled) {
+            val playbackOrder = snapshot.shuffleOrder
+                .filter { it in snapshot.tracks.indices }
+                .distinct()
+                .takeIf { it.size == snapshot.tracks.size }
+                ?: return false
+            val cursor = playbackOrder.indexOf(index)
+            if (cursor < 0) return false
+            sequenceOf(
+                playbackOrder.getOrNull(cursor - 1),
+                playbackOrder.getOrNull(cursor + 1)
+            ).filterNotNull()
+        } else {
+            sequenceOf(index - 1, index + 1).filter { it in snapshot.tracks.indices }
+        }
+        return neighborIndices.any { replayGainAlbumIdentity(snapshot.tracks[it]) == identity }
     }
 
     private fun replayGainAlbumIdentity(track: Track): String {
