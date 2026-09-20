@@ -11046,11 +11046,19 @@ internal fun youtubeEngagementVideoId(track: Track): String {
     ) {
         return selectedVideoId
     }
-    // A declared counterpart is the real video identity for an art-track or untyped primary, so
-    // likes, dislikes and comments target the same video the native-video mode would select.
+    // Prefer the counterpart only when the track still carries a confirmed audio identity.
+    // This proves the pair is audio -> video instead of treating any untyped counterpart as trusted.
     if (youtubeBacked) {
+        val audioVideoId = track.audioVideoId.trim()
         val counterpart = track.counterpartVideoId.trim()
-        if (YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(counterpart) && counterpart != selectedVideoId) {
+        val confirmedAudioPair =
+            YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(audioVideoId) &&
+                selectedVideoId == audioVideoId
+        if (
+            confirmedAudioPair &&
+            YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(counterpart) &&
+            counterpart != audioVideoId
+        ) {
             return counterpart
         }
     }
