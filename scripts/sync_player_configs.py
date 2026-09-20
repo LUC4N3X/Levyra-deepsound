@@ -200,6 +200,68 @@ def _read_file_lf(path: Path) -> str:
         return handle.read()
 
 
+def _stage_generation(paths: Mapping[str, Path], updates: Mapping[str, str]) -> dict[str, Path]:
+    staged: dict[str, Path] = {}
+    for name, path in paths.items():
+        temp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+        _write_file_lf(temp, updates[name])
+        if _read_file_lf(temp) != updates[name]:
+            raise PipelineError(f"staged asset {name} failed verification")
+        staged[name] = temp
+    return staged
+
+
+def _verify_committed_generation(paths: Mapping[str, Path], updates: Mapping[str, str]) -> None:
+    for name, path in paths.items():
+        if _read_file_lf(path) != updates[name]:
+            raise PipelineError(f"committed asset {name} failed verification")
+
+
+def _rollback_generation(
+    paths: Mapping[str, Path],
+    committed: Sequence[str],
+    backups: Mapping[str, Path],
+) -> None:
+    for name in reversed(committed):
+        paths[name].unlink(missing_ok=True)
+    for name, backup in backups.items():
+        if backup.exists():
+            os.replace(backup, paths[name])
+
+
+def _commit_generation(
+    paths: Mapping[str, Path],
+    staged: Mapping[str, Path],
+    updates: Mapping[str, str],
+    backups: dict[str, Path],
+    fail_after_commits: int | None,
+) -> None:
+    committed: list[str] = []
+    try:
+        for name, path in paths.items():
+            backup = path.with_name(f".{path.name}.{uuid.uuid4().hex}.bak")
+            if path.exists():
+                os.replace(path, backup)
+                backups[name] = backup
+            if fail_after_commits is not None and len(committed) == fail_after_commits:
+                raise OSError("simulated asset commit failure")
+            os.replace(staged[name], path)
+            committed.append(name)
+        _verify_committed_generation(paths, updates)
+        for backup in backups.values():
+            backup.unlink(missing_ok=True)
+    except (OSError, PipelineError) as error:
+        _rollback_generation(paths, committed, backups)
+        raise PipelineError(f"asset generation commit failed: {error}") from error
+
+
+def _cleanup_generation(staged: Mapping[str, Path], backups: Mapping[str, Path]) -> None:
+    for temp in staged.values():
+        temp.unlink(missing_ok=True)
+    for backup in backups.values():
+        backup.unlink(missing_ok=True)
+
+
 def _publish_generation(
     assets_dir: Path,
     updates: Mapping[str, str],
@@ -219,41 +281,10 @@ def _publish_generation(
     staged: dict[str, Path] = {}
     backups: dict[str, Path] = {}
     try:
-        for name, path in paths.items():
-            temp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
-            _write_file_lf(temp, updates[name])
-            if _read_file_lf(temp) != updates[name]:
-                raise PipelineError(f"staged asset {name} failed verification")
-            staged[name] = temp
-
-        committed: list[str] = []
-        try:
-            for name, path in paths.items():
-                backup = path.with_name(f".{path.name}.{uuid.uuid4().hex}.bak")
-                if path.exists():
-                    os.replace(path, backup)
-                    backups[name] = backup
-                if fail_after_commits is not None and len(committed) == fail_after_commits:
-                    raise OSError("simulated asset commit failure")
-                os.replace(staged[name], path)
-                committed.append(name)
-            for name, path in paths.items():
-                if _read_file_lf(path) != updates[name]:
-                    raise PipelineError(f"committed asset {name} failed verification")
-            for backup in backups.values():
-                backup.unlink(missing_ok=True)
-        except (OSError, PipelineError) as error:
-            for name in reversed(committed):
-                paths[name].unlink(missing_ok=True)
-            for name, backup in backups.items():
-                if backup.exists():
-                    os.replace(backup, paths[name])
-            raise PipelineError(f"asset generation commit failed: {error}") from error
+        staged = _stage_generation(paths, updates)
+        _commit_generation(paths, staged, updates, backups, fail_after_commits)
     finally:
-        for temp in staged.values():
-            temp.unlink(missing_ok=True)
-        for backup in backups.values():
-            backup.unlink(missing_ok=True)
+        _cleanup_generation(staged, backups)
 
 
 def _build_meta(report: PipelineReport) -> dict[str, object]:
