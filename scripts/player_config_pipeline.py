@@ -761,33 +761,36 @@ def select_configurations(
         verdict, pick, is_conflict = _cluster_verdict(cluster, primary.healthy)
         if not verdict:
             continue
-        key = pick.primary_hash if pick is not None else cluster.identifiers[0]
-        cluster_by_key[key] = cluster
-        verdicts[key] = verdict
-        if pick is not None:
-            canonical = _canonical_aliases(cluster, pick)
-            if len(canonical) > MAX_ALIASES_PER_PLAYER:
-                existing = _single_entry(cluster.existing_entries)
-                if existing is not None:
-                    picks[key] = existing
-                    verdicts[key] = VERDICT_LAST_KNOWN_GOOD
-                    conflicts.append(key)
-                    notes.append(
-                        f"{key}: canonical aliases exceed the supported limit; "
-                        "complete last known good entry preserved"
-                    )
-                else:
-                    verdicts[key] = VERDICT_CONFLICTING
-                    conflicts.append(key)
-                    notes.append(
-                        f"{key}: canonical aliases exceed the supported limit; unsafe candidate omitted"
-                    )
+        candidate_key = pick.primary_hash if pick is not None else cluster.identifiers[0]
+        cluster_by_key[candidate_key] = cluster
+
+        if pick is not None and len(_canonical_aliases(cluster, pick)) > MAX_ALIASES_PER_PLAYER:
+            existing = _single_entry(cluster.existing_entries)
+            if existing is not None:
+                fallback_key = existing.primary_hash
+                cluster_by_key[fallback_key] = cluster
+                verdicts[fallback_key] = VERDICT_LAST_KNOWN_GOOD
+                picks[fallback_key] = existing
+                conflicts.append(fallback_key)
+                notes.append(
+                    f"{candidate_key}: canonical aliases exceed the supported limit; "
+                    f"last known good entry {fallback_key} preserved under its own primary hash"
+                )
             else:
-                picks[key] = pick.with_aliases(canonical)
+                verdicts[candidate_key] = VERDICT_CONFLICTING
+                conflicts.append(candidate_key)
+                notes.append(
+                    f"{candidate_key}: canonical aliases exceed the supported limit; unsafe candidate omitted"
+                )
+            continue
+
+        verdicts[candidate_key] = verdict
+        if pick is not None:
+            picks[candidate_key] = pick.with_aliases(_canonical_aliases(cluster, pick))
         if is_conflict:
-            conflicts.append(key)
+            conflicts.append(candidate_key)
             notes.append(
-                f"{key}: sources disagree; "
+                f"{candidate_key}: sources disagree; "
                 + ("last known good entry kept" if pick is not None else "entry omitted")
             )
 

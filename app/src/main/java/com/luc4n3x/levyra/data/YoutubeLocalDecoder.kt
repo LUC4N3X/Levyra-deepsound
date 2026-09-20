@@ -932,7 +932,8 @@ internal class YoutubePlayerConfigStore(
     private val bundledConfigText: () -> String,
     private val sources: List<YoutubePlayerConfigSource> = YoutubePlayerConfigSources.active,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val failStorageCommit: () -> Boolean = { false }
+    private val failStorageCommit: () -> Boolean = { false },
+    private val failStagedVerification: () -> Boolean = { false }
 ) {
     constructor(context: Context, httpClient: OkHttpClient) : this(
         httpClient = httpClient,
@@ -1320,14 +1321,27 @@ internal class YoutubePlayerConfigStore(
         val stagedMeta = File(parent, ".${metaFile.name}.${UUID.randomUUID()}.tmp")
         val staged = writeFsynced(stagedConfig, configText) &&
             writeFsynced(stagedMeta, metaText) &&
-            stagedConfig.readText() == configText &&
-            stagedMeta.readText() == metaText
+            verifyStaged(stagedConfig, configText) &&
+            verifyStaged(stagedMeta, metaText)
         if (!staged) {
             stagedConfig.delete()
             stagedMeta.delete()
             return null
         }
         return stagedConfig to stagedMeta
+    }
+
+    /** Reads a staged file back and compares it with the expected content. Filesystem or
+     * decoding failures fail closed instead of escaping as transaction-internal errors. */
+    private fun verifyStaged(file: File, expected: String): Boolean {
+        if (failStagedVerification()) return false
+        return try {
+            file.readText() == expected
+        } catch (error: IOException) {
+            false
+        } catch (error: SecurityException) {
+            false
+        }
     }
 
     private fun commitConfigPair(

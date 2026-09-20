@@ -201,14 +201,23 @@ def _read_file_lf(path: Path) -> str:
 
 
 def _stage_generation(paths: Mapping[str, Path], updates: Mapping[str, str]) -> dict[str, Path]:
+    """Stages every asset and verifies its content. Every temporary file is tracked from
+    creation, so a failure at any step removes all staged files before the error escapes."""
     staged: dict[str, Path] = {}
-    for name, path in paths.items():
-        temp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
-        _write_file_lf(temp, updates[name])
-        if _read_file_lf(temp) != updates[name]:
-            raise PipelineError(f"staged asset {name} failed verification")
-        staged[name] = temp
-    return staged
+    try:
+        for name, path in paths.items():
+            temp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+            staged[name] = temp
+            _write_file_lf(temp, updates[name])
+            if _read_file_lf(temp) != updates[name]:
+                raise PipelineError(f"staged asset {name} failed verification")
+        return staged
+    except (OSError, UnicodeError, PipelineError) as error:
+        for temp in staged.values():
+            temp.unlink(missing_ok=True)
+        if isinstance(error, PipelineError):
+            raise
+        raise PipelineError(f"asset staging failed: {error}") from error
 
 
 def _verify_committed_generation(paths: Mapping[str, Path], updates: Mapping[str, str]) -> None:

@@ -336,6 +336,30 @@ class SelectionTest(PipelineTestBase):
         self.assertEqual(pipeline.DECISION_KEEP_LAST_KNOWN_GOOD, report.decision)
         self.assertFalse((self.assets / sync.PLAYER_CONFIGS_ASSET).exists())
 
+    def test_canonicalAliasOverflowWithDifferentLkgPrimaryHashPreservesLkg(self):
+        seeded = {
+            "bbbbbbbb": pipeline.PlayerConfig("bbbbbbbb", "Ab(1,2,INPUT)", "Yx", 100, ("cccccccc",)),
+        }
+        self.seed(seeded)
+        zemer_aliases = tuple(f"{index:08x}" for index in range(1, 16)) + ("bbbbbbbb",)
+        faraday_aliases = ("fffffff0", "fffffff1")
+        network = FakeNetwork(**{
+            ZEMER_URL: registry({"aaaaaaaa": entry(100, aliases=zemer_aliases)}),
+            FARADAY_URL: registry({"aaaaaaaa": entry(100, aliases=faraday_aliases)}),
+        })
+        report, _ = self.run_pipeline(network)
+        self.assertFalse(report.changed)
+        self.assertEqual(pipeline.DECISION_KEEP_CURRENT, report.decision)
+        self.assertEqual(1, report.counts.get(pipeline.VERDICT_LAST_KNOWN_GOOD))
+        self.assertIn("bbbbbbbb", report.conflicts)
+        players = pipeline.load_registry_text(
+            (self.assets / sync.PLAYER_CONFIGS_ASSET).read_text(encoding="utf-8")
+        )
+        self.assertEqual(["bbbbbbbb"], list(players.keys()))
+        self.assertNotIn("aaaaaaaa", players)
+        self.assertEqual(("cccccccc",), players["bbbbbbbb"].aliases)
+        self.assertEqual(100, players["bbbbbbbb"].signature_timestamp)
+
     @staticmethod
     def _overflow_network():
         zemer_aliases = tuple(f"{index:08x}" for index in range(1, 17))
@@ -431,6 +455,30 @@ class AssetTransactionTest(PipelineTestBase):
             self.updates[sync.PLAYER_META_ASSET],
             (self.assets / sync.PLAYER_META_ASSET).read_text(encoding="utf-8"),
         )
+        self.assertEqual([], self.temp_files())
+
+    def test_stagingFailureLeavesAssetsUntouchedAndNoTempFiles(self):
+        before_players = (self.assets / sync.PLAYER_CONFIGS_ASSET).read_bytes()
+        before_dates = (self.assets / sync.PLAYER_DATES_ASSET).read_bytes()
+        original_write = sync._write_file_lf
+        calls = {"count": 0}
+
+        def failing_write(path, text):
+            calls["count"] += 1
+            if calls["count"] >= 2:
+                raise OSError("simulated staging write failure")
+            return original_write(path, text)
+
+        sync._write_file_lf = failing_write
+        try:
+            with self.assertRaises(sync.PipelineError):
+                sync._publish_generation(self.assets, self.updates)
+        finally:
+            sync._write_file_lf = original_write
+
+        self.assertEqual(before_players, (self.assets / sync.PLAYER_CONFIGS_ASSET).read_bytes())
+        self.assertEqual(before_dates, (self.assets / sync.PLAYER_DATES_ASSET).read_bytes())
+        self.assertFalse((self.assets / sync.PLAYER_META_ASSET).exists())
         self.assertEqual([], self.temp_files())
 
 

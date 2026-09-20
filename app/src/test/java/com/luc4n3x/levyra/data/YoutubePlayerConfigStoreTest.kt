@@ -29,6 +29,7 @@ class YoutubePlayerConfigStoreTest {
     private val requests = mutableListOf<Request>()
     private var now = 10_000_000L
     private var storageFailure = false
+    private var stagedVerificationFailure = false
 
     private val upstream = YoutubePlayerConfigSource("zemer-upstream", "https://upstream.test/player_configs.json")
     private val mirror = YoutubePlayerConfigSource("levyra-verified-mirror", "https://mirror.test/player_configs.json")
@@ -627,6 +628,28 @@ class YoutubePlayerConfigStoreTest {
     }
 
     @Test
+    fun stagingVerificationFailureKeepsPreviousGenerationAndCleansTemps() = runBlocking {
+        seedLastKnownGood(etag = "\"v1\"")
+        stagedVerificationFailure = true
+        val store = store(respond(upstream to ok(newerRemoteTable, etag = "\"v2\"")))
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+        val epoch = store.epoch
+
+        assertFalse(store.refresh(force = true, reason = "test"))
+
+        assertEquals(epoch, store.epoch)
+        assertEquals(20002, store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureTimestamp)
+        assertNull(store.configFor(NEWER_HASH, refreshUnknown = false))
+        assertEquals(remoteTable, remoteFile.readText())
+        assertEquals("\"v1\"", JSONObject(metadataFile.readText()).getString("etag"))
+        assertEquals(0, leftoverTransactionFiles())
+    }
+
+    private fun leftoverTransactionFiles(): Int {
+        return cacheDir.listFiles()?.count { it.name.endsWith(".tmp") || it.name.endsWith(".bak") } ?: 0
+    }
+
+    @Test
     fun cachedProvisional304CanResolveUnknownPlayer() = runBlocking {
         val mirror = verifiedMirror()
         val raw = provisionalRaw()
@@ -825,7 +848,8 @@ class YoutubePlayerConfigStoreTest {
             bundledConfigText = { bundledTable },
             sources = sources,
             clock = { now },
-            failStorageCommit = { storageFailure }
+            failStorageCommit = { storageFailure },
+            failStagedVerification = { stagedVerificationFailure }
         )
     }
 
