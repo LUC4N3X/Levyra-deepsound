@@ -334,7 +334,15 @@ Resolved stream entries, failed-playback URL quarantine and rejected-video URL q
 
 Expired, malformed, downgraded, or app-incompatible policies do not replace the last usable built-in behavior. Rejected playback can force a policy refresh without putting the fetch on the direct tap-to-play critical path.
 
-### 6.6 Protected URL processing
+### 6.6 Multi-source player configuration synchronization
+
+The player-configuration assets shipped in `app/src/main/assets/` are produced by `scripts/sync_player_configs.py` from two independent upstreams: the primary ZemerTeam `zemer-cipher` registry and the secondary MetrolistGroup `faraday` registry. Each payload is bounded, structurally validated and normalized into one internal representation before comparison, so the app never consumes an upstream schema directly.
+
+A player identity is its primary hash plus its aliases, so entries are grouped into logical players before comparison even when the two sources publish different primary hashes for the same player. Candidates are classified as confirmed by both sources, provided by one source, conflicting, or invalid. Selection follows a conservative policy: both-source agreement, then primary, then the existing last known good entry, then secondary only when the primary is unavailable, then omission. A secondary-only player is not promoted while the primary is healthy, a conflict never silently replaces the last known good entry, and a newer signature timestamp never wins by itself. When no source is usable the assets are left untouched and the run still succeeds.
+
+Trusted assets are replaced atomically only after the candidate round-trips through the same validation the Android decoder enforces, and provenance/health metadata is written to `app/src/main/assets/player_configs.meta.json`. At runtime the decoder keeps its bounded TTL and cooldown behavior and separates trust levels: the CI-built repository mirror is `VERIFIED` and fetched first, while raw Zemer and Faraday are `PROVISIONAL` emergency sources cached separately and never allowed to become the verified last known good. Multi-source resilience therefore never adds latency to a healthy playback start.
+
+### 6.7 Protected URL processing
 
 Selected formats may contain `signatureCipher`, `s`, or `n`.
  
