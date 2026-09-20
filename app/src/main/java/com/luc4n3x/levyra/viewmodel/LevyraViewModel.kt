@@ -11038,7 +11038,23 @@ private val YOUTUBE_ENGAGEMENT_VIDEO_ID = YOUTUBE_PLAYABLE_VIDEO_ID
 
 internal fun youtubeEngagementVideoId(track: Track): String {
     val selectedVideoId = PlaybackSourceIdentity.sourceVideoId(track)
-    if (isYoutubeBackedTrack(track) && YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(selectedVideoId)) {
+    val youtubeBacked = isYoutubeBackedTrack(track)
+    if (
+        youtubeBacked &&
+        YoutubeMusicVideoType.isVideo(track.videoType) &&
+        YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(selectedVideoId)
+    ) {
+        return selectedVideoId
+    }
+    // A declared counterpart is the real video identity for an art-track or untyped primary, so
+    // likes, dislikes and comments target the same video the native-video mode would select.
+    if (youtubeBacked) {
+        val counterpart = track.counterpartVideoId.trim()
+        if (YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(counterpart) && counterpart != selectedVideoId) {
+            return counterpart
+        }
+    }
+    if (youtubeBacked && YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(selectedVideoId)) {
         return selectedVideoId
     }
     val urlVideoId = youtubeVideoId(track.videoUrl).trim()
@@ -11047,7 +11063,7 @@ internal fun youtubeEngagementVideoId(track: Track): String {
     val idUrlVideoId = youtubeVideoId(track.id).trim()
     if (YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(idUrlVideoId)) return idUrlVideoId
 
-    if (!isYoutubeBackedTrack(track)) return ""
+    if (!youtubeBacked) return ""
     return sequenceOf(track.counterpartVideoId, track.id)
         .map(String::trim)
         .firstOrNull(YOUTUBE_ENGAGEMENT_VIDEO_ID::matches)
