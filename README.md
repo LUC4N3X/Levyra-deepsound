@@ -629,7 +629,7 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
 <table width="100%">
   <tr>
     <td width="64%" valign="middle">
-      <p><sub><b>CREATOR &amp; LEAD DEVELOPER</b></sub></p>
+      <h3><code>Creator &amp; Lead Developer</code></h3>
       <h2><a href="https://github.com/LUC4N3X">LUC4N3X</a></h2>
       <p><b>Independent developer building Levyra across Android and Windows.</b></p>
       <p>
