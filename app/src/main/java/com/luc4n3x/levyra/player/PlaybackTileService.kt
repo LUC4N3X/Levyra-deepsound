@@ -94,6 +94,10 @@ class PlaybackTileService : TileService() {
             performAction(connected)
             return
         }
+        if (!hasActivePlaybackSession()) {
+            openApp()
+            return
+        }
         pendingToggle = true
         connect()
     }
