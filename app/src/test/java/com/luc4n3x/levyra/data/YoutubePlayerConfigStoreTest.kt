@@ -351,9 +351,13 @@ class YoutubePlayerConfigStoreTest {
     }
 
     @Test
-    fun activeSourcesAreZemerUpstreamThenLevyraVerifiedMirror() {
+    fun activeSourcesAreZemerThenVerifiedMirrorThenFaraday() {
         assertEquals(
-            listOf(YoutubePlayerConfigSources.ZEMER_UPSTREAM, YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR),
+            listOf(
+                YoutubePlayerConfigSources.ZEMER_UPSTREAM,
+                YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR,
+                YoutubePlayerConfigSources.FARADAY_UPSTREAM
+            ),
             YoutubePlayerConfigSources.active
         )
         assertEquals(
@@ -365,6 +369,11 @@ class YoutubePlayerConfigStoreTest {
             YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR.url
         )
         assertEquals("levyra-verified-mirror", YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR.id)
+        assertEquals(
+            "https://raw.githubusercontent.com/MetrolistGroup/faraday/master/registry/player_configs.json",
+            YoutubePlayerConfigSources.FARADAY_UPSTREAM.url
+        )
+        assertEquals("faraday-upstream", YoutubePlayerConfigSources.FARADAY_UPSTREAM.id)
     }
 
     @Test

@@ -109,6 +109,33 @@ If a rejection points to signature, `n-transform`, STS, or player JavaScript:
 
 A stream rejection that arrives after a newer successful decoder generation must not invalidate that newer generation.
 
+### Multi-source configuration pipeline
+
+The configuration assets under `app/src/main/assets/` are produced by an offline pipeline, not by a direct copy of one upstream file. `scripts/sync_player_configs.py` fetches two independent sources, validates and normalizes both, compares them, selects a trusted configuration, and only then writes the assets atomically.
+
+- Primary: ZemerTeam `zemer-cipher` (`player_configs.json`, `player_dates.json`).
+- Secondary: MetrolistGroup `faraday` (`registry/player_configs.json`, `registry/player-registry.json`).
+
+Both are normalized into one internal representation before comparison, so Levyra never depends on an upstream schema at playtime.
+
+Per-player trust policy, highest preference first:
+
+1. a configuration confirmed by both sources (agreement on the normalized cipher data);
+2. a valid configuration only the primary provides;
+3. a valid configuration only the secondary provides;
+4. the existing last known good entry;
+5. omission when no safe value exists.
+
+A newer signature timestamp never wins by itself. When the two sources disagree for a player, the last known good entry is kept; if there is no safe entry, the player is omitted rather than guessed. If both sources are unavailable or invalid, the repository assets are left untouched and the run still succeeds. The bundled asset therefore remains the final fallback for the runtime.
+
+Selection metadata is committed to `app/src/main/assets/player_configs.meta.json` whenever the trusted configuration changes. It records the decision, the agreeing source set, per-source status, content hashes and the last accepted timestamps. No URL, cookie, token, visitor data or signed media value is stored.
+
+### Inspecting source health
+
+- Each scheduled run writes `artifacts/player-config-sync/report.json` and a human-readable summary to the job's step summary and workflow artifact. Look for `Zemer: <status>`, `Faraday: <status>` and `Decision: <...>`.
+- `player_configs.meta.json` shows what the currently committed asset was built from.
+- At runtime the decoder records the source id (`zemer-upstream`, `levyra-verified-mirror`, `faraday-upstream`) and the content hash alongside its cached configuration. The runtime fetch order is primary, then the repository-built mirror, then the raw secondary; a later source is only contacted after the earlier ones fail, so playback startup latency is unchanged.
+
 ## Strategy health and circuit breaker
 
 The server policy defines what is allowed and its preferred order. Local strategy health may reorder only those allowed strategies.

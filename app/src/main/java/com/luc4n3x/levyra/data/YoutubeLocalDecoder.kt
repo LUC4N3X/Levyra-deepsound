@@ -884,9 +884,15 @@ internal object YoutubePlayerConfigSources {
         url = LEVYRA_VERIFIED_MIRROR_URL
     )
 
+    val FARADAY_UPSTREAM = YoutubePlayerConfigSource(
+        id = "faraday-upstream",
+        url = "https://raw.githubusercontent.com/MetrolistGroup/faraday/master/registry/player_configs.json"
+    )
+
     val active: List<YoutubePlayerConfigSource> = listOf(
         ZEMER_UPSTREAM,
-        LEVYRA_VERIFIED_MIRROR
+        LEVYRA_VERIFIED_MIRROR,
+        FARADAY_UPSTREAM
     )
 }
 
