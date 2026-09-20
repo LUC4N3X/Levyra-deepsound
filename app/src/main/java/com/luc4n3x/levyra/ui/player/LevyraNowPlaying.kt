@@ -74,7 +74,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -112,8 +111,6 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.player.LevyraPipBridge
-import com.luc4n3x.levyra.player.NativeAudioIntegration
-import com.luc4n3x.levyra.ui.AudioSettingsPanel
 import com.luc4n3x.levyra.ui.LevyraLayoutMode
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
 import com.luc4n3x.levyra.ui.artwork.ArtworkPreviewOverlay
@@ -189,7 +186,6 @@ fun LevyraNowPlaying(
         }
     }
     val animated = state.animationsEnabled
-    val autoEqCatalog by viewModel.autoEqCatalog.collectAsState()
 
     val fallbackPalette = remember(track?.accentStart, track?.accentEnd) {
         ArtworkPalette(track?.accentStart ?: LevyraCyan.toArgb(), track?.accentEnd ?: LevyraViolet.toArgb())
@@ -1149,45 +1145,6 @@ fun LevyraNowPlaying(
                 } else {
                     null
                 }
-            )
-        }
-
-        if (state.showAudioQualityPanel) {
-            AudioSettingsPanel(
-                selected = state.audioQuality,
-                currentTrack = track,
-                audioSettings = state.audioSettings,
-                onSelect = viewModel::setAudioQuality,
-                highQualityAudioMode = state.highQualityAudioMode,
-                onHighQualityAudioMode = viewModel::setHighQualityAudioMode,
-                onEqualizerEnabled = viewModel::setEqualizerEnabled,
-                onPreset = viewModel::setEqualizerPreset,
-                onBandLevel = viewModel::setEqualizerBand,
-                onBassBoost = viewModel::setBassBoost,
-                onVirtualizer = viewModel::setVirtualizer,
-                onPreamp = viewModel::setPreampDb,
-                onLimiter = viewModel::setLimiterEnabled,
-                onCrossfade = viewModel::setCrossfadeSeconds,
-                onDjSoft = viewModel::setDjSoftMode,
-                onReplayGain = viewModel::setReplayGainEnabled,
-                onTempo = viewModel::setPlaybackSpeed,
-                onPitch = viewModel::setPitch,
-                onGapless = viewModel::setGaplessEnabled,
-                aaudioOutputAvailable = NativeAudioIntegration.isAaudioOutputSupported(),
-                onAaudioOutput = viewModel::setAaudioOutputEnabled,
-                onResetEqualizer = viewModel::resetEqualizer,
-                onApplyAutoEq = viewModel::applyAutoEqImport,
-                onSaveAutoEqPreset = viewModel::saveAutoEqCustomPreset,
-                autoEqCatalog = autoEqCatalog,
-                onOpenAutoEqCatalog = viewModel::openAutoEqCatalog,
-                onAutoEqCatalogQuery = viewModel::updateAutoEqCatalogQuery,
-                onSelectAutoEqCatalogEntry = viewModel::selectAutoEqCatalogEntry,
-                onDismissAutoEqCatalogProfile = viewModel::dismissAutoEqCatalogProfile,
-                onCloseAutoEqCatalog = viewModel::closeAutoEqCatalog,
-                onReplayGainMode = viewModel::setReplayGainMode,
-                onReplayGainPreamp = viewModel::setReplayGainPreampDb,
-                onReplayGainPreventClipping = viewModel::setReplayGainPreventClipping,
-                onClose = viewModel::closeAudioQualityPanel
             )
         }
 
