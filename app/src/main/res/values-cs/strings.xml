@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Náhodné přehrávání</string>
     <string name="notification_favorite">Oblíbit</string>
     <string name="tile_recognize_music">Rozpoznat hudbu</string>
+    <string name="tile_playback">Přehrávání</string>
     <string name="shortcut_search">Hledat</string>
     <string name="shortcut_library">Knihovna</string>
     <string name="shortcut_recognition">Rozpoznat hudbu</string>

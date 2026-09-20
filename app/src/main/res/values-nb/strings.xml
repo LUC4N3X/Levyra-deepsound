@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Tilfeldig rekkefølge</string>
     <string name="notification_favorite">Favoritt</string>
     <string name="tile_recognize_music">Gjenkjenn musikk</string>
+    <string name="tile_playback">Avspilling</string>
     <string name="shortcut_search">Søk</string>
     <string name="shortcut_library">Bibliotek</string>
     <string name="shortcut_recognition">Gjenkjenn musikk</string>

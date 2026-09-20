@@ -29,6 +29,7 @@
     <string name="notification_shuffle">Shuffle</string>
     <string name="notification_favorite">Favorite</string>
     <string name="tile_recognize_music">Recognize music</string>
+    <string name="tile_playback">Playback</string>
     <string name="tile_ambient" translatable="false">Ambient</string>
     <string name="ambient_dream_label" translatable="false">Levyra Ambient</string>
     <string name="recognition_notification_channel" translatable="false">Music recognition</string>

@@ -27,6 +27,7 @@
     <string name="notification_shuffle">สุ่ม</string>
     <string name="notification_favorite">รายการโปรด</string>
     <string name="tile_recognize_music">ระบุเพลง</string>
+    <string name="tile_playback">การเล่น</string>
     <string name="shortcut_search">ค้นหา</string>
     <string name="shortcut_library">คลัง</string>
     <string name="shortcut_recognition">ระบุเพลง</string>

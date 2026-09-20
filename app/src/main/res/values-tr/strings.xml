@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Karıştır</string>
     <string name="notification_favorite">Favori</string>
     <string name="tile_recognize_music">Müziği tanı</string>
+    <string name="tile_playback">Oynatma</string>
     <string name="shortcut_search">Ara</string>
     <string name="shortcut_library">Kitaplık</string>
     <string name="shortcut_recognition">Müziği tanı</string>

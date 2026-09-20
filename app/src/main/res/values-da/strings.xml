@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Bland</string>
     <string name="notification_favorite">Favorit</string>
     <string name="tile_recognize_music">Genkend musik</string>
+    <string name="tile_playback">Afspilning</string>
     <string name="shortcut_search">Søg</string>
     <string name="shortcut_library">Bibliotek</string>
     <string name="shortcut_recognition">Genkend musik</string>
