@@ -827,7 +827,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val presetId = customPreset?.id ?: LevyraAudioPresets.normalizePreset(storedPresetId)
         val fallbackLevels = customPreset?.levels ?: LevyraAudioPresets.levelsFor(presetId)
         val levels = parseBandLevels(preferences[KEY_AUDIO_EQ_BANDS].orEmpty()).takeIf { it.size == LevyraAudioPresets.bandCount } ?: fallbackLevels
-        val legacyReplayGain = preferences[KEY_AUDIO_REPLAY_GAIN] ?: (preferences[KEY_AUDIO_NORMALIZATION] ?: false)
+        val legacyReplayGain = preferences[KEY_AUDIO_REPLAY_GAIN] ?: false
         val replayGainMode = ReplayGainMode.fromStorage(preferences[KEY_AUDIO_REPLAY_GAIN_MODE], legacyReplayGain)
         return LevyraAudioSettings(
             equalizerEnabled = preferences[KEY_AUDIO_EQ_ENABLED] ?: false,
