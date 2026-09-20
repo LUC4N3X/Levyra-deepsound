@@ -7,8 +7,10 @@ import com.luc4n3x.levyra.viewmodel.isPlaybackCandidateCompatible
 import com.luc4n3x.levyra.viewmodel.playbackCandidateScore
 import com.luc4n3x.levyra.viewmodel.selectPreferredVideoPlaybackCandidate
 import com.luc4n3x.levyra.viewmodel.videoPlaybackCandidateScore
+import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
@@ -610,6 +612,78 @@ class RecordingIdentityTest {
             isPlaybackCandidateCompatible(target, truncatedCredit.copy(artistBrowseIds = listOf("UC_OTHER")))
         )
     }
+
+    @Test
+    fun videoSelectionRejectsOwnAudioIdentityWhenTargetTypeIsUnknown() {
+        val audioId = "s-98aXMUJwk"
+        val videoId = "pBNkcl2ibLc"
+        val target = chartTrack(id = audioId, videoUrl = "https://www.youtube.com/watch?v=$audioId")
+        val watchArtTrack = target.copy(videoType = "")
+        val searchOfficial = target.copy(
+            id = videoId,
+            videoUrl = "https://www.youtube.com/watch?v=$videoId",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        val selected = selectPreferredVideoPlaybackCandidate(
+            target,
+            listOf(watchArtTrack, searchOfficial),
+            authoritativeIds = setOf(audioId)
+        )
+
+        assertEquals(videoId, selected?.id)
+    }
+
+    @Test
+    fun videoSelectionReturnsNullWhenOnlyTheAudioIdentityIsAvailable() {
+        val audioId = "s-98aXMUJwk"
+        val target = chartTrack(id = audioId, videoUrl = "https://www.youtube.com/watch?v=$audioId")
+        val watchArtTrack = target.copy(videoType = "")
+
+        assertNull(
+            selectPreferredVideoPlaybackCandidate(
+                target,
+                listOf(watchArtTrack),
+                authoritativeIds = setOf(audioId)
+            )
+        )
+    }
+
+    @Test
+    fun videoModeNeverResolvesTheAudioIdentityAsTheVideo() {
+        val audioId = "s-98aXMUJwk"
+        val videoId = "pBNkcl2ibLc"
+        val target = chartTrack(id = audioId, videoUrl = "https://www.youtube.com/watch?v=$audioId")
+            .copy(audioVideoId = audioId)
+
+        assertNull(youtubePlayableTrack(target, preferVideo = true))
+        val videoResolved = youtubePlayableTrack(
+            target.copy(counterpartVideoId = videoId),
+            preferVideo = true
+        )
+        assertEquals(videoId, videoResolved?.let(PlaybackSourceIdentity::sourceVideoId))
+        assertEquals(audioId, youtubePlayableTrack(target)?.id)
+    }
+
+    private fun chartTrack(id: String, videoUrl: String): Track = Track(
+        id = id,
+        title = "SWAG MUSIC",
+        artist = "Artie 5ive",
+        album = "SWAG MUSIC",
+        durationMs = 172_714,
+        streamUrl = "",
+        videoUrl = videoUrl,
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "Levyra Editorial",
+        moodTags = emptySet(),
+        energy = 0,
+        vocal = 0,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0
+    )
 
     private fun artistTrack(
         id: String,

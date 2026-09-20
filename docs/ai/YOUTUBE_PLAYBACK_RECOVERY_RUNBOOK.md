@@ -109,6 +109,37 @@ If a rejection points to signature, `n-transform`, STS, or player JavaScript:
 
 A stream rejection that arrives after a newer successful decoder generation must not invalidate that newer generation.
 
+### Multi-source configuration pipeline
+
+The configuration assets under `app/src/main/assets/` are produced by an offline pipeline, not by a direct copy of one upstream file. `scripts/sync_player_configs.py` fetches two independent sources, validates and normalizes both, compares them, selects a trusted configuration, and only then writes the assets atomically.
+
+- Primary: ZemerTeam `zemer-cipher` (`player_configs.json`, `player_dates.json`).
+- Secondary: MetrolistGroup `faraday` (`registry/player_configs.json`, `registry/player-registry.json`).
+
+Both are normalized into one internal representation before comparison, so Levyra never depends on an upstream schema at playtime.
+
+A player identity is its primary hash plus its aliases. The same logical player can appear under different primary hashes in the two registries while cross-referencing each other through aliases, so identities are resolved across both sources and the last known good set before capabilities are compared.
+
+Per-player trust policy, highest preference first:
+
+1. a logical player confirmed by both sources (agreement on the normalized cipher data);
+2. a valid configuration from the primary source;
+3. the existing last known good entry;
+4. a valid configuration from the secondary source, only when the primary is unavailable or invalid;
+5. omission when no safe value exists.
+
+While the primary is healthy, a secondary-only player is not promoted just because Faraday publishes it: it is kept only if the last known good set already contains it, otherwise it is recorded as a candidate and omitted. When the two sources disagree, the last known good entry is kept; if there is no safe entry, the player is omitted rather than guessed. A newer signature timestamp never wins by itself. If both sources are unavailable or invalid, the repository assets are left untouched and the run still succeeds. The bundled asset therefore remains the final fallback for the runtime.
+
+Selection metadata is committed to `app/src/main/assets/player_configs.meta.json` whenever the trusted configuration changes. It records the `decision` (`UPDATED`, `KEEP_CURRENT`, or `KEEP_LAST_KNOWN_GOOD`) separately from the selection `source` (`DUAL_SOURCE_HEALTHY`, `MIXED`, `ZEMER`, `FARADAY`, or `LAST_KNOWN_GOOD`), plus per-verdict counts, per-source status, content hashes and the last accepted timestamps. No URL, cookie, token, visitor data or signed media value is stored.
+
+### Inspecting source health
+
+- Each scheduled run writes `artifacts/player-config-sync/report.json` and a human-readable summary to the job's step summary and workflow artifact. Look for `Zemer: <status>`, `Faraday: <status>` and `Decision: <...>`.
+- `player_configs.meta.json` shows what the currently committed asset was built from.
+- At runtime the decoder separates trust levels. The CI-built Levyra mirror is `VERIFIED` and is fetched first; raw Zemer and Faraday are `PROVISIONAL` emergency sources tried only after the verified mirror fails. Verified and provisional configurations are cached in separate files (`player_configs_remote.json` / `player_configs_meta.json` versus `player_configs_provisional.json` / `player_configs_provisional_meta.json`), and a verified configuration always wins over a provisional one for the same player. A provisional entry never becomes the verified last known good.
+- During an unknown-player or rejected-stream recovery, the runtime installs a temporary in-memory override that resolves only the recovered hash from the provisional configuration. A `304` on the provisional request still counts as recovery when the cached provisional data already contains the hash. The override disappears on restart and is removed as soon as a verified refresh genuinely changes that player's configuration; provisional recovery never writes the verified cache files.
+- A later source is only contacted after the earlier ones fail, so playback startup latency is unchanged and the existing TTL/cooldowns still apply.
+
 ## Strategy health and circuit breaker
 
 The server policy defines what is allowed and its preferred order. Local strategy health may reorder only those allowed strategies.

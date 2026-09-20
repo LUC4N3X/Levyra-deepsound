@@ -18,6 +18,7 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 | Metrolist | https://github.com/MetrolistGroup/Metrolist | Android music client ecosystem reference | GPL-3.0 license notices must be preserved where code is reused |
 | ArchiveTune | https://github.com/rukamori/ArchiveTune | Behavioral reference for music-recognition UX and interoperability research | No ArchiveTune recognition source is vendored or adapted in Levyra |
 | zemer-cipher | https://github.com/ZemerTeam/zemer-cipher | Reference design and validated player configuration data for the local YouTube signature and n-parameter decoder | GPL-3.0; adapted decoder logic and configuration validation retain upstream attribution |
+| faraday | https://github.com/MetrolistGroup/faraday | Independent secondary player-configuration registry consumed by the multi-source synchronization pipeline | Registry data only; no upstream source is vendored or adapted. No upstream license was declared at the time of writing |
 | NewPipeExtractor | https://github.com/TeamNewPipe/NewPipeExtractor | Upstream extractor ecosystem reference | Original copyright and license notices remain with upstream authors |
 | Return YouTube Dislike | https://returnyoutubedislike.com | Read-only estimated dislike metadata | Counts are estimates, not official YouTube statistics; attribution and API rate limits must be preserved |
 | PipePipeExtractor | https://github.com/InfinityLoop1308/PipePipeExtractor | Upstream base for LevyraExtractor | Original copyright and license notices remain with upstream authors |
@@ -30,6 +31,10 @@ Levyra's local player decoder includes an independent integration adapted from t
 Upstream project: https://github.com/ZemerTeam/zemer-cipher
 
 Upstream license: GNU General Public License v3.0
+
+The registry synchronization pipeline also consumes the independent MetrolistGroup `faraday` registry as a secondary source, using the same published configuration schema. Levyra reads and validates that registry data offline in CI; it does not vendor, execute or adapt any faraday source code, and the app parses both sources into Levyra's own internal configuration representation.
+
+Secondary source: https://github.com/MetrolistGroup/faraday
 
 The analyzer candidate anchored on the player's URL builder (the function that writes `alr=yes`) follows the approach of the yt-dlp EJS `n` solver, as proposed for NewPipeExtractor in TeamNewPipe/NewPipeExtractor#1545. It was reimplemented as a candidate generator for Levyra's existing verified WebView runtime; no EJS or NewPipeExtractor source is vendored for it.
 
