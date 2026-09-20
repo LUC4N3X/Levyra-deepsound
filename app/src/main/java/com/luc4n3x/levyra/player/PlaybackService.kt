@@ -442,7 +442,8 @@ class PlaybackService : MediaLibraryService() {
     private fun replayGainAlbumContext(track: Track?): Boolean {
         val current = track ?: return false
         val snapshot = queueEngine.state.value
-        val index = snapshot.currentIndex
+        val queueIdentity = playbackQueueIdentity(current)
+        val index = snapshot.tracks.indexOfFirst { playbackQueueIdentity(it) == queueIdentity }
         if (index !in snapshot.tracks.indices) return false
         val identity = replayGainAlbumIdentity(current)
         if (identity.isBlank()) return false
