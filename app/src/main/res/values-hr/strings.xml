@@ -27,6 +27,7 @@
     <string name="notification_shuffle">Nasumično</string>
     <string name="notification_favorite">Favorit</string>
     <string name="tile_recognize_music">Prepoznaj glazbu</string>
+    <string name="tile_playback">Reprodukcija</string>
     <string name="shortcut_search">Pretraži</string>
     <string name="shortcut_library">Medijateka</string>
     <string name="shortcut_recognition">Prepoznaj glazbu</string>

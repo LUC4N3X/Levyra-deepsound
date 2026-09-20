@@ -320,6 +320,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
       <ul>
         <li><b>Synced Lyrics:</b> LRCLIB lyrics with millisecond timing, tap-to-seek highlighting, a short active-line linger, and motion that follows Levyra's global animation setting. When animations are disabled, lyric transitions and scrolling stay non-animated.</li>
         <li><b>Route-Aware Latency:</b> On supported Android versions you can save Bluetooth lyric timing per device, with a normal global offset when the active route cannot be identified reliably.</li>
+        <li><b>Manual Lyrics Sync:</b> Nudge synced lyrics earlier or later in 0.5-second steps, reset instantly, and save the timing globally or per Bluetooth route without rewriting the original lyric timestamps.</li>
         <li><b>Multi-Script Romanization:</b> Offline readable forms for Cyrillic, Greek and polytonic Greek, Arabic, Hebrew, Georgian, Devanagari, Gurmukhi, Bengali, plus the existing CJK, Kana, and Hangul paths.</li>
         <li><b>Lyric Sharing:</b> Select verses, copy or share them, or export 1080×1080 square and 1080×1920 story cards with RTL-aware layout and Unicode-safe text.</li>
         <li><b>Living Artwork:</b> Uses artwork-driven motion when a real Canvas is not available.</li>
@@ -384,6 +385,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
       <ul>
         <li><b>Scrobbling:</b> Optional Last.fm and ListenBrainz integration with bounded deduplication.</li>
         <li><b>Searchable Settings:</b> Search settings by title or keyword in 26 languages.</li>
+        <li><b>Quick Settings Playback:</b> On Android, a dedicated Quick Settings tile can pause or resume the current Levyra session. When playback is idle, it opens Levyra without waking the full playback engine or starting music automatically.</li>
         <li><b>Video Subtitles:</b> Choose from available subtitle languages during native video playback.</li>
       </ul>
     </td>

@@ -276,7 +276,7 @@ class LevyraStringsTest {
             .map { it.groupValues[1] }
             .toSet()
 
-        assertEquals(30, expectedKeys.size)
+        assertEquals(31, expectedKeys.size)
 
         val localizedDirs = Files.list(resourceRoot).use { stream ->
             stream.filter { Files.isDirectory(it) }
