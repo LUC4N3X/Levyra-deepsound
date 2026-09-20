@@ -260,15 +260,18 @@ def _commit_generation(
         for backup in backups.values():
             backup.unlink(missing_ok=True)
     except (OSError, PipelineError) as error:
-        _rollback_generation(paths, committed, backups)
+        try:
+            _rollback_generation(paths, committed, backups)
+        except OSError as rollback_error:
+            raise PipelineError(
+                f"asset generation commit failed: {error}; rollback failed: {rollback_error}"
+            ) from error
         raise PipelineError(f"asset generation commit failed: {error}") from error
 
 
-def _cleanup_generation(staged: Mapping[str, Path], backups: Mapping[str, Path]) -> None:
+def _cleanup_generation(staged: Mapping[str, Path]) -> None:
     for temp in staged.values():
         temp.unlink(missing_ok=True)
-    for backup in backups.values():
-        backup.unlink(missing_ok=True)
 
 
 def _publish_generation(
@@ -280,8 +283,9 @@ def _publish_generation(
 
     Every file is staged and verified first, the previous versions are preserved
     as backups, and all files are committed in deterministic order. Any commit
-    failure restores every already committed file and removes staging/backup
-    files, so the repository never contains a partially updated generation.
+    failure restores every already committed file before the error escapes, and
+    staging files are always removed. Backups left behind by a failed rollback
+    are preserved as recovery artifacts.
     """
     paths = {name: assets_dir / name for name in updates}
     for path in paths.values():
@@ -293,7 +297,7 @@ def _publish_generation(
         staged = _stage_generation(paths, updates)
         _commit_generation(paths, staged, updates, backups, fail_after_commits)
     finally:
-        _cleanup_generation(staged, backups)
+        _cleanup_generation(staged)
 
 
 def _build_meta(report: PipelineReport) -> dict[str, object]:

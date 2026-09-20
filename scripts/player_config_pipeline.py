@@ -786,7 +786,11 @@ def select_configurations(
 
         verdicts[candidate_key] = verdict
         if pick is not None:
-            picks[candidate_key] = pick.with_aliases(_canonical_aliases(cluster, pick))
+            picks[candidate_key] = (
+                pick.with_aliases(_canonical_aliases(cluster, pick))
+                if verdict in (VERDICT_CONFIRMED, VERDICT_SINGLE_PRIMARY, VERDICT_SINGLE_SECONDARY)
+                else pick
+            )
         if is_conflict:
             conflicts.append(candidate_key)
             notes.append(
