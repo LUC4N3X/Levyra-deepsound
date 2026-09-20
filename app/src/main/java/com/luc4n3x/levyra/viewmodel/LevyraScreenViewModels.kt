@@ -1301,6 +1301,10 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
 
 internal data class PlayerProjection(
     val animationsEnabled: Boolean,
+    val showAudioQualityPanel: Boolean,
+    val audioQuality: String,
+    val highQualityAudioMode: HighQualityAudioMode,
+    val audioSettings: com.luc4n3x.levyra.domain.LevyraAudioSettings,
     val motionArtworkEnabled: Boolean,
     val motionArtwork: MotionArtwork?,
     val motionArtworkLoading: Boolean,
@@ -1339,6 +1343,10 @@ internal data class PlayerProjection(
 
 internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
     animationsEnabled = state.animationsEnabled,
+    showAudioQualityPanel = state.showAudioQualityPanel,
+    audioQuality = state.audioQuality,
+    highQualityAudioMode = state.highQualityAudioMode,
+    audioSettings = state.audioSettings,
     motionArtworkEnabled = state.motionArtworkEnabled,
     motionArtwork = state.motionArtwork,
     motionArtworkLoading = state.motionArtworkLoading,
