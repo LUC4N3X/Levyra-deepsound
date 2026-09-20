@@ -484,59 +484,6 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
 
 ---
 
-## ✦ Building from Source
-
-### 📱 Android Build
-**Prerequisites**: JDK 17, Android SDK Platform 37, Gradle 9.7.0.
-
-```bash
-# Clone the repository
-git clone https://github.com/LUC4N3X/Levyra-deepsound.git
-cd Levyra-deepsound
-
-# Build and install debug APK to a connected device
-./gradlew installDebug
-
-# Compile optimized release APK
-./gradlew clean assembleRelease
-```
-<sub>Output: `app/build/outputs/apk/release/app-release.apk`</sub>
-
-### 💻 Windows Desktop Build
-**Prerequisites**: JDK 21 LTS, Windows x64, VLC 3.0.x / libvlc, and WiX Toolset 3.14.
-
-```powershell
-cd desktop
-.\gradlew.bat check
-.\gradlew.bat createReleaseDistributable
-.\gradlew.bat packageReleaseMsi packageReleaseExe
-```
-<sub>Output: `desktop/app/build/compose/binaries/main-release/`</sub>
-
-<details>
-<summary><b>✦ F-Droid Reproducible Build & Versioning Contract</b></summary>
-<br>
-
-**F-Droid Reproducible Verification:**
-```bash
-./gradlew --no-daemon -PlevyraFdroidBuild=true :app:assembleRelease
-```
-
-**Version Wiring Contract:**
-```properties
-# Android: gradle.properties
-levyraVersionName=2.5.9
-levyraVersionCode=2050900
-
-# Windows: desktop/version.properties
-levyraDesktopVersion=1.2.0
-```
-<sub>Version code formula: <code>major * 1_000_000 + minor * 10_000 + patch * 100 + build</code>.</sub>
-
-</details>
-
----
-
 ## ✦ Privacy Blueprint & Permissions
 
 <div align="center">
@@ -603,6 +550,9 @@ levyraDesktopVersion=1.2.0
 ---
 
 ## ✦ Contributing
+
+Build instructions, prerequisites, reproducible build details, and platform-specific setup live in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+
 Bug fixes, translations, performance work, documentation, and focused features are welcome.
 
 Build instructions and contributor documentation are in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
