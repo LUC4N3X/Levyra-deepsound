@@ -16,14 +16,18 @@ import org.xml.sax.InputSource
 data class LyricsRequest(
     val title: String,
     val artist: String,
-    val durationSec: Long
+    val durationSec: Long,
+    val album: String = "",
+    val recordingId: String = ""
 )
 
 data class LyricsCandidate(
     val result: LyricsRepository.LyricsResult,
     val title: String,
     val artist: String,
-    val durationSec: Long
+    val durationSec: Long,
+    val album: String = "",
+    val recordingId: String = ""
 )
 
 enum class LyricsFormat {
@@ -660,16 +664,25 @@ object LyricRoleClassifier {
 
 object LyricsResultRanker {
     fun best(candidates: List<LyricsCandidate>, request: LyricsRequest): LyricsRepository.LyricsResult? {
+        val ranked = scoreAndSort(candidates, request)
+        val primary = ranked.firstOrNull() ?: return null
+        return LyricsCandidateFusion.enrich(primary, ranked.drop(1), request).result
+    }
+
+    fun rankedCandidates(candidates: List<LyricsCandidate>, request: LyricsRequest): List<LyricsCandidate> {
+        return scoreAndSort(candidates, request).distinctBy(::duplicateKey)
+    }
+
+    private fun scoreAndSort(candidates: List<LyricsCandidate>, request: LyricsRequest): List<LyricsCandidate> {
         return candidates
-            .map { candidate -> candidate.result.copy(confidence = score(candidate, request)) }
-            .filter { it.lines.isNotEmpty() && it.confidence >= 42 }
+            .map { candidate -> candidate.copy(result = candidate.result.copy(confidence = score(candidate, request))) }
+            .filter { it.result.lines.isNotEmpty() && it.result.confidence >= 42 }
             .sortedWith(
-                compareByDescending<LyricsRepository.LyricsResult> { it.confidence }
-                    .thenByDescending { it.lines.any { line -> line.words.isNotEmpty() } }
-                    .thenByDescending { it.synced }
-                    .thenByDescending { it.lines.size }
+                compareByDescending<LyricsCandidate> { it.result.confidence }
+                    .thenByDescending { it.result.lines.any { line -> line.words.isNotEmpty() } }
+                    .thenByDescending { it.result.synced }
+                    .thenByDescending { it.result.lines.size }
             )
-            .firstOrNull()
     }
 
     fun score(candidate: LyricsCandidate, request: LyricsRequest): Int {
@@ -689,6 +702,17 @@ object LyricsResultRanker {
             durationDifference <= 18L -> 1
             durationDifference <= 30L -> -6
             else -> -14
+        }
+        val recordingIdentityScore = when {
+            request.recordingId.isBlank() || candidate.recordingId.isBlank() -> 0
+            request.recordingId == candidate.recordingId -> 14
+            else -> -24
+        }
+        val albumScore = when {
+            request.album.isBlank() || candidate.album.isBlank() -> 0
+            LyricsMatcher.similarity(candidate.album, request.album) >= 92 -> 5
+            LyricsMatcher.similarity(candidate.album, request.album) >= 75 -> 2
+            else -> -4
         }
         val visibleLines = result.lines.filterNot { it.isMetadata || it.text.isBlank() }
         val primaryLines = visibleLines.filter { it.role != LyricVocalRole.BACKGROUND }
@@ -765,6 +789,8 @@ object LyricsResultRanker {
         val total = 6 +
             titleScore * 24 / 100 +
             artistScore * 16 / 100 +
+            recordingIdentityScore +
+            albumScore +
             durationScore +
             syncScore +
             wordScore +
@@ -777,6 +803,101 @@ object LyricsResultRanker {
             malformedPenalty -
             mismatchPenalty
         return total.coerceIn(0, 100)
+    }
+
+    private fun duplicateKey(candidate: LyricsCandidate): String {
+        val result = candidate.result
+        val timing = result.lines.joinToString("|") { line ->
+            "${line.startMs}:${line.endMs}:${line.role}:${LyricsMatcher.normalize(line.text)}"
+        }
+        return "${result.synced}:${result.lines.any { it.words.isNotEmpty() }}:$timing"
+    }
+}
+
+object LyricsCandidateFusion {
+    fun enrich(
+        primary: LyricsCandidate,
+        alternatives: List<LyricsCandidate>,
+        request: LyricsRequest
+    ): LyricsCandidate {
+        var result = primary.result
+        val providers = linkedSetOf(result.provider)
+        alternatives.forEach { secondary ->
+            if (!sameRecording(primary, secondary, request)) return@forEach
+            val merged = mergeSupplemental(result.lines, secondary.result.lines) ?: return@forEach
+            if (merged == result.lines) return@forEach
+            result = result.copy(lines = merged)
+            providers += secondary.result.provider
+        }
+        return primary.copy(result = result.copy(provider = providers.filter(String::isNotBlank).joinToString(" + ")))
+    }
+
+    fun sameRecording(
+        primary: LyricsCandidate,
+        secondary: LyricsCandidate,
+        request: LyricsRequest
+    ): Boolean {
+        if (primary.recordingId.isNotBlank() && secondary.recordingId.isNotBlank()) {
+            if (primary.recordingId != secondary.recordingId) return false
+        } else {
+            if (LyricsMatcher.similarity(primary.title, secondary.title) < 94) return false
+            if (LyricsMatcher.similarity(primary.artist, secondary.artist) < 88) return false
+            if (LyricsMatcher.versionMismatchPenalty(primary.title, secondary.title) != 0) return false
+            if (LyricsMatcher.versionMismatchPenalty(secondary.title, primary.title) != 0) return false
+            if (primary.durationSec > 0L && secondary.durationSec > 0L &&
+                (primary.durationSec - secondary.durationSec).absoluteValue > 5L
+            ) {
+                return false
+            }
+            if (primary.album.isNotBlank() && secondary.album.isNotBlank() &&
+                LyricsMatcher.similarity(primary.album, secondary.album) < 85
+            ) {
+                return false
+            }
+        }
+        if (request.recordingId.isNotBlank()) {
+            val explicitIds = listOf(primary.recordingId, secondary.recordingId).filter(String::isNotBlank)
+            if (explicitIds.any { it != request.recordingId }) return false
+        }
+        return lineAlignmentIsSafe(primary.result.lines, secondary.result.lines)
+    }
+
+    private fun lineAlignmentIsSafe(primary: List<LyricLine>, secondary: List<LyricLine>): Boolean {
+        if (primary.isEmpty() || primary.size != secondary.size) return false
+        return primary.indices.all { index ->
+            val left = primary[index]
+            val right = secondary[index]
+            left.role == right.role &&
+                left.isInstrumental == right.isInstrumental &&
+                left.isMetadata == right.isMetadata &&
+                LyricsMatcher.similarity(left.text, right.text) >= 94
+        }
+    }
+
+    private fun mergeSupplemental(primary: List<LyricLine>, secondary: List<LyricLine>): List<LyricLine>? {
+        if (!lineAlignmentIsSafe(primary, secondary)) return null
+        return primary.indices.map { index ->
+            val authoritative = primary[index]
+            val supplemental = secondary[index]
+            authoritative.copy(
+                translated = authoritative.translated.ifBlank { supplemental.translated },
+                romanized = authoritative.romanized.ifBlank { supplemental.romanized },
+                words = mergeWordRomanization(authoritative.words, supplemental.words)
+            )
+        }
+    }
+
+    private fun mergeWordRomanization(primary: List<LyricWord>, secondary: List<LyricWord>): List<LyricWord> {
+        if (primary.isEmpty() || primary.size != secondary.size) return primary
+        if (primary.indices.any { index ->
+                LyricsMatcher.similarity(primary[index].text, secondary[index].text) < 98
+            }
+        ) {
+            return primary
+        }
+        return primary.indices.map { index ->
+            primary[index].copy(romanized = primary[index].romanized.ifBlank { secondary[index].romanized })
+        }
     }
 }
 

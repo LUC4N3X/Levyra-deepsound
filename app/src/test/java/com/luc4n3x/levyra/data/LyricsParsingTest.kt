@@ -623,6 +623,77 @@ class LyricsParsingTest {
         assertEquals(7_000L, lines[0].endMs)
     }
 
+    @Test
+    fun fusionAddsSupplementalTranslationWithoutChangingAuthoritativeTiming() {
+        val words = listOf(
+            LyricWord(1_000L, 1_500L, "Hello"),
+            LyricWord(1_500L, 2_500L, "world")
+        )
+        val primary = LyricsCandidate(
+            result = LyricsRepository.LyricsResult(
+                synced = true,
+                lines = listOf(LyricLine(1_000L, 2_800L, "Hello world", words = words)),
+                provider = "Timed",
+                confidence = 90,
+                cached = false
+            ),
+            title = "Song",
+            artist = "Artist",
+            durationSec = 180L,
+            album = "Album",
+            recordingId = "video-id"
+        )
+        val supplemental = primary.copy(
+            result = primary.result.copy(
+                lines = listOf(LyricLine(900L, 3_100L, "Hello world", translated = "Ciao mondo")),
+                provider = "Translation"
+            )
+        )
+
+        val fused = LyricsCandidateFusion.enrich(
+            primary,
+            listOf(supplemental),
+            LyricsRequest("Song", "Artist", 180L, "Album", "video-id")
+        ).result
+
+        assertEquals("Ciao mondo", fused.lines.single().translated)
+        assertEquals(1_000L, fused.lines.single().startMs)
+        assertEquals(2_800L, fused.lines.single().endMs)
+        assertEquals(words, fused.lines.single().words)
+        assertEquals("Timed + Translation", fused.provider)
+    }
+
+    @Test
+    fun fusionRejectsDifferentRecordingVersions() {
+        val primary = candidate("Primary", synced = true).copy(title = "Song", durationSec = 180L)
+        val live = candidate("Live", synced = true).copy(title = "Song Live", durationSec = 220L)
+
+        assertTrue(!LyricsCandidateFusion.sameRecording(primary, live, LyricsRequest("Song", "Artist", 180L)))
+    }
+
+    @Test
+    fun rankedVersionsCollapseIdenticalProviderCopies() {
+        val first = candidate("Mirror A", synced = true)
+        val second = first.copy(result = first.result.copy(provider = "Mirror B"))
+
+        val ranked = LyricsResultRanker.rankedCandidates(
+            listOf(first, second),
+            LyricsRequest("Song", "Artist", 180L)
+        )
+
+        assertEquals(1, ranked.size)
+    }
+
+    @Test
+    fun exactRecordingIdentityOutranksConflictingIdentity() {
+        val request = LyricsRequest("Song", "Artist", 180L, recordingId = "wanted")
+        val exact = candidate("Exact", synced = true).copy(recordingId = "wanted")
+        val wrong = candidate("Wrong", synced = true).copy(recordingId = "other")
+
+        assertTrue(LyricsResultRanker.score(exact, request) > LyricsResultRanker.score(wrong, request))
+        assertEquals("Exact", LyricsResultRanker.best(listOf(wrong, exact), request)?.provider)
+    }
+
     private fun candidate(provider: String, synced: Boolean): LyricsCandidate {
         return LyricsCandidate(
             result = LyricsRepository.LyricsResult(
