@@ -19,7 +19,7 @@
   <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg 126w, docs/assets/levyra-wiki-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
 </p>
 
-<p align="center"><b>DOWNLOAD LEVYRA</b></p>
+<p align="center"><b>Download Levyra</b></p>
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" width="200" alt="Download Levyra from GitHub Releases"></a>
