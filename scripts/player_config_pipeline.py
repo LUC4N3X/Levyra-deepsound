@@ -539,6 +539,56 @@ def _resolve_collisions(
     return final, omitted, warnings
 
 
+def _verdict_for(
+    primary_entry: PlayerConfig | None,
+    secondary_entry: PlayerConfig | None,
+    existing: PlayerConfig | None,
+) -> tuple[str, PlayerConfig | None, bool]:
+    if primary_entry is not None and secondary_entry is not None:
+        if primary_entry.capability() == secondary_entry.capability():
+            return VERDICT_CONFIRMED, primary_entry, False
+        return VERDICT_CONFLICTING, existing, True
+    if primary_entry is not None:
+        return VERDICT_SINGLE_PRIMARY, primary_entry, False
+    if secondary_entry is not None:
+        return VERDICT_SINGLE_SECONDARY, secondary_entry, False
+    if existing is not None:
+        return VERDICT_LAST_KNOWN_GOOD, existing, False
+    return "", None, False
+
+
+def _overall_selection(primary_healthy: bool, secondary_healthy: bool, conflicts: Sequence[str]) -> str:
+    if primary_healthy and secondary_healthy:
+        return SELECTION_MIXED if conflicts else SELECTION_BOTH_CONFIRMED
+    if primary_healthy:
+        return SELECTION_PRIMARY
+    if secondary_healthy:
+        return SELECTION_SECONDARY
+    return SELECTION_LAST_KNOWN_GOOD
+
+
+def _count_verdicts(verdicts: Mapping[str, str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for verdict in verdicts.values():
+        counts[verdict] = counts.get(verdict, 0) + 1
+    return counts
+
+
+def _last_known_good_selection(
+    last_known_good: Mapping[str, PlayerConfig],
+    last_known_good_order: Sequence[str],
+) -> SelectionResult:
+    return SelectionResult(
+        players=dict(last_known_good),
+        order=tuple(last_known_good_order),
+        verdicts={key: VERDICT_LAST_KNOWN_GOOD for key in last_known_good},
+        counts={VERDICT_LAST_KNOWN_GOOD: len(last_known_good)},
+        selection=SELECTION_LAST_KNOWN_GOOD,
+        conflicts=(),
+        notes=("No healthy upstream source is available; the last known good configuration is kept.",),
+    )
+
+
 def select_configurations(
     primary: SourceSnapshot,
     secondary: SourceSnapshot,
@@ -554,17 +604,8 @@ def select_configurations(
     """
     primary_players = primary.players if primary.healthy else {}
     secondary_players = secondary.players if secondary.healthy else {}
-
     if not primary_players and not secondary_players:
-        return SelectionResult(
-            players=dict(last_known_good),
-            order=tuple(last_known_good_order),
-            verdicts={key: VERDICT_LAST_KNOWN_GOOD for key in last_known_good},
-            counts={VERDICT_LAST_KNOWN_GOOD: len(last_known_good)},
-            selection=SELECTION_LAST_KNOWN_GOOD,
-            conflicts=(),
-            notes=("No healthy upstream source is available; the last known good configuration is kept.",),
-        )
+        return _last_known_good_selection(last_known_good, last_known_good_order)
 
     order = _candidate_order(primary_players, secondary_players, last_known_good)
     picks: dict[str, PlayerConfig] = {}
@@ -573,54 +614,34 @@ def select_configurations(
     notes: list[str] = []
 
     for key in order:
-        primary_entry = primary_players.get(key)
-        secondary_entry = secondary_players.get(key)
-        existing = last_known_good.get(key)
-        if primary_entry is not None and secondary_entry is not None:
-            if primary_entry.capability() == secondary_entry.capability():
-                verdicts[key] = VERDICT_CONFIRMED
-                picks[key] = primary_entry
-            else:
-                verdicts[key] = VERDICT_CONFLICTING
-                conflicts.append(key)
-                notes.append(f"{key}: sources disagree; " + ("last known good entry kept" if existing else "entry omitted"))
-                if existing is not None:
-                    picks[key] = existing
-        elif primary_entry is not None:
-            verdicts[key] = VERDICT_SINGLE_PRIMARY
-            picks[key] = primary_entry
-        elif secondary_entry is not None:
-            verdicts[key] = VERDICT_SINGLE_SECONDARY
-            picks[key] = secondary_entry
-        elif existing is not None:
-            verdicts[key] = VERDICT_LAST_KNOWN_GOOD
-            picks[key] = existing
+        verdict, pick, is_conflict = _verdict_for(
+            primary_players.get(key),
+            secondary_players.get(key),
+            last_known_good.get(key),
+        )
+        if not verdict:
+            continue
+        verdicts[key] = verdict
+        if pick is not None:
+            picks[key] = pick
+        if is_conflict:
+            conflicts.append(key)
+            notes.append(
+                f"{key}: sources disagree; "
+                + ("last known good entry kept" if pick is not None else "entry omitted")
+            )
 
     final, omitted, warnings = _resolve_collisions(picks, verdicts, order)
     for key in omitted:
         verdicts[key] = VERDICT_OMITTED
     notes.extend(warnings)
 
-    final_order = tuple(key for key in order if key in final)
-    counts: dict[str, int] = {}
-    for verdict in verdicts.values():
-        counts[verdict] = counts.get(verdict, 0) + 1
-
-    if primary.healthy and secondary.healthy:
-        selection = SELECTION_MIXED if conflicts else SELECTION_BOTH_CONFIRMED
-    elif primary.healthy:
-        selection = SELECTION_PRIMARY
-    elif secondary.healthy:
-        selection = SELECTION_SECONDARY
-    else:
-        selection = SELECTION_LAST_KNOWN_GOOD
-
     return SelectionResult(
         players=final,
-        order=final_order,
+        order=tuple(key for key in order if key in final),
         verdicts=verdicts,
-        counts=counts,
-        selection=selection,
+        counts=_count_verdicts(verdicts),
+        selection=_overall_selection(primary.healthy, secondary.healthy, conflicts),
         conflicts=tuple(conflicts),
         notes=tuple(notes),
     )
