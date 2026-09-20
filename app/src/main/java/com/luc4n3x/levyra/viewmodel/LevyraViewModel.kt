@@ -158,6 +158,7 @@ import com.luc4n3x.levyra.data.recap.ListeningRecapRepository
 import com.luc4n3x.levyra.data.AutoEqCatalogRepository
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
+import com.luc4n3x.levyra.domain.LyricsTranslationState
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
@@ -5532,7 +5533,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setLyricsTranslationEnabled(value: Boolean) {
         preferences.setLyricsTranslationEnabled(value)
-        _state.update { it.copy(lyricsTranslationEnabled = value) }
+        _state.update {
+            it.copy(
+                lyricsTranslationEnabled = value,
+                lyricsTranslationState = LyricsTranslationState.DISABLED
+            )
+        }
         _state.value.currentTrack?.let { track ->
             fetchLyrics(track)
             prefetchLyricsAround(track)
@@ -7591,6 +7597,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 lyricsLoading = false,
                 lyricsSynced = false,
                 lyricsProvider = "",
+                lyricsTranslationState = LyricsTranslationState.DISABLED,
                 activeLyric = null,
                 youtubeEngagement = YoutubeEngagementState()
             )
@@ -9015,6 +9022,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     lyricsSections = result.sections,
                     lyricsSynced = result.synced,
                     lyricsProvider = result.provider,
+                    lyricsTranslationState = result.translationState,
                     lyricsConfidence = result.confidence,
                     lyricsCached = result.cached,
                     lyricsManualSelection = true,
@@ -9068,6 +9076,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 lyricsSections = if (preserveVisibleLyrics) it.lyricsSections else emptyList(),
                 lyricsSynced = if (preserveVisibleLyrics) it.lyricsSynced else false,
                 lyricsProvider = if (preserveVisibleLyrics) it.lyricsProvider else "",
+                lyricsTranslationState = if (preserveVisibleLyrics) {
+                    it.lyricsTranslationState
+                } else {
+                    LyricsTranslationState.DISABLED
+                },
                 lyricsConfidence = if (preserveVisibleLyrics) it.lyricsConfidence else 0,
                 lyricsCached = if (preserveVisibleLyrics) it.lyricsCached else false,
                 lyricsVersions = emptyList(),
@@ -9090,7 +9103,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     translate = _state.value.lyricsTranslationEnabled
                 ).collect { result ->
                     val currentIdentity = _state.value.currentTrack?.let(::playbackIdentity)
-                    if (requestGeneration != lyricsRequestGeneration || currentIdentity != trackIdentity) return@collect
+                    if (!isCurrentLyricsRequest(requestGeneration, lyricsRequestGeneration, trackIdentity, currentIdentity)) {
+                        return@collect
+                    }
                     received = true
                     lyricsTrackId = trackIdentity
                     val lines = result.lines
@@ -9100,6 +9115,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             lyricsSections = result.sections,
                             lyricsSynced = result.synced,
                             lyricsProvider = result.provider,
+                            lyricsTranslationState = result.translationState,
                             lyricsConfidence = result.confidence,
                             lyricsCached = result.cached,
                             lyricsManualSelection = result.manualSelection,
@@ -9114,18 +9130,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                     val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
                     val latestIdentity = _state.value.currentTrack?.let(::playbackIdentity)
-                    if (requestGeneration == lyricsRequestGeneration && latestIdentity == trackIdentity) {
+                    if (isCurrentLyricsRequest(requestGeneration, lyricsRequestGeneration, trackIdentity, latestIdentity)) {
                         _state.update { it.copy(intelligenceSummary = intelligence) }
                     }
                 }
             } finally {
                 val currentIdentity = _state.value.currentTrack?.let(::playbackIdentity)
-                if (requestGeneration == lyricsRequestGeneration && currentIdentity == trackIdentity) {
+                if (isCurrentLyricsRequest(requestGeneration, lyricsRequestGeneration, trackIdentity, currentIdentity)) {
                     _state.update { it.copy(lyricsLoading = false) }
                     if (!received && _state.value.lyrics.isEmpty()) {
                         val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, emptyList()) }
                         val latestIdentity = _state.value.currentTrack?.let(::playbackIdentity)
-                        if (requestGeneration == lyricsRequestGeneration && latestIdentity == trackIdentity) {
+                        if (isCurrentLyricsRequest(requestGeneration, lyricsRequestGeneration, trackIdentity, latestIdentity)) {
                             _state.update { it.copy(intelligenceSummary = intelligence) }
                         }
                     }
@@ -9767,6 +9783,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 lyricsLoading = false,
                 lyricsSynced = false,
                 lyricsProvider = "",
+                lyricsTranslationState = LyricsTranslationState.DISABLED,
                 activeLyric = null
             )
         }
@@ -11187,6 +11204,13 @@ internal fun LevyraUiState.withHomeResonanceComment(
     comments[videoId] = transform(comments[videoId])
     return copy(homeResonanceComments = resonanceCommentsForTracks(homeResonanceTracks, comments))
 }
+
+internal fun isCurrentLyricsRequest(
+    requestGeneration: Long,
+    currentGeneration: Long,
+    requestedTrackIdentity: String,
+    currentTrackIdentity: String?
+): Boolean = requestGeneration == currentGeneration && requestedTrackIdentity == currentTrackIdentity
 
 private fun isYoutubeBackedTrack(track: Track): Boolean {
     val sourceMarker = "${track.source} ${track.metadataProvider}".lowercase()

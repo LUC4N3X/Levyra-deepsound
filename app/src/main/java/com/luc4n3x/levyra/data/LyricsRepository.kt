@@ -12,6 +12,7 @@ import com.luc4n3x.levyra.domain.LyricSection
 import com.luc4n3x.levyra.domain.LyricSectionType
 import com.luc4n3x.levyra.domain.LyricVocalRole
 import com.luc4n3x.levyra.domain.LyricWord
+import com.luc4n3x.levyra.domain.LyricsTranslationState
 import java.io.File
 import java.io.IOException
 import java.net.URLEncoder
@@ -50,6 +51,7 @@ class LyricsRepository(context: Context? = null) {
     private val legacyCacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
     private val youtubeTranscript = appContext?.let(::YoutubeTranscriptLyricsProvider)
     private val youtubeMusic = YoutubeMusicWatchRepository(appContext)
+    private val translationCoordinator = LyricsTranslationCoordinator(appContext?.let(::AndroidLyricsTranslationBackend))
     private val lyricsPlusClient = LevyraHttpClientFactory.media(appContext).newBuilder()
         .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(4, TimeUnit.SECONDS)
@@ -77,7 +79,8 @@ class LyricsRepository(context: Context? = null) {
         val confidence: Int,
         val cached: Boolean,
         val sections: List<LyricSection> = emptyList(),
-        val manualSelection: Boolean = false
+        val manualSelection: Boolean = false,
+        val translationState: LyricsTranslationState = LyricsTranslationState.DISABLED
     )
 
     data class LyricsVersion(
@@ -144,17 +147,9 @@ class LyricsRepository(context: Context? = null) {
         translate: Boolean = false
     ): Flow<LyricsResult> = channelFlow {
         val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return@channelFlow
-        readSelection(query)?.let { selected ->
-            send(selected.result.copy(cached = true))
-            return@channelFlow
-        }
-        var current: LyricsResult? = null
-        val cached = readCached(query)
-        cached.result?.let { result ->
-            val stable = result.copy(cached = true)
-            current = stable
-            send(stable)
-        }
+        if (emitSelectedResult(query) { send(it) }) return@channelFlow
+        val (cached, restored) = restoreCachedResult(query) { send(it) }
+        var current = restored
         if (cached.negative) return@channelFlow
         if (!cached.refreshRequired) return@channelFlow
 
@@ -185,6 +180,45 @@ class LyricsRepository(context: Context? = null) {
         }
     }.flowOn(Dispatchers.IO)
 
+    private suspend fun emitSelectedResult(
+        query: QuerySpec,
+        emit: suspend (LyricsResult) -> Unit
+    ): Boolean {
+        val selected = readSelection(query) ?: return false
+        val restored = selected.result.copy(cached = true)
+        emit(restored)
+        if (!needsLyricsTranslationRetry(restored.translationState, query.translate)) return true
+        val refreshed = applyTranslation(restored.copy(cached = false), query)
+            .copy(cached = false, manualSelection = true)
+        if (!shouldUpgrade(restored, refreshed)) return true
+        persistSelection(
+            query,
+            selected.id,
+            selected.title,
+            selected.artist,
+            selected.durationSec,
+            refreshed
+        )
+        emit(refreshed)
+        return true
+    }
+
+    private suspend fun restoreCachedResult(
+        query: QuerySpec,
+        emit: suspend (LyricsResult) -> Unit
+    ): Pair<CacheLookup, LyricsResult?> {
+        val cached = readCached(query)
+        val stable = cached.result?.copy(cached = true) ?: return cached to null
+        emit(stable)
+        if (!needsLyricsTranslationRetry(stable.translationState, query.translate)) return cached to stable
+        val refreshed = applyTranslation(stable.copy(cached = false), query)
+        if (!shouldUpgrade(stable, refreshed)) return cached to stable
+        memoryPut(query.key, refreshed, System.currentTimeMillis())
+        persistPositive(query, refreshed)
+        emit(refreshed)
+        return cached to refreshed
+    }
+
     suspend fun fetch(
         title: String,
         artist: String,
@@ -209,12 +243,26 @@ class LyricsRepository(context: Context? = null) {
         val selected = readSelection(query)
         val candidates = ArrayList<LyricsCandidate>()
         selected?.let { choice ->
-            candidates += LyricsCandidate(choice.result, choice.title, choice.artist, choice.durationSec)
+            candidates += LyricsCandidate(
+                choice.result,
+                choice.title,
+                choice.artist,
+                choice.durationSec,
+                album = query.album,
+                recordingId = query.videoId
+            )
         }
         readCached(query).result?.let { cached ->
-            candidates += LyricsCandidate(cached, query.requestedTitle, query.requestedArtist, query.durationSec)
+            candidates += LyricsCandidate(
+                cached,
+                query.requestedTitle,
+                query.requestedArtist,
+                query.durationSec,
+                album = query.album,
+                recordingId = query.videoId
+            )
         }
-        val network = fetchNetworkProgressive(query) { }
+        val network = fetchNetworkProgressive(query, applyFinalTranslation = false) { }
         candidates += network.candidates
         val selectedId = selected?.id
         candidates
@@ -240,25 +288,9 @@ class LyricsRepository(context: Context? = null) {
     ): LyricsResult? = withContext(Dispatchers.IO) {
         val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
             ?: return@withContext null
-        val dao = lyricsSelectionDao ?: return@withContext version.result
-        val now = System.currentTimeMillis()
-        val stable = version.result.copy(cached = false, manualSelection = true)
-        dao.upsert(
-            LyricsSelectionEntity(
-                trackKey = selectionKey(query),
-                candidateId = version.id,
-                provider = stable.provider,
-                title = version.title,
-                artist = version.artist,
-                durationSec = version.durationSec,
-                payload = serializeResult(stable),
-                updatedAt = now
-            )
-        )
-        val count = dao.count()
-        if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldest(count - MAX_LYRICS_SELECTIONS)
-        memoryPut(query.key, stable, now)
-        persistPositive(query, stable)
+        val translated = applyTranslation(version.result, query)
+        val stable = translated.copy(cached = false, manualSelection = true)
+        persistSelection(query, version.id, version.title, version.artist, version.durationSec, stable)
         stable
     }
 
@@ -292,9 +324,16 @@ class LyricsRepository(context: Context? = null) {
 
     private suspend fun fetchNetworkProgressive(
         query: QuerySpec,
+        applyFinalTranslation: Boolean = true,
         onCandidate: suspend (LyricsResult) -> Unit
     ): NetworkOutcome = supervisorScope {
-        val request = LyricsRequest(query.requestedTitle, query.requestedArtist, query.durationSec)
+        val request = LyricsRequest(
+            title = query.requestedTitle,
+            artist = query.requestedArtist,
+            durationSec = query.durationSec,
+            album = query.album,
+            recordingId = query.videoId
+        )
         val tasks = ArrayList<Deferred<ProviderAttempt>>()
         if (query.videoId.isNotBlank()) {
             tasks += async {
@@ -304,7 +343,8 @@ class LyricsRepository(context: Context? = null) {
                         query.languageCode,
                         query.requestedTitle,
                         query.requestedArtist,
-                        query.durationSec
+                        query.durationSec,
+                        query.album
                     )
                 }
             }
@@ -315,6 +355,7 @@ class LyricsRepository(context: Context? = null) {
                         query.requestedTitle,
                         query.requestedArtist,
                         query.durationSec,
+                        query.album,
                         query.languageCode,
                         query.translate
                     )
@@ -345,15 +386,28 @@ class LyricsRepository(context: Context? = null) {
             attempted = attempted || attempt.attempted
             hadTransientFailure = hadTransientFailure || attempt.hadTransientFailure
             attempt.candidates.mapNotNullTo(candidates) { prepareCandidate(it, query.durationSec) }
-            val best = LyricsResultRanker.best(candidates, request)
+            val best = LyricsResultRanker.best(candidates, request)?.let { result ->
+                markTranslationPending(result, query)
+            }
             if (best != null && best.confidence >= INSTANT_MIN_CONFIDENCE && shouldUpgrade(emitted, best)) {
                 emitted = best
                 onCandidate(best)
             }
         }
 
-        val best = LyricsResultRanker.best(candidates, request)
-        NetworkOutcome(best, attempted, hadTransientFailure, candidates.toList())
+        val rankedBest = LyricsResultRanker.best(candidates, request)
+        val best = if (rankedBest != null && applyFinalTranslation) {
+            applyTranslation(rankedBest, query)
+        } else {
+            rankedBest
+        }
+        if (best != null && shouldUpgrade(emitted, best)) onCandidate(best)
+        NetworkOutcome(
+            best = best,
+            attempted = attempted,
+            hadTransientFailure = hadTransientFailure,
+            candidates = LyricsResultRanker.rankedCandidates(candidates, request)
+        )
     }
 
     private data class SelectedVersion(
@@ -416,8 +470,11 @@ class LyricsRepository(context: Context? = null) {
     private suspend fun providerWithin(
         timeoutMs: Long,
         block: suspend () -> ProviderAttempt
-    ): ProviderAttempt = withTimeoutOrNull(timeoutMs) { block() }
-        ?: ProviderAttempt(attempted = true, hadTransientFailure = true)
+    ): ProviderAttempt = isolatedLyricsProviderCall(
+        timeoutMs = timeoutMs,
+        fallback = { ProviderAttempt(attempted = true, hadTransientFailure = true) },
+        block = block
+    )
 
     private suspend fun lyricsPlusMirrorAttempt(query: QuerySpec): ProviderAttempt {
         val outcome = lyricsPlus.fetchMirrors(
@@ -468,24 +525,62 @@ class LyricsRepository(context: Context? = null) {
         return candidate.copy(result = enriched)
     }
 
+    private suspend fun applyTranslation(result: LyricsResult, query: QuerySpec): LyricsResult {
+        if (!query.translate) return result
+        val outcome = translationCoordinator.translate(result.lines, query.languageCode)
+        return result.copy(lines = outcome.lines, translationState = outcome.state)
+    }
+
+    private fun markTranslationPending(result: LyricsResult, query: QuerySpec): LyricsResult {
+        if (!query.translate) return result
+        val eligible = result.lines.filterNot { line ->
+            line.isMetadata || line.isInstrumental || line.text.isBlank()
+        }
+        val state = if (eligible.isNotEmpty() && eligible.all { it.translated.isNotBlank() }) {
+            LyricsTranslationState.PROVIDER
+        } else {
+            LyricsTranslationState.PENDING
+        }
+        return result.copy(translationState = state)
+    }
+
     internal fun shouldUpgrade(previous: LyricsResult?, current: LyricsResult): Boolean {
         if (current.lines.isEmpty()) return false
         if (previous == null) return true
-        if (sameResult(previous, current)) {
-            return current.confidence > previous.confidence ||
-                (current.confidence == previous.confidence && previous.cached && !current.cached)
-        }
+        if (sameResult(previous, current)) return improvesEquivalentResult(previous, current)
+        return improvesLyricsDetail(previous, current) ||
+            current.confidence >= previous.confidence + MIN_QUALITY_UPGRADE
+    }
+
+    private fun improvesEquivalentResult(previous: LyricsResult, current: LyricsResult): Boolean {
+        return current.confidence > previous.confidence ||
+            (current.confidence == previous.confidence && previous.cached && !current.cached) ||
+            (current.confidence >= previous.confidence && current.translationState != previous.translationState)
+    }
+
+    private fun improvesLyricsDetail(previous: LyricsResult, current: LyricsResult): Boolean {
         val previousWordTimed = previous.lines.any { it.words.isNotEmpty() }
         val currentWordTimed = current.lines.any { it.words.isNotEmpty() }
         if (currentWordTimed && !previousWordTimed && current.confidence >= previous.confidence - 5) return true
         if (current.synced && !previous.synced && current.confidence >= previous.confidence - 3) return true
         if (current.sections.size > previous.sections.size && current.confidence >= previous.confidence) return true
-        if (current.lines.any { it.translated.isNotBlank() } && previous.lines.none { it.translated.isNotBlank() } && current.confidence >= previous.confidence) return true
-        return current.confidence >= previous.confidence + MIN_QUALITY_UPGRADE
+        if (
+            translatedEligibleCount(current) > translatedEligibleCount(previous) &&
+            current.confidence >= previous.confidence
+        ) return true
+        return false
+    }
+
+    private fun translatedEligibleCount(result: LyricsResult): Int = result.lines.count { line ->
+        !line.isMetadata && !line.isInstrumental && line.text.isNotBlank() && line.translated.isNotBlank()
     }
 
     private fun sameResult(left: LyricsResult, right: LyricsResult): Boolean {
-        if (left.synced != right.synced || left.lines.size != right.lines.size || left.sections != right.sections) return false
+        if (
+            left.synced != right.synced ||
+            left.lines.size != right.lines.size ||
+            left.sections != right.sections
+        ) return false
         return left.lines.zip(right.lines).all { (first, second) ->
             first.startMs == second.startMs &&
                 first.endMs == second.endMs &&
@@ -504,11 +599,12 @@ class LyricsRepository(context: Context? = null) {
         languageCode: String,
         title: String,
         artist: String,
-        durationSec: Long
+        durationSec: Long,
+        album: String
     ): ProviderAttempt {
         return try {
             val candidate = youtubeMusic.getLyricsForVideo(videoId, languageCode)
-                ?.toCandidate(title, artist, durationSec)
+                ?.toCandidate(title, artist, durationSec, album, videoId)
             if (candidate == null) {
                 ProviderAttempt(attempted = true, hadTransientFailure = true)
             } else {
@@ -527,11 +623,12 @@ class LyricsRepository(context: Context? = null) {
         title: String,
         artist: String,
         durationSec: Long,
+        album: String,
         languageCode: String,
         translate: Boolean
     ): ProviderAttempt {
         return try {
-            val candidate = fetchTranscriptCandidate(videoId, title, artist, durationSec, languageCode, translate)
+            val candidate = fetchTranscriptCandidate(videoId, title, artist, durationSec, album, languageCode, translate)
             if (candidate == null) {
                 ProviderAttempt(attempted = true, hadTransientFailure = true)
             } else {
@@ -550,6 +647,7 @@ class LyricsRepository(context: Context? = null) {
         title: String,
         artist: String,
         durationSec: Long,
+        album: String,
         languageCode: String,
         translate: Boolean
     ): LyricsCandidate? {
@@ -567,14 +665,18 @@ class LyricsRepository(context: Context? = null) {
             result = LyricsResult(true, transcript.lines, provider, if (transcript.automatic) 72 else 82, false),
             title = title,
             artist = artist,
-            durationSec = durationSec
+            durationSec = durationSec,
+            album = album,
+            recordingId = videoId
         )
     }
 
     private fun YoutubeMusicNativeLyrics.toCandidate(
         title: String,
         artist: String,
-        durationSec: Long
+        durationSec: Long,
+        album: String,
+        videoId: String
     ): LyricsCandidate {
         val provider = buildString {
             append("YouTube Music")
@@ -590,7 +692,9 @@ class LyricsRepository(context: Context? = null) {
             ),
             title = title,
             artist = artist,
-            durationSec = durationSec
+            durationSec = durationSec,
+            album = album,
+            recordingId = videoId
         )
     }
 
@@ -612,7 +716,8 @@ class LyricsRepository(context: Context? = null) {
                             result = it,
                             title = json.optString("trackName", title),
                             artist = json.optString("artistName", artist),
-                            durationSec = json.optLong("duration", durationSec)
+                            durationSec = json.optLong("duration", durationSec),
+                            album = json.optString("albumName")
                         )
                     )
                 }.orEmpty()
@@ -639,7 +744,8 @@ class LyricsRepository(context: Context? = null) {
                         result = result,
                         title = json.optString("trackName", title),
                         artist = json.optString("artistName", artist),
-                        durationSec = json.optLong("duration", 0L)
+                        durationSec = json.optLong("duration", 0L),
+                        album = json.optString("albumName")
                     )
                 }
                 ProviderAttempt(candidates = out.take(16), attempted = true)
@@ -733,7 +839,13 @@ class LyricsRepository(context: Context? = null) {
             if (entry.expiresAt >= now - STALE_CACHE_TTL_MS) {
                 return CacheLookup(
                     result = entry.result.copy(cached = true),
-                    refreshRequired = shouldRefresh(entry.result, entry.updatedAt, entry.expiresAt, now)
+                    refreshRequired = shouldRefresh(
+                        entry.result,
+                        entry.updatedAt,
+                        entry.expiresAt,
+                        now,
+                        query.translate
+                    )
                 )
             }
             memoryRemove(query.key)
@@ -763,7 +875,13 @@ class LyricsRepository(context: Context? = null) {
                 }
                 return CacheLookup(
                     result = result,
-                    refreshRequired = shouldRefresh(result, entity.updatedAt, entity.expiresAt, now)
+                    refreshRequired = shouldRefresh(
+                        result,
+                        entity.updatedAt,
+                        entity.expiresAt,
+                        now,
+                        query.translate
+                    )
                 )
             }
 
@@ -812,9 +930,16 @@ class LyricsRepository(context: Context? = null) {
         return CacheLookup()
     }
 
-    private fun shouldRefresh(result: LyricsResult, updatedAt: Long, expiresAt: Long, now: Long): Boolean {
+    private fun shouldRefresh(
+        result: LyricsResult,
+        updatedAt: Long,
+        expiresAt: Long,
+        now: Long,
+        translate: Boolean
+    ): Boolean {
         if (expiresAt <= now) return true
         if (now - updatedAt >= CACHE_REFRESH_INTERVAL_MS) return true
+        if (needsLyricsTranslationRetry(result.translationState, translate)) return true
         if (!result.synced || result.confidence < QUALITY_REFRESH_THRESHOLD) return true
         return result.lines.none { it.words.isNotEmpty() } && now - updatedAt >= WORD_TIMING_REFRESH_INTERVAL_MS
     }
@@ -845,6 +970,34 @@ class LyricsRepository(context: Context? = null) {
             dao.upsert(entity)
             pruneRoomCache(dao, now)
         }.onFailure { Timber.w(it, "Lyrics Room cache save failed") }
+    }
+
+    private suspend fun persistSelection(
+        query: QuerySpec,
+        candidateId: String,
+        title: String,
+        artist: String,
+        durationSec: Long,
+        result: LyricsResult
+    ) {
+        val dao = lyricsSelectionDao ?: return
+        val now = System.currentTimeMillis()
+        dao.upsert(
+            LyricsSelectionEntity(
+                trackKey = selectionKey(query),
+                candidateId = candidateId,
+                provider = result.provider,
+                title = title,
+                artist = artist,
+                durationSec = durationSec,
+                payload = serializeResult(result),
+                updatedAt = now
+            )
+        )
+        val count = dao.count()
+        if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldest(count - MAX_LYRICS_SELECTIONS)
+        memoryPut(query.key, result, now)
+        persistPositive(query, result)
     }
 
     private suspend fun persistNegative(query: QuerySpec) {
@@ -935,6 +1088,7 @@ class LyricsRepository(context: Context? = null) {
             .put("synced", result.synced)
             .put("provider", result.provider)
             .put("confidence", result.confidence)
+            .put("translationState", result.translationState.name)
             .put("lines", linesJson)
             .put("sections", sectionsJson)
             .toString()
@@ -1003,7 +1157,19 @@ class LyricsRepository(context: Context? = null) {
                 provider = json.optString("provider"),
                 confidence = json.optInt("confidence", 70),
                 cached = true,
-                sections = sections
+                sections = sections,
+                translationState = runCatching {
+                    LyricsTranslationState.valueOf(
+                        json.optString(
+                            "translationState",
+                            if (lines.any { it.translated.isNotBlank() }) {
+                                LyricsTranslationState.PROVIDER.name
+                            } else {
+                                LyricsTranslationState.DISABLED.name
+                            }
+                        )
+                    )
+                }.getOrDefault(LyricsTranslationState.DISABLED)
             )
         }.onFailure { Timber.w(it, "Lyrics cache decode failed") }.getOrNull()
     }
@@ -1031,7 +1197,19 @@ class LyricsRepository(context: Context? = null) {
             line.copy(romanized = lineRomanized, words = enrichedWords)
         }
         val detection = LyricsSectionDetector.detect(enriched)
-        return result.copy(lines = detection.lines, sections = detection.sections)
+        val translationState = if (
+            result.translationState == LyricsTranslationState.DISABLED &&
+            detection.lines.any { it.translated.isNotBlank() }
+        ) {
+            LyricsTranslationState.PROVIDER
+        } else {
+            result.translationState
+        }
+        return result.copy(
+            lines = detection.lines,
+            sections = detection.sections,
+            translationState = translationState
+        )
     }
 
     private fun cleanTitle(title: String): String = title
@@ -1199,6 +1377,20 @@ class LyricsRepository(context: Context? = null) {
         private const val MIN_QUALITY_UPGRADE = 4
         private const val MIN_WORD_DURATION_MS = 45L
         private const val WORD_GAP_MS = 12L
+    }
+}
+
+internal suspend fun <T> isolatedLyricsProviderCall(
+    timeoutMs: Long,
+    fallback: () -> T,
+    block: suspend () -> T
+): T {
+    return try {
+        withTimeoutOrNull(timeoutMs) { block() } ?: fallback()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Throwable) {
+        fallback()
     }
 }
 
