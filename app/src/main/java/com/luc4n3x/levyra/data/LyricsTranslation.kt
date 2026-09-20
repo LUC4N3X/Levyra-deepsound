@@ -32,8 +32,8 @@ internal data class LyricsTranslationOutcome(
 internal class LyricsTranslationCoordinator(
     private val backend: LyricsTranslationBackend?
 ) {
-    private val cache = object : LinkedHashMap<String, List<LyricLine>>(CACHE_SIZE + 1, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<LyricLine>>?): Boolean =
+    private val cache = object : LinkedHashMap<String, Map<Int, String>>(CACHE_SIZE + 1, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Map<Int, String>>?): Boolean =
             size > CACHE_SIZE
     }
 
@@ -51,7 +51,7 @@ internal class LyricsTranslationCoordinator(
         if (target.isBlank()) return providerOr(lines, LyricsTranslationState.UNAVAILABLE)
         val cacheKey = cacheKey(lines, target, translator.version)
         synchronized(cache) { cache[cacheKey] }?.let { cached ->
-            return LyricsTranslationOutcome(cached, LyricsTranslationState.ON_DEVICE)
+            return LyricsTranslationOutcome(applyTranslations(lines, cached), LyricsTranslationState.ON_DEVICE)
         }
         val requests = eligibleIndices.chunked(LINES_PER_BATCH).map { indices ->
             TranslationBatch(
@@ -74,19 +74,18 @@ internal class LyricsTranslationCoordinator(
             LyricsBatchTranslation.SameLanguage -> LyricsTranslationOutcome(lines, LyricsTranslationState.SAME_LANGUAGE)
             is LyricsBatchTranslation.Unavailable -> providerOr(lines, result.state)
             is LyricsBatchTranslation.Success -> {
-                val mapped = mapTranslations(lines, requests, result.batches)
+                val translations = parseTranslations(requests, result.batches)
                     ?: return providerOr(lines, LyricsTranslationState.FAILED)
-                synchronized(cache) { cache[cacheKey] = mapped }
-                LyricsTranslationOutcome(mapped, LyricsTranslationState.ON_DEVICE)
+                synchronized(cache) { cache[cacheKey] = translations }
+                LyricsTranslationOutcome(applyTranslations(lines, translations), LyricsTranslationState.ON_DEVICE)
             }
         }
     }
 
-    private fun mapTranslations(
-        original: List<LyricLine>,
+    private fun parseTranslations(
         requests: List<TranslationBatch>,
         translatedBatches: List<String>
-    ): List<LyricLine>? {
+    ): Map<Int, String>? {
         if (translatedBatches.size != requests.size) return null
         val translations = HashMap<Int, String>()
         requests.zip(translatedBatches).forEach { (request, translated) ->
@@ -101,6 +100,13 @@ internal class LyricsTranslationCoordinator(
             }
         }
         if (translations.size != requests.sumOf { it.indices.size }) return null
+        return translations
+    }
+
+    private fun applyTranslations(
+        original: List<LyricLine>,
+        translations: Map<Int, String>
+    ): List<LyricLine> {
         return original.mapIndexed { index, line ->
             val translated = translations[index]
             if (translated == null || line.translated.isNotBlank()) line else line.copy(translated = translated)
@@ -108,10 +114,11 @@ internal class LyricsTranslationCoordinator(
     }
 
     private fun providerOr(lines: List<LyricLine>, fallback: LyricsTranslationState): LyricsTranslationOutcome {
-        val providerTranslation = lines.any { it.isTranslationEligible() && it.translated.isNotBlank() }
+        val eligible = lines.filter(LyricLine::isTranslationEligible)
+        val providerTranslationComplete = eligible.isNotEmpty() && eligible.all { it.translated.isNotBlank() }
         return LyricsTranslationOutcome(
             lines = lines,
-            state = if (providerTranslation) LyricsTranslationState.PROVIDER else fallback
+            state = if (providerTranslationComplete) LyricsTranslationState.PROVIDER else fallback
         )
     }
 

@@ -262,7 +262,7 @@ class LyricsRepository(context: Context? = null) {
                 recordingId = query.videoId
             )
         }
-        val network = fetchNetworkProgressive(query) { }
+        val network = fetchNetworkProgressive(query, applyFinalTranslation = false) { }
         candidates += network.candidates
         val selectedId = selected?.id
         candidates
@@ -324,6 +324,7 @@ class LyricsRepository(context: Context? = null) {
 
     private suspend fun fetchNetworkProgressive(
         query: QuerySpec,
+        applyFinalTranslation: Boolean = true,
         onCandidate: suspend (LyricsResult) -> Unit
     ): NetworkOutcome = supervisorScope {
         val request = LyricsRequest(
@@ -394,8 +395,11 @@ class LyricsRepository(context: Context? = null) {
             }
         }
 
-        val best = LyricsResultRanker.best(candidates, request)?.let { result ->
-            applyTranslation(result, query)
+        val rankedBest = LyricsResultRanker.best(candidates, request)
+        val best = if (rankedBest != null && applyFinalTranslation) {
+            applyTranslation(rankedBest, query)
+        } else {
+            rankedBest
         }
         if (best != null && shouldUpgrade(emitted, best)) onCandidate(best)
         NetworkOutcome(
@@ -560,8 +564,15 @@ class LyricsRepository(context: Context? = null) {
         if (currentWordTimed && !previousWordTimed && current.confidence >= previous.confidence - 5) return true
         if (current.synced && !previous.synced && current.confidence >= previous.confidence - 3) return true
         if (current.sections.size > previous.sections.size && current.confidence >= previous.confidence) return true
-        if (current.lines.any { it.translated.isNotBlank() } && previous.lines.none { it.translated.isNotBlank() } && current.confidence >= previous.confidence) return true
+        if (
+            translatedEligibleCount(current) > translatedEligibleCount(previous) &&
+            current.confidence >= previous.confidence
+        ) return true
         return false
+    }
+
+    private fun translatedEligibleCount(result: LyricsResult): Int = result.lines.count { line ->
+        !line.isMetadata && !line.isInstrumental && line.text.isNotBlank() && line.translated.isNotBlank()
     }
 
     private fun sameResult(left: LyricsResult, right: LyricsResult): Boolean {
