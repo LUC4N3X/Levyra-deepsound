@@ -16,8 +16,7 @@ internal fun parseLocalReplayGainTags(raw: String): ReplayGainMetadata {
     }
 
     fun gain(key: String): Float? = tags[key]
-        ?.removeSuffix("dB")
-        ?.removeSuffix("DB")
+        ?.replace(Regex("\\s*[dD][bB]\\s*$"), "")
         ?.trim()
         ?.replace(',', '.')
         ?.toFloatOrNull()
