@@ -605,22 +605,35 @@ internal fun selectPreferredVideoPlaybackCandidate(
     candidates: List<Track>,
     authoritativeIds: Set<String> = emptySet()
 ): Track? {
-    val artTrackIds = if (YoutubeMusicVideoType.isArtTrack(target.videoType)) {
-        setOf(target.audioVideoId.trim(), target.id.trim()) - target.counterpartVideoId.trim()
-    } else {
-        emptySet()
-    }
+    // A track's own audio identity (ATV id, catalog id, or the id in videoUrl) must never be
+    // selected as its native video. The exclusion cannot depend on the declared musicVideoType:
+    // chart entries resolved by search may carry no type while the watch list still offers the
+    // bare ATV, which then loses only if we always exclude the audio identity itself.
+    val videoPrimary = YoutubeMusicVideoType.isVideo(target.videoType)
+    val audioIdentityIds = buildSet {
+        add(target.audioVideoId.trim())
+        if (!videoPrimary) {
+            add(target.id.trim())
+            add(youtubeVideoId(target.videoUrl).trim())
+        }
+    }.filter { YOUTUBE_PLAYABLE_VIDEO_ID.matches(it) }.toSet() - target.counterpartVideoId.trim()
     return candidates.asSequence()
         .mapIndexed { rank, candidate -> rank to candidate }
         .filter { (_, candidate) ->
             val candidateId = videoCandidateId(candidate)
             YOUTUBE_PLAYABLE_VIDEO_ID.matches(candidateId) &&
-                candidateId !in artTrackIds &&
+                candidateId !in audioIdentityIds &&
                 !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
         }
         .filter { (_, candidate) -> isPlaybackCandidateCompatible(target, candidate) }
         .maxByOrNull { (rank, candidate) ->
-            val authority = if (videoCandidateId(candidate) in authoritativeIds) {
+            val candidateId = videoCandidateId(candidate)
+            // Pairing authority only applies to a candidate YouTube Music declares as a video.
+            // An untyped watch entry that merely mirrors the song's own ATV identity must not
+            // outrank a real official video.
+            val authority = if (
+                candidateId in authoritativeIds && YoutubeMusicVideoType.isVideo(candidate.videoType)
+            ) {
                 VIDEO_PAIRING_AUTHORITY_BONUS
             } else {
                 0
@@ -10136,6 +10149,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .ifBlank { candidate.id.trim() }
             .takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches)
             ?: return null
+        // A stale cached candidate must never turn the song's own audio identity into a "video".
+        val targetVideoTyped = videoType.contains("OMV", ignoreCase = true) ||
+            videoType.contains("UGC", ignoreCase = true)
+        if (!targetVideoTyped && videoId == sourceId.trim()) return null
         return copy(
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             counterpartVideoId = videoId,
@@ -11000,14 +11017,16 @@ internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): T
         .firstOrNull(String::isNotBlank)
         .orEmpty()
     val type = track.videoType.uppercase()
+    val videoTyped = type.contains("OMV") || type.contains("UGC")
     val videoId = when {
         !preferVideo -> regular.ifBlank { counterpart }
         type.contains("ATV") -> counterpart
-        type.contains("OMV") || type.contains("UGC") -> fromUrl.ifBlank { regular }
+        videoTyped -> fromUrl.ifBlank { regular }
         counterpart.isNotBlank() -> counterpart
         else -> ""
     }
     if (videoId.isBlank()) return null
+    if (preferVideo && videoId == regular && !videoTyped) return null
     return track.copy(
         videoUrl = "https://www.youtube.com/watch?v=$videoId",
         audioVideoId = regular
@@ -11019,7 +11038,31 @@ private val YOUTUBE_ENGAGEMENT_VIDEO_ID = YOUTUBE_PLAYABLE_VIDEO_ID
 
 internal fun youtubeEngagementVideoId(track: Track): String {
     val selectedVideoId = PlaybackSourceIdentity.sourceVideoId(track)
-    if (isYoutubeBackedTrack(track) && YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(selectedVideoId)) {
+    val youtubeBacked = isYoutubeBackedTrack(track)
+    if (
+        youtubeBacked &&
+        YoutubeMusicVideoType.isVideo(track.videoType) &&
+        YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(selectedVideoId)
+    ) {
+        return selectedVideoId
+    }
+    // Prefer the counterpart only when the track still carries a confirmed audio identity.
+    // This proves the pair is audio -> video instead of treating any untyped counterpart as trusted.
+    if (youtubeBacked) {
+        val audioVideoId = track.audioVideoId.trim()
+        val counterpart = track.counterpartVideoId.trim()
+        val confirmedAudioPair =
+            YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(audioVideoId) &&
+                selectedVideoId == audioVideoId
+        if (
+            confirmedAudioPair &&
+            YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(counterpart) &&
+            counterpart != audioVideoId
+        ) {
+            return counterpart
+        }
+    }
+    if (youtubeBacked && YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(selectedVideoId)) {
         return selectedVideoId
     }
     val urlVideoId = youtubeVideoId(track.videoUrl).trim()
@@ -11028,7 +11071,7 @@ internal fun youtubeEngagementVideoId(track: Track): String {
     val idUrlVideoId = youtubeVideoId(track.id).trim()
     if (YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(idUrlVideoId)) return idUrlVideoId
 
-    if (!isYoutubeBackedTrack(track)) return ""
+    if (!youtubeBacked) return ""
     return sequenceOf(track.counterpartVideoId, track.id)
         .map(String::trim)
         .firstOrNull(YOUTUBE_ENGAGEMENT_VIDEO_ID::matches)
