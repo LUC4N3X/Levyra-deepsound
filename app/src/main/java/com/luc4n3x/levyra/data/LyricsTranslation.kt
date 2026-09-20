@@ -42,7 +42,9 @@ internal class LyricsTranslationCoordinator(
         targetLanguageTag: String
     ): LyricsTranslationOutcome {
         val eligibleIndices = lines.indices.filter { index -> lines[index].isTranslationEligible() }
-        if (eligibleIndices.isEmpty()) return LyricsTranslationOutcome(lines, LyricsTranslationState.UNAVAILABLE)
+        if (eligibleIndices.isEmpty()) {
+            return LyricsTranslationOutcome(lines, LyricsTranslationState.SAME_LANGUAGE)
+        }
         if (eligibleIndices.all { lines[it].translated.isNotBlank() }) {
             return LyricsTranslationOutcome(lines, LyricsTranslationState.PROVIDER)
         }
