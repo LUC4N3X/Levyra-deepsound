@@ -139,8 +139,9 @@ internal fun MotionArtworkLayer(
     LaunchedEffect(videoArtwork) {
         if (videoArtwork == null) videoReady = false
     }
-    LaunchedEffect(motionGatesOpen, artwork?.identityKey) {
-        if (!motionGatesOpen || displayedArtwork?.identityKey != artwork.identityKey) {
+    val artworkIdentityKey = artwork?.identityKey
+    LaunchedEffect(motionGatesOpen, artworkIdentityKey) {
+        if (!motionGatesOpen || displayedArtwork?.identityKey != artworkIdentityKey) {
             displayedArtwork = null
         }
     }
