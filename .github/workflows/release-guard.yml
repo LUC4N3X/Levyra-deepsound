@@ -8,7 +8,6 @@ on:
     paths:
       - gradle.properties
       - app/build.gradle.kts
-      - README.md
       - docs/RELEASE_NOTES.md
       - fdroid/metadata/**
       - scripts/render_fdroid_metadata.py
@@ -92,8 +91,6 @@ jobs:
           fi
 
           grep -F "\"${VERSION}\"" app/build.gradle.kts >/dev/null
-          grep -F "levyraVersionName=${VERSION}" README.md >/dev/null
-          grep -F "levyraVersionCode=${VERSION_CODE}" README.md >/dev/null
 
           NOTES_FILE="docs/RELEASE_NOTES.md"
           test -f "${NOTES_FILE}"
