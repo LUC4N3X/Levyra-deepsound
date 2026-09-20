@@ -628,39 +628,39 @@ Build instructions and contributor documentation are in the [Levyra Documentatio
 
 <table width="100%">
   <tr>
-    <td width="70%" valign="middle">
-      <table>
-        <tr>
-          <td valign="middle">
-            <h2><a href="https://github.com/LUC4N3X">LUC4N3X</a></h2>
-          </td>
-          <td valign="middle">
-            <code>Creator & Lead Developer</code>
-          </td>
-        </tr>
-      </table>
+    <td width="64%" valign="middle">
+      <p><sub><b>CREATOR &amp; LEAD DEVELOPER</b></sub></p>
+      <h2><a href="https://github.com/LUC4N3X">LUC4N3X</a></h2>
+      <p><b>Independent developer building Levyra across Android and Windows.</b></p>
       <p>
-        I started Levyra and I still build most of it myself. The work is mainly Kotlin: Media3 / ExoPlayer on Android, libvlc on Windows, local SQLite data, lyrics, downloads, and all the less glamorous playback/reliability stuff around them.
+        I created Levyra and lead its product direction, architecture, playback stack, interface, local data, lyrics, downloads, reliability work, and release engineering. Most of the project is built hands-on in Kotlin, with platform-specific work where Android and Windows need it.
+      </p>
+      <p>
+        <a href="https://github.com/LUC4N3X"><b>GitHub ↗</b></a>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="https://luc4n3x.pages.dev/"><b>Website ↗</b></a>
       </p>
       <p>
         <code>Kotlin</code>&nbsp;&nbsp;
-        <code>Media3 / Compose</code>&nbsp;&nbsp;
+        <code>Jetpack Compose</code>&nbsp;&nbsp;
+        <code>Media3 / ExoPlayer</code>&nbsp;&nbsp;
         <code>libvlc</code>&nbsp;&nbsp;
         <code>SQLite</code>
       </p>
     </td>
-    <td width="30%" align="center" valign="middle">
-      <a href="https://github.com/LUC4N3X">
-        <img src="docs/assets/levyra-signature.png" width="230" alt="LUC4N3X — Levyra creator signature" />
+    <td width="36%" align="center" valign="middle">
+      <a href="https://luc4n3x.pages.dev/">
+        <img src="docs/assets/levyra-signature.png" width="270" alt="LUC4N3X — Creator and Lead Developer of Levyra" />
       </a>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      <sub>Branding credit · Thanks to <a href="https://github.com/gauravbhindwar">@gauravbhindwar</a> for designing and contributing Levyra's new app logo in <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525">#525</a>.</sub>
+      <br>
+      <sub><a href="https://luc4n3x.pages.dev/">luc4n3x.pages.dev</a></sub>
     </td>
   </tr>
 </table>
+
+<p>
+  <sub><b>Branding credit</b> · Thanks to <a href="https://github.com/gauravbhindwar">@gauravbhindwar</a> for designing and contributing Levyra's new app logo in <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525">#525</a>.</sub>
+</p>
 
 ### Built With & Inspired By
 
