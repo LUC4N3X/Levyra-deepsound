@@ -188,6 +188,74 @@ def _publish_atomically(path: Path, text: str) -> None:
                 pass
 
 
+def _write_file_lf(path: Path, text: str) -> None:
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _read_file_lf(path: Path) -> str:
+    with open(path, "r", encoding="utf-8", newline="\n") as handle:
+        return handle.read()
+
+
+def _publish_generation(
+    assets_dir: Path,
+    updates: Mapping[str, str],
+    fail_after_commits: int | None = None,
+) -> None:
+    """Publish a complete asset generation as one recoverable transaction.
+
+    Every file is staged and verified first, the previous versions are preserved
+    as backups, and all files are committed in deterministic order. Any commit
+    failure restores every already committed file and removes staging/backup
+    files, so the repository never contains a partially updated generation.
+    """
+    paths = {name: assets_dir / name for name in updates}
+    for path in paths.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    staged: dict[str, Path] = {}
+    backups: dict[str, Path] = {}
+    try:
+        for name, path in paths.items():
+            temp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+            _write_file_lf(temp, updates[name])
+            if _read_file_lf(temp) != updates[name]:
+                raise PipelineError(f"staged asset {name} failed verification")
+            staged[name] = temp
+
+        committed: list[str] = []
+        try:
+            for name, path in paths.items():
+                backup = path.with_name(f".{path.name}.{uuid.uuid4().hex}.bak")
+                if path.exists():
+                    os.replace(path, backup)
+                    backups[name] = backup
+                if fail_after_commits is not None and len(committed) == fail_after_commits:
+                    raise OSError("simulated asset commit failure")
+                os.replace(staged[name], path)
+                committed.append(name)
+            for name, path in paths.items():
+                if _read_file_lf(path) != updates[name]:
+                    raise PipelineError(f"committed asset {name} failed verification")
+            for backup in backups.values():
+                backup.unlink(missing_ok=True)
+        except (OSError, PipelineError) as error:
+            for name in reversed(committed):
+                paths[name].unlink(missing_ok=True)
+            for name, backup in backups.items():
+                if backup.exists():
+                    os.replace(backup, paths[name])
+            raise PipelineError(f"asset generation commit failed: {error}") from error
+    finally:
+        for temp in staged.values():
+            temp.unlink(missing_ok=True)
+        for backup in backups.values():
+            backup.unlink(missing_ok=True)
+
+
 def _build_meta(report: PipelineReport) -> dict[str, object]:
     return {
         "schema": 1,
@@ -359,22 +427,20 @@ def run_pipeline(
             snapshot_tuple,
         )
 
-    written: list[str] = []
+    updates: dict[str, str] = {}
     if players_changed:
-        _publish_atomically(assets_dir / PLAYER_CONFIGS_ASSET, _render_and_verify(selection))
-        written.append(PLAYER_CONFIGS_ASSET)
+        updates[PLAYER_CONFIGS_ASSET] = _render_and_verify(selection)
     if dates_changed and dates_raw is not None:
-        _publish_atomically(assets_dir / PLAYER_DATES_ASSET, dates_raw)
-        written.append(PLAYER_DATES_ASSET)
+        updates[PLAYER_DATES_ASSET] = dates_raw
 
     report = PipelineReport(
         decision=DECISION_UPDATED,
         changed=True,
-        written_assets=tuple([*written, PLAYER_META_ASSET]),
+        written_assets=tuple([*updates.keys(), PLAYER_META_ASSET]),
         **base,
     )
-    meta_text = json.dumps(_build_meta(report), indent=2, sort_keys=True) + "\n"
-    _publish_atomically(assets_dir / PLAYER_META_ASSET, meta_text)
+    updates[PLAYER_META_ASSET] = json.dumps(_build_meta(report), indent=2, sort_keys=True) + "\n"
+    _publish_generation(assets_dir, updates)
     return report, snapshot_tuple
 
 

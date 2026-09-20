@@ -442,17 +442,22 @@ class FaradaySource(PlayerConfigSource):
         registry_updated = str(root.get("updatedAt") or "")[:40]
         known: dict[str, dict[str, str]] = {}
         entries = root.get("players")
-        if isinstance(entries, list):
-            for item in entries:
-                if not isinstance(item, dict):
-                    continue
-                player_hash = item.get("playerHash")
-                if not isinstance(player_hash, str) or not HASH_RE.fullmatch(player_hash):
-                    continue
-                known[player_hash] = {
-                    "status": str(item.get("status") or "")[:32],
-                    "sha256": str(item.get("sha256") or "")[:64],
-                }
+        if entries is None:
+            raise SourceRejected("player-registry is missing the players list")
+        if not isinstance(entries, list):
+            raise SourceRejected("player-registry players is not a list")
+        if len(entries) > MAX_METADATA_ENTRIES:
+            raise SourceRejected("player-registry exceeds the entry limit")
+        for item in entries:
+            if not isinstance(item, dict):
+                raise SourceRejected("player-registry entry is not an object")
+            player_hash = item.get("playerHash")
+            if not isinstance(player_hash, str) or not HASH_RE.fullmatch(player_hash):
+                raise SourceRejected(f"player-registry entry has an invalid playerHash {player_hash!r}")
+            known[player_hash] = {
+                "status": str(item.get("status") or "")[:32],
+                "sha256": str(item.get("sha256") or "")[:64],
+            }
         current = root.get("current")
         current_hash = ""
         if isinstance(current, dict):
@@ -591,8 +596,6 @@ def _cluster_verdict(
     secondary_entry = _single_entry(cluster.secondary_entries)
     existing = _single_entry(cluster.existing_entries)
 
-    if cluster.ambiguous:
-        return VERDICT_CONFLICTING, existing, True
     if primary_entry is not None and secondary_entry is not None:
         if primary_entry.capability() == secondary_entry.capability():
             return VERDICT_CONFIRMED, primary_entry, False
@@ -735,6 +738,26 @@ def select_configurations(
     notes: list[str] = []
 
     for cluster in clusters:
+        if cluster.ambiguous:
+            marker = cluster.identifiers[0]
+            if cluster.existing_entries:
+                for preserved in cluster.existing_entries:
+                    key = preserved.primary_hash
+                    cluster_by_key[key] = cluster
+                    verdicts[key] = VERDICT_LAST_KNOWN_GOOD
+                    picks[key] = preserved
+                conflicts.append(marker)
+                notes.append(
+                    f"{marker}: ambiguous cross-source identity; "
+                    "every last known good entry preserved unchanged"
+                )
+            else:
+                cluster_by_key[marker] = cluster
+                verdicts[marker] = VERDICT_CONFLICTING
+                conflicts.append(marker)
+                notes.append(f"{marker}: ambiguous cross-source identity; unsafe candidate omitted")
+            continue
+
         verdict, pick, is_conflict = _cluster_verdict(cluster, primary.healthy)
         if not verdict:
             continue
@@ -742,7 +765,25 @@ def select_configurations(
         cluster_by_key[key] = cluster
         verdicts[key] = verdict
         if pick is not None:
-            picks[key] = pick.with_aliases(_canonical_aliases(cluster, pick))
+            canonical = _canonical_aliases(cluster, pick)
+            if len(canonical) > MAX_ALIASES_PER_PLAYER:
+                existing = _single_entry(cluster.existing_entries)
+                if existing is not None:
+                    picks[key] = existing
+                    verdicts[key] = VERDICT_LAST_KNOWN_GOOD
+                    conflicts.append(key)
+                    notes.append(
+                        f"{key}: canonical aliases exceed the supported limit; "
+                        "complete last known good entry preserved"
+                    )
+                else:
+                    verdicts[key] = VERDICT_CONFLICTING
+                    conflicts.append(key)
+                    notes.append(
+                        f"{key}: canonical aliases exceed the supported limit; unsafe candidate omitted"
+                    )
+            else:
+                picks[key] = pick.with_aliases(canonical)
         if is_conflict:
             conflicts.append(key)
             notes.append(

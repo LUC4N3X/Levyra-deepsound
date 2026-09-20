@@ -861,7 +861,12 @@ private data class YoutubeConfigRefreshOutcome(
 
 private data class YoutubeConfigRecovery(
     val requiredHash: String,
-    val stopOnVerifiedChange: Boolean
+    val priorIdentity: String?
+)
+
+private data class YoutubeEmergencyOverride(
+    val config: YoutubePlayerCipherConfig,
+    val displacedIdentity: String
 )
 
 internal enum class YoutubePlayerConfigTrust {
@@ -926,7 +931,8 @@ internal class YoutubePlayerConfigStore(
     private val cacheDir: File,
     private val bundledConfigText: () -> String,
     private val sources: List<YoutubePlayerConfigSource> = YoutubePlayerConfigSources.active,
-    private val clock: () -> Long = System::currentTimeMillis
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val failStorageCommit: () -> Boolean = { false }
 ) {
     constructor(context: Context, httpClient: OkHttpClient) : this(
         httpClient = httpClient,
@@ -953,7 +959,7 @@ internal class YoutubePlayerConfigStore(
     private var bundledConfigs: Map<String, YoutubePlayerCipherConfig> = emptyMap()
     private var verifiedConfigs: Map<String, YoutubePlayerCipherConfig> = emptyMap()
     private var provisionalConfigs: Map<String, YoutubePlayerCipherConfig> = emptyMap()
-    private var emergencyOverrides: Map<String, YoutubePlayerCipherConfig> = emptyMap()
+    private var emergencyOverrides: Map<String, YoutubeEmergencyOverride> = emptyMap()
 
     @Volatile
     private var mergedConfigs: Map<String, YoutubePlayerCipherConfig> = emptyMap()
@@ -978,10 +984,11 @@ internal class YoutubePlayerConfigStore(
         return mutex.withLock {
             val now = clock()
             if (!cooldowns.claimRejection(now)) return@withLock YoutubeStreamRefreshResult.SKIPPED
+            val priorIdentity = mergedConfigs[rejectedHash]?.identity
             val outcome = refreshLocked(
                 force = true,
                 reason = "stream-rejected",
-                recovery = YoutubeConfigRecovery(requiredHash = rejectedHash, stopOnVerifiedChange = true)
+                recovery = YoutubeConfigRecovery(requiredHash = rejectedHash, priorIdentity = priorIdentity)
             )
             if (!outcome.reachedServer) {
                 cooldowns.resetRejection()
@@ -1004,7 +1011,7 @@ internal class YoutubePlayerConfigStore(
             val outcome = refreshLocked(
                 force = true,
                 reason = "unknown-player-$hash",
-                recovery = YoutubeConfigRecovery(requiredHash = hash, stopOnVerifiedChange = false)
+                recovery = YoutubeConfigRecovery(requiredHash = hash, priorIdentity = null)
             )
             if (!outcome.reachedServer) cooldowns.resetUnknown()
             mergedConfigs.containsKey(hash)
@@ -1058,25 +1065,34 @@ internal class YoutubePlayerConfigStore(
                     if (recovery == null) {
                         return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
                     }
+                    if (source.trust == YoutubePlayerConfigTrust.PROVISIONAL) {
+                        val overrideChanged = installEmergencyOverride(recovery.requiredHash)
+                        if (overrideChanged != null) {
+                            return YoutubeConfigRefreshOutcome(changed = overrideChanged, reachedServer = true)
+                        }
+                    }
                 }
                 is YoutubeConfigFetchResult.Accepted -> {
-                    val changed = publishConfig(source, result, now, reason)
+                    val published = publishConfig(source, result, now, reason)
+                    if (published == null) {
+                        return YoutubeConfigRefreshOutcome(changed = false, reachedServer = true)
+                    }
                     if (recovery == null) {
-                        return YoutubeConfigRefreshOutcome(changed = changed, reachedServer = true)
+                        return YoutubeConfigRefreshOutcome(changed = published, reachedServer = true)
                     }
                     if (source.trust == YoutubePlayerConfigTrust.VERIFIED) {
-                        val resolved = if (recovery.stopOnVerifiedChange) {
-                            changed
-                        } else {
+                        val resolved = if (recovery.priorIdentity == null) {
                             mergedConfigs.containsKey(recovery.requiredHash)
+                        } else {
+                            mergedConfigs[recovery.requiredHash]?.identity != recovery.priorIdentity
                         }
                         if (resolved) {
-                            return YoutubeConfigRefreshOutcome(changed = changed, reachedServer = true)
+                            return YoutubeConfigRefreshOutcome(changed = published, reachedServer = true)
                         }
                     } else {
                         val overrideChanged = installEmergencyOverride(recovery.requiredHash)
                         if (overrideChanged != null) {
-                            return YoutubeConfigRefreshOutcome(changed = changed || overrideChanged, reachedServer = true)
+                            return YoutubeConfigRefreshOutcome(changed = published || overrideChanged, reachedServer = true)
                         }
                     }
                 }
@@ -1158,7 +1174,7 @@ internal class YoutubePlayerConfigStore(
             YoutubePlayerConfigParser.merge(bundledConfigs, verifiedConfigs)
         }
         if (emergencyOverrides.isEmpty()) return base
-        return YoutubePlayerConfigParser.merge(base, emergencyOverrides)
+        return YoutubePlayerConfigParser.merge(base, emergencyOverrides.mapValues { it.value.config })
     }
 
     private fun applyMerged(next: Map<String, YoutubePlayerCipherConfig>): Boolean {
@@ -1168,17 +1184,41 @@ internal class YoutubePlayerConfigStore(
         return changed
     }
 
+    /** Installs a temporary in-memory override for one logical player recovered from the
+     * provisional cache. Returns null when the provisional cache has no entry for the hash,
+     * false when an identical override is already active, and true when the effective
+     * configuration changed. Verified disk state is never touched. */
     private fun installEmergencyOverride(hash: String): Boolean? {
         val entry = provisionalConfigs[hash] ?: return null
         val keys = provisionalConfigs.entries
             .filter { it.value.primaryHash == entry.primaryHash }
             .map { it.key }
             .toSet()
-        if (keys.isEmpty() || keys.all { emergencyOverrides[it] == entry }) {
-            return false
+        if (keys.isEmpty()) return null
+        if (keys.all { emergencyOverrides[it]?.config == entry }) return false
+        val next = emergencyOverrides.toMutableMap()
+        for (key in keys) {
+            next[key] = YoutubeEmergencyOverride(
+                config = entry,
+                displacedIdentity = mergedConfigs[key]?.identity.orEmpty()
+            )
         }
-        emergencyOverrides = emergencyOverrides + keys.associateWith { entry }
+        emergencyOverrides = next
         return applyMerged(mergeConfigs())
+    }
+
+    /** Drops emergency overrides for players whose verified configuration genuinely changed,
+     * so verified data becomes authoritative again. Overrides stay when the verified config
+     * is still the rejected generation or the player is absent from verified data. */
+    private fun clearResolvedEmergencyOverrides() {
+        if (emergencyOverrides.isEmpty()) return
+        val remaining = emergencyOverrides.filter { (hash, override) ->
+            val verifiedEntry = verifiedConfigs[hash]
+            verifiedEntry == null || verifiedEntry.identity == override.displacedIdentity
+        }
+        if (remaining.size != emergencyOverrides.size) {
+            emergencyOverrides = remaining
+        }
     }
 
     private suspend fun publishConfig(
@@ -1186,31 +1226,37 @@ internal class YoutubePlayerConfigStore(
         accepted: YoutubeConfigFetchResult.Accepted,
         now: Long,
         reason: String
-    ): Boolean {
+    ): Boolean? {
         val nextRemote = accepted.parsed.configs
+        val metadata = YoutubeConfigMetadata(
+            etag = accepted.etag,
+            checkedAtMs = now,
+            contentSha256 = sha256(accepted.body),
+            sourceId = source.id
+        )
+        val persisted = withContext(Dispatchers.IO) {
+            writeConfigTransaction(
+                configFileFor(source.trust),
+                accepted.body,
+                metadataFileFor(source.trust),
+                metadata
+            )
+        }
+        if (!persisted) {
+            Timber.w(
+                "Player config persistence failed source=%s reason=%s; keeping previous generation",
+                source.id,
+                reason
+            )
+            return null
+        }
         if (source.trust == YoutubePlayerConfigTrust.VERIFIED) {
             verifiedConfigs = nextRemote
+            clearResolvedEmergencyOverrides()
         } else {
             provisionalConfigs = nextRemote
         }
         val changed = applyMerged(mergeConfigs())
-
-        val configFile = configFileFor(source.trust)
-        val metaFile = metadataFileFor(source.trust)
-        withContext(Dispatchers.IO) {
-            runCatching {
-                writeAtomic(configFile, accepted.body)
-                writeMetadata(
-                    metaFile,
-                    YoutubeConfigMetadata(
-                        etag = accepted.etag,
-                        checkedAtMs = now,
-                        contentSha256 = sha256(accepted.body),
-                        sourceId = source.id
-                    )
-                )
-            }.onFailure { Timber.w(it, "Player config persistence failed after in-memory update") }
-        }
         Timber.d(
             "Player config refresh completed changed=%s epoch=%s entries=%s skipped=%s trust=%s source=%s reason=%s",
             changed,
@@ -1222,6 +1268,83 @@ internal class YoutubePlayerConfigStore(
             reason
         )
         return changed
+    }
+
+    /** Publishes a config body and its metadata as one recoverable transaction. Both files are
+     * staged and verified first, the previous pair is preserved, then both are committed. Any
+     * commit failure restores the previous pair and removes staging/backup files. */
+    private fun writeConfigTransaction(
+        configFile: File,
+        configText: String,
+        metaFile: File,
+        metadata: YoutubeConfigMetadata
+    ): Boolean {
+        val parent = configFile.parentFile ?: return false
+        if (!parent.exists() && !parent.mkdirs()) return false
+        val suffix = UUID.randomUUID().toString()
+        val stagedConfig = File(parent, ".${configFile.name}.$suffix.tmp")
+        val stagedMeta = File(parent, ".${metaFile.name}.$suffix.tmp")
+        val backupConfig = File(parent, ".${configFile.name}.$suffix.bak")
+        val backupMeta = File(parent, ".${metaFile.name}.$suffix.bak")
+        val metaText = metadata.toJson()
+        return try {
+            if (!writeFsynced(stagedConfig, configText)) return false
+            if (!writeFsynced(stagedMeta, metaText)) return false
+            if (stagedConfig.readText() != configText) return false
+            if (stagedMeta.readText() != metaText) return false
+
+            val hadConfig = configFile.exists()
+            val hadMeta = metaFile.exists()
+            if (hadConfig && !configFile.renameTo(backupConfig)) return false
+            if (hadMeta && !metaFile.renameTo(backupMeta)) {
+                if (hadConfig) backupConfig.renameTo(configFile)
+                return false
+            }
+            if (!stagedConfig.renameTo(configFile)) {
+                if (hadConfig) backupConfig.renameTo(configFile)
+                if (hadMeta) backupMeta.renameTo(metaFile)
+                return false
+            }
+            if (failStorageCommit()) {
+                configFile.delete()
+                if (hadConfig) backupConfig.renameTo(configFile)
+                if (hadMeta) backupMeta.renameTo(metaFile)
+                return false
+            }
+            if (!stagedMeta.renameTo(metaFile)) {
+                configFile.delete()
+                if (hadConfig) backupConfig.renameTo(configFile)
+                if (hadMeta) backupMeta.renameTo(metaFile)
+                return false
+            }
+            backupConfig.delete()
+            backupMeta.delete()
+            true
+        } finally {
+            stagedConfig.delete()
+            stagedMeta.delete()
+            if (configFile.exists()) {
+                backupConfig.delete()
+            } else if (backupConfig.exists()) {
+                backupConfig.renameTo(configFile)
+            }
+            if (metaFile.exists()) {
+                backupMeta.delete()
+            } else if (backupMeta.exists()) {
+                backupMeta.renameTo(metaFile)
+            }
+        }
+    }
+
+    private fun writeFsynced(file: File, text: String): Boolean {
+        return runCatching {
+            FileOutputStream(file).use { output ->
+                output.write(text.toByteArray(StandardCharsets.UTF_8))
+                output.flush()
+                output.fd.sync()
+            }
+            true
+        }.getOrDefault(false)
     }
 
     private fun loadBundled(): Map<String, YoutubePlayerCipherConfig> {
@@ -1335,6 +1458,13 @@ private data class YoutubeConfigMetadata(
 ) {
     val effectiveSourceId: String
         get() = sourceId.ifBlank { YoutubePlayerConfigSources.LEVYRA_VERIFIED_MIRROR_ID }
+
+    fun toJson(): String = JSONObject()
+        .put("etag", etag)
+        .put("checkedAtMs", checkedAtMs)
+        .put("contentSha256", contentSha256)
+        .put("sourceId", sourceId)
+        .toString()
 }
 
 private data class YoutubePlayerScript(

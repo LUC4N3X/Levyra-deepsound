@@ -28,6 +28,7 @@ class YoutubePlayerConfigStoreTest {
     private val provisionalMetadataFile = File(cacheDir, "player_configs_provisional_meta.json")
     private val requests = mutableListOf<Request>()
     private var now = 10_000_000L
+    private var storageFailure = false
 
     private val upstream = YoutubePlayerConfigSource("zemer-upstream", "https://upstream.test/player_configs.json")
     private val mirror = YoutubePlayerConfigSource("levyra-verified-mirror", "https://mirror.test/player_configs.json")
@@ -608,6 +609,172 @@ class YoutubePlayerConfigStoreTest {
         YoutubePlayerConfigTrust.PROVISIONAL
     )
 
+    @Test
+    fun storageFailureAfterConfigCommitKeepsPreviousGeneration() = runBlocking {
+        seedLastKnownGood(etag = "\"v1\"")
+        storageFailure = true
+        val store = store(respond(upstream to ok(newerRemoteTable, etag = "\"v2\"")))
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+        val epoch = store.epoch
+
+        assertFalse(store.refresh(force = true, reason = "test"))
+
+        assertEquals(epoch, store.epoch)
+        assertEquals(20002, store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureTimestamp)
+        assertNull(store.configFor(NEWER_HASH, refreshUnknown = false))
+        assertEquals(remoteTable, remoteFile.readText())
+        assertEquals("\"v1\"", JSONObject(metadataFile.readText()).getString("etag"))
+    }
+
+    @Test
+    fun cachedProvisional304CanResolveUnknownPlayer() = runBlocking {
+        val mirror = verifiedMirror()
+        val raw = provisionalRaw()
+        seedLastKnownGood(source = mirror)
+        val seeder = store(respond(raw to ok(table(entry(REQUESTED_HASH, 20099)), etag = "\"p1\"")), sources = listOf(raw))
+        assertFalse(seeder.refresh(force = true, reason = "seed"))
+        requests.clear()
+
+        val store = store(
+            respond(mirror to ok(remoteTable), raw to notModified()),
+            sources = listOf(mirror, raw)
+        )
+
+        assertEquals(20099, store.configFor(REQUESTED_HASH, refreshUnknown = true)?.signatureTimestamp)
+
+        assertEquals(listOf(mirror.url, raw.url), requests.map { it.url.toString() })
+        assertEquals("\"p1\"", requests[1].header("If-None-Match"))
+    }
+
+    @Test
+    fun cachedProvisional304CanRecoverRejectedPlayer() = runBlocking {
+        val mirror = verifiedMirror()
+        val raw = provisionalRaw()
+        seedLastKnownGood(source = mirror)
+        val seeder = store(
+            respond(raw to ok(table(entry(REMOTE_HASH, 20002, sig = "Cd(3,4,INPUT)")), etag = "\"p1\"")),
+            sources = listOf(raw)
+        )
+        assertFalse(seeder.refresh(force = true, reason = "seed"))
+        requests.clear()
+
+        val store = store(
+            respond(mirror to ok(remoteTable), raw to notModified()),
+            sources = listOf(mirror, raw)
+        )
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+
+        assertEquals(YoutubeStreamRefreshResult.CHANGED, store.refreshAfterStreamRejection(REMOTE_HASH))
+
+        assertEquals(listOf(mirror.url, raw.url), requests.map { it.url.toString() })
+        assertEquals("Cd(3,4,INPUT)", store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureExpression)
+    }
+
+    @Test
+    fun verifiedChangesUnrelatedPlayerStillFallsBackForRejectedHash() = runBlocking {
+        val mirror = verifiedMirror()
+        val raw = provisionalRaw()
+        seedLastKnownGood(source = mirror)
+        val store = store(
+            respond(
+                mirror to ok(table(entry(REMOTE_HASH, 20002), entry(NEWER_HASH, 20003))),
+                raw to ok(table(entry(REMOTE_HASH, 20002, sig = "Cd(3,4,INPUT)")))
+            ),
+            sources = listOf(mirror, raw)
+        )
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+
+        assertEquals(YoutubeStreamRefreshResult.CHANGED, store.refreshAfterStreamRejection(REMOTE_HASH))
+
+        assertEquals(listOf(mirror.url, raw.url), requests.map { it.url.toString() })
+        assertEquals("Cd(3,4,INPUT)", store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureExpression)
+    }
+
+    @Test
+    fun verifiedChangesRejectedPlayerDoesNotContactRawSource() = runBlocking {
+        val mirror = verifiedMirror()
+        val raw = provisionalRaw()
+        seedLastKnownGood(source = mirror)
+        val store = store(
+            respond(
+                mirror to ok(table(entry(REMOTE_HASH, 20002, sig = "Cd(3,4,INPUT)"))),
+                raw to ok(table(entry(REMOTE_HASH, 20002, sig = "Ef(5,6,INPUT)")))
+            ),
+            sources = listOf(mirror, raw)
+        )
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+
+        assertEquals(YoutubeStreamRefreshResult.CHANGED, store.refreshAfterStreamRejection(REMOTE_HASH))
+
+        assertEquals(listOf(mirror.url), requests.map { it.url.toString() })
+        assertEquals("Cd(3,4,INPUT)", store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureExpression)
+    }
+
+    @Test
+    fun verifiedRepairClearsEmergencyOverride() = runBlocking {
+        val mirror = verifiedMirror()
+        val raw = provisionalRaw()
+        seedLastKnownGood(source = mirror)
+        val routes = mutableMapOf(
+            mirror.url to notModified(),
+            raw.url to ok(table(entry(REMOTE_HASH, 20002, sig = "Cd(3,4,INPUT)")))
+        )
+        val store = storeWith(routes, listOf(mirror, raw))
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+        assertEquals(YoutubeStreamRefreshResult.CHANGED, store.refreshAfterStreamRejection(REMOTE_HASH))
+        assertEquals("Cd(3,4,INPUT)", store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureExpression)
+
+        requests.clear()
+        routes[mirror.url] = ok(table(entry(REMOTE_HASH, 20002, sig = "Ef(5,6,INPUT)")))
+
+        assertTrue(store.refresh(force = true, reason = "test"))
+
+        assertEquals("Ef(5,6,INPUT)", store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureExpression)
+    }
+
+    @Test
+    fun unrelatedVerifiedUpdateDoesNotClearEmergencyOverride() = runBlocking {
+        val mirror = verifiedMirror()
+        val raw = provisionalRaw()
+        seedLastKnownGood(source = mirror)
+        val routes = mutableMapOf(
+            mirror.url to notModified(),
+            raw.url to ok(table(entry(REMOTE_HASH, 20002, sig = "Cd(3,4,INPUT)")))
+        )
+        val store = storeWith(routes, listOf(mirror, raw))
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+        assertEquals(YoutubeStreamRefreshResult.CHANGED, store.refreshAfterStreamRejection(REMOTE_HASH))
+
+        requests.clear()
+        routes[mirror.url] = ok(table(entry(REMOTE_HASH, 20002), entry(NEWER_HASH, 20003)))
+
+        assertTrue(store.refresh(force = true, reason = "test"))
+
+        assertEquals("Cd(3,4,INPUT)", store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureExpression)
+        assertEquals(20003, store.configFor(NEWER_HASH, refreshUnknown = false)?.signatureTimestamp)
+    }
+
+    @Test
+    fun unchangedVerifiedRejectedConfigDoesNotClearEmergencyOverride() = runBlocking {
+        val mirror = verifiedMirror()
+        val raw = provisionalRaw()
+        seedLastKnownGood(source = mirror)
+        val routes = mutableMapOf(
+            mirror.url to notModified(),
+            raw.url to ok(table(entry(REMOTE_HASH, 20002, sig = "Cd(3,4,INPUT)")))
+        )
+        val store = storeWith(routes, listOf(mirror, raw))
+        store.configFor(REMOTE_HASH, refreshUnknown = false)
+        assertEquals(YoutubeStreamRefreshResult.CHANGED, store.refreshAfterStreamRejection(REMOTE_HASH))
+
+        requests.clear()
+        routes[mirror.url] = ok(remoteTable)
+
+        assertFalse(store.refresh(force = true, reason = "test"))
+
+        assertEquals("Cd(3,4,INPUT)", store.configFor(REMOTE_HASH, refreshUnknown = false)?.signatureExpression)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun configSourcesMustUseHttps() {
         YoutubePlayerConfigSource("insecure", "http://mirror.test/player_configs.json")
@@ -657,7 +824,28 @@ class YoutubePlayerConfigStoreTest {
             cacheDir = cacheDir,
             bundledConfigText = { bundledTable },
             sources = sources,
-            clock = { now }
+            clock = { now },
+            failStorageCommit = { storageFailure }
+        )
+    }
+
+    private fun storeWith(
+        routes: MutableMap<String, FakeResponse>,
+        sources: List<YoutubePlayerConfigSource>
+    ): YoutubePlayerConfigStore {
+        return store(
+            handler = { request ->
+                val response = routes[request.url.toString()] ?: throw IOException("unreachable ${request.url}")
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(response.code)
+                    .message("test")
+                    .apply { if (response.etag.isNotEmpty()) header("ETag", response.etag) }
+                    .body(response.body.toResponseBody("application/json".toMediaType()))
+                    .build()
+            },
+            sources = sources
         )
     }
 
