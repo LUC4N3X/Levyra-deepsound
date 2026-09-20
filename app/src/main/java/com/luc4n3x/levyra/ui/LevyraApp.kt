@@ -478,6 +478,7 @@ import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
 import com.luc4n3x.levyra.domain.LyricSectionType
 import com.luc4n3x.levyra.domain.LyricVocalRole
+import com.luc4n3x.levyra.domain.LyricsTranslationState
 import com.luc4n3x.levyra.domain.PulseArtist
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
@@ -6723,8 +6724,19 @@ private fun LyricsOverlay(
                             icon = Icons.Rounded.Visibility,
                             onClick = { lyricsFocusMode = !lyricsFocusMode }
                         )
+                        val translationLabel = when (state.lyricsTranslationState) {
+                            LyricsTranslationState.ON_DEVICE -> "${strings.automaticTranslation} · ${strings.offline}"
+                            LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED -> "${strings.automaticTranslation} · ${strings.download}"
+                            LyricsTranslationState.MODEL_DOWNLOADING -> "${strings.automaticTranslation} · ${strings.updateDownloading}"
+                            LyricsTranslationState.UNAVAILABLE,
+                            LyricsTranslationState.FAILED -> strings.lyricsUnavailable
+                            LyricsTranslationState.DISABLED,
+                            LyricsTranslationState.PENDING,
+                            LyricsTranslationState.PROVIDER,
+                            LyricsTranslationState.SAME_LANGUAGE -> strings.automaticTranslation
+                        }
                         LyricsControlChip(
-                            label = strings.automaticTranslation,
+                            label = translationLabel,
                             selected = state.lyricsTranslationEnabled,
                             icon = Icons.Rounded.Translate,
                             onClick = { onTranslation(!state.lyricsTranslationEnabled) }

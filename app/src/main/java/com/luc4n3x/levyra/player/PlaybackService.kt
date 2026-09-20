@@ -184,7 +184,12 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
-        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = refreshAudioOutputProfile()
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+            if (routedOutputIsBluetooth && removedDevices.any { it.isSink && isBluetoothOutputType(it.type) }) {
+                lostRouteWasBluetooth = true
+            }
+            refreshAudioOutputProfile()
+        }
     }
 
     private val deviceVolumeReceiver = object : BroadcastReceiver() {
@@ -691,7 +696,7 @@ class PlaybackService : MediaLibraryService() {
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) {
-                    lostRouteWasBluetooth = routedOutputIsBluetooth
+                    lostRouteWasBluetooth = lostRouteWasBluetooth || routedOutputIsBluetooth
                     pausedByRouteLossAtMs = SystemClock.elapsedRealtime()
                 } else {
                     lostRouteWasBluetooth = false
