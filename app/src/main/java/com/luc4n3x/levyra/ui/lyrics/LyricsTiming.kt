@@ -27,7 +27,7 @@ fun activeLyricIndex(positionMs: Long, lines: List<LyricLine>): Int {
         }
     }
     if (candidate < 0) return -1
-    val searchStart = (candidate - 16).coerceAtLeast(0)
+    val searchStart = 0
     for (index in candidate downTo searchStart) {
         val line = lines[index]
         if (line.role != LyricVocalRole.BACKGROUND && positionMs in line.startMs..line.endMs) return index

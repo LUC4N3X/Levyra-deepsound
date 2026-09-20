@@ -120,4 +120,17 @@ class LyricsTimingTest {
 
         assertEquals(offset, profiles.resolve(routeKey = null, bluetooth = false))
     }
+
+    @Test
+    fun `long active line survives more than sixteen later line starts`() {
+        val longRunning = line(0L, 30_000L)
+        val laterEndedLines = (1..20).map { index ->
+            val startMs = index * 500L
+            line(startMs, startMs + 100L)
+        }
+        val lines = listOf(longRunning) + laterEndedLines
+
+        assertEquals(0, activeLyricIndex(20_000L, lines))
+    }
+
 }

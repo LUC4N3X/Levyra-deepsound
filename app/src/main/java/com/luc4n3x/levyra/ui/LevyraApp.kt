@@ -6971,7 +6971,10 @@ private fun LyricsOverlay(
                                 selectedVerseKeys = if (selected) selectedVerseKeys - selectionKey else selectedVerseKeys + selectionKey
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
                             } else if (calibrateMode && state.lyricsSynced) {
-                                lyricsOffsetMs = state.positionMs - line.startMs
+                                lyricsOffsetMs = adjustLyricsOffset(
+                                    0L,
+                                    state.positionMs - line.startMs
+                                )
                                 calibrateMode = false
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
                                 autoScrollEnabled = true

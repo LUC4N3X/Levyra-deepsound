@@ -111,7 +111,7 @@ class PlaybackTileService : TileService() {
             PlaybackService.activePlayerFlow.collect { player ->
                 if (player != null && controller == null && controllerFuture == null) {
                     connect()
-                } else if (player == null && controller != null && !pendingToggle) {
+                } else if (player == null && !pendingToggle) {
                     releaseController(force = false)
                     renderTile(null)
                 }
@@ -136,6 +136,7 @@ class PlaybackTileService : TileService() {
                     pendingToggle = false
                     openApp()
                 }
+                renderTile(null)
                 if (!listening) {
                     releaseController(force = true)
                 }
