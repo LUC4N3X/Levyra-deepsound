@@ -161,9 +161,9 @@ internal fun AudioSettingsPanel(
     onSelectAutoEqCatalogEntry: (AutoEqCatalogEntry) -> Unit,
     onDismissAutoEqCatalogProfile: () -> Unit,
     onCloseAutoEqCatalog: () -> Unit,
-    onReplayGainMode: (ReplayGainMode) -> Unit = {},
-    onReplayGainPreamp: (Float) -> Unit = {},
-    onReplayGainPreventClipping: (Boolean) -> Unit = {},
+    onReplayGainMode: (ReplayGainMode) -> Unit,
+    onReplayGainPreamp: (Float) -> Unit,
+    onReplayGainPreventClipping: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
