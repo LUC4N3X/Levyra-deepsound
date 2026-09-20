@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T04:57:57Z",
+  "generatedAt": "2026-09-20T11:29:49Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1538,7 +1538,7 @@
         },
         {
           "position": 16,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1546,8 +1546,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1557,7 +1557,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 17,
@@ -1644,7 +1644,7 @@
         },
         {
           "position": 21,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -1652,12 +1652,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 22,
@@ -1822,7 +1822,7 @@
         },
         {
           "position": 29,
-          "id": "levyra-62f091057573870630ff",
+          "id": "levyra-5d7a8244a6022b4ddba4",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1830,12 +1830,12 @@
             }
           ],
           "album": {
-            "name": "Rumours (Super Deluxe)",
+            "name": "Rumours",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
         },
         {
           "position": 30,
@@ -2886,7 +2886,7 @@
           "durationMs": 186964,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "Q2NePVoGxYg",
+            "audioVideoId": "TR19QSL7WuQ",
             "audioConfidence": 100,
             "videoId": "u2ah9tWTkmk",
             "videoConfidence": 100,
@@ -3207,6 +3207,14 @@
           },
           "durationMs": 223448,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "lFQdcPTTzSg",
+            "audioConfidence": 100,
+            "videoId": "fcnDmrtj6Sk",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
         },
         {
@@ -4050,6 +4058,14 @@
           },
           "durationMs": 223448,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "lFQdcPTTzSg",
+            "audioConfidence": 100,
+            "videoId": "fcnDmrtj6Sk",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
         },
         {
@@ -5040,6 +5056,14 @@
           },
           "durationMs": 223448,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "lFQdcPTTzSg",
+            "audioConfidence": 100,
+            "videoId": "fcnDmrtj6Sk",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
         },
         {
@@ -6061,6 +6085,14 @@
           },
           "durationMs": 223448,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "lFQdcPTTzSg",
+            "audioConfidence": 100,
+            "videoId": "fcnDmrtj6Sk",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
         },
         {
@@ -6290,11 +6322,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-01-01"
+            "releaseDate": "2010-08-24"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
         },
         {
           "position": 18,
@@ -7999,12 +8031,6 @@
           },
           "durationMs": 174183,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "lARxqqLcCOU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCm6Kk_E9qUcPEEAiwsOzzXQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ede6a29e3b312fba44c9c8f9"
         },
         {
@@ -8199,12 +8225,6 @@
           },
           "durationMs": 141692,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "Xb6zpm3U1NU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCGHj3SD8U_UaQBgTKS5H0jQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b9afc53a8f8897cf8745ba97"
         },
         {
@@ -9816,6 +9836,14 @@
           },
           "durationMs": 223448,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "lFQdcPTTzSg",
+            "audioConfidence": 100,
+            "videoId": "fcnDmrtj6Sk",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
         },
         {
@@ -10707,7 +10735,7 @@
           "durationMs": 186964,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "Q2NePVoGxYg",
+            "audioVideoId": "TR19QSL7WuQ",
             "audioConfidence": 100,
             "videoId": "u2ah9tWTkmk",
             "videoConfidence": 100,
@@ -11013,7 +11041,7 @@
           "durationMs": 184000,
           "explicit": true,
           "youtubeMusic": {
-            "audioVideoId": "WxSb8YQWFTk",
+            "audioVideoId": "i-2ty6tt_R0",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCWiYjN9P7Mhz0kU0UvpAL2Q"
@@ -12707,6 +12735,12 @@
           },
           "durationMs": 138274,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "6iXBkX3_0oc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCUfYDPYsR_AVR8cvcIB_YDA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0282695e769c6af8c1494199c6"
         },
         {
@@ -14061,12 +14095,6 @@
           },
           "durationMs": 259160,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "2Bb47CIt-0c",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCqSRhiBRmrv97euqDzxz7zQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02083ed8dfb6d34d18ff7de920"
         },
         {
@@ -14542,6 +14570,14 @@
           },
           "durationMs": 223448,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "lFQdcPTTzSg",
+            "audioConfidence": 100,
+            "videoId": "fcnDmrtj6Sk",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
         },
         {
@@ -14628,12 +14664,6 @@
           },
           "durationMs": 334053,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "4wTZ-Bx4aj4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0TV38yNPp2b8r1AilfwEOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c4a9b2f7b917402f799b1ecd"
         },
         {
@@ -15000,12 +15030,6 @@
           },
           "durationMs": 175686,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "eQEmTzYaiG0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsZ3HaVX2T8h92cObCdgRJA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c9b387d469ff148258076bfe"
         },
         {
@@ -15019,11 +15043,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 28,
@@ -15377,7 +15401,7 @@
           "durationMs": 186964,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "Q2NePVoGxYg",
+            "audioVideoId": "TR19QSL7WuQ",
             "audioConfidence": 100,
             "videoId": "u2ah9tWTkmk",
             "videoConfidence": 100,
@@ -16231,6 +16255,14 @@
           },
           "durationMs": 223448,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "lFQdcPTTzSg",
+            "audioConfidence": 100,
+            "videoId": "fcnDmrtj6Sk",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
         },
         {
@@ -19879,7 +19911,7 @@
           },
           "durationMs": 250320,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7236e96a0dfd4922d7901c9"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e784e3cd98c9b356f70240dd"
         },
         {
           "position": 6,
@@ -20406,7 +20438,7 @@
             "confidence": 100,
             "artistBrowseId": "UCGKXb1syicud01CJOOFRykg"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02613aaa3ae566d9f36008aed0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e691217483df8798445c82e2"
         },
         {
           "position": 31,
@@ -22605,7 +22637,7 @@
           ],
           "album": {
             "name": "Traveler",
-            "releaseDate": "2019-09-30"
+            "releaseDate": "2019-08-31"
           },
           "durationMs": 326842,
           "explicit": false,
@@ -22615,7 +22647,7 @@
             "confidence": 100,
             "artistBrowseId": "UC84Rm0a3gimYXPtqp5O_JRw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fc273337d7aafc7e907c383d"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029c4ba827e585fabd3cfd90f2"
         },
         {
           "position": 38,
@@ -23748,7 +23780,7 @@
             "audioVideoId": "IcLdJ93eP18",
             "audioConfidence": 100,
             "confidence": 100,
-            "artistBrowseId": "UCjWtuHK8JzKItEJrmbqXyNQ"
+            "artistBrowseId": "UCn3xOtdPUPh0dCcUJMOEbKA"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fcc7545ad48e61651ae3c1f9"
         },
@@ -28143,7 +28175,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
         },
         {
           "position": 26,
@@ -30380,12 +30412,6 @@
           },
           "durationMs": 170961,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "FpkrbRNW1Ho",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNGqOnZoBRKPp51xOmXDCRQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022e021c95a17868f31157a6ff"
         },
         {
