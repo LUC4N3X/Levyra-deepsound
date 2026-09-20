@@ -549,28 +549,7 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
 
 ---
 
-## ✦ Contributing
-
-Build instructions, prerequisites, reproducible build details, and platform-specific setup live in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
-
-Bug fixes, translations, performance work, documentation, and focused features are welcome.
-
-Build instructions and contributor documentation are in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
-
-### Engineering Workflow
-
-1. **Fork & Branch**: Start from `main` and keep the branch focused on one change:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-2. **Architecture Contract**: Keep the existing UDF flow, immutable Compose state, and low-latency playback paths unless the change really needs something different.
-3. **Quality Gate**: Run the repository validation before submitting:
-   ```bash
-   python scripts/ai_quality_gate.py --profile fast
-   ```
-4. **Pull Request**: Explain what changed, why, and what you actually tested.
-
-**Scope & Guidelines:** Please keep one PR about one thing. If you want to change a major part of the architecture or add a large new feature, open an [Issue](https://github.com/LUC4N3X/Levyra-deepsound/issues) first so the approach can be discussed before a lot of code is written.
+Contributions are welcome — see the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/) for development guidelines.
 
 ---
 
