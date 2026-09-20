@@ -108,6 +108,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
+import com.luc4n3x.levyra.ui.i18n.replayGainCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -166,6 +167,7 @@ internal fun AudioSettingsPanel(
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val replayGainCopy = strings.replayGainCopy()
     val outputState = rememberLevyraAudioOutputState()
     val blocker = remember { MutableInteractionSource() }
     val equalizerEnabled = audioSettings.equalizerEnabled
