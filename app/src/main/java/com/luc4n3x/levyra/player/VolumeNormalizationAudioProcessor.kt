@@ -64,13 +64,13 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
 
     fun setTargetGain(gainMb: Int) {
         request = LoudnessRequest(
-            fixedGain = 10.0.pow(gainMb / 2000.0).toFloat().coerceIn(MIN_GAIN, 1f),
+            fixedGain = 10.0.pow(gainMb / 2000.0).toFloat().coerceIn(NORMALIZATION_MIN_GAIN, 1f),
             generation = request.generation + 1
         )
     }
 
     fun continueFromGain(gain: Float) {
-        handoffGain = if (gain.isFinite()) gain.coerceIn(MIN_GAIN, MAX_GAIN) else Float.NaN
+        handoffGain = if (gain.isFinite()) gain.coerceIn(REPLAY_GAIN_MIN, MAX_GAIN) else Float.NaN
     }
 
     internal fun metadataGain(): Float? = request.fixedGain
@@ -290,7 +290,8 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
 
     companion object {
         internal const val STREAMING_REFERENCE_LUFS = -14f
-        private const val MIN_GAIN = 0.063095734f
+        private const val NORMALIZATION_MIN_GAIN = 0.25f
+        private const val REPLAY_GAIN_MIN = 0.003981072f
         private const val MAX_GAIN = 4f
         private const val MIN_MEASURED_BLOCKS = 20
         private const val TRANSITION_RATE_DB_PER_SECOND = 60f
@@ -308,7 +309,7 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
                 ?: perceptualLoudnessDb?.takeIf { it.isFinite() }?.let { it - STREAMING_REFERENCE_LUFS }
 
         internal fun attenuationForRelativeLoudness(relativeLoudnessDb: Float): Float =
-            10.0.pow(-relativeLoudnessDb.coerceAtLeast(0f) / 20.0).toFloat().coerceIn(MIN_GAIN, 1f)
+            10.0.pow(-relativeLoudnessDb.coerceAtLeast(0f) / 20.0).toFloat().coerceIn(NORMALIZATION_MIN_GAIN, 1f)
 
         internal fun attenuationForMeasuredLoudness(integratedLufs: Double): Float? =
             integratedLufs.takeUnless { it.isNaN() }
@@ -323,14 +324,14 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
             val gain = gainDb?.takeIf { it.isFinite() } ?: return null
             val combinedDb = (gain + preampDb.takeIf { it.isFinite() }?.coerceIn(-12f, 12f).orZero())
                 .coerceIn(-48f, 12f)
-            val requested = 10.0.pow(combinedDb / 20.0).toFloat().coerceIn(MIN_GAIN, MAX_GAIN)
+            val requested = 10.0.pow(combinedDb / 20.0).toFloat().coerceIn(REPLAY_GAIN_MIN, MAX_GAIN)
             if (!preventClipping) return requested
 
             val safeCeiling = peak
                 ?.takeIf { it.isFinite() && it > 0f }
-                ?.let { (1f / it).coerceIn(MIN_GAIN, MAX_GAIN) }
+                ?.let { (1f / it).coerceIn(REPLAY_GAIN_MIN, MAX_GAIN) }
                 ?: 1f
-            return requested.coerceAtMost(safeCeiling).coerceAtLeast(MIN_GAIN)
+            return requested.coerceAtMost(safeCeiling).coerceAtLeast(REPLAY_GAIN_MIN)
         }
 
         private fun Float?.orZero(): Float = this ?: 0f
