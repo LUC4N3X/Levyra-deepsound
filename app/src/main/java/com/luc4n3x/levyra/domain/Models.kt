@@ -147,6 +147,18 @@ enum class LyricVocalRole {
     DUET_RIGHT
 }
 
+enum class LyricsTranslationState {
+    DISABLED,
+    PENDING,
+    PROVIDER,
+    ON_DEVICE,
+    SAME_LANGUAGE,
+    MODEL_DOWNLOAD_REQUIRED,
+    MODEL_DOWNLOADING,
+    UNAVAILABLE,
+    FAILED
+}
+
 enum class LyricSectionType {
     INTRO,
     VERSE,
