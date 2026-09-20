@@ -74,6 +74,9 @@ import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
+import com.luc4n3x.levyra.domain.ReplayGainMetadata
+import com.luc4n3x.levyra.domain.ReplayGainMode
+import com.luc4n3x.levyra.domain.selectReplayGain
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_SOURCE
@@ -210,6 +213,10 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_LIVE_RADIO = "levyra.liveRadio"
         const val EXTRA_YOUTUBE_LOUDNESS_DB = "levyra.youtubeLoudnessDb"
         const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
+        const val EXTRA_REPLAY_GAIN_TRACK_DB = "levyra.replayGain.trackDb"
+        const val EXTRA_REPLAY_GAIN_ALBUM_DB = "levyra.replayGain.albumDb"
+        const val EXTRA_REPLAY_GAIN_TRACK_PEAK = "levyra.replayGain.trackPeak"
+        const val EXTRA_REPLAY_GAIN_ALBUM_PEAK = "levyra.replayGain.albumPeak"
         const val ACTION_GET_PLATFORM_TOKEN = "levyra.media.GET_PLATFORM_TOKEN"
         const val ACTION_SET_VIDEO_SUBTITLE = "levyra.media.SET_VIDEO_SUBTITLE"
         const val KEY_PLATFORM_TOKEN = "levyra.media.PLATFORM_TOKEN"
@@ -382,7 +389,7 @@ class PlaybackService : MediaLibraryService() {
         audioNormalization: Boolean
     ) {
         val normalized = settings.normalized()
-        normalizationProcessor.enabled = audioNormalization || normalized.replayGainEnabled
+        normalizationProcessor.enabled = audioNormalization || normalized.replayGainActive
         equalizerProcessor.enabled = normalized.equalizerEnabled
         equalizerProcessor.setBandLevels(normalized.bandLevels)
         equalizerProcessor.bassBoost = normalized.bassBoost
@@ -390,10 +397,71 @@ class PlaybackService : MediaLibraryService() {
         spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
         limiterProcessor.enabled = normalized.limiterEnabled &&
             (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
-                normalized.replayGainEnabled || audioNormalization)
+                normalized.replayGainActive || audioNormalization)
         updateQueueTransitionSettings(normalized, audioNormalization)
+        activePlayer?.currentMediaItem?.mediaMetadata?.extras?.let { extras ->
+            configureNormalizationProcessor(
+                processor = normalizationProcessor,
+                settings = currentAudioSettings,
+                youtubeLoudnessDb = extras.floatOrNull(EXTRA_YOUTUBE_LOUDNESS_DB),
+                youtubePerceptualLoudnessDb = extras.floatOrNull(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB),
+                replayGain = ReplayGainMetadata(
+                    trackGainDb = extras.floatOrNull(EXTRA_REPLAY_GAIN_TRACK_DB),
+                    albumGainDb = extras.floatOrNull(EXTRA_REPLAY_GAIN_ALBUM_DB),
+                    trackPeak = extras.floatOrNull(EXTRA_REPLAY_GAIN_TRACK_PEAK),
+                    albumPeak = extras.floatOrNull(EXTRA_REPLAY_GAIN_ALBUM_PEAK)
+                ),
+                albumContext = replayGainAlbumContext(queueEngine.state.value.currentTrack)
+            )
+        }
         updateAaudioOutputRequest(normalized.aaudioOutputEnabled)
     }
+
+    private fun configureNormalizationProcessor(
+        processor: NormalizationAudioProcessor,
+        settings: LevyraAudioSettings,
+        youtubeLoudnessDb: Float?,
+        youtubePerceptualLoudnessDb: Float?,
+        replayGain: ReplayGainMetadata,
+        albumContext: Boolean
+    ) {
+        val mode = settings.effectiveReplayGainMode
+        val selection = selectReplayGain(mode, replayGain, albumContext)
+        if (mode != ReplayGainMode.OFF && selection != null) {
+            processor.setReplayGain(
+                gainDb = selection.gainDb,
+                peak = selection.peak,
+                preampDb = settings.replayGainPreampDb,
+                preventClipping = settings.replayGainPreventClipping
+            )
+        } else {
+            processor.setYoutubeLoudness(youtubeLoudnessDb, youtubePerceptualLoudnessDb)
+        }
+    }
+
+    private fun replayGainAlbumContext(track: Track?): Boolean {
+        val current = track ?: return false
+        val snapshot = queueEngine.state.value
+        val index = snapshot.currentIndex
+        if (index !in snapshot.tracks.indices) return false
+        val identity = replayGainAlbumIdentity(current)
+        if (identity.isBlank()) return false
+        return sequenceOf(index - 1, index + 1)
+            .filter { it in snapshot.tracks.indices }
+            .any { replayGainAlbumIdentity(snapshot.tracks[it]) == identity }
+    }
+
+    private fun replayGainAlbumIdentity(track: Track): String {
+        val browseId = track.albumBrowseId.trim()
+        if (browseId.isNotEmpty()) return "id:$browseId"
+        val album = track.album.trim().lowercase()
+        if (album.isEmpty()) return ""
+        val artist = track.albumArtist.ifBlank { track.artist }.trim().lowercase()
+        return "$artist\u0000$album"
+    }
+
+    private fun Bundle?.floatOrNull(key: String): Float? =
+        this?.takeIf { it.containsKey(key) }?.getFloat(key)?.takeIf { it.isFinite() }
 
     private fun DefaultAudioSink.Builder.withLevyraAudioOutput(context: Context): DefaultAudioSink.Builder = apply {
         NativeAudioIntegration.audioOutputProvider(context) { aaudioOutputRequested }?.let(::setAudioOutputProvider)
@@ -615,11 +683,19 @@ class PlaybackService : MediaLibraryService() {
                     serviceRecoveryAttempts = 0
                 }
                 val extras = mediaItem?.mediaMetadata?.extras
-                val loudness = extras?.takeIf { it.containsKey(EXTRA_YOUTUBE_LOUDNESS_DB) }
-                    ?.getFloat(EXTRA_YOUTUBE_LOUDNESS_DB)
-                val perceptual = extras?.takeIf { it.containsKey(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB) }
-                    ?.getFloat(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB)
-                normalizationProcessor.setYoutubeLoudness(loudness, perceptual)
+                configureNormalizationProcessor(
+                    processor = normalizationProcessor,
+                    settings = currentAudioSettings,
+                    youtubeLoudnessDb = extras.floatOrNull(EXTRA_YOUTUBE_LOUDNESS_DB),
+                    youtubePerceptualLoudnessDb = extras.floatOrNull(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB),
+                    replayGain = ReplayGainMetadata(
+                        trackGainDb = extras.floatOrNull(EXTRA_REPLAY_GAIN_TRACK_DB),
+                        albumGainDb = extras.floatOrNull(EXTRA_REPLAY_GAIN_ALBUM_DB),
+                        trackPeak = extras.floatOrNull(EXTRA_REPLAY_GAIN_TRACK_PEAK),
+                        albumPeak = extras.floatOrNull(EXTRA_REPLAY_GAIN_ALBUM_PEAK)
+                    ),
+                    albumContext = replayGainAlbumContext(queueEngine.state.value.currentTrack)
+                )
                 watchdogPositionMs = C.TIME_UNSET
                 watchdogAdvancedAtMs = SystemClock.elapsedRealtime()
                 if (!isLocalMediaItem(mediaItem) && !isLiveRadioMediaItem(mediaItem)) prefetchServiceQueueNext()
@@ -1664,8 +1740,20 @@ class PlaybackService : MediaLibraryService() {
 
     private fun buildTransitionPlayer(track: Track): ExoPlayer {
         val normalization = NormalizationAudioProcessor().apply {
-            enabled = currentAudioNormalization || currentAudioSettings.replayGainEnabled
-            setYoutubeLoudness(track.youtubeLoudnessDb, track.youtubePerceptualLoudnessDb)
+            enabled = currentAudioNormalization || currentAudioSettings.replayGainActive
+            configureNormalizationProcessor(
+                processor = this,
+                settings = currentAudioSettings,
+                youtubeLoudnessDb = track.youtubeLoudnessDb,
+                youtubePerceptualLoudnessDb = track.youtubePerceptualLoudnessDb,
+                replayGain = ReplayGainMetadata(
+                    trackGainDb = track.replayGainTrackDb,
+                    albumGainDb = track.replayGainAlbumDb,
+                    trackPeak = track.replayGainTrackPeak,
+                    albumPeak = track.replayGainAlbumPeak
+                ),
+                albumContext = replayGainAlbumContext(track)
+            )
         }
         transitionNormalization = normalization
         val equalizer = LevyraEqualizerAudioProcessor().apply {
@@ -1681,7 +1769,7 @@ class PlaybackService : MediaLibraryService() {
         val limiter = TruePeakLimiterAudioProcessor().apply {
             enabled = currentAudioSettings.limiterEnabled &&
                 (currentAudioSettings.equalizerEnabled || currentAudioSettings.virtualizer > 0 ||
-                    currentAudioSettings.replayGainEnabled || currentAudioNormalization)
+                    currentAudioSettings.replayGainActive || currentAudioNormalization)
         }
         val renderers = object : DefaultRenderersFactory(this) {
             override fun buildVideoRenderers(
