@@ -144,7 +144,7 @@ class TechnicalAudioInfoTest {
 
     private fun track(
         streams: List<PlaybackStreamDescriptor>,
-        manifest: ResolvedPlaybackManifest = manifest(streams)
+        playbackManifest: ResolvedPlaybackManifest = manifest(streams)
     ) = Track(
         id = "track-id",
         title = "Title",
@@ -163,6 +163,6 @@ class TechnicalAudioInfoTest {
         cacheScore = 0,
         accentStart = 0,
         accentEnd = 0,
-        playbackManifest = manifest
+        playbackManifest = playbackManifest
     )
 }
