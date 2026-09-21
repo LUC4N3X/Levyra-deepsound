@@ -276,6 +276,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Info
@@ -17864,6 +17865,17 @@ private fun SettingsOverlay(
                                     subtitle = strings.showRecentReleases,
                                     checked = interfaceSettings.showNewReleases,
                                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showNewReleases = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.NotificationsActive,
+                                    title = strings.releaseRadar,
+                                    subtitle = strings.followedArtistsSubtitle,
+                                    checked = interfaceSettings.releaseNotificationsEnabled,
+                                    onCheckedChange = {
+                                        onInterfaceSettings(interfaceSettings.copy(releaseNotificationsEnabled = it))
+                                    }
                                 )
                             }
                             item {

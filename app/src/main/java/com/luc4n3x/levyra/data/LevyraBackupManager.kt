@@ -1669,6 +1669,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("showPersonalOrbit", value.showPersonalOrbit)
     .put("showResonance", value.showResonance)
     .put("showNewReleases", value.showNewReleases)
+    .put("releaseNotificationsEnabled", value.releaseNotificationsEnabled)
     .put("showAlbumsForYou", value.showAlbumsForYou)
     .put("showTrendingArtists", value.showTrendingArtists)
     .put("showCharts", value.showCharts)
@@ -1711,6 +1712,7 @@ internal fun backupInterfaceSettingsFromJson(
         showPersonalOrbit = json.optBoolean("showPersonalOrbit", true),
         showResonance = json.optBoolean("showResonance", true),
         showNewReleases = json.optBoolean("showNewReleases", true),
+        releaseNotificationsEnabled = json.optBoolean("releaseNotificationsEnabled", false),
         showAlbumsForYou = json.optBoolean("showAlbumsForYou", true),
         showTrendingArtists = json.optBoolean("showTrendingArtists", true),
         showCharts = json.optBoolean("showCharts", true),
