@@ -275,12 +275,19 @@ internal fun buildProcessingLabel(
     audioNormalization: Boolean,
     copy: TechnicalAudioInfoCopy
 ): String = buildList {
+    val equalizerActive = settings.equalizerEnabled
+    val replayGainActive = settings.replayGainActive
+    val virtualizerActive = equalizerActive && settings.virtualizer > 0
+    val preampActive = equalizerActive && settings.preampDb != 0f
+    val limiterActive = settings.limiterEnabled &&
+        (equalizerActive || virtualizerActive || replayGainActive || audioNormalization)
+
     if (audioNormalization) add(copy.normalization)
-    if (settings.equalizerEnabled) add(copy.equalizer)
-    if (settings.replayGainActive) add("ReplayGain ${settings.effectiveReplayGainMode.name}")
-    if (settings.limiterEnabled) add(copy.limiter)
-    if (settings.virtualizer > 0) add("${copy.virtualizer} ${settings.virtualizer}%")
-    if (settings.preampDb != 0f) {
+    if (equalizerActive) add(copy.equalizer)
+    if (replayGainActive) add("ReplayGain ${settings.effectiveReplayGainMode.name}")
+    if (limiterActive) add(copy.limiter)
+    if (virtualizerActive) add("${copy.virtualizer} ${settings.virtualizer}%")
+    if (preampActive) {
         add("${copy.preamp} ${String.format(Locale.ROOT, "%+.1f dB", settings.preampDb)}")
     }
 }.ifEmpty { listOf(copy.none) }.joinToString(" · ")
