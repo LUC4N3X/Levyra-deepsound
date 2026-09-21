@@ -71,6 +71,10 @@ It has grown a lot since then, but the idea is still the same: **make the player
   <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
     <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="52">
   </a>
+  &nbsp;&nbsp;
+  <a href="https://tsukutta.app/en/apps/30887ffa-db55-4b07-92a2-42845184b42c">
+    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Featured on Tsukutta" height="52">
+  </a>
 </p>
 
 <p>
@@ -103,13 +107,8 @@ Levyra doesn't just compare the song title and hope for the best. It checks the 
 The song itself never changes inside your library. **Artwork, lyrics, queue position, listening history and recommendations still belong to the original Levyra track.** JioSaavn is only used as an optional playback source.
 
 <div align="center">
-
-<code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER 320 KBPS</code>
-
-<br><br>
-
-<sub>If the higher-quality source disappears, fails validation or isn't actually better, playback falls back normally.</sub>
-
+  <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
+  <sub>If the higher-quality source disappears, fails validation or isn't actually better, playback falls back normally.</sub>
 </div>
 
 ---
