@@ -1,18 +1,18 @@
 # Security Policy
 
-If you find a security issue in Levyra, please keep the details private until there has been time to investigate and fix it.
+If you discover a security vulnerability in Levyra, please report it privately so we have time to investigate and issue a patch before details become public.
 
-This page is for security problems in Levyra itself. Normal bugs, playback issues, UI problems, provider outages, and feature requests should go through the regular issue tracker.
+This policy is for security flaws in Levyra itself. Regular bug reports, playback issues, UI problems, and feature requests should be submitted through our public issue tracker.
 
 ## Reporting a security issue
 
-Please use GitHub's private **Report a vulnerability** option from the repository Security tab when it is available.
+Please use GitHub's private vulnerability reporting feature from the repository's Security tab whenever possible.
 
-If private reporting is not available, open a public issue only to ask for a private contact channel. Do not include exploit details, proof-of-concept code, credentials, tokens, cookies, private URLs, personal data, or sensitive logs in the public issue.
+If private vulnerability reporting is unavailable, open a public issue only to request a secure contact channel. Do not include exploit details, proof-of-concept code, tokens, credentials, private URLs, or logs in public threads.
 
 Issue tracker: https://github.com/LUC4N3X/Levyra-deepsound/issues/new/choose
 
-When possible, check the latest official release before reporting. If the issue only affects an older release but the same code is still present in the current version, the report is still useful.
+When possible, test against the latest official release before reporting. Reports for older versions are still helpful if the same code is present in the current release.
 
 ## Supported versions
 
@@ -21,7 +21,7 @@ When possible, check the latest official release before reporting. If the issue 
 | Latest Android release | Supported |
 | Latest Windows release | Supported |
 | Older official releases | Best effort |
-| Modified, repackaged, or unofficial builds | Not supported |
+| Modified or third-party builds | Not supported |
 
 ---
 
@@ -30,22 +30,21 @@ When possible, check the latest official release before reporting. If the issue 
 
 <br>
 
-A short, reproducible report is much more useful than a long severity claim.
+A concise, reproducible report is much more effective than a high-severity claim.
 
-Include whatever is relevant:
+Please include:
 
-- Levyra version or commit;
-- Android or Windows version;
-- affected feature or component;
-- what happens and why you believe it is a security issue;
-- clear reproduction steps;
-- a minimal proof of concept if one is needed;
-- realistic impact and attacker requirements;
-- whether user interaction, authentication, local access, or special permissions are required;
-- logs or screenshots with private information removed;
-- any workaround or suggested fix you already know about.
+- Levyra version code or commit hash
+- Android or Windows operating system version
+- Affected feature or component
+- Description of the vulnerability and its potential impact
+- Step-by-step reproduction instructions
+- Minimal proof of concept if required
+- Prerequisites (such as physical device access, specific permissions, or user interaction)
+- Sanitized logs or screenshots with sensitive data redacted
+- Any known workarounds or suggested code fixes
 
-Please separate what you actually reproduced from what you think may also be possible.
+Please distinguish clearly between verified behaviors and theoretical attack vectors.
 
 </details>
 
@@ -54,23 +53,23 @@ Please separate what you actually reproduced from what you think may also be pos
 
 <br>
 
-Examples of issues that belong here include:
+Examples of issues in scope:
 
-- exposure of credentials, tokens, cookies, or private user data caused by Levyra;
-- unsafe storage or handling of sensitive local data;
-- authentication or authorization bypasses in Levyra-owned functionality;
-- unintended code or command execution;
-- unsafe file access, path traversal, or similar file-handling issues;
-- security problems involving intents, deep links, URIs, IPC, or app-controlled input;
-- injection or unsafe parsing with a real security impact;
-- update, packaging, release, networking, session, or credential-handling issues controlled by Levyra;
-- a dependency problem that is actually reachable and exploitable through Levyra.
+- Exposure of credentials, auth tokens, cookies, or private user data
+- Insecure storage or handling of sensitive local files
+- Authentication or authorization bypasses in Levyra-owned code
+- Arbitrary code or shell command execution
+- Directory traversal or insecure file handling
+- Vulnerabilities involving Android intents, deep links, URIs, or IPC endpoints
+- Parsing or injection vulnerabilities with demonstrable security impact
+- Issues in packaging, updates, or network handling controlled by Levyra
+- Reachable, exploitable vulnerabilities in third-party dependencies
 
-Things that are normally not Levyra security issues include ordinary crashes, UI bugs, playback failures, provider outages, geo-restrictions, rate limits, copyright or content-policy disputes, and vulnerabilities that exist only in a third-party service or operating system.
+Issues typically out of scope include standard application crashes, UI layout bugs, playback timeouts, third-party provider outages, geoblocks, rate limits, and vulnerabilities originating solely in third-party services or the underlying OS.
 
-Scanner output by itself is not enough. If a dependency is flagged, explain how Levyra reaches the vulnerable code and what the real impact is.
+Automated vulnerability scanner reports are not sufficient on their own. If flagging a dependency, explain how Levyra uses the affected code path and what the real-world impact is.
 
-If you are not sure whether something belongs here, report it privately and explain why you think it matters.
+If you are uncertain whether an issue is in scope, report it privately with an explanation of your concern.
 
 </details>
 
@@ -79,13 +78,13 @@ If you are not sure whether something belongs here, report it privately and expl
 
 <br>
 
-Levyra talks to external APIs, websites, providers, and other services. Those systems are not operated by this project.
+Levyra interacts with external APIs, websites, and media providers. Those remote systems are not operated by this project.
 
-This policy does not give permission to test third-party infrastructure, accounts, APIs, streaming services, CDNs, or other systems Levyra connects to.
+This policy does not grant permission to perform penetration testing or vulnerability research against third-party servers, CDNs, streaming endpoints, or accounts.
 
-When testing an integration, use only accounts, devices, content, and systems you own or are explicitly allowed to test.
+Only test systems, accounts, and hardware that you own or have explicit permission to audit.
 
-If the problem belongs entirely to a third party, report it to that provider. If Levyra introduces the unsafe behavior or turns an upstream issue into a security problem for Levyra users, then it is reasonable to report it here as well.
+If a vulnerability exists entirely within a third-party service, report it directly to that provider. If Levyra causes the unsafe behavior or turns an upstream issue into a client-side vulnerability, please report it here.
 
 </details>
 
@@ -94,32 +93,30 @@ If the problem belongs entirely to a third party, report it to that provider. If
 
 <br>
 
-For a credible report, the project aims to acknowledge it within 14 days, usually sooner when possible. This is a target, not a guaranteed response time.
+We aim to acknowledge credible reports within 14 days, and often sooner.
 
-The usual flow is:
+Our remediation process generally involves:
 
-1. reproduce the issue;
-2. work out which versions and platforms are affected;
-3. prepare and test a fix or mitigation;
-4. release the fix when needed;
-5. disclose technical details after users have had a reasonable chance to update.
+1. Reproducing the reported behavior
+2. Identifying affected platforms and versions
+3. Developing and testing a fix or mitigation
+4. Releasing an updated build
+5. Disclosing technical details after users have had time to update
 
-Please allow time for investigation and release before publishing the vulnerability.
-
-A confirmed issue may later be documented in a security advisory, release note, CVE, or another public record when appropriate. Reporters may be credited unless they prefer not to be.
+Please allow adequate time for investigation and patching before publishing vulnerability details. Confirmed vulnerabilities may be documented in release notes, security advisories, or CVEs with credit given to the reporter if desired.
 
 </details>
 
 <details>
-<summary><strong>Handling secrets and user data</strong></summary>
+<summary><strong>Handling sensitive information</strong></summary>
 
 <br>
 
-Do not send more sensitive data than the report actually needs.
+Do not include more sensitive information than necessary to prove the vulnerability.
 
-Redact API keys, cookies, tokens, session identifiers, account details, and personal information where possible. Prefer test accounts over real accounts and remove unrelated data from logs and screenshots.
+Redact API tokens, cookies, passwords, account identifiers, and personal data. Use test accounts rather than production credentials.
 
-If a real secret has already been exposed publicly, treat it as compromised and rotate or revoke it where possible.
+If a credential or secret has been exposed, consider it compromised and rotate or invalidate it immediately.
 
 </details>
 
@@ -130,48 +127,39 @@ If a real secret has already been exposed publicly, treat it as compromised and 
 
 ### Android credential storage
 
-Credentials handled through `AndroidKeystoreCredentialStore` use Android Keystore-backed AES keys and `AES/GCM/NoPadding` before the encrypted value is stored in app-private preferences.
+Credentials managed via `AndroidKeystoreCredentialStore` use Android Keystore-backed AES keys and `AES/GCM/NoPadding` encryption before storing ciphertext in app-private preferences.
 
-Implementation:
-
-https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/data/security/AndroidKeystoreCredentialStore.kt
+Reference: `app/src/main/java/com/luc4n3x/levyra/data/security/AndroidKeystoreCredentialStore.kt`
 
 ### Compatibility cryptography
 
-A few integrations use older algorithms because the external protocol expects them. These are compatibility paths, not Levyra's credential-storage or release-verification mechanisms.
+A small number of third-party integrations rely on legacy hashing algorithms as required by external protocols:
 
-- **Last.fm** uses MD5 when building the service's `api_sig` value.
-- **Spotify compatibility** uses HMAC-SHA1 TOTP in the anonymous-token flow.
-- **YouTube player fingerprinting** uses MD5 only as a non-security fingerprint for script identity/change detection.
+- **Last.fm**: Uses MD5 to generate the service `api_sig` parameter.
+- **Spotify compatibility**: Uses HMAC-SHA1 TOTP within the anonymous token flow.
+- **YouTube player cache**: Uses MD5 strictly as a non-security cache key for script change detection.
 
 References:
-
 - https://www.last.fm/api/authspec
-- https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/feature/scrobbling/Scrobbling.kt
-- https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/data/SpotifyArtistArtworkRepository.kt
-- https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/java/com/luc4n3x/levyra/data/YoutubeLocalDecoder.kt
-
-If an upstream protocol provides a stronger compatible alternative in the future, Levyra should move to it when that can be done without breaking the integration.
+- `app/src/main/java/com/luc4n3x/levyra/feature/scrobbling/Scrobbling.kt`
+- `app/src/main/java/com/luc4n3x/levyra/data/SpotifyArtistArtworkRepository.kt`
+- `app/src/main/java/com/luc4n3x/levyra/data/YoutubeLocalDecoder.kt`
 
 </details>
 
 <details>
-<summary><strong>Responsible research and bug bounty</strong></summary>
+<summary><strong>Responsible research</strong></summary>
 
 <br>
 
-Please keep testing limited to systems and accounts you are allowed to use. Avoid destructive testing, unnecessary access to other people's data, persistence, malware, service disruption, or high-volume traffic against third-party services.
+Please keep testing restricted to your own devices and accounts. Avoid disruptive testing, denial of service attempts, or accessing data belonging to other users.
 
-Stop if testing exposes private data that is not needed to prove the issue.
-
-Levyra does not currently run a paid bug bounty program. A valid report may be credited publicly, but payment or other compensation is not promised.
+Levyra does not operate a paid bug bounty program. Valid reports can be credited publicly upon request.
 
 </details>
 
 ---
 
-Official releases are published at:
+Official release packages are published at: https://github.com/LUC4N3X/Levyra-deepsound/releases
 
-https://github.com/LUC4N3X/Levyra-deepsound/releases
-
-For security-sensitive testing, use an official Levyra build rather than an unknown repackaged or modified copy.
+Always use official release builds when performing security audits.
