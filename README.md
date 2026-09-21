@@ -36,6 +36,13 @@
   <br>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" width="200" alt="Download Levyra for Windows"></a>
 </p>
+
+<p align="center">
+  <a href="https://tsukutta.app/apps/30887ffa-db55-4b07-92a2-42845184b42c">
+    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Featured on Tsukutta" width="150" height="29">
+  </a>
+</p>
+
 <p align="center">🌍 <b>Levyra speaks 36 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
 <p align="center">
@@ -103,10 +110,6 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
   <p>
     <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
       <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="48">
-    </a>
-    &nbsp;&nbsp;
-    <a href="https://tsukutta.app/apps/30887ffa-db55-4b07-92a2-42845184b42c">
-      <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Featured on Tsukutta" width="210" height="40">
     </a>
   </p>
   <p>
