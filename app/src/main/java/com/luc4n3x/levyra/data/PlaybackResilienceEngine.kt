@@ -115,7 +115,14 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
 }
 
 internal fun playbackRecoveryPlanFor(kind: PlaybackFailureKind): PlaybackRecoveryPlan = when (kind) {
-    PlaybackFailureKind.Forbidden,
+    PlaybackFailureKind.Forbidden -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 10L * 60L * 1000L,
+        refreshDecoder = true
+    )
     PlaybackFailureKind.Gone -> PlaybackRecoveryPlan(true, false, false, false, 10L * 60L * 1000L)
     PlaybackFailureKind.RateLimited -> PlaybackRecoveryPlan(true, true, false, false, 10L * 60L * 1000L)
     PlaybackFailureKind.LoginRequired,

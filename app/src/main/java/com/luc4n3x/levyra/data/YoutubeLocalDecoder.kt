@@ -41,6 +41,7 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.LinkedHashMap
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -145,8 +146,13 @@ class YoutubeLocalDecoder private constructor(
         fun notifyStreamRejected(source: String, expectedConfigIdentity: String? = null) {
             val decoder = instance ?: return
             scope.launch {
-                runCatching { decoder.rejectionInternal(source, expectedConfigIdentity) }
-                    .onFailure { Timber.w(it, "Local decoder rejection refresh failed") }
+                try {
+                    decoder.rejectionInternal(source, expectedConfigIdentity)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Throwable) {
+                    Timber.w(error, "Local decoder rejection refresh failed")
+                }
             }
         }
 
@@ -1978,8 +1984,8 @@ internal object YoutubeLocalDecoderFeedbackPolicy {
     private const val FEEDBACK_WINDOW_MS = 10L * 60L * 1000L
 
     fun shouldRefresh(source: String, now: Long, lastDecodeAtMs: Long): Boolean {
-        val normalized = source.lowercase()
-        val relevantSource = normalized.contains("web") || normalized.contains("levyraextractor")
+        val normalized = source.lowercase(Locale.ROOT)
+        val relevantSource = normalized.contains("youtube") || normalized.contains("levyraextractor")
         return relevantSource && YoutubePlayerConfigStore.withinWindow(now, lastDecodeAtMs, FEEDBACK_WINDOW_MS)
     }
 }
