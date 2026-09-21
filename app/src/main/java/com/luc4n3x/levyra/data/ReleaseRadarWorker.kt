@@ -56,8 +56,11 @@ class ReleaseRadarWorker(
             .filterNotNull()
             .flatten()
             .filter { store.containsOrNull(it.artist) == true }
+            .distinctBy { ReleaseRadarWorker.releaseKey(it.release) }
             .take(MAX_NOTIFICATIONS_PER_RUN)
-        ReleaseNotificationCoordinator(applicationContext).notify(stillFollowed)
+        if (ReleaseNotificationCoordinator(applicationContext).notify(stillFollowed)) {
+            persistDeliveredReleases(store, stillFollowed)
+        }
         return Result.success()
     }
 
@@ -73,7 +76,7 @@ class ReleaseRadarWorker(
         } catch (error: Exception) {
             Timber.w(error, "Release radar fetch failed for ${artist.name}")
             return null
-        }
+        } ?: return emptyList()
         val releases = profile.albums + profile.singles
         if (releases.isEmpty() || store.containsOrNull(artist) != true) return emptyList()
         val keys = releases.flatMapTo(linkedSetOf(), ReleaseRadarPolicy::identityKeys)
@@ -85,9 +88,24 @@ class ReleaseRadarWorker(
         val known = store.knownReleases(artist.key)
         val fresh = ReleaseRadarPolicy.freshReleases(releases, known)
         if (store.containsOrNull(artist) != true) return emptyList()
-        store.saveKnownReleases(artist.key, keys + known)
+        val pendingKeys = fresh.flatMapTo(linkedSetOf(), ReleaseRadarPolicy::identityKeys)
+        store.saveKnownReleases(artist.key, keys + known - pendingKeys)
         if (store.containsOrNull(artist) == false) store.clearKnownReleases(artist.key)
         return fresh.take(MAX_NOTIFICATIONS_PER_ARTIST).map { FollowedArtistRelease(artist, it) }
+    }
+
+    private suspend fun persistDeliveredReleases(
+        store: FollowedArtistsStore,
+        delivered: List<FollowedArtistRelease>
+    ) {
+        delivered.groupBy { it.artist.key }.values.forEach { artistReleases ->
+            val artist = artistReleases.first().artist
+            if (store.containsOrNull(artist) != true) return@forEach
+            val deliveredKeys = artistReleases
+                .flatMapTo(linkedSetOf()) { ReleaseRadarPolicy.identityKeys(it.release) }
+            store.saveKnownReleases(artist.key, deliveredKeys + store.knownReleases(artist.key))
+            if (store.containsOrNull(artist) == false) store.clearKnownReleases(artist.key)
+        }
     }
 
     private fun rotatedWindow(store: FollowedArtistsStore, followed: List<FollowedArtist>): List<FollowedArtist> {

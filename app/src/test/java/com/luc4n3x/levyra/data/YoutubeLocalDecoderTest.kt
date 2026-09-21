@@ -523,7 +523,7 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
-    fun streamRejectionChangedOrUnchangedInvalidatesPlayerSourceWhenGenerationMatches() {
+    fun streamRejectionOnlyChangedInvalidatesPlayerSourceWhenGenerationMatches() {
         val changed = YoutubeStreamRejectionActionPolicy.decide(
             YoutubeStreamRefreshResult.CHANGED,
             generationMatches = true
@@ -535,8 +535,8 @@ class YoutubeLocalDecoderTest {
 
         assertTrue(changed.invalidatePlayerSource)
         assertTrue(changed.invalidateRuntime)
-        assertTrue(unchanged.invalidatePlayerSource)
-        assertTrue(unchanged.invalidateRuntime)
+        assertFalse(unchanged.invalidatePlayerSource)
+        assertFalse(unchanged.invalidateRuntime)
     }
 
     @Test

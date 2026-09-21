@@ -401,9 +401,6 @@ private class YoutubeLocalDecoderEngine(
         val now = System.currentTimeMillis()
         if (!YoutubeLocalDecoderFeedbackPolicy.shouldRefresh(source, now, rejected.decodedAtMs)) return
         decodeCache.removeByConfigIdentity(expectedIdentity)
-        if (rejected.configOrigin == YoutubePlayerConfigOrigin.ANALYZED) {
-            playerSource.rejectAnalyzedConfig(rejected.playerHash, rejected.configIdentity)
-        }
         val refreshResult = configStore.refreshAfterStreamRejection(rejected.playerHash)
         if (refreshResult == YoutubeStreamRefreshResult.CHANGED) {
             decodeCache.clear()
@@ -1997,8 +1994,7 @@ internal data class YoutubeStreamRejectionAction(
 
 internal object YoutubeStreamRejectionActionPolicy {
     fun decide(result: YoutubeStreamRefreshResult, generationMatches: Boolean): YoutubeStreamRejectionAction {
-        val actionable = generationMatches &&
-            (result == YoutubeStreamRefreshResult.CHANGED || result == YoutubeStreamRefreshResult.UNCHANGED)
+        val actionable = generationMatches && result == YoutubeStreamRefreshResult.CHANGED
         return YoutubeStreamRejectionAction(invalidateRuntime = actionable, invalidatePlayerSource = actionable)
     }
 }
