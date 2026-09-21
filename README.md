@@ -580,13 +580,15 @@ Contributions are welcome — see the [Levyra Documentation](https://luc4n3x.git
 
 <table width="100%">
   <tr>
-    <td width="64%" valign="middle">
+    <td align="center">
+      <a href="https://luc4n3x.pages.dev/">
+        <img src="docs/assets/levyra-signature.png" width="230" alt="LUC4N3X — Creator and Lead Developer of Levyra" />
+      </a>
+      <br>
+      <sub><a href="https://luc4n3x.pages.dev/">luc4n3x.pages.dev</a></sub>
       <h3><code>Creator &amp; Lead Developer</code></h3>
       <h2><a href="https://github.com/LUC4N3X">LUC4N3X</a></h2>
       <p><b>Independent developer building Levyra across Android and Windows.</b></p>
-      <p>
-        I created Levyra and lead its product direction, architecture, playback stack, interface, local data, lyrics, downloads, reliability work, and release engineering. Most of the project is built hands-on in Kotlin, with platform-specific work where Android and Windows need it.
-      </p>
       <p>
         <a href="https://github.com/LUC4N3X"><b>GitHub ↗</b></a>
         &nbsp;&nbsp;·&nbsp;&nbsp;
@@ -600,12 +602,12 @@ Contributions are welcome — see the [Levyra Documentation](https://luc4n3x.git
         <code>SQLite</code>
       </p>
     </td>
-    <td width="36%" align="center" valign="middle">
-      <a href="https://luc4n3x.pages.dev/">
-        <img src="docs/assets/levyra-signature.png" width="270" alt="LUC4N3X — Creator and Lead Developer of Levyra" />
-      </a>
-      <br>
-      <sub><a href="https://luc4n3x.pages.dev/">luc4n3x.pages.dev</a></sub>
+  </tr>
+  <tr>
+    <td>
+      <p>
+        I created Levyra and lead its product direction, architecture, playback stack, interface, local data, lyrics, downloads, reliability work, and release engineering. Most of the project is built hands-on in Kotlin, with platform-specific work where Android and Windows need it.
+      </p>
     </td>
   </tr>
 </table>
