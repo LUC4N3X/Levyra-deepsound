@@ -74,7 +74,7 @@ internal fun LevyraOutputHub(
         stream?.sampleRate ?: 0
     )
     val dspActive = audioSettings.equalizerEnabled ||
-        audioSettings.replayGainEnabled ||
+        audioSettings.replayGainActive ||
         audioSettings.virtualizer > 0 ||
         audioSettings.preampDb != 0f
 

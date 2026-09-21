@@ -1,5 +1,48 @@
 package com.luc4n3x.levyra.domain
 
+enum class ReplayGainMode(val storageValue: String) {
+    OFF("off"),
+    TRACK("track"),
+    ALBUM("album"),
+    SMART("smart");
+
+    companion object {
+        fun fromStorage(value: String?, legacyEnabled: Boolean = false): ReplayGainMode =
+            entries.firstOrNull { it.storageValue == value?.trim()?.lowercase() }
+                ?: if (legacyEnabled) SMART else OFF
+    }
+}
+
+data class ReplayGainMetadata(
+    val trackGainDb: Float? = null,
+    val albumGainDb: Float? = null,
+    val trackPeak: Float? = null,
+    val albumPeak: Float? = null
+)
+
+data class ReplayGainSelection(
+    val gainDb: Float,
+    val peak: Float?
+)
+
+fun selectReplayGain(
+    mode: ReplayGainMode,
+    metadata: ReplayGainMetadata,
+    albumContext: Boolean
+): ReplayGainSelection? {
+    fun track(): ReplayGainSelection? =
+        metadata.trackGainDb?.takeIf { it.isFinite() }?.let { ReplayGainSelection(it, metadata.trackPeak) }
+    fun album(): ReplayGainSelection? =
+        metadata.albumGainDb?.takeIf { it.isFinite() }?.let { ReplayGainSelection(it, metadata.albumPeak) }
+
+    return when (mode) {
+        ReplayGainMode.OFF -> null
+        ReplayGainMode.TRACK -> track()
+        ReplayGainMode.ALBUM -> album() ?: track()
+        ReplayGainMode.SMART -> if (albumContext) album() ?: track() else track() ?: album()
+    }
+}
+
 data class LevyraAudioPreset(
     val id: String,
     val fallbackLabel: String,
@@ -20,12 +63,24 @@ data class LevyraAudioSettings(
     val crossfadeSeconds: Int = 0,
     val djSoftMode: Boolean = false,
     val replayGainEnabled: Boolean = false,
+    val replayGainMode: ReplayGainMode = ReplayGainMode.OFF,
+    val replayGainPreampDb: Float = 0f,
+    val replayGainPreventClipping: Boolean = true,
     val playbackSpeed: Float = 1f,
     val pitch: Float = 1f,
     val gaplessEnabled: Boolean = true,
     val aaudioOutputEnabled: Boolean = false,
     val customPresets: List<LevyraAudioPreset> = emptyList()
 ) {
+    val effectiveReplayGainMode: ReplayGainMode
+        get() = if (replayGainMode == ReplayGainMode.OFF && replayGainEnabled) ReplayGainMode.SMART else replayGainMode
+
+    val replayGainActive: Boolean
+        get() = effectiveReplayGainMode != ReplayGainMode.OFF
+
+    fun withReplayGainMode(mode: ReplayGainMode): LevyraAudioSettings =
+        copy(replayGainMode = mode, replayGainEnabled = mode != ReplayGainMode.OFF)
+
     fun withNeutralEqualizer(): LevyraAudioSettings {
         val flat = LevyraAudioPresets.preset(LevyraAudioPresets.FLAT)
         return copy(
@@ -60,12 +115,16 @@ data class LevyraAudioSettings(
         val fallbackLevels = custom.firstOrNull { it.id == preset }?.levels
             ?: LevyraAudioPresets.levelsFor(preset)
         val levels = bandLevels.takeIf { it.size == LevyraAudioPresets.bandCount } ?: fallbackLevels
+        val normalizedReplayGainMode = effectiveReplayGainMode
         return copy(
             presetId = preset,
             bandLevels = levels.map { it.coerceIn(-100, 100) },
             bassBoost = bassBoost.coerceIn(0, 100),
             virtualizer = virtualizer.coerceIn(0, 100),
             preampDb = preampDb.coerceIn(-12f, 3f),
+            replayGainEnabled = normalizedReplayGainMode != ReplayGainMode.OFF,
+            replayGainMode = normalizedReplayGainMode,
+            replayGainPreampDb = replayGainPreampDb.coerceIn(-12f, 12f),
             crossfadeSeconds = crossfadeSeconds.coerceIn(0, 12),
             playbackSpeed = playbackSpeed.coerceIn(0.5f, 2.0f),
             pitch = pitch.coerceIn(0.5f, 2.0f),

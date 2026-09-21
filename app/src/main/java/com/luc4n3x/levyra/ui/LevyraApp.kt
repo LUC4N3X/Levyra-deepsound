@@ -2467,6 +2467,9 @@ fun LevyraApp(
                     onSelectAutoEqCatalogEntry = viewModel::selectAutoEqCatalogEntry,
                     onDismissAutoEqCatalogProfile = viewModel::dismissAutoEqCatalogProfile,
                     onCloseAutoEqCatalog = viewModel::closeAutoEqCatalog,
+                    onReplayGainMode = viewModel::setReplayGainMode,
+                    onReplayGainPreamp = viewModel::setReplayGainPreampDb,
+                    onReplayGainPreventClipping = viewModel::setReplayGainPreventClipping,
                     onClose = viewModel::closeAudioQualityPanel
                 )
             }
