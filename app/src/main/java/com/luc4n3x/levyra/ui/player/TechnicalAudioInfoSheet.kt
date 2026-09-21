@@ -377,7 +377,7 @@ internal fun technicalSourceCodec(stream: PlaybackStreamDescriptor?): String? {
         .map(String::trim)
         .firstOrNull { value ->
             val normalized = value.lowercase(Locale.ROOT)
-            AUDIO_CODEC_PREFIXES.any(normalized::startsWith)
+            AUDIO_CODEC_PREFIXES.any { prefix -> normalized.startsWith(prefix) }
         }
 }
 
