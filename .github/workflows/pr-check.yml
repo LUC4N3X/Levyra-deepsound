@@ -43,6 +43,7 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Setup Android SDK
         shell: bash
