@@ -1,32 +1,30 @@
 # Remote announcements
 
-Levyra can display small, reviewed announcements without requiring a new APK for every message. The single source of truth is:
+Levyra can display reviewed announcements without requiring a new app release for every message. The single source of truth is:
 
 `app/src/main/assets/config/announcements.json`
 
-The same JSON file serves these purposes:
+This file serves three purposes:
 
-- it is packaged inside the APK as the offline and first-fetch fallback;
-- upstream-published clients read its raw version from the repository's `main` branch for future announcements;
-- F-Droid builds disable both the remote feed and its support card at compile time.
+- It is packaged inside the APK as an offline fallback.
+- GitHub release builds fetch its latest raw version from `main` to receive new notices.
+- F-Droid builds disable both the remote feed and promotional cards at compile time.
 
-No executable code, HTML, JavaScript or APK fragments are downloaded.
+No executable code, HTML, JavaScript, or APK fragments are downloaded.
 
 ## Publishing a message
 
-1. Edit `app/src/main/assets/config/announcements.json` through a reviewed pull request.
-2. Give every new message a unique, stable `id`.
-3. Add an English translation and every supported app language.
+1. Edit `app/src/main/assets/config/announcements.json` via a pull request.
+2. Assign each message a unique, stable `id`.
+3. Provide English text and translations for supported languages.
 4. Set `enabled` to `true` when the message is ready.
-5. Merge the configuration change. Installed clients normally refresh within 12 hours and keep a validated local cache.
+5. Merge the change. Installed clients typically refresh within 12 hours and cache validated data locally.
 
-The open-source support campaign is intentionally delayed until the user has opened Levyra at least three times and has reached a positive listening moment through recent listens or 90 seconds of actual elapsed playback. Seeking forward or restoring a saved media position does not qualify. Closing the dialog or pressing Back snoozes it for three days. The explicit “later” action snoozes it for ten days. Opening the GitHub action completes the campaign for that installation. A permanent support entry remains available in Settings.
+The open-source support banner is delayed until the user has opened Levyra at least three times and reached 90 seconds of continuous playback. Dismissing the dialog snoozes it for three days, selecting "later" snoozes it for ten days, and tapping the GitHub link marks the campaign as permanently completed. A permanent support link remains in Settings.
 
-Other `info` and `update` announcements are not blocked by the support campaign's engagement threshold. Snoozing one campaign also does not suppress another eligible lower-priority announcement.
+General info and update notices are not subject to the engagement threshold.
 
-To show a substantially revised campaign to people who completed an older one, publish it with a new `id`. To stop a campaign, set `enabled` to `false` or add an `endAt` value.
-
-Changes made after an APK is published are delivered remotely. The packaged copy changes only when a new APK is built, so the app always retains a known-good fallback when the network or remote catalog is unavailable.
+To run a revised campaign for users who completed an earlier one, assign a new `id`. To end a message, set `enabled` to `false` or specify an `endAt` timestamp.
 
 ## Supported schema
 
@@ -60,20 +58,20 @@ Changes made after an APK is published are delivered remotely. The packaged copy
 }
 ```
 
-`maximumVersionCode`, `startAt`, `endAt` and `actionUrl` are optional. The available styles are `open_source`, `info` and `update`. `settingsTitle` and `settingsSubtitle` are used by the permanent Settings entry; older catalogs without them fall back to the action (or the announcement title when no action exists) and body copy.
+`maximumVersionCode`, `startAt`, `endAt`, and `actionUrl` are optional. Available styles are `open_source`, `info`, and `update`. `settingsTitle` and `settingsSubtitle` are used by the permanent Settings entry.
 
 ## Safety rules
 
-The Android client validates the complete catalog before using it:
+The Android client strictly validates the announcements catalog before display:
 
-- only schema version 2 is accepted;
-- no more than 20 announcements are accepted;
-- IDs and text lengths are bounded;
-- English is required as the fallback language;
-- dates and Android version ranges must be valid;
-- action links must use HTTPS and point to an official `github.com/LUC4N3X/...` path;
-- invalid or unavailable remote data never prevents the app from starting;
-- the last validated remote catalog is used when the network is unavailable;
-- the packaged catalog remains available if no validated remote catalog exists.
+- Only schema version 2 is accepted.
+- A maximum of 20 announcements are loaded.
+- Text lengths and identifier strings are bounded.
+- English is required as the fallback language.
+- Date formats and version ranges must be valid.
+- Action links must use HTTPS and point to an official `github.com/LUC4N3X/...` path.
+- Invalid or unreachable remote data never prevents the app from starting.
+- The last validated cache is used when offline.
+- The bundled fallback catalog is used if no remote cache exists.
 
-The engine does not collect analytics, device identifiers, GitHub star status or interaction telemetry. Launch count, snooze timing and completion state remain local in Android preferences.
+The announcement engine collects no telemetry, device identifiers, or interaction tracking. Launch counts, snooze timers, and completion flags remain in local Android preferences.

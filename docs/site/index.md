@@ -4,9 +4,9 @@
 
 # Levyra Documentation
 
-Everything you need to understand and use Levyra on **Android** and **Windows**.
+Guides, references, and technical documentation for Levyra on Android and Windows.
 
-Use this documentation to get started, learn the main features, solve common problems, or explore how Levyra is built.
+Use these pages to get started, learn how features work, troubleshoot issues, or set up a local development environment.
 
 </div>
 
@@ -21,12 +21,12 @@ Use this documentation to get started, learn the main features, solve common pro
 
 <a class="levyra-docs-link" href="features/">
 <strong>Features</strong>
-<span>See what Levyra can do and how the main features work.</span>
+<span>Explore what Levyra can do and how each feature works.</span>
 </a>
 
 <a class="levyra-docs-link" href="troubleshooting/">
 <strong>FAQ & Troubleshooting</strong>
-<span>Find simple solutions to common problems.</span>
+<span>Find straightforward fixes for common issues.</span>
 </a>
 
 <a class="levyra-docs-link" href="development/">
@@ -40,10 +40,10 @@ Use this documentation to get started, learn the main features, solve common pro
 
 - [Architecture](architecture.md) explains how the Android and Windows apps are structured.
 - [Roadmap](roadmap.md) shows the current engineering direction.
-- [Privacy & Data](privacy.md) explains what Levyra stores locally and which network services it can use.
+- [Privacy & Data](privacy.md) explains what Levyra stores locally and which network services it contacts.
 
 ## About Levyra
 
-Levyra is an open-source music application focused on native playback, music discovery, offline ownership, synced lyrics, and privacy.
+Levyra is an open-source music player built around native audio playback, music discovery, synced lyrics, and local-first privacy.
 
-The Android and Windows apps use different native playback engines, but follow the same product principles.
+The Android and Windows clients use different native audio backends under the hood, but share the same core design and privacy standards.
