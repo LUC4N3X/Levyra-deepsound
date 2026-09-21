@@ -171,38 +171,38 @@ The song itself never changes inside your library. **Artwork, lyrics, queue posi
 
 ---
 
-## ✦ What Levyra actually gives you
+## ✦ What Levyra can do
 
-There is quite a lot under the hood now, but these are the parts that really change how the app feels day to day.
+Levyra has picked up a lot of features over time. These are the ones I think are worth knowing about first.
 
-### Playback that behaves like a music player
+### Playback
 
-- **Native playback on both platforms.** Android uses Media3 / ExoPlayer and Windows uses libVLC rather than wrapping a web player.
-- **Gapless, crossfade, speed and pitch controls.** Album continuity keeps consecutive tracks from the same release from being crossfaded into each other.
-- **10-band EQ and AutoEQ.** Built-in EQ controls plus a searchable headphone correction catalog.
-- **SponsorBlock.** Levyra can automatically skip supported intros, silence, dialogue and other non-music sections during playback.
-- **Audio and video.** Switch to native video when a video stream is available, with subtitle selection where supported.
-- **Android Auto and Quick Settings controls.** The player works with car media controls and can be paused or resumed from a dedicated Android tile.
+- **Native playback.** Android runs on Media3 / ExoPlayer and Windows uses libVLC. Neither app is just a web player in a wrapper.
+- **Gapless, crossfade, speed and pitch controls.** Consecutive tracks from the same album can stay continuous instead of being crossfaded into each other.
+- **10-band EQ and AutoEQ.** There is a normal built-in EQ, plus a searchable catalog of headphone correction profiles.
+- **SponsorBlock.** It can skip supported intros, silence, dialogue and other non-music sections during playback.
+- **Audio and video.** You can switch to native video when a video stream is available, with subtitle selection where supported.
+- **Android Auto and Quick Settings.** Playback works with Android car controls, and a dedicated tile can pause or resume the current session.
 
-### A library you can actually keep
+### Library & offline
 
-- **Normal offline files.** Downloads are tagged M4A files rather than files trapped in an app-only vault. Artwork, artist, album and lyrics can be written into them.
-- **Local music is first-class.** Tracks already stored on the phone can be indexed, searched, queued and played alongside the rest of the library.
-- **Queue Spaces.** Keep several named queues around instead of losing the current one every time you change what you're listening to.
-- **Backups that include the useful stuff.** Settings, favorites, playlists, history and queues can be stored in versioned Levyra backups and restored later.
-- **Playlist organization.** Tags, filtering, hidden playlists and artist exclusions help keep a big library manageable without deleting things.
+- **Downloads are normal files.** Levyra saves tagged M4A files, and can write artwork, artist, album and lyrics into them.
+- **Local music works throughout the app.** Music already on your phone can be indexed, searched, queued and played from the same library.
+- **Queue Spaces.** You can keep multiple named queues around instead of rebuilding the current queue every time.
+- **Levyra Vault.** Settings, favorites, playlists, listening history and queues can be backed up and restored without an online account.
+- **Playlist organization.** Tags, filtering, hidden playlists and artist exclusions are there for people with larger libraries.
 
-### Lyrics, discovery and the fun stuff
+### Lyrics, discovery & extras
 
-- **Synced lyrics with manual timing.** Tap to seek, adjust the offset when a source is early or late, and keep separate Bluetooth timing where Android can identify the route.
-- **Romanization and lyric sharing.** Multiple writing systems can be made easier to read, and selected lyrics can be exported as square or story-sized cards.
-- **Canvas and living artwork.** Motion visuals can sit behind the player when available, with artwork-based motion as a fallback.
-- **Live radio and discovery.** Worldwide stations, charts, Smart Orbit, Samples and recommendation shelves live alongside normal search.
-- **Music recognition.** Identify music through the microphone or supported internal audio capture, with recognition history kept locally.
-- **Listening stats that stay local.** Play counts, listening time, weekly activity and longer-term views are calculated on the device.
-- **Optional integrations.** Last.fm and ListenBrainz are there if you use them, but Levyra doesn't require either one.
+- **Synced lyrics with manual timing.** Tap a line to seek, fix an early or late sync, and keep separate Bluetooth timing where Android can identify the route.
+- **Romanization and lyric sharing.** Several writing systems can be made easier to read, and selected lyrics can be exported as square or story-sized cards.
+- **Canvas and living artwork.** Motion visuals can appear behind the player when available, with artwork motion as a fallback.
+- **Live radio and discovery.** Worldwide stations, charts, Smart Orbit, Samples and recommendation shelves sit alongside normal search.
+- **Music recognition.** Levyra can identify music through the microphone or supported internal audio capture, and keeps the recognition history locally.
+- **Listening stats stay on the device.** Play counts, listening time, weekly activity and longer-term views are calculated locally.
+- **Last.fm and ListenBrainz.** Both are optional. Levyra does not need either service for normal playback.
 
-That's the short version. The deeper implementation notes and edge cases live in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+There is more than I want to cram into the README. The detailed implementation notes and edge cases are in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ## ✦ Under the hood
 
