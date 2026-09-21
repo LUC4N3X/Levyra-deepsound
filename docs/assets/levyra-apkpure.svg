@@ -2,7 +2,14 @@
   <title>GET IT ON APKPure</title>
   <rect x=".75" y=".75" width="158.5" height="48.5" rx="10" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
   <rect x="10" y="9" width="32" height="32" rx="8" fill="#24CD77"/>
-  <path fill="#FFFFFF" d="M26 14.5 17.4 35h5.1l1.55-4h7.9l1.55 4h5.1L30 14.5h-4Zm-.3 12.3L28 20.9l2.3 5.9h-4.6Z"/>
+  <g transform="translate(10 9) scale(.03)" fill="#FFFFFF">
+    <path d="M892.99993 611.72969 970.85741 611.77319 929.89641 688.37305Z"/>
+    <path d="M794.99333 672 929.08802 671.54855 861.16069 803Z"/>
+    <path d="M768.29222 932.79238 669 732.66606 867.96047 731.35091 770.04312 933.29238Z"/>
+    <path d="M28.897776 715.5 346.90236 65.5 560.01789 64.99095 134.1887 928.20241Z"/>
+    <path d="M458 289.69993 563.68924 73.231804 771.26447 497.72405 662.00331 710Z"/>
+    <path d="M254 710.5329 358.22025 498H546.80163L650 710.63348Z"/>
+  </g>
   <text x="49" y="19" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".75">GET IT ON</text>
   <text x="49" y="36" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="700">APKPure</text>
 </svg>
