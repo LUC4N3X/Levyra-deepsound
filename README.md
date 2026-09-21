@@ -561,8 +561,8 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
     <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Featured on Tsukutta" height="32">
   </a>
   &nbsp;&nbsp;
-  <a href="https://www.producthunt.com/products/levyra">
-    <img src="https://ph-static.imgix.net/ph-logo-1.png" alt="Levyra on Product Hunt" height="32">
+  <a href="https://www.producthunt.com/products/levyra/reviews/new?utm_source=badge-product_review&utm_medium=badge&utm_source=badge-levyra" target="_blank">
+    <img src="https://api.producthunt.com/widgets/embed-image/v1/product_review.svg?product_id=1311640&theme=light" alt="LEVYRA - Open-source music player for Android &amp; Windows | Product Hunt" width="148" height="32">
   </a>
   &nbsp;&nbsp;
   <a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
