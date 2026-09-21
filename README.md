@@ -20,18 +20,42 @@ Streaming, local music, downloads, synced lyrics and a private offline library �
   <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg 126w, docs/assets/levyra-wiki-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
 </p>
 
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><b>Download</b></a>
-&nbsp;&nbsp;·&nbsp;&nbsp;
-<a href="https://luc4n3x.github.io/Levyra-deepsound/"><b>Documentation</b></a>
-&nbsp;&nbsp;·&nbsp;&nbsp;
-<a href="https://luc4n3x.pages.dev/"><b>Developer</b></a>
+<p align="center"><b>Download Levyra</b></p>
+
+<p align="center">
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" width="200" alt="Download Levyra from GitHub Releases"></a>
+  <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="docs/assets/levyra-fdroid.svg" width="200" alt="Get Levyra on F-Droid"></a>
+  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" width="200" alt="Get Levyra on IzzyOnDroid"></a>
+  <br>
+  <a href="https://sourceforge.net/projects/levyra.mirror/"><img src="docs/assets/levyra-sourceforge.svg" width="200" alt="Download Levyra from SourceForge"></a>
+  <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="docs/assets/levyra-openapk.svg" width="200" alt="Get Levyra on OpenAPK"></a>
+  <a href="https://apkpure.com/p/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkpure.svg" width="200" alt="Get Levyra on APKPure"></a>
+  <br>
+  <a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/levyra-androidfreeware-download.svg" width="200" alt="Get Levyra on AndroidFreeware"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" width="200" alt="Install Levyra with Obtainium"></a>
+  <a href="https://appteka.store/apps/b5br313609"><img src="docs/assets/levyra-appteka.svg" width="200" alt="Get Levyra on Appteka"></a>
+  <br>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" width="200" alt="Download Levyra for Windows"></a>
+</p>
+
+<p align="center">🌍 <b>Levyra speaks 36 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
+
+<p align="center">
+  <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
+</p>
 
 </div>
 
-> [!NOTE]
-> Levyra is independent open-source software for lawful personal use. It does not host or distribute a third-party music catalog. See the [Legal Notice](docs/legal/LEGAL.md) for the full terms.
+---
 
-## Why Levyra
+> [!IMPORTANT]
+> **Legal & responsible use · No piracy.** Levyra is independent open-source client software and does not host or distribute third-party music. It is built for lawful personal use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Only access, save, convert, or export media when you have the rights, permission, licence, or other lawful basis to do so, and respect the applicable terms of third-party services.
+>
+> For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
+>
+> Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
+
+## ✦ Why Levyra
 
 Levyra started as the music player I wanted to use myself: one place for streaming, files already on my phone, and an offline library I can actually keep.
 
@@ -39,7 +63,7 @@ I didn't want an app that needed its own account just to remember my playlists o
 
 It has grown a lot since then, but the idea is still the same: **make the player useful, keep the data portable, and don't track the listener.**
 
-## Screenshots
+## ✦ Screenshots
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/00_levyra_hero_showcase-light.webp">
@@ -67,7 +91,7 @@ It has grown a lot since then, but the idea is still the same: **make the player
 
 </details>
 
-## What it does
+## ✦ What it does
 
 The README used to list almost everything Levyra could do. That got hard to scan, so this is the shorter version.
 
@@ -81,7 +105,7 @@ The README used to list almost everything Levyra could do. That got hard to scan
 
 For the complete feature and technical documentation, see the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
-## Under the hood
+## ✦ Under the hood
 
 | | Android | Windows |
 | --- | --- | --- |
@@ -92,7 +116,7 @@ For the complete feature and technical documentation, see the [Levyra Documentat
 
 Levyra uses separate platform code where Android and Windows need different solutions. The project does not wrap a web player inside a desktop or mobile shell.
 
-## Privacy
+## ✦ Privacy
 
 **No ads. No Levyra analytics. No mandatory Levyra account.**
 
@@ -100,41 +124,7 @@ Listening history, play counts, playlists and listening statistics are stored lo
 
 Microphone access is only used when you start microphone-based music recognition. Proxy, DNS and other network options are visible in settings rather than hidden behind the player.
 
-## Download
-
-<div align="center">
-
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" width="200" alt="Download Levyra from GitHub Releases"></a>
-<a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="docs/assets/levyra-fdroid.svg" width="200" alt="Get Levyra on F-Droid"></a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" width="200" alt="Download Levyra for Windows"></a>
-
-</div>
-
-<details>
-<summary><b>More Android download sources</b></summary>
-<br>
-
-<div align="center">
-
-<a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" width="200" alt="Get Levyra on IzzyOnDroid"></a>
-<a href="https://sourceforge.net/projects/levyra.mirror/"><img src="docs/assets/levyra-sourceforge.svg" width="200" alt="Download Levyra from SourceForge"></a>
-<a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="docs/assets/levyra-openapk.svg" width="200" alt="Get Levyra on OpenAPK"></a>
-
-<br>
-
-<a href="https://apkpure.com/p/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkpure.svg" width="200" alt="Get Levyra on APKPure"></a>
-<a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/levyra-androidfreeware-download.svg" width="200" alt="Get Levyra on AndroidFreeware"></a>
-<a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" width="200" alt="Install Levyra with Obtainium"></a>
-
-<br>
-
-<a href="https://appteka.store/apps/b5br313609"><img src="docs/assets/levyra-appteka.svg" width="200" alt="Get Levyra on Appteka"></a>
-
-</div>
-
-</details>
-
-## Translations
+## ✦ Translations
 
 Levyra is available in **36 languages**, with Android translations maintained through Weblate.
 
@@ -156,7 +146,7 @@ Levyra is available in **36 languages**, with Android translations maintained th
 
 </div>
 
-## Open-source acknowledgements
+## ✦ Open-source acknowledgements
 
 Levyra is its own project, but it benefits from ideas, libraries and upstream work from the wider open-source music community.
 
@@ -196,17 +186,9 @@ Contributions are welcome. Development notes and project guidance live in the [d
 
 </details>
 
-## Legal
+---
 
-Levyra is independently developed and is **not affiliated with, sponsored by, endorsed by, or officially connected with** YouTube, Google, JioSaavn, TIDAL, Apple, Deezer, Spotify or any other third-party service referenced by the project.
-
-Levyra does not own or host third-party music catalogs. Music, artwork, lyrics, metadata, video and trademarks remain the property of their respective owners.
-
-The app is intended for lawful personal use. Features involving playback, downloading, conversion, storage or export do not grant rights to content the user is not otherwise entitled to access or use. Users are responsible for complying with applicable law and the terms of the services they use.
-
-Levyra is released under the [GNU GPL v3.0](LICENSE) and is provided **AS IS**. The complete legal terms are in the [Legal Notice](docs/legal/LEGAL.md).
-
-## Author
+## ✦ Author
 
 <div align="center">
 
@@ -228,4 +210,70 @@ Independent developer building Levyra for Android and Windows.
 
 <sub><b>Made in Italy. Built for the world.</b></sub>
 
+</div>
+
+---
+
+## ✦ Legal Disclaimer & Terms of Use
+
+<div align="center">
+
+### Open source. Independent. Built for lawful use.
+
+<code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
+
+<sub>Levyra is an independent open-source music client. It does not own, host, or distribute third-party music catalogs.</sub>
+
+</div>
+
+<br>
+
+### ◇ Independent software
+
+Levyra is independently developed and is **not affiliated with, sponsored by, endorsed by, or officially connected with** YouTube, Google, JioSaavn, TIDAL, Apple, Deezer, Spotify, or any other third-party service referenced by the project.
+
+Product names, trademarks, logos, media, and other intellectual property remain the property of their respective owners.
+
+### ◇ Third-party content
+
+Levyra does not claim ownership of music, artwork, lyrics, metadata, videos, or other material obtained from external sources.
+
+The application acts as a client that may connect to third-party services or publicly accessible sources requested by the user. Levyra does **not operate its own copyrighted music catalog** and does not host third-party music on its infrastructure.
+
+Third-party services may change, restrict access, become unavailable, or modify their technical behavior independently of Levyra.
+
+### ◇ Lawful & responsible use
+
+**Levyra is not designed, promoted, or intended for piracy, copyright infringement, or unauthorized redistribution of copyrighted material.**
+
+Playback, download, conversion, offline storage, export, or similar functionality does not transfer ownership or grant additional rights over third-party content.
+
+Users are responsible for ensuring that the way they access, save, convert, export, or redistribute content complies with applicable copyright and intellectual-property laws, permissions or licences granted by rights holders, and the terms and conditions of the relevant third-party services.
+
+### ◇ Respect for creators
+
+Levyra exists to provide an open and flexible listening experience while respecting the work of **artists, creators, developers, platforms, and rights holders**.
+
+Nothing in Levyra should be interpreted as granting permission to reproduce, redistribute, or commercially exploit third-party material without the appropriate rights.
+
+### ◇ Warranty & availability
+
+Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided **AS IS**, without warranty of any kind, to the extent permitted by applicable law.
+
+Because Levyra integrates with external platforms and services, permanent availability of streams, metadata, artwork, lyrics, APIs, or other third-party functionality cannot be guaranteed.
+
+<div align="center">
+
+### ◆ Use Levyra responsibly.
+
+For the complete legal terms covering third-party services, downloads, user responsibilities, warranties, and liability, read the **[Legal Notice](docs/legal/LEGAL.md)**.
+
+<sub>Using Levyra does not grant rights to content you do not already have the legal right to access or use.</sub>
+
+</div>
+
+---
+
+<div align="center">
+  <sub><b>🇮🇹 Made in Italy. Built for the world.</b></sub>
 </div>
