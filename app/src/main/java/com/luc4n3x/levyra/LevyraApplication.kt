@@ -47,11 +47,18 @@ class LevyraApplication : Application() {
         startupScope.launch {
             delay(1800L)
             try {
-                when (val followedArtists = FollowedArtistsStore(this@LevyraApplication).loadOrNull()) {
-                    null -> Timber.w("Release radar state unavailable; preserving existing schedule")
-                    emptyList<com.luc4n3x.levyra.domain.FollowedArtist>() ->
-                        ReleaseRadarWorker.cancel(this@LevyraApplication)
-                    else -> ReleaseRadarWorker.schedule(this@LevyraApplication)
+                val releaseNotificationsEnabled = LevyraPreferences(this@LevyraApplication)
+                    .interfaceSettings()
+                    .releaseNotificationsEnabled
+                if (!releaseNotificationsEnabled) {
+                    ReleaseRadarWorker.cancel(this@LevyraApplication)
+                } else {
+                    when (val followedArtists = FollowedArtistsStore(this@LevyraApplication).loadOrNull()) {
+                        null -> Timber.w("Release radar state unavailable; preserving existing schedule")
+                        emptyList<com.luc4n3x.levyra.domain.FollowedArtist>() ->
+                            ReleaseRadarWorker.cancel(this@LevyraApplication)
+                        else -> ReleaseRadarWorker.schedule(this@LevyraApplication)
+                    }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
