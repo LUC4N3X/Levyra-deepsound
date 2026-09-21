@@ -1449,8 +1449,8 @@ internal fun LevyraPlaylistDetailScreen(
                 onAddToPlaylist = { addTracksDialog = true },
                 onDelete = { tracksToRemove = selectedTracks },
                 deleteLabel = strings.remove,
-                onSelectAll = { selectedKeys = selectAllPlaylistTrackKeys(orderedTracks) },
-                allSelected = orderedTracks.isNotEmpty() && selectedKeys.size == orderedTracks.size,
+                onSelectAll = { selectedKeys = selectPlaylistTracks(selectedKeys, visibleTracks) },
+                allSelected = areAllPlaylistTracksSelected(visibleTracks, selectedKeys),
                 primaryLabel = strings.playNext,
                 canPlayTracks = selectedTracks.isNotEmpty() && (!state.jam.isActive || state.jam.isHost),
                 canQueueTracks = selectedTracks.isNotEmpty() && (

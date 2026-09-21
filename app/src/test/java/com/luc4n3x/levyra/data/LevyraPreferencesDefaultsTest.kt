@@ -61,6 +61,7 @@ class LevyraPreferencesDefaultsTest {
     @Test
     fun backupRoundTripPreservesPlayerVisualAndCanvasSettings() {
         val original = LevyraInterfaceSettings(
+            releaseNotificationsEnabled = true,
             canvasQuality = LevyraCanvasQuality.High,
             canvasSource = LevyraCanvasSource.Tidal,
             motionArtworkWifiOnly = true,
@@ -77,6 +78,7 @@ class LevyraPreferencesDefaultsTest {
         assertEquals(LevyraCanvasSource.Tidal, restored.canvasSource)
         assertTrue(restored.motionArtworkWifiOnly)
         assertTrue(restored.enhanceVideoMetadata)
+        assertTrue(restored.releaseNotificationsEnabled)
         assertEquals(PlayerVisualMode.CanvasCard, restored.playerVisualMode)
         assertEquals(PlayerBackgroundMode.Blur, restored.playerBackground)
     }
@@ -123,6 +125,7 @@ class LevyraPreferencesDefaultsTest {
     @Test
     fun legacyBackupWithoutMotionArtworkWifiOnlyDefaultsToFalse() {
         assertFalse(backupInterfaceSettingsFromJson(JSONObject()).motionArtworkWifiOnly)
+        assertFalse(backupInterfaceSettingsFromJson(JSONObject()).releaseNotificationsEnabled)
     }
 
     @Test

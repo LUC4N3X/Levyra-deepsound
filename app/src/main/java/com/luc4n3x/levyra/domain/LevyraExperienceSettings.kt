@@ -135,6 +135,7 @@ data class LevyraInterfaceSettings(
     val showPersonalOrbit: Boolean = true,
     val showResonance: Boolean = true,
     val showNewReleases: Boolean = true,
+    val releaseNotificationsEnabled: Boolean = false,
     val showAlbumsForYou: Boolean = true,
     val showTrendingArtists: Boolean = true,
     val showCharts: Boolean = true,
