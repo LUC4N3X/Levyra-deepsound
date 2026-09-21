@@ -187,7 +187,7 @@ private fun PulseSpecLine(
 }
 
 @Composable
-private fun rememberPlayerAudioSpec(): State<PlayerAudioSpec> {
+internal fun rememberPlayerAudioSpec(): State<PlayerAudioSpec> {
     val player by PlaybackService.activePlayerFlow.collectAsStateWithLifecycle()
     val spec = remember { mutableStateOf(PlayerAudioSpec()) }
     DisposableEffect(player) {
@@ -209,7 +209,7 @@ private fun rememberPlayerAudioSpec(): State<PlayerAudioSpec> {
     return spec
 }
 
-private fun playerAudioSpecOf(tracks: Tracks): PlayerAudioSpec {
+internal fun playerAudioSpecOf(tracks: Tracks): PlayerAudioSpec {
     for (group in tracks.groups) {
         if (group.type != C.TRACK_TYPE_AUDIO) continue
         for (index in 0 until group.length) {
@@ -220,7 +220,9 @@ private fun playerAudioSpecOf(tracks: Tracks): PlayerAudioSpec {
                 codec = playerAudioCodecLabel(format.sampleMimeType, format.codecs),
                 bitrateKbps = bitrate?.div(1_000),
                 sampleRateHz = format.sampleRate.takeIf { it > 0 },
-                channels = format.channelCount.takeIf { it > 0 }
+                channels = format.channelCount.takeIf { it > 0 },
+                mimeType = format.sampleMimeType.orEmpty(),
+                codecString = format.codecs.orEmpty()
             )
         }
     }
