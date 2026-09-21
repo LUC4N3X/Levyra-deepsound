@@ -22,6 +22,7 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.HomeEditorialCollection
 import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
+import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
@@ -1266,6 +1267,7 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
 
 internal data class PlayerProjection(
     val animationsEnabled: Boolean,
+    val audioSettings: LevyraAudioSettings,
     val motionArtworkEnabled: Boolean,
     val motionArtwork: MotionArtwork?,
     val motionArtworkLoading: Boolean,
@@ -1304,6 +1306,7 @@ internal data class PlayerProjection(
 
 internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
     animationsEnabled = state.animationsEnabled,
+    audioSettings = state.audioSettings,
     motionArtworkEnabled = state.motionArtworkEnabled,
     motionArtwork = state.motionArtwork,
     motionArtworkLoading = state.motionArtworkLoading,
