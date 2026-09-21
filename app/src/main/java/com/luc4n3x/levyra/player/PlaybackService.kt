@@ -87,6 +87,7 @@ import com.luc4n3x.levyra.feature.systemintegration.detectLevyraRomMediaCapabili
 import com.luc4n3x.levyra.feature.radio.RadioUrlPolicy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackBackendProvider
+import com.luc4n3x.levyra.feature.cast.RemotePlaybackState
 import com.luc4n3x.levyra.feature.cast.CastHandoffConverter
 import com.luc4n3x.levyra.feature.cast.LocalPlaybackSnapshot
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
@@ -247,6 +248,9 @@ class PlaybackService : MediaLibraryService() {
 
         private val _activePlayerFlow = MutableStateFlow<ExoPlayer?>(null)
         val activePlayerFlow: StateFlow<ExoPlayer?> = _activePlayerFlow.asStateFlow()
+
+        private val _remotePlaybackStateFlow = MutableStateFlow(RemotePlaybackState())
+        val remotePlaybackStateFlow: StateFlow<RemotePlaybackState> = _remotePlaybackStateFlow.asStateFlow()
 
         private val _sleepTimerStateFlow = MutableStateFlow<PlaybackSleepTimerState>(PlaybackSleepTimerState.Disabled)
         val sleepTimerStateFlow: StateFlow<PlaybackSleepTimerState> = _sleepTimerStateFlow.asStateFlow()
@@ -1061,7 +1065,13 @@ class PlaybackService : MediaLibraryService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val sessionPlayer = RemotePlaybackBackendProvider.create(this).attachLocalPlayer(player)
+        val remotePlaybackBackend = RemotePlaybackBackendProvider.create(this)
+        serviceScope.launch {
+            remotePlaybackBackend.state.collect { state ->
+                _remotePlaybackStateFlow.value = state
+            }
+        }
+        val sessionPlayer = remotePlaybackBackend.attachLocalPlayer(player)
         sessionPlayer.addListener(object : Player.Listener {
             override fun onDeviceInfoChanged(deviceInfo: DeviceInfo) {
                 if (deviceInfo.playbackType == DeviceInfo.PLAYBACK_TYPE_REMOTE) {
@@ -2185,6 +2195,7 @@ class PlaybackService : MediaLibraryService() {
         sleepTimer.cancel()
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
         _liveRadioMetadataFlow.value = ""
+        _remotePlaybackStateFlow.value = RemotePlaybackState()
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
         synchronized(premiumAudioSettingsLock) {
