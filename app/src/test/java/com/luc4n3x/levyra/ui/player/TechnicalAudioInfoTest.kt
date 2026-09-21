@@ -64,6 +64,29 @@ class TechnicalAudioInfoTest {
     }
 
     @Test
+    fun muxedSourceDoesNotExposeVideoCodecOrAggregateBitrateAsAudio() {
+        val muxed = PlaybackStreamDescriptor(
+            url = "https://example.invalid/muxed.mp4",
+            kind = PlaybackStreamKind.MUXED,
+            deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+            container = "mp4",
+            mimeType = "video/mp4",
+            codec = "avc1.42001E, mp4a.40.2",
+            bitrate = 312_000,
+            averageBitrate = 312_000,
+            itag = 18,
+            qualityLabel = "android-reel",
+            selected = true
+        )
+        val rows = buildSourceRows(track(listOf(muxed)), muxed, copy).toMap()
+
+        assertEquals("mp4a.40.2", rows[copy.codec])
+        assertTrue(rows[copy.bitrate] == null)
+        assertEquals("mp4a.40.2", technicalSourceCodec(muxed))
+        assertTrue(technicalSourceBitrateKbps(muxed) == null)
+    }
+
+    @Test
     fun outputPathDistinguishesNativeRequestAndFallback() {
         val enabled = LevyraAudioSettings(aaudioOutputEnabled = true)
         val disabled = LevyraAudioSettings(aaudioOutputEnabled = false)
