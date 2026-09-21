@@ -104,6 +104,10 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
     <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
       <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="48">
     </a>
+    &nbsp;&nbsp;
+    <a href="https://tsukutta.app/apps/30887ffa-db55-4b07-92a2-42845184b42c">
+      <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Featured on Tsukutta" width="210" height="40">
+    </a>
   </p>
   <p>
     <sub><b>CHINESE DEVELOPER MEDIA COVERAGE</b></sub><br>
