@@ -126,6 +126,7 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
@@ -3532,7 +3533,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleAudioNormalization() {
-        setReplayGainEnabled(!_state.value.audioNormalization)
+        val enabled = !_state.value.audioNormalization
+        preferences.setAudioNormalization(enabled)
+        updateAudioSettings(_state.value.audioSettings, audioNormalization = enabled)
     }
 
     fun toggleShuffle() {
@@ -3681,8 +3684,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setReplayGainEnabled(value: Boolean) {
-        preferences.setAudioNormalization(value)
-        updateAudioSettings(_state.value.audioSettings.copy(replayGainEnabled = value), audioNormalization = value)
+        setReplayGainMode(if (value) ReplayGainMode.SMART else ReplayGainMode.OFF)
+    }
+
+    fun setReplayGainMode(mode: ReplayGainMode) {
+        updateAudioSettings(_state.value.audioSettings.withReplayGainMode(mode))
+    }
+
+    fun setReplayGainPreampDb(value: Float) {
+        updateAudioSettings(_state.value.audioSettings.copy(replayGainPreampDb = value))
+    }
+
+    fun setReplayGainPreventClipping(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(replayGainPreventClipping = value))
     }
 
     fun setPlaybackSpeed(value: Float) {
