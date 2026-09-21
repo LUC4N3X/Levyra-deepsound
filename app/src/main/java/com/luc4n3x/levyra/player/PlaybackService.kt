@@ -505,7 +505,7 @@ class PlaybackService : MediaLibraryService() {
         if (canonicalAlbumUrl.isNotEmpty()) return "url:$canonicalAlbumUrl"
         val album = track.album.trim().lowercase()
         if (album.isEmpty()) return ""
-        val albumArtist = track.albumArtist.trim().lowercase()
+        val albumArtist = track.albumArtist.ifBlank { track.artist }.trim().lowercase()
         return if (albumArtist.isNotEmpty()) "$albumArtist\u0000$album" else "album:$album"
     }
 
