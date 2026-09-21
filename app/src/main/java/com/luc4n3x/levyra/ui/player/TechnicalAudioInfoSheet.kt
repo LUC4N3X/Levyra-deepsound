@@ -32,7 +32,9 @@ import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.audio.LevyraAudioOutputRoute
+import com.luc4n3x.levyra.feature.audio.LevyraAudioOutputState
 import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
+import com.luc4n3x.levyra.feature.cast.RemotePlaybackState
 import com.luc4n3x.levyra.player.NativeAudioIntegration
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -61,19 +63,27 @@ internal fun TechnicalAudioInfoSheet(
     val systemCopy = strings.systemPlayerCopy()
     val runtime by rememberPlayerAudioSpec()
     val player by PlaybackService.activePlayerFlow.collectAsStateWithLifecycle()
+    val remotePlayback by PlaybackService.remotePlaybackStateFlow.collectAsStateWithLifecycle()
     val output = rememberLevyraAudioOutputState()
+    val effectiveRuntime = remember(runtime, remotePlayback.connected) {
+        technicalRuntimeSpec(runtime, remotePlayback.connected)
+    }
     val source = remember(track.playbackManifest) { selectedAudioDescriptor(track) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val runtimeRows = remember(runtime, player?.audioSessionId, copy) {
-        buildList {
-            add(copy.codec to runtime.codec.ifBlank { copy.unavailable })
-            runtime.bitrateKbps?.let { add(copy.bitrate to "$it kbps") }
-            runtime.sampleRateHz?.let { add(copy.sampleRate to formatTechnicalSampleRate(it)) }
-            runtime.channels?.let { add(copy.channels to formatTechnicalChannels(it)) }
-            runtime.mimeType.takeIf(String::isNotBlank)?.let { add(copy.mime to it) }
-            runtime.codecString.takeIf(String::isNotBlank)?.let { add("Codec ID" to it) }
-            player?.audioSessionId?.takeIf { it > 0 }?.let { add(copy.audioSession to it.toString()) }
+    val runtimeRows = remember(effectiveRuntime, player?.audioSessionId, copy, remotePlayback.connected) {
+        if (remotePlayback.connected) {
+            emptyList()
+        } else {
+            buildList {
+                add(copy.codec to effectiveRuntime.codec.ifBlank { copy.unavailable })
+                effectiveRuntime.bitrateKbps?.let { add(copy.bitrate to "$it kbps") }
+                effectiveRuntime.sampleRateHz?.let { add(copy.sampleRate to formatTechnicalSampleRate(it)) }
+                effectiveRuntime.channels?.let { add(copy.channels to formatTechnicalChannels(it)) }
+                effectiveRuntime.mimeType.takeIf(String::isNotBlank)?.let { add(copy.mime to it) }
+                effectiveRuntime.codecString.takeIf(String::isNotBlank)?.let { add(copy.codecId to it) }
+                player?.audioSessionId?.takeIf { it > 0 }?.let { add(copy.audioSession to it.toString()) }
+            }
         }
     }
 
@@ -81,20 +91,22 @@ internal fun TechnicalAudioInfoSheet(
         buildSourceRows(track, source, copy)
     }
 
-    val processing = remember(audioSettings, audioNormalization, copy) {
-        buildProcessingLabel(audioSettings, audioNormalization, copy)
-    }
-    val route = output.active
-    val routeType = remember(route, systemCopy) {
-        technicalRouteLabel(route, systemCopy)
-    }
-    val outputRows = buildList {
-        add(copy.output to (route?.displayName?.ifBlank { routeType } ?: routeType))
-        add(copy.route to routeType)
-        add(copy.volume to "${output.volumePercent}%")
-        add(copy.engine to "Media3 · ExoPlayer")
-        add(copy.path to technicalOutputPath(audioSettings, copy))
-        add(copy.processing to processing)
+    val outputRows = remember(
+        output,
+        audioSettings,
+        audioNormalization,
+        copy,
+        systemCopy,
+        remotePlayback
+    ) {
+        buildTechnicalOutputRows(
+            output = output,
+            settings = audioSettings,
+            audioNormalization = audioNormalization,
+            copy = copy,
+            systemCopy = systemCopy,
+            remotePlayback = remotePlayback
+        )
     }
 
     ModalBottomSheet(
@@ -123,13 +135,13 @@ internal fun TechnicalAudioInfoSheet(
             )
 
             TechnicalAudioHero(
-                codec = runtime.codec.ifBlank { source?.codec.orEmpty().ifBlank { copy.unavailable } },
-                quality = runtime.bitrateKbps?.let { "$it kbps" }
+                codec = effectiveRuntime.codec.ifBlank { source?.codec.orEmpty().ifBlank { copy.unavailable } },
+                quality = effectiveRuntime.bitrateKbps?.let { "$it kbps" }
                     ?: source?.effectiveBitrateKbps()?.let { "$it kbps" }
                     ?: track.playbackManifest?.alternativeSource?.bitrateKbps?.takeIf { it > 0 }?.let { "$it kbps" }
                     ?: source?.qualityLabel?.takeIf(String::isNotBlank)
                     ?: copy.unavailable,
-                sampleRate = runtime.sampleRateHz?.let(::formatTechnicalSampleRate)
+                sampleRate = effectiveRuntime.sampleRateHz?.let(::formatTechnicalSampleRate)
                     ?: source?.sampleRate?.takeIf { it > 0 }?.let(::formatTechnicalSampleRate)
                     ?: copy.unavailable
             )
@@ -232,6 +244,39 @@ private fun TechnicalAudioRow(label: String, value: String) {
             modifier = Modifier.weight(0.58f)
         )
     }
+}
+
+internal fun technicalRuntimeSpec(runtime: PlayerAudioSpec, remoteConnected: Boolean): PlayerAudioSpec =
+    if (remoteConnected) PlayerAudioSpec() else runtime
+
+internal fun buildTechnicalOutputRows(
+    output: LevyraAudioOutputState,
+    settings: LevyraAudioSettings,
+    audioNormalization: Boolean,
+    copy: TechnicalAudioInfoCopy,
+    systemCopy: com.luc4n3x.levyra.ui.i18n.LevyraSystemPlayerCopy,
+    remotePlayback: RemotePlaybackState
+): List<Pair<String, String>> {
+    if (remotePlayback.connected) {
+        val device = remotePlayback.deviceName?.trim()?.takeIf(String::isNotBlank) ?: copy.remotePlayback
+        return listOf(
+            copy.output to device,
+            copy.route to copy.remotePlayback,
+            copy.engine to "Google Cast",
+            copy.processing to copy.receiverManaged
+        )
+    }
+
+    val route = output.active
+    val routeType = technicalRouteLabel(route, systemCopy)
+    return listOf(
+        copy.output to (route?.displayName?.ifBlank { routeType } ?: routeType),
+        copy.route to routeType,
+        copy.volume to "${output.volumePercent}%",
+        copy.engine to "Media3 · ExoPlayer",
+        copy.path to technicalOutputPath(settings, copy),
+        copy.processing to buildProcessingLabel(settings, audioNormalization, copy)
+    )
 }
 
 internal fun selectedAudioDescriptor(track: Track): PlaybackStreamDescriptor? {
