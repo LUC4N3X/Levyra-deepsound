@@ -99,10 +99,13 @@ internal data class PlayerAudioSpec(
     val codec: String = "",
     val bitrateKbps: Int? = null,
     val sampleRateHz: Int? = null,
-    val channels: Int? = null
+    val channels: Int? = null,
+    val mimeType: String = "",
+    val codecString: String = ""
 ) {
     val isEmpty: Boolean
-        get() = codec.isEmpty() && bitrateKbps == null && sampleRateHz == null && channels == null
+        get() = codec.isEmpty() && bitrateKbps == null && sampleRateHz == null && channels == null &&
+            mimeType.isEmpty() && codecString.isEmpty()
 }
 
 internal fun playerAudioCodecLabel(mimeType: String?, codecs: String?): String {
