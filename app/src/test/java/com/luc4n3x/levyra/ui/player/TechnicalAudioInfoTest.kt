@@ -9,7 +9,10 @@ import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.audio.LevyraAudioOutputState
+import com.luc4n3x.levyra.feature.cast.RemotePlaybackState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -103,6 +106,55 @@ class TechnicalAudioInfoTest {
         val label = buildProcessingLabel(settings, audioNormalization = false, copy)
 
         assertEquals(copy.none, label)
+    }
+
+    @Test
+    fun remotePlaybackDoesNotReuseLocalDecoderDetails() {
+        val local = PlayerAudioSpec(
+            codec = "AAC",
+            bitrateKbps = 320,
+            sampleRateHz = 48_000,
+            channels = 2,
+            mimeType = "audio/mp4",
+            codecString = "mp4a.40.2"
+        )
+
+        assertTrue(technicalRuntimeSpec(local, remoteConnected = true).isEmpty)
+        assertEquals(local, technicalRuntimeSpec(local, remoteConnected = false))
+    }
+
+    @Test
+    fun remoteOutputRowsDoNotClaimLocalRouteVolumeOrDsp() {
+        val systemCopy = LevyraStrings.forCode("en").systemPlayerCopy()
+        val rows = buildTechnicalOutputRows(
+            output = LevyraAudioOutputState(
+                active = null,
+                connected = emptyList(),
+                volumePercent = 73,
+                systemSwitcherAvailable = true
+            ),
+            settings = LevyraAudioSettings(
+                equalizerEnabled = true,
+                replayGainMode = ReplayGainMode.TRACK,
+                replayGainEnabled = true,
+                aaudioOutputEnabled = true
+            ),
+            audioNormalization = true,
+            copy = copy,
+            systemCopy = systemCopy,
+            remotePlayback = RemotePlaybackState(
+                connected = true,
+                deviceName = "Living Room"
+            )
+        ).toMap()
+
+        assertEquals("Living Room", rows[copy.output])
+        assertEquals(copy.remotePlayback, rows[copy.route])
+        assertEquals("Google Cast", rows[copy.engine])
+        assertEquals(copy.receiverManaged, rows[copy.processing])
+        assertTrue(rows[copy.volume] == null)
+        assertTrue(rows[copy.path] == null)
+        assertTrue(rows.values.none { it.contains("AudioTrack") || it.contains("ReplayGain") })
     }
 
     @Test
