@@ -63,33 +63,46 @@ I didn't want an app that needed its own account just to remember my playlists o
 
 It has grown a lot since then, but the idea is still the same: **make the player useful, keep the data portable, and don't track the listener.**
 
-## ✦ Screenshots
-
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/00_levyra_hero_showcase-light.webp">
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/00_levyra_hero_showcase.webp">
-  <img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra interface" width="100%">
-</picture>
-
-<details>
-<summary><b>More screenshots</b></summary>
-<br>
+## ✦ JioSaavn · Verified High-Quality Audio
 
 <div align="center">
 
-<img src="docs/assets/screenshots/player_nowplaying.webp" width="31%" alt="Now Playing">
-<img src="docs/assets/screenshots/lyrics_synced.webp" width="31%" alt="Synced lyrics">
-<img src="docs/assets/screenshots/home_orbit.webp" width="31%" alt="Home">
+### 🎧 Higher-quality audio, accepted only when Levyra knows it is the right recording.
 
-<br>
+<p><sub>If you enable it, Levyra can look for a higher-quality JioSaavn source before playback. The original track still owns the metadata, queue entry, artwork, lyrics, listening history, and recommendations.</sub></p>
 
-<img src="docs/assets/screenshots/search_artist_avatars.webp" width="31%" alt="Search">
-<img src="docs/assets/screenshots/library_pulse.webp" width="31%" alt="Listening stats">
-<img src="docs/assets/screenshots/explore_genres.webp" width="31%" alt="Explore">
+<p><b>When a real 320 kbps match is found, the result is high-quality lossy audio in roughly the same class as TIDAL's 320 kbps compressed tier. On phones, Bluetooth headphones, car systems, and normal speakers the difference can be very small. It is still not lossless: TIDAL High and Max can use higher-fidelity FLAC up to Hi-Res 24-bit/192 kHz.</b></p>
+
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="33%">
+      <h3>🎚️ <b>Verified HQ Routing</b></h3>
+      <p><sub>Levyra asks for the higher-bitrate source only when it can actually use it, up to 320 kbps. If that tier is not available, it can fall back to 160 or 96 kbps instead.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>🧬 <b>Identity Lock</b></h3>
+      <p><sub>Before switching source, Levyra checks the title, artists, album, duration, explicit state, ISRC, and version markers. Remixes, live versions, acoustic versions, sped-up tracks, and unclear matches are left alone.</sub></p>
+    </td>
+    <td width="33%">
+      <h3>🛡️ <b>Fail-Safe by Design</b></h3>
+      <p><sub>If the alternative source is stale, restricted, mismatched, unavailable, or simply not better, playback stays on the normal route. The queue and track identity are not swapped around just to force a match.</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p>
+  <code>OFF</code> &nbsp;·&nbsp;
+  <code>AUTOMATIC</code> &nbsp;·&nbsp;
+  <code>PREFER 320 KBPS</code>
+</p>
 
 </div>
 
-</details>
+---
+
+
+
+---
 
 ## ✦ What it does
 
