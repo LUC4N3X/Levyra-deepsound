@@ -23,5 +23,5 @@ This folder separates durable requirements, ordered engineering direction, and t
 - Do not turn the roadmap into a release calendar or an authorization mechanism.
 - Do not use the task file as an infinite backlog or changelog.
 - Do not copy architecture or domain playbooks into these files; link to the canonical source.
-- Record validation from commands, CI runs, reviews, manual checks, or explicit owner decisions—not from an agent narrative.
+- Record validation from commands, CI runs, reviews, manual checks, or explicit owner decisions, not from an agent narrative.
 - Keep Android and Desktop product, versioning, packaging, and release boundaries distinct.

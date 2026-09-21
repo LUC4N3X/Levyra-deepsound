@@ -7,12 +7,12 @@ It intentionally does not prescribe a future Google Cast implementation.
 
 The shared `app/src/main/java/com/luc4n3x/levyra/feature/cast/` package contains six plain-Kotlin files:
 
-- `RemotePlaybackModels.kt` — remote device, availability, and playback-state models.
-- `RemotePlaybackBackend.kt` — backend-neutral discovery, connection, load, and transport contract.
-- `NoOpCastBackend.kt` — unavailable/no-op implementation used by the current app.
-- `CastHandoff.kt` — bounded queue-window conversion for local-to-remote and remote-to-local handoff.
-- `CastDspSuspension.kt` — suspend/restore policy for local-only DSP without changing stored preferences.
-- `CastStreamResolutionPolicy.kt` — bounded stream-resolution policy, URL staleness checks, and the rule that resolved signed URLs are never persisted.
+- `RemotePlaybackModels.kt`: remote device, availability, and playback-state models.
+- `RemotePlaybackBackend.kt`: backend-neutral discovery, connection, load, and transport contract.
+- `NoOpCastBackend.kt`: unavailable/no-op implementation used by the current app.
+- `CastHandoff.kt`: bounded queue-window conversion for local-to-remote and remote-to-local handoff.
+- `CastDspSuspension.kt`: suspend/restore policy for local-only DSP without changing stored preferences.
+- `CastStreamResolutionPolicy.kt`: bounded stream-resolution policy, URL staleness checks, and the rule that resolved signed URLs are never persisted.
 
 These files do not import Google Cast APIs, Google Play Services, or Media3 `CastPlayer`, and they are JVM-unit-testable.
 

@@ -1,9 +1,9 @@
 # Development
 
-Levyra contains two native application targets:
+Levyra is built as two native applications:
 
-- **Android** — Kotlin, Jetpack Compose and AndroidX Media3 / ExoPlayer.
-- **Windows** — Kotlin, Compose Multiplatform and libvlc.
+- **Android**: Kotlin, Jetpack Compose, and AndroidX Media3 / ExoPlayer.
+- **Windows**: Kotlin, Compose Multiplatform, and libvlc.
 
 ## Clone the repository
 
@@ -18,7 +18,7 @@ cd Levyra-deepsound
 
 - JDK 17
 - Android SDK Platform 37
-- Gradle 9.7.0 through the repository wrapper
+- Gradle 9.7.0 (using the repository wrapper)
 
 ### Debug build
 
@@ -34,7 +34,7 @@ cd Levyra-deepsound
     .\gradlew.bat assembleDebug
     ```
 
-Debug APKs are written under:
+Debug APK outputs are located at:
 
 ```text
 app/build/outputs/apk/debug/
@@ -54,51 +54,49 @@ app/build/outputs/apk/debug/
     .\gradlew.bat installDebug
     ```
 
-Verify ADB first when needed:
+Verify your device connection via ADB:
 
 ```bash
 adb devices
 ```
 
-### Physical-device qualification
+### Physical device qualification
 
-On Windows, the repository includes a repeatable ADB qualification harness for a connected Android phone:
+On Windows, the repository includes an automated ADB test harness for testing on a connected phone:
 
 ```powershell
 .\scripts\levyra-device-qualification.ps1
 ```
 
-The harness builds and installs the current debug APK unless asked not to, performs repeated cold starts, inspects Levyra's MediaSession, captures process memory, and stores focused logcat and diagnostic dumps. Target selection follows a fixed fallback order: an authorized USB device first, then Android Wireless Debugging, then a running Android emulator. If no USB target is available, the harness also tries to reconnect one already-paired Wireless Debugging device discovered through ADB mDNS before falling back to the emulator.
+The script builds and installs the debug APK, runs cold start measurements, checks the MediaSession state, inspects memory usage, and collects diagnostic logs. Target devices are selected in this order: an authorized USB device, a wireless debugging device, or a running Android emulator.
 
-Wireless pairing remains an Android/ADB setup step; the harness never handles pairing codes or stores pairing secrets. If more than one target exists at the selected priority, select the target explicitly:
+If you have multiple devices connected, specify the target serial number directly:
 
 ```powershell
 .\scripts\levyra-device-qualification.ps1 -DeviceId <serial>
 ```
 
-To exercise an existing or restored Levyra playback session and require it to reach `PLAYING`:
+To test playback from an existing session and ensure it reaches the active playing state:
 
 ```powershell
 .\scripts\levyra-device-qualification.ps1 -ExercisePlayback -RequirePlayback
 ```
 
-Playback exercise is intentionally limited to an already available Levyra MediaSession and queue. The harness does not add a debug-only playback entry point, bypass onboarding, inject credentials, or depend on a private account. If it starts a paused session, it sends pause again before finishing.
-
-For fast reruns after a local build and install:
+To rerun tests quickly without rebuilding or reinstalling:
 
 ```powershell
 .\scripts\levyra-device-qualification.ps1 -SkipBuild -SkipInstall
 ```
 
-Reports are written under:
+Diagnostic reports are saved locally to:
 
 ```text
 .report/device-qualification/
 ```
 
-Each run produces a JSON summary plus raw local Logcat, MediaSession, and `dumpsys meminfo` evidence. `.report/` is ignored by Git.
+Each run generates a JSON summary along with raw Logcat output, MediaSession state dumps, and `dumpsys meminfo` metrics.
 
-### Release compile
+### Release build
 
 === "Linux / macOS"
 
@@ -112,16 +110,18 @@ Each run produces a JSON summary plus raw local Logcat, MediaSession, and `dumps
     .\gradlew.bat clean assembleRelease
     ```
 
-Release signing requirements differ from local debug builds.
+Release builds require a valid signing configuration.
 
 ## Windows Desktop
 
 ### Requirements
 
-- Windows x64
+- Windows 10 or 11 (x64)
 - JDK 21 LTS
-- VLC 3.0.x / libvlc
-- WiX Toolset 3.14
+- VLC 3.0.x / libvlc runtime
+- WiX Toolset 3.14 (for MSI installers)
+
+### Building packages
 
 ```powershell
 cd desktop
@@ -130,7 +130,7 @@ cd desktop
 .\gradlew.bat packageReleaseMsi packageReleaseExe
 ```
 
-Desktop release artifacts are produced under:
+Desktop binaries and installers are output to:
 
 ```text
 desktop/app/build/compose/binaries/main-release/
@@ -140,32 +140,29 @@ desktop/app/build/compose/binaries/main-release/
 
 ```text
 app/                 Android client
-desktop/             Windows client
-baselineprofile/     Android baseline-profile support
-levyra-recognition/  Recognition-related module
-docs/                Repository documentation
-scripts/             Validation and project tooling
+desktop/             Windows Desktop client
+baselineprofile/     Android baseline profile definitions
+levyra-recognition/  Audio recognition module
+docs/                Project documentation and website
+scripts/             Build, CI, and validation tools
 ```
 
 ## Contribution workflow
 
-1. Branch from the latest `main`.
-2. Keep the change focused.
-3. Preserve current architecture and user-visible behavior outside the intended scope.
-4. Run the narrowest useful validation.
-5. Run Levyra's repository quality gate before publication.
-6. Open a focused pull request with truthful test evidence.
-
-The repository quality gate is:
+1. Create a branch from `main`.
+2. Keep your changes focused on a single issue or feature.
+3. Respect existing architecture, threading rules, and UI conventions.
+4. Run targeted checks before submitting.
+5. Check against the repository quality gate:
 
 ```bash
 python3 scripts/ai_quality_gate.py --profile fast
 ```
 
-Before push or PR publication, repository instructions require the full profile:
+Before pushing or opening a pull request, run the complete gate:
 
 ```bash
 python3 scripts/ai_quality_gate.py --profile full
 ```
 
-For the complete engineering contract, read [AGENTS.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/AGENTS.md).
+For complete engineering guidelines and coding standards, review [AGENTS.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/AGENTS.md).
