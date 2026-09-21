@@ -135,9 +135,9 @@ internal fun TechnicalAudioInfoSheet(
             )
 
             TechnicalAudioHero(
-                codec = effectiveRuntime.codec.ifBlank { source?.codec.orEmpty().ifBlank { copy.unavailable } },
+                codec = effectiveRuntime.codec.ifBlank { technicalSourceCodec(source).orEmpty().ifBlank { copy.unavailable } },
                 quality = effectiveRuntime.bitrateKbps?.let { "$it kbps" }
-                    ?: source?.effectiveBitrateKbps()?.let { "$it kbps" }
+                    ?: technicalSourceBitrateKbps(source)?.let { "$it kbps" }
                     ?: track.playbackManifest?.alternativeSource?.bitrateKbps?.takeIf { it > 0 }?.let { "$it kbps" }
                     ?: source?.qualityLabel?.takeIf(String::isNotBlank)
                     ?: copy.unavailable,
@@ -300,8 +300,8 @@ internal fun buildSourceRows(
         provider?.let { add(copy.provider to it) }
         stream?.deliveryMethod?.name?.let { add(copy.delivery to it) }
         stream?.container?.takeIf(String::isNotBlank)?.uppercase(Locale.ROOT)?.let { add(copy.container to it) }
-        stream?.codec?.takeIf(String::isNotBlank)?.let { add(copy.codec to it) }
-        stream?.effectiveBitrateKbps()?.let { add(copy.bitrate to "$it kbps") }
+        technicalSourceCodec(stream)?.let { add(copy.codec to it) }
+        technicalSourceBitrateKbps(stream)?.let { add(copy.bitrate to "$it kbps") }
         stream?.sampleRate?.takeIf { it > 0 }?.let { add(copy.sampleRate to formatTechnicalSampleRate(it)) }
         stream?.bitDepth?.takeIf { it > 0 }?.let { add(copy.bitDepth to "$it-bit") }
         stream?.qualityLabel?.takeIf(String::isNotBlank)?.let { add(copy.quality to it) }
@@ -363,6 +363,35 @@ private fun technicalRouteLabel(
 private fun PlaybackStreamDescriptor.effectiveBitrateKbps(): Int? =
     averageBitrate.takeIf { it > 0 }?.div(1_000)
         ?: bitrate.takeIf { it > 0 }?.div(1_000)
+
+internal fun technicalSourceBitrateKbps(stream: PlaybackStreamDescriptor?): Int? =
+    stream
+        ?.takeUnless { it.kind == PlaybackStreamKind.MUXED || it.kind == PlaybackStreamKind.VIDEO }
+        ?.effectiveBitrateKbps()
+
+internal fun technicalSourceCodec(stream: PlaybackStreamDescriptor?): String? {
+    val codec = stream?.codec?.trim()?.takeIf(String::isNotBlank) ?: return null
+    if (stream.kind != PlaybackStreamKind.MUXED) return codec
+    return codec.split(',')
+        .asSequence()
+        .map(String::trim)
+        .firstOrNull { value ->
+            val normalized = value.lowercase(Locale.ROOT)
+            AUDIO_CODEC_PREFIXES.any(normalized::startsWith)
+        }
+}
+
+private val AUDIO_CODEC_PREFIXES = listOf(
+    "mp4a",
+    "aac",
+    "opus",
+    "vorbis",
+    "flac",
+    "alac",
+    "ac-3",
+    "ec-3",
+    "mp3"
+)
 
 internal fun formatTechnicalSampleRate(sampleRateHz: Int): String {
     if (sampleRateHz <= 0) return ""
