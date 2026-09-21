@@ -182,7 +182,7 @@ class HighQualityPlaybackCoordinator(
     companion object {
         const val AUTOMATIC_WAIT_MS = 2_500L
         const val AUTOMATIC_GRACE_MS = 1_200L
-        const val PREFER_320_WAIT_MS = 6_000L
+        const val PREFER_320_WAIT_MS = 8_500L
         const val SOURCE_LABEL = "Levyra HQ"
         private const val DATA_SAVER_AUDIO_QUALITY = "Low"
         private const val OFFLINE_SOURCE = "Offline"

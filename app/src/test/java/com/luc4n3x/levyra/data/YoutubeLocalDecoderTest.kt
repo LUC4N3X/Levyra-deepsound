@@ -357,7 +357,8 @@ class YoutubeLocalDecoderTest {
 
         assertTrue(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Web", now, now - 1_000L))
         assertTrue(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("LevyraExtractor · Opus", now, now - 1_000L))
-        assertFalse(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Android VR", now, now - 1_000L))
+        assertTrue(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Android VR", now, now - 1_000L))
+        assertFalse(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("JioSaavn", now, now - 1_000L))
         assertFalse(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Web", now, now - 11L * 60L * 1000L))
     }
 
@@ -522,7 +523,7 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
-    fun streamRejectionChangedOrUnchangedInvalidatesPlayerSourceWhenGenerationMatches() {
+    fun streamRejectionOnlyChangedInvalidatesPlayerSourceWhenGenerationMatches() {
         val changed = YoutubeStreamRejectionActionPolicy.decide(
             YoutubeStreamRefreshResult.CHANGED,
             generationMatches = true
@@ -534,8 +535,8 @@ class YoutubeLocalDecoderTest {
 
         assertTrue(changed.invalidatePlayerSource)
         assertTrue(changed.invalidateRuntime)
-        assertTrue(unchanged.invalidatePlayerSource)
-        assertTrue(unchanged.invalidateRuntime)
+        assertFalse(unchanged.invalidatePlayerSource)
+        assertFalse(unchanged.invalidateRuntime)
     }
 
     @Test
