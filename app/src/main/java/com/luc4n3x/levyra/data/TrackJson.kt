@@ -18,6 +18,10 @@ object TrackJson {
         .put("accentEnd", track.accentEnd)
         .put("youtubeLoudnessDb", track.youtubeLoudnessDb)
         .put("youtubePerceptualLoudnessDb", track.youtubePerceptualLoudnessDb)
+        .put("replayGainTrackDb", track.replayGainTrackDb)
+        .put("replayGainAlbumDb", track.replayGainAlbumDb)
+        .put("replayGainTrackPeak", track.replayGainTrackPeak)
+        .put("replayGainAlbumPeak", track.replayGainAlbumPeak)
         .put("isrc", track.isrc)
         .put("upc", track.upc)
         .put("releaseDate", track.releaseDate)
@@ -69,6 +73,10 @@ object TrackJson {
             accentEnd = json.optInt("accentEnd", 0xFF8E57FF.toInt()),
             youtubeLoudnessDb = json.optNullableFloat("youtubeLoudnessDb"),
             youtubePerceptualLoudnessDb = json.optNullableFloat("youtubePerceptualLoudnessDb"),
+            replayGainTrackDb = json.optNullableFloat("replayGainTrackDb"),
+            replayGainAlbumDb = json.optNullableFloat("replayGainAlbumDb"),
+            replayGainTrackPeak = json.optNullableFloat("replayGainTrackPeak"),
+            replayGainAlbumPeak = json.optNullableFloat("replayGainAlbumPeak"),
             isrc = json.optString("isrc"),
             upc = json.optString("upc"),
             releaseDate = json.optString("releaseDate"),

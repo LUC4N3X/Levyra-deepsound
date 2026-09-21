@@ -56,6 +56,7 @@ data class LocalLibraryCatalog(
 
 fun LocalMediaEntity.toLocalTrack(): Track {
     val artwork = localArtworkModel(contentUri, albumId)
+    val replayGain = parseLocalReplayGainTags(customTags)
     return Track(
         id = levyraTrackId.ifEmpty { LOCAL_MEDIA_TRACK_ID_PREFIX + identityKey },
         title = title,
@@ -74,7 +75,12 @@ fun LocalMediaEntity.toLocalTrack(): Track {
         cacheScore = 0,
         accentStart = 0,
         accentEnd = 0,
+        replayGainTrackDb = replayGain.trackGainDb,
+        replayGainAlbumDb = replayGain.albumGainDb,
+        replayGainTrackPeak = replayGain.trackPeak,
+        replayGainAlbumPeak = replayGain.albumPeak,
         year = year.takeIf { it > 0 }?.toString().orEmpty(),
+        albumArtist = albumArtist,
         trackNumber = trackNumber,
         discNumber = discNumber
     )
