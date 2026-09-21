@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -16,6 +17,16 @@ class ReplayGainLocalizationTest {
             assertTrue(strings.code, copy.clippingProtection.isNotBlank())
             assertTrue(strings.code, copy.peakAware.contains("ReplayGain", ignoreCase = true))
         }
+    }
+
+    @Test
+    fun everyNonEnglishLanguageHasDedicatedReplayGainCopy() {
+        val english = LevyraStrings.forCode("en").replayGainCopy()
+        LevyraStrings.all()
+            .filterNot { it.code == "en" }
+            .forEach { strings ->
+                assertNotEquals(strings.code, english, strings.replayGainCopy())
+            }
     }
 
     @Test
