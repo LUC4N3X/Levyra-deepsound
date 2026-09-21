@@ -63,38 +63,52 @@ I didn't want an app that needed its own account just to remember my playlists o
 
 It has grown a lot since then, but the idea is still the same: **make the player useful, keep the data portable, and don't track the listener.**
 
-## ✦ JioSaavn · Verified High-Quality Audio
+## ✦ Project recognition
 
 <div align="center">
 
-### 🎧 Higher-quality audio, accepted only when Levyra knows it is the right recording.
-
-<p><sub>If you enable it, Levyra can look for a higher-quality JioSaavn source before playback. The original track still owns the metadata, queue entry, artwork, lyrics, listening history, and recommendations.</sub></p>
-
-<p><b>When a real 320 kbps match is found, the result is high-quality lossy audio in roughly the same class as TIDAL's 320 kbps compressed tier. On phones, Bluetooth headphones, car systems, and normal speakers the difference can be very small. It is still not lossless: TIDAL High and Max can use higher-fidelity FLAC up to Hi-Res 24-bit/192 kHz.</b></p>
-
-<table align="center" width="100%">
-  <tr valign="top">
-    <td width="33%">
-      <h3>🎚️ <b>Verified HQ Routing</b></h3>
-      <p><sub>Levyra asks for the higher-bitrate source only when it can actually use it, up to 320 kbps. If that tier is not available, it can fall back to 160 or 96 kbps instead.</sub></p>
-    </td>
-    <td width="33%">
-      <h3>🧬 <b>Identity Lock</b></h3>
-      <p><sub>Before switching source, Levyra checks the title, artists, album, duration, explicit state, ISRC, and version markers. Remixes, live versions, acoustic versions, sped-up tracks, and unclear matches are left alone.</sub></p>
-    </td>
-    <td width="33%">
-      <h3>🛡️ <b>Fail-Safe by Design</b></h3>
-      <p><sub>If the alternative source is stale, restricted, mismatched, unavailable, or simply not better, playback stays on the normal route. The queue and track identity are not swapped around just to force a match.</sub></p>
-    </td>
-  </tr>
-</table>
+<p>
+  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
+    <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="52">
+  </a>
+</p>
 
 <p>
-  <code>OFF</code> &nbsp;·&nbsp;
-  <code>AUTOMATIC</code> &nbsp;·&nbsp;
-  <code>PREFER 320 KBPS</code>
+  <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
+  <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
+  <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
 </p>
+
+<p>
+  <sub>
+    Covered by <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
+    &nbsp;·&nbsp;
+    listed on <a href="https://www.producthunt.com/products/levyra"><b>Product Hunt</b></a>
+    and <a href="https://devglobe.app/projects/levyra"><b>DevGlobe</b></a>
+  </sub>
+</p>
+
+</div>
+
+## ✦ JioSaavn · Verified High-Quality Audio
+
+This is one of the playback features I'm most careful with.
+
+If you enable it, Levyra can look for the **same recording** on JioSaavn and use the higher-quality source when a real match is available, up to **320 kbps**. The important part is the matching, not the number.
+
+Levyra doesn't just compare the song title and hope for the best. It checks the artist, album, duration, explicit state, ISRC when available, and words that usually mean you're looking at a different version. If the result looks like a remix, live take, acoustic version, sped-up edit or simply isn't convincing enough, Levyra leaves the track alone and uses the normal source.
+
+The song itself never changes inside your library. **Artwork, lyrics, queue position, listening history and recommendations still belong to the original Levyra track.** JioSaavn is only used as an optional playback source.
+
+<div align="center">
+
+<code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER 320 KBPS</code>
+
+<br><br>
+
+<sub>If the higher-quality source disappears, fails validation or isn't actually better, playback falls back normally.</sub>
 
 </div>
 
@@ -161,19 +175,38 @@ It has grown a lot since then, but the idea is still the same: **make the player
 
 ---
 
-## ✦ What it does
+## ✦ What Levyra actually gives you
 
-The README used to list almost everything Levyra could do. That got hard to scan, so this is the shorter version.
+There is quite a lot under the hood now, but these are the parts that really change how the app feels day to day.
 
-- **Streaming and local music together.** Search, discovery, radio and music already stored on the device live in the same library and player.
-- **Offline files you can keep.** Downloads are normal tagged M4A files, with configurable storage and support for artwork, album information and lyrics.
-- **A proper playback stack.** Gapless playback, crossfade, speed and pitch controls, EQ, AutoEQ, Android Auto, queue controls and quick playback actions are built in.
-- **Lyrics that follow the track.** Synced lyrics, manual timing adjustment, romanization, lyric sharing and route-aware Bluetooth offsets are available when you need them.
-- **A library that survives app restarts.** Queue Spaces, playlists, local tracks, favorites, history and versioned backups are designed to stay useful over time.
-- **Private listening stats.** Play counts, listening time and listening trends are calculated locally instead of being sent to a Levyra analytics service.
-- **Extras without making them mandatory.** Music recognition, Last.fm, ListenBrainz, local-network listening, Canvas, live radio and network controls are optional parts of the app.
+### Playback that behaves like a music player
 
-For the complete feature and technical documentation, see the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+- **Native playback on both platforms.** Android uses Media3 / ExoPlayer and Windows uses libVLC rather than wrapping a web player.
+- **Gapless, crossfade, speed and pitch controls.** Album continuity keeps consecutive tracks from the same release from being crossfaded into each other.
+- **10-band EQ and AutoEQ.** Built-in EQ controls plus a searchable headphone correction catalog.
+- **SponsorBlock.** Levyra can automatically skip supported intros, silence, dialogue and other non-music sections during playback.
+- **Audio and video.** Switch to native video when a video stream is available, with subtitle selection where supported.
+- **Android Auto and Quick Settings controls.** The player works with car media controls and can be paused or resumed from a dedicated Android tile.
+
+### A library you can actually keep
+
+- **Normal offline files.** Downloads are tagged M4A files rather than files trapped in an app-only vault. Artwork, artist, album and lyrics can be written into them.
+- **Local music is first-class.** Tracks already stored on the phone can be indexed, searched, queued and played alongside the rest of the library.
+- **Queue Spaces.** Keep several named queues around instead of losing the current one every time you change what you're listening to.
+- **Backups that include the useful stuff.** Settings, favorites, playlists, history and queues can be stored in versioned Levyra backups and restored later.
+- **Playlist organization.** Tags, filtering, hidden playlists and artist exclusions help keep a big library manageable without deleting things.
+
+### Lyrics, discovery and the fun stuff
+
+- **Synced lyrics with manual timing.** Tap to seek, adjust the offset when a source is early or late, and keep separate Bluetooth timing where Android can identify the route.
+- **Romanization and lyric sharing.** Multiple writing systems can be made easier to read, and selected lyrics can be exported as square or story-sized cards.
+- **Canvas and living artwork.** Motion visuals can sit behind the player when available, with artwork-based motion as a fallback.
+- **Live radio and discovery.** Worldwide stations, charts, Smart Orbit, Samples and recommendation shelves live alongside normal search.
+- **Music recognition.** Identify music through the microphone or supported internal audio capture, with recognition history kept locally.
+- **Listening stats that stay local.** Play counts, listening time, weekly activity and longer-term views are calculated on the device.
+- **Optional integrations.** Last.fm and ListenBrainz are there if you use them, but Levyra doesn't require either one.
+
+That's the short version. The deeper implementation notes and edge cases live in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ## ✦ Under the hood
 
@@ -229,32 +262,6 @@ Levyra is its own project, but it benefits from ideas, libraries and upstream wo
 Branding credit goes to [@gauravbhindwar](https://github.com/gauravbhindwar) for Levyra's current app logo contributed in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525).
 
 Contributions are welcome. Development notes and project guidance live in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
-
-<details>
-<summary><b>Project links, quality badges and coverage</b></summary>
-<br>
-
-<div align="center">
-
-<a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
-<a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
-<a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
-
-<br><br>
-
-<a href="https://www.oschina.net/news/502584">OSCHINA</a>
-&nbsp;·&nbsp;
-<a href="https://blog.csdn.net/techforward/article/details/165886477">CSDN</a>
-&nbsp;·&nbsp;
-<a href="https://www.saashub.com/levyra-deepsound">SaaSHub</a>
-&nbsp;·&nbsp;
-<a href="https://www.producthunt.com/products/levyra">Product Hunt</a>
-&nbsp;·&nbsp;
-<a href="https://devglobe.app/projects/levyra">DevGlobe</a>
-
-</div>
-
-</details>
 
 ---
 
