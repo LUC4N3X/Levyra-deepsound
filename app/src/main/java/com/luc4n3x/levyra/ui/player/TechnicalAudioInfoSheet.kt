@@ -126,6 +126,7 @@ internal fun TechnicalAudioInfoSheet(
                 codec = runtime.codec.ifBlank { source?.codec.orEmpty().ifBlank { copy.unavailable } },
                 quality = runtime.bitrateKbps?.let { "$it kbps" }
                     ?: source?.effectiveBitrateKbps()?.let { "$it kbps" }
+                    ?: track.playbackManifest?.alternativeSource?.bitrateKbps?.takeIf { it > 0 }?.let { "$it kbps" }
                     ?: source?.qualityLabel?.takeIf(String::isNotBlank)
                     ?: copy.unavailable,
                 sampleRate = runtime.sampleRateHz?.let(::formatTechnicalSampleRate)
