@@ -187,7 +187,7 @@ The policy also limits refreshed artwork, persistent writes, chart enrichment, R
  
 | Profile | Delay | Track count | Concurrency |
 |:---|---:|---:|---:|
-| Standard | 100 ms | 3 | 1–2 |
+| Standard | 100 ms | 3 | 1-2 |
 | Power constrained | 140 ms | 1 | 1 |
 | Low RAM | 180 ms | 1 | 1 |
  

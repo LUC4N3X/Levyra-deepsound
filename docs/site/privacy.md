@@ -1,74 +1,73 @@
 # Privacy & Data
 
-Levyra is designed around local-first data, transparent network access and user-controlled integrations.
+Levyra is built on local-first principles: your listening habits belong on your device, network access is direct and transparent, and optional integrations remain strictly optional.
 
 ## Core principles
 
-- No mandatory Levyra account.
-- No advertising profile.
-- No developer-operated analytics profile.
-- Listening history and listening insights are stored locally by default.
-- User data should remain portable.
-- Optional integrations stay optional.
+- No mandatory accounts. You never need to sign up to use the app.
+- No advertising profiles or behavioral tracking.
+- No remote telemetry or analytics collection.
+- Listening history, play counts, and statistics are stored locally on your device.
+- All library data, playlists, and settings can be exported as a portable backup.
+- Third-party integrations (like scrobbling or song recognition) only run when you explicitly use them.
 
-## Local data
+## Local storage
 
-Depending on the features you use, Levyra can store information such as:
+Levyra saves data locally on your device to enable offline playback and manage your library:
 
-- playlists and favorites;
-- followed artists;
-- listening history and play counts;
-- listening statistics;
-- queue state;
-- settings;
-- download information;
-- cached metadata and lyrics;
-- recognition history;
-- backup data.
+- Playlists, favorite tracks, and followed artists
+- Listening history, play counts, and listening analytics
+- Active and saved queue state
+- Downloaded audio files and cache directories
+- User preferences and audio settings
+- Locally stored song recognition history
+- Backup archives created with Levyra Vault
 
-## Network access
+This data remains stored on your device and is never uploaded to Levyra servers.
 
-Levyra connects to external services when a feature requires them. Examples can include:
+## Network requests
 
-- YouTube / YouTube Music infrastructure for playback and metadata;
-- lyric providers such as LRCLIB;
-- public music metadata and artwork providers;
-- SponsorBlock;
-- GitHub-hosted project data and release information;
-- optional scrobbling or recognition providers.
+Levyra connects to external services only when necessary to perform features you trigger:
 
-Those third-party services operate under their own terms and privacy policies and receive normal network information such as the device IP address when contacted.
+- Streaming audio and metadata endpoints (such as YouTube Music infrastructure)
+- Lyric databases such as LRCLIB
+- Public metadata and album artwork providers
+- SponsorBlock servers for crowd-sourced segment skipping
+- GitHub API endpoints for version checks and release assets
+- Optional scrobbling endpoints (Last.fm or ListenBrainz) if configured by you
+
+When contacting these third-party services, standard HTTP request metadata (such as your IP address and User-Agent) is transmitted to the respective providers according to their own privacy policies.
 
 ## Android permissions
 
-The current Android app declares permissions supporting features such as:
+Levyra requests only the permissions required for core audio functionality:
 
-| Area | Examples |
-| --- | --- |
-| Network | `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE` |
-| Playback | foreground media playback services, `WAKE_LOCK` |
-| Notifications | `POST_NOTIFICATIONS` |
-| Local music | `READ_MEDIA_AUDIO` and legacy storage permissions where applicable |
-| Recognition | `RECORD_AUDIO`, microphone foreground service |
-| Internal playback capture | MediaProjection foreground service support |
-| Background data work | data-sync foreground service |
-| App updates | `REQUEST_INSTALL_PACKAGES` for supported update builds |
+| Area | Permissions | Purpose |
+| --- | --- | --- |
+| Network | `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE` | Streaming music, fetching lyrics, and checking updates |
+| Playback | Foreground media service, `WAKE_LOCK` | Keeping playback running smoothly with screen turned off |
+| Notifications | `POST_NOTIFICATIONS` | Displaying media controls in the Android notification shade |
+| Local files | `READ_MEDIA_AUDIO` (or storage access on older Android) | Reading and organizing local music files stored on device |
+| Song recognition | `RECORD_AUDIO`, microphone foreground service | Listening for audio snippets during music identification |
+| Internal capture | MediaProjection foreground service | Capturing internal audio on supported Android releases |
+| Background tasks | Data-sync foreground service | Completing background downloads and offline sync |
+| Updates | `REQUEST_INSTALL_PACKAGES` | Installing APK updates directly for standalone builds |
 
-Android remains responsible for runtime authorization where the platform requires it.
+All permissions requiring user consent are requested at runtime only when the corresponding feature is used.
 
-## Music recognition
+## Song recognition
 
-Microphone recognition is optional. Internal playback recognition uses Android's MediaProjection system on compatible versions and requires the platform authorization flow.
+Using the microphone for song recognition is entirely optional and only runs when you press the identify button. Audio recorded during recognition is processed solely for fingerprinting and is not stored permanently or shared for other purposes.
 
-## Offline files
+## Exported media
 
-Supported exported music is designed to remain standard user-owned media. Removing the app does not necessarily remove deliberately exported files from public storage.
+Tracks downloaded through Levyra are standard M4A files saved to your device storage. Uninstalling the app does not delete your exported media files from public storage directories.
 
 ## Open source transparency
 
-You can inspect the current permission surface directly in [AndroidManifest.xml](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/AndroidManifest.xml).
+The complete source code and permission manifest are open for inspection in [AndroidManifest.xml](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/AndroidManifest.xml).
 
-For legal, third-party and liability information, read [LEGAL.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/legal/LEGAL.md).
+For additional legal and licensing details, see [LEGAL.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/legal/LEGAL.md).
 
 !!! warning "Security reports"
-    Never post secrets, tokens, private credentials or other sensitive information in a public GitHub issue.
+    Never post API keys, credentials, or private sensitive data in public GitHub issues or discussions.
