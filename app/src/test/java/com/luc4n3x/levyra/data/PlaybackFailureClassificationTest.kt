@@ -114,6 +114,7 @@ class PlaybackFailureClassificationTest {
             assertFalse(plan.rotateCodec)
             assertFalse(plan.refreshSecurity)
             assertFalse(plan.invalidateCache)
+            assertFalse(plan.refreshDecoder)
             assertEquals(45_000L, plan.quarantineMs)
         }
     }
@@ -136,11 +137,18 @@ class PlaybackFailureClassificationTest {
             assertFalse(plan.invalidateCache)
             assertEquals(10L * 60L * 1000L, plan.quarantineMs)
         }
+        assertTrue(playbackRecoveryPlanFor(PlaybackFailureKind.Forbidden).refreshDecoder)
+        assertFalse(playbackRecoveryPlanFor(PlaybackFailureKind.Gone).refreshDecoder)
     }
 
     @Test
     fun recoveryInvalidatesOnlyTheAttributedLayer() {
-        listOf(PlaybackFailureKind.Signature, PlaybackFailureKind.NTransform, PlaybackFailureKind.Renderer)
+        listOf(
+            PlaybackFailureKind.Forbidden,
+            PlaybackFailureKind.Signature,
+            PlaybackFailureKind.NTransform,
+            PlaybackFailureKind.Renderer
+        )
             .forEach { kind ->
                 val plan = playbackRecoveryPlanFor(kind)
                 assertTrue(plan.refreshDecoder)
