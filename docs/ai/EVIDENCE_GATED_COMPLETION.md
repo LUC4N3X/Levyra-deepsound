@@ -26,10 +26,10 @@ observable acceptance gates, normally two to six.
 
 Each gate has three parts:
 
-1. **Condition** — the behavior or property that must be true.
-2. **Check** — the command, test, inspection, reproduction, trace, diff review,
+1. **Condition**: the behavior or property that must be true.
+2. **Check**: the command, test, inspection, reproduction, trace, diff review,
    or direct runtime observation that can prove it.
-3. **Evidence** — the actual result from that check.
+3. **Evidence**: the actual result from that check.
 
 Use only gates that matter to the owner's request or to a real correctness,
 compatibility, security, lifecycle, persistence, performance, or publication
@@ -39,11 +39,11 @@ boundary. Generic busywork is not a gate.
 
 A gate may be:
 
-- `PASS` — direct evidence proves the condition;
-- `FAIL` — direct evidence disproves it;
-- `BLOCKED` — the required environment, dependency, credential, device, SDK,
-  service, or permission is unavailable;
-- `UNRUN` — the check has not been executed.
+- `PASS`: direct evidence proves the condition.
+- `FAIL`: direct evidence disproves it.
+- `BLOCKED`: the required environment, dependency, credential, device, SDK,
+  service, or permission is unavailable.
+- `UNRUN`: the check has not been executed.
 
 Only `PASS` means passed. Intention, confidence, compilation alone, another
 agent's narrative, stale CI, or a previous run on different code is not evidence

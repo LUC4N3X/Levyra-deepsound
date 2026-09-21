@@ -1,46 +1,46 @@
 # Getting Started
 
-Levyra is available for **Android** and **Windows**.
+Levyra is available for Android and Windows.
 
 ## Android
 
 1. Open the [latest Levyra release](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest).
-2. Download the Android APK.
-3. Open the file.
-4. Allow installation from the browser or file manager if Android asks.
-5. Finish installation and launch Levyra.
+2. Download the Android APK file.
+3. Open the downloaded file on your device.
+4. Allow installation from your browser or file manager if prompted.
+5. Follow the system prompts to complete installation and open Levyra.
 
 !!! tip "Updating"
-    A normal update can usually be installed over the existing Levyra installation without uninstalling it first.
+    You can install updates directly over your current version without uninstalling first. Your local library and settings are preserved.
 
-Levyra is also distributed through supported Android repositories listed in the main project README.
+Levyra is also available through the alternative Android repositories listed on the project homepage.
 
 ## Windows
 
 1. Open the [Levyra Desktop releases](https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true).
-2. Download the current Windows package.
-3. Install or extract the package supplied with the release.
+2. Download the installer or portable package for Windows.
+3. Run the installer or extract the files to your preferred location.
 4. Launch Levyra.
 
-Android and Desktop versions are released independently.
+Android and Windows Desktop versions are developed and released on independent schedules.
 
 ## First launch
 
-From Levyra you can immediately:
+Right after installing, you can:
 
-- search songs, albums and artists;
-- explore personalized discovery surfaces;
-- create and manage playlists;
-- start radio and similar-song sessions;
-- use the full Now Playing experience;
-- customize playback and application settings.
+- Search for tracks, albums, and artists.
+- Browse curated charts and personalized discovery feeds.
+- Create and organize local playlists.
+- Start radio stations based on songs or artists you like.
+- Control playback with gapless audio, equalizer presets, and synced lyrics.
+- Adjust playback settings, audio quality preferences, and privacy options.
 
 ## Updates
 
-Official GitHub builds can use Levyra's supported update flow. Distribution-specific builds may use their own repository or store update mechanism.
+If you downloaded Levyra directly from GitHub, you can use the built-in update check in settings. If you installed through an app store or custom repository, updates are managed by that platform.
 
 [Download the latest release](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest){ .md-button .md-button--primary }
 
 ## Need help?
 
-Start with [FAQ & Troubleshooting](troubleshooting.md). If the problem is reproducible and not already reported, check [GitHub Issues](https://github.com/LUC4N3X/Levyra-deepsound/issues).
+Check [FAQ & Troubleshooting](troubleshooting.md) for quick answers. If you run into a bug that has not been reported yet, open an issue on [GitHub Issues](https://github.com/LUC4N3X/Levyra-deepsound/issues).

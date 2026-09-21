@@ -1,52 +1,51 @@
-# Levyra Shared Media, Provider Router and Download Engine 3.0
+# Shared Media, Provider Router, and Download Engine 3.0
 
 ## Shared media
 
-Levyra accepts Android `ACTION_SEND`, `ACTION_SEND_MULTIPLE` and browsable YouTube or YouTube Music links.
+Levyra accepts shared links via Android's `ACTION_SEND`, `ACTION_SEND_MULTIPLE`, and standard web URLs for YouTube and YouTube Music.
 
 Supported targets:
 
-- videos, Shorts, live and shortened links;
-- playlists;
-- YouTube Music albums through their browse ID;
-- artists, channels and handles;
-- plain shared text as a Levyra search.
+- Standard videos, Shorts, live streams, and shortened links
+- Public and unlisted playlists
+- YouTube Music albums via browse IDs
+- Artists, channels, and user handles
+- Plain shared text (opened as an in-app search query)
 
-The launch intent is parsed once, normalized and resolved before showing the preview. The preview can start playback, insert after the current track, append to the queue or enqueue an offline export.
+The incoming intent is parsed, normalized, and resolved before displaying the preview dialog. From the preview, you can start playback immediately, insert the track next, add it to the end of the queue, or download it for offline use.
 
 ## Provider router
 
-Catalog and playback access now pass through independent provider contracts.
+Catalog queries and stream resolution pass through modular provider interfaces.
 
-The router provides:
+The router handles:
 
-- deterministic provider priority;
-- latency tracking;
-- failure counters;
-- timeouts;
-- fallback execution;
-- circuit breaking after repeated failures;
-- diagnostics exposed through the existing diagnostic report.
+- Deterministic provider ordering
+- Latency tracking across endpoints
+- Failure counters and timeout enforcement
+- Automated fallback execution
+- Circuit breaking after repeated failures
+- Diagnostics accessible in the troubleshooting report
 
-The initial catalog providers are YouTube Music and Levyra's local in-memory catalog. Playback uses the resolver cache first and Levyra's native resolver second.
+Default catalog providers include YouTube Music and Levyra's local library index. Playback relies on the stream cache first, falling back to Levyra's native resolver.
 
-A new provider must implement `LevyraCatalogProvider` or `LevyraPlaybackProvider` and be registered in `LevyraViewModel`.
+To add a provider, implement `LevyraCatalogProvider` or `LevyraPlaybackProvider` and register it in `LevyraViewModel`.
 
 ## Download Engine 3.0
 
-Download settings now include:
+Download options include:
 
-- Automatic, High Quality and Data Saver presets;
-- independent offline stream quality selection;
-- Flat, Artist and Artist/Album folder layouts;
-- configurable bandwidth limits;
-- Wi-Fi and charging constraints;
-- resumable downloads;
-- one to four simultaneous jobs;
-- optional metadata and artwork embedding;
-- container verification;
-- reuse of valid existing downloads.
+- Automatic, High Quality, and Data Saver presets
+- Independent offline bitrate selection
+- Flat, Artist, and Artist/Album folder organization
+- Configurable bandwidth throttling
+- Wi-Fi and charging constraints
+- Resumable file downloads
+- Support for 1 to 4 concurrent download jobs
+- Embedded metadata, album artwork, and synced lyrics
+- Container integrity verification
+- Automatic detection and reuse of existing complete files
 
-High Quality requests a fresh high-quality offline stream without changing active playback quality. Data Saver requests a low-quality stream and applies a default network limit. Automatic keeps the current playback preference and can reuse a valid stream already attached to the track.
+The High Quality preset fetches a high-bitrate offline stream without changing your active streaming setting. Data Saver requests a lower-bandwidth stream and limits transfer speed. Automatic mirrors your playback preferences and reuses an active stream when possible.
 
-The exporter retains parallel range downloads, serial fallback, bounded retries, storage checks, MediaStore writes, foreground progress and Room persistence.
+The download engine maintains parallel chunk downloads, sequential fallback, bounded retry logic, storage space checks, MediaStore integration, foreground notifications, and Room database tracking.

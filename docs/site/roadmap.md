@@ -1,69 +1,67 @@
 # Roadmap
 
-Levyra's roadmap describes engineering direction, not promised release dates.
+Levyra's roadmap outlines our ongoing engineering direction and architectural priorities rather than fixed release dates.
 
-The detailed source of truth lives in [docs/project/ROADMAP.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/project/ROADMAP.md).
+The primary project tracking document is maintained in [docs/project/ROADMAP.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/project/ROADMAP.md).
 
 ## 1. Playback critical path
 
-Priorities include:
+- Fast audio startup and low-latency stream resolution.
+- Bounded retries and automatic fallback to alternative audio sources.
+- Tight synchronization between player, queue state, MediaSession, notifications, and Android Auto.
+- Clean separation between audio-only streams and native video playback.
+- Reliable gapless transitions, crossfade, and AutoMix playback.
 
-- low-latency valid playback paths;
-- bounded retry and fallback;
-- synchronized player, queue, MediaSession, notifications and Android Auto;
-- correct separation of audio and native-video modes;
-- reliable gapless, crossfade and AutoMix behavior.
+## 2. Local persistence, offline media, and recovery
 
-## 2. Persistence, offline use & recovery
+- Safe Room database migrations with explicit schema verification.
+- Resumable background downloads that recover gracefully from network interruptions.
+- Backward-compatible schemas for user settings, backups, queues, and playlists.
+- True offline-first access for downloaded media and metadata.
+- Verifiable export and import through Levyra Vault.
 
-- explicit safe database migrations;
-- resumable and recoverable downloads;
-- backward-compatible settings, backups, queues and playlists;
-- local-first offline content;
-- bounded and verifiable backup behavior.
+## 3. Responsive and accessible interface
 
-## 3. Responsive & accessible interface
+- Fast app startup with minimal cold-start overhead.
+- Smooth list scrolling and fluid navigation transitions.
+- Stable Compose state trees that avoid unnecessary recompositions.
+- Complete localization, right-to-left layout support, and reduced-motion respect.
+- Decorative visuals that never block or degrade playback.
 
-- fast startup;
-- smooth scrolling and navigation;
-- stable state identity;
-- localization, RTL and reduced-motion support;
-- optional visuals that never become correctness dependencies.
+## 4. Remote media resilience
 
-## 4. Remote-media resilience
+- Intelligent stream resolution with multi-client InnerTube fallback.
+- Bounded network timeouts and redirect handling.
+- Deterministic stream caching and eviction policies.
+- Isolation of third-party provider failures to avoid app-wide stalls.
+- Validation of audio streams and artwork before caching or playing.
 
-- deliberate resolver fallback;
-- bounded timeouts and redirects;
-- safe caching;
-- provider-failure isolation;
-- validation before playback, caching or writing.
+## 5. Windows Desktop quality
 
-## 5. Windows Desktop reliability
-
-- playback and native-resource ownership;
-- downloads, deep links and media keys;
-- update flow;
-- installer and portable-package quality;
-- strict separation from Android release semantics.
+- Proper native resource cleanup and playback stability.
+- Support for downloads, deep links, and hardware media keys.
+- Streamlined update checks and installation flows.
+- Clean MSI installer and portable package generation.
+- Complete release independence from the Android client.
 
 ## 6. Distribution integrity
 
-- reproducible evidence in pull requests;
-- least-privilege CI;
-- separated Android, F-Droid and Desktop artifacts;
-- deliberate signing, checksums and release metadata.
+- Detailed, reproducible evidence on pull requests.
+- Secure, least-privilege CI workflows.
+- Clean separation of Android, F-Droid, and Windows build artifacts.
+- Deterministic signing, release checksums, and artifact verification.
 
-## Priority rule
+## Priority order
 
-When priorities conflict:
+When engineering requirements conflict, we follow this hierarchy:
 
-1. safety, privacy and user data;
-2. direct playback;
-3. lifecycle and resource ownership;
-4. offline reliability;
-5. responsive and accessible UI;
-6. release integrity;
-7. optional enrichment and visual polish.
+1. User data safety, privacy, and integrity
+2. Core audio playback reliability
+3. Process lifecycle and resource cleanup
+4. Offline storage and download reliability
+5. Responsive, accessible user interface
+6. Build and distribution integrity
+7. Decorative visuals and cosmetic polish
 
 !!! note
-    Active work is tracked separately in [TASKS.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/project/TASKS.md). The roadmap itself does not authorize implementation or promise a release date.
+    Active implementation tasks are tracked in [TASKS.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/project/TASKS.md). The roadmap guides engineering priorities but does not promise delivery timelines.
