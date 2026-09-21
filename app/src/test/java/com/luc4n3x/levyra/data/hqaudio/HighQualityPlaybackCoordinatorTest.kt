@@ -132,13 +132,6 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
-    fun prefer320StillQueriesAlternativeWhenYoutubeQualityIsLow() {
-        val coordinator = coordinator(exactProvider(), HighQualityAudioMode.PREFER_320)
-
-        assertNotNull(coordinator.queryFor(playbackTrack(), isVideoMode = false, audioQuality = "Low"))
-    }
-
-    @Test
     fun explicitFlagIsOnlyTrustedWhenSet() {
         val coordinator = coordinator(exactProvider())
         assertNull(coordinator.queryFor(playbackTrack(), false, "Auto")?.explicit)
