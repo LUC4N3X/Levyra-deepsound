@@ -53,6 +53,7 @@ import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Nightlight
@@ -123,6 +124,7 @@ import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
 import com.luc4n3x.levyra.ui.levyraFoldAwareGutterDp
 import com.luc4n3x.levyra.ui.levyraPlayerArtworkMaxWidthDp
@@ -249,6 +251,7 @@ fun LevyraNowPlaying(
         )
     }
     var showActions by remember { mutableStateOf(false) }
+    var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isVideoMode, track == null) {
         if (state.isVideoMode || track == null) showDeck = false
@@ -1125,6 +1128,10 @@ fun LevyraNowPlaying(
                 onSpeed = viewModel::cycleSpeed,
                 onNormalization = viewModel::toggleAudioNormalization,
                 onAudioSettings = viewModel::openAudioQualityPanel,
+                onTechnicalAudioInfo = {
+                    showActions = false
+                    showTechnicalAudioInfo = true
+                },
                 onAmbient = viewModel::openAmbient,
                 onOpenArtist = { viewModel.openArtist(track) }
             )
@@ -1145,6 +1152,15 @@ fun LevyraNowPlaying(
                 } else {
                     null
                 }
+            )
+        }
+
+        if (showTechnicalAudioInfo && track != null) {
+            TechnicalAudioInfoSheet(
+                track = track,
+                audioSettings = state.audioSettings,
+                audioNormalization = state.audioNormalization,
+                onDismiss = { showTechnicalAudioInfo = false }
             )
         }
 
@@ -1361,6 +1377,7 @@ private fun playerSheetActions(
     onSpeed: () -> Unit,
     onNormalization: () -> Unit,
     onAudioSettings: () -> Unit,
+    onTechnicalAudioInfo: () -> Unit,
     onAmbient: () -> Unit,
     onOpenArtist: () -> Unit
 ): List<PlayerSheetAction> {
@@ -1383,13 +1400,19 @@ private fun playerSheetActions(
         label = strings.audioQuality,
         onClick = onAudioSettings
     )
+    val technicalAudioAction = PlayerSheetAction(
+        key = "technical-audio-info",
+        icon = Icons.Rounded.Info,
+        label = strings.technicalAudioInfoCopy().title,
+        onClick = onTechnicalAudioInfo
+    )
     val ambientAction = PlayerSheetAction(
         key = "ambient",
         icon = Icons.Rounded.Nightlight,
         label = strings.ambientMode,
         onClick = onAmbient
     )
-    if (track.isLiveRadio()) return listOf(sleepAction, audioAction, ambientAction)
+    if (track.isLiveRadio()) return listOf(sleepAction, audioAction, technicalAudioAction, ambientAction)
 
     val canStartRadio = !state.jam.isActive || state.jam.isHost
     return listOf(
@@ -1432,6 +1455,7 @@ private fun playerSheetActions(
             onClick = onNormalization
         ),
         audioAction,
+        technicalAudioAction,
         ambientAction,
         PlayerSheetAction(
             key = "artist",
