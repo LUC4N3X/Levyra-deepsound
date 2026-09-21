@@ -80,6 +80,7 @@ fun LocalMediaEntity.toLocalTrack(): Track {
         replayGainTrackPeak = replayGain.trackPeak,
         replayGainAlbumPeak = replayGain.albumPeak,
         year = year.takeIf { it > 0 }?.toString().orEmpty(),
+        albumArtist = albumArtist,
         trackNumber = trackNumber,
         discNumber = discNumber
     )
