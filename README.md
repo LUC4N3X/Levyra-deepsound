@@ -558,15 +558,15 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
 
 <div align="center">
   <a href="https://tsukutta.app/apps/30887ffa-db55-4b07-92a2-42845184b42c">
-    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Levyra on Tsukutta" height="28">
+    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Featured on Tsukutta" height="32">
   </a>
-  &nbsp;
+  &nbsp;&nbsp;
   <a href="https://www.producthunt.com/products/levyra">
-    <img src="https://img.shields.io/badge/Product%20Hunt-LEVYRA-DA552F?logo=producthunt&logoColor=white" alt="Levyra on Product Hunt" height="28">
+    <img src="https://ph-static.imgix.net/ph-logo-1.png" alt="Levyra on Product Hunt" height="32">
   </a>
-  &nbsp;
-  <a href="https://devglobe.app/projects/levyra">
-    <img src="https://img.shields.io/badge/DevGlobe-LEVYRA-111827" alt="Levyra on DevGlobe" height="28">
+  &nbsp;&nbsp;
+  <a href="https://devglobe.app/projects/levyra?utm_source=badge&utm_medium=embed">
+    <img src="https://devglobe.app/badges/launched-on-devglobe-dark.svg" alt="Launched on DevGlobe" height="32">
   </a>
 </div>
 
