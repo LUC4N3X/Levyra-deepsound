@@ -71,10 +71,6 @@ It has grown a lot since then, but the idea is still the same: **make the player
   <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
     <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="52">
   </a>
-  &nbsp;&nbsp;
-  <a href="https://tsukutta.app/en/apps/30887ffa-db55-4b07-92a2-42845184b42c">
-    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Featured on Tsukutta" height="52">
-  </a>
 </p>
 
 <p>
@@ -89,8 +85,9 @@ It has grown a lot since then, but the idea is still the same: **make the player
     &nbsp;·&nbsp;
     <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
     &nbsp;·&nbsp;
-    listed on <a href="https://www.producthunt.com/products/levyra"><b>Product Hunt</b></a>
-    and <a href="https://devglobe.app/projects/levyra"><b>DevGlobe</b></a>
+    listed on <a href="https://www.producthunt.com/products/levyra"><b>Product Hunt</b></a>,
+    <a href="https://devglobe.app/projects/levyra"><b>DevGlobe</b></a>
+    and <a href="https://tsukutta.app/en/apps/30887ffa-db55-4b07-92a2-42845184b42c"><b>Tsukutta</b></a>
   </sub>
 </p>
 
