@@ -2,7 +2,7 @@
 
 This file records open-source acknowledgements and legal notices for Levyra.
 
-Levyra is licensed under the GNU General Public License v3.0. Third-party libraries, services, assets, metadata providers, APIs and referenced projects retain their own copyright notices, license terms, trademarks and service terms.
+Levyra is licensed under the GNU General Public License v3.0. Third-party libraries, services, assets, metadata providers, APIs, and referenced projects retain their own copyright notices, license terms, trademarks, and service terms.
 
 ## Project Owner
 
@@ -26,13 +26,13 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 
 ## Local YouTube Decoder Attribution
 
-Levyra's local player decoder includes an independent integration adapted from the architecture and validated configuration format published by the ZemerTeam `zemer-cipher` project. The integration covers strict player-configuration validation, player JavaScript caching, WebView-based signature deciphering, `n` transformation, renderer recovery and remote configuration refresh. Levyra-specific orchestration, NewPipe decoder adaptation, fallback behavior, cache layout and playback integration are maintained in this repository.
+Levyra's local player decoder includes an independent integration adapted from the architecture and validated configuration format published by the ZemerTeam `zemer-cipher` project. The integration covers strict player-configuration validation, player JavaScript caching, WebView-based signature deciphering, `n` transformation, renderer recovery, and remote configuration refresh. Levyra-specific orchestration, NewPipe decoder adaptation, fallback behavior, cache layout, and playback integration are maintained in this repository.
 
 Upstream project: https://github.com/ZemerTeam/zemer-cipher
 
 Upstream license: GNU General Public License v3.0
 
-The registry synchronization pipeline also consumes the independent MetrolistGroup `faraday` registry as a secondary source, using the same published configuration schema. Levyra reads and validates that registry data offline in CI; it does not vendor, execute or adapt any faraday source code, and the app parses both sources into Levyra's own internal configuration representation.
+The registry synchronization pipeline also consumes the independent MetrolistGroup `faraday` registry as a secondary source, using the same published configuration schema. Levyra reads and validates that registry data offline in CI; it does not vendor, execute, or adapt any faraday source code, and the app parses both sources into Levyra's own internal configuration representation.
 
 Secondary source: https://github.com/MetrolistGroup/faraday
 
@@ -50,9 +50,9 @@ Upstream license: GNU General Public License v3.0
 
 ## Recognition Interoperability Reference
 
-Levyra's `:levyra-recognition` module is an independent pure-Kotlin implementation owned and maintained inside this repository. It contains Levyra's acoustic fingerprint analysis, bounded signature generation and wire-format encoding without vendoring or adapting ArchiveTune's `shazamkit` source. ArchiveTune was consulted only as an external behavioral reference while validating recognition interoperability and Android product behavior.
+Levyra's `:levyra-recognition` module is an independent pure-Kotlin implementation owned and maintained inside this repository. It contains Levyra's acoustic fingerprint analysis, bounded signature generation, and wire-format encoding without vendoring or adapting ArchiveTune's `shazamkit` source. ArchiveTune was consulted only as an external behavioral reference while validating recognition interoperability and Android product behavior.
 
-Independence is verified behaviourally rather than asserted: the module is exercised against an independent reference implementation of the published signature algorithm on identical PCM input, and is required to agree peak for peak on frame index, magnitude and corrected frequency bin. Agreement is a property of the algorithm being public, not of shared source; no third-party recognition code is vendored, adapted or linked.
+Independence is verified behaviourally rather than asserted: the module is exercised against an independent reference implementation of the published signature algorithm on identical PCM input, and is required to agree peak for peak on frame index, magnitude, and corrected frequency bin. Agreement is a property of the algorithm being public, not of shared source; no third-party recognition code is vendored, adapted, or linked.
 
 Reference project: https://github.com/rukamori/ArchiveTune
 
@@ -84,7 +84,7 @@ Each dependency keeps its own upstream license. Dependency versions and package 
 | LRCLIB-compatible lyrics metadata | Lyrics lookup where available |
 | SponsorBlock-compatible segment metadata | Optional segment metadata where supported |
 | Return YouTube Dislike API | Optional estimated dislike metadata; Levyra does not submit votes |
-| Third-party music metadata/search endpoints | Search, metadata and playback resolving where configured by the app |
+| Third-party music metadata/search endpoints | Search, metadata, and playback resolving where configured by the app |
 
 Levyra does not claim ownership over third-party metadata, album artwork, track names, artist names, lyrics, media content, logos, trademarks, or service names.
 
@@ -107,7 +107,7 @@ Release derivative source under GPL-3.0-compatible terms
 
 ```text
 This build is a modified version of Levyra maintained by LUC4N3X.
-It includes changes to playback resolution, UI, offline export, caching, artwork handling and release automation.
+It includes changes to playback resolution, UI, offline export, caching, artwork handling, and release automation.
 The complete corresponding source code is available in this repository under the GNU General Public License v3.0.
 ```
 
@@ -127,7 +127,6 @@ Levyra is not intended to bypass DRM, paywalls, authentication walls, geographic
 
 ## JioSaavn Integration Notice
 
-The Levyra-specific JioSaavn integration — including its source-resolution flow, identity matching and validation, fallback orchestration, playback integration, and related UI/UX — is part of the Levyra project authored and maintained by **LUC4N3X** and distributed under this repository's **GNU GPL v3.0**. Reuse of Levyra source remains subject to the GPL and its applicable notice and source obligations.
+The Levyra-specific JioSaavn integration (including its source-resolution flow, identity matching and validation, fallback orchestration, playback integration, and related UI/UX) is part of the Levyra project authored and maintained by **LUC4N3X** and distributed under this repository's **GNU GPL v3.0**. Reuse of Levyra source remains subject to the GPL and its applicable notice and source obligations.
 
 This notice applies only to Levyra's own implementation. **JioSaavn, its service, trademarks, catalogue, media, metadata, and other third-party property remain the property of their respective owners.** Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected with JioSaavn.
-

@@ -1,4 +1,4 @@
-# ChatGPT Project Instructions — Levyra
+# ChatGPT Project Instructions: Levyra
 
 You are the technical collaborator for the Levyra project.
 
