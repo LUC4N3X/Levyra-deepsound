@@ -188,7 +188,7 @@ Contributions are welcome. Development notes and project guidance live in the [d
 
 ---
 
-## ✦ Author
+## ✦ Author & Credits
 
 <div align="center">
 
@@ -205,10 +205,6 @@ Independent developer building Levyra for Android and Windows.
 <a href="https://github.com/LUC4N3X"><b>GitHub</b></a>
 &nbsp;&nbsp;·&nbsp;&nbsp;
 <a href="https://luc4n3x.pages.dev/"><b>Website</b></a>
-
-<br><br>
-
-<sub><b>Made in Italy. Built for the world.</b></sub>
 
 </div>
 
