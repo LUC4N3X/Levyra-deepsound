@@ -92,6 +92,20 @@ class TechnicalAudioInfoTest {
     }
 
     @Test
+    fun processingSummaryDoesNotReportConfiguredButInactiveEqStages() {
+        val settings = LevyraAudioSettings(
+            equalizerEnabled = false,
+            limiterEnabled = true,
+            virtualizer = 40,
+            preampDb = 2f
+        )
+
+        val label = buildProcessingLabel(settings, audioNormalization = false, copy)
+
+        assertEquals(copy.none, label)
+    }
+
+    @Test
     fun technicalFormattingIsCompactAndStable() {
         assertEquals("48 kHz", formatTechnicalSampleRate(48_000))
         assertEquals("44.1 kHz", formatTechnicalSampleRate(44_100))
