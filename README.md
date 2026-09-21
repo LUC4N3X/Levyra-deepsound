@@ -100,7 +100,64 @@ It has grown a lot since then, but the idea is still the same: **make the player
 
 ---
 
+## ✦ Interface & Experience Showcase
 
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/00_levyra_hero_showcase-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/00_levyra_hero_showcase.webp">
+  <img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra Panoramic Experience Showcase" width="100%" />
+</picture>
+
+<br><br>
+
+| | |
+| :---: | :---: |
+| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/01_playback_and_lyrics-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/01_playback_and_lyrics.webp"><img src="docs/assets/showcase/01_playback_and_lyrics.webp" alt="Immersive Playback & Live Synced Lyrics" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/02_home_and_charts-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/02_home_and_charts.webp"><img src="docs/assets/showcase/02_home_and_charts.webp" alt="Smart Orbit Feed & Global Top Charts" width="100%" /></picture> |
+| **Immersive Playback & Live Synced Lyrics**<br><sub>ExoPlayer playback · LRCLIB lyrics with route-aware sync · Multi-script romanization · 1:1 / 9:16 lyric cards</sub> | **Smart Orbit Feed & Global Charts**<br><sub>Your Orbit rotation · Live international Top 50 charts · Mood chips · Prefetch before playback</sub> |
+| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/03_search_and_artist-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/03_search_and_artist.webp"><img src="docs/assets/showcase/03_search_and_artist.webp" alt="Deep Search & Artist Immersion" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/04_library_and_pulse-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/04_library_and_pulse.webp"><img src="docs/assets/showcase/04_library_and_pulse.webp" alt="Offline M4A Vault & Listening Pulse" width="100%" /></picture> |
+| **Deep Search & Artist Immersion**<br><sub>Live search with artist results · Wikipedia biography cards · Full discography in chronological order</sub> | **Offline M4A Vault & Listening Pulse**<br><sub>Tagged M4A files with artwork · 7-day listening stats on device · Private SQLite storage</sub> |
+| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/05_video_and_samples-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/05_video_and_samples.webp"><img src="docs/assets/showcase/05_video_and_samples.webp" alt="Samples Clips & Comment Energy" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/06_collections_and_genres-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/06_collections_and_genres.webp"><img src="docs/assets/showcase/06_collections_and_genres.webp" alt="Editorial Playlists & Genre Matrix" width="100%" /></picture> |
+| **Samples Clips & Comment Energy**<br><sub>Vertical preview clips · Music video feeds · Live comment-energy percentage</sub> | **Editorial Playlists & Genre Matrix**<br><sub>4-tile editorial collections · Mood and genre browsing including Rap, Lo-Fi, Anime, Electronic and more</sub> |
+
+</div>
+
+<br>
+
+<details>
+<summary><b>✦ Browse Complete Screen-by-Screen Gallery (15 High-Res Views)</b></summary>
+<br>
+
+<div align="center">
+
+#### 🎵 Immersive Playback & Lyrics
+| Now Playing Canvas | Synchronized Lyrics |
+| :---: | :---: |
+| <img src="docs/assets/screenshots/player_nowplaying.webp" width="380" alt="Now Playing Canvas"> | <img src="docs/assets/screenshots/lyrics_synced.webp" width="380" alt="Synchronized Lyrics"> |
+#### 🪐 Home & Discovery
+| Home Selection & Orbit | Global Top 50 Charts | Editorial Collections |
+| :---: | :---: | :---: |
+| <img src="docs/assets/screenshots/home_orbit.webp" width="260" alt="Home Orbit"> | <img src="docs/assets/screenshots/home_top50.webp" width="260" alt="Global Top 50"> | <img src="docs/assets/screenshots/home_collections.webp" width="260" alt="Editorial Collections"> |
+
+#### 🔍 Search & Artist Universe
+| Search Discovery & Recent | Live Artist Results | Artist Profile & Bio | Artist Discography |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/assets/screenshots/search_recent.webp" width="200" alt="Search History"> | <img src="docs/assets/screenshots/search_artist_avatars.webp" width="200" alt="Artist Search"> | <img src="docs/assets/screenshots/artist_bio.webp" width="200" alt="Artist Bio"> | <img src="docs/assets/screenshots/artist_discography.webp" width="200" alt="Discography"> |
+
+#### 📊 Offline Vault & Listening Pulse
+| Library Quick Picks | Listening Pulse Analytics | Playlist Details |
+| :---: | :---: | :---: |
+| <img src="docs/assets/screenshots/library_quickpicks.webp" width="260" alt="Library Quick Picks"> | <img src="docs/assets/screenshots/library_pulse.webp" width="260" alt="Listening Pulse"> | <img src="docs/assets/screenshots/playlist_recent.webp" width="260" alt="Playlist Details"> |
+
+#### 🎬 Explore & Video Engine
+| Vertical Samples Clips | Moods & Subgenre Matrix | Video Feed & Energy |
+| :---: | :---: | :---: |
+| <img src="docs/assets/screenshots/explore_samples.webp" width="260" alt="Samples Clips"> | <img src="docs/assets/screenshots/explore_genres.webp" width="260" alt="Genres Matrix"> | <img src="docs/assets/screenshots/video_energy.webp" width="260" alt="Video Feed"> |
+
+</div>
+
+</details>
 
 ---
 
