@@ -26,7 +26,9 @@ private const val DEFAULT_LOCAL_ARTWORK_PX = 512
 private const val MIN_LOCAL_ARTWORK_PX = 96
 private const val MAX_LOCAL_ARTWORK_PX = 1024
 private val MEDIA_STORE_URI_PREFIX = "content://" + MediaStore.AUTHORITY + "/"
-private val LEGACY_ALBUM_ART_URI = android.net.Uri.parse("content://media/external/audio/albumart")
+private val LEGACY_ALBUM_ART_URI by lazy(LazyThreadSafetyMode.NONE) {
+    android.net.Uri.parse("content://media/external/audio/albumart")
+}
 
 fun localArtworkModel(contentUri: String, albumId: Long): String =
     LOCAL_ARTWORK_PREFIX + "a=" + albumId.coerceAtLeast(0L) + "&u=" + contentUri

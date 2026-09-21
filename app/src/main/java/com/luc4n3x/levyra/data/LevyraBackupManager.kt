@@ -36,6 +36,7 @@ import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.isExcludableArtist
 import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
@@ -1612,7 +1613,10 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("limiterEnabled", value.limiterEnabled)
     .put("crossfadeSeconds", value.crossfadeSeconds)
     .put("djSoftMode", value.djSoftMode)
-    .put("replayGainEnabled", value.replayGainEnabled)
+    .put("replayGainEnabled", value.replayGainActive)
+    .put("replayGainMode", value.effectiveReplayGainMode.storageValue)
+    .put("replayGainPreampDb", value.replayGainPreampDb.toDouble())
+    .put("replayGainPreventClipping", value.replayGainPreventClipping)
     .put("playbackSpeed", value.playbackSpeed.toDouble())
     .put("pitch", value.pitch.toDouble())
     .put("gaplessEnabled", value.gaplessEnabled)
@@ -1636,6 +1640,8 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
             }
         }
     }
+    val legacyReplayGain = json.optBoolean("replayGainEnabled")
+    val replayGainMode = ReplayGainMode.fromStorage(json.optString("replayGainMode"), legacyReplayGain)
     return LevyraAudioSettings(
         equalizerEnabled = json.optBoolean("equalizerEnabled"),
         presetId = json.optString("presetId"),
@@ -1646,7 +1652,10 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         limiterEnabled = json.optBoolean("limiterEnabled", true),
         crossfadeSeconds = json.optInt("crossfadeSeconds"),
         djSoftMode = json.optBoolean("djSoftMode"),
-        replayGainEnabled = json.optBoolean("replayGainEnabled"),
+        replayGainEnabled = replayGainMode != ReplayGainMode.OFF,
+        replayGainMode = replayGainMode,
+        replayGainPreampDb = json.optDouble("replayGainPreampDb", 0.0).toFloat(),
+        replayGainPreventClipping = json.optBoolean("replayGainPreventClipping", true),
         playbackSpeed = json.optDouble("playbackSpeed", 1.0).toFloat(),
         pitch = json.optDouble("pitch", 1.0).toFloat(),
         gaplessEnabled = json.optBoolean("gaplessEnabled", true),
