@@ -59,9 +59,13 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 
 Levyra started as the player I wanted for myself: one place for streaming, local audio files, and a library I can actually keep.
 
-I got tired of players requiring an account just to keep playlists or listening history around. Levyra stores that data locally, downloads normal audio files directly to your storage, and stays out of the way.
+I kept running into music apps that handled one side well and made the other feel secondary. Streaming lived in one place, local files in another, downloads were often locked inside the app, and basic things like playlists or listening history could depend on an account. I wanted those parts to feel like one library instead.
 
-The app has grown since that first build, but the basic idea hasn't changed. Your library should stay useful outside Levyra, and the app shouldn't need to profile what you listen to.
+That shaped a lot of the decisions in Levyra. Downloads are normal audio files saved to your storage. Local tracks can sit next to streamed music. Playlists, history and listening stats stay on the device, and Levyra does not need its own account to remember how you use it.
+
+As the project grew, I added the things I kept missing in other players: proper synced lyrics, timing offsets, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, local backups and a Windows version. Some people will use only a few of those. I still want them to feel like parts of the same player instead of a pile of separate tools.
+
+External services provide some of the music, lyrics, artwork and metadata Levyra can use, but the library itself stays under your control. The app is open source, keeps its own data local where it can, and is built so that changing a source or service does not mean losing the rest of your setup.
 
 ## ✦ Project recognition
 
