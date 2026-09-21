@@ -499,10 +499,14 @@ class PlaybackService : MediaLibraryService() {
     private fun replayGainAlbumIdentity(track: Track): String {
         val browseId = track.albumBrowseId.trim()
         if (browseId.isNotEmpty()) return "id:$browseId"
+        val appleAlbumId = track.appleAlbumId.trim()
+        if (appleAlbumId.isNotEmpty()) return "apple:$appleAlbumId"
+        val canonicalAlbumUrl = track.canonicalAlbumUrl.trim()
+        if (canonicalAlbumUrl.isNotEmpty()) return "url:$canonicalAlbumUrl"
         val album = track.album.trim().lowercase()
         if (album.isEmpty()) return ""
-        val artist = track.albumArtist.ifBlank { track.artist }.trim().lowercase()
-        return "$artist\u0000$album"
+        val albumArtist = track.albumArtist.trim().lowercase()
+        return if (albumArtist.isNotEmpty()) "$albumArtist\u0000$album" else "album:$album"
     }
 
     private fun Bundle?.floatOrNull(key: String): Float? =
