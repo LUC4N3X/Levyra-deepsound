@@ -622,11 +622,37 @@ Contributions are welcome — see the [Levyra Documentation](https://luc4n3x.git
 * **[zemer-cipher](https://github.com/ZemerTeam/zemer-cipher)** — Thanks to the Zemer team for its open-source work on YouTube cipher deobfuscation and PoToken generation.
 * **[LRCLIB](https://lrclib.net/)** — The open lyric database and API used for Levyra's synchronized lyrics.
 
-## ✦ License & Legal
+## ✦ Legal Disclaimer & Terms of Use
 
-Levyra is provided under the **[GNU GPL v3.0](LICENSE)**.
+### Independent open-source software
 
-For third-party rights, lawful use, user responsibilities, warranty, and liability terms, see the complete **[Legal Notice](docs/legal/LEGAL.md)**.
+Levyra is independent open-source client software built for lawful use. It is not affiliated with, sponsored by, endorsed by, or officially connected with YouTube, Google, JioSaavn, TIDAL, Apple, Deezer, Spotify, or any other third-party service referenced by the project.
+
+### Third-party services & content
+
+Levyra does not claim ownership of music, artwork, lyrics, metadata, videos, trademarks, or other material supplied by third parties. All rights remain with their respective owners.
+
+Levyra does not operate a catalog of copyrighted music and does not host or distribute third-party music on its own infrastructure. The application may connect to external services and sources selected or requested by the user, whose availability, content, rules, and technical behavior may change independently of Levyra.
+
+### Lawful use & user responsibility
+
+Levyra is **not designed, promoted, or intended for piracy, copyright infringement, or unauthorized redistribution of copyrighted material**.
+
+Playback, download, conversion, offline storage, export, or similar functionality does not grant ownership or additional rights over third-party content. Users are responsible for ensuring that their use of Levyra, including any content they access, save, convert, export, or redistribute, complies with applicable law and with the terms of the relevant third-party services.
+
+### Respect for creators & rights holders
+
+Levyra is intended to provide an open-source listening experience while respecting artists, creators, rights holders, and the services that make content available.
+
+Copyrights, trademarks, service marks, logos, and other intellectual property referenced by Levyra belong to their respective owners. Their presence in the project does not imply endorsement, partnership, or affiliation.
+
+### Warranty, availability & liability
+
+Levyra is provided under the **[GNU GPL v3.0](LICENSE)** and is distributed **AS IS**, without warranty of any kind, to the extent permitted by applicable law.
+
+Third-party integrations may stop working, change behavior, become restricted, or disappear without notice. Levyra does not guarantee permanent availability of external services, content, metadata, streams, or integrations.
+
+For the complete terms covering third-party services, lawful use, downloads, user responsibilities, warranties, and liability, read the **[Legal Notice](docs/legal/LEGAL.md)**.
 
 ---
 
