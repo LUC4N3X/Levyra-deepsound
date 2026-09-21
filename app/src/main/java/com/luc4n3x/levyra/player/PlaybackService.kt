@@ -400,6 +400,7 @@ class PlaybackService : MediaLibraryService() {
                 normalized.replayGainActive || audioNormalization)
         updateQueueTransitionSettings(normalized, audioNormalization)
         activePlayer?.currentMediaItem?.mediaMetadata?.extras?.let { extras ->
+            val queueSnapshot = queueEngine.state.value
             configureNormalizationProcessor(
                 processor = normalizationProcessor,
                 settings = currentAudioSettings,
@@ -411,7 +412,11 @@ class PlaybackService : MediaLibraryService() {
                     trackPeak = extras.floatOrNull(EXTRA_REPLAY_GAIN_TRACK_PEAK),
                     albumPeak = extras.floatOrNull(EXTRA_REPLAY_GAIN_ALBUM_PEAK)
                 ),
-                albumContext = replayGainAlbumContext(queueEngine.state.value.currentTrack)
+                albumContext = replayGainAlbumContext(
+                    snapshot = queueSnapshot,
+                    queueIndex = queueSnapshot.currentIndex,
+                    track = queueSnapshot.currentTrack
+                )
             )
         }
         updateAaudioOutputRequest(normalized.aaudioOutputEnabled)
@@ -439,12 +444,13 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    private fun replayGainAlbumContext(track: Track?): Boolean {
+    private fun replayGainAlbumContext(
+        snapshot: PlaybackQueueSnapshot,
+        queueIndex: Int,
+        track: Track?
+    ): Boolean {
         val current = track ?: return false
-        val snapshot = queueEngine.state.value
-        val queueIdentity = playbackQueueIdentity(current)
-        val index = snapshot.tracks.indexOfFirst { playbackQueueIdentity(it) == queueIdentity }
-        if (index !in snapshot.tracks.indices) return false
+        if (queueIndex !in snapshot.tracks.indices) return false
         val identity = replayGainAlbumIdentity(current)
         if (identity.isBlank()) return false
         val neighborIndices = if (snapshot.shuffleEnabled) {
@@ -453,16 +459,41 @@ class PlaybackService : MediaLibraryService() {
                 .distinct()
                 .takeIf { it.size == snapshot.tracks.size }
                 ?: return false
-            val cursor = playbackOrder.indexOf(index)
+            val cursor = playbackOrder.indexOf(queueIndex)
             if (cursor < 0) return false
             sequenceOf(
                 playbackOrder.getOrNull(cursor - 1),
                 playbackOrder.getOrNull(cursor + 1)
             ).filterNotNull()
         } else {
-            sequenceOf(index - 1, index + 1).filter { it in snapshot.tracks.indices }
+            sequenceOf(queueIndex - 1, queueIndex + 1).filter { it in snapshot.tracks.indices }
         }
         return neighborIndices.any { replayGainAlbumIdentity(snapshot.tracks[it]) == identity }
+    }
+
+    private fun queueTransitionTargetIndex(snapshot: PlaybackQueueSnapshot): Int? {
+        val currentIndex = snapshot.currentIndex
+        if (currentIndex !in snapshot.tracks.indices) return null
+        return if (snapshot.shuffleEnabled) {
+            val order = snapshot.shuffleOrder
+                .filter { it in snapshot.tracks.indices }
+                .distinct()
+                .takeIf { it.size == snapshot.tracks.size }
+                ?: return null
+            val cursor = order.indexOf(currentIndex)
+            when {
+                cursor < 0 -> null
+                cursor + 1 < order.size -> order[cursor + 1]
+                snapshot.repeatMode == com.luc4n3x.levyra.domain.RepeatMode.All -> order.firstOrNull()
+                else -> null
+            }
+        } else {
+            when {
+                currentIndex < snapshot.tracks.lastIndex -> currentIndex + 1
+                snapshot.repeatMode == com.luc4n3x.levyra.domain.RepeatMode.All -> 0
+                else -> null
+            }
+        }
     }
 
     private fun replayGainAlbumIdentity(track: Track): String {
@@ -697,6 +728,7 @@ class PlaybackService : MediaLibraryService() {
                     serviceRecoveryAttempts = 0
                 }
                 val extras = mediaItem?.mediaMetadata?.extras
+                val queueSnapshot = queueEngine.state.value
                 configureNormalizationProcessor(
                     processor = normalizationProcessor,
                     settings = currentAudioSettings,
@@ -708,7 +740,11 @@ class PlaybackService : MediaLibraryService() {
                         trackPeak = extras.floatOrNull(EXTRA_REPLAY_GAIN_TRACK_PEAK),
                         albumPeak = extras.floatOrNull(EXTRA_REPLAY_GAIN_ALBUM_PEAK)
                     ),
-                    albumContext = replayGainAlbumContext(queueEngine.state.value.currentTrack)
+                    albumContext = replayGainAlbumContext(
+                        snapshot = queueSnapshot,
+                        queueIndex = queueSnapshot.currentIndex,
+                        track = queueSnapshot.currentTrack
+                    )
                 )
                 watchdogPositionMs = C.TIME_UNSET
                 watchdogAdvancedAtMs = SystemClock.elapsedRealtime()
@@ -1545,7 +1581,8 @@ class PlaybackService : MediaLibraryService() {
         if (remaining !in 1L..MAX_TRANSITION_LOOKAHEAD_MS) return
         val snapshot = queueEngine.state.value
         val current = snapshot.currentTrack ?: return
-        val next = queueEngine.upcoming(1).firstOrNull()
+        val nextIndex = queueTransitionTargetIndex(snapshot) ?: return
+        val next = snapshot.tracks.getOrNull(nextIndex) ?: return
         val videoMode = player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
         val plan = planAutoMix(
             current = current.copy(durationMs = duration),
@@ -1558,7 +1595,7 @@ class PlaybackService : MediaLibraryService() {
         ) ?: return
         if (remaining > plan.preloadLeadMs) return
         queueTransitionJob = serviceScope.launch {
-            runQueueTransition(player, snapshot, current, next ?: return@launch, plan)
+            runQueueTransition(player, snapshot, current, next, nextIndex, plan)
         }
     }
 
@@ -1567,6 +1604,7 @@ class PlaybackService : MediaLibraryService() {
         snapshot: PlaybackQueueSnapshot,
         current: Track,
         target: Track,
+        targetQueueIndex: Int,
         plan: AutoMixPlan
     ) {
         val currentIdentity = playbackQueueIdentity(current)
@@ -1576,7 +1614,11 @@ class PlaybackService : MediaLibraryService() {
             val resolved = awaitPreparedQueueTrackForTransition(currentIdentity, targetIdentity)
                 ?: withContext(Dispatchers.IO) { resolveQueueTrack(target) }
             if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
-            secondary = prepareTransitionPlayerWithDecoderFallback(resolved) {
+            secondary = prepareTransitionPlayerWithDecoderFallback(
+                track = resolved,
+                queueSnapshot = snapshot,
+                queueIndex = targetQueueIndex
+            ) {
                 transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)
             } ?: return
 
@@ -1636,10 +1678,12 @@ class PlaybackService : MediaLibraryService() {
 
     private suspend fun prepareTransitionPlayerWithDecoderFallback(
         track: Track,
+        queueSnapshot: PlaybackQueueSnapshot,
+        queueIndex: Int,
         transitionIsValid: () -> Boolean
     ): ExoPlayer? {
         for (attempt in 0 until 2) {
-            val candidate = buildTransitionPlayer(track).also { transitionPlayer = it }
+            val candidate = buildTransitionPlayer(track, queueSnapshot, queueIndex).also { transitionPlayer = it }
             candidate.setPlaybackParameters(
                 PlaybackParameters(currentAudioSettings.playbackSpeed, currentAudioSettings.pitch)
             )
@@ -1752,7 +1796,11 @@ class PlaybackService : MediaLibraryService() {
             primary.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) != true
     }
 
-    private fun buildTransitionPlayer(track: Track): ExoPlayer {
+    private fun buildTransitionPlayer(
+        track: Track,
+        queueSnapshot: PlaybackQueueSnapshot,
+        queueIndex: Int
+    ): ExoPlayer {
         val normalization = NormalizationAudioProcessor().apply {
             enabled = currentAudioNormalization || currentAudioSettings.replayGainActive
             configureNormalizationProcessor(
@@ -1766,7 +1814,11 @@ class PlaybackService : MediaLibraryService() {
                     trackPeak = track.replayGainTrackPeak,
                     albumPeak = track.replayGainAlbumPeak
                 ),
-                albumContext = replayGainAlbumContext(track)
+                albumContext = replayGainAlbumContext(
+                    snapshot = queueSnapshot,
+                    queueIndex = queueIndex,
+                    track = track
+                )
             )
         }
         transitionNormalization = normalization
