@@ -554,11 +554,23 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
 
 ---
 
+## ✦ Community & Discovery
+
 <div align="center">
   <a href="https://tsukutta.app/apps/30887ffa-db55-4b07-92a2-42845184b42c">
-    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Levyra on Tsukutta" width="130">
+    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Levyra on Tsukutta" height="28">
+  </a>
+  &nbsp;
+  <a href="https://www.producthunt.com/products/levyra">
+    <img src="https://img.shields.io/badge/Product%20Hunt-LEVYRA-DA552F?logo=producthunt&logoColor=white" alt="Levyra on Product Hunt" height="28">
+  </a>
+  &nbsp;
+  <a href="https://devglobe.app/projects/levyra">
+    <img src="https://img.shields.io/badge/DevGlobe-LEVYRA-111827" alt="Levyra on DevGlobe" height="28">
   </a>
 </div>
+
+---
 
 Contributions are welcome — see the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/) for development guidelines.
 
