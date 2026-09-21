@@ -37,12 +37,6 @@
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" width="200" alt="Download Levyra for Windows"></a>
 </p>
 
-<p align="center">
-  <a href="https://tsukutta.app/apps/30887ffa-db55-4b07-92a2-42845184b42c">
-    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Featured on Tsukutta" width="150" height="29">
-  </a>
-</p>
-
 <p align="center">🌍 <b>Levyra speaks 36 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
 <p align="center">
@@ -556,6 +550,17 @@ Play counts, listening time, streaks, playlists, and listening stats are calcula
 <br>
 <sub><a href="https://hosted.weblate.org/engage/levyra/"><b>Contribute or review translations on Weblate →</b></a></sub>
 
+</div>
+
+---
+
+## ✦ Community & Discovery
+
+<div align="center">
+  <p><sub>Find Levyra on independent app and developer communities.</sub></p>
+  <a href="https://tsukutta.app/apps/30887ffa-db55-4b07-92a2-42845184b42c">
+    <img src="https://tsukutta.app/api/badge/30887ffa-db55-4b07-92a2-42845184b42c?lang=en" alt="Levyra on Tsukutta" width="140">
+  </a>
 </div>
 
 ---
