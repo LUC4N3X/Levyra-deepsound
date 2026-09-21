@@ -672,8 +672,6 @@ Because Levyra integrates with external platforms and services, permanent availa
 
 <div align="center">
 
----
-
 ### ◆ Use Levyra responsibly.
 
 For the complete legal terms covering third-party services, downloads, user responsibilities, warranties, and liability, read the **[Legal Notice](docs/legal/LEGAL.md)**.
@@ -681,6 +679,7 @@ For the complete legal terms covering third-party services, downloads, user resp
 <sub>Using Levyra does not grant rights to content you do not already have the legal right to access or use.</sub>
 
 </div>
+
 ---
 
 <div align="center">
