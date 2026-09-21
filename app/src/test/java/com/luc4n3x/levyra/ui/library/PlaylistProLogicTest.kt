@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.library
 
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +35,22 @@ class PlaylistProLogicTest {
         assertEquals(listOf("a", "c"), selectedPlaylistTracks(refreshed, withoutMiddle).map { it.id })
         assertEquals(all, togglePlaylistTrackSelection(emptySet(), playlistEntryKey(original[0])) + all.drop(1))
         assertTrue(clearPlaylistTrackSelection().isEmpty())
+    }
+
+    @Test
+    fun selectAllAddsOnlyFilteredResultsAndPreservesHiddenSelection() {
+        val tracks = listOf(
+            track("a", "Already selected"),
+            track("b", "Needle one"),
+            track("c", "Needle two"),
+            track("d", "Not selected")
+        )
+        val filtered = filterPlaylistTracks(tracks, "needle", buildPlaylistSearchIndex(tracks))
+        val selected = selectPlaylistTracks(setOf(playlistEntryKey(tracks.first())), filtered)
+
+        assertEquals(listOf("a", "b", "c"), selectedPlaylistTracks(tracks, selected).map { it.id })
+        assertTrue(areAllPlaylistTracksSelected(filtered, selected))
+        assertFalse(areAllPlaylistTracksSelected(tracks, selected))
     }
 
     private fun track(
