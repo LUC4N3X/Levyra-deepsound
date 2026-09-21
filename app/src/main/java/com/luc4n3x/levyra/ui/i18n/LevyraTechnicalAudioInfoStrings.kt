@@ -35,7 +35,10 @@ internal data class TechnicalAudioInfoCopy(
     val equalizer: String,
     val limiter: String,
     val virtualizer: String,
-    val preamp: String
+    val preamp: String,
+    val codecId: String = "Codec ID",
+    val remotePlayback: String = "Remote playback",
+    val receiverManaged: String = "Managed by receiver"
 )
 
 internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = when (code) {
@@ -46,7 +49,8 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Trasporto", "Qualità", "Profondità", "Stream", "Loudness", "Uscita", "Percorso",
         "Volume", "Motore", "Pipeline", "Elaborazione", "Sessione audio", "Sorgente verificata",
         "Affidabilità", "Non disponibile", "Nessuna", "Richiesto", "Fallback",
-        "Normalizzazione", "Equalizzatore", "Limiter", "Virtualizer", "Preamp"
+        "Normalizzazione", "Equalizzatore", "Limiter", "Virtualizer", "Preamp",
+        codecId = "ID codec", remotePlayback = "Riproduzione remota", receiverManaged = "Gestito dal ricevitore"
     )
     "es" -> TechnicalAudioInfoCopy(
         "Información técnica de audio", "Formato real, fuente y ruta de señal en tiempo real",
@@ -55,7 +59,8 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Transporte", "Calidad", "Profundidad", "Stream", "Loudness", "Salida", "Ruta",
         "Volumen", "Motor", "Pipeline", "Procesamiento", "Sesión de audio", "Fuente verificada",
         "Confianza", "No disponible", "Ninguno", "Solicitado", "Fallback",
-        "Normalización", "Ecualizador", "Limiter", "Virtualizador", "Preamp"
+        "Normalización", "Ecualizador", "Limiter", "Virtualizador", "Preamp",
+        codecId = "ID de códec", remotePlayback = "Reproducción remota", receiverManaged = "Gestionado por el receptor"
     )
     "fr" -> TechnicalAudioInfoCopy(
         "Infos audio techniques", "Format réel, source et chemin du signal en temps réel",
@@ -64,7 +69,8 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Transport", "Qualité", "Profondeur", "Flux", "Loudness", "Sortie", "Route",
         "Volume", "Moteur", "Pipeline", "Traitement", "Session audio", "Source vérifiée",
         "Confiance", "Indisponible", "Aucun", "Demandé", "Fallback",
-        "Normalisation", "Égaliseur", "Limiteur", "Virtualizer", "Préampli"
+        "Normalisation", "Égaliseur", "Limiteur", "Virtualizer", "Préampli",
+        codecId = "ID codec", remotePlayback = "Lecture à distance", receiverManaged = "Géré par le récepteur"
     )
     "de" -> TechnicalAudioInfoCopy(
         "Technische Audio-Infos", "Reales Format, Quelle und Signalweg in Echtzeit",
@@ -73,7 +79,8 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Übertragung", "Qualität", "Bittiefe", "Stream", "Loudness", "Ausgabe", "Route",
         "Lautstärke", "Engine", "Pipeline", "Verarbeitung", "Audio-Session", "Verifizierte Quelle",
         "Vertrauen", "Nicht verfügbar", "Keine", "Angefordert", "Fallback",
-        "Normalisierung", "Equalizer", "Limiter", "Virtualizer", "Preamp"
+        "Normalisierung", "Equalizer", "Limiter", "Virtualizer", "Preamp",
+        codecId = "Codec-ID", remotePlayback = "Remote-Wiedergabe", receiverManaged = "Vom Empfänger verwaltet"
     )
     "pt" -> TechnicalAudioInfoCopy(
         "Informação técnica de áudio", "Formato real, fonte e percurso do sinal em tempo real",
@@ -82,7 +89,8 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Transporte", "Qualidade", "Profundidade", "Stream", "Loudness", "Saída", "Rota",
         "Volume", "Motor", "Pipeline", "Processamento", "Sessão de áudio", "Fonte verificada",
         "Confiança", "Indisponível", "Nenhum", "Pedido", "Fallback",
-        "Normalização", "Equalizador", "Limiter", "Virtualizer", "Preamp"
+        "Normalização", "Equalizador", "Limiter", "Virtualizer", "Preamp",
+        codecId = "ID do codec", remotePlayback = "Reprodução remota", receiverManaged = "Gerido pelo recetor"
     )
     "ja" -> TechnicalAudioInfoCopy(
         "技術オーディオ情報", "実際の再生フォーマット、ソース、信号経路をリアルタイム表示",
@@ -91,7 +99,8 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "配信方式", "品質", "ビット深度", "ストリーム", "ラウドネス", "出力", "ルート",
         "音量", "エンジン", "パイプライン", "処理", "オーディオセッション", "検証済みソース",
         "信頼度", "利用不可", "なし", "要求済み", "フォールバック",
-        "ノーマライズ", "イコライザー", "リミッター", "バーチャライザー", "プリアンプ"
+        "ノーマライズ", "イコライザー", "リミッター", "バーチャライザー", "プリアンプ",
+        codecId = "コーデック ID", remotePlayback = "リモート再生", receiverManaged = "受信機側で管理"
     )
     else -> TechnicalAudioInfoCopy(
         "Technical audio info", "Live playback format, source and signal path",
