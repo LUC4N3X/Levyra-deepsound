@@ -57,11 +57,11 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 
 ## ✦ Why Levyra
 
-Levyra started as the player I wanted for myself: one place for streaming, local audio files, and a library I actually own.
+Levyra started as the player I wanted for myself: one place for streaming, local audio files, and a library I can actually keep.
 
 I got tired of players requiring an account just to keep playlists or listening history around. Levyra stores that data locally, downloads normal audio files directly to your storage, and stays out of the way.
 
-The app has grown since that first build, but the priority hasn't changed: keep it fast, keep your data portable, and don't track what people listen to.
+The app has grown since that first build, but the basic idea hasn't changed. Your library should stay useful outside Levyra, and the app shouldn't need to profile what you listen to.
 
 ## ✦ Project recognition
 
@@ -99,7 +99,7 @@ When enabled, Levyra can search JioSaavn for a matching track and stream the hig
 
 Matching goes beyond comparing titles. The resolver checks artist name, album, duration, explicit tags, ISRC metadata when present, and keywords indicating alternate versions. If a candidate looks like a remix, live recording, acoustic take, or sped-up edit, Levyra ignores it and plays the default stream instead.
 
-Your library track remains untouched. Artwork, lyrics, queue placement, listening history, and recommendations stay linked to the original track. JioSaavn serves strictly as an alternative audio stream.
+Your library track remains untouched. Artwork, lyrics, queue placement, listening history, and recommendations stay linked to the original track. JioSaavn is only used as an alternative audio stream.
 
 <div align="center">
   <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
@@ -173,29 +173,29 @@ Your library track remains untouched. Artwork, lyrics, queue placement, listenin
 
 ### Playback
 
-- Native audio engines. Android uses Media3 and ExoPlayer, while Windows uses libVLC. Neither build runs inside a web view wrapper.
+- Native audio engines. Android uses Media3 and ExoPlayer, while Windows uses libVLC. Both platforms have their own native playback stack.
 - Gapless and crossfade. Album tracks can play continuously without unwanted crossfading, with manual control over playback speed and pitch.
 - Equalizer and AutoEQ. Use the built-in 10-band equalizer or load headphone correction profiles directly from the AutoEQ database.
 - SponsorBlock integration. Automatically skip intros, sponsor segments, dialogue, and non-music sections.
 - Audio and video modes. Switch between audio-only streams and native video playback with subtitle selection when available.
-- Android Auto and Quick Settings. Control playback from your car display or pause and resume from the Android notification shade.
+- Android Auto and Quick Settings. Control playback from your car display, or pause and resume from a dedicated Quick Settings tile.
 
 ### Library and offline storage
 
 - Direct file downloads. Levyra saves standard M4A files directly to storage, embedding artwork, artist tags, album details, and lyrics.
 - Local library integration. Index, search, and queue audio files already stored on your device alongside streamed music.
 - Queue spaces. Save and switch between separate queues without clearing your current listening session.
-- Local backups. Export settings, playlists, favorites, listening history, and saved queues to a file without cloud accounts.
-- Library organization. Sort and organize tracks with tags, playlist filters, and artist blocklists.
+- Levyra Vault. Export settings, playlists, favorites, listening history, and saved queues to a local backup file without a cloud account.
+- Library organization. Sort and organize tracks with tags, playlist filters, and artist exclusions.
 
 ### Lyrics, discovery, and extras
 
 - Synced lyrics with offset adjustments. Tap any line to jump to that timestamp, adjust early or late timing, and save separate offsets for Bluetooth devices.
 - Romanization and lyric cards. Transliterate non-Latin scripts for easier reading, or export selected lyric lines as shareable cards.
-- Canvas visuals. Background video canvas plays behind the now-playing screen when available, with motion artwork fallbacks.
+- Canvas visuals. Motion visuals can appear behind the Now Playing screen when available, with motion artwork as a fallback.
 - Radio and charts. Explore worldwide radio stations, global top 50 charts, mood tags, and discovery feeds.
 - Song identification. Identify playing music through the microphone or internal audio capture, with recognition history stored on device.
-- Local stats. Track play counts, listening hours, and weekly activity calculated entirely on your hardware.
+- Local stats. Play counts, listening hours, and weekly activity are calculated locally on the device.
 - Optional scrobbling. Connect Last.fm or ListenBrainz if you want to scrobble; neither service is required.
 
 More technical notes and platform details are available in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
@@ -248,12 +248,12 @@ Levyra builds on work and ideas from across the open-source music ecosystem:
 - [Metrolist](https://github.com/MetrolistGroup/Metrolist): reference work for renderer recovery and BetterLyrics TTML parsing.
 - [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor): base architecture for LevyraExtractor, adapted with custom stream resolution and retry logic.
 - [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor): upstream extractor concepts and service foundations.
-- [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): cipher deobfuscation and PoToken implementation.
+- [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work on YouTube cipher deobfuscation and PoToken generation.
 - [LRCLIB](https://lrclib.net/): synchronized lyrics database and API.
 
 App logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525).
 
-Contributions and bug reports are welcome. Technical documentation and architecture notes can be found in the [project wiki](https://luc4n3x.github.io/Levyra-deepsound/).
+Contributions and bug reports are welcome. Technical documentation and architecture notes are in the [project documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ---
 
