@@ -10,7 +10,7 @@
 
 **Open-source music player for Android and Windows.**
 
-Streaming, local music, downloads, synced lyrics and a private offline library — without a Levyra account or tracking.
+Streaming, local tracks, downloads, synced lyrics, and an offline library with no Levyra account or tracking.
 
 <p>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-mobile-light.svg 126w, docs/assets/levyra-release-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release-mobile.svg 126w, docs/assets/levyra-release.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-release.svg" srcset="docs/assets/levyra-release-mobile.svg 126w, docs/assets/levyra-release.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Latest release"></picture></a>
@@ -57,11 +57,15 @@ Streaming, local music, downloads, synced lyrics and a private offline library �
 
 ## ✦ Why Levyra
 
-Levyra started as the music player I wanted to use myself: one place for streaming, files already on my phone, and an offline library I can actually keep.
+Levyra started as the player I wanted for myself: one place for streaming, local audio files, and a library I can actually keep.
 
-I didn't want an app that needed its own account just to remember my playlists or listening history. Levyra keeps that data on the device, uses normal media files for downloads, and stays out of the way when all you want to do is play music.
+I kept running into music apps that handled one side well and made the other feel secondary. Streaming lived in one place, local files in another, downloads were often locked inside the app, and basic things like playlists or listening history could depend on an account. I wanted those parts to feel like one library instead.
 
-It has grown a lot since then, but the idea is still the same: **make the player useful, keep the data portable, and don't track the listener.**
+That shaped a lot of the decisions in Levyra. Downloads are normal audio files saved to your storage. Local tracks can sit next to streamed music. Playlists, history and listening stats stay on the device, and Levyra does not need its own account to remember how you use it.
+
+As the project grew, I added the things I kept missing in other players: proper synced lyrics, timing offsets, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, local backups and a Windows version. Some people will use only a few of those. I still want them to feel like parts of the same player instead of a pile of separate tools.
+
+External services provide some of the music, lyrics, artwork and metadata Levyra can use, but the library itself stays under your control. The app is open source, keeps its own data local where it can, and is built so that changing a source or service does not mean losing the rest of your setup.
 
 ## ✦ Project recognition
 
@@ -95,17 +99,15 @@ It has grown a lot since then, but the idea is still the same: **make the player
 
 ## ✦ JioSaavn · Verified High-Quality Audio
 
-This is one of the playback features I'm most careful with.
+When enabled, Levyra can search JioSaavn for a matching track and stream the higher-bitrate source (up to 320 kbps) when there is an exact match.
 
-If you enable it, Levyra can look for the **same recording** on JioSaavn and use the higher-quality source when a real match is available, up to **320 kbps**. The important part is the matching, not the number.
+Matching goes beyond comparing titles. The resolver checks artist name, album, duration, explicit tags, ISRC metadata when present, and keywords indicating alternate versions. If a candidate looks like a remix, live recording, acoustic take, or sped-up edit, Levyra ignores it and plays the default stream instead.
 
-Levyra doesn't just compare the song title and hope for the best. It checks the artist, album, duration, explicit state, ISRC when available, and words that usually mean you're looking at a different version. If the result looks like a remix, live take, acoustic version, sped-up edit or simply isn't convincing enough, Levyra leaves the track alone and uses the normal source.
-
-The song itself never changes inside your library. **Artwork, lyrics, queue position, listening history and recommendations still belong to the original Levyra track.** JioSaavn is only used as an optional playback source.
+Your library track remains untouched. Artwork, lyrics, queue placement, listening history, and recommendations stay linked to the original track. JioSaavn is only used as an alternative audio stream.
 
 <div align="center">
   <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
-  <sub>If the higher-quality source disappears, fails validation or isn't actually better, playback falls back normally.</sub>
+  <sub>If the alternative source drops or fails validation, playback falls back to the default stream.</sub>
 </div>
 
 ---
@@ -173,59 +175,57 @@ The song itself never changes inside your library. **Artwork, lyrics, queue posi
 
 ## ✦ What Levyra can do
 
-Levyra has picked up a lot of features over time. These are the ones I think are worth knowing about first.
-
 ### Playback
 
-- **Native playback.** Android runs on Media3 / ExoPlayer and Windows uses libVLC. Neither app is just a web player in a wrapper.
-- **Gapless, crossfade, speed and pitch controls.** Consecutive tracks from the same album can stay continuous instead of being crossfaded into each other.
-- **10-band EQ and AutoEQ.** There is a normal built-in EQ, plus a searchable catalog of headphone correction profiles.
-- **SponsorBlock.** It can skip supported intros, silence, dialogue and other non-music sections during playback.
-- **Audio and video.** You can switch to native video when a video stream is available, with subtitle selection where supported.
-- **Android Auto and Quick Settings.** Playback works with Android car controls, and a dedicated tile can pause or resume the current session.
+- Native audio engines. Android uses Media3 and ExoPlayer, while Windows uses libVLC. Both platforms have their own native playback stack.
+- Gapless and crossfade. Album tracks can play continuously without unwanted crossfading, with manual control over playback speed and pitch.
+- Equalizer and AutoEQ. Use the built-in 10-band equalizer or load headphone correction profiles directly from the AutoEQ database.
+- SponsorBlock integration. Automatically skip intros, sponsor segments, dialogue, and non-music sections.
+- Audio and video modes. Switch between audio-only streams and native video playback with subtitle selection when available.
+- Android Auto and Quick Settings. Control playback from your car display, or pause and resume from a dedicated Quick Settings tile.
 
-### Library & offline
+### Library and offline storage
 
-- **Downloads are normal files.** Levyra saves tagged M4A files, and can write artwork, artist, album and lyrics into them.
-- **Local music works throughout the app.** Music already on your phone can be indexed, searched, queued and played from the same library.
-- **Queue Spaces.** You can keep multiple named queues around instead of rebuilding the current queue every time.
-- **Levyra Vault.** Settings, favorites, playlists, listening history and queues can be backed up and restored without an online account.
-- **Playlist organization.** Tags, filtering, hidden playlists and artist exclusions are there for people with larger libraries.
+- Direct file downloads. Levyra saves standard M4A files directly to storage, embedding artwork, artist tags, album details, and lyrics.
+- Local library integration. Index, search, and queue audio files already stored on your device alongside streamed music.
+- Queue spaces. Save and switch between separate queues without clearing your current listening session.
+- Levyra Vault. Export settings, playlists, favorites, listening history, and saved queues to a local backup file without a cloud account.
+- Library organization. Sort and organize tracks with tags, playlist filters, and artist exclusions.
 
-### Lyrics, discovery & extras
+### Lyrics, discovery, and extras
 
-- **Synced lyrics with manual timing.** Tap a line to seek, fix an early or late sync, and keep separate Bluetooth timing where Android can identify the route.
-- **Romanization and lyric sharing.** Several writing systems can be made easier to read, and selected lyrics can be exported as square or story-sized cards.
-- **Canvas and living artwork.** Motion visuals can appear behind the player when available, with artwork motion as a fallback.
-- **Live radio and discovery.** Worldwide stations, charts, Smart Orbit, Samples and recommendation shelves sit alongside normal search.
-- **Music recognition.** Levyra can identify music through the microphone or supported internal audio capture, and keeps the recognition history locally.
-- **Listening stats stay on the device.** Play counts, listening time, weekly activity and longer-term views are calculated locally.
-- **Last.fm and ListenBrainz.** Both are optional. Levyra does not need either service for normal playback.
+- Synced lyrics with offset adjustments. Tap any line to jump to that timestamp, adjust early or late timing, and save separate offsets for Bluetooth devices.
+- Romanization and lyric cards. Transliterate non-Latin scripts for easier reading, or export selected lyric lines as shareable cards.
+- Canvas visuals. Motion visuals can appear behind the Now Playing screen when available, with motion artwork as a fallback.
+- Radio and charts. Explore worldwide radio stations, global top 50 charts, mood tags, and discovery feeds.
+- Song identification. Identify playing music through the microphone or internal audio capture, with recognition history stored on device.
+- Local stats. Play counts, listening hours, and weekly activity are calculated locally on the device.
+- Optional scrobbling. Connect Last.fm or ListenBrainz if you want to scrobble; neither service is required.
 
-There is more than I want to cram into the README. The detailed implementation notes and edge cases are in the [Levyra Documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+More technical notes and platform details are available in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ## ✦ Under the hood
 
 | | Android | Windows |
 | --- | --- | --- |
 | Interface | Kotlin + Jetpack Compose | Compose Multiplatform |
-| Playback | Media3 / ExoPlayer, with optional native audio paths | libVLC |
-| Local data | SQLite, MediaStore and normal media files | Local desktop storage |
-| Focus | Mobile playback, downloads, local library, Android Auto | Native desktop playback and library use |
+| Playback | Media3 / ExoPlayer | libVLC |
+| Local data | SQLite, MediaStore, and standard media files | Local file storage |
+| Focus | Mobile playback, downloads, local storage, Android Auto | Desktop playback and local library management |
 
-Levyra uses separate platform code where Android and Windows need different solutions. The project does not wrap a web player inside a desktop or mobile shell.
+Levyra uses native platform APIs for Android and Windows rather than wrapping a web app in Electron or a WebView.
 
 ## ✦ Privacy
 
-**No ads. No Levyra analytics. No mandatory Levyra account.**
+Levyra contains no telemetry, analytics, or ads, and does not require an account.
 
-Listening history, play counts, playlists and listening statistics are stored locally. Levyra connects directly to the external services used by the features you choose, such as music sources, lyrics, artwork, scrobbling or update checks.
+Play history, stats, playlists, and cached metadata stay on your device. Network requests go directly to whichever services provide the features you use, such as streaming endpoints, lyrics providers, or scrobbling APIs.
 
-Microphone access is only used when you start microphone-based music recognition. Proxy, DNS and other network options are visible in settings rather than hidden behind the player.
+Microphone access is requested only when you trigger song identification. Custom proxy and DNS settings can be configured directly in the app.
 
 ## ✦ Translations
 
-Levyra is available in **36 languages**, with Android translations maintained through Weblate.
+Levyra is translated into 36 languages, with community translations maintained on Weblate.
 
 <div align="center">
 
@@ -247,17 +247,17 @@ Levyra is available in **36 languages**, with Android translations maintained th
 
 ## ✦ Open-source acknowledgements
 
-Levyra is its own project, but it benefits from ideas, libraries and upstream work from the wider open-source music community.
+Levyra builds on work and ideas from across the open-source music ecosystem:
 
-- **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — reference work for renderer recovery and BetterLyrics TTML parsing.
-- **[PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)** — foundation for LevyraExtractor, with Levyra-specific stream resolution and reliability work on top.
-- **[NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor)** — upstream extractor work and service implementations.
-- **[zemer-cipher](https://github.com/ZemerTeam/zemer-cipher)** — open-source YouTube cipher deobfuscation and PoToken work.
-- **[LRCLIB](https://lrclib.net/)** — synchronized lyric database and API.
+- [Metrolist](https://github.com/MetrolistGroup/Metrolist): reference work for renderer recovery and BetterLyrics TTML parsing.
+- [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor): base architecture for LevyraExtractor, adapted with custom stream resolution and retry logic.
+- [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor): upstream extractor concepts and service foundations.
+- [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work on YouTube cipher deobfuscation and PoToken generation.
+- [LRCLIB](https://lrclib.net/): synchronized lyrics database and API.
 
-Branding credit goes to [@gauravbhindwar](https://github.com/gauravbhindwar) for Levyra's current app logo contributed in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525).
+App logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525).
 
-Contributions are welcome. Development notes and project guidance live in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+Contributions and bug reports are welcome. Technical documentation and architecture notes are in the [project documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ---
 
