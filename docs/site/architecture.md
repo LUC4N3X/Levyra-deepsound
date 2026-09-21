@@ -1,6 +1,6 @@
 # Architecture
 
-Levyra keeps Android and Windows native where platform behavior matters, while sharing product and engineering principles.
+Levyra keeps Android and Windows native where platform behavior matters, while sharing overarching product principles and data schemas.
 
 ## High-level model
 
@@ -12,14 +12,14 @@ UI
  │
  ▼
 State / ViewModels
- ├──────────────► Data & resolution ─► remote/local sources
+ ├──────────────► Data & resolution ─► Remote/local sources
  │
- └──────────────► Playback runtime ──► audio/video output
+ └──────────────► Playback runtime ──► Audio/video output
 ```
 
 ## Android
 
-The main Android implementation lives under:
+The main Android codebase lives under:
 
 ```text
 app/src/main/java/com/luc4n3x/levyra/
@@ -29,27 +29,25 @@ app/src/main/java/com/luc4n3x/levyra/
 └── player/
 ```
 
-### UI
+### UI layer
 
-Jetpack Compose renders application state and forwards user actions. UI code should not own persistent runtime state or perform expensive blocking work.
+Jetpack Compose renders application state and forwards user interactions. UI composables do not own persistent state or perform blocking operations.
 
-### State
+### State and ViewModels
 
-ViewModels and state owners coordinate UI, data and runtime systems using predictable ownership and unidirectional flow.
+ViewModels coordinate UI state, repository calls, and player commands using unidirectional data flow. Screens observe focused UI state projections to avoid unnecessary recomposition passes.
 
-### Data & resolution
+### Data and resolution
 
-The data layer handles responsibilities such as metadata, search, lyrics, stream resolution and persistent data access.
+The data layer handles metadata caching, search queries, lyrics retrieval, stream resolution, and local Room database access.
 
-### Playback
+### Playback pipeline
 
-Android playback is centered on Media3 / ExoPlayer, PlaybackService and MediaSession integration.
+Android playback is powered by AndroidX Media3 / ExoPlayer, backed by a persistent `PlaybackService` and MediaSession integration. The player, queue state, system notifications, and Android Auto interfaces remain synchronized at all times.
 
-Queue, player, notification, Android Auto and background service behavior must remain synchronized.
+## Windows Desktop
 
-## Windows
-
-The Windows implementation lives under:
+The Windows client lives under:
 
 ```text
 desktop/
@@ -59,16 +57,16 @@ desktop/
 └── packaging/
 ```
 
-- `app/` — Compose Multiplatform UI and desktop lifecycle.
-- `player/` — isolated libvlc playback.
-- `core/` — resolution, downloads and desktop application services.
-- `packaging/` — Windows distribution packaging.
+- `app/`: Compose Multiplatform UI and desktop window lifecycle.
+- `player/`: Isolated libvlc playback runtime.
+- `core/`: Stream resolution, downloads, and desktop application services.
+- `packaging/`: Windows MSI and portable distribution packages.
 
-Android and Desktop versions and releases remain independent.
+Android and Windows Desktop versions are released independently.
 
 ## Playback before decoration
 
-Canvas, artwork motion and visual enrichment are optional.
+Artwork motion, full-screen Canvas videos, and decorative visual effects are strictly optional:
 
 ```text
 Track requested
@@ -79,29 +77,27 @@ Resolve playable media
       ▼
 Start audio
       │
-      ├── artwork
+      ├── Artwork
       ├── Canvas
-      └── motion visuals
+      └── Motion visuals
 ```
 
-A visual failure must not become a playback failure.
+A visual rendering failure or network error must never prevent audible playback from starting.
 
-## Local-first data
+## Local-first data architecture
 
-Important application data is designed around local ownership, including playlists, favorites, history, queue state, settings and listening insights.
-
-Persistent storage remains the durable source of truth, while hot runtime paths should avoid synchronous disk or database work.
+All user data (such as playlists, favorites, play history, queue state, settings, and listening stats) is stored locally on the device using SQLite. Hot playback and UI paths remain non-blocking and avoid synchronous database transactions.
 
 ## Reliability principles
 
-Changes should protect:
+Code changes must preserve:
 
-- playback and queue state;
-- MediaSession, notifications and Android Auto;
-- downloads and offline media;
-- playlists, favorites and history;
-- settings and backups;
-- localization and accessibility;
-- user privacy and data integrity.
+- Responsive playback and stable queue management
+- MediaSession, notification shade, and Android Auto controls
+- Downloaded files and offline playback availability
+- User playlists, favorites, and listening history
+- Settings, configuration, and backup restoration
+- Accessibility and right-to-left layout support
+- User privacy and on-device data ownership
 
-For deeper implementation documentation, see the repository's [docs directory](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/docs).
+For deeper technical documentation on extractors and caching, see the repository [docs directory](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/docs).
