@@ -626,7 +626,7 @@ Contributions are welcome — see the [Levyra Documentation](https://luc4n3x.git
 
 <div align="center">
 
-### 🛡️ Open source. Independent. Built for lawful use.
+### Open source. Independent. Built for lawful use.
 
 <code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
 
