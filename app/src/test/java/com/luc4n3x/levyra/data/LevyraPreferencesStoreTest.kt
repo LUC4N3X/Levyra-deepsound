@@ -178,6 +178,7 @@ class LevyraPreferencesStoreTest {
     fun playerGestureActionsSurviveRecreation() {
         val (store, preferences) = open()
         val configured = LevyraInterfaceSettings(
+            releaseNotificationsEnabled = true,
             swipeTrackChangeEnabled = false,
             doubleTapAction = PlayerDoubleTapAction.PlayPause,
             longPressAction = PlayerLongPressAction.Queue,

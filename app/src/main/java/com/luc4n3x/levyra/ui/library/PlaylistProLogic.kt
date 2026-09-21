@@ -28,6 +28,16 @@ internal fun togglePlaylistTrackSelection(selectedKeys: Set<String>, key: String
 internal fun selectAllPlaylistTrackKeys(tracks: List<Track>): Set<String> =
     tracks.mapTo(linkedSetOf(), ::playlistEntryKey)
 
+internal fun selectPlaylistTracks(
+    selectedKeys: Set<String>,
+    tracks: List<Track>
+): Set<String> = selectedKeys + selectAllPlaylistTrackKeys(tracks)
+
+internal fun areAllPlaylistTracksSelected(
+    tracks: List<Track>,
+    selectedKeys: Set<String>
+): Boolean = tracks.isNotEmpty() && tracks.all { playlistEntryKey(it) in selectedKeys }
+
 internal fun clearPlaylistTrackSelection(): Set<String> = emptySet()
 
 internal fun selectedPlaylistTracks(tracks: List<Track>, selectedKeys: Set<String>): List<Track> =

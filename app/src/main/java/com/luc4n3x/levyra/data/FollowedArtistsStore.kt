@@ -104,7 +104,9 @@ class FollowedArtistsStore(context: Context) {
         prefs.getStringSet(KEY_KNOWN_PREFIX + artistKey, emptySet()).orEmpty()
 
     fun saveKnownReleases(artistKey: String, keys: Set<String>) {
-        prefs.edit().putStringSet(KEY_KNOWN_PREFIX + artistKey, keys.take(200).toSet()).apply()
+        if (!prefs.edit().putStringSet(KEY_KNOWN_PREFIX + artistKey, keys.take(MAX_KNOWN_RELEASE_KEYS).toSet()).commit()) {
+            Timber.w("Followed artist release baseline was not persisted for %s", artistKey)
+        }
     }
 
     fun clearKnownReleases(artistKey: String) {
@@ -128,6 +130,7 @@ class FollowedArtistsStore(context: Context) {
         const val KEY_ARTISTS = "artists"
         const val KEY_KNOWN_PREFIX = "known_releases_"
         const val KEY_RADAR_OFFSET = "radar_offset"
+        const val MAX_KNOWN_RELEASE_KEYS = 400
         val mutationMutex = Mutex()
     }
 }

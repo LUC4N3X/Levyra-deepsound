@@ -178,6 +178,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_PERSONAL_ORBIT] = normalizedInterface.showPersonalOrbit
             mutable[KEY_UI_RESONANCE] = normalizedInterface.showResonance
             mutable[KEY_UI_NEW_RELEASES] = normalizedInterface.showNewReleases
+            mutable[KEY_RELEASE_NOTIFICATIONS] = normalizedInterface.releaseNotificationsEnabled
             mutable[KEY_UI_ALBUMS] = normalizedInterface.showAlbumsForYou
             mutable[KEY_UI_ARTISTS] = normalizedInterface.showTrendingArtists
             mutable[KEY_UI_CHARTS] = normalizedInterface.showCharts
@@ -326,6 +327,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_PERSONAL_ORBIT] = normalized.showPersonalOrbit
             it[KEY_UI_RESONANCE] = normalized.showResonance
             it[KEY_UI_NEW_RELEASES] = normalized.showNewReleases
+            it[KEY_RELEASE_NOTIFICATIONS] = normalized.releaseNotificationsEnabled
             it[KEY_UI_ALBUMS] = normalized.showAlbumsForYou
             it[KEY_UI_ARTISTS] = normalized.showTrendingArtists
             it[KEY_UI_CHARTS] = normalized.showCharts
@@ -684,6 +686,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             showPersonalOrbit = preferences[KEY_UI_PERSONAL_ORBIT] ?: true,
             showResonance = preferences[KEY_UI_RESONANCE] ?: true,
             showNewReleases = preferences[KEY_UI_NEW_RELEASES] ?: true,
+            releaseNotificationsEnabled = preferences[KEY_RELEASE_NOTIFICATIONS] ?: false,
             showAlbumsForYou = preferences[KEY_UI_ALBUMS] ?: true,
             showTrendingArtists = preferences[KEY_UI_ARTISTS] ?: true,
             showCharts = preferences[KEY_UI_CHARTS] ?: true,
@@ -993,6 +996,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_PERSONAL_ORBIT = booleanPreferencesKey("ui_show_personal_orbit")
         val KEY_UI_RESONANCE = booleanPreferencesKey("ui_show_resonance")
         val KEY_UI_NEW_RELEASES = booleanPreferencesKey("ui_show_new_releases")
+        val KEY_RELEASE_NOTIFICATIONS = booleanPreferencesKey("release_notifications_enabled")
         val KEY_UI_ALBUMS = booleanPreferencesKey("ui_show_albums")
         val KEY_UI_ARTISTS = booleanPreferencesKey("ui_show_artists")
         val KEY_UI_CHARTS = booleanPreferencesKey("ui_show_charts")

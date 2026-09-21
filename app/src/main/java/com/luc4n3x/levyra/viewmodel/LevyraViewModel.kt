@@ -21,6 +21,7 @@ import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.deduplicateSearchSongs
 import com.luc4n3x.levyra.data.areAllFavoriteTracks
 import com.luc4n3x.levyra.data.FollowedArtistsStore
+import com.luc4n3x.levyra.data.ReleaseRadarPolicy
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
@@ -912,6 +913,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var homeArtistsFingerprint: String = ""
     private val deferredHomeArtistsSnapshot = AtomicReference<List<ArtistHit>?>(null)
     private var radarJob: Job? = null
+    private var releaseNotificationSettingsJob: Job? = null
     private var followedArtistsJob: Job? = null
     private var forgottenFavoritesJob: Job? = null
     private var excludedArtistsGeneration = 0L
@@ -1589,24 +1591,48 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         applyFollowedArtists(updated)
         followedArtistsJob?.cancel()
         followedArtistsJob = viewModelScope.launch(Dispatchers.IO) {
-            followedArtistsStore.save(updated)
-            if (mutationGeneration != followedArtistsGeneration) return@launch
-            if (exists) {
-                current.filter { sameArtist(it, browseId, name) }
-                    .forEach { followedArtistsStore.clearKnownReleases(it.key) }
-            } else {
-                val currentProfile = runCatching { artistRepository.profile(browseId, name) }.getOrNull()
-                if (currentProfile != null && mutationGeneration == followedArtistsGeneration) {
-                    val baseline = (currentProfile.albums + currentProfile.singles)
-                        .map(ReleaseRadarWorker::releaseKey)
-                        .toSet()
-                    followedArtistsStore.saveKnownReleases(browseId, baseline)
-                }
-            }
-            if (mutationGeneration != followedArtistsGeneration) return@launch
-            if (updated.isEmpty()) ReleaseRadarWorker.cancel(levyraContext)
-            else ReleaseRadarWorker.schedule(levyraContext)
-            withContext(Dispatchers.Main) { loadReleaseRadar() }
+            persistFollowedArtistMutation(updated, current, exists, browseId, name, mutationGeneration)
+        }
+    }
+
+    private suspend fun persistFollowedArtistMutation(
+        updated: List<FollowedArtist>,
+        previous: List<FollowedArtist>,
+        wasFollowing: Boolean,
+        browseId: String,
+        name: String,
+        mutationGeneration: Long
+    ) {
+        followedArtistsStore.save(updated)
+        if (mutationGeneration != followedArtistsGeneration) return
+        if (wasFollowing) {
+            previous.filter { sameArtist(it, browseId, name) }
+                .forEach { followedArtistsStore.clearKnownReleases(it.key) }
+        } else if (_state.value.interfaceSettings.releaseNotificationsEnabled) {
+            seedFollowedArtistReleaseBaseline(browseId, name, mutationGeneration)
+        }
+        if (mutationGeneration != followedArtistsGeneration) return
+        if (updated.isEmpty() || !_state.value.interfaceSettings.releaseNotificationsEnabled) {
+            ReleaseRadarWorker.cancel(levyraContext)
+        } else {
+            ReleaseRadarWorker.schedule(levyraContext)
+        }
+        withContext(Dispatchers.Main) { loadReleaseRadar() }
+    }
+
+    private suspend fun seedFollowedArtistReleaseBaseline(browseId: String, name: String, mutationGeneration: Long) {
+        val currentProfile = try {
+            artistRepository.profile(browseId, name)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Release radar baseline fetch failed for %s", name)
+            null
+        }
+        if (currentProfile != null && mutationGeneration == followedArtistsGeneration) {
+            val baseline = (currentProfile.albums + currentProfile.singles)
+                .flatMapTo(linkedSetOf(), ReleaseRadarPolicy::identityKeys)
+            followedArtistsStore.saveKnownReleases(browseId, baseline)
         }
     }
 
@@ -4477,6 +4503,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraTypographyController.apply(normalized.fontPreset)
         _state.update { it.copy(interfaceSettings = normalized) }
         localLibrarySortFlow.value = normalized.librarySort to normalized.librarySortDirection
+        syncReleaseNotificationSetting(previous, normalized)
         if (previous.showResonance && !normalized.showResonance) {
             homeResonanceCommentsJob?.cancel()
             homeResonanceCommentsJob = null
@@ -4504,6 +4531,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             videoMetadataJob = null
             if (_state.value.exploreSamples.isNotEmpty()) {
                 ensureMusicVideosLoaded(force = true)
+            }
+        }
+    }
+
+    private fun syncReleaseNotificationSetting(
+        previous: LevyraInterfaceSettings,
+        current: LevyraInterfaceSettings
+    ) {
+        if (previous.releaseNotificationsEnabled == current.releaseNotificationsEnabled) return
+        releaseNotificationSettingsJob?.cancel()
+        releaseNotificationSettingsJob = viewModelScope.launch(Dispatchers.IO) {
+            val followed = followedArtistsStore.loadOrNull() ?: return@launch
+            if (_state.value.interfaceSettings.releaseNotificationsEnabled != current.releaseNotificationsEnabled) {
+                return@launch
+            }
+            if (!current.releaseNotificationsEnabled || followed.isEmpty()) {
+                ReleaseRadarWorker.cancel(levyraContext)
+                return@launch
+            }
+            followed.forEach { artist ->
+                if (!_state.value.interfaceSettings.releaseNotificationsEnabled) return@launch
+                followedArtistsStore.clearKnownReleases(artist.key)
+            }
+            if (_state.value.interfaceSettings.releaseNotificationsEnabled) {
+                ReleaseRadarWorker.schedule(levyraContext)
             }
         }
     }
@@ -4824,6 +4876,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         if (snapshot.motionArtworkEnabled && restoredAnimationsEnabled) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+        }
+        withContext(Dispatchers.IO) {
+            if (snapshot.interfaceSettings.releaseNotificationsEnabled && followed.isNotEmpty()) {
+                followed.forEach { followedArtistsStore.clearKnownReleases(it.key) }
+                ReleaseRadarWorker.schedule(levyraContext)
+            } else {
+                ReleaseRadarWorker.cancel(levyraContext)
+            }
         }
         refreshForgottenFavorites()
     }
