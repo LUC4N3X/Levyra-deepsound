@@ -293,7 +293,7 @@ Independent developer building Levyra for Android and Windows.
 
 <code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
 
-<sub>Levyra is an independent open-source music player developed for personal use, research, and interoperability. It does not own, host, or distribute third-party music catalogs.</sub>
+<sub>Levyra is an independent open-source music player built for lawful use, research, and interoperability. It does not own, host, or distribute third-party music catalogs.</sub>
 
 </div>
 
@@ -311,7 +311,7 @@ Levyra operates as client-side software running on the user's device. It does no
 
 The software acts as a client that may interact with third-party services or resources at the user's direction. External services operate independently of Levyra and may modify, restrict, rate-limit, or discontinue access at any time.
 
-Notices regarding media hosted by external providers should be directed to the relevant provider or rights holder. Inquiries concerning material distributed as part of the Levyra project itself may be submitted through official repository channels.
+Notices regarding media hosted by external providers should normally be directed to the relevant provider or rights holder. Inquiries concerning material distributed as part of the Levyra project itself may be submitted through official repository channels.
 
 ### Lawful use and user responsibility
 
@@ -319,13 +319,13 @@ Levyra is not designed, promoted, or intended for piracy, copyright infringement
 
 Playback, downloading, caching, format conversion, offline storage, export, or similar capabilities do not transfer copyright and do not grant rights over third-party content.
 
-Users are solely responsible for ensuring that their use of the software complies with applicable copyright laws, private-copy exceptions, licences, and the terms governing any service they access. Users are encouraged to support artists and creators through official or licensed channels.
+Users are responsible for ensuring that their use of the software complies with applicable law and that they have any rights, permissions, licences, exceptions, limitations, or other lawful basis required for their use of third-party content. Where applicable, users must also comply with the terms governing the third-party services they choose to access. Users are encouraged to support artists and creators through official or licensed channels.
 
 ### Technical interoperability and access restrictions
 
 Levyra includes client-side features for technical interoperability, stream resolution, request processing, token handling, and provider compatibility.
 
-These features are implemented solely for interoperability and do not constitute permission or authorization to bypass access controls, circumvent technological protection measures, defeat geographic restrictions, or obtain paid features, subscription tiers, bitrates, catalogs, or account privileges without a lawful right of access.
+These features are implemented for compatibility and interoperability and do not constitute permission or authorization to bypass access controls, circumvent technological protection measures, defeat geographic restrictions, or obtain paid features, subscription tiers, bitrates, catalogs, or account privileges without a lawful right of access.
 
 ### Warranty and third-party availability
 
