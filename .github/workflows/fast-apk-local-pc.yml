@@ -1,0 +1,185 @@
+name: Fast APK - Local PC
+
+on:
+  workflow_dispatch:
+    inputs:
+      clean_build:
+        description: "Force a clean rebuild"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fast-apk-local-pc
+  cancel-in-progress: true
+
+jobs:
+  fast-apk:
+    name: Local PC PR Diagnostics APK
+    if: ${{ github.actor == 'LUC4N3X' }}
+    runs-on: [self-hosted, linux, x64, levyra-pc]
+    timeout-minutes: 30
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+      LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+      LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+      LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          clean: false
+          persist-credentials: false
+
+      - name: Validate Local Runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_OS}" = "Linux"
+          test "${RUNNER_ARCH}" = "X64"
+          command -v java >/dev/null
+          command -v bash >/dev/null
+          command -v git >/dev/null
+          test -n "${ANDROID_HOME:-}"
+          test -x "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          test -x ./gradlew
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Ensure Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Validate Build Inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f gradle/libs.versions.toml
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+          git diff --exit-code
+          git diff --cached --exit-code
+          ./gradlew --version
+
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
+      - name: Resolve APK Version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          test -n "${VERSION}"
+          test -n "${VERSION_CODE}"
+          printf '%s' "${VERSION_CODE}" | grep -Eq '^[1-9][0-9]*$'
+          {
+            echo "VERSION=${VERSION}"
+            echo "VERSION_CODE=${VERSION_CODE}"
+            echo "SOURCE_REF=${GITHUB_REF_NAME}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Prepare Release Signing
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          printf '%s' "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            >/dev/null
+
+      - name: Build PR Diagnostics APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.clean_build }}" = "true" ]; then
+            ./gradlew clean --console=plain --warning-mode summary
+          fi
+          ./gradlew --no-configuration-cache assemblePrDiagnostics \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}" \
+            --console=plain \
+            --warning-mode summary
+
+      - name: Verify PR Diagnostics APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts
+          mkdir -p artifacts
+          APK="app/build/outputs/apk/prDiagnostics/app-prDiagnostics.apk"
+          test -f "${APK}"
+          SIZE_BYTES="$(stat -c%s "${APK}")"
+          test "${SIZE_BYTES}" -gt 1048576
+          BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}")"
+          printf '%s\n' "${BADGING}" > artifacts/apk-badging.txt
+          printf '%s\n' "${BADGING}" | grep -F "package: name='com.luc4n3x.levyra.prdiagnostics'"
+          printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}-pr-diagnostics'"
+          printf '%s\n' "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${APK}" > artifacts/apk-signing-certs.txt
+          python3 scripts/verify_diagnostics_isolation.py --apk "${APK}" --expect present
+          cp "${APK}" "artifacts/LEVYRA-${VERSION}-LOCAL-${GITHUB_RUN_NUMBER}-DIAGNOSTICS.apk"
+          sha256sum "artifacts/LEVYRA-${VERSION}-LOCAL-${GITHUB_RUN_NUMBER}-DIAGNOSTICS.apk" > "artifacts/LEVYRA-${VERSION}-LOCAL-${GITHUB_RUN_NUMBER}-DIAGNOSTICS.apk.sha256"
+          {
+            echo "LEVYRA local PC diagnostics APK"
+            echo "version=${VERSION}"
+            echo "versionCode=${VERSION_CODE}"
+            echo "signingProfile=release-pr-diagnostics"
+            echo "diagnosticsMarker=LEVYRA_PR_DIAGNOSTICS_V1"
+            echo "commit=${GITHUB_SHA}"
+            echo "branch=${SOURCE_REF}"
+            echo "runner=${RUNNER_NAME}"
+            echo "sizeBytes=${SIZE_BYTES}"
+            echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > artifacts/build-info.txt
+          if [ -f app/build/outputs/mapping/prDiagnostics/mapping.txt ]; then
+            cp app/build/outputs/mapping/prDiagnostics/mapping.txt artifacts/mapping.txt
+          fi
+
+      - name: Upload Signed Local APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-local-pc-diagnostics-${{ env.VERSION }}-run-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Cleanup Signing Material
+        if: always()
+        shell: bash
+        run: rm -f "${LEVYRA_KEYSTORE_FILE}"
