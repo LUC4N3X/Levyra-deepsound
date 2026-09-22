@@ -75,7 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private const val PROMPT_DELAY_MS = 3_000L
-private val SUPPORT_STAR_GOLD = Color(0xFFFFC857)
+private val supportStarGold = Color(0xFFFFC857)
 
 @Composable
 fun RemoteAnnouncementGate(
@@ -193,14 +193,14 @@ fun SupportLevyraSettingsLink(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(SUPPORT_STAR_GOLD.copy(alpha = 0.13f), CircleShape)
-                    .border(1.dp, SUPPORT_STAR_GOLD.copy(alpha = 0.26f), CircleShape),
+                    .background(supportStarGold.copy(alpha = 0.13f), CircleShape)
+                    .border(1.dp, supportStarGold.copy(alpha = 0.26f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Star,
                     contentDescription = null,
-                    tint = SUPPORT_STAR_GOLD,
+                    tint = supportStarGold,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -229,7 +229,7 @@ fun SupportLevyraSettingsLink(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                 contentDescription = null,
-                tint = SUPPORT_STAR_GOLD.copy(alpha = 0.82f),
+                tint = supportStarGold.copy(alpha = 0.82f),
                 modifier = Modifier.size(18.dp)
             )
         }
