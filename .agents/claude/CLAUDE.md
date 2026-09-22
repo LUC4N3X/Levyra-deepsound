@@ -40,6 +40,44 @@ searches, dependency listings, Git/GitHub/CI output, or other high-volume
 context. RTK is optional optimization; rerun raw when exact diagnostics,
 security/signing, Perfetto, or R8 evidence matters.
 
+## Optional Jev decision acceleration
+
+Jev is an optional Claude-side decision accelerator. It may be used when the
+task contains many small, independent judgments that can be evaluated from
+explicit evidence already gathered by Claude.
+
+Good uses include:
+
+- classifying many CI failures or review findings;
+- ranking candidate files, symbols, or regressions by relevance;
+- checking batches of narrowly stated yes/no conditions;
+- scoring or prioritizing repetitive findings before deeper review;
+- filtering large result sets so Claude can spend reasoning on the important
+  subset.
+
+Do not use Jev as a substitute for repository inspection, engineering judgment,
+architecture decisions, implementation, security analysis, root-cause
+debugging, or the final code review. Jev must never be the sole evidence for a
+high-impact decision.
+
+When Jev is available:
+
+1. gather the real repository, diff, test, log, or CI evidence first;
+2. send only the minimum evidence needed for the classification or ranking;
+3. use Jev only for the repetitive decision layer;
+4. manually inspect results marked for review, uncertain, low-confidence, or
+   high-impact;
+5. verify conclusions against current code and repository invariants before
+   editing or reporting completion.
+
+If Jev is unavailable, misconfigured, rate-limited, or fails, continue with
+native Claude tools without blocking the task. Never weaken validation or widen
+scope to make Jev work.
+
+Jev credentials are machine-local secrets. Never write `TYPESAFE_API_KEY` or
+any other Jev credential into tracked files, prompts intended for publication,
+logs, PR bodies, or repository configuration.
+
 ## Deterministic skill loading
 
 `UserPromptSubmit` runs the shared router. Every item reported under
@@ -83,9 +121,9 @@ instructions:
 - compaction hooks re-anchor open task state;
 - the Stop audit checks evidence before completion.
 
-If optional RTK, jCodeMunch, memory, or projection setup fails, continue with
-native tools and report the limitation once. Never weaken safety or validation
-to make optional tooling work.
+If optional RTK, jCodeMunch, memory, Jev, or projection setup fails, continue
+with native tools and report the limitation once. Never weaken safety or
+validation to make optional tooling work.
 
 ## Review, validation, and PRs
 
