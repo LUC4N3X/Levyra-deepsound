@@ -1,3 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="widget_toggle">Esita/Peata esitus</string>
+    <string name="widget_next">Järgmine</string>
+    <string name="widget_previous">Eelmine</string>
+    <string name="widget_favorites">Lemmikud</string>
 </resources>
