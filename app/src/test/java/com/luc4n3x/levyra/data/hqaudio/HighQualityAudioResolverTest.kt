@@ -277,6 +277,22 @@ class HighQualityAudioResolverTest {
     }
 
     @Test
+    fun saturatedLookupPoolDoesNotBlockCachedPlaybackForAnotherIdentity() {
+        val provider = FakeHighQualityProvider(searchOutcome = {
+            delay(5_000L)
+            ProviderSearchOutcome.Found(emptyList())
+        })
+        val resolver = resolver(provider)
+        val admitted = (0 until HighQualityAudioResolver.MAX_IN_FLIGHT_LOOKUPS)
+            .map { index -> resolver.begin("$identity-$index", query()) }
+
+        assertTrue(resolver.upgradePending("$identity-0"))
+        assertTrue(!resolver.upgradePending("$identity-overflow"))
+
+        admitted.forEach { it.cancel() }
+    }
+
+    @Test
     fun exactIsrcMatchIsDecisiveEvenOnACompilationAlbum() {
         val provider = FakeHighQualityProvider(
             searchOutcome = {
