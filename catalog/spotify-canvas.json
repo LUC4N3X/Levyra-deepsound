@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-22T05:02:45Z",
+  "generatedAt": "2026-09-22T11:44:38Z",
   "items": [
     {
       "song": "PER NOI (feat. Achille Lauro)",
@@ -1426,8 +1426,8 @@
     {
       "song": "Apaga Apaga Apaga - Ao Vivo",
       "artist": "Danilo e Davi",
-      "album": "Aliança - Vol.1 (Ao Vivo)",
-      "url": "https://canvaz.scdn.co/upload/artist/5DaqVKaxeqDbJuxaIP9m4u/video/8767a0a0562743aab07a11722bb13ea6.cnvs.mp4",
+      "album": "Toma Essa Verdade (Ao Vivo)",
+      "url": "https://canvaz.scdn.co/upload/artist/5DaqVKaxeqDbJuxaIP9m4u/video/906b2e0a5a6445a195a4f7802d868ad7.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1447,7 +1447,7 @@
     {
       "song": "Coração Partido (Corazón Partío) - Ao Vivo",
       "artist": "Grupo Menos É Mais",
-      "album": "Menos É Mais, Cerveja e Pagode (Ao Vivo)",
+      "album": "Churrasquinho 3 (Ao Vivo)",
       "url": "https://canvaz.scdn.co/upload/artist/6vTqEFbTtTRJsuIpzZgjxi/video/1a82ba34cab24da59d980471a22c3aeb.cnvs.mp4",
       "scope": "track"
     },
@@ -2369,6 +2369,13 @@
       "scope": "track"
     },
     {
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Atom",
       "artist": "Lovet, Victor Leksell",
       "album": "Atom",
@@ -2401,6 +2408,13 @@
       "artist": "Tove Lo",
       "album": "Queen Of The Clouds",
       "url": "https://canvaz.scdn.co/upload/artist/4NHQUGzhtTLFvgF5SZesLK/video/05c6731c815543f3a141d1cc171de358.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2552,7 +2566,7 @@
     },
     {
       "song": "Verden Er Din Freestyle",
-      "artist": "Gilli, Guzo",
+      "artist": "Gilli, GUZO",
       "album": "Verden Er Din",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/58b40c2880b946f49e94f344ed5010db.cnvs.mp4",
       "scope": "track"
@@ -2845,9 +2859,9 @@
       "scope": "track"
     },
     {
-      "song": "Zakázané uvolnění",
+      "song": "Zakazane uvolneni",
       "artist": "Michal Hruza",
-      "album": "Hity & příběhy (Best Of 2001-2021)",
+      "album": "Den",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/f9154ae65e6442fba1203fd5a570ac6a.cnvs.mp4",
       "scope": "track"
     },
@@ -3902,7 +3916,7 @@
       "scope": "track"
     },
     {
-      "song": "Jangan Paksa Rindu - Beda",
+      "song": "Jangan Paksa Rindu",
       "artist": "Ifan Seventeen",
       "album": "Resonance",
       "url": "https://canvaz.scdn.co/upload/artist/2vbWy0ntJGJ2H1erLJFMZZ/video/342642b9682844bd873655300602597b.cnvs.mp4",
