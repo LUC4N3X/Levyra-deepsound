@@ -18805,6 +18805,7 @@ private fun IntegrationSettingsPanel(
 private fun SettingsHubFooter() {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
+    val footerVersion = BuildConfig.VERSION_NAME.removeSuffix("-pr-diagnostics")
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -18819,7 +18820,7 @@ private fun SettingsHubFooter() {
         )
         Spacer(modifier = Modifier.height(18.dp))
         Text(
-            "LEVYRA ${BuildConfig.VERSION_NAME}",
+            "LEVYRA $footerVersion",
             color = LevyraMuted.copy(alpha = 0.86f),
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
