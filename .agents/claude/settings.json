@@ -50,7 +50,12 @@
       "Bash(git branch --show-current)",
       "Bash(git branch --list*)",
       "Bash(python3 scripts/check_android_regex_compatibility.py)",
-      "mcp__jcodemunch"
+      "mcp__jcodemunch",
+      "mcp__jev__jev_classify",
+      "mcp__jev__jev_check",
+      "mcp__jev__jev_score",
+      "mcp__jev__jev_rank",
+      "mcp__jev__jev_ask"
     ],
     "deny": [
       "Read(./local.properties)",
