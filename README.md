@@ -49,7 +49,7 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 ---
 
 > [!IMPORTANT]
-> **Legal & responsible use · No piracy.** Levyra is independent open-source client software and does not host or distribute third-party music. It is built for lawful personal use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Only access, save, convert, or export media when you have the rights, permission, licence, or other lawful basis to do so, and respect the applicable terms of third-party services.
+> **Legal & responsible use · No piracy.** Levyra is independent open-source client software and does not host or distribute third-party music. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Only access, save, convert, or export media when you have the rights, permission, licence, or other lawful basis to do so, and respect the applicable terms of third-party services.
 >
 > For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
 >
@@ -301,33 +301,33 @@ Independent developer building Levyra for Android and Windows.
 
 ### Third-party services and content
 
-Levyra runs entirely on your device as client-side software. It does not own, operate, or host any music catalog, artwork, lyrics, or video files.
+Levyra operates as client-side software on the user's device. It does not own, operate, or host any music catalog, artwork, lyrics, or video files.
 
 When you stream or search, the app connects to external services at your direction. Those platforms operate independently and can change, rate-limit, or restrict their endpoints at any time.
 
-Because Levyra does not host media, takedown requests for external audio or video should go directly to the provider hosting that content. Inquiries about the open-source code in this repository can be opened through our GitHub issue tracker.
+Concerns regarding media hosted by external providers should normally be directed to the relevant provider or rights holder. Inquiries concerning material distributed as part of the Levyra project itself may be submitted through the official GitHub issue tracker.
 
 ### Lawful use and user responsibility
 
-Levyra is built for lawful personal listening, research, and interoperability, not for piracy or copyright infringement.
+Levyra is built for lawful use, research, and interoperability, not for piracy or copyright infringement.
 
 Streaming, downloading, format conversion, and offline caching are general software tools. They do not transfer copyright or grant any ownership over third-party media.
 
-You are responsible for making sure your use complies with local laws, private-copy exceptions, and the terms of any service you choose to access.
+Users are responsible for ensuring that they have any rights, permissions, licences, exceptions, limitations, or other lawful basis required for their use of third-party content. Where applicable, users must also comply with the terms governing the third-party services they choose to access.
 
 ### Support artists and creators
 
-Levyra respects the creative and economic work of artists, musicians, and platforms.
+Levyra respects the work and rights of artists, musicians, creators, rights holders, and third-party services.
 
-The app does not unlock paid tiers, subscription features, or premium entitlements. If you want an official subscription experience, please support the platforms directly through services like [YouTube Music Premium](https://www.youtube.com/musicpremium) and [Spotify Premium](https://www.spotify.com/premium/).
+Levyra does not grant subscription status, paid-service entitlements, or other rights offered by third-party providers. Users who prefer an official subscription experience are encouraged to subscribe directly through the relevant providers, including [YouTube Premium](https://www.youtube.com/premium), [YouTube Music Premium](https://www.youtube.com/musicpremium), and [Spotify Premium](https://www.spotify.com/premium/).
 
-We also encourage users to support artists directly through official music purchases, concerts, merchandise, and licensed channels.
+Users are also encouraged to support artists and creators through licensed streaming services, official music purchases, concerts, merchandise, and other authorized channels.
 
 ### Technical interoperability and access restrictions
 
 Levyra includes client-side features for technical interoperability, stream resolution, request processing, token handling, and provider compatibility.
 
-These features exist solely for compatibility. They do not authorize or encourage bypassing access controls, circumventing technological protection measures, defeating geographic restrictions, or accessing paid features and subscription tiers without lawful entitlement.
+These features are implemented for compatibility and interoperability. They do not authorize or encourage bypassing access controls, circumventing technological protection measures, defeating geographic restrictions, or accessing paid features and subscription tiers without lawful entitlement.
 
 ### Warranty and third-party availability
 
