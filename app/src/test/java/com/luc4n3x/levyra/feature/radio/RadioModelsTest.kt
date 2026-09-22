@@ -110,6 +110,28 @@ class RadioModelsTest {
     }
 
     @Test
+    fun searchMatchesPunctuationAndKeepsStaleButPlayableStations() {
+        val target = station(
+            uuid = "181-fm-salsa",
+            name = "181.FM Salsa",
+            url = "http://relay.181.fm:8098/",
+            ok = false
+        )
+        val unrelated = station(
+            uuid = "181-classic",
+            name = "181.FM Classic Hits",
+            url = "https://radio.example/classic"
+        )
+
+        val result = filterAndRankRadioSearchResults(listOf(unrelated, target), "181 salsa")
+
+        assertEquals(listOf(target), result)
+        assertTrue(radioStationMatchesSearch(target, "181 salsa"))
+        assertTrue(radioStationMatchesSearch(target, "181.fm salsa"))
+        assertFalse(radioStationMatchesSearch(unrelated, "181 salsa"))
+    }
+
+    @Test
     fun retryUsesAlternateOnceThenStopsAfterBoundedBackoff() {
         val station = station(uuid = "station-a").copy(
             streamUrl = "https://radio.example/original",

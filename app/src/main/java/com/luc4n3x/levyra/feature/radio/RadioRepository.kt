@@ -112,7 +112,7 @@ internal class RadioRepository(
     }
 
     suspend fun search(query: String): List<RadioStation> = withContext(Dispatchers.IO) {
-        filterAndRankRadioStations(api.search(query)).take(64)
+        filterAndRankRadioSearchResults(api.search(query), query).take(64)
     }
 
     suspend fun countries(): List<RadioDirectoryEntry> = withContext(Dispatchers.IO) {
