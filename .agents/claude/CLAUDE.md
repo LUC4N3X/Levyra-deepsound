@@ -40,43 +40,82 @@ searches, dependency listings, Git/GitHub/CI output, or other high-volume
 context. RTK is optional optimization; rerun raw when exact diagnostics,
 security/signing, Perfetto, or R8 evidence matters.
 
-## Optional Jev decision acceleration
+## Jev decision acceleration
 
-Jev is an optional Claude-side decision accelerator. It may be used when the
-task contains many small, independent judgments that can be evaluated from
-explicit evidence already gathered by Claude.
+Treat Jev as the default accelerator for repetitive narrow judgments whenever it
+is available. Before manually classifying, ranking, scoring, routing, or checking
+more than a handful of independent items, consider Jev first.
 
-Good uses include:
+Use Jev by default for:
 
-- classifying many CI failures or review findings;
-- ranking candidate files, symbols, or regressions by relevance;
-- checking batches of narrowly stated yes/no conditions;
-- scoring or prioritizing repetitive findings before deeper review;
-- filtering large result sets so Claude can spend reasoning on the important
-  subset.
+- CI/test failure triage across multiple failures;
+- ranking candidate files, symbols, search hits, or regressions by relevance;
+- classifying multiple review findings, issues, logs, commits, or messages;
+- checking batches of narrow yes/no claims against the same evidence;
+- scoring severity, priority, confidence, or quality across many comparable
+  items;
+- screening large external result sets before deeper Claude analysis;
+- verifying PR-description claims against the actual diff when several claims
+  must be checked.
 
-Do not use Jev as a substitute for repository inspection, engineering judgment,
-architecture decisions, implementation, security analysis, root-cause
-debugging, or the final code review. Jev must never be the sole evidence for a
-high-impact decision.
+Do not use Jev when:
 
-When Jev is available:
+- a lookup, compiler, test, static analysis, or repository read can settle an
+  exact fact directly;
+- there is only one obvious item and Claude already has the deciding evidence;
+- the answer requires prose, code generation, architecture, root-cause
+  reasoning, or a multi-factor engineering decision;
+- the judgment would be unsafe to reduce to a fast classifier.
 
-1. gather the real repository, diff, test, log, or CI evidence first;
-2. send only the minimum evidence needed for the classification or ranking;
-3. use Jev only for the repetitive decision layer;
-4. manually inspect results marked for review, uncertain, low-confidence, or
-   high-impact;
-5. verify conclusions against current code and repository invariants before
-   editing or reporting completion.
+### Jev evidence rules
+
+When using Jev:
+
+1. gather current raw evidence first from the repository, diff, logs, tests, CI,
+   or source material;
+2. send the minimum raw excerpt that contains the deciding evidence, not
+   Claude's summary or conclusion;
+3. frame one narrow judgment per question or item;
+4. batch comparable items instead of making one call per item;
+5. include an `other`, `unclear`, or equivalent catch-all when categories may
+   not cover every case;
+6. act automatically only on results explicitly returned as `decision: auto`
+   or clear `yes/no` verdicts when the action is low risk;
+7. manually inspect every `review`, `uncertain`, low-confidence, truncated,
+   malformed, security-sensitive, destructive, or high-impact result;
+8. raise thresholds or require manual verification when a wrong answer is
+   expensive;
+9. verify final conclusions against current code and Levyra invariants before
+   editing, publishing, or claiming completion.
+
+Jev confidence is evidence about the classifier's certainty, not proof that the
+workflow or conclusion is correct. Exact validation still belongs to tests,
+tooling, repository evidence, and Claude's engineering review.
+
+### Jev privacy and safety
+
+Jev sends only the payload supplied to it to TypeSafe. Treat that payload as
+external data egress.
+
+Never send:
+
+- `TYPESAFE_API_KEY` or any credential, token, cookie, signing material, or
+  secret;
+- `local.properties`, `.env`, keystores, private tokens, or secret URLs;
+- personal or unrelated private data;
+- more repository content than the judgment actually needs.
+
+Never write Jev credentials into tracked files, prompts intended for
+publication, logs, PR bodies, or repository configuration.
 
 If Jev is unavailable, misconfigured, rate-limited, or fails, continue with
-native Claude tools without blocking the task. Never weaken validation or widen
+native Claude tools without blocking the task. Retry an invalid or transient Jev
+failure at most once before falling back. Never weaken validation, security, or
 scope to make Jev work.
 
-Jev credentials are machine-local secrets. Never write `TYPESAFE_API_KEY` or
-any other Jev credential into tracked files, prompts intended for publication,
-logs, PR bodies, or repository configuration.
+Jev may accelerate analysis but may never authorize destructive actions,
+publication, merges, releases, version changes, repository setting changes, or
+other owner-controlled actions.
 
 ## Deterministic skill loading
 
@@ -114,8 +153,8 @@ instructions:
 
 - `SessionStart` refreshes optional runtime projection/tooling and re-anchors
   active state;
-- `UserPromptSubmit` injects the compact Levyra hard-contract reminder and
-  deterministic skill routing on every user turn;
+- `UserPromptSubmit` injects the compact Levyra hard-contract reminder,
+  Jev-routing policy, and deterministic skill routing on every user turn;
 - mutation hooks enforce scoped-instruction/current-file freshness where
   supported;
 - compaction hooks re-anchor open task state;
