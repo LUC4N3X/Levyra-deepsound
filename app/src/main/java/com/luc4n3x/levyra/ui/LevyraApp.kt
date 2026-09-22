@@ -5858,14 +5858,62 @@ private fun openExternalUrl(
     }
 }
 
-internal fun queueSelectionKeys(queue: List<Track>): List<String> {
-    val occurrences = HashMap<String, Int>(queue.size)
-    return queue.map { track ->
-        val base = "${track.id}|${track.videoUrl}"
-        val occurrence = (occurrences[base] ?: 0) + 1
-        occurrences[base] = occurrence
-        "$base#$occurrence"
+internal data class QueueEntry(
+    val key: String,
+    val track: Track
+)
+
+internal fun queueSelectionKeys(queue: List<Track>): List<String> =
+    buildQueueEntries(queue).map { it.key }
+
+internal fun reorderQueueEntries(
+    entries: List<QueueEntry>,
+    from: Int,
+    to: Int
+): List<QueueEntry> {
+    if (from !in entries.indices || to !in entries.indices || from == to) return entries
+    val mutable = entries.toMutableList()
+    val moved = mutable.removeAt(from)
+    mutable.add(to, moved)
+    return mutable
+}
+
+internal fun buildQueueEntries(
+    queue: List<Track>,
+    existingEntries: List<QueueEntry> = emptyList()
+): List<QueueEntry> {
+    if (queue.isEmpty()) return emptyList()
+    if (existingEntries.isNotEmpty() && existingEntries.size == queue.size && existingEntries.map { it.track } == queue) {
+        return existingEntries
     }
+    val available = existingEntries.toMutableList()
+    val usedKeys = hashSetOf<String>()
+    val result = ArrayList<QueueEntry>(queue.size)
+
+    for (track in queue) {
+        val exactIndex = available.indexOfFirst { it.track === track }
+            .takeIf { it >= 0 }
+            ?: available.indexOfFirst { it.track == track }
+                .takeIf { it >= 0 }
+            ?: available.indexOfFirst { it.track.id == track.id && it.track.videoUrl == track.videoUrl }
+                .takeIf { it >= 0 }
+
+        if (exactIndex != null) {
+            val matched = available.removeAt(exactIndex)
+            usedKeys.add(matched.key)
+            result.add(QueueEntry(matched.key, track))
+        } else {
+            val base = "${track.id}|${track.videoUrl}"
+            var occurrence = 1
+            while ("$base#$occurrence" in usedKeys) {
+                occurrence++
+            }
+            val key = "$base#$occurrence"
+            usedKeys.add(key)
+            result.add(QueueEntry(key, track))
+        }
+    }
+    return result
 }
 
 private val queueSelectionSaver = listSaver<Set<String>, String>(
@@ -5904,17 +5952,30 @@ private fun QueueOverlay(
         mutableStateOf(emptySet<String>())
     }
     var addToPlaylistTracks by remember { mutableStateOf(emptyList<Track>()) }
-    val rowSelectionKeys = remember(state.queue) { queueSelectionKeys(state.queue) }
-    val selectedTracks = remember(state.queue, rowSelectionKeys, selectedQueueKeys) {
-        state.queue.filterIndexed { index, _ -> rowSelectionKeys[index] in selectedQueueKeys }
+    var queueEntries by remember(state.activeQueueSpaceId) {
+        mutableStateOf(buildQueueEntries(state.queue))
     }
-    val removableIndices = remember(rowSelectionKeys, selectedQueueKeys, state.queueCurrentIndex) {
-        rowSelectionKeys.indices.filter { index ->
-            index != state.queueCurrentIndex && rowSelectionKeys[index] in selectedQueueKeys
+    val currentEntries = remember(state.queue, queueEntries) {
+        if (queueEntries.size == state.queue.size && queueEntries.map { it.track } == state.queue) {
+            queueEntries
+        } else {
+            buildQueueEntries(state.queue, queueEntries).also { queueEntries = it }
+        }
+    }
+    val onMoveEntry: (Int, Int) -> Unit = { from, to ->
+        queueEntries = reorderQueueEntries(currentEntries, from, to)
+        onMove(from, to)
+    }
+    val selectedTracks = remember(currentEntries, selectedQueueKeys) {
+        currentEntries.filter { it.key in selectedQueueKeys }.map { it.track }
+    }
+    val removableIndices = remember(currentEntries, selectedQueueKeys, state.queueCurrentIndex) {
+        currentEntries.indices.filter { index ->
+            index != state.queueCurrentIndex && currentEntries[index].key in selectedQueueKeys
         }
     }
     val selectionActive = selectedTracks.isNotEmpty()
-    val allSelected = state.queue.isNotEmpty() && selectedTracks.size == state.queue.size
+    val allSelected = currentEntries.isNotEmpty() && selectedTracks.size == currentEntries.size
     val queueItemFade: FiniteAnimationSpec<Float>? = if (state.animationsEnabled) {
         tween(LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Standard)
     } else {
@@ -5926,14 +5987,15 @@ private fun QueueOverlay(
         null
     }
 
-    val queueTrackRow: @Composable (Int, Track, Modifier) -> Unit = { index, track, rowModifier ->
+    val queueTrackRow: @Composable (Int, QueueEntry, Modifier) -> Unit = { index, entry, rowModifier ->
+                    val track = entry.track
                     val isCurrent = index == state.queueCurrentIndex
                     val wasPlayed = state.queueCurrentIndex >= 0 && index < state.queueCurrentIndex
-                    val rowKey = rowSelectionKeys[index]
+                    val rowKey = entry.key
                     val rowSelected = rowKey in selectedQueueKeys
-                    var dragDistance by remember(track) { mutableFloatStateOf(0f) }
-                    val latestQueue by rememberUpdatedState(state.queue)
-                    val latestMove by rememberUpdatedState(onMove)
+                    var dragDistance by remember(entry.key) { mutableFloatStateOf(0f) }
+                    val latestEntries by rememberUpdatedState(currentEntries)
+                    val latestMove by rememberUpdatedState(onMoveEntry)
                     val latestRemove by rememberUpdatedState(onRemove)
                     val queuePosition = when {
                         isCurrent -> LevyraConnectedPosition.Single
@@ -5943,7 +6005,7 @@ private fun QueueOverlay(
                             val upcomingStart = (state.queueCurrentIndex + 1).coerceAtLeast(0)
                             LevyraConnectedPosition.of(
                                 index - upcomingStart,
-                                state.queue.size - upcomingStart
+                                currentEntries.size - upcomingStart
                             )
                         }
                     }
@@ -5951,9 +6013,8 @@ private fun QueueOverlay(
                     LaunchedEffect(dismissState.currentValue) {
                         if (isCurrent || dismissState.currentValue != SwipeToDismissBoxValue.EndToStart) return@LaunchedEffect
                         haptics.perform(LevyraHapticAction.TrackSwipe)
-                        val removalIndex = latestQueue.indexOfFirst { it === track }
+                        val removalIndex = latestEntries.indexOfFirst { it.key == entry.key }
                             .takeIf { it >= 0 }
-                            ?: latestQueue.indexOf(track).takeIf { it >= 0 }
                             ?: index
                         latestRemove(removalIndex)
                         dismissState.reset()
@@ -5988,7 +6049,10 @@ private fun QueueOverlay(
                                 if (!isCurrent && !selectionActive) {
                                     customActions = listOf(
                                         CustomAccessibilityAction(strings.remove) {
-                                            onRemove(index)
+                                            val removalIndex = latestEntries.indexOfFirst { it.key == entry.key }
+                                                .takeIf { it >= 0 }
+                                                ?: index
+                                            onRemove(removalIndex)
                                             true
                                         }
                                     )
@@ -6036,14 +6100,13 @@ private fun QueueOverlay(
                                 val reorderModifier = if (selectionActive) {
                                     Modifier
                                 } else {
-                                    Modifier.pointerInput(track) {
+                                    Modifier.pointerInput(entry.key) {
                                         var dragIndex = index
                                         detectVerticalDragGestures(
                                             onDragStart = {
                                                 dragDistance = 0f
-                                                dragIndex = latestQueue.indexOfFirst { it === track }
+                                                dragIndex = latestEntries.indexOfFirst { it.key == entry.key }
                                                     .takeIf { it >= 0 }
-                                                    ?: latestQueue.indexOf(track).takeIf { it >= 0 }
                                                     ?: index
                                             },
                                             onDragCancel = { dragDistance = 0f },
@@ -6052,7 +6115,7 @@ private fun QueueOverlay(
                                                 change.consume()
                                                 dragDistance += amountY
                                                 val threshold = 46.dp.toPx()
-                                                val lastIndex = latestQueue.lastIndex
+                                                val lastIndex = latestEntries.lastIndex
                                                 when {
                                                     dragDistance > threshold && dragIndex < lastIndex -> {
                                                         latestMove(dragIndex, dragIndex + 1)
@@ -6140,7 +6203,15 @@ private fun QueueOverlay(
                                     IconButton(onClick = { onPlayNext(track) }, modifier = Modifier.size(34.dp)) {
                                         Icon(Icons.Rounded.SkipNext, strings.playNext, tint = LevyraText, modifier = Modifier.size(19.dp))
                                     }
-                                    IconButton(onClick = { onRemove(index) }, modifier = Modifier.size(34.dp)) {
+                                    IconButton(
+                                        onClick = {
+                                            val removalIndex = latestEntries.indexOfFirst { it.key == entry.key }
+                                                .takeIf { it >= 0 }
+                                                ?: index
+                                            onRemove(removalIndex)
+                                        },
+                                        modifier = Modifier.size(34.dp)
+                                    ) {
                                         Icon(Icons.Rounded.Delete, strings.remove, tint = LevyraMuted, modifier = Modifier.size(19.dp))
                                     }
                                 }
@@ -6270,20 +6341,20 @@ private fun QueueOverlay(
                     }
                 }
             }
-            if (state.queue.isEmpty()) {
+            if (currentEntries.isEmpty()) {
                 item { Text(strings.queueEmpty, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
             } else {
-                val currentIndex = state.queueCurrentIndex.takeIf { it in state.queue.indices }
+                val currentIndex = state.queueCurrentIndex.takeIf { it in currentEntries.indices }
                 if (currentIndex != null && currentIndex > 0) {
                     stickyHeader(key = "queue-played-header", contentType = "queue-section-header") {
                         QueueSectionHeader(strings.queueSectionCopy().played, currentIndex, queueAccent)
                     }
                     itemsIndexed(
-                        state.queue.take(currentIndex),
-                        key = { index, _ -> "q-${rowSelectionKeys[index]}" },
+                        currentEntries.take(currentIndex),
+                        key = { _, entry -> "q-${entry.key}" },
                         contentType = { _, _ -> "queue-track" }
-                    ) { index, track ->
-                        queueTrackRow(index, track, Modifier.animateItem(queueItemFade, queueItemPlacement, queueItemFade))
+                    ) { index, entry ->
+                        queueTrackRow(index, entry, Modifier.animateItem(queueItemFade, queueItemPlacement, queueItemFade))
                     }
                 }
                 if (currentIndex != null) {
@@ -6291,29 +6362,29 @@ private fun QueueOverlay(
                         QueueSectionHeader(strings.nowPlaying, null, queueAccent)
                     }
                     item(
-                        key = "q-${rowSelectionKeys[currentIndex]}",
+                        key = "q-${currentEntries[currentIndex].key}",
                         contentType = "queue-current"
                     ) {
                         queueTrackRow(
                             currentIndex,
-                            state.queue[currentIndex],
+                            currentEntries[currentIndex],
                             Modifier.animateItem(queueItemFade, queueItemPlacement, queueItemFade)
                         )
                     }
                 }
                 val upNextStart = currentIndex?.plus(1) ?: 0
-                if (upNextStart < state.queue.size) {
+                if (upNextStart < currentEntries.size) {
                     stickyHeader(key = "queue-up-next-header", contentType = "queue-section-header") {
-                        QueueSectionHeader(strings.queueSectionCopy().upNext, state.queue.size - upNextStart, queueAccent)
+                        QueueSectionHeader(strings.queueSectionCopy().upNext, currentEntries.size - upNextStart, queueAccent)
                     }
                     itemsIndexed(
-                        state.queue.drop(upNextStart),
-                        key = { relativeIndex, _ -> "q-${rowSelectionKeys[upNextStart + relativeIndex]}" },
+                        currentEntries.drop(upNextStart),
+                        key = { _, entry -> "q-${entry.key}" },
                         contentType = { _, _ -> "queue-track" }
-                    ) { relativeIndex, track ->
+                    ) { relativeIndex, entry ->
                         queueTrackRow(
                             upNextStart + relativeIndex,
-                            track,
+                            entry,
                             Modifier.animateItem(queueItemFade, queueItemPlacement, queueItemFade)
                         )
                     }
@@ -6334,7 +6405,7 @@ private fun QueueOverlay(
                 count = selectedTracks.size,
                 allSelected = allSelected,
                 canRemove = removableIndices.isNotEmpty(),
-                onSelectAll = { selectedQueueKeys = rowSelectionKeys.toSet() },
+                onSelectAll = { selectedQueueKeys = currentEntries.map { it.key }.toSet() },
                 onClear = { selectedQueueKeys = emptySet() },
                 onAddToPlaylist = { addToPlaylistTracks = selectedTracks },
                 onDownload = {
