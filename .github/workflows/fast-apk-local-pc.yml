@@ -40,6 +40,12 @@ jobs:
           clean: false
           persist-credentials: false
 
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Validate Local Runner
         shell: bash
         run: |
@@ -52,12 +58,6 @@ jobs:
           test -n "${ANDROID_HOME:-}"
           test -x "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           test -x ./gradlew
-
-      - name: Setup Java
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "17"
 
       - name: Ensure Android SDK
         shell: bash
