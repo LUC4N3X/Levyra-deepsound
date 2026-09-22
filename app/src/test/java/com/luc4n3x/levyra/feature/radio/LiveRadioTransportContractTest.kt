@@ -23,7 +23,7 @@ class LiveRadioTransportContractTest {
         assertTrue(manifest.contains("android:usesCleartextTraffic=\"true\""))
         assertTrue(service.contains(".dns(RadioUrlPolicy.publicDns)"))
         assertTrue(service.contains("if (!RadioUrlPolicy.isAllowed(request.url.toString()))"))
-        assertTrue(service.contains("if (scheme == \\\"http\\\")"))
+        assertTrue(service.contains("""if (scheme == "http")"""))
         assertTrue(service.contains("Cleartext HTTP is only allowed for live radio"))
         assertTrue(RadioUrlPolicy.isAllowed("http://relay.181.fm:8098/"))
         assertFalse(RadioUrlPolicy.isAllowed("http://127.0.0.1:8098/"))
