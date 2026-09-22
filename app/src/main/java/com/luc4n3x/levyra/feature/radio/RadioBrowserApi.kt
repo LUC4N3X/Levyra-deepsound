@@ -46,18 +46,29 @@ internal class RadioBrowserApi(
         val clean = query.trim().take(MAX_QUERY_LENGTH)
         if (clean.length < 2) return emptyList()
         val boundedLimit = limit.coerceIn(1, MAX_STATION_LIMIT)
+        val requests = buildList {
+            listOf("name", "country", "language", "tag").forEach { field ->
+                add(field to clean)
+            }
+            radioSearchTokens(clean).take(MAX_TOKEN_SEARCHES).forEach { token ->
+                if (!token.equals(clean, ignoreCase = true)) {
+                    add("name" to token)
+                }
+            }
+        }.distinct()
+
         return coroutineScope {
-            val deferreds = listOf("name", "country", "language", "tag").map { field ->
+            val deferreds = requests.map { (field, value) ->
                 async {
                     try {
                         Result.success(
                             stationRequest(
                                 path = "json/stations/search",
                                 params = mapOf(
-                                    field to clean,
+                                    field to value,
                                     "order" to "votes",
                                     "reverse" to "true",
-                                    "hidebroken" to "true",
+                                    "hidebroken" to "false",
                                     "limit" to boundedLimit.toString()
                                 )
                             )
@@ -189,6 +200,7 @@ internal class RadioBrowserApi(
     private companion object {
         val USER_AGENT = "Levyra/${BuildConfig.VERSION_NAME} (Android; Live Radio)"
         const val MAX_QUERY_LENGTH = 80
+        const val MAX_TOKEN_SEARCHES = 4
         const val MAX_STATION_LIMIT = 64
         const val MAX_PARSED_STATIONS = 256
         const val MAX_SERVER_ATTEMPTS = 3
