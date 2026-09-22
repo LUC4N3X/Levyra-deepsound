@@ -621,6 +621,13 @@ class PlaybackService : MediaLibraryService() {
             )
         val upstreamFactory = LevyraYoutubeDataSource.Factory(baseHttpFactory)
         val liveRadioHttpClient = LevyraHttpClientFactory.streaming(this).newBuilder()
+            .addInterceptor { chain ->
+                val request = chain.request()
+                if (!RadioUrlPolicy.isAllowed(request.url.toString())) {
+                    throw IOException("Blocked unsafe live radio URL")
+                }
+                chain.proceed(request)
+            }
             .dns(RadioUrlPolicy.publicDns)
             .build()
         val liveRadioDataSourceFactory = OkHttpDataSource.Factory(liveRadioHttpClient)
