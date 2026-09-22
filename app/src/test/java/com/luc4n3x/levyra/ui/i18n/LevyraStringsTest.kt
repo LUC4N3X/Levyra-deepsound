@@ -365,7 +365,8 @@ class LevyraStringsTest {
             "\"INTERFACCIA HOME\"",
             "\"BACKUP E RIPRISTINO\"",
             "\"Sto cercando su YouTube Music…\"",
-            "\"Cerco il testo…\""
+            "\"Cerco il testo…\"",
+            "\"Legal information\""
         )
         forbidden.forEach { leaked -> assertFalse("Hardcoded localization leak: $leaked", content.contains(leaked)) }
     }
