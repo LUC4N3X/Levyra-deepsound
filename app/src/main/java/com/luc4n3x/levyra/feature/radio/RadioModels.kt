@@ -228,7 +228,7 @@ internal fun radioStationMatchesSearch(station: RadioStation, query: String): Bo
             station.tags.joinToString(" ")
         ).joinToString(" ")
     )
-    return tokens.all(searchable::contains)
+    return tokens.all { token -> searchable.contains(token) }
 }
 
 
