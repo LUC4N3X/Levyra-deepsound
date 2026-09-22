@@ -55,7 +55,7 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 >
 > Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
 
-## Why Levyra
+## ✦ Why Levyra
 
 Levyra started as the player I wanted for myself: one place for streaming, local audio files, and a library I can actually keep.
 
@@ -67,7 +67,7 @@ As the project grew, I added the things I kept missing in other players: proper 
 
 External services provide some of the music, lyrics, artwork and metadata Levyra can use, but the library itself stays under your control. The app is open source, keeps its own data local where it can, and is built so that changing a source or service does not mean losing the rest of your setup.
 
-## Project recognition
+## ✦ Project recognition
 
 <div align="center">
 
@@ -99,7 +99,7 @@ External services provide some of the music, lyrics, artwork and metadata Levyra
 
 </div>
 
-## JioSaavn high-bitrate audio
+## ✦ JioSaavn · High-bitrate audio
 
 When enabled, Levyra can search JioSaavn for a matching track and stream the higher-bitrate source (up to 320 kbps) when there is an exact match.
 
@@ -114,7 +114,7 @@ Your library track remains untouched. Artwork, lyrics, queue placement, listenin
 
 ---
 
-## Interface & screenshots
+## ✦ Interface & screenshots
 
 <div align="center">
 
@@ -140,7 +140,7 @@ Your library track remains untouched. Artwork, lyrics, queue placement, listenin
 <br>
 
 <details>
-<summary><b>Browse full gallery (15 high-res views)</b></summary>
+<summary><b>✦ Browse full gallery (15 high-res views)</b></summary>
 <br>
 
 <div align="center">
@@ -176,7 +176,7 @@ Your library track remains untouched. Artwork, lyrics, queue placement, listenin
 
 ---
 
-## What Levyra can do
+## ✦ What Levyra can do
 
 ### Playback
 
@@ -206,7 +206,7 @@ Your library track remains untouched. Artwork, lyrics, queue placement, listenin
 
 More technical notes and platform details are available in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
-## Under the hood
+## ✦ Under the hood
 
 | | Android | Windows |
 | --- | --- | --- |
@@ -217,7 +217,7 @@ More technical notes and platform details are available in the [documentation](h
 
 Levyra uses native platform APIs for Android and Windows rather than wrapping a web app in Electron or a WebView.
 
-## Privacy
+## ✦ Privacy
 
 Levyra contains no telemetry, analytics, or ads, and does not require an account.
 
@@ -225,7 +225,7 @@ Play history, stats, playlists, and cached metadata stay on your device. Network
 
 Microphone access is requested only when you trigger song identification. Custom proxy and DNS settings can be configured directly in the app.
 
-## Translations
+## ✦ Translations
 
 Levyra is translated into 36 languages, with community translations maintained on Weblate.
 
@@ -247,7 +247,7 @@ Levyra is translated into 36 languages, with community translations maintained o
 
 </div>
 
-## Open-source acknowledgements
+## ✦ Open-source acknowledgements
 
 Levyra builds on work and ideas from across the open-source music ecosystem:
 
@@ -263,7 +263,7 @@ Contributions and bug reports are welcome. Technical documentation and architect
 
 ---
 
-## Author & credits
+## ✦ Author & credits
 
 <div align="center">
 
@@ -285,7 +285,7 @@ Independent developer building Levyra for Android and Windows.
 
 ---
 
-## Legal disclaimer and terms of use
+## ✦ Legal disclaimer and terms of use
 
 <div align="center">
 
