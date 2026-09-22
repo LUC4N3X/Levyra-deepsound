@@ -32,7 +32,9 @@ private val liveChatBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to liveChat("Trò chuyện trực tiếp"),
     "th" to liveChat("แชทสด"),
     "fil" to liveChat("Live chat"),
-    "he" to liveChat("צ'אט חי")
+    "he" to liveChat("צ'אט חי"),
+    "fi" to liveChat("Live-chat"),
+    "et" to liveChat("Otsevestlus")
 )
 
 internal fun liveChatLocalizationEntries(code: String): Map<String, String> =

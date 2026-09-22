@@ -60,7 +60,9 @@ private val offlineHomeBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to offlineHome("Bạn đang ngoại tuyến", "Levyra đang hiển thị nhạc đã lưu trên thiết bị này.", "Thử lại", "Bản tải xuống", "Danh sách phát ngoại tuyến", "Yêu thích", "Nghe gần đây", "Trang chủ hiện không khả dụng", "Trang chủ từ xa trống — hãy thử tìm kiếm"),
     "th" to offlineHome("คุณออฟไลน์อยู่", "Levyra กำลังแสดงเพลงที่บันทึกไว้ในอุปกรณ์นี้", "ลองใหม่", "ดาวน์โหลด", "เพลย์ลิสต์ออฟไลน์", "รายการโปรด", "เล่นล่าสุด", "หน้าแรกใช้งานไม่ได้ในขณะนี้", "หน้าแรกระยะไกลว่างเปล่า — ลองค้นหา"),
     "fil" to offlineHome("Offline ka ngayon", "Ipinapakita ng Levyra ang musikang naka-save sa device na ito.", "Subukan ulit", "Mga download", "Mga offline na playlist", "Mga paborito", "Kamakailang pinatugtog", "Hindi available ang Home ngayon", "Walang laman ang remote Home — sumubok maghanap"),
-    "he" to offlineHome("אתה במצב לא מקוון", "Levyra מציגה את המוזיקה השמורה במכשיר הזה.", "נסה שוב", "הורדות", "פלייליסטים במצב לא מקוון", "מועדפים", "הושמעו לאחרונה", "הבית אינו זמין כרגע", "הבית המרוחק ריק — נסה חיפוש")
+    "he" to offlineHome("אתה במצב לא מקוון", "Levyra מציגה את המוזיקה השמורה במכשיר הזה.", "נסה שוב", "הורדות", "פלייליסטים במצב לא מקוון", "מועדפים", "הושמעו לאחרונה", "הבית אינו זמין כרגע", "הבית המרוחק ריק — נסה חיפוש"),
+    "fi" to offlineHome("Olet offline-tilassa", "Levyra näyttää tähän laitteeseen tallennetun musiikin.", "Yritä uudelleen", "Lataukset", "Offline-soittolistat", "Suosikit", "Äskettäin toistetut", "Kotivalikko ei ole juuri nyt saatavilla", "Etäkotivalikko on tyhjä — kokeile hakua"),
+    "et" to offlineHome("Oled võrguühenduseta", "Levyra kuvab sellesse seadmesse salvestatud muusikat.", "Proovi uuesti", "Allalaadimised", "Võrguühenduseta esitusloendid", "Lemmikud", "Hiljuti mängitud", "Avaleht pole praegu saadaval", "Kaugavaleht on tühi — proovi otsingut")
 )
 
 internal fun offlineHomeLocalizationEntries(code: String): Map<String, String> =

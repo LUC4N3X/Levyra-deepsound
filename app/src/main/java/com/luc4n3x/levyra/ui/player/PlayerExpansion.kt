@@ -5,6 +5,9 @@ import kotlin.math.abs
 const val PlayerExpansionCollapsed: Float = 0f
 const val PlayerExpansionExpanded: Float = 1f
 
+/** Composes the full player invisibly for a frame so its first composition never eats the opening motion. */
+const val PlayerPrewarmExpansion: Float = 0.001f
+
 private const val OpenCommitFraction = 0.32f
 private const val CloseCommitFraction = 0.72f
 private const val CommitVelocity = 900f

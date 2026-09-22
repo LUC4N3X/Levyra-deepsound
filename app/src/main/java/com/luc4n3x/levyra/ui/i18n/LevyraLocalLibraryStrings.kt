@@ -222,6 +222,15 @@ private val localLibraryBundles: Map<String, Map<String, String>> = mapOf(
         "Tuntematon esittäjä", "Tuntematon albumi", "Piilota tämä kansio", "Näytä tämä kansio",
         "Tämä tiedosto ei ole juuri nyt saatavilla.", "Kaksoiskappaleet piilotettu"
     ),
+    "et" to localLibrary(
+        "Seadmes", "Sellesse telefoni salvestatud muusika, indekseeritud Levyra poolt.", "Kaustad", "Kiire skannimine",
+        "Täielik skannimine", "Taasta Levyra allalaadimised", "Muusika skannimine…",
+        "Kogu on juba ajakohane", "%1\$d uut · %2\$d uuendatud · %3\$d pole saadaval",
+        "Sellest seadmest ei leitud veel muusikat.",
+        "Levyra vajab kohaliku kogu loomiseks juurdepääsu helifailidele.", "Luba juurdepääs",
+        "Tundmatu esitaja", "Tundmatu album", "Peida see kaust", "Kuva see kaust",
+        "See fail pole praegu saadaval.", "Duplikaadid peidetud"
+    ),
     "nb" to localLibrary(
         "På enheten", "Musikken som er lagret på denne telefonen, indeksert av Levyra.", "Mapper",
         "Rask gjennomgang", "Full gjennomgang", "Bygg opp Levyra-nedlastinger på nytt", "Skanner musikken din…",
@@ -396,6 +405,7 @@ private val localScanFailedMessages = mapOf(
     "bg" to "Музиката не можа да бъде сканирана.",
     "hu" to "A zene beolvasása nem sikerült.",
     "fi" to "Musiikin skannaus epäonnistui.",
+    "et" to "Muusika skannimine ebaõnnestus.",
     "nb" to "Kunne ikke skanne musikken din.",
     "ca" to "No s'ha pogut analitzar la música.",
     "uk" to "Не вдалося просканувати музику.",

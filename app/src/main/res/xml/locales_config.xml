@@ -18,6 +18,7 @@
     <locale android:name="bg" />
     <locale android:name="hu" />
     <locale android:name="fi" />
+    <locale android:name="et" />
     <locale android:name="nb" />
     <locale android:name="ca" />
     <locale android:name="uk" />

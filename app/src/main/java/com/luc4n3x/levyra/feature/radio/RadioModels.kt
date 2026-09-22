@@ -129,6 +129,7 @@ internal object RadioLanguagePreferences {
         preference("bg", "Bulgarian", "BG"),
         preference("hu", "Hungarian", "HU"),
         preference("fi", "Finnish", "FI"),
+        preference("et", "Estonian", "EE"),
         preference("nb", "Norwegian", "NO"),
         preference("ca", "Catalan", "ES", "AD"),
         preference("uk", "Ukrainian", "UA"),

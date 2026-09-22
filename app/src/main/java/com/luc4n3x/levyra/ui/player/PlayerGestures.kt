@@ -174,6 +174,7 @@ data class PlayerGestureMediaActions(
     val next: () -> Unit,
     val previous: () -> Unit,
     val swipeOffset: (Float) -> Unit,
+    val swipeSettled: (committed: Boolean) -> Unit,
     val temporarySpeed: (Float) -> Unit
 )
 

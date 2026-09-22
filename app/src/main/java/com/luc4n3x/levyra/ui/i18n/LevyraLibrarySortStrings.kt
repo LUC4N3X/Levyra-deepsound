@@ -187,6 +187,18 @@ private val librarySortBundles: Map<String, Map<String, String>> = mapOf(
         "החדשים ביותר תחילה", "הישנים ביותר תחילה",
         "הארוכים ביותר תחילה", "הקצרים ביותר תחילה",
         "בסדר עולה", "בסדר יורד"
+    ),
+    "fi" to librarySort(
+        "Järjestä", "Järjestyssuunta",
+        "Uusin ensin", "Vanhin ensin",
+        "Pisin ensin", "Lyhyin ensin",
+        "A–Ö", "Ö–A"
+    ),
+    "et" to librarySort(
+        "Sordi", "Sortimise suund",
+        "Uusim enne", "Vanim enne",
+        "Pikim enne", "Lühim enne",
+        "A–Y", "Y–A"
     )
 )
 

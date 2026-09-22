@@ -138,6 +138,40 @@ fun LevyraStrings.playlistProCopy(): PlaylistProCopy = when (code) {
         "לא ניתן לעדכן את העטיפה",
         "לא נמצאו רצועות מתאימות"
     )
+    "fi" -> PlaylistProCopy(
+        "Vaihda kansikuva",
+        "Palauta automaattinen kansikuva",
+        "Säädä kansikuvaa",
+        "Soittolistan kansikuvan esikatselu",
+        "Vedä sijoittaaksesi ja nipistä zoomataksesi",
+        "Käytä kansikuvaa",
+        "Loitonna",
+        "Lähennä",
+        "Palauta rajaus",
+        "Siirrä kansikuvaa vasemmalle",
+        "Siirrä kansikuvaa oikealle",
+        "Siirrä kansikuvaa ylös",
+        "Siirrä kansikuvaa alas",
+        "Kansikuvaa ei voitu päivittää",
+        "Yksikään kappale ei vastaa hakuasi"
+    )
+    "et" -> PlaylistProCopy(
+        "Muuda kaanepilti",
+        "Taasta automaatne kaanepilt",
+        "Kohanda kaanepilti",
+        "Esitusloendi kaanepildi eelvaade",
+        "Lohista positsioneerimiseks ja näpista suumimiseks",
+        "Kasuta kaanepilti",
+        "Vähenda",
+        "Suurenda",
+        "Lähtesta kärpimine",
+        "Liiguta kaant vasakule",
+        "Liiguta kaant paremale",
+        "Liiguta kaant üles",
+        "Liiguta kaant alla",
+        "Kaanepilti ei saanud värskendada",
+        "Ükski lugu ei vasta otsingule"
+    )
     else -> PlaylistProCopy(
         "Change cover",
         "Reset to automatic cover",

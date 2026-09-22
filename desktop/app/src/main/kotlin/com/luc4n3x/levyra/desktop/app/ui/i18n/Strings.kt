@@ -514,6 +514,8 @@ private fun localizedSubscriberLabel(tag: String): String = when (tag.substringB
     "ja" -> "登録者"
     "ko" -> "구독자"
     "zh" -> "订阅者"
+    "fi" -> "tilaajaa"
+    "et" -> "tellijat"
     else -> "subscribers"
 }
 

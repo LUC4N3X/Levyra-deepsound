@@ -156,6 +156,11 @@ private val playbackTileBundles: Map<String, Map<String, String>> = mapOf(
         "playbackPaused" to "Keskeytetty",
         "playbackTileIdle" to "Ei toistoa"
     ),
+    "et" to mapOf(
+        "playbackTileLabel" to "Taasesitus",
+        "playbackPaused" to "Peatatud",
+        "playbackTileIdle" to "Midagi ei esitata"
+    ),
     "nb" to mapOf(
         "playbackTileLabel" to "Avspilling",
         "playbackPaused" to "Pauset",

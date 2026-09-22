@@ -46,7 +46,9 @@ private val systemActionBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to systemActionStrings("Hẹn giờ ngủ", "Kết thúc bài hát", "Hủy hẹn giờ", "Đã hủy hẹn giờ", "Còn lại", "Đang nghe…", "Đang phân tích…", "Chạm để nghe"),
     "th" to systemActionStrings("ตั้งเวลาปิด", "จบเพลง", "ยกเลิกตัวตั้งเวลา", "ยกเลิกตัวตั้งเวลาแล้ว", "คงเหลือ", "กำลังฟัง…", "กำลังวิเคราะห์…", "แตะเพื่อฟัง"),
     "fil" to systemActionStrings("Sleep timer", "Pagkatapos ng kanta", "Kanselahin ang timer", "Nakansela ang timer", "Natitira", "Nakikinig…", "Sinusuri…", "I-tap para makinig"),
-    "he" to systemActionStrings("טיימר שינה", "סוף השיר", "בטל טיימר", "הטיימר בוטל", "נותר", "מאזין…", "מנתח…", "הקש כדי להאזין")
+    "he" to systemActionStrings("טיימר שינה", "סוף השיר", "בטל טיימר", "הטיימר בוטל", "נותר", "מאזין…", "מנתח…", "הקש כדי להאזין"),
+    "fi" to systemActionStrings("Uniajastin", "Kappaleen loppu", "Peruuta ajastin", "Ajastin peruutettu", "Jäljellä", "Kuunnellaan…", "Analysoidaan…", "Napauta kuunnellaksesi"),
+    "et" to systemActionStrings("Unetaimer", "Loo lõpp", "Tühista taimer", "Taimer tühistatud", "Jäänud", "Kuulan…", "Analüüsin…", "Puuduta kuulamiseks")
 )
 
 internal fun systemActionLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(systemActionBundles, code)

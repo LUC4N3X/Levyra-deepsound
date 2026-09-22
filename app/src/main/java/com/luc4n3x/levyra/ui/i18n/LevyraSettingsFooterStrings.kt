@@ -19,6 +19,7 @@ private val settingsFooterLegalInformationLabels = mapOf(
     "bg" to "Правна информация",
     "hu" to "Jogi információk",
     "fi" to "Oikeudelliset tiedot",
+    "et" to "Õiguslik teave",
     "nb" to "Juridisk informasjon",
     "ca" to "Informació legal",
     "uk" to "Правова інформація",

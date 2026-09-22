@@ -34,7 +34,7 @@ class DesktopSettingsTest {
 
     @Test
     fun languageCatalogMatchesAndroidSupportedLanguages() {
-        assertEquals(26, AppLanguage.entries.size)
+        assertEquals(28, AppLanguage.entries.size)
         assertEquals(
             setOf(
                 "en",
@@ -62,7 +62,9 @@ class DesktopSettingsTest {
                 "vi",
                 "th",
                 "fil",
-                "he"
+                "he",
+                "fi",
+                "et"
             ),
             AppLanguage.entries.map { it.tag }.toSet()
         )
