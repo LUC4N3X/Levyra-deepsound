@@ -319,7 +319,7 @@ Users are responsible for ensuring that their use of the software complies with 
 
 Levyra respects the creative and economic work of artists, musicians, creators, and platforms.
 
-The software does not grant subscription privileges, paid features, premium entitlements, or access rights belonging to third-party services. Users who prefer an official subscription experience are encouraged to use services provided directly by their respective platforms, such as [YouTube Premium](https://www.youtube.com/premium), [YouTube Music Premium](https://www.youtube.com/musicpremium), and [Spotify Premium](https://www.spotify.com/premium/).
+The software does not grant subscription privileges, paid features, premium entitlements, or access rights belonging to third-party services. Users who prefer an official subscription experience are encouraged to use services provided directly by their respective platforms, such as [YouTube Music Premium](https://www.youtube.com/musicpremium) and [Spotify Premium](https://www.spotify.com/premium/).
 
 Users are also encouraged to support artists and creators directly through licensed streaming services, official music purchases, concerts, merchandise, and authorized distribution channels.
 
