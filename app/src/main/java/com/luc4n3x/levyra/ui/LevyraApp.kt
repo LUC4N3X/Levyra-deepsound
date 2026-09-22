@@ -1956,6 +1956,9 @@ fun LevyraApp(
             LaunchedEffect(state.selectedTab) {
                 if (state.selectedTab != LevyraTab.Player) backgroundTab = state.selectedTab
             }
+            LaunchedEffect(backgroundTab) {
+                if (backgroundTab != LevyraTab.Explore) liveRadioOpen = false
+            }
             LaunchedEffect(state.selectedTab, state.animationsEnabled) {
                 val target = if (state.selectedTab == LevyraTab.Player) 1f else 0f
                 if (playerExpansion.value == target) return@LaunchedEffect
@@ -2102,7 +2105,13 @@ fun LevyraApp(
                         LevyraTab.Explore -> {
                             val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
                             val screenState by exploreViewModel.state.collectAsStateWithLifecycle()
-                            ExploreScreen(exploreViewModel, screenState, onOpenJam = viewModel::openJam)
+                            ExploreScreen(
+                                viewModel = exploreViewModel,
+                                state = screenState,
+                                liveRadioOpen = liveRadioOpen,
+                                onLiveRadioOpenChange = { liveRadioOpen = it },
+                                onOpenJam = viewModel::openJam
+                            )
                         }
                         LevyraTab.Library -> {
                             val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
@@ -22128,6 +22137,8 @@ private fun CircleIconButton(
 private fun ExploreScreen(
     viewModel: ExploreViewModel,
     state: LevyraUiState,
+    liveRadioOpen: Boolean,
+    onLiveRadioOpenChange: (Boolean) -> Unit,
     onOpenJam: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -22221,7 +22232,7 @@ private fun ExploreScreen(
                             modifier = Modifier.padding(horizontal = 24.dp)
                         )
                         ExploreLiveRadioEntry(
-                            onClick = { liveRadioOpen = true },
+                            onClick = { onLiveRadioOpenChange(true) },
                             modifier = Modifier.padding(horizontal = 24.dp)
                         )
                         LevyraMixLauncherPanel(
@@ -22420,7 +22431,7 @@ private fun ExploreScreen(
                     ?.id
                     ?.removePrefix("live-radio:"),
                 isPlaying = state.isPlaying,
-                onBack = { liveRadioOpen = false },
+                onBack = { onLiveRadioOpenChange(false) },
                 onPlay = viewModel::playLiveRadio
             )
         }
