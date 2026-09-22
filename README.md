@@ -299,12 +299,6 @@ Independent developer building Levyra for Android and Windows.
 
 <br>
 
-### Independent software
-
-Levyra is independently developed and is not affiliated with, sponsored by, endorsed by, or officially connected with YouTube, Google, JioSaavn, TIDAL, Apple, Deezer, Spotify, or any other third-party service referenced by the project.
-
-All product names, trademarks, logos, media, and other intellectual property remain the property of their respective owners. References to third-party services are descriptive only and do not imply partnership, endorsement, or approval.
-
 ### Third-party services and content
 
 Levyra operates as client-side software running on the user's device. It does not own, operate, or host third-party music catalogs, and claims no ownership over music, artwork, lyrics, metadata, videos, or other material retrieved from external sources.
@@ -319,7 +313,15 @@ Levyra is not designed, promoted, or intended for piracy, copyright infringement
 
 Playback, downloading, caching, format conversion, offline storage, export, or similar capabilities do not transfer copyright and do not grant rights over third-party content.
 
-Users are responsible for ensuring that their use of the software complies with applicable law and that they have any rights, permissions, licences, exceptions, limitations, or other lawful basis required for their use of third-party content. Where applicable, users must also comply with the terms governing the third-party services they choose to access. Users are encouraged to support artists and creators through official or licensed channels.
+Users are responsible for ensuring that their use of the software complies with applicable law and that they have any rights, permissions, licences, exceptions, limitations, or other lawful basis required for their use of third-party content. Where applicable, users must also comply with the terms governing the third-party services they choose to access.
+
+### Support artists and creators
+
+Levyra respects the creative and economic work of artists, musicians, creators, and platforms.
+
+The software does not grant access rights, subscription privileges, or entitlements to paid features offered by third-party services. Users seeking the official paid features or offline services of YouTube or YouTube Music should subscribe to Google's official offerings, such as YouTube Premium or YouTube Music Premium.
+
+Users are encouraged to support artists and creators directly through official purchases, concerts, licensed streaming services, and authorized distribution channels.
 
 ### Technical interoperability and access restrictions
 
@@ -331,7 +333,7 @@ These features are implemented for compatibility and interoperability and do not
 
 Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided "as is", without warranty of any kind, to the fullest extent permitted by applicable law.
 
-The GNU GPL v3.0 governs the software's source code, but does not grant rights to third-party content, trademarks, or service endpoints. Because Levyra interacts with independent external platforms, the continuous availability, compatibility, or functionality of third-party streams, metadata, artwork, lyrics, or APIs cannot be guaranteed.
+The GNU GPL v3.0 governs Levyra's source code, but does not grant rights to third-party content, trademarks, or service endpoints. Because Levyra interacts with independent external platforms, the continuous availability, compatibility, or functionality of third-party streams, metadata, artwork, lyrics, or APIs cannot be guaranteed.
 
 <div align="center">
 
