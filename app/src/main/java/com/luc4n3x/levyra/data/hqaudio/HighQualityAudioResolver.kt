@@ -83,11 +83,15 @@ class HighQualityAudioResolver(
     }
 
     /** True while a provider stream could still be found for this identity and none is cached yet. */
-    fun upgradePending(identityKey: String): Boolean =
-        mode.enabled &&
-            !isQuarantined(quarantinedIdentities, identityKey) &&
-            !isQuarantined(unmatchedIdentities, identityKey) &&
-            cachedSelection(identityKey) == null
+    fun upgradePending(identityKey: String): Boolean {
+        if (!mode.enabled) return false
+        if (isQuarantined(quarantinedIdentities, identityKey)) return false
+        if (isQuarantined(unmatchedIdentities, identityKey)) return false
+        if (cachedSelection(identityKey) != null) return false
+        return synchronized(inFlightLock) {
+            inFlight.containsKey(identityKey) || inFlight.size < MAX_IN_FLIGHT_LOOKUPS
+        }
+    }
 
     fun begin(identityKey: String, query: AlternativeTrackQuery): Deferred<HighQualityResolution> {
         if (!mode.enabled) return completed(HighQualityFallbackReason.DISABLED)
