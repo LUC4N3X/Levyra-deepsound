@@ -179,7 +179,7 @@ class CachedPlaybackProvider(
                 cache = LevyraMediaCache.currentOrNull(),
                 track = track,
                 videoMode = videoMode
-            )
+            )?.takeUnless { resolver.awaitsHighQualityUpgrade(track, videoMode) }
             ?: throw LevyraProviderMissException("Stream non presente in cache")
     }
 

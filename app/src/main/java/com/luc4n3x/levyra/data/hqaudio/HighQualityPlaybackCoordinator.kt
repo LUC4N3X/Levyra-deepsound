@@ -83,6 +83,13 @@ class HighQualityPlaybackCoordinator(
         return applyStream(track, normalCached, selection, provenance())
     }
 
+    /** A cached normal stream must not start playback while a higher-quality lookup can still succeed. */
+    fun awaitsUpgrade(track: Track, normalCached: Track?, isVideoMode: Boolean, audioQuality: String): Boolean {
+        if (normalCached?.playbackManifest?.alternativeSource != null) return false
+        queryFor(track, isVideoMode, audioQuality) ?: return false
+        return resolver.upgradePending(identityKey(track))
+    }
+
     fun providerHealth(): List<ProviderBackendHealth> = resolver.providerHealth()
 
     fun handlesFailure(track: Track): Boolean = track.playbackManifest?.alternativeSource != null

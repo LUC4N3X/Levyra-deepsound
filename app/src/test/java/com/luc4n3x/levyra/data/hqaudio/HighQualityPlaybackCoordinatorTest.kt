@@ -168,4 +168,22 @@ class HighQualityPlaybackCoordinatorTest {
         assertNull(coordinator.queryFor(alternative, isVideoMode = false, audioQuality = "Auto"))
         assertEquals(searchesBefore, provider.searches.size)
     }
+
+    @Test
+    fun cachedNormalStreamWaitsForAFirstHighQualityLookup() {
+        val coordinator = coordinator(exactProvider())
+        val requested = playbackTrack()
+        assertTrue(coordinator.awaitsUpgrade(requested, normalTrack(), isVideoMode = false, audioQuality = "Auto"))
+        coordinator.play(requested)
+        assertTrue(!coordinator.awaitsUpgrade(requested, normalTrack(), isVideoMode = false, audioQuality = "Auto"))
+        assertNotNull(coordinator.cachedUpgrade(requested, normalTrack(), isVideoMode = false, audioQuality = "Auto", provenance = provenance))
+    }
+
+    @Test
+    fun videoModeAndDataSaverNeverWaitForAnUpgrade() {
+        val coordinator = coordinator(exactProvider())
+        val requested = playbackTrack()
+        assertTrue(!coordinator.awaitsUpgrade(requested, normalTrack(), isVideoMode = true, audioQuality = "Auto"))
+        assertTrue(!coordinator.awaitsUpgrade(requested, normalTrack(), isVideoMode = false, audioQuality = "Low"))
+    }
 }

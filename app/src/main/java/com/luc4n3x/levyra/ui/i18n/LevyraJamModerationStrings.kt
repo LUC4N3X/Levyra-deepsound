@@ -333,6 +333,26 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "המארח חסם אותך ב-Jam הזה", "המפגש נעול",
         "המפגש מלא", "המארח הסיר אותך מה-Jam",
         "עדיין אין אורחים", "את/ה", "שיתוף הזמנה"
+    ),
+    "fi" to jamModeration(
+        "Isännän säätimet", "Hyväksy uudet vieraat", "Jokainen vieras odottaa hyväksyntääsi ennen liittymistä",
+        "Odottaa liittymistä", "Hyväksy", "Hylkää", "Poista", "Estä",
+        "Estetyt vieraat", "Tyhjennä estolista", "Lukitse istunto",
+        "Kukaan uusi ei voi liittyä istunnon ollessa lukittu", "Lukittu",
+        "Odotetaan isännän hyväksyntää", "Isäntä hylkäsi pyyntösi",
+        "Isäntä esti sinut tästä Jamista", "Istunto on lukittu",
+        "Istunto on täynnä", "Isäntä poisti sinut Jamista",
+        "Ei vielä vieraita", "Sinä", "Jaa kutsu"
+    ),
+    "et" to jamModeration(
+        "Võõrustaja juhtnupud", "Kinnita uued külalised", "Iga külaline ootab enne liitumist sinu heakskiitu",
+        "Ootab liitumist", "Kinnita", "Lükka tagasi", "Eemalda", "Blokeeri",
+        "Blokeeritud külalised", "Tühjenda blokeeritud nimekiri", "Lukusta seanss",
+        "Lukustatud seansiga ei saa keegi uus liituda", "Lukustatud",
+        "Oodatakse võõrustaja heakskiitu", "Võõrustaja lükkas su taotluse tagasi",
+        "Võõrustaja blokeeris sind sellest Jamist", "Seanss on lukustatud",
+        "Seanss on täis", "Võõrustaja eemaldas sind Jamist",
+        "Külalisi veel pole", "Sina", "Jaga kutset"
     )
 )
 

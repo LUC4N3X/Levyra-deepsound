@@ -262,6 +262,13 @@ private val queueSpaceBundles: Map<String, Map<String, String>> = mapOf(
         "Levyra säilyttää aina yhden jonon. Tyhjennä se sen sijaan.", "Lisää jonoon", "Soittaa nyt jonosta %1\$s",
         "Vielä tyhjä"
     ),
+    "et" to queueSpace(
+        "Järjekorrad", "Iga järjekord jätab meelde oma järjestuse ja positsiooni.", "Praegune", "Uus järjekord", "Järjekorra nimi",
+        "Nimeta järjekord ümber", "Kopeeri järjekord", "Tühjenda järjekord", "Kustuta järjekord",
+        "Kas kustutada see järjekord? Lood jäävad kogusse alles.",
+        "Levyra hoiab alati vähemalt ühte järjekorda. Selle asemel tühjenda see.", "Lisa järjekorda", "Praegu esitatakse järjekorrast %1\$s",
+        "Veel tühi"
+    ),
     "nb" to queueSpace(
         "Køer", "Hver kø husker sin egen rekkefølge og posisjon.", "Gjeldende", "Ny kø", "Navn på kø",
         "Gi køen nytt navn", "Dupliser køen", "Tøm køen", "Slett køen",

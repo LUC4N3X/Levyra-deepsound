@@ -63,6 +63,8 @@ private fun durationUnits(code: String): Pair<String, String> = when (LevyraLang
     "th" -> "ชม." to "น."
     "fil" -> "oras" to "min"
     "he" -> "ש׳" to "דק׳"
+    "fi" -> "t" to "min"
+    "et" -> "t" to "min"
     else -> "h" to "min"
 }
 

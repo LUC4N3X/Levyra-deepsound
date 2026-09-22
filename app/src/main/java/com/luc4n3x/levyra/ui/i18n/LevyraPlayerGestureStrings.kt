@@ -401,6 +401,25 @@ private val playerGestureBundles = mapOf(
         "Äänenvoimakkuus",
         "Pois"
     ),
+    "et" to playerGestures(
+        "Pühkimine kaanepildil",
+        "Liigu eelmisele või järgmisele loole",
+        "Topeltpuudutus",
+        "Vali, mida topeltpuudutus teeb",
+        "Pikk vajutus",
+        "Vali, mida kaanepildi allhoidmine teeb",
+        "Vertikaalne pühkimine",
+        "Juhtnupud kaanepildi servadel",
+        "Keri",
+        "Esita või peata",
+        "Lemmik",
+        "Ava järjekord",
+        "Ava sõnad",
+        "Ajutine kiirus",
+        "Heledus ja helitugevus",
+        "Helitugevus",
+        "Väljas"
+    ),
     "nb" to playerGestures(
         "Sveip på coveret",
         "Gå til forrige eller neste spor",

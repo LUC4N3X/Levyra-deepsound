@@ -70,6 +70,20 @@ fun LevyraStrings.systemPlayerCopy(): LevyraSystemPlayerCopy = when (code) {
         "+15分", "分", "終了時フェード有効", "アップデートの準備完了", "現在", "更新後", "主な変更",
         "保護されたアップデート", "公式 GitHub APK · インストール前にパッケージと署名を検証"
     )
+    "fi" -> LevyraSystemPlayerCopy(
+        "Äänilähtö", "Todellinen äänipolku, jota Levyra käyttää", "TOISTETAAN LAITTEESSA", "Valitse lähtö",
+        "Androidin hallitsema", "Kaiutin", "Bluetooth", "Langallinen", "Ulkoinen", "Suoratoiston laatu",
+        "DSP aktiivinen", "DSP ei käytössä", "Valitse milloin musiikin tulisi pysähtyä", "Päättyy klo", "AJASTIN AKTIIVINEN",
+        "+15 min", "min", "Loppuhäivytys aktiivinen", "Päivitys valmis", "Alkaen", "Päättyen", "Tärkeimmät muutokset",
+        "Suojattu päivitys", "Virallinen GitHub APK · paketti ja allekirjoitus varmistettu ennen asennusta"
+    )
+    "et" -> LevyraSystemPlayerCopy(
+        "Heliväljund", "Tegelik helitee, mida Levyra kasutab", "ESITATAKSE SEADMES", "Vali väljund",
+        "Androidi hallatav", "Kõlar", "Bluetooth", "Juhtmega", "Väline", "Voo kvaliteet",
+        "DSP aktiivne", "DSP passiivne", "Vali, millal muusika peaks peatuma", "Lõpeb kell", "TAIMER AKTIIVNE",
+        "+15 min", "min", "Lõpu hajumine aktiivne", "Värskendus valmis", "Alates", "Kuni", "Peamised muudatused",
+        "Kaitstud värskendus", "Ametlik GitHubi APK · pakett ja allkirjastuse identiteet kinnitatud enne paigaldamist"
+    )
     else -> LevyraSystemPlayerCopy(
         "Audio output", "The real audio path Levyra is using", "PLAYING ON", "Choose output",
         "Managed by Android", "Speaker", "Bluetooth", "Wired", "External", "Stream quality",

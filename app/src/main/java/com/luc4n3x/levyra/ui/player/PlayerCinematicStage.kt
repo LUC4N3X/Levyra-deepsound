@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -120,8 +121,9 @@ internal fun PlayerCinematicStage(
     animationsEnabled: Boolean,
     isPlaying: Boolean,
     canvasQuality: LevyraCanvasQuality,
+    morphAnchors: PlayerMorphAnchors,
     morphActive: Boolean,
-    swipeOffset: Float,
+    swipeOffset: () -> Float,
     modifier: Modifier = Modifier
 ) {
     val stacked = geometry.layout == PlayerCinematicLayout.Stacked
@@ -132,6 +134,11 @@ internal fun PlayerCinematicStage(
         animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-cinematic-bloom"
     )
+
+    DisposableEffect(morphAnchors) {
+        morphAnchors.updateStageActive(true)
+        onDispose { morphAnchors.updateStageActive(false) }
+    }
 
     Box(modifier = modifier) {
         if (colorField) {
@@ -151,9 +158,10 @@ internal fun PlayerCinematicStage(
             modifier = Modifier
                 .align(if (stacked) Alignment.TopCenter else Alignment.TopStart)
                 .size(width = geometry.heroWidth, height = geometry.heroHeight)
+                .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Stage)
                 .graphicsLayer {
-                    alpha = if (morphActive) 0f else 1f
-                    translationX = swipeOffset * 0.32f
+                    alpha = if (morphActive) morphAnchors.stageRevealAlpha() else 1f
+                    translationX = swipeOffset() * 0.32f
                 }
                 .artworkDissolve(
                     edge = if (stacked) ArtworkDissolveEdge.Bottom else ArtworkDissolveEdge.End,

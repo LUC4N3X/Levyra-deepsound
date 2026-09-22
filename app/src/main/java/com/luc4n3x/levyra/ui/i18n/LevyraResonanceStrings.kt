@@ -182,6 +182,20 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "הקש לצפייה בתגובות",
         "noCommentsAvailable" to "אין עדיין תגובות",
         "commentsDisabled" to "התגובות מושבתות"
+    ),
+    "fi" to mapOf(
+        "commentsLabel" to "Kommentit",
+        "mostCommentedTracks" to "Keskustelluimmat kappaleet",
+        "tapToOpenComments" to "Napauta nähdäksesi kommentit",
+        "noCommentsAvailable" to "Ei vielä kommentteja",
+        "commentsDisabled" to "Kommentit pois käytöstä"
+    ),
+    "et" to mapOf(
+        "commentsLabel" to "Kommentaarid",
+        "mostCommentedTracks" to "Enim kommenteeritud lood",
+        "tapToOpenComments" to "Puuduta kommentaaride vaatamiseks",
+        "noCommentsAvailable" to "Kommentaare veel pole",
+        "commentsDisabled" to "Kommentaarid on keelatud"
     )
 )
 

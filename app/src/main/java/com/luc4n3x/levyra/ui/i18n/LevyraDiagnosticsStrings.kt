@@ -236,6 +236,22 @@ private val diagnosticsBundles: Map<String, Map<String, String>> = mapOf(
         "תקין", "נעשה שימוש בחלופה לאחרונה", "שגיאת השמעה", "לא פעיל",
         "השמעה", "פורמטים", "מטמון ורשת", "פותר",
         "כרגע לא מתנגן דבר."
+    ),
+    "fi" to diagnostics(
+        "Enemmän tällaista", "Vähemmän tällaista", "Toiston diagnostiikka",
+        "Soittimen, formaattien ja resolverin reaaliaikainen tila", "Kopioi raportti", "Raportti kopioitu",
+        "Suoratoiston URL-osoitteita, pyyntöotsikoita, evästeitä, tunnisteita tai API-avaimia ei koskaan sisällytetä.",
+        "Kunnossa", "Varajärjestelmää käytetty äskettäin", "Toistovirhe", "Toimeton",
+        "Toisto", "Formaatit", "Välimuisti ja verkko", "Resolveri",
+        "Mitään ei toisteta juuri nyt."
+    ),
+    "et" to diagnostics(
+        "Rohkem sellist", "Vähem sellist", "Taasesituse diagnostika",
+        "Mängija, vormingute ja lahendaja reaalajas olek", "Kopeeri aruanne", "Aruanne kopeeritud",
+        "Voogesituse URL-e, päringupäiseid, küpsiseid, pääsutõendeid ega API-võtmeid ei kaasata kunagi.",
+        "Korraskorras", "Hiljuti kasutati varulahendust", "Taasesituse viga", "Ootel",
+        "Taasesitus", "Vormingud", "Vahemälu ja võrk", "Lahendaja",
+        "Praegu midagi ei esitata."
     )
 )
 

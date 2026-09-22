@@ -196,6 +196,20 @@ private val alternativeAudioBundles: Map<String, Map<String, String>> = mapOf(
         "כבוי",
         "אוטומטי",
         "העדפת 320 kbps"
+    ),
+    "fi" to alternativeAudioStrings(
+        "Korkealaatuinen vaihtoehtoinen ääni",
+        "Käytä korkealaatuisempaa ulkoista äänilähdettä, kun Levyra voi varmistaa sen olevan täsmälleen sama kappale.",
+        "Pois",
+        "Automaattinen",
+        "Suosi 320 kbps"
+    ),
+    "et" to alternativeAudioStrings(
+        "Kõrge kvaliteediga alternatiivne heli",
+        "Kasuta kvaliteetsemat välist helivoogu, kui Levyra saab kinnitada, et tegemist on täpselt sama looga.",
+        "Väljas",
+        "Automaatne",
+        "Eelista 320 kbps"
     )
 )
 

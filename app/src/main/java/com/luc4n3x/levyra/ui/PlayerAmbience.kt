@@ -18,6 +18,7 @@ private const val AmbienceTintLevel = 0.32f
 private const val AmbienceElevatedLevel = 0.088f
 private const val AmbienceControlLevel = 0.092f
 private const val AmbienceBaseLevel = 0.040f
+private const val HighlightLevel = 0.56f
 
 internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience {
     val sourcePrimary = primary.copy(alpha = 1f)
@@ -32,6 +33,13 @@ internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience 
         base = blended.playerAmbienceDesaturate(0.34f).playerAmbienceTone(AmbienceBaseLevel)
     )
 }
+
+/** A bright accent toned to a fixed level, so neon, washed-out and muddy artwork all yield a usable action colour. */
+internal fun playerHighlightOf(primary: Color, secondary: Color): Color =
+    primary.copy(alpha = 1f)
+        .playerAmbienceMix(secondary.copy(alpha = 1f), 0.25f)
+        .playerAmbienceDesaturate(0.10f)
+        .playerAmbienceTone(HighlightLevel)
 
 internal fun createPlayerAmbientColorMatrix(
     saturation: Float = 1.35f,
