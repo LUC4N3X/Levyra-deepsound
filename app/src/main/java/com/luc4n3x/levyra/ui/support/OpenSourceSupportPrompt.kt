@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -146,7 +147,7 @@ fun RemoteAnnouncementGate(
 }
 
 @Composable
-fun SupportLevyraSettingsCard(
+fun SupportLevyraSettingsLink(
     languageCode: String,
     modifier: Modifier = Modifier
 ) {
@@ -163,7 +164,6 @@ fun SupportLevyraSettingsCard(
     }
     val current = announcement ?: return
     val strings = remember(languageCode) { LevyraStrings.forCode(languageCode) }
-    val shape = RoundedCornerShape(20.dp)
     val openAction = {
         openRepositoryLink(
             context = context,
@@ -173,70 +173,57 @@ fun SupportLevyraSettingsCard(
         )
     }
 
-    Surface(
-        onClick = openAction,
-        modifier = modifier.fillMaxWidth(),
-        shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f))
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clickable(onClick = openAction)
+            .padding(horizontal = 4.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), CircleShape)
+                .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f), CircleShape),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = 0.95f),
-                                LevyraViolet.copy(alpha = 0.92f),
-                                LevyraOrange.copy(alpha = 0.88f)
-                            )
-                        ),
-                        RoundedCornerShape(15.dp)
-                    )
-                    .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(15.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Star,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(23.dp)
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Text(
-                    text = current.copy.settingsTitle,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = current.copy.settingsSubtitle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
             Icon(
-                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                imageVector = Icons.Rounded.Star,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
         }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = current.copy.settingsTitle,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = current.copy.settingsSubtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
