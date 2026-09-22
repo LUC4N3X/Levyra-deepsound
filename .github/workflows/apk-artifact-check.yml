@@ -37,6 +37,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
+          cache-read-only: true
 
       - name: Setup Android SDK
         shell: bash
@@ -49,11 +51,6 @@ jobs:
             "build-tools;36.0.0" \
             "ndk;28.2.13676358" \
             "cmake;3.22.1"
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6.3.0
-        with:
-          cache-disabled: true
 
       - name: Cache Native Audio Dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -68,7 +65,7 @@ jobs:
           test -x ./gradlew
           test -f gradle/wrapper/gradle-wrapper.jar
           test -f gradle/wrapper/gradle-wrapper.properties
-          ./gradlew --no-daemon --version
+          ./gradlew --version
 
       - name: Android Runtime Compatibility Scan
         run: python3 scripts/check_android_regex_compatibility.py
@@ -112,7 +109,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew --no-daemon --no-configuration-cache clean assemblePrDiagnostics \
+          ./gradlew --no-configuration-cache assemblePrDiagnostics \
             -PlevyraVersionName="${VERSION}" \
             -PlevyraVersionCode="${VERSION_CODE}"
 
