@@ -55,7 +55,7 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 >
 > Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
 
-## ✦ Why Levyra
+## Why Levyra
 
 Levyra started as the player I wanted for myself: one place for streaming, local audio files, and a library I can actually keep.
 
@@ -67,7 +67,7 @@ As the project grew, I added the things I kept missing in other players: proper 
 
 External services provide some of the music, lyrics, artwork and metadata Levyra can use, but the library itself stays under your control. The app is open source, keeps its own data local where it can, and is built so that changing a source or service does not mean losing the rest of your setup.
 
-## ✦ Project recognition
+## Project recognition
 
 <div align="center">
 
@@ -99,7 +99,7 @@ External services provide some of the music, lyrics, artwork and metadata Levyra
 
 </div>
 
-## ✦ JioSaavn · Verified High-Quality Audio
+## JioSaavn high-bitrate audio
 
 When enabled, Levyra can search JioSaavn for a matching track and stream the higher-bitrate source (up to 320 kbps) when there is an exact match.
 
@@ -114,57 +114,58 @@ Your library track remains untouched. Artwork, lyrics, queue placement, listenin
 
 ---
 
-## ✦ Interface & Experience Showcase
+## Interface & screenshots
 
 <div align="center">
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/00_levyra_hero_showcase-light.webp">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/00_levyra_hero_showcase.webp">
-  <img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra Panoramic Experience Showcase" width="100%" />
+  <img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra interface preview" width="100%" />
 </picture>
 
 <br><br>
 
 | | |
 | :---: | :---: |
-| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/01_playback_and_lyrics-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/01_playback_and_lyrics.webp"><img src="docs/assets/showcase/01_playback_and_lyrics.webp" alt="Immersive Playback & Live Synced Lyrics" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/02_home_and_charts-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/02_home_and_charts.webp"><img src="docs/assets/showcase/02_home_and_charts.webp" alt="Smart Orbit Feed & Global Top Charts" width="100%" /></picture> |
-| **Immersive Playback & Live Synced Lyrics**<br><sub>ExoPlayer playback · LRCLIB lyrics with route-aware sync · Multi-script romanization · 1:1 / 9:16 lyric cards</sub> | **Smart Orbit Feed & Global Charts**<br><sub>Your Orbit rotation · Live international Top 50 charts · Mood chips · Prefetch before playback</sub> |
-| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/03_search_and_artist-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/03_search_and_artist.webp"><img src="docs/assets/showcase/03_search_and_artist.webp" alt="Deep Search & Artist Immersion" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/04_library_and_pulse-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/04_library_and_pulse.webp"><img src="docs/assets/showcase/04_library_and_pulse.webp" alt="Offline M4A Vault & Listening Pulse" width="100%" /></picture> |
-| **Deep Search & Artist Immersion**<br><sub>Live search with artist results · Wikipedia biography cards · Full discography in chronological order</sub> | **Offline M4A Vault & Listening Pulse**<br><sub>Tagged M4A files with artwork · 7-day listening stats on device · Private SQLite storage</sub> |
-| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/05_video_and_samples-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/05_video_and_samples.webp"><img src="docs/assets/showcase/05_video_and_samples.webp" alt="Samples Clips & Comment Energy" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/06_collections_and_genres-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/06_collections_and_genres.webp"><img src="docs/assets/showcase/06_collections_and_genres.webp" alt="Editorial Playlists & Genre Matrix" width="100%" /></picture> |
-| **Samples Clips & Comment Energy**<br><sub>Vertical preview clips · Music video feeds · Live comment-energy percentage</sub> | **Editorial Playlists & Genre Matrix**<br><sub>4-tile editorial collections · Mood and genre browsing including Rap, Lo-Fi, Anime, Electronic and more</sub> |
+| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/01_playback_and_lyrics-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/01_playback_and_lyrics.webp"><img src="docs/assets/showcase/01_playback_and_lyrics.webp" alt="Playback and synced lyrics" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/02_home_and_charts-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/02_home_and_charts.webp"><img src="docs/assets/showcase/02_home_and_charts.webp" alt="Home feed and charts" width="100%" /></picture> |
+| **Playback & synced lyrics**<br><sub>ExoPlayer on Android and libVLC on Windows. LRCLIB lyrics with millisecond offsets, multi-script romanization, and exportable cards.</sub> | **Home feed & top charts**<br><sub>Your Orbit rotation, mood tags, and live international Top 50 charts with background prefetching.</sub> |
+| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/03_search_and_artist-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/03_search_and_artist.webp"><img src="docs/assets/showcase/03_search_and_artist.webp" alt="Search and artist profiles" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/04_library_and_pulse-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/04_library_and_pulse.webp"><img src="docs/assets/showcase/04_library_and_pulse.webp" alt="Local library and stats" width="100%" /></picture> |
+| **Search & artist discographies**<br><sub>Instant search results with Wikipedia summaries and complete chronological discographies.</sub> | **M4A downloads & listening stats**<br><sub>Properly tagged M4A files saved directly to storage. 7-day listening trends stored locally in SQLite.</sub> |
+| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/05_video_and_samples-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/05_video_and_samples.webp"><img src="docs/assets/showcase/05_video_and_samples.webp" alt="Short clips and video" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/06_collections_and_genres-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/06_collections_and_genres.webp"><img src="docs/assets/showcase/06_collections_and_genres.webp" alt="Playlists and genres" width="100%" /></picture> |
+| **Vertical clips & video feed**<br><sub>Short preview clips, full music video feeds, and live comment activity.</sub> | **Editorial playlists & genres**<br><sub>Curated collections and genre exploration across Rap, Lo-Fi, Anime, Electronic, and more.</sub> |
 
 </div>
 
 <br>
 
 <details>
-<summary><b>✦ Browse Complete Screen-by-Screen Gallery (15 High-Res Views)</b></summary>
+<summary><b>Browse full gallery (15 high-res views)</b></summary>
 <br>
 
 <div align="center">
 
-#### 🎵 Immersive Playback & Lyrics
+#### Playback & lyrics
 | Now Playing Canvas | Synchronized Lyrics |
 | :---: | :---: |
 | <img src="docs/assets/screenshots/player_nowplaying.webp" width="380" alt="Now Playing Canvas"> | <img src="docs/assets/screenshots/lyrics_synced.webp" width="380" alt="Synchronized Lyrics"> |
-#### 🪐 Home & Discovery
+
+#### Home & discovery
 | Home Selection & Orbit | Global Top 50 Charts | Editorial Collections |
 | :---: | :---: | :---: |
 | <img src="docs/assets/screenshots/home_orbit.webp" width="260" alt="Home Orbit"> | <img src="docs/assets/screenshots/home_top50.webp" width="260" alt="Global Top 50"> | <img src="docs/assets/screenshots/home_collections.webp" width="260" alt="Editorial Collections"> |
 
-#### 🔍 Search & Artist Universe
+#### Search & artists
 | Search Discovery & Recent | Live Artist Results | Artist Profile & Bio | Artist Discography |
-| :---: | :---: | :---: | :---: |
+| :---: | :---: | :---: |
 | <img src="docs/assets/screenshots/search_recent.webp" width="200" alt="Search History"> | <img src="docs/assets/screenshots/search_artist_avatars.webp" width="200" alt="Artist Search"> | <img src="docs/assets/screenshots/artist_bio.webp" width="200" alt="Artist Bio"> | <img src="docs/assets/screenshots/artist_discography.webp" width="200" alt="Discography"> |
 
-#### 📊 Offline Vault & Listening Pulse
+#### Offline vault & listening stats
 | Library Quick Picks | Listening Pulse Analytics | Playlist Details |
 | :---: | :---: | :---: |
 | <img src="docs/assets/screenshots/library_quickpicks.webp" width="260" alt="Library Quick Picks"> | <img src="docs/assets/screenshots/library_pulse.webp" width="260" alt="Listening Pulse"> | <img src="docs/assets/screenshots/playlist_recent.webp" width="260" alt="Playlist Details"> |
 
-#### 🎬 Explore & Video Engine
+#### Explore & video
 | Vertical Samples Clips | Moods & Subgenre Matrix | Video Feed & Energy |
 | :---: | :---: | :---: |
 | <img src="docs/assets/screenshots/explore_samples.webp" width="260" alt="Samples Clips"> | <img src="docs/assets/screenshots/explore_genres.webp" width="260" alt="Genres Matrix"> | <img src="docs/assets/screenshots/video_energy.webp" width="260" alt="Video Feed"> |
@@ -175,38 +176,37 @@ Your library track remains untouched. Artwork, lyrics, queue placement, listenin
 
 ---
 
-## ✦ What Levyra can do
+## What Levyra can do
 
 ### Playback
 
-- Native audio engines. Android uses Media3 and ExoPlayer, while Windows uses libVLC. Both platforms have their own native playback stack.
-- Gapless and crossfade. Album tracks can play continuously without unwanted crossfading, with manual control over playback speed and pitch.
-- Equalizer and AutoEQ. Use the built-in 10-band equalizer or load headphone correction profiles directly from the AutoEQ database.
-- SponsorBlock integration. Automatically skip intros, sponsor segments, dialogue, and non-music sections.
-- Audio and video modes. Switch between audio-only streams and native video playback with subtitle selection when available.
-- Android Auto and Quick Settings. Control playback from your car display, or pause and resume from a dedicated Quick Settings tile.
+- **Native playback engines**: Media3 and ExoPlayer on Android, libVLC on Windows. Neither platform relies on WebViews or web wrappers.
+- **Gapless playback and crossfade**: albums play without artificial pauses, with optional manual control over pitch and speed.
+- **Equalizer and AutoEQ**: tweak frequencies with the built-in 10-band EQ or load headphone profiles directly from the AutoEQ database.
+- **SponsorBlock**: skips intros, sponsored segments, and non-music interludes automatically.
+- **Audio and video modes**: toggle between audio-only streaming and full video playback with subtitle support.
+- **Car and system controls**: full Android Auto support, plus a dedicated Quick Settings tile to pause and resume.
 
 ### Library and offline storage
 
-- Direct file downloads. Levyra saves standard M4A files directly to storage, embedding artwork, artist tags, album details, and lyrics.
-- Local library integration. Index, search, and queue audio files already stored on your device alongside streamed music.
-- Queue spaces. Save and switch between separate queues without clearing your current listening session.
-- Levyra Vault. Export settings, playlists, favorites, listening history, and saved queues to a local backup file without a cloud account.
-- Library organization. Sort and organize tracks with tags, playlist filters, and artist exclusions.
+- **Standard M4A downloads**: tracks save directly to your storage with embedded tags, album art, and lyrics. No proprietary sandboxed containers.
+- **Local files alongside streams**: index and queue audio already on your device in the same playlists as streamed music.
+- **Queue spaces**: maintain separate queues for different moods or listening sessions without losing your spot.
+- **Levyra Vault**: export your playlists, favorites, history, and settings to a single backup file without needing a cloud account.
+- **Organization**: tag-based filtering, playlist sorting, and artist exclusions.
 
 ### Lyrics, discovery, and extras
 
-- Synced lyrics with offset adjustments. Tap any line to jump to that timestamp, adjust early or late timing, and save separate offsets for Bluetooth devices.
-- Romanization and lyric cards. Transliterate non-Latin scripts for easier reading, or export selected lyric lines as shareable cards.
-- Canvas visuals. Motion visuals can appear behind the Now Playing screen when available, with motion artwork as a fallback.
-- Radio and charts. Explore worldwide radio stations, global top 50 charts, mood tags, and discovery feeds.
-- Song identification. Identify playing music through the microphone or internal audio capture, with recognition history stored on device.
-- Local stats. Play counts, listening hours, and weekly activity are calculated locally on the device.
-- Optional scrobbling. Connect Last.fm or ListenBrainz if you want to scrobble; neither service is required.
+- **Synced lyrics with offsets**: tap any line to jump to that timestamp, fine-tune timing, and save dedicated offsets for Bluetooth latency.
+- **Transliteration and lyric cards**: romanize non-Latin scripts, or export selected lyric lines as shareable cards.
+- **Now Playing visuals**: optional motion canvas behind the player, falling back to animated album art.
+- **Radio and charts**: browse worldwide live radio stations, international top charts, and mood-based feeds.
+- **Built-in song recognition**: identify music via microphone or internal audio, saving matches locally.
+- **Local stats and scrobbling**: play counts and weekly listening hours are computed on-device. Optional Last.fm and ListenBrainz integration if you want it.
 
 More technical notes and platform details are available in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
-## ✦ Under the hood
+## Under the hood
 
 | | Android | Windows |
 | --- | --- | --- |
@@ -217,7 +217,7 @@ More technical notes and platform details are available in the [documentation](h
 
 Levyra uses native platform APIs for Android and Windows rather than wrapping a web app in Electron or a WebView.
 
-## ✦ Privacy
+## Privacy
 
 Levyra contains no telemetry, analytics, or ads, and does not require an account.
 
@@ -225,7 +225,7 @@ Play history, stats, playlists, and cached metadata stay on your device. Network
 
 Microphone access is requested only when you trigger song identification. Custom proxy and DNS settings can be configured directly in the app.
 
-## ✦ Translations
+## Translations
 
 Levyra is translated into 36 languages, with community translations maintained on Weblate.
 
@@ -247,7 +247,7 @@ Levyra is translated into 36 languages, with community translations maintained o
 
 </div>
 
-## ✦ Open-source acknowledgements
+## Open-source acknowledgements
 
 Levyra builds on work and ideas from across the open-source music ecosystem:
 
@@ -263,7 +263,7 @@ Contributions and bug reports are welcome. Technical documentation and architect
 
 ---
 
-## ✦ Author & Credits
+## Author & credits
 
 <div align="center">
 
@@ -285,61 +285,22 @@ Independent developer building Levyra for Android and Windows.
 
 ---
 
-## ✦ Legal Disclaimer & Terms of Use
+## Legal notice
+
+Levyra is an independent open-source client. It does not host, distribute, or license third-party music catalogs.
+
+### Third-party services
+Levyra is not affiliated with, endorsed by, or officially connected to YouTube, Google, JioSaavn, Spotify, Apple Music, or any other referenced provider. All trademarks, logos, and brand names belong to their respective owners.
+
+### Lawful personal use
+Levyra is designed for lawful personal listening. It is not intended or promoted for copyright infringement or unauthorized copying. Saving or caching media does not grant rights over third-party content. You are responsible for ensuring your use complies with local copyright laws and the terms of each service you access.
+
+### Availability & warranty
+Levyra is distributed under the [GNU GPL v3.0](LICENSE) on an "as is" basis. Because it connects to third-party endpoints, the ongoing availability of streams, metadata, and APIs cannot be guaranteed.
 
 <div align="center">
 
-### Open source. Independent. Built for lawful use.
-
-<code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
-
-<sub>Levyra is an independent open-source music client. It does not own, host, or distribute third-party music catalogs.</sub>
-
-</div>
-
-<br>
-
-### ◇ Independent software
-
-Levyra is independently developed and is **not affiliated with, sponsored by, endorsed by, or officially connected with** YouTube, Google, JioSaavn, TIDAL, Apple, Deezer, Spotify, or any other third-party service referenced by the project.
-
-Product names, trademarks, logos, media, and other intellectual property remain the property of their respective owners.
-
-### ◇ Third-party content
-
-Levyra does not claim ownership of music, artwork, lyrics, metadata, videos, or other material obtained from external sources.
-
-The application acts as a client that may connect to third-party services or publicly accessible sources requested by the user. Levyra does **not operate its own copyrighted music catalog** and does not host third-party music on its infrastructure.
-
-Third-party services may change, restrict access, become unavailable, or modify their technical behavior independently of Levyra.
-
-### ◇ Lawful & responsible use
-
-**Levyra is not designed, promoted, or intended for piracy, copyright infringement, or unauthorized redistribution of copyrighted material.**
-
-Playback, download, conversion, offline storage, export, or similar functionality does not transfer ownership or grant additional rights over third-party content.
-
-Users are responsible for ensuring that the way they access, save, convert, export, or redistribute content complies with applicable copyright and intellectual-property laws, permissions or licences granted by rights holders, and the terms and conditions of the relevant third-party services.
-
-### ◇ Respect for creators
-
-Levyra exists to provide an open and flexible listening experience while respecting the work of **artists, creators, developers, platforms, and rights holders**.
-
-Nothing in Levyra should be interpreted as granting permission to reproduce, redistribute, or commercially exploit third-party material without the appropriate rights.
-
-### ◇ Warranty & availability
-
-Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided **AS IS**, without warranty of any kind, to the extent permitted by applicable law.
-
-Because Levyra integrates with external platforms and services, permanent availability of streams, metadata, artwork, lyrics, APIs, or other third-party functionality cannot be guaranteed.
-
-<div align="center">
-
-### ◆ Use Levyra responsibly.
-
-For the complete legal terms covering third-party services, downloads, user responsibilities, warranties, and liability, read the **[Legal Notice](docs/legal/LEGAL.md)**.
-
-<sub>Using Levyra does not grant rights to content you do not already have the legal right to access or use.</sub>
+For complete details on third-party integrations, downloads, and liability, consult the **[Legal Notice](docs/legal/LEGAL.md)**.
 
 </div>
 
