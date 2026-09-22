@@ -390,6 +390,36 @@ private val recognitionBundles: Map<String, Map<String, String>> = mapOf(
         "recognitionClearHistory" to "נקה היסטוריה",
         "recognitionCatalogMatch" to "זמין ב-Levyra",
         "recognitionCatalogMissing" to "לא נמצא בקטלוג של Levyra"
+    ),
+    "fi" to mapOf(
+        "recognitionTitle" to "Tunnistus",
+        "recognitionSubtitle" to "Tunnista mitä ympärilläsi soi",
+        "recognitionListenMicrophone" to "Kuuntele mikrofonilla",
+        "recognitionListenDevice" to "Kuuntele tätä laitetta",
+        "recognitionCancelAction" to "Peruuta",
+        "recognitionNoMatch" to "Ei osumia",
+        "recognitionFailed" to "Tunnistus epäonnistui",
+        "recognitionPermissionRequired" to "Mikrofonilupa vaaditaan",
+        "recognitionUnavailable" to "Tunnistus ei ole juuri nyt saatavilla",
+        "recognitionHistoryEmpty" to "Tunnistetut kappaleet näkyvät täällä",
+        "recognitionClearHistory" to "Tyhjennä historia",
+        "recognitionCatalogMatch" to "Saatavilla Levyra-sovelluksessa",
+        "recognitionCatalogMissing" to "Ei löydy Levyran luettelosta"
+    ),
+    "et" to mapOf(
+        "recognitionTitle" to "Tuvastamine",
+        "recognitionSubtitle" to "Tuvasta, mis sinu ümber mängib",
+        "recognitionListenMicrophone" to "Kuula mikrofoniga",
+        "recognitionListenDevice" to "Kuula sellest seadmest",
+        "recognitionCancelAction" to "Tühista",
+        "recognitionNoMatch" to "Vastet ei leitud",
+        "recognitionFailed" to "Tuvastamine ebaõnnestus",
+        "recognitionPermissionRequired" to "Vajalik mikrofoni luba",
+        "recognitionUnavailable" to "Tuvastamine pole praegu saadaval",
+        "recognitionHistoryEmpty" to "Tuvastatud lood ilmuvad siia",
+        "recognitionClearHistory" to "Kustuta ajalugu",
+        "recognitionCatalogMatch" to "Saadaval Levyras",
+        "recognitionCatalogMissing" to "Ei leitud Levyra kataloogist"
     )
 )
 

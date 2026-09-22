@@ -45,7 +45,9 @@ private val queueSelectionBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to queueSelection("Chọn tất cả", "Xóa khỏi hàng đợi", "Chọn bài hát", "Bỏ chọn bài hát"),
     "th" to queueSelection("เลือกทั้งหมด", "นำออกจากคิว", "เลือกเพลง", "ยกเลิกการเลือกเพลง"),
     "fil" to queueSelection("Piliin lahat", "Alisin sa queue", "Piliin ang track", "Alisin sa pagkakapili"),
-    "he" to queueSelection("בחירת הכול", "הסרה מהתור", "בחירת רצועה", "ביטול בחירת רצועה")
+    "he" to queueSelection("בחירת הכול", "הסרה מהתור", "בחירת רצועה", "ביטול בחירת רצועה"),
+    "fi" to queueSelection("Valitse kaikki", "Poista jonosta", "Valitse kappale", "Poista kappaleen valinta"),
+    "et" to queueSelection("Vali kõik", "Eemalda järjekorrast", "Vali lugu", "Tühista loo valik")
 )
 
 internal fun queueSelectionLocalizationEntries(code: String): Map<String, String> =

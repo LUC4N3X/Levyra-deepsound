@@ -1,17 +1,8 @@
 package com.luc4n3x.levyra.ui.player
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,13 +11,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
@@ -46,6 +34,7 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.RepeatMode
+import com.luc4n3x.levyra.ui.components.LevyraPlayPauseGlyph
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerIcon
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
@@ -238,8 +227,7 @@ private fun RowScope.PlayerPlaySegment(
             isResolving = isResolving,
             isPlaying = isPlaying,
             content = content,
-            glyph = glyph,
-            animated = animated
+            glyph = glyph
         )
     }
 }
@@ -255,8 +243,7 @@ private fun PlayGlyphContent(
     isResolving: Boolean,
     isPlaying: Boolean,
     content: Color,
-    glyph: Dp,
-    animated: Boolean
+    glyph: Dp
 ) {
     if (isResolving) {
         CircularProgressIndicator(
@@ -268,8 +255,7 @@ private fun PlayGlyphContent(
         PlayIconAnimated(
             isPlaying = isPlaying,
             content = content,
-            glyph = glyph,
-            animated = animated
+            glyph = glyph
         )
     }
 }
@@ -278,33 +264,14 @@ private fun PlayGlyphContent(
 private fun PlayIconAnimated(
     isPlaying: Boolean,
     content: Color,
-    glyph: Dp,
-    animated: Boolean
+    glyph: Dp
 ) {
-    AnimatedContent(
-        targetState = isPlaying,
-        transitionSpec = { playTransition(animated) },
-        label = "player-play-glyph"
-    ) { playing ->
-        PlayerIcon(
-            icon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-            tint = content,
-            modifier = Modifier
-                .size(glyph)
-                .offset(x = if (playing) 0.dp else 2.dp)
-        )
-    }
+    LevyraPlayPauseGlyph(
+        playing = isPlaying,
+        color = content,
+        modifier = Modifier.size(glyph)
+    )
 }
-
-private fun playTransition(animated: Boolean): ContentTransform =
-    if (animated) {
-        fadeIn(LevyraPlayerDesign.standardTween(150)) +
-            scaleIn(LevyraPlayerDesign.expressiveSpring(), initialScale = 0.6f) togetherWith
-            fadeOut(LevyraPlayerDesign.standardTween(90)) +
-                scaleOut(LevyraPlayerDesign.standardTween(90), targetScale = 0.6f)
-    } else {
-        EnterTransition.None togetherWith ExitTransition.None
-    }
 
 @Composable
 private fun RowScope.PlayerModeSegment(

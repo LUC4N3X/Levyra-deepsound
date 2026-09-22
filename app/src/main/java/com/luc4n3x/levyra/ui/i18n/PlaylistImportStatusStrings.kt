@@ -28,6 +28,8 @@ fun playlistImportStartedMessage(code: String): String = when (code) {
     "th" -> "กำลังนำเข้าเพลย์ลิสต์…"
     "fil" -> "Ini-import ang playlist…"
     "he" -> "מייבא פלייליסט…"
+    "fi" -> "Tuodaan soittolistaa…"
+    "et" -> "Esitusloendi importimine…"
     else -> "Importing playlist…"
 }
 
@@ -57,6 +59,8 @@ fun playlistImportAlreadyRunningMessage(code: String): String = when (code) {
     "th" -> "มีการนำเข้าอยู่แล้ว"
     "fil" -> "May kasalukuyan nang pag-import."
     "he" -> "ייבוא כבר מתבצע."
+    "fi" -> "Tuonti on jo käynnissä."
+    "et" -> "Importimine juba käib."
     else -> "An import is already in progress."
 }
 
@@ -86,6 +90,8 @@ fun playlistImportSuccessMessage(code: String, count: Int, playlistName: String)
     "th" -> "นำเข้า $count เพลงไปยัง $playlistName แล้ว"
     "fil" -> "Na-import ang $count kanta sa $playlistName"
     "he" -> "יובאו $count שירים אל $playlistName"
+    "fi" -> "Tuotiin $count kappaletta soittolistaan $playlistName"
+    "et" -> "Imporditi $count lugu esitusloendisse $playlistName"
     else -> "Imported $count tracks into $playlistName"
 }
 
@@ -122,6 +128,8 @@ fun playlistImportSuccessMessage(
         "th" -> "นำเข้า $importedCount จาก $requestedCount เพลงไปยัง $playlistName แล้ว"
         "fil" -> "Na-import ang $importedCount sa $requestedCount kanta sa $playlistName"
         "he" -> "יובאו $importedCount מתוך $requestedCount שירים אל $playlistName"
+        "fi" -> "Tuotiin $importedCount/$requestedCount kappaletta soittolistaan $playlistName"
+        "et" -> "Imporditi $importedCount/$requestedCount lugu esitusloendisse $playlistName"
         else -> "Imported $importedCount of $requestedCount tracks into $playlistName"
     }
 }
@@ -152,6 +160,8 @@ fun playlistImportFailureMessage(code: String): String = when (code) {
     "th" -> "นำเข้าไม่สำเร็จ โปรดตรวจสอบลิงก์หรือข้อมูลสำรองแล้วลองอีกครั้ง"
     "fil" -> "Hindi na-import. Suriin ang link o backup at subukan ulit."
     "he" -> "הייבוא נכשל. בדקו את הקישור או את הגיבוי ונסו שוב."
+    "fi" -> "Tuonti epäonnistui. Tarkista linkki tai varmuuskopio ja yritä uudelleen."
+    "et" -> "Importimine ebaõnnestus. Kontrolli linki või varukoopiat ja proovi uuesti."
     else -> "Import failed. Check the link or backup and try again."
 }
 
@@ -192,6 +202,8 @@ private fun playlistImportFailureCopy(code: String): PlaylistImportFailureCopy =
     "th" -> PlaylistImportFailureCopy("ไม่รู้จักลิงก์หรือข้อมูลสำรอง โปรดตรวจสอบแล้วลองอีกครั้ง", "ไม่สามารถอ่านเพลย์ลิสต์นี้ได้ โปรดตรวจสอบว่าเป็นสาธารณะและเข้าถึงได้", "เพลย์ลิสต์นี้เกินขีดจำกัดการนำเข้าที่รองรับ{limit}", "ไม่พบเพลงที่เข้ากันได้ในแค็ตตาล็อก Levyra", "เกิดข้อผิดพลาดของเครือข่ายระหว่างนำเข้า โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง", "บริการเพลงส่งรูปแบบที่ไม่รู้จัก โปรดลองอีกครั้งภายหลังหรือใช้ข้อมูลสำรองที่เข้ากันได้", "ไม่สามารถบันทึกเพลย์ลิสต์ได้ โปรดลองอีกครั้ง", "ซ่อนคำแนะนำการนำเข้า")
     "fil" -> PlaylistImportFailureCopy("Hindi nakilala ang link o backup. Suriin ito at subukan ulit.", "Hindi mabasa ang playlist na ito. Tiyaking pampubliko at naa-access ito.", "Lampas ang playlist na ito sa suportadong limitasyon ng pag-import{limit}.", "Walang tumugmang compatible na kanta sa catalog ng Levyra.", "Nagkaroon ng network error habang nag-i-import. Suriin ang koneksyon at subukan ulit.", "Nagbalik ang music service ng hindi makilalang format. Subukan mamaya o gumamit ng compatible na backup.", "Hindi ma-save ang playlist. Subukan ulit.", "Itago ang mungkahi sa pag-import")
     "he" -> PlaylistImportFailureCopy("הקישור או הגיבוי לא זוהו. בדקו אותם ונסו שוב.", "לא ניתן לקרוא את הפלייליסט הזה. ודאו שהוא ציבורי ונגיש.", "הפלייליסט חורג ממגבלת הייבוא הנתמכת{limit}.", "לא נמצאו שירים תואמים בקטלוג Levyra.", "אירעה שגיאת רשת במהלך הייבוא. בדקו את החיבור ונסו שוב.", "שירות המוזיקה החזיר פורמט לא מזוהה. נסו שוב מאוחר יותר או השתמשו בגיבוי תואם.", "לא ניתן לשמור את הפלייליסט. נסו שוב.", "הסתרת הצעת הייבוא")
+    "fi" -> PlaylistImportFailureCopy("Linkkiä tai varmuuskopiota ei tunnisteta. Tarkista se ja yritä uudelleen.", "Tätä soittolistaa ei voida lukea. Varmista, että se on julkinen ja käytettävissä.", "Tämä soittolista ylittää tuetun tuontirajan{limit}.", "Levyran luettelosta ei löytynyt yhteensopivia kappaleita.", "Tuonnin aikana tapahtui verkkovirhe. Tarkista yhteys ja yritä uudelleen.", "Musiikkipalvelu palautti tuntemattoman muodon. Yritä myöhemmin uudelleen tai käytä yhteensopivaa varmuuskopiota.", "Soittolistaa ei voitu tallentaa. Yritä uudelleen.", "Piilota tuontiehdotus")
+    "et" -> PlaylistImportFailureCopy("Linki või varukoopiat ei tuvastatud. Kontrolli seda ja proovi uuesti.", "Seda esitusloendit ei saa lugeda. Veendu, et see on avalik ja kättesaadav.", "See esitusloend ületab toetatud importimislimiidi{limit}.", "Levyra kataloogist ei leitud ühilduvaid lugusid.", "Importimisel tekkis võrguviga. Kontrolli ühendust ja proovi uuesti.", "Muusikateenus tagastas tundmatu vormingu. Proovi hiljem uuesti või kasuta ühilduvat varukoopiat.", "Esitusloendit ei saanud salvestada. Proovi uuesti.", "Peida importimise soovitus")
     else -> PlaylistImportFailureCopy("The link or backup is not recognized. Check it and try again.", "This playlist cannot be read. Make sure it is public and accessible.", "This playlist exceeds the supported import limit{limit}.", "No compatible tracks could be matched in the Levyra catalog.", "A network error occurred while importing. Check your connection and try again.", "The music service returned an unrecognized format. Try again later or use a compatible backup.", "The playlist could not be saved. Try again.", "Hide import suggestion")
 }
 
@@ -237,6 +249,8 @@ fun playlistImportFailureMessage(
             "th" -> ": สูงสุด $value เพลง"
             "fil" -> ": hanggang $value kanta"
             "he" -> ": עד $value שירים"
+            "fi" -> ": enintään $value kappaletta"
+            "et" -> ": maksimaalselt $value lugu"
             else -> ": maximum $value tracks"
         }
     }.orEmpty()

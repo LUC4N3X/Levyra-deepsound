@@ -289,6 +289,15 @@
           "settingsTitle": "Tue Levyraa GitHubissa",
           "settingsSubtitle": "Anna tähti ja auta useampia löytämään projekti."
         },
+        "et": {
+          "badge": "100% AVATUD LÄHTEKOOD",
+          "title": "Kas sulle meeldib Levyra?",
+          "body": "Levyra on tasuta ja avatud lähtekoodiga. GitHubis tähe lisamine võtab vaid paar sekundit ning aitab projektil päriselt areneda.",
+          "action": "⭐ Lisa täht",
+          "dismiss": "Võib-olla hiljem",
+          "settingsTitle": "Toeta Levyrat GitHubis",
+          "settingsSubtitle": "Lisa täht ja aita rohkematel inimestel projekt avastada."
+        },
         "nb": {
           "badge": "100% ÅPEN KILDEKODE",
           "title": "Liker du Levyra?",

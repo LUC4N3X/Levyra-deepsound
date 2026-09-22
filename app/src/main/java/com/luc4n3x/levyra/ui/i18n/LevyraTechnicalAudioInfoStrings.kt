@@ -102,6 +102,26 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "ノーマライズ", "イコライザー", "リミッター", "バーチャライザー", "プリアンプ",
         codecId = "コーデック ID", remotePlayback = "リモート再生", receiverManaged = "受信機側で管理"
     )
+    "fi" -> TechnicalAudioInfoCopy(
+        "Tekniset äänitiedot", "Toiston todellinen muoto, lähde ja signaalipolku",
+        "NYT TOISTETAAN", "LÄHDE", "LÄHTÖ & DSP",
+        "Codec", "Bitrate", "Näytteenottotaajuus", "Kanavat", "MIME", "Säiliö", "Tarjoaja",
+        "Toimitus", "Laatu", "Bittisyvyys", "Stream", "Loudness", "Lähtö", "Reitti",
+        "Äänenvoimakkuus", "Moottori", "Putki", "Käsittely", "Ääni-istunto", "Varmennettu lähde",
+        "Luotettavuus", "Ei ilmoitettu", "Ei mitään", "Pyydetty", "Varatoiminto",
+        "Normalisointi", "Taajuuskorjain", "Rajoitin", "Virtualisoija", "Esivahvistin",
+        codecId = "Codec-tunnus", remotePlayback = "Etätoisto", receiverManaged = "Vastaanottimen hallinnassa"
+    )
+    "et" -> TechnicalAudioInfoCopy(
+        "Tehnilised heliandmed", "Reaalajas taasesituse vorming, allikas ja signaalitee",
+        "HETKEL MÄNGIB", "ALLIKAS", "VÄLJUND JA DSP",
+        "Codec", "Bitikiirus", "Diskreetimissagedus", "Kanalid", "MIME", "Konteiner", "Pakkuja",
+        "Edastus", "Kvaliteet", "Bitisügavus", "Voog", "Helitugevus (LUFS)", "Väljund", "Tee",
+        "Helitugevus", "Mootor", "Konveier", "Töötlus", "Heliseanss", "Kinnitatud allikas",
+        "Usaldusväärsus", "Pole teatatud", "Puudub", "Taotletud", "Varulahendus",
+        "Normaliseerimine", "Ekvalaiser", "Piiraja", "Virtualiseerija", "Eelvõimendi",
+        codecId = "Koodeki ID", remotePlayback = "Kaugesitus", receiverManaged = "Vastuvõtja haldab"
+    )
     else -> TechnicalAudioInfoCopy(
         "Technical audio info", "Live playback format, source and signal path",
         "NOW PLAYING", "SOURCE", "OUTPUT & DSP",

@@ -22,7 +22,10 @@ class LevyraMotionTest {
         LevyraMotion.settle,
         LevyraMotion.snappy,
         LevyraMotion.expressive,
-        LevyraMotion.reorder
+        LevyraMotion.reorder,
+        LevyraMotion.spatial,
+        LevyraMotion.gesture,
+        LevyraMotion.feedback
     )
 
     @Test
@@ -41,7 +44,9 @@ class LevyraMotionTest {
     @Test
     fun `only feedback springs are allowed to bounce noticeably`() {
         val bouncy = tokens.filter { it.dampingRatio < 0.7f }
-        assertEquals(setOf(LevyraMotion.release, LevyraMotion.expressive), bouncy.toSet())
+        assertEquals(setOf(LevyraMotion.release, LevyraMotion.expressive, LevyraMotion.feedback), bouncy.toSet())
+        assertTrue(LevyraMotion.gesture.dampingRatio >= 0.9f)
+        assertTrue(LevyraMotion.spatial.dampingRatio > LevyraMotion.expand.dampingRatio)
         assertTrue(LevyraMotion.settle.dampingRatio >= 0.9f)
         assertTrue(LevyraMotion.collapse.dampingRatio > LevyraMotion.expand.dampingRatio)
     }

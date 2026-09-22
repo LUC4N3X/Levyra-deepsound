@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minimängija, kiirlemmikud, igapäevane voog, võrguühenduseta režiim ja sõnad</string>
+    <string name="widget_idle_subtitle">Puuduta kuulamiseks</string>
+    <string name="widget_toggle">Esita/Paus</string>
+    <string name="widget_next">Järgmine</string>
+    <string name="widget_previous">Eelmine</string>
+    <string name="widget_favorites">Lemmikud</string>
+    <string name="widget_flow">Igapäevane voog</string>
+    <string name="widget_offline">Võrguühenduseta miks</string>
+    <string name="widget_lyrics">Sõnad</string>
+    <string name="radar_channel_name">Uute lugude radar</string>
+    <string name="radar_channel_description">Uued väljaanded artistidelt, keda jälgid</string>
+    <string name="radar_new_release_title">Uus väljaanne artistilt %1$s</string>
+    <string name="automatic_backups">Automaatsed varukoopiad</string>
+    <string name="car_home">Avaleht</string>
+    <string name="car_downloads">Allalaadimised</string>
+    <string name="car_favorites">Lemmikud</string>
+    <string name="car_playlists">Esitusloendid</string>
+    <string name="car_no_content">Sisu puudub</string>
+    <string name="car_content_unavailable">Sisu pole saadaval</string>
+    <string name="car_search_tracks">Otsi lugusid</string>
+    <string name="car_no_results">Tulemusi pole</string>
+    <string name="car_connecting_player">Mängijaga ühenduse loomine</string>
+    <string name="car_now_playing">Praegu mängib</string>
+    <string name="car_queue">Järjekord</string>
+    <string name="notification_shuffle">Juhuesitus</string>
+    <string name="notification_favorite">Lemmik</string>
+    <string name="tile_recognize_music">Tuvasta muusika</string>
+    <string name="tile_playback">Taasesitus</string>
+    <string name="shortcut_search">Otsing</string>
+    <string name="shortcut_library">Kogu</string>
+    <string name="shortcut_recognition">Tuvasta muusika</string>
+</resources>

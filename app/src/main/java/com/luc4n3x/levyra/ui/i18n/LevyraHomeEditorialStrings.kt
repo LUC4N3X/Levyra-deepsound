@@ -597,6 +597,50 @@ Editorial collection
 לגלות משהו חדש
 עודכן היום
 אוסף ערוך
+@@fi
+Levyran valinta
+Julkaistu tänään
+Juuri julkaistu
+Listojen nousijat
+Valittu sinulle
+Saatavilla tänään
+Julkaistu tällä viikolla
+Suosittu listoilla
+Levyra-kokoelmat
+Kuratoituja soittolistoja rakastamasi musiikin ympärille
+Uutta tällä viikolla
+Kotimaiset hitit
+Treeni
+Rentoja fiiliksiä
+Syvä keskittyminen
+Bilehitit
+Raphitit
+Pophitit
+Löytösekoitus
+Päivitetty tänään
+Toimituksen kokoelma
+@@et
+Levyra valik
+Ilmus täna
+Äsja ilmunud
+Edetabelite trendid
+Valitud sinule
+Saadaval tänasest
+Ilmus sel nädalal
+Populaarne edetabelites
+Levyra kogud
+Kureeritud esitusloendid sinu lemmikmuusika põhjal
+Selle nädala uudised
+Kohalikud hitid
+Treening
+Mõnus meeleolu
+Sügav fookus
+Peohitid
+Räpihitid
+Pophitit
+Avastusmiks
+Uuendatud täna
+Toimetuse kogu
 """.trimIndent()
 
 private val homeEditorialEntries = buildMap {
