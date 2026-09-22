@@ -4687,6 +4687,18 @@ private fun ArtistOverlay(
         animationSpec = LevyraMotion.spec(animated, LevyraMotion.palette()),
         label = "artist-highlight"
     )
+    val heroEntranceKey = profile?.let { it.browseId.ifBlank { it.name } }.orEmpty()
+    val heroEntrance = remember(heroEntranceKey) { Animatable(if (animated) 0f else 1f) }
+    LaunchedEffect(heroEntranceKey, animated) {
+        if (!animated) {
+            heroEntrance.snapTo(1f)
+            return@LaunchedEffect
+        }
+        heroEntrance.animateTo(
+            1f,
+            tween(LevyraMotion.Durations.Long + 280, easing = LevyraMotion.Easings.Decelerate)
+        )
+    }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -4749,6 +4761,7 @@ private fun ArtistOverlay(
                                 motionArtwork = state.artistMotionArtwork,
                                 motionEnabled = state.animationsEnabled && state.motionArtworkEnabled,
                                 animated = animated,
+                                entrance = { heroEntrance.value },
                                 canvasQuality = state.interfaceSettings.canvasQuality,
                                 scroll = heroScroll,
                                 collapse = collapse
@@ -5180,6 +5193,7 @@ private fun ArtistHero(
     motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
     motionEnabled: Boolean,
     animated: Boolean,
+    entrance: () -> Float,
     canvasQuality: LevyraCanvasQuality,
     scroll: () -> Float,
     collapse: () -> Float
@@ -5187,15 +5201,6 @@ private fun ArtistHero(
     val heroContext = LocalContext.current
     val density = LocalDensity.current
     val nameRisePx = with(density) { ArtistNameRise.toPx() }
-    val artistKey = profile.browseId.ifBlank { profile.name }
-    val entrance = remember(artistKey) { Animatable(if (animated) 0f else 1f) }
-    LaunchedEffect(artistKey, animated) {
-        if (!animated) {
-            entrance.snapTo(1f)
-            return@LaunchedEffect
-        }
-        entrance.animateTo(1f, tween(LevyraMotion.Durations.Long + 280, easing = LevyraMotion.Easings.Decelerate))
-    }
     val scrim = LevyraBlack
     val statusProtection = if (LevyraIsLight) scrim.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.46f)
     val nameSize = when {
@@ -5228,7 +5233,7 @@ private fun ArtistHero(
                 .matchParentSize()
                 .graphicsLayer {
                     translationY = scroll() * ArtistHeroParallax
-                    val settle = ArtistHeroEntranceScale - (ArtistHeroEntranceScale - 1f) * entrance.value
+                    val settle = ArtistHeroEntranceScale - (ArtistHeroEntranceScale - 1f) * entrance()
                     scaleX = settle
                     scaleY = settle
                     transformOrigin = TransformOrigin(0.5f, 0.35f)
@@ -5290,7 +5295,7 @@ private fun ArtistHero(
                 .padding(start = 20.dp, end = 20.dp, bottom = 14.dp)
                 .graphicsLayer {
                     val progress = collapse()
-                    val reveal = entrance.value
+                    val reveal = entrance()
                     alpha = (1f - progress * 1.35f).coerceIn(0f, 1f) * reveal
                     translationY = (1f - reveal) * nameRisePx - scroll() * 0.12f
                     val scale = 1f - progress * 0.06f
