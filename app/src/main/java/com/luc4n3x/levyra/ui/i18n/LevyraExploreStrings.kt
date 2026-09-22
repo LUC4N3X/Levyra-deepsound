@@ -42,6 +42,8 @@ private val exploreBundles: Map<String, Map<String, String>> = mapOf(
     "th" to explore("อารมณ์และแนวเพลง", "ตัวอย่างเพลง", "คลิปแนวตั้งจากวิดีโอที่กำลังมาแรง", "ตัวอย่างเพลงยังไม่พร้อมใช้งานในขณะนี้ โปรดลองอีกครั้งในอีกสักครู่", "ลองอีกครั้ง"),
     "fil" to explore("Mood at genre", "Samples", "Mga vertical na clip mula sa mga video ngayon", "Hindi available ang Samples ngayon. Subukan ulit maya-maya.", "Subukan ulit"),
     "he" to explore("מצבי רוח וז'אנרים", "דגימות", "קליפים אנכיים מתוך הסרטונים של הרגע", "הדגימות אינן זמינות כרגע. נסו שוב בעוד רגע.", "נסו שוב"),
+    "fi" to explore("Tunnelmat ja tyylilajit", "Näytteet", "Pystyvideoleikkeet hetken videoista", "Näytteet eivät ole juuri nyt saatavilla. Yritä hetken kuluttua uudelleen.", "Yritä uudelleen"),
+    "et" to explore("Meeleolud ja žanrid", "Näidised", "Vertikaalsed klipid hetke videotest", "Näidised pole praegu saadaval. Proovi varsti uuesti.", "Proovi uuesti"),
 )
 
 internal fun exploreLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(exploreBundles, code)

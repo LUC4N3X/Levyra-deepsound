@@ -364,6 +364,28 @@ private val organizationBundles: Map<String, Map<String, String>> = mapOf(
         "תגיות", "תגית חדשה", "שם התגית", "עריכת תגיות", "סינון לפי תגית",
         "אפשר לשייך עד 8 תגיות.",
         "הסתרה מהספרייה", "הצגה בספרייה", "פלייליסטים מוסתרים", "אין פלייליסטים מוסתרים."
+    ),
+    "fi" to organization(
+        "Ambient", "OLED-ystävällinen näyttö rauhalliseen kuunteluun", "Avaa Ambient", "Poistu Ambientista",
+        "Ambient-näyttö", "Kirkkaus", "Automaattinen himmennys", "Pikselisiirto", "Läheisyyspimennytys",
+        "Näytä sanoitukset", "Näytä Canvas", "Mitään ei toisteta",
+        "Löydä uudelleen", "Suosikit, joita et ole kuunnellut vähään aikaan",
+        "Älä suosittele tätä esittäjää", "Suosittele uudelleen", "Pois suljetut esittäjät",
+        "Ei vielä pois suljettuja esittäjiä.",
+        "Tunnisteet", "Uusi tunniste", "Tunnisteen nimi", "Muokkaa tunnisteita", "Suodata tunnisteella",
+        "Voit määrittää enintään 8 tunnistetta.",
+        "Piilota kirjastosta", "Näytä kirjastossa", "Piilotetut soittolistat", "Ei piilotettuja soittolistoja."
+    ),
+    "et" to organization(
+        "Ambient", "OLED-sõbralik ekraan vaikseks kuulamiseks", "Ava Ambient", "Välju Ambientist",
+        "Ambient-ekraan", "Heledus", "Automaatne hämardamine", "Pikslinihutus", "Läheduspimendus",
+        "Näita sõnu", "Näita Canvast", "Midagi ei esitata",
+        "Taasavasta", "Lemmikud, mida sa pole mõnda aega kuulanud",
+        "Ära soovita seda esitajat", "Soovita uuesti", "Välistatud esitajad",
+        "Välistatud esitajaid veel pole.",
+        "Sildid", "Uus silt", "Sildi nimi", "Muuda silte", "Filtreeri sildi järgi",
+        "Saad määrata kuni 8 silti.",
+        "Peida kogust", "Kuva kogus", "Peidetud esitusloendid", "Peidetud esitusloendeid pole."
     )
 )
 

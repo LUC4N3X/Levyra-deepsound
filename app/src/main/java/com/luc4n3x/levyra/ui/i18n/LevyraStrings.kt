@@ -1254,6 +1254,8 @@ class LevyraStrings private constructor(
             "th" -> "$formattedValue เพลง"
             "fil" -> "$formattedValue kanta"
             "he" -> if (value == 1) "שיר אחד" else "$formattedValue שירים"
+            "fi" -> if (value == 1) "$formattedValue kappale" else "$formattedValue kappaletta"
+            "et" -> "$formattedValue lugu"
             else -> if (value == 1) "$formattedValue track" else "$formattedValue tracks"
         }
     }
@@ -1310,6 +1312,8 @@ class LevyraStrings private constructor(
             "th" -> "กำลังดาวน์โหลด $value%"
             "fil" -> "Nagda-download $value%"
             "he" -> "מוריד $value%"
+            "fi" -> "Ladataan $value%"
+            "et" -> "Allalaadimine $value%"
             else -> "Download $value%"
         }
     }
@@ -1348,6 +1352,8 @@ class LevyraStrings private constructor(
             "th" -> "ดาวน์โหลดแล้ว $value เพลง"
             "fil" -> if (value == 1) "1 kanta ang na-download" else "$value kanta ang na-download"
             "he" -> if (value == 1) "שיר אחד הורד" else "הורדו $value שירים"
+            "fi" -> if (value == 1) "1 kappale ladattu" else "$value kappaletta ladattu"
+            "et" -> if (value == 1) "1 lugu alla laaditud" else "$value lugu alla laaditud"
             else -> if (value == 1) "1 track downloaded" else "$value tracks downloaded"
         }
     }
@@ -1463,6 +1469,8 @@ class LevyraStrings private constructor(
             "th" -> "บันทึกแล้ว $value เพลง"
             "fil" -> if (value == 1) "1 kanta ang na-save" else "$value kanta ang na-save"
             "he" -> if (value == 1) "שיר אחד נשמר" else "נשמרו $value שירים"
+            "fi" -> if (value == 1) "1 kappale tallennettu" else "$value kappaletta tallennettu"
+            "et" -> if (value == 1) "1 lugu salvestatud" else "$value lugu salvestatud"
             else -> if (value == 1) "1 track saved" else "$value tracks saved"
         }
     }
@@ -1518,6 +1526,8 @@ class LevyraStrings private constructor(
             "th" -> "$value ผลลัพธ์"
             "fil" -> "$value resulta"
             "he" -> if (value == 1) "תוצאה אחת" else "$value תוצאות"
+            "fi" -> if (value == 1) "$value tulos" else "$value tulosta"
+            "et" -> if (value == 1) "$value tulemus" else "$value tulemust"
             else -> if (value == 1) "$value result" else "$value results"
         }
     }
@@ -1550,6 +1560,8 @@ class LevyraStrings private constructor(
             "th" -> when (normalizedHour) { in 5..11 -> "สวัสดีตอนเช้า" to "☀️"; in 12..17 -> "สวัสดีตอนบ่าย" to "🎶"; in 18..22 -> "สวัสดีตอนเย็น" to "🌙"; else -> "ราตรีสวัสดิ์" to "🌌" }
             "fil" -> when (normalizedHour) { in 5..11 -> "Magandang umaga" to "☀️"; in 12..17 -> "Magandang hapon" to "🎶"; in 18..22 -> "Magandang gabi" to "🌙"; else -> "Magandang gabi" to "🌌" }
             "he" -> when (normalizedHour) { in 5..11 -> "בוקר טוב" to "☀️"; in 12..17 -> "צהריים טובים" to "🎶"; in 18..22 -> "ערב טוב" to "🌙"; else -> "לילה טוב" to "🌌" }
+            "fi" -> when (normalizedHour) { in 5..11 -> "Hyvää huomenta" to "☀️"; in 12..17 -> "Hyvää iltapäivää" to "🎶"; in 18..22 -> "Hyvää iltaa" to "🌙"; else -> "Hyvää yötä" to "🌌" }
+            "et" -> when (normalizedHour) { in 5..11 -> "Tere hommikust" to "☀️"; in 12..17 -> "Tere päevast" to "🎶"; in 18..22 -> "Tere õhtust" to "🌙"; else -> "Head ööd" to "🌌" }
             else -> when (normalizedHour) { in 5..11 -> "Good morning" to "☀️"; in 12..17 -> "Good afternoon" to "🎶"; in 18..22 -> "Good evening" to "🌙"; else -> "Good night" to "🌌" }
         }
         val name = userName.trim()
@@ -1602,6 +1614,8 @@ class LevyraStrings private constructor(
             "th" -> mapOf("queued" to "อยู่ในคิว", "downloading" to "กำลังดาวน์โหลด", "paused" to "หยุดชั่วคราว", "failed" to "ล้มเหลว", "completed" to "เสร็จสิ้น", "cancelled" to "ยกเลิกแล้ว")
             "fil" -> mapOf("queued" to "Nasa queue", "downloading" to "Nagda-download", "paused" to "Naka-pause", "failed" to "Nabigo", "completed" to "Kumpleto", "cancelled" to "Kinansela")
             "he" -> mapOf("queued" to "בתור", "downloading" to "מוריד", "paused" to "מושהה", "failed" to "נכשל", "completed" to "הושלם", "cancelled" to "בוטל")
+            "fi" -> mapOf("queued" to "Jonossa", "downloading" to "Ladataan", "paused" to "Tauotettu", "failed" to "Epäonnistui", "completed" to "Valmis", "cancelled" to "Peruutettu")
+            "et" -> mapOf("queued" to "Järjekorras", "downloading" to "Allalaadimine", "paused" to "Peatatud", "failed" to "Ebaõnnestus", "completed" to "Valmis", "cancelled" to "Tühistatud")
             else -> mapOf("queued" to "Queued", "downloading" to "Downloading", "paused" to "Paused", "failed" to "Failed", "completed" to "Completed", "cancelled" to "Cancelled")
         }
         return translations[key] ?: key
@@ -1839,10 +1853,11 @@ class LevyraStrings private constructor(
                 "th" to bundle("th", thLocalizationEntries()),
                 "fil" to bundle("fil", filLocalizationEntries()),
                 "he" to bundle("he", heLocalizationEntries()),
+                "fi" to bundle("fi", fiLocalizationEntries()),
+                "et" to bundle("et", etLocalizationEntries()),
                 "zh-Hant" to bundle("zh-Hant", enEntries() + newLocaleCoreOverrides("zh-Hant")),
                 "hu" to bundle("hu", enEntries() + newLocaleCoreOverrides("hu")),
                 "bg" to bundle("bg", enEntries() + newLocaleCoreOverrides("bg")),
-                "fi" to bundle("fi", enEntries() + newLocaleCoreOverrides("fi")),
                 "nb" to bundle("nb", enEntries() + newLocaleCoreOverrides("nb")),
                 "ca" to bundle("ca", enEntries() + newLocaleCoreOverrides("ca")),
                 "hr" to bundle("hr", enEntries() + newLocaleCoreOverrides("hr")),

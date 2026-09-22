@@ -72,7 +72,9 @@ private val playerVisualBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to playerVisual("Chế độ hiển thị", "Chọn cách hiển thị ảnh bìa và Canvas động", "Ảnh bìa", "Thẻ Canvas", "Canvas đắm chìm", "Hình nền trình phát", "Kiểu hình nền phía sau trình phát", "Thích ứng", "Mờ nhòe", "Tối", "Đen thuần", "Vào chế độ đắm chìm", "Thoát chế độ đắm chìm"),
     "th" to playerVisual("โหมดภาพ", "เลือกวิธีแสดงภาพหน้าปกและ Canvas เคลื่อนไหว", "หน้าปก", "การ์ด Canvas", "Canvas แบบเต็มตา", "พื้นหลังโปรแกรมเล่น", "สไตล์พื้นหลังด้านหลังโปรแกรมเล่น", "ปรับเปลี่ยนตามเนื้อหา", "เบลอ", "มืด", "ดำสนิท", "เข้าสู่โหมดเต็มตา", "ออกจากโหมดเต็มตา"),
     "fil" to playerVisual("Visual mode", "Piliin kung paano ipapakita ang artwork at motion Canvas", "Artwork", "Canvas card", "Immersive Canvas", "Background ng player", "Estilo ng background sa likod ng player", "Adaptive", "Blur", "Madilim", "Purong itim", "Pumasok sa immersive", "Lumabas sa immersive"),
-    "he" to playerVisual("מצב חזותי", "בחר כיצד יוצגו העטיפה וה-Canvas המונפש", "עטיפה", "כרטיס Canvas", "Canvas סוחף", "רקע הנגן", "סגנון הרקע מאחורי הנגן", "אדפטיבי", "טשטוש", "כהה", "שחור מוחלט", "כניסה למצב סוחף", "יציאה ממצב סוחף")
+    "he" to playerVisual("מצב חזותי", "בחר כיצד יוצגו העטיפה וה-Canvas המונפש", "עטיפה", "כרטיס Canvas", "Canvas סוחף", "רקע הנגן", "סגנון הרקע מאחורי הנגן", "אדפטיבי", "טשטוש", "כהה", "שחור מוחלט", "כניסה למצב סוחף", "יציאה ממצב סוחף"),
+    "fi" to playerVisual("Visuaalinen tila", "Valitse, miten kansikuva ja liikkuva Canvas näkyvät", "Kansikuva", "Canvas-kortti", "Immersiivinen Canvas", "Soittimen tausta", "Taustatyyli soittimen takana", "Mukautuva", "Sumeus", "Tumma", "Puhdas musta", "Siirry immersiiviseen tilaan", "Poistu immersiivisestä tilasta"),
+    "et" to playerVisual("Visuaalne režiim", "Vali, kuidas kaanepilt ja liikuv Canvas ilmuvad", "Kaanepilt", "Canvas-kaart", "Kaasahaarav Canvas", "Mängija taust", "Taustastiil mängija taga", "Kohanduv", "Hägu", "Tume", "Puhas must", "Ava kaasahaarav režiim", "Välju kaasahaaravast režiimist")
 )
 
 internal fun playerVisualLocalizationEntries(code: String): Map<String, String> =

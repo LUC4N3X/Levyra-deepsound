@@ -238,6 +238,24 @@ fun LevyraStrings.playlistImportCopy(): PlaylistImportCopy = when (code) {
         "השירים המיובאים מותאמים לקטלוג של Levyra כדי לשמור על הפעלה אמינה.",
         "ביטול"
     )
+    "fi" -> PlaylistImportCopy(
+        "Tuo soittolista",
+        "Tuetuista musiikkipalveluista ja yhteensopivista varmuuskopioista",
+        "Tuo",
+        "Liitä tuetun musiikkipalvelun soittolistan linkki tai yhteensopivan varmuuskopion sisältö. Levyra tunnistaa kappaleet ja luo soittolistan kirjastoosi.",
+        "Liitä linkki tai varmuuskopion sisältö…",
+        "Tuodut kappaleet yhdistetään Levyran luetteloon luotettavan toiston varmistamiseksi.",
+        "Peruuta"
+    )
+    "et" -> PlaylistImportCopy(
+        "Impordi esitusloend",
+        "Toetatud muusikateenustest ja ühilduvatest varukoopiatest",
+        "Impordi",
+        "Kleebi toetatud muusikateenuse esitusloendi link või ühilduva varukoopia sisu. Levyra tuvastab lood ja loob esitusloendi sinu teeki.",
+        "Kleebi link või varukoopia sisu…",
+        "Imporditud lood vastendatakse Levyra kataloogiga usaldusväärse taasesituse tagamiseks.",
+        "Tühista"
+    )
     else -> PlaylistImportCopy(
         "Import playlist",
         "From supported music services and compatible backups",
@@ -302,5 +320,7 @@ private fun localizedNewAudioPresetLabels(code: String): NewAudioPresetLabels = 
     "th" -> NewAudioPresetLabels("ร็อก", "ป๊อป", "อิเล็กทรอนิกส์", "แจ๊ส", "อะคูสติก", "คลาสสิก", "ปรับจูนอุปกรณ์")
     "fil" -> NewAudioPresetLabels("Rock", "Pop", "Electronic", "Jazz", "Acoustic", "Classical", "Tuning ng device")
     "he" -> NewAudioPresetLabels("רוק", "פופ", "אלקטרוני", "ג׳אז", "אקוסטי", "קלאסי", "כיוון למכשיר")
+    "fi" -> NewAudioPresetLabels("Rock", "Pop", "Elektroninen", "Jazz", "Akustinen", "Klassinen", "Laitteen viritys")
+    "et" -> NewAudioPresetLabels("Rock", "Pop", "Elektrooniline", "Jazz", "Akustiline", "Klassikaline", "Seadme häälestus")
     else -> NewAudioPresetLabels("Rock", "Pop", "Electronic", "Jazz", "Acoustic", "Classical", "Device tune")
 }

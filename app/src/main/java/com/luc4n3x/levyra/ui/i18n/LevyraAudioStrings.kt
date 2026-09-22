@@ -46,7 +46,9 @@ private val audioBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to audioStrings("Chất lượng phát trực tuyến", "Bộ chỉnh âm", "Âm thanh không gian", "Dải động", "Phát nhạc", "Đặt lại", "Tùy chỉnh", "Dải tần"),
     "th" to audioStrings("คุณภาพสตรีมมิง", "อีควอไลเซอร์", "เสียงรอบทิศทาง", "ไดนามิก", "การเล่น", "รีเซ็ต", "กำหนดเอง", "ย่านความถี่"),
     "fil" to audioStrings("Kalidad ng streaming", "Equalizer", "Spatial na tunog", "Dynamics", "Pag-playback", "I-reset", "Custom", "Mga banda"),
-    "he" to audioStrings("איכות סטרימינג", "אקולייזר", "צליל מרחבי", "דינמיקה", "השמעה", "איפוס", "מותאם אישית", "רצועות")
+    "he" to audioStrings("איכות סטרימינג", "אקולייזר", "צליל מרחבי", "דינמיקה", "השמעה", "איפוס", "מותאם אישית", "רצועות"),
+    "fi" to audioStrings("Suoratoiston laatu", "Taajuuskorjain", "Tilaääni", "Dynamiikka", "Toisto", "Nollaa", "Mukautettu", "Kaistat"),
+    "et" to audioStrings("Voogesituse kvaliteet", "Ekvalaiser", "Ruumiline heli", "Dünaamika", "Taasesitus", "Lähtesta", "Kohandatud", "Sagedusribad")
 )
 
 internal fun audioLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(audioBundles, code)

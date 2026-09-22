@@ -42,7 +42,9 @@ private val lyricsActionBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to lyricsActions("Đổi lời bài hát", "Tự động", "Chọn câu hát", "Sao chép", "Chia sẻ", "Các phiên bản lời bài hát"),
     "th" to lyricsActions("เปลี่ยนเนื้อเพลง", "อัตโนมัติ", "เลือกท่อนเพลง", "คัดลอก", "แชร์", "เวอร์ชันเนื้อเพลง"),
     "fil" to lyricsActions("Palitan ang liriko", "Awtomatiko", "Pumili ng mga linya", "Kopyahin", "Ibahagi", "Mga bersyon ng liriko"),
-    "he" to lyricsActions("שינוי מילות השיר", "אוטומטי", "בחירת שורות", "העתקה", "שיתוף", "גרסאות של מילות השיר")
+    "he" to lyricsActions("שינוי מילות השיר", "אוטומטי", "בחירת שורות", "העתקה", "שיתוף", "גרסאות של מילות השיר"),
+    "fi" to lyricsActions("Vaihda sanoitukset", "Automaattinen", "Valitse säkeet", "Kopioi", "Jaa", "Sanoitusversiot"),
+    "et" to lyricsActions("Muuda sõnu", "Automaatne", "Vali salmid", "Kopeeri", "Jaga", "Sõnade versioonid")
 )
 
 private val lyricsOffsetBundles: Map<String, Map<String, String>> = mapOf(
@@ -200,6 +202,11 @@ private val lyricsOffsetBundles: Map<String, Map<String, String>> = mapOf(
         "lyricsOffsetEarlier" to "Sanoitukset 0,5 sekuntia aikaisemmin",
         "lyricsOffsetLater" to "Sanoitukset 0,5 sekuntia myöhemmin",
         "lyricsOffsetReset" to "Nollaa sanoitusten ajoitus"
+    ),
+    "et" to mapOf(
+        "lyricsOffsetEarlier" to "Sõnad 0,5 sekundit varem",
+        "lyricsOffsetLater" to "Sõnad 0,5 sekundit hiljem",
+        "lyricsOffsetReset" to "Lähtesta sõnade ajastus"
     ),
     "nb" to mapOf(
         "lyricsOffsetEarlier" to "Teksten 0,5 sekunder tidligere",
