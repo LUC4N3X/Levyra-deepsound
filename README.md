@@ -92,6 +92,8 @@ External services provide some of the music, lyrics, artwork and metadata Levyra
     <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
     &nbsp;·&nbsp;
     <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php"><b>SecurityLab.ru</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
   </sub>
 </p>
 
