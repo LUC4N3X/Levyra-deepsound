@@ -84,6 +84,35 @@ also avoids stuffing every specialized procedure into startup context.
 `.agents/skills/` remains the only tracked Levyra skill tree. Claude discovers
 the generated `.claude/skills/` view; Codex reads the canonical tree directly.
 
+## Optional Jev integration
+
+Jev can be installed locally for Claude Code to accelerate repetitive
+classification, ranking, scoring, and narrow evidence checks. It is optional and
+must not become a runtime or build dependency of Levyra.
+
+Install it at user scope rather than project scope:
+
+```powershell
+npx -y @francoischastel/jev-code setup claude
+npx -y @francoischastel/jev-code doctor --live
+claude mcp get jev
+```
+
+User scope is intentional. This repository tracks `.mcp.json`, so project-scope
+setup could place machine-specific Jev configuration or credentials in a tracked
+file. Keep `TYPESAFE_API_KEY` in the local user environment or other
+machine-local Claude configuration and never commit it.
+
+Inside Claude Code, `/mcp` should list Jev after setup. The Jev skill may be
+loaded explicitly with `/jev`, but normal Levyra work should use it only when
+the task has many small independent decisions and the evidence is already
+available.
+
+Jev is not a replacement for Claude's engineering reasoning. Architecture,
+implementation, security-sensitive analysis, root-cause debugging, and final
+review stay with Claude and the repository's normal validation process. If Jev
+is unavailable, the task continues with native tools.
+
 ## Settings and hooks
 
 Tracked settings live at `.agents/claude/settings.json`; generated
@@ -97,8 +126,8 @@ checkpointing, comment guard, compaction re-anchoring, and completion audit.
 routing returns no specialized match. If Python is unavailable, the hook emits a
 minimal static fallback rather than silently providing no context.
 
-Optional tooling is fail-open: unavailable RTK, jCodeMunch, or memory tooling
-must not block normal coding. Validation claims remain evidence-based.
+Optional tooling is fail-open: unavailable RTK, jCodeMunch, Jev, or memory
+tooling must not block normal coding. Validation claims remain evidence-based.
 
 ## Personal local overrides
 
@@ -113,6 +142,7 @@ in its runtime manifest and preserves unrelated machine-specific local files.
 - edit Levyra skills only under `.agents/skills/`;
 - never commit generated `.claude/`, `.codex/`, or
   `.agents/claude/skills/` trees;
+- never commit Jev credentials or machine-specific Jev MCP configuration;
 - keep `scripts/sync_agent_runtime.py` idempotent and non-destructive;
 - keep prompt-hook fallback behavior and validators in sync with discovery;
 - run the AI quality gate after structural agent changes.
