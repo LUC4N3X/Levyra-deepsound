@@ -19,50 +19,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  android:
-    name: Lint, Full Tests and Release Compile
+  preflight:
+    name: Preflight
     runs-on: ubuntu-latest
-    timeout-minutes: 75
-    env:
-      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
-      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
-      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
-      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
-      LEVYRA_KEY_ALIAS: levyra_ci
-      LEVYRA_KEY_PASSWORD: levyra_ci_password
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: Setup Java
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-          cache-read-only: ${{ github.event_name == 'pull_request' }}
-
-      - name: Setup Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
-          yes | "${SDKMANAGER}" --licenses >/dev/null || true
-          "${SDKMANAGER}" --channel=3 \
-            "platform-tools" \
-            "platforms;android-37.0" \
-            "build-tools;36.0.0" \
-            "ndk;28.2.13676358" \
-            "cmake;3.22.1"
-
-      - name: Cache Native Audio Dependencies
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .gradle/levyra-native-deps
-          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
 
       - name: Validate Build Inputs
         shell: bash
@@ -88,6 +54,53 @@ jobs:
           python3 scripts/validate_fdroid_review_contract.py
           python3 scripts/ai_quality_gate.py --profile fast --base-ref "${BASE_REF}"
 
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
+  lint:
+    name: Android Lint
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
       - name: Prepare CI Release Signing
         shell: bash
         run: |
@@ -104,21 +117,117 @@ jobs:
             -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
             >/dev/null
 
-      - name: Gradle Version
-        run: ./gradlew --no-daemon --version
+      - name: Android Lint
+        run: ./gradlew :app:lintRelease --console=plain --warning-mode summary
 
-      - name: Android Runtime Compatibility Scan
-        run: python3 scripts/check_android_regex_compatibility.py
+      - name: Upload Lint Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-check-lint-reports-${{ github.run_number }}
+          path: app/build/reports
+          if-no-files-found: ignore
+
+  tests:
+    name: Unit Tests
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
 
       - name: Extractor Unit Tests
-        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+        run: ./gradlew -p third_party/LevyraExtractor :extractor:test --console=plain --warning-mode summary
 
-      - name: Android Lint
-        run: ./gradlew --no-daemon :app:lintRelease
+      - name: Android and Native Audio Unit Tests
+        run: ./gradlew :app:testDebugUnitTest :levyra-native-audio:testDebugUnitTest --console=plain --warning-mode summary
 
-      - name: Android and F-Droid Regression Unit Tests
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-check-test-reports-${{ github.run_number }}
+          path: |
+            app/build/reports
+            levyra-native-audio/build/reports
+            third_party/LevyraExtractor/**/build/reports
+          if-no-files-found: ignore
+
+  fdroid-regression:
+    name: Android and F-Droid Regression Unit Tests
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
         run: |
-          ./gradlew --no-daemon :app:testDebugUnitTest \
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
+      - name: Run F-Droid Regression Tests
+        run: |
+          ./gradlew :app:testDebugUnitTest \
             --tests 'com.luc4n3x.levyra.data.LevyraPreferencesDefaultsTest' \
             --tests 'com.luc4n3x.levyra.data.PlaybackResolverOfflineExportTest' \
             --tests 'com.luc4n3x.levyra.player.offline.OfflineAudioExporterTest' \
@@ -135,31 +244,78 @@ jobs:
             --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
             --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
             --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest' \
-            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'
+            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest' \
+            --console=plain \
+            --warning-mode summary
 
-      - name: Android Full Unit Test Suite
-        run: ./gradlew --no-daemon :app:testDebugUnitTest
+  release:
+    name: Release Compile
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
 
-      - name: Native Audio Unit Tests
-        run: ./gradlew --no-daemon :levyra-native-audio:testDebugUnitTest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
 
-      - name: PR Diagnostics Unit Tests
-        run: ./gradlew --no-daemon :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*'
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
+      - name: Prepare CI Release Signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
 
       - name: Release Compile
-        run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
+        run: ./gradlew --no-configuration-cache assembleRelease --console=plain --warning-mode summary
 
-      - name: PR Diagnostics Compile
-        run: ./gradlew --no-daemon --no-configuration-cache assemblePrDiagnostics
-
-      - name: Verify Upstream Artifact Isolation
+      - name: Verify Release Artifact Isolation
         run: |
           python3 scripts/verify_diagnostics_isolation.py \
             --apk app/build/outputs/apk/release/app-release.apk \
             --expect absent
-          python3 scripts/verify_diagnostics_isolation.py \
-            --apk app/build/outputs/apk/prDiagnostics/app-prDiagnostics.apk \
-            --expect present
 
       - name: Upstream updater manifest contract
         shell: bash
@@ -191,24 +347,138 @@ jobs:
               raise SystemExit('Upstream APK must keep the GitHub update provider enabled')
           PY
 
-      - name: Setup Java 21 for F-Droid
+  diagnostics:
+    name: PR Diagnostics
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
+      - name: Prepare CI Release Signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: PR Diagnostics Unit Tests
+        run: ./gradlew :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*' --console=plain --warning-mode summary
+
+      - name: PR Diagnostics Compile
+        run: ./gradlew --no-configuration-cache assemblePrDiagnostics --console=plain --warning-mode summary
+
+      - name: Verify Diagnostics Artifact Isolation
+        run: |
+          python3 scripts/verify_diagnostics_isolation.py \
+            --apk app/build/outputs/apk/prDiagnostics/app-prDiagnostics.apk \
+            --expect present
+
+      - name: Upload Diagnostics Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-check-diagnostics-reports-${{ github.run_number }}
+          path: app/build/reports
+          if-no-files-found: ignore
+
+  fdroid:
+    name: F-Droid Source Build
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: ""
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+      LEVYRA_KEYSTORE_FILE: ""
+      LEVYRA_KEYSTORE_PASSWORD: ""
+      LEVYRA_KEY_ALIAS: ""
+      LEVYRA_KEY_PASSWORD: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
 
       - name: F-Droid Release Compile
         shell: bash
-        env:
-          YOUTUBE_INNERTUBE_API_KEY: ""
-          LEVYRA_KEYSTORE_FILE: ""
-          LEVYRA_KEYSTORE_PASSWORD: ""
-          LEVYRA_KEY_ALIAS: ""
-          LEVYRA_KEY_PASSWORD: ""
         run: |
           set -euo pipefail
-          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease \
-            -PlevyraFdroidBuild=true
+          ./gradlew --no-configuration-cache :app:assembleRelease \
+            -PlevyraFdroidBuild=true \
+            --console=plain \
+            --warning-mode summary
           FDROID_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "${FDROID_APK}"
           if "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify "${FDROID_APK}" >/dev/null 2>&1; then
@@ -244,21 +514,45 @@ jobs:
               raise SystemExit('F-Droid APK must keep the GitHub update provider disabled')
           PY
 
-      - name: Collect Reports
-        if: always()
+  android:
+    name: Lint, Full Tests and Release Compile
+    if: ${{ always() }}
+    needs:
+      - preflight
+      - lint
+      - tests
+      - fdroid-regression
+      - release
+      - diagnostics
+      - fdroid
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Verify PR Check Results
         shell: bash
+        env:
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
+          FDROID_REGRESSION_RESULT: ${{ needs.fdroid-regression.result }}
+          RELEASE_RESULT: ${{ needs.release.result }}
+          DIAGNOSTICS_RESULT: ${{ needs.diagnostics.result }}
+          FDROID_RESULT: ${{ needs.fdroid.result }}
         run: |
           set -euo pipefail
-          mkdir -p artifacts/reports
-          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/reports-index.txt || true
-          if [ -d app/build/reports ]; then
-            cp -R app/build/reports artifacts/reports/app-build-reports
-          fi
+          printf 'preflight=%s\n' "${PREFLIGHT_RESULT}"
+          printf 'lint=%s\n' "${LINT_RESULT}"
+          printf 'tests=%s\n' "${TESTS_RESULT}"
+          printf 'fdroid-regression=%s\n' "${FDROID_REGRESSION_RESULT}"
+          printf 'release=%s\n' "${RELEASE_RESULT}"
+          printf 'diagnostics=%s\n' "${DIAGNOSTICS_RESULT}"
+          printf 'fdroid=%s\n' "${FDROID_RESULT}"
 
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: pr-check-reports-${{ github.run_number }}
-          path: artifacts
-          if-no-files-found: ignore
+          test "${PREFLIGHT_RESULT}" = "success"
+          test "${LINT_RESULT}" = "success"
+          test "${TESTS_RESULT}" = "success"
+          test "${FDROID_REGRESSION_RESULT}" = "success"
+          test "${RELEASE_RESULT}" = "success"
+          test "${DIAGNOSTICS_RESULT}" = "success"
+          test "${FDROID_RESULT}" = "success"
