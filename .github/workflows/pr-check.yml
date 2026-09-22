@@ -185,6 +185,69 @@ jobs:
             third_party/LevyraExtractor/**/build/reports
           if-no-files-found: ignore
 
+  fdroid-regression:
+    name: Android and F-Droid Regression Unit Tests
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
+      - name: Run F-Droid Regression Tests
+        run: |
+          ./gradlew :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.LevyraPreferencesDefaultsTest' \
+            --tests 'com.luc4n3x.levyra.data.PlaybackResolverOfflineExportTest' \
+            --tests 'com.luc4n3x.levyra.player.offline.OfflineAudioExporterTest' \
+            --tests 'com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriterTest' \
+            --tests 'com.luc4n3x.levyra.ui.support.RemoteAnnouncementRepositoryTest' \
+            --tests 'com.luc4n3x.levyra.data.HomeAlbumDeduplicationTest' \
+            --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
+            --tests 'com.luc4n3x.levyra.data.UniversalPlaylistImporterTest' \
+            --tests 'com.luc4n3x.levyra.data.SponsorBlockRepositoryTest' \
+            --tests 'com.luc4n3x.levyra.domain.LevyraAudioPresetsTest' \
+            --tests 'com.luc4n3x.levyra.feature.motion.*' \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
+            --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
+            --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
+            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest' \
+            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest' \
+            --console=plain \
+            --warning-mode summary
+
   release:
     name: Release Compile
     needs: preflight
@@ -458,6 +521,7 @@ jobs:
       - preflight
       - lint
       - tests
+      - fdroid-regression
       - release
       - diagnostics
       - fdroid
@@ -471,6 +535,7 @@ jobs:
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
           LINT_RESULT: ${{ needs.lint.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
+          FDROID_REGRESSION_RESULT: ${{ needs.fdroid-regression.result }}
           RELEASE_RESULT: ${{ needs.release.result }}
           DIAGNOSTICS_RESULT: ${{ needs.diagnostics.result }}
           FDROID_RESULT: ${{ needs.fdroid.result }}
@@ -479,6 +544,7 @@ jobs:
           printf 'preflight=%s\n' "${PREFLIGHT_RESULT}"
           printf 'lint=%s\n' "${LINT_RESULT}"
           printf 'tests=%s\n' "${TESTS_RESULT}"
+          printf 'fdroid-regression=%s\n' "${FDROID_REGRESSION_RESULT}"
           printf 'release=%s\n' "${RELEASE_RESULT}"
           printf 'diagnostics=%s\n' "${DIAGNOSTICS_RESULT}"
           printf 'fdroid=%s\n' "${FDROID_RESULT}"
@@ -486,6 +552,7 @@ jobs:
           test "${PREFLIGHT_RESULT}" = "success"
           test "${LINT_RESULT}" = "success"
           test "${TESTS_RESULT}" = "success"
+          test "${FDROID_REGRESSION_RESULT}" = "success"
           test "${RELEASE_RESULT}" = "success"
           test "${DIAGNOSTICS_RESULT}" = "success"
           test "${FDROID_RESULT}" = "success"
