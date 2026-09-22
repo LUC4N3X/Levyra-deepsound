@@ -621,6 +621,13 @@ class PlaybackService : MediaLibraryService() {
             )
         val upstreamFactory = LevyraYoutubeDataSource.Factory(baseHttpFactory)
         val liveRadioHttpClient = LevyraHttpClientFactory.streaming(this).newBuilder()
+            .addInterceptor { chain ->
+                val request = chain.request()
+                if (!RadioUrlPolicy.isAllowed(request.url.toString())) {
+                    throw IOException("Blocked unsafe live radio URL")
+                }
+                chain.proceed(request)
+            }
             .dns(RadioUrlPolicy.publicDns)
             .build()
         val liveRadioDataSourceFactory = OkHttpDataSource.Factory(liveRadioHttpClient)
@@ -2974,11 +2981,14 @@ private class LevyraRoutingDataSource(
             runCatching { previous.close() }
         }
         val uri = dataSpec.uri
+        val scheme = uri.scheme.orEmpty().lowercase()
+        if (scheme == "http") {
+            throw IOException("Cleartext HTTP is only allowed for live radio")
+        }
         val factory = when {
             uri in subtitleUris -> subtitleDataSourceFactory
             SabrStreamSpec.isSabrUri(uri.toString()) -> sabrDataSourceFactory
-            uri.scheme.orEmpty().lowercase() == "content" || uri.scheme.orEmpty().lowercase() == "file" ->
-                localDataSourceFactory
+            scheme == "content" || scheme == "file" -> localDataSourceFactory
             else -> dataSourceFactory
         }
         val source = factory.createDataSource()
