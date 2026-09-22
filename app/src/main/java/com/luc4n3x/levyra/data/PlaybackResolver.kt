@@ -514,14 +514,20 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun cached(track: Track, isVideoMode: Boolean = false): Track? {
         val normal = cached(track, isVideoMode, selectedAudioQuality)
-        return highQualityPlayback.cachedUpgrade(
+        highQualityPlayback.cachedUpgrade(
             track = track,
             normalCached = normal,
             isVideoMode = isVideoMode,
             audioQuality = selectedAudioQuality,
             provenance = ::basePlaybackProvenance
-        ) ?: normal
+        )?.let { return it }
+        if (normal != null && awaitsHighQualityUpgrade(track, isVideoMode, normal)) return null
+        return normal
     }
+
+    fun awaitsHighQualityUpgrade(track: Track, isVideoMode: Boolean = false, normalCached: Track? = null): Boolean =
+        highQualityPlayback.awaitsUpgrade(track, normalCached, isVideoMode, selectedAudioQuality) &&
+            hasInternetCapableNetwork()
 
     private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
         if (track.streamUrl.isNotBlank()) {

@@ -51,6 +51,7 @@ class HighQualityAudioResolver(
     private val streams = ConcurrentHashMap<String, HighQualityResolution.Selected>()
     private val quarantinedIdentities = ConcurrentHashMap<String, Long>()
     private val quarantinedProviderTracks = ConcurrentHashMap<String, Long>()
+    private val unmatchedIdentities = ConcurrentHashMap<String, Long>()
     private val inFlight = ConcurrentHashMap<String, Deferred<HighQualityResolution>>()
     private val inFlightLock = Any()
 
@@ -81,9 +82,17 @@ class HighQualityAudioResolver(
         return cached
     }
 
+    /** True while a provider stream could still be found for this identity and none is cached yet. */
+    fun upgradePending(identityKey: String): Boolean =
+        mode.enabled &&
+            !isQuarantined(quarantinedIdentities, identityKey) &&
+            !isQuarantined(unmatchedIdentities, identityKey) &&
+            cachedSelection(identityKey) == null
+
     fun begin(identityKey: String, query: AlternativeTrackQuery): Deferred<HighQualityResolution> {
         if (!mode.enabled) return completed(HighQualityFallbackReason.DISABLED)
         if (isQuarantined(quarantinedIdentities, identityKey)) return completed(HighQualityFallbackReason.QUARANTINED)
+        if (isQuarantined(unmatchedIdentities, identityKey)) return completed(HighQualityFallbackReason.NO_MATCH)
         cachedSelection(identityKey)?.let { return CompletableDeferred(it) }
         val lookup = synchronized(inFlightLock) {
             inFlight[identityKey]?.let { return it }
@@ -125,6 +134,9 @@ class HighQualityAudioResolver(
         val resolution = withTimeoutOrNull(lookupBudgetMs) { lane.resolve(identityKey, query) }
             ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
         if (resolution is HighQualityResolution.Selected && mode.enabled) rememberStream(identityKey, resolution)
+        if (resolution is HighQualityResolution.Fallback && resolution.reason in DEFINITIVE_MISSES) {
+            quarantine(unmatchedIdentities, identityKey, clock() + UNMATCHED_MEMORY_MS)
+        }
         return resolution
     }
 
@@ -164,6 +176,8 @@ class HighQualityAudioResolver(
         const val LOOKUP_BUDGET_MS = 8_000L
         const val STREAM_REFRESH_MARGIN_MS = 90_000L
         const val FAILURE_QUARANTINE_MS = 30L * 60L * 1_000L
+        const val UNMATCHED_MEMORY_MS = 30L * 60L * 1_000L
+        private val DEFINITIVE_MISSES = setOf(HighQualityFallbackReason.NO_MATCH, HighQualityFallbackReason.AMBIGUOUS)
         const val MAX_IN_FLIGHT_LOOKUPS = 4
         const val MAX_CACHED_STREAMS = 64
         const val MAX_QUARANTINE_ENTRIES = 256

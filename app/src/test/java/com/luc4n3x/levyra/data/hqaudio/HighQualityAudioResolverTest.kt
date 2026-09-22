@@ -320,4 +320,32 @@ class HighQualityAudioResolverTest {
         assertTrue(retry !== pending)
         retry.cancel()
     }
+
+    @Test
+    fun noMatchIsRememberedSoRepeatedPlaybackDoesNotSearchAgain() {
+        val provider = FakeHighQualityProvider()
+        val resolver = resolver(provider)
+        assertTrue(resolver.upgradePending(identity))
+        val first = resolver.resolveNow()
+        val searchesAfterFirst = provider.searches.size
+        val second = resolver.resolveNow()
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (first as HighQualityResolution.Fallback).reason)
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (second as HighQualityResolution.Fallback).reason)
+        assertEquals(searchesAfterFirst, provider.searches.size)
+        assertTrue(!resolver.upgradePending(identity))
+    }
+
+    @Test
+    fun upgradeStaysPendingUntilAStreamIsCached() {
+        val resolver = resolver(exactProvider())
+        assertTrue(resolver.upgradePending(identity))
+        resolver.resolveNow()
+        assertTrue(!resolver.upgradePending(identity))
+    }
+
+    @Test
+    fun disabledModeNeverWaitsForAnUpgrade() {
+        val resolver = resolver(exactProvider(), mode = HighQualityAudioMode.OFF)
+        assertTrue(!resolver.upgradePending(identity))
+    }
 }
