@@ -208,6 +208,30 @@ internal fun normalizeRadioName(value: String): String = value
     .replace(radioNameSeparatorPattern, " ")
     .trim()
 
+internal fun radioSearchTokens(value: String): List<String> =
+    normalizeRadioName(value)
+        .split(' ')
+        .map(String::trim)
+        .filter { it.length >= 2 }
+        .distinct()
+        .take(8)
+
+internal fun radioStationMatchesSearch(station: RadioStation, query: String): Boolean {
+    val tokens = radioSearchTokens(query)
+    if (tokens.isEmpty()) return false
+    val searchable = normalizeRadioName(
+        listOf(
+            station.name,
+            station.country,
+            station.countryCode,
+            station.language,
+            station.tags.joinToString(" ")
+        ).joinToString(" ")
+    )
+    return tokens.all { token -> searchable.contains(token) }
+}
+
+
 internal fun radioStationScore(station: RadioStation): Long {
     val codecScore = when (station.codec.uppercase(Locale.ROOT)) {
         "AAC", "AAC+", "MP3", "OGG", "OPUS", "FLAC" -> 4_000L
@@ -229,6 +253,33 @@ internal fun filterAndRankRadioStations(stations: List<RadioStation>): List<Radi
         .filter { it.uuid.isNotBlank() && it.name.trim().length in 2..160 }
         .filter { it.preferredStreamUrl.isNotBlank() }
         .sortedByDescending(::radioStationScore)
+        .toList()
+    val seenUuids = hashSetOf<String>()
+    val seenSignatures = hashSetOf<String>()
+    return candidates.filter { station ->
+        val uuid = station.uuid.lowercase(Locale.ROOT)
+        val streamUri = runCatching { URI(station.preferredStreamUrl) }.getOrNull()
+        val host = streamUri?.host.orEmpty().lowercase(Locale.ROOT)
+        val streamPath = streamUri?.let { "${it.path.orEmpty()}?${it.query.orEmpty()}" }.orEmpty()
+        val signature = "${normalizeRadioName(station.name)}|$host|$streamPath|${station.countryCode.uppercase(Locale.ROOT)}"
+        seenUuids.add(uuid) && seenSignatures.add(signature)
+    }
+}
+
+internal fun filterAndRankRadioSearchResults(
+    stations: List<RadioStation>,
+    query: String
+): List<RadioStation> {
+    val normalizedQuery = normalizeRadioName(query)
+    val candidates = stations.asSequence()
+        .filter { it.uuid.isNotBlank() && it.name.trim().length in 2..160 }
+        .filter { it.preferredStreamUrl.isNotBlank() }
+        .filter { radioStationMatchesSearch(it, query) }
+        .sortedByDescending { station ->
+            radioStationScore(station) +
+                if (station.lastCheckOk) 5_000_000L else 0L +
+                if (normalizeRadioName(station.name) == normalizedQuery) 2_000_000L else 0L
+        }
         .toList()
     val seenUuids = hashSetOf<String>()
     val seenSignatures = hashSetOf<String>()

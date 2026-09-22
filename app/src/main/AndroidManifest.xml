@@ -29,6 +29,7 @@
         android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:hardwareAccelerated="true"
         android:resizeableActivity="true"
         android:enableOnBackInvokedCallback="true"
