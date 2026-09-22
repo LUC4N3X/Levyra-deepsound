@@ -36,8 +36,9 @@ internal fun PlayerVisualHost(
     motionEnabled: Boolean,
     isPlaying: Boolean,
     canvasQuality: LevyraCanvasQuality,
+    morphAnchors: PlayerMorphAnchors,
     morphActive: Boolean,
-    swipeOffset: Float,
+    swipeOffset: () -> Float,
     cinematicGeometry: PlayerCinematicGeometry,
     modifier: Modifier = Modifier,
     isVideoMode: Boolean = false,
@@ -76,6 +77,7 @@ internal fun PlayerVisualHost(
                     animationsEnabled = animationsEnabled,
                     isPlaying = isPlaying,
                     canvasQuality = canvasQuality,
+                    morphAnchors = morphAnchors,
                     morphActive = morphActive,
                     swipeOffset = swipeOffset,
                     modifier = Modifier.fillMaxSize()

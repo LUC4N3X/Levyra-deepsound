@@ -35,6 +35,7 @@ internal fun LevyraStrings.replayGainCopy(): ReplayGainCopy = when (code) {
     "bg" -> ReplayGainCopy("Песен", "Албум", "Интелигентен", "Защита от клипинг", "Използва пиковите стойности на ReplayGain")
     "hu" -> ReplayGainCopy("Szám", "Album", "Intelligens", "Túlvezérlés-védelem", "A ReplayGain csúcsértékeit használja")
     "fi" -> ReplayGainCopy("Kappale", "Albumi", "Älykäs", "Leikkautumisen esto", "Käyttää ReplayGain-huippuarvoja")
+        "et" -> ReplayGainCopy("Lugu", "Album", "Nutikas", "Kärpimise kaitse", "Kasutab ReplayGaini tippväärtusi")
     "nb" -> ReplayGainCopy("Spor", "Album", "Smart", "Beskyttelse mot klipping", "Bruker ReplayGain-toppverdier")
     "ca" -> ReplayGainCopy("Pista", "Àlbum", "Intel·ligent", "Protecció contra saturació", "Utilitza els valors de pic de ReplayGain")
     "uk" -> ReplayGainCopy("Трек", "Альбом", "Розумний", "Захист від кліпінгу", "Використовує пікові значення ReplayGain")

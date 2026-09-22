@@ -29,6 +29,7 @@ object LevyraLanguageCatalog {
         LevyraLanguageOption("bg", "🇧🇬", "Bulgarian", "Български"),
         LevyraLanguageOption("hu", "🇭🇺", "Hungarian", "Magyar"),
         LevyraLanguageOption("fi", "🇫🇮", "Finnish", "Suomi"),
+        LevyraLanguageOption("et", "🇪🇪", "Estonian", "Eesti"),
         LevyraLanguageOption("nb", "🇳🇴", "Norwegian Bokmål", "Norsk bokmål"),
         LevyraLanguageOption("ca", "🇪🇸", "Catalan", "Català"),
         LevyraLanguageOption("uk", "🇺🇦", "Ukrainian", "Українська"),

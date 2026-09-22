@@ -1,15 +1,9 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -47,11 +41,12 @@ import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 
-private const val FavoritePopScale = 1.22f
+private const val FavoritePopScale = 1.14f
 private const val TitleMarqueeDelayMs = 3_200
 
 @Composable
@@ -60,6 +55,7 @@ internal fun PlayerTrackMetadata(
     isFavorite: Boolean,
     surfaces: PlayerSurfaceTokens,
     animationsEnabled: Boolean,
+    stepDirection: Int,
     compact: Boolean,
     openArtistLabel: String,
     favoritesLabel: String,
@@ -77,16 +73,7 @@ internal fun PlayerTrackMetadata(
         AnimatedContent(
             targetState = track,
             modifier = Modifier.weight(1f),
-            transitionSpec = {
-                if (animationsEnabled) {
-                    fadeIn(LevyraPlayerDesign.standardTween(260)) +
-                        slideInVertically(LevyraPlayerDesign.smoothSpring()) { it / 5 } togetherWith
-                        fadeOut(LevyraPlayerDesign.standardTween(120)) +
-                            slideOutVertically(LevyraPlayerDesign.standardTween(160)) { -it / 5 }
-                } else {
-                    EnterTransition.None togetherWith ExitTransition.None
-                }
-            },
+            transitionSpec = { LevyraMotion.trackChange(animationsEnabled, stepDirection) },
             contentKey = { it.id },
             label = "player-metadata"
         ) { shown ->
@@ -219,11 +206,12 @@ internal fun rememberFavoritePop(
         )
         wasFavorite = isFavorite
 
-        pop.snapTo(1f)
-        if (shouldPop) {
-            pop.snapTo(FavoritePopScale)
-            pop.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
+        if (!shouldPop) {
+            pop.snapTo(1f)
+            return@LaunchedEffect
         }
+        pop.animateTo(FavoritePopScale, tween(LevyraMotion.Durations.Instant, easing = LevyraMotion.Easings.Decelerate))
+        pop.animateTo(1f, LevyraMotion.feedback.spec())
     }
     return pop
 }

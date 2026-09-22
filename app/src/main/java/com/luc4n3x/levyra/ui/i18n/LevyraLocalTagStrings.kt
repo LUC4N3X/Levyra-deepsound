@@ -278,6 +278,17 @@ private val localTagBundles = mapOf(
         "Tekijätiedot", "Tallenna muutokset", "Tallennetaan…", "Tunnisteet tallennettu",
         "Näitä tunnisteita ei voitu kirjoittaa.", "Turvallinen tunnisteiden muokkaus ei ole käytettävissä tälle tiedostomuodolle.", "Tiedosto on liian suuri, jotta Levyra voisi muokata sen tunnisteita turvallisesti.", "Kirjoitusoikeutta ei myönnetty."
     ),
+    "et" to localTagBundle(
+        "Otsi pealkirja, esitaja, albumi, helilooja, sõnade autori, kommentaaride või siltide järgi",
+        "Muuda faili silte",
+        "Faili sildid",
+        "Muudatused kirjutatakse otse helifaili.",
+        "Pealkiri", "Esitaja", "Album", "Albumi esitaja",
+        "Žanr", "Aasta", "Lugu", "Plaat",
+        "Helilooja", "Sõnade autor", "Kommentaar", "Autoriõigus",
+        "Autorid ja tegijad", "Salvesta muudatused", "Salvestamine…", "Sildid salvestatud",
+        "Neid silte ei saanud kirjutada.", "Turvaline siltide muutmine pole selle failivormingu puhul saadaval.", "Fail on liiga suur, et Levyra saaks selle silte turvaliselt muuta.", "Kirjutamisluba ei antud."
+    ),
     "nb" to localTagBundle(
         "Søk etter tittel, artist, album, komponist, tekstforfatter, kommentarer eller tagger",
         "Rediger filtagger",

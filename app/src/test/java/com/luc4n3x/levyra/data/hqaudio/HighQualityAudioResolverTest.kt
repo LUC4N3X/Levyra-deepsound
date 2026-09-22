@@ -277,6 +277,22 @@ class HighQualityAudioResolverTest {
     }
 
     @Test
+    fun saturatedLookupPoolDoesNotBlockCachedPlaybackForAnotherIdentity() {
+        val provider = FakeHighQualityProvider(searchOutcome = {
+            delay(5_000L)
+            ProviderSearchOutcome.Found(emptyList())
+        })
+        val resolver = resolver(provider)
+        val admitted = (0 until HighQualityAudioResolver.MAX_IN_FLIGHT_LOOKUPS)
+            .map { index -> resolver.begin("$identity-$index", query()) }
+
+        assertTrue(resolver.upgradePending("$identity-0"))
+        assertTrue(!resolver.upgradePending("$identity-overflow"))
+
+        admitted.forEach { it.cancel() }
+    }
+
+    @Test
     fun exactIsrcMatchIsDecisiveEvenOnACompilationAlbum() {
         val provider = FakeHighQualityProvider(
             searchOutcome = {
@@ -319,5 +335,33 @@ class HighQualityAudioResolverTest {
         val retry = resolver.begin(identity, query())
         assertTrue(retry !== pending)
         retry.cancel()
+    }
+
+    @Test
+    fun noMatchIsRememberedSoRepeatedPlaybackDoesNotSearchAgain() {
+        val provider = FakeHighQualityProvider()
+        val resolver = resolver(provider)
+        assertTrue(resolver.upgradePending(identity))
+        val first = resolver.resolveNow()
+        val searchesAfterFirst = provider.searches.size
+        val second = resolver.resolveNow()
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (first as HighQualityResolution.Fallback).reason)
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (second as HighQualityResolution.Fallback).reason)
+        assertEquals(searchesAfterFirst, provider.searches.size)
+        assertTrue(!resolver.upgradePending(identity))
+    }
+
+    @Test
+    fun upgradeStaysPendingUntilAStreamIsCached() {
+        val resolver = resolver(exactProvider())
+        assertTrue(resolver.upgradePending(identity))
+        resolver.resolveNow()
+        assertTrue(!resolver.upgradePending(identity))
+    }
+
+    @Test
+    fun disabledModeNeverWaitsForAnUpgrade() {
+        val resolver = resolver(exactProvider(), mode = HighQualityAudioMode.OFF)
+        assertTrue(!resolver.upgradePending(identity))
     }
 }

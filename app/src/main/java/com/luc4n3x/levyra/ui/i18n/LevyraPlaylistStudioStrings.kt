@@ -304,6 +304,26 @@ private val playlistStudioBundles: Map<String, Map<String, String>> = mapOf(
         "התחל עם כמה שירים", "הוסף שירים מהמועדפים, מההיסטוריה ומהפלייליסטים. אפשר לשנות את הסדר בכל עת.",
         "הספרייה שלך ריקה כרגע. סמן שירים כאהובים או האזן למוזיקה כדי למלא אותה.", "אוסף את הספרייה שלך…",
         "לבטל את השינויים?", "העריכות בפלייליסט הזה יאבדו.", "בטל שינויים", "המשך לערוך"
+    ),
+    "fi" to studio(
+        "Playlist Studio", "Uusi soittolista", "Muokkaa soittolistaa", "Avaa Playlist Studiossa", "Nimeä soittolistasi", "Anna nimi tallentaaksesi",
+        "Kansikuva", "Nykyinen", "Automaattinen", "Artwork", "Mosaiikki", "Spotlight", "Signaali", "Valokuva", "Valitse artwork",
+        "Lisää kappaleita", "Etsi kirjastostasi", "Soittolistalla",
+        "Kaikki muutokset tallennettu", "Tallentamattomia muutoksia", "Tallennetaan…", "Soittolistaa ei voitu tallentaa", "Yritä uudelleen",
+        "Poistettu {title}", "Siirretty {title}", "Kumoa",
+        "Aloita muutamalla kappaleella", "Lisää kappaleita suosikeista, historiasta ja soittolistoista. Voit muuttaa niiden järjestystä milloin tahansa.",
+        "Kirjastosi on toistaiseksi tyhjä. Tykkää kappaleista tai toista musiikkia täyttääksesi sen.", "Kerätään kirjastoasi…",
+        "Hylätäänkö muutokset?", "Tähän soittolistaan tekemäsi muokkaukset menetetään.", "Hylkää", "Jatka muokkaamista"
+    ),
+    "et" to studio(
+        "Playlist Studio", "Uus esitusloend", "Muuda esitusloendit", "Ava Playlist Studios", "Nimeta oma esitusloend", "Salvestamiseks anna nimi",
+        "Kaanepilt", "Praegune", "Automaatne", "Artwork", "Mosaiik", "Spotlight", "Signaal", "Foto", "Vali artwork",
+        "Lisa lugusid", "Otsi oma teegist", "Esitusloendis",
+        "Kõik muudatused salvestatud", "Salvestamata muudatused", "Salvestamine…", "Esitusloendit ei saanud salvestada", "Proovi uuesti",
+        "Eemaldatud {title}", "Liigutatud {title}", "Võta tagasi",
+        "Alusta mõne looga", "Lisa lugusid lemmikutest, ajaloost ja esitusloenditest. Saad neid igal ajal ümber järjestada.",
+        "Sinu teek on praegu tühi. Selle täitmiseks märgi lugusid meeldivaks või kuula muusikat.", "Teegi kogumine…",
+        "Kas loobuda muudatustest?", "Selle esitusloendi muudatused lähevad kaotsi.", "Loobu", "Jätka muutmist"
     )
 )
 

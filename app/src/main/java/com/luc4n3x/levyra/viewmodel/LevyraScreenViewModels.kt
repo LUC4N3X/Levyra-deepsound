@@ -132,11 +132,6 @@ abstract class LevyraScreenViewModel(
         )
 }
 
-data class HomePlaybackProgress(
-    val positionMs: Long,
-    val durationMs: Long
-)
-
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
     private val freezeHomeContent = MutableStateFlow(false)
     private val explicitMoodSelection = MutableStateFlow<Mood?>(null)
@@ -166,14 +161,6 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
             initialValue = buildHomeRenderSnapshot(root.state.value.copy(selectedMood = null))
-        )
-    val playbackProgress: StateFlow<HomePlaybackProgress> = stablePlaybackState
-        .map { HomePlaybackProgress(it.positionMs, it.durationMs) }
-        .distinctUntilChanged()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = HomePlaybackProgress(root.state.value.positionMs, root.state.value.durationMs)
         )
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addToQueue(track: Track) = root.addToQueue(track)

@@ -37,6 +37,7 @@ private val audioOutputBundles: Map<String, Map<String, String>> = mapOf(
     "bg" to audioOutputStrings("Изход AAudio (Oboe)", "Вграден аудиоизход чрез AAudio и Oboe"),
     "hu" to audioOutputStrings("AAudio kimenet (Oboe)", "Natív hangkimenet az AAudio és az Oboe használatával"),
     "fi" to audioOutputStrings("AAudio-ulostulo (Oboe)", "Natiivi äänilähtö AAudion ja Oboen kautta"),
+        "et" to audioOutputStrings("AAudio väljund (Oboe)", "Natiivne heliväljund AAudio ja Oboe kaudu"),
     "nb" to audioOutputStrings("AAudio-utgang (Oboe)", "Innebygd lydutgang via AAudio og Oboe"),
     "ca" to audioOutputStrings("Sortida AAudio (Oboe)", "Sortida d'àudio nativa mitjançant AAudio i Oboe"),
     "fa" to audioOutputStrings("خروجی AAudio (Oboe)", "خروجی صدای بومی از طریق AAudio و Oboe"),

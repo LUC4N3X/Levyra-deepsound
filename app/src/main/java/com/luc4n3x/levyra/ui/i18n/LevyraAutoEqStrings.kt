@@ -308,6 +308,28 @@ private val autoEqBundles: Map<String, Map<String, String>> = mapOf(
         "הפרופיל אינו תקין",
         "הקובץ גדול מדי",
         "העצמות חושבו באינטרפולציה והוגבלו לטווח של Levyra"
+    ),
+    "fi" to autoEqStrings(
+        "Tuo AutoEQ-profiili",
+        "Liitä GraphicEQ-profiili tai avaa tekstitiedosto",
+        "Avaa tiedosto",
+        "Käytä",
+        "Tallenna esiasetuksena",
+        "Esiasetuksen nimi",
+        "Virheellinen profiili",
+        "Tiedosto on liian suuri",
+        "Vahvistukset interpoloitu ja rajoitettu Levyran alueelle"
+    ),
+    "et" to autoEqStrings(
+        "Impordi AutoEQ profiil",
+        "Kleebi GraphicEQ profiil või ava tekstifail",
+        "Ava fail",
+        "Rakenda",
+        "Salvesta eelseadistusena",
+        "Eelseadistuse nimi",
+        "Vigane profiil",
+        "Fail on liiga suur",
+        "Võimendused interpoleeritud ja piiratud Levyra vahemikku"
     )
 )
 
@@ -619,6 +641,28 @@ private val autoEqCatalogBundles: Map<String, Map<String, String>> = mapOf(
         "הורדת הפרופיל נכשלה",
         "ניסיון חוזר",
         "מדידות מפרויקט AutoEq (MIT)"
+    ),
+    "fi" to autoEqCatalogStrings(
+        "Kuulokeluettelo",
+        "Etsi kuulokkeesi ja lataa niiden AutoEQ-korjaus",
+        "Hae merkkiä tai mallia",
+        "Ladataan luetteloa…",
+        "Vastaavia kuulokkeita ei löytynyt",
+        "Luettelo ei ole saatavilla. Tarkista yhteys.",
+        "Profiilin lataus epäonnistui",
+        "Yritä uudelleen",
+        "Mittaukset AutoEq-projektista (MIT)"
+    ),
+    "et" to autoEqCatalogStrings(
+        "Kõrvaklappide kataloog",
+        "Otsi oma kõrvaklapid ja laadi nende AutoEQ parandus",
+        "Otsi kaubamärki või mudelit",
+        "Kataloogi laadimine…",
+        "Sobivaid kõrvaklappe ei leitud",
+        "Kataloog pole saadaval. Kontrolli ühendust.",
+        "Profiili allalaadimine ebaõnnestus",
+        "Proovi uuesti",
+        "Mõõtmised AutoEq projektist (MIT)"
     )
 )
 

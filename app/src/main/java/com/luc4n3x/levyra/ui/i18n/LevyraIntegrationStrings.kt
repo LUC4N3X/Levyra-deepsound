@@ -44,7 +44,9 @@ private val integrationBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to integrationStrings("Tích hợp", "Khóa API", "Khóa bí mật dùng chung", "Mã thông báo", "Sau khi phê duyệt trong trình duyệt, hãy quay lại đây và hoàn tất kết nối.", "Tắt phụ đề", "Phụ đề"),
     "th" to integrationStrings("การเชื่อมต่อ", "คีย์ API", "ความลับที่ใช้ร่วมกัน", "โทเคน", "หลังจากอนุมัติในเบราว์เซอร์ ให้กลับมาที่นี่เพื่อเชื่อมต่อให้เสร็จ", "ปิดคำบรรยาย", "คำบรรยาย"),
     "fil" to integrationStrings("Mga integrasyon", "API key", "Shared secret", "Token", "Pagkatapos mag-aprub sa browser, bumalik dito at tapusin ang koneksyon.", "Naka-off ang subtitle", "Mga subtitle"),
-    "he" to integrationStrings("שילובים", "מפתח API", "סוד משותף", "אסימון", "לאחר האישור בדפדפן, חזור לכאן והשלם את החיבור.", "כתוביות כבויות", "כתוביות")
+    "he" to integrationStrings("שילובים", "מפתח API", "סוד משותף", "אסימון", "לאחר האישור בדפדפן, חזור לכאן והשלם את החיבור.", "כתוביות כבויות", "כתוביות"),
+    "fi" to integrationStrings("Integraatiot", "API-avain", "Jaettu salaisuus", "Tunniste", "Kun olet hyväksynyt selaimessa, palaa tänne ja viimeistele yhteys.", "Tekstitys pois", "Tekstitys"),
+    "et" to integrationStrings("Integratsioonid", "API-võti", "Jagatud saladus", "Pääsutõend", "Pärast brauseris kinnitamist naase siia ja vii ühendamine lõpule.", "Subtiitrid väljas", "Subtiitrid")
 )
 
 internal fun integrationLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(integrationBundles, code)
