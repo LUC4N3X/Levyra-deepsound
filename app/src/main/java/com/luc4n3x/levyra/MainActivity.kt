@@ -54,7 +54,6 @@ import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
 import com.luc4n3x.levyra.player.LevyraPipBridge
-import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
@@ -178,9 +177,6 @@ class MainActivity : ComponentActivity() {
                     onRetryPreUpdateBackup = ::retryPreUpdateBackup,
                     onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
                 )
-                if (activityUiState.showSettings && !pipMode.value) {
-                    RuntimeHooks.internalPanelOverlay()
-                }
                 RemoteAnnouncementGate(
                     enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings,
                     languageCode = activityUiState.languageCode,
