@@ -1722,6 +1722,7 @@ fun LevyraApp(
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showPlaybackDiagnostics by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
+    var liveRadioOpen by rememberSaveable { mutableStateOf(false) }
     var trackActionTarget by remember { mutableStateOf<Track?>(null) }
     var trackActionPlaylistTarget by remember { mutableStateOf<Track?>(null) }
     val createBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
@@ -22149,7 +22150,6 @@ private fun ExploreScreen(
     var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
     var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
-    var liveRadioOpen by rememberSaveable { mutableStateOf(false) }
 
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val selectedZone = remember(zones, state.exploreZoneId) {
