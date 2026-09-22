@@ -89,6 +89,8 @@ External services provide some of the music, lyrics, artwork and metadata Levyra
     &nbsp;·&nbsp;
     <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
     &nbsp;·&nbsp;
+    <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php"><b>SecurityLab.ru</b></a>
+    &nbsp;·&nbsp;
     listed on <a href="https://www.producthunt.com/products/levyra"><b>Product Hunt</b></a>,
     <a href="https://devglobe.app/projects/levyra"><b>DevGlobe</b></a>
     and <a href="https://tsukutta.app/en/apps/30887ffa-db55-4b07-92a2-42845184b42c"><b>Tsukutta</b></a>
