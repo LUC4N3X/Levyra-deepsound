@@ -28,7 +28,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -55,12 +54,10 @@ import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
 import com.luc4n3x.levyra.player.LevyraPipBridge
-import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
-import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -174,27 +171,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        LevyraApp(
-                            viewModel = viewModel,
-                            isInPictureInPicture = pipMode.value,
-                            onRetryPreUpdateBackup = ::retryPreUpdateBackup,
-                            onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
-                        )
-                    }
-                    if (activityUiState.showSettings && !pipMode.value) {
-                        SupportLevyraSettingsCard(
-                            languageCode = activityUiState.languageCode,
-                            modifier = Modifier
-                                .navigationBarsPadding()
-                                .padding(horizontal = 18.dp, vertical = 14.dp)
-                        )
-                    }
-                }
-                if (activityUiState.showSettings && !pipMode.value) {
-                    RuntimeHooks.internalPanelOverlay()
-                }
+                LevyraApp(
+                    viewModel = viewModel,
+                    isInPictureInPicture = pipMode.value,
+                    onRetryPreUpdateBackup = ::retryPreUpdateBackup,
+                    onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
+                )
                 RemoteAnnouncementGate(
                     enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings,
                     languageCode = activityUiState.languageCode,
