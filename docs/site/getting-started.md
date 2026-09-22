@@ -17,7 +17,7 @@ Levyra is also available through the alternative Android repositories listed on 
 
 ## Windows
 
-1. Open the [Levyra Desktop releases](https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true).
+1. Open the [Levyra Desktop releases](https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2).
 2. Download the installer or portable package for Windows.
 3. Run the installer or extract the files to your preferred location.
 4. Launch Levyra.
