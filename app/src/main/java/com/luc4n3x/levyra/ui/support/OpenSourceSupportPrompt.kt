@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private const val PROMPT_DELAY_MS = 3_000L
+private val supportStarGold = Color(0xFFFFC857)
 
 @Composable
 fun RemoteAnnouncementGate(
@@ -146,7 +148,7 @@ fun RemoteAnnouncementGate(
 }
 
 @Composable
-fun SupportLevyraSettingsCard(
+fun SupportLevyraSettingsLink(
     languageCode: String,
     modifier: Modifier = Modifier
 ) {
@@ -163,7 +165,6 @@ fun SupportLevyraSettingsCard(
     }
     val current = announcement ?: return
     val strings = remember(languageCode) { LevyraStrings.forCode(languageCode) }
-    val shape = RoundedCornerShape(20.dp)
     val openAction = {
         openRepositoryLink(
             context = context,
@@ -173,39 +174,34 @@ fun SupportLevyraSettingsCard(
         )
     }
 
-    Surface(
-        onClick = openAction,
-        modifier = modifier.fillMaxWidth(),
-        shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f))
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+        )
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 72.dp)
+                .clickable(onClick = openAction)
+                .padding(horizontal = 4.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(13.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = 0.95f),
-                                LevyraViolet.copy(alpha = 0.92f),
-                                LevyraOrange.copy(alpha = 0.88f)
-                            )
-                        ),
-                        RoundedCornerShape(15.dp)
-                    )
-                    .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(15.dp)),
+                    .size(40.dp)
+                    .background(supportStarGold.copy(alpha = 0.13f), CircleShape)
+                    .border(1.dp, supportStarGold.copy(alpha = 0.26f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Star,
                     contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(23.dp)
+                    tint = supportStarGold,
+                    modifier = Modifier.size(22.dp)
                 )
             }
             Column(
@@ -222,7 +218,7 @@ fun SupportLevyraSettingsCard(
                 )
                 Text(
                     text = current.copy.settingsSubtitle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.88f),
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
                     fontWeight = FontWeight.Medium,
@@ -233,10 +229,16 @@ fun SupportLevyraSettingsCard(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                tint = supportStarGold.copy(alpha = 0.82f),
+                modifier = Modifier.size(18.dp)
             )
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+        )
     }
 }
 

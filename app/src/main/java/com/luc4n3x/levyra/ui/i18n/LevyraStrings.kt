@@ -1104,6 +1104,7 @@ class LevyraStrings private constructor(
     val normalizationShort: String get() = value("normalizationShort")
     val coverAndTags: String get() = value("coverAndTags")
     val madeWithBy: String get() = value("madeWithBy")
+    val legalInformation: String get() = settingsFooterLegalInformation(code)
     val activeIndicator: String get() = value("activeIndicator")
     val queueSpaces: String get() = value("queueSpaces")
     val queueSpacesSubtitle: String get() = value("queueSpacesSubtitle")

@@ -28,6 +28,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, offlineHomeLocalizationCodes())
         assertEquals(catalogCodes, recapLocalizationCodes())
         assertEquals(catalogCodes, listeningInsightsLocalizationCodes())
+        assertEquals(catalogCodes, settingsFooterLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.listeningInsights.isNotBlank())
             assertTrue(strings.listeningInsightsSubtitle.isNotBlank())
@@ -118,7 +119,17 @@ class LevyraStringsTest {
             assertTrue(strings.playerBackground.isNotBlank())
             assertTrue(strings.enterImmersive.isNotBlank())
             assertTrue(strings.exitImmersive.isNotBlank())
+            assertTrue(strings.legalInformation.isNotBlank())
         }
+    }
+
+
+    @Test
+    fun settingsFooterLegalInformationUsesSelectedLanguage() {
+        assertEquals("Legal information", LevyraStrings.forCode("en").legalInformation)
+        assertEquals("Informazioni legali", LevyraStrings.forCode("it").legalInformation)
+        assertEquals("法的情報", LevyraStrings.forCode("ja").legalInformation)
+        assertEquals("מידע משפטי", LevyraStrings.forCode("he").legalInformation)
     }
 
     @Test
@@ -354,7 +365,8 @@ class LevyraStringsTest {
             "\"INTERFACCIA HOME\"",
             "\"BACKUP E RIPRISTINO\"",
             "\"Sto cercando su YouTube Music…\"",
-            "\"Cerco il testo…\""
+            "\"Cerco il testo…\"",
+            "\"Legal information\""
         )
         forbidden.forEach { leaked -> assertFalse("Hardcoded localization leak: $leaked", content.contains(leaked)) }
     }
