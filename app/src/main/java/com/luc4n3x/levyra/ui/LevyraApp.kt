@@ -18884,7 +18884,7 @@ private fun SettingsHubFooter() {
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "Legal information",
+                text = strings.legalInformation,
                 color = LevyraMuted.copy(alpha = 0.72f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
