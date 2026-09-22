@@ -104,14 +104,22 @@ file. Keep `TYPESAFE_API_KEY` in the local user environment or other
 machine-local Claude configuration and never commit it.
 
 Inside Claude Code, `/mcp` should list Jev after setup. The Jev skill may be
-loaded explicitly with `/jev`, but normal Levyra work should use it only when
-the task has many small independent decisions and the evidence is already
-available.
+loaded explicitly with `/jev`. Levyra's prompt hook re-anchors Jev policy on
+every user prompt so Claude considers Jev by default before repetitive
+classification, ranking, scoring, routing, or batch checks.
+
+The project allow-list grants only the five Jev MCP tools:
+`jev_classify`, `jev_check`, `jev_score`, `jev_rank`, and `jev_ask`.
+No wildcard MCP permission is added. Claude must still follow the Jev evidence
+and privacy rules before every call.
 
 Jev is not a replacement for Claude's engineering reasoning. Architecture,
-implementation, security-sensitive analysis, root-cause debugging, and final
-review stay with Claude and the repository's normal validation process. If Jev
-is unavailable, the task continues with native tools.
+implementation, security-sensitive analysis, root-cause debugging, exact facts
+that tests or tools can settle, and final review stay with Claude and the
+repository's normal validation process. `review`, `uncertain`, low-confidence,
+truncated, and high-impact results require manual inspection. Jev payloads are
+external data egress, so secrets and unnecessary private repository content must
+never be sent. If Jev is unavailable, the task continues with native tools.
 
 ## Settings and hooks
 
