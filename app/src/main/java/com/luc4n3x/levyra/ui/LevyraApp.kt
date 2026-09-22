@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.isExcludableArtist
 import androidx.compose.runtime.key
 import com.luc4n3x.levyra.ui.components.LevyraIonicons
+import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsLink
 import com.luc4n3x.levyra.ui.components.PlaybackDiagnosticsDialog
 import com.luc4n3x.levyra.ui.player.PlayerVideoTransform
 import com.luc4n3x.levyra.ui.player.applyPlayerVideoGesture
@@ -18807,17 +18808,24 @@ private fun SettingsHubFooter() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 24.dp, bottom = 16.dp),
+            .padding(top = 24.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(Dp.Hairline)
+                .background(LevyraAdaptiveHairline)
+        )
+        Spacer(modifier = Modifier.height(18.dp))
         Text(
             "LEVYRA ${BuildConfig.VERSION_NAME}",
-            color = LevyraMuted,
-            fontSize = 12.sp,
+            color = LevyraMuted.copy(alpha = 0.86f),
+            fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(13.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
@@ -18828,49 +18836,31 @@ private fun SettingsHubFooter() {
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
-            Box(
+            AsyncImage(
+                model = "https://github.com/LUC4N3X.png",
+                contentDescription = "LUC4N3X",
                 modifier = Modifier
-                .height(28.dp)
-                .padding(horizontal = 6.dp)
-                .drawBehind {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                LevyraCyan.copy(alpha = 0.5f),
-                                LevyraViolet.copy(alpha = 0.2f),
-                                Color.Transparent
-                            ),
-                            radius = size.height * 1.5f
-                        )
-                    )
-                },
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = "https://github.com/LUC4N3X.png",
-                    contentDescription = "LUC4N3X",
-                    modifier = Modifier
-                    .size(22.dp)
+                    .size(24.dp)
                     .clip(CircleShape)
-                    .border(1.dp, LevyraCyan.copy(alpha = 0.3f), CircleShape)
-                )
-            }
-            Spacer(modifier = Modifier.width(6.dp))
+                    .border(1.dp, LevyraCyan.copy(alpha = 0.32f), CircleShape)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 "LUC4N3X",
                 color = LevyraText,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.3.sp
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "Legal information",
-            color = LevyraMuted.copy(alpha = 0.72f),
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
+        Spacer(modifier = Modifier.height(12.dp))
+        SupportLevyraSettingsLink(
+            languageCode = strings.code,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
             modifier = Modifier
+                .heightIn(min = 48.dp)
                 .clickable {
                     runCatching {
                         context.startActivity(
@@ -18881,8 +18871,25 @@ private fun SettingsHubFooter() {
                         )
                     }
                 }
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Info,
+                contentDescription = null,
+                tint = LevyraMuted.copy(alpha = 0.68f),
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Legal information",
+                color = LevyraMuted.copy(alpha = 0.72f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
