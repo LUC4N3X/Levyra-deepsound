@@ -109,7 +109,8 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Toimitus", "Laatu", "Bittisyvyys", "Stream", "Loudness", "Lähtö", "Reitti",
         "Äänenvoimakkuus", "Moottori", "Putki", "Käsittely", "Ääni-istunto", "Varmennettu lähde",
         "Luotettavuus", "Ei ilmoitettu", "Ei mitään", "Pyydetty", "Varatoiminto",
-        "Normalisointi", "Taajuuskorjain", "Rajoitin", "Virtualisoija", "Esivahvistin"
+        "Normalisointi", "Taajuuskorjain", "Rajoitin", "Virtualisoija", "Esivahvistin",
+        codecId = "Codec-tunnus", remotePlayback = "Etätoisto", receiverManaged = "Vastaanottimen hallinnassa"
     )
     "et" -> TechnicalAudioInfoCopy(
         "Tehnilised heliandmed", "Reaalajas taasesituse vorming, allikas ja signaalitee",
@@ -118,7 +119,8 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Edastus", "Kvaliteet", "Bitisügavus", "Voog", "Helitugevus (LUFS)", "Väljund", "Tee",
         "Helitugevus", "Mootor", "Konveier", "Töötlus", "Heliseanss", "Kinnitatud allikas",
         "Usaldusväärsus", "Pole teatatud", "Puudub", "Taotletud", "Varulahendus",
-        "Normaliseerimine", "Ekvalaiser", "Piiraja", "Virtualiseerija", "Eelvõimendi"
+        "Normaliseerimine", "Ekvalaiser", "Piiraja", "Virtualiseerija", "Eelvõimendi",
+        codecId = "Koodeki ID", remotePlayback = "Kaugesitus", receiverManaged = "Vastuvõtja haldab"
     )
     else -> TechnicalAudioInfoCopy(
         "Technical audio info", "Live playback format, source and signal path",
