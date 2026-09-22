@@ -84,18 +84,10 @@ External services provide some of the music, lyrics, artwork and metadata Levyra
 </p>
 
 <p>
+  <sub><b>Tech &amp; developer media coverage</b></sub>
+  <br>
   <sub>
-    Listed on <a href="https://www.producthunt.com/products/levyra"><b>Product Hunt</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://devglobe.app/projects/levyra"><b>DevGlobe</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://tsukutta.app/en/apps/30887ffa-db55-4b07-92a2-42845184b42c"><b>Tsukutta</b></a>
-  </sub>
-</p>
-
-<p>
-  <sub>
-    Featured by <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
+    <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
     &nbsp;·&nbsp;
     <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
     &nbsp;·&nbsp;
