@@ -285,22 +285,61 @@ Independent developer building Levyra for Android and Windows.
 
 ---
 
-## Legal notice
-
-Levyra is an independent open-source client. It does not host, distribute, or license third-party music catalogs.
-
-### Third-party services
-Levyra is not affiliated with, endorsed by, or officially connected to YouTube, Google, JioSaavn, Spotify, Apple Music, or any other referenced provider. All trademarks, logos, and brand names belong to their respective owners.
-
-### Lawful personal use
-Levyra is designed for lawful personal listening. It is not intended or promoted for copyright infringement or unauthorized copying. Saving or caching media does not grant rights over third-party content. You are responsible for ensuring your use complies with local copyright laws and the terms of each service you access.
-
-### Availability & warranty
-Levyra is distributed under the [GNU GPL v3.0](LICENSE) on an "as is" basis. Because it connects to third-party endpoints, the ongoing availability of streams, metadata, and APIs cannot be guaranteed.
+## Legal disclaimer and terms of use
 
 <div align="center">
 
-For complete details on third-party integrations, downloads, and liability, consult the **[Legal Notice](docs/legal/LEGAL.md)**.
+### Open source. Independent. Built for lawful use.
+
+<code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
+
+<sub>Levyra is an independent open-source music player. It does not own, host, or distribute third-party music catalogs.</sub>
+
+</div>
+
+<br>
+
+### Independent software
+
+Levyra is an independent project. It has no official connection to, and is not sponsored or endorsed by, YouTube, Google, JioSaavn, TIDAL, Apple, Deezer, Spotify, or any other third-party platform referenced in this project.
+
+All product names, trademarks, logos, and media belong entirely to their respective owners.
+
+### Third-party content
+
+Levyra does not claim ownership of music, artwork, lyrics, metadata, videos, or other media obtained from external sources.
+
+The application functions strictly as a client that connects to third-party services or public sources at the user's request. Levyra does not operate its own catalog of copyrighted music, and does not store or host third-party audio on its own infrastructure.
+
+External services may change, restrict access, become unavailable, or adjust their technical behavior at any time, independently of Levyra.
+
+### Lawful and responsible use
+
+Levyra is not built, promoted, or intended for piracy, copyright infringement, or the unauthorized redistribution of copyrighted material.
+
+Features such as streaming, downloading, format conversion, offline storage, or media export do not transfer ownership or grant additional rights over third-party content.
+
+You are responsible for making sure that anything you access, save, convert, export, or redistribute complies with applicable copyright laws, permissions or licences from rights holders, and the terms of service of each platform you use.
+
+### Respect for creators
+
+Levyra exists to provide an open, flexible listening experience while respecting the work of artists, creators, developers, platforms, and rights holders.
+
+Nothing in Levyra or its documentation should be taken as permission to reproduce, redistribute, or commercially exploit third-party material without the appropriate rights.
+
+### Warranty and availability
+
+Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided **AS IS**, without warranty of any kind, to the fullest extent permitted by applicable law.
+
+Because Levyra integrates with external platforms and services, continuous availability of audio streams, metadata, artwork, lyrics, APIs, or other third-party functionality cannot be guaranteed.
+
+<div align="center">
+
+### Use Levyra responsibly
+
+For the complete legal terms covering third-party services, downloads, user responsibilities, warranties, and liability, read the **[Legal Notice](docs/legal/LEGAL.md)**.
+
+<sub>Using Levyra does not grant rights to content you do not already have the legal right to access or use.</sub>
 
 </div>
 
