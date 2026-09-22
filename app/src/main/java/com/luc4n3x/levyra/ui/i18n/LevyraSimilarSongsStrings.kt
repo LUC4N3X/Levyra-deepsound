@@ -32,7 +32,9 @@ private val similarSongsBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to similarSongs("Bật radio"),
     "th" to similarSongs("เริ่มวิทยุ"),
     "fil" to similarSongs("Simulan ang radyo"),
-    "he" to similarSongs("הפעלת רדיו")
+    "he" to similarSongs("הפעלת רדיו"),
+    "fi" to similarSongs("Aloita radio"),
+    "et" to similarSongs("Alusta raadiot")
 )
 
 internal fun similarSongsLocalizationEntries(code: String): Map<String, String> =

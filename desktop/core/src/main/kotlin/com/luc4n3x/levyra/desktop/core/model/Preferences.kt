@@ -54,7 +54,9 @@ enum class AppLanguage(
     VIETNAMESE("vi", "🇻🇳", "Tiếng Việt", "Vietnamese", "VN"),
     THAI("th", "🇹🇭", "ไทย", "Thai", "TH"),
     FILIPINO("fil", "🇵🇭", "Filipino", "Filipino", "PH"),
-    HEBREW("he", "🇮🇱", "עברית", "Hebrew", "IL", true);
+    HEBREW("he", "🇮🇱", "עברית", "Hebrew", "IL", true),
+    FINNISH("fi", "🇫🇮", "Suomi", "Finnish", "FI"),
+    ESTONIAN("et", "🇪🇪", "Eesti", "Estonian", "EE");
 
     val displayLabel: String get() = "$flag $nativeName"
 

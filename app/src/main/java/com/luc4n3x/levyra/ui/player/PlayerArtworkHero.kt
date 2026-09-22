@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.player
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import com.luc4n3x.levyra.ui.MotionArtworkLayer
 import com.luc4n3x.levyra.ui.MotionArtworkPresentation
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
+import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 private const val ArtworkGlowPlaying = 0.42f
@@ -54,7 +56,7 @@ internal fun PlayerArtworkHero(
     canvasQuality: LevyraCanvasQuality,
     morphAnchors: PlayerMorphAnchors,
     morphActive: Boolean,
-    swipeOffset: Float,
+    swipeOffset: () -> Float,
     artScale: Float,
     artOffset: Dp,
     glowColor: Color,
@@ -75,12 +77,15 @@ internal fun PlayerArtworkHero(
     LaunchedEffect(track.id, animationsEnabled) {
         val trackChanged = settledTrackId != track.id
         settledTrackId = track.id
-
-        trackChangeScale.snapTo(1f)
-        if (trackChanged && animationsEnabled) {
-            trackChangeScale.snapTo(LevyraPlayerDesign.ArtworkTrackChangeScale)
-            trackChangeScale.animateTo(1f, LevyraPlayerDesign.expressiveSpring())
+        if (!trackChanged || !animationsEnabled) {
+            trackChangeScale.snapTo(1f)
+            return@LaunchedEffect
         }
+        trackChangeScale.animateTo(
+            LevyraPlayerDesign.ArtworkTrackChangeScale,
+            tween(LevyraMotion.Durations.Quick, easing = LevyraMotion.Easings.Accelerate)
+        )
+        trackChangeScale.animateTo(1f, LevyraMotion.spatial.spec())
     }
     val artworkShape = RoundedCornerShape(cornerRadius)
     val isImmersive = visualMode.showsCinematicStage()
@@ -92,7 +97,7 @@ internal fun PlayerArtworkHero(
                 val scale = artScale * trackChangeScale.value
                 scaleX = scale
                 scaleY = scale
-                translationX = swipeOffset
+                translationX = swipeOffset()
                 translationY = artOffset.toPx()
                 alpha = if (morphActive || isImmersive) 0f else 1f
             }

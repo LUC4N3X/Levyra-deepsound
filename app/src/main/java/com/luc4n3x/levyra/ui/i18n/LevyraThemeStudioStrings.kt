@@ -108,6 +108,12 @@ private val themeStudioBaseBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "he" to themeStudio(
         "Theme Studio", "ערכה אחת קובעת את הצבע בכל Levyra", "תצוגה מקדימה", "צבע הדגשה", "מהערכה"
+    ),
+    "fi" to themeStudio(
+        "Theme Studio", "Yksi esiasetus ohjaa värejä koko Levyra-sovelluksessa", "Esikatselu", "Aksentti", "Esiasetuksesta"
+    ),
+    "et" to themeStudio(
+        "Theme Studio", "Üks eelseadistus määrab värvi kogu Levyras", "Eelvaade", "Rõhk", "Eelseadistusest"
     )
 )
 
@@ -157,7 +163,9 @@ private val themeAccentNameBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to themeAccentNames("Xanh dương", "Xanh lá", "Chàm", "Cam", "Hồng", "Lục lam", "Tím", "Vàng"),
     "th" to themeAccentNames("น้ำเงิน", "เขียว", "คราม", "ส้ม", "ชมพู", "ฟ้าอมเขียว", "ม่วง", "เหลือง"),
     "fil" to themeAccentNames("Asul", "Berde", "Indigo", "Kahel", "Rosas", "Cyan", "Lila", "Dilaw"),
-    "he" to themeAccentNames("כחול", "ירוק", "אינדיגו", "כתום", "ורוד", "ציאן", "סגול", "צהוב")
+    "he" to themeAccentNames("כחול", "ירוק", "אינדיגו", "כתום", "ורוד", "ציאן", "סגול", "צהוב"),
+    "fi" to themeAccentNames("Sininen", "Vihreä", "Indigo", "Oranssi", "Vaaleanpunainen", "Syaani", "Purppura", "Keltainen"),
+    "et" to themeAccentNames("Sinine", "Roheline", "Indigo", "Oranž", "Roosa", "Tsüaan", "Lilla", "Kollane")
 )
 
 private val themeStudioBundles: Map<String, Map<String, String>> =

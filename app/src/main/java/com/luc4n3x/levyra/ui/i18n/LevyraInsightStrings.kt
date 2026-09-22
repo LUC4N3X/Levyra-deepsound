@@ -42,7 +42,9 @@ private val insightBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to insightStrings("Xem trước ảnh bìa", "Lưu ảnh bìa", "Đã lưu ảnh bìa", "Không thể lưu ảnh bìa", "Nhịp của bạn", "Hiệu chỉnh đồng bộ"),
     "th" to insightStrings("ดูตัวอย่างปก", "บันทึกปก", "บันทึกปกแล้ว", "บันทึกปกไม่สำเร็จ", "จังหวะของคุณ", "ปรับซิงก์"),
     "fil" to insightStrings("Preview ng artwork", "I-save ang artwork", "Na-save ang artwork", "Hindi na-save ang artwork", "Ang ritmo mo", "I-calibrate ang sync"),
-    "he" to insightStrings("תצוגה מקדימה של העטיפה", "שמירת העטיפה", "העטיפה נשמרה", "לא ניתן לשמור את העטיפה", "הקצב שלך", "כיול סנכרון")
+    "he" to insightStrings("תצוגה מקדימה של העטיפה", "שמירת העטיפה", "העטיפה נשמרה", "לא ניתן לשמור את העטיפה", "הקצב שלך", "כיול סנכרון"),
+    "fi" to insightStrings("Kansikuvan esikatselu", "Tallenna kansikuva", "Kansikuva tallennettu", "Kansikuvaa ei voitu tallentaa", "Rytmisi", "Kalibroi synkronointi"),
+    "et" to insightStrings("Kaanepildi eelvaade", "Salvesta kaanepilt", "Kaanepilt salvestatud", "Kaanepilti ei õnnestunud salvestada", "Sinu rütm", "Kalibreeri sünkroonimine")
 )
 
 internal fun insightLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(insightBundles, code)

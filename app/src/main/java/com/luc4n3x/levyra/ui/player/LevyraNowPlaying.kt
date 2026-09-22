@@ -75,8 +75,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -260,11 +260,12 @@ fun LevyraNowPlaying(
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableIntStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
     var gestureFeedbackEvent by remember(track?.id) { mutableIntStateOf(0) }
-    var swipeOffsetPx by remember(track?.id) { mutableFloatStateOf(0f) }
-    val settledSwipeOffset by animateFloatAsState(
-        targetValue = swipeOffsetPx,
-        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.smoothSpring()),
-        label = "player-swipe-offset"
+    val swipe = rememberPlayerSwipeMotion(animated)
+    val swipeOffset: () -> Float = { swipe.offsetFor(track?.id) }
+    val stepDirection = rememberTrackStepDirection(
+        trackId = track?.id,
+        queue = state.queue,
+        queueIndex = state.queueCurrentIndex
     )
 
     LaunchedEffect(mediaSeekFeedbackEvent) {
@@ -280,13 +281,18 @@ fun LevyraNowPlaying(
         }
     }
 
+    val artRestScale = if (state.isPlaying) 1f else LevyraPlayerDesign.ArtworkPausedScale
+    val artRestOffset = if (state.isPlaying) 0.dp else 4.dp
+    SideEffect {
+        morphAnchors.updateFullRest(artRestScale, with(density) { artRestOffset.toPx() })
+    }
     val artScale by animateFloatAsState(
-        targetValue = if (state.isPlaying) 1f else LevyraPlayerDesign.ArtworkPausedScale,
+        targetValue = artRestScale,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "artwork-scale"
     )
     val artOffset by animateDpAsState(
-        targetValue = if (state.isPlaying) 0.dp else 4.dp,
+        targetValue = artRestOffset,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "artwork-offset"
     )
@@ -374,8 +380,9 @@ fun LevyraNowPlaying(
             motionEnabled = motionEnabled,
             isPlaying = state.isPlaying,
             canvasQuality = state.interfaceSettings.canvasQuality,
+            morphAnchors = morphAnchors,
             morphActive = morphActive,
-            swipeOffset = settledSwipeOffset,
+            swipeOffset = swipeOffset,
             cinematicGeometry = cinematicGeometry,
             isVideoMode = state.isVideoMode,
             backdropFocus = backdropFocus,
@@ -607,7 +614,7 @@ fun LevyraNowPlaying(
                         canvasQuality = state.interfaceSettings.canvasQuality,
                         morphAnchors = morphAnchors,
                         morphActive = morphActive,
-                        swipeOffset = settledSwipeOffset,
+                        swipeOffset = swipeOffset,
                         artScale = artScale,
                         artOffset = artOffset,
                         glowColor = if (deckLayout == PlayerDeckLayout.Editorial) Color.Transparent else primary,
@@ -645,7 +652,8 @@ fun LevyraNowPlaying(
                             togglePlay = viewModel::togglePlay,
                             next = viewModel::next,
                             previous = viewModel::previous,
-                            swipeOffset = { swipeOffsetPx = it },
+                            swipeOffset = { offset -> swipe.follow(activeTrack.id, offset) },
+                            swipeSettled = { committed -> swipe.release(committed, carry = false) },
                             temporarySpeed = viewModel::setTemporaryPlaybackSpeed
                         ),
                         PlayerGestureUiActions(
@@ -769,6 +777,7 @@ fun LevyraNowPlaying(
                     isFavorite = activeTrack.id in state.favoriteIds,
                     surfaces = surfaces,
                     animationsEnabled = animated,
+                    stepDirection = stepDirection,
                     compact = compactPlayer,
                     openArtistLabel = strings.openArtist,
                     favoritesLabel = strings.favoritesPlain,
@@ -1075,7 +1084,8 @@ fun LevyraNowPlaying(
                             togglePlay = viewModel::togglePlay,
                             next = viewModel::next,
                             previous = viewModel::previous,
-                            swipeOffset = { swipeOffsetPx = it },
+                            swipeOffset = { offset -> swipe.follow(track.id, offset) },
+                            swipeSettled = { committed -> swipe.release(committed, carry = false) },
                             temporarySpeed = viewModel::setTemporaryPlaybackSpeed
                         ),
                         PlayerGestureUiActions(

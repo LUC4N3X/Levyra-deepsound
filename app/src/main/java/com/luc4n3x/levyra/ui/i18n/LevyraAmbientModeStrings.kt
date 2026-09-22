@@ -257,6 +257,22 @@ private val ambientModeBundles: Map<String, Map<String, String>> = mapOf(
         "הצגת שם ואמן", "שם השיר והאמן מתחת לעטיפה",
         "הצגת התקדמות", "פס נגינה דק",
         "שחור מלא", "רקע שחור מלא למסכי OLED"
+    ),
+    "fi" to ambientMode(
+        "Valmiustilan asettelu", "Valitse, mitä valmiustilan näyttö näyttää",
+        "Minimaalinen", "Kansikuva", "Valokeila", "Sanoitukset",
+        "Näytä kello", "Suuri kellonaika sisällön yläpuolella",
+        "Näytä kappale ja esittäjä", "Kappaleen nimi ja esittäjä kansikuvan alla",
+        "Näytä edistyminen", "Ohut toistoviiva",
+        "Aito musta", "Täysin musta tausta OLED-näytöille"
+    ),
+    "et" to ambientMode(
+        "Ooterežiimi paigutus", "Vali, mida ooterežiimi ekraan kuvab",
+        "Minimaalne", "Kaanepilt", "Prožektor", "Sõnad",
+        "Näita kella", "Suur kellaaeg sisu kohal",
+        "Näita pealkirja ja esitajat", "Loo pealkiri ja esitaja kaanepildi all",
+        "Näita edenemist", "Õhuke esitusriba",
+        "Puhas must", "Puhas must taust OLED-ekraanidele"
     )
 )
 
