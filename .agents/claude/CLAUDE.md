@@ -6,7 +6,7 @@ root/scoped `AGENTS.md` outrank memory, stale comments, and prior agent output.
 Use `docs/ai/AI_ENGINEERING_GUARDRAILS.md` when its detailed procedure is
 needed and `docs/ai/EVIDENCE_GATED_COMPLETION.md` for non-trivial completion.
 
-## Core contract
+## Immediate context budget
 
 - Treat `only this`, `solo questo`, and equivalents as hard scope boundaries.
 - Inspect current code/tests before edits and use the smallest coherent root-cause fix.
@@ -87,5 +87,5 @@ python3 scripts/ai_quality_gate.py --profile full
 
 `fast` is required before commit and `full` before push/PR publication when
 those actions are authorized. Missing prerequisites are blocked, not passed.
-Preserve the full PR template, keep validation claims truthful, and apply
+Preserve `.github/pull_request_template.md`, keep validation claims truthful, and apply
 `levyra-humanizer` only as the final prose pass.
