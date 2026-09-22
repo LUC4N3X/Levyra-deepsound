@@ -301,27 +301,23 @@ Independent developer building Levyra for Android and Windows.
 
 ### Third-party services and content
 
-Levyra operates as client-side software running on the user's device. It does not own, operate, or host third-party music catalogs, and claims no ownership over music, artwork, lyrics, metadata, videos, or other material retrieved from external sources.
-
-The software acts as a client that may interact with third-party services or resources at the user's direction. External services operate independently of Levyra and may modify, restrict, rate-limit, or discontinue access at any time.
-
-Notices regarding media hosted by external providers should normally be directed to the relevant provider or rights holder. Inquiries concerning material distributed as part of the Levyra project itself may be submitted through official repository channels.
+Levyra operates strictly as client-side software on the user's device:
+- **No media hosting:** Levyra does not own, operate, or host music catalogs, artwork, lyrics, metadata, or video files.
+- **Client-side routing:** the app interacts with external services solely at the user's direction. Third-party platforms operate independently and may modify or restrict access at any time.
+- **Inquiries and notices:** requests regarding media hosted on external servers should normally be directed to the relevant provider or rights holder. Inquiries concerning code distributed within the Levyra project itself can be submitted via official repository channels.
 
 ### Lawful use and user responsibility
 
-Levyra is not designed, promoted, or intended for piracy, copyright infringement, or the unauthorized redistribution of copyrighted material.
-
-Playback, downloading, caching, format conversion, offline storage, export, or similar capabilities do not transfer copyright and do not grant rights over third-party content.
-
-Users are responsible for ensuring that their use of the software complies with applicable law and that they have any rights, permissions, licences, exceptions, limitations, or other lawful basis required for their use of third-party content. Where applicable, users must also comply with the terms governing the third-party services they choose to access.
+- **Anti-piracy stance:** Levyra is not designed, promoted, or intended for copyright infringement, piracy, or unauthorized redistribution of protected works.
+- **No rights transfer:** playback, downloading, caching, format conversion, offline storage, or export features do not transfer copyright or grant rights over third-party content.
+- **User compliance:** users are responsible for ensuring their use complies with applicable laws, private-copy exceptions, and the terms governing any third-party service they access.
 
 ### Support artists and creators
 
-Levyra respects the creative and economic work of artists, musicians, creators, and platforms.
-
-The software does not grant subscription privileges, paid features, premium entitlements, or access rights belonging to third-party services. Users who prefer an official subscription experience are encouraged to use services provided directly by their respective platforms, such as [YouTube Music Premium](https://www.youtube.com/musicpremium) and [Spotify Premium](https://www.spotify.com/premium/).
-
-Users are also encouraged to support artists and creators directly through licensed streaming services, official music purchases, concerts, merchandise, and authorized distribution channels.
+Levyra respects the creative and economic work of artists, musicians, creators, and platforms:
+- **No premium entitlements:** the software does not grant subscription privileges, paid features, premium entitlements, or access rights belonging to third-party services.
+- **Official platforms:** users who prefer an official subscription experience are encouraged to use services provided directly by their respective platforms, such as [YouTube Music Premium](https://www.youtube.com/musicpremium) and [Spotify Premium](https://www.spotify.com/premium/).
+- **Direct support:** users are encouraged to support creators directly through licensed streaming services, official music purchases, concerts, merchandise, and authorized channels.
 
 ### Technical interoperability and access restrictions
 
