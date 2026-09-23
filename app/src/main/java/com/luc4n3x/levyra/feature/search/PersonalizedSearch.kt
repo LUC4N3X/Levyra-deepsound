@@ -94,8 +94,7 @@ private fun interleaveDiverseTracks(sources: List<List<Track>>, limit: Int): Lis
     while (result.size < limit && sources.any { row < it.size }) {
         for (source in sources) {
             val track = source.getOrNull(row) ?: continue
-            val identity = track.id.trim().lowercase(Locale.ROOT)
-                .ifEmpty { "${track.title.trim().lowercase(Locale.ROOT)}|${track.artist.trim().lowercase(Locale.ROOT)}" }
+            val identity = LevyraPersonalOrbit.identityKey(track)
             if (identity.isEmpty() || !identities.add(identity)) continue
             val artist = primaryArtistSegment(track.artist).trim().lowercase(Locale.ROOT)
             if (artist.isNotEmpty() && artistCounts.getOrDefault(artist, 0) >= MAX_TRACKS_PER_ARTIST) continue

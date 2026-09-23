@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.player
 
 import androidx.media3.common.C
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
 import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.ParametricEqProfile
@@ -32,6 +33,7 @@ class LevyraParametricEqualizerAudioProcessorTest {
     fun `disabled processor is transparent and converts pcm16 to float`() {
         val processor = LevyraParametricEqualizerAudioProcessor()
         val outputFormat = processor.configure(AudioFormat(48_000, 2, C.ENCODING_PCM_16BIT))
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
         processor.queueInput(pcm16(1_000, -2_000, 16_384, -16_384))
 
         assertEquals(C.ENCODING_PCM_FLOAT, outputFormat.encoding)
@@ -45,6 +47,7 @@ class LevyraParametricEqualizerAudioProcessorTest {
         val processor = LevyraParametricEqualizerAudioProcessor().apply {
             setConfiguration(true, profile(preampDb = -6f, ParametricEqBand(1_000f, 0f, 1f, ParametricFilterType.PEAK)))
             configure(AudioFormat(48_000, 1, C.ENCODING_PCM_FLOAT))
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
         }
         processor.queueInput(floatPcm(*FloatArray(512) { 0.5f }))
 
@@ -57,6 +60,7 @@ class LevyraParametricEqualizerAudioProcessorTest {
         val processor = LevyraParametricEqualizerAudioProcessor().apply {
             setConfiguration(true, profile(0f, ParametricEqBand(96_000f, 12f, 1f, ParametricFilterType.PEAK)))
             configure(AudioFormat(44_100, 1, C.ENCODING_PCM_FLOAT))
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
         }
         val input = floatArrayOf(0.2f, -0.4f, 0.8f)
         processor.queueInput(floatPcm(*input))
@@ -69,6 +73,7 @@ class LevyraParametricEqualizerAudioProcessorTest {
         fun create() = LevyraParametricEqualizerAudioProcessor().apply {
             setConfiguration(true, profile(0f, ParametricEqBand(2_000f, 10f, 1f, ParametricFilterType.PEAK)))
             configure(AudioFormat(48_000, 2, C.ENCODING_PCM_FLOAT))
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
         }
         val interleaved = FloatArray(40).apply { this[0] = 0.8f }
         val contiguous = create().let { processor ->

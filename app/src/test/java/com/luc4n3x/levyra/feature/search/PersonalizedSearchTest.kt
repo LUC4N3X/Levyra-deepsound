@@ -27,16 +27,18 @@ class PersonalizedSearchTest {
     @Test
     fun `tracks are deduplicated and one artist cannot monopolize suggestions`() {
         val sameArtist = (1..6).map { searchTestTrack("a$it", "Song $it", "Adele") }
+        val crossSourceDuplicate = searchTestTrack("b2", "Yellow", "Coldplay")
         val snapshot = buildPersonalizedSearchSnapshot(
             favorites = sameArtist,
             recentListens = sameArtist + searchTestTrack("b1", "Yellow", "Coldplay"),
             recentSearches = listOf(searchTestTrack("c1", "One More Time", "Daft Punk")),
-            personalOrbitTracks = listOf(searchTestTrack("d1", "Midnight City", "M83")),
+            personalOrbitTracks = listOf(crossSourceDuplicate, searchTestTrack("d1", "Midnight City", "M83")),
             topArtists = emptyList(),
             dayBucket = 20L
         )
 
         assertEquals(snapshot.tracks.map { it.id }.distinct(), snapshot.tracks.map { it.id })
+        assertEquals(1, snapshot.tracks.count { it.title == "Yellow" && it.artist == "Coldplay" })
         assertTrue(snapshot.tracks.count { it.artist == "Adele" } <= 2)
         assertTrue(snapshot.tracks.map { it.artist }.distinct().size >= 3)
     }

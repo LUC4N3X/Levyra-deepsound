@@ -144,6 +144,13 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         val configuration = requested
         if (!force && configuration.revision == appliedRevision) return
         val profile = configuration.profile.takeIf { configuration.enabled }
+        if (!force && transitionFramesRemaining > 0) {
+            val completedFrames = transitionTotalFrames - transitionFramesRemaining
+            if (completedFrames * 2 >= transitionTotalFrames) activeBank = transitionBank
+            transitionBank = 1 - activeBank
+            transitionFramesRemaining = 0
+            transitionTotalFrames = 0
+        }
         val current = banks[activeBank]
         if (force) {
             current.configure(profile, inputFormat.sampleRate, clearState = true)
@@ -153,10 +160,6 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         } else if (current.hasSameTopology(profile, inputFormat.sampleRate)) {
             current.setTargets(profile, inputFormat.sampleRate)
         } else {
-            if (transitionFramesRemaining > 0) {
-                activeBank = transitionBank
-                transitionFramesRemaining = 0
-            }
             transitionBank = 1 - activeBank
             banks[transitionBank].configure(profile, inputFormat.sampleRate, clearState = true)
             transitionTotalFrames = (inputFormat.sampleRate * TOPOLOGY_CROSSFADE_SECONDS).toInt().coerceAtLeast(1)
