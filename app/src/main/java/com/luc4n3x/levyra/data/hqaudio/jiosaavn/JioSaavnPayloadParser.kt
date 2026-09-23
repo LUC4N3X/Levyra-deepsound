@@ -61,12 +61,8 @@ internal object JioSaavnPayloadParser {
         val featuredArtists = names(artistMap?.optJSONArray("featured_artists"))
         val album = decode(info.optString("album").ifBlank { json.optString("album") })
         val durationSeconds = (info.opt("duration") ?: json.opt("duration"))?.toString()?.trim()?.toIntOrNull() ?: 0
-        val explicit = when (json.optString("explicit_content").trim().lowercase()) {
-            "1", "true" -> true
-            "0", "false" -> false
-            else -> null
-        }
-        val offers320 = (info.opt("320kbps") ?: json.opt("320kbps"))?.toString().equals("true", ignoreCase = true)
+        val explicit = flag(json.optString("explicit_content"))
+        val offers320 = (info.opt("320kbps") ?: json.opt("320kbps"))?.toString()?.let(::flag)
         val mediaToken = info.optString("encrypted_media_url").ifBlank { json.optString("encrypted_media_url") }.trim()
         if (providerTrackId.isBlank() || title.isBlank() || primaryArtists.isEmpty() || mediaToken.isBlank()) return null
         return AlternativeTrackCandidate(
@@ -79,8 +75,15 @@ internal object JioSaavnPayloadParser {
             durationSeconds = durationSeconds,
             explicit = explicit,
             offers320 = offers320,
-            mediaToken = mediaToken
+            mediaToken = mediaToken,
+            language = json.optString("language").trim().lowercase().takeUnless { it == "unknown" }.orEmpty()
         )
+    }
+
+    private fun flag(value: String): Boolean? = when (value.trim().lowercase()) {
+        "1", "true" -> true
+        "0", "false" -> false
+        else -> null
     }
 
     private fun names(array: JSONArray?): List<String> =

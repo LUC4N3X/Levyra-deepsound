@@ -53,7 +53,8 @@ data class ArtistCredit(
 
 data class AlbumIdentity(
     val core: String,
-    val editions: Set<AlbumEdition>
+    val editions: Set<AlbumEdition>,
+    val language: String? = null
 ) {
     val isBlank: Boolean
         get() = core.isBlank()
@@ -145,6 +146,20 @@ internal object AlternativeTrackText {
 
     private val featuringPrefixes = listOf("feat ", "ft ", "featuring ", "with ")
     private val neutralPrefixes = listOf("from ", "prod ", "produced by ")
+    private val releaseLanguages = setOf(
+        "hindi",
+        "telugu",
+        "tamil",
+        "kannada",
+        "malayalam",
+        "marathi",
+        "bengali",
+        "punjabi",
+        "gujarati",
+        "bhojpuri",
+        "odia",
+        "english"
+    )
 
     private class EditionRule(pattern: String, val edition: AlbumEdition) {
         val phrase = Regex("(?:^|\\s)(?:$pattern)(?:\\s|$)")
@@ -294,8 +309,13 @@ internal object AlternativeTrackText {
     fun album(raw: String): AlbumIdentity {
         val decoded = prepare(raw)
         val editions = linkedSetOf<AlbumEdition>()
+        var language: String? = null
 
         fun absorb(text: String): Boolean {
+            normalize(text).takeIf { it in releaseLanguages }?.let {
+                language = it
+                return true
+            }
             val found = albumDescriptorEditions(text) ?: return false
             editions += found
             return true
@@ -315,7 +335,7 @@ internal object AlternativeTrackText {
                 core = core.removeSuffix(suffix).trim()
             }
         }
-        return AlbumIdentity(core = core, editions = editions)
+        return AlbumIdentity(core = core, editions = editions, language = language)
     }
 
     private fun albumDescriptorEditions(text: String): Set<AlbumEdition>? {

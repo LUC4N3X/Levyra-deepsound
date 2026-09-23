@@ -53,6 +53,18 @@ data class ResolvedHighQualityStream(
     val host: String
         get() = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
 
+    val deliveredKbps: Int
+        get() = estimatedKbps.takeIf { it > 0 } ?: tier.kbps
+
+    val displayKbps: Int
+        get() = if (matchesNominalTier) tier.kbps else estimatedKbps
+
+    val qualityLabel: String
+        get() = if (matchesNominalTier) "${tier.kbps} kbps" else "~$estimatedKbps kbps"
+
+    private val matchesNominalTier: Boolean
+        get() = estimatedKbps <= 0 || ProviderStreamValidator.bitrateMatches(estimatedKbps, tier)
+
     fun isFresh(nowMs: Long, marginMs: Long): Boolean = url.isNotBlank() && nowMs + marginMs < expiresAtMs
 }
 
@@ -85,9 +97,9 @@ object HighQualityTierPolicy {
     const val MINIMUM_GAIN_KBPS = 24
     const val ASSUMED_NORMAL_KBPS = 160
 
-    fun accepts(tier: AudioQualityTier, normalKbps: Int?, normalAvailable: Boolean): Boolean {
+    fun accepts(alternativeKbps: Int, normalKbps: Int?, normalAvailable: Boolean): Boolean {
         if (!normalAvailable) return true
         val baseline = normalKbps?.takeIf { it > 0 } ?: ASSUMED_NORMAL_KBPS
-        return tier.kbps >= baseline + MINIMUM_GAIN_KBPS
+        return alternativeKbps >= baseline + MINIMUM_GAIN_KBPS
     }
 }
