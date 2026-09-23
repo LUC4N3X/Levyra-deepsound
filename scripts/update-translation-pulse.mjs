@@ -157,6 +157,7 @@ const getTheme = isDark => ({
 const renderBarRow = ({ item, y, labelX, barX, maxBarW, barH, theme }) => {
   const barW = Math.max(3, (maxBarW * item.percent) / 100)
   const valX = barX + maxBarW + 8
+  const tagWidth = Math.max(24, item.code.length * 6 + 8)
   const pctStr = `${Math.round(item.percent)}%`
 
   return `    <g transform="translate(0, ${y.toFixed(1)})">
@@ -167,10 +168,10 @@ const renderBarRow = ({ item, y, labelX, barX, maxBarW, barH, theme }) => {
       <!-- Progress Bar -->
       <rect x="${barX}" y="0" width="${barW.toFixed(1)}" height="${barH}" rx="2" fill="${theme.barFill}"/>
       <!-- Code tag badge -->
-      <rect x="${valX}" y="0" width="24" height="${barH}" rx="3" fill="${theme.tagBg}" stroke="${theme.tagBorder}" stroke-width="0.5"/>
-      <text x="${valX + 12}" y="${(barH - 2.5).toFixed(1)}" text-anchor="middle" fill="${theme.tagText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">${escapeXml(item.code)}</text>
+      <rect x="${valX}" y="0" width="${tagWidth}" height="${barH}" rx="3" fill="${theme.tagBg}" stroke="${theme.tagBorder}" stroke-width="0.5"/>
+      <text x="${valX + tagWidth / 2}" y="${(barH - 2.5).toFixed(1)}" text-anchor="middle" fill="${theme.tagText}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">${escapeXml(item.code)}</text>
       <!-- Percent -->
-      <text x="${valX + 32}" y="${(barH - 2.5).toFixed(1)}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">${pctStr}</text>
+      <text x="${valX + tagWidth + 8}" y="${(barH - 2.5).toFixed(1)}" fill="${theme.textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">${pctStr}</text>
     </g>`
 }
 
