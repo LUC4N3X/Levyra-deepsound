@@ -449,7 +449,11 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         resolved.distinctBy { it.browseId.lowercase(Locale.ROOT) }
     }
 
-    suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
+    suspend fun profile(
+        browseId: String,
+        fallbackName: String,
+        onPreview: ((ArtistProfile) -> Unit)? = null
+    ): ArtistProfile? = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim()
         val cleanFallbackName = fallbackName.trim()
         val lookupName = primaryArtistSegment(cleanFallbackName).ifBlank { cleanFallbackName }
@@ -462,7 +466,12 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             .firstOrNull { artistProfileMatchesRequest(it, cleanBrowseId, cleanFallbackName) }
             ?.let { return@withContext it }
 
-        val resolved = runCatching { fetchProfile(cleanBrowseId, cleanFallbackName) }.getOrNull()
+        val preview = onPreview?.let { publish ->
+            { candidate: ArtistProfile ->
+                if (artistProfileMatchesRequest(candidate, cleanBrowseId, cleanFallbackName)) publish(candidate)
+            }
+        }
+        val resolved = runCatchingPreservingCancellation { fetchProfile(cleanBrowseId, cleanFallbackName, preview) }.getOrNull()
         resolved
             ?.takeIf { artistProfileMatchesRequest(it, cleanBrowseId, cleanFallbackName) }
             ?.also { profile ->
@@ -607,41 +616,43 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return hits.values.toList()
     }
 
-    private suspend fun fetchProfile(browseId: String, fallbackName: String): ArtistProfile? {
+    private suspend fun fetchProfile(
+        browseId: String,
+        fallbackName: String,
+        onPreview: ((ArtistProfile) -> Unit)? = null
+    ): ArtistProfile? = coroutineScope {
+        val cachedPortrait = artistHitMemory["browse:${browseId.lowercase(Locale.ROOT)}"]?.thumbnailUrl.orEmpty()
+        val portraitSearch = if (cachedPortrait.isBlank() && fallbackName.isNotBlank()) {
+            async { searchArtistPortrait(fallbackName, browseId) }
+        } else {
+            null
+        }
         val root = postBrowse(browseId)
-        val header = root.optJSONObject("header") ?: return null
-        if (!isArtistPageHeader(header)) return null
-        val name = headerText(header).ifBlank { fallbackName.trim() }
-        if (!artistNameMatches(fallbackName, name)) return null
-        val subscribers = extractSubscribers(header)
-        val monthly = extractOfficialMonthlyListeners(header)
+        val header = root.optJSONObject("header")
+        val name = header?.let { headerText(it).ifBlank { fallbackName.trim() } }.orEmpty()
+        if (header == null || !isArtistPageHeader(header) || !artistNameMatches(fallbackName, name)) {
+            portraitSearch?.cancel()
+            return@coroutineScope null
+        }
         val artwork = parseArtistHeaderArtwork(header)
-        val searchPortrait = artistHitMemory["browse:${browseId.lowercase(Locale.ROOT)}"]
-            ?.thumbnailUrl
-            .orEmpty()
-            .ifBlank {
-                runCatching {
-                    music.searchEverything(name, contentLanguage()).artists.firstOrNull { candidate ->
-                        candidate.browseId.equals(browseId, ignoreCase = true) &&
-                            artistNameMatches(name, candidate.name)
-                    }?.thumbnailUrl.orEmpty()
-                }.getOrDefault("")
-            }
+        val searchPortrait = cachedPortrait.ifBlank {
+            portraitSearch?.await() ?: searchArtistPortrait(name, browseId)
+        }
         val thumb = upgradeThumbnail(
             chooseVerifiedArtistShelfThumbnail(
                 searchThumbnailUrl = searchPortrait,
                 headerPortraitUrl = artwork.portraitUrl
             )
         )
-        val banner = artwork.bannerUrl
         val songsPointer = findSongsPointer(root)
         val albumPointers = findReleasePointers(root, "Album", browseId)
         val singlePointers = findReleasePointers(root, "Singol", browseId)
-        val albumPointer = albumPointers.firstOrNull()
-        val singlePointer = singlePointers.firstOrNull()
         val videoPointer = findVideoPointer(root)
-        val initialSongs = extractTopSongs(root, name)
-        val expanded = coroutineScope {
+        val emptySections = ArtistExpandedSections(emptyList(), emptyList(), emptyList(), emptyList())
+        if (onPreview != null) {
+            assembleProfile(root, header, browseId, name, thumb, artwork.bannerUrl, emptySections)?.let(onPreview)
+        }
+        val expanded = run {
             val songsJob = async { songsPointer?.let { pointer -> fetchSongs(pointer, name) }.orEmpty() }
             val albumsJobs = albumPointers.map { pointer -> async { fetchReleases(pointer) } }
             val singlesJobs = singlePointers.map { pointer -> async { fetchReleases(pointer) } }
@@ -653,7 +664,29 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 videos = videosJob.await()
             )
         }
-        val songs = (initialSongs + expanded.songs).distinctBy { it.id }.take(100)
+        assembleProfile(root, header, browseId, name, thumb, artwork.bannerUrl, expanded)
+    }
+
+    private suspend fun searchArtistPortrait(query: String, browseId: String): String = runCatching {
+        music.searchEverything(query, contentLanguage()).artists.firstOrNull { candidate ->
+            candidate.browseId.equals(browseId, ignoreCase = true) && artistNameMatches(query, candidate.name)
+        }?.thumbnailUrl.orEmpty()
+    }.getOrDefault("")
+
+    private fun assembleProfile(
+        root: JSONObject,
+        header: JSONObject,
+        browseId: String,
+        name: String,
+        thumb: String,
+        banner: String,
+        expanded: ArtistExpandedSections
+    ): ArtistProfile? {
+        val songsPointer = findSongsPointer(root)
+        val albumPointer = findReleasePointers(root, "Album", browseId).firstOrNull()
+        val singlePointer = findReleasePointers(root, "Singol", browseId).firstOrNull()
+        val videoPointer = findVideoPointer(root)
+        val songs = (extractTopSongs(root, name) + expanded.songs).distinctBy { it.id }.take(100)
         val mergedReleases = mergeReleases(
             extractReleases(root, "Album") + extractReleases(root, "Singol"),
             expanded.albums + expanded.singles
@@ -676,8 +709,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             browseId = browseId,
             name = name,
             biography = null,
-            subscribers = subscribers,
-            monthlyListeners = monthly,
+            subscribers = extractSubscribers(header),
+            monthlyListeners = extractOfficialMonthlyListeners(header),
             thumbnailUrl = thumb,
             bannerUrl = banner.ifBlank { thumb },
             topSongs = songs,
@@ -1416,6 +1449,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             .fold(0) { acc, byte -> (acc shl 8) or (byte.toInt() and 0xFF) }
             .absoluteValue
     }
+
+    fun accentFor(browseId: String, name: String): Pair<Int, Int> = palette(stableSeed(browseId + name))
 
     private fun palette(seed: Int): Pair<Int, Int> {
         val palettes = listOf(

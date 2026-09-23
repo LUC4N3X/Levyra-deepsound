@@ -54,6 +54,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Photo
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
@@ -117,6 +118,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -712,9 +714,13 @@ internal fun PlaylistDetailHeader(
     onToggleSearch: () -> Unit,
     onChangeCover: () -> Unit,
     onResetCover: () -> Unit,
-    onOpenStudio: () -> Unit
+    onOpenStudio: () -> Unit,
+    isPinnedToHome: Boolean,
+    homePinsFull: Boolean,
+    onTogglePinToHome: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     var menuExpanded by remember { mutableStateOf(false) }
 
     Column(
@@ -803,6 +809,20 @@ internal fun PlaylistDetailHeader(
                             text = { Text(strings.playlistStudioOpen) },
                             leadingIcon = { Icon(Icons.Rounded.AutoAwesome, null) },
                             onClick = { menuExpanded = false; onOpenStudio() }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    when {
+                                        isPinnedToHome -> speedDialCopy.removeFromHome
+                                        homePinsFull -> speedDialCopy.homeFull
+                                        else -> speedDialCopy.addToHome
+                                    }
+                                )
+                            },
+                            leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
+                            enabled = isPinnedToHome || !homePinsFull,
+                            onClick = { menuExpanded = false; onTogglePinToHome() }
                         )
                         DropdownMenuItem(
                             text = { Text(strings.playlistName) },
