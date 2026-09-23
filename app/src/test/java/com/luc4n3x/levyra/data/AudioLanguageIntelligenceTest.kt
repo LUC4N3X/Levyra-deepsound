@@ -170,6 +170,20 @@ class AudioLanguageIntelligenceTest {
         assertTrue(metaUnspecified.tier > metaAutoDub.tier)
     }
 
+    @Test
+    fun languageOnlyXtagsWithoutTrackMetadataStayUnspecified() {
+        val format = formatJson(
+            itag = 251,
+            xtags = "lang=en-US"
+        )
+
+        val meta = AudioLanguageIntelligence.parseFromFormat(format)
+
+        assertEquals(AudioTrackKind.UNSPECIFIED, meta.kind)
+        assertEquals(AudioLanguageIntelligence.TIER_UNSPECIFIED, meta.tier)
+        assertEquals("en-us", meta.language)
+    }
+
     // 6. Preferenza lingua utente corrisponde a traccia originale -> vince con tier massimo (TIER_ORIGINAL_PREFERRED)
     @Test
     fun preferredLanguageMatchesOriginalGetsTopTier() {
