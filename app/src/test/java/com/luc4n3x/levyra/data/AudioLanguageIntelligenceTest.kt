@@ -2,9 +2,6 @@ package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.AlternativeAudioSource
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
-import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
-import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
-import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
@@ -14,8 +11,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.schabi.newpipe.extractor.stream.AudioStream
-import org.schabi.newpipe.extractor.stream.AudioTrackType
 
 class AudioLanguageIntelligenceTest {
 
