@@ -53,7 +53,6 @@ object PlaybackSourceIdentity {
             else -> "audio"
         }
         val quality = audioQuality.trim().lowercase(Locale.ROOT)
-        if (videoMode) return "${persistentCanonicalKey(track)}|$mode|$quality"
         val language = AudioLanguageIntelligence.normalizeLanguage(preferredAudioLanguage).ifBlank { "default" }
         return "${persistentCanonicalKey(track)}|$mode|$quality|lang:$language"
     }

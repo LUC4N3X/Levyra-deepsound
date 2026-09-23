@@ -61,8 +61,11 @@ object LevyraPlaybackCacheKey {
         val itag = itagPattern.find(url)?.groupValues?.getOrNull(1)
         if (!itag.isNullOrBlank()) {
             val rawXtags = com.luc4n3x.levyra.data.AudioLanguageIntelligence.extractXtagsFromUrl(url)
-            val lang = com.luc4n3x.levyra.data.AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
-                ?.takeIf { it.isNotBlank() }
+            val lang = com.luc4n3x.levyra.data.AudioLanguageIntelligence
+                .normalizeLanguage(
+                    com.luc4n3x.levyra.data.AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
+                )
+                .takeIf { it.isNotBlank() }
             val clen = com.luc4n3x.levyra.player.offline.audioContentLengthFromUrl(url).takeIf { it > 0L }
             return if (!lang.isNullOrBlank() || clen != null) {
                 buildString {
