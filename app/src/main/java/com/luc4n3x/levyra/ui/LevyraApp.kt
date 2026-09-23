@@ -12222,10 +12222,9 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
 
                 if (personalizedTracks.isNotEmpty()) {
                     item(key = "search-personalized", contentType = "search-personalized") {
-                        RecentSearchesRow(
+                        ListeningPicksGrid(
                             title = personalizedCopy.basedOnListening,
                             tracks = personalizedTracks,
-                            allowRemove = false,
                             favoriteIds = state.favoriteIds,
                             downloadedTrackIds = state.downloadedTrackIds,
                             onTrackClick = { track ->
@@ -12233,7 +12232,6 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 keyboardController?.hide()
                                 viewModel.playFrom(personalizedTracks, track)
                             },
-                            onRemove = {},
                             onFavorite = viewModel::toggleFavorite,
                             onAddToPlaylist = { addTarget = it },
                             onPlayNext = viewModel::playNext,
@@ -12809,87 +12807,21 @@ private fun RecentSearchesRow(
                                     )
                                 }
                             }
-                            DropdownMenu(
+                            SearchTrackActionsMenu(
+                                track = track,
                                 expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) },
-                                    leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onFavorite(track)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(strings.playNext) },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onPlayNext(track)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(strings.addToQueue) },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onAddToQueue(track)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(strings.addToPlaylist) },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onAddToPlaylist(track)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) },
-                                    leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        if (!isDownloaded) onDownload(track)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(strings.openArtist) },
-                                    leadingIcon = { Icon(Icons.Rounded.Person, null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onArtist(track)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(strings.share) },
-                                    leadingIcon = { Icon(Icons.Rounded.Share, null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        val shareText = buildString {
-                                            append(track.title)
-                                            if (track.artist.isNotBlank()) append(" - ").append(track.artist)
-                                            val link = track.videoUrl.ifBlank { track.streamUrl }
-                                            if (link.isNotBlank()) append("\n").append(link)
-                                        }
-                                        val intent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, shareText)
-                                        }
-                                        context.startActivity(Intent.createChooser(intent, strings.shareSong))
-                                    }
-                                )
-                                if (allowRemove) {
-                                    DropdownMenuItem(
-                                        text = { Text(strings.removeFromRecentSearches) },
-                                        leadingIcon = { Icon(Icons.Rounded.Delete, null) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onRemove(track)
-                                        }
-                                    )
-                                }
-                            }
+                                isFavorite = isFavorite,
+                                isDownloaded = isDownloaded,
+                                allowRemove = allowRemove,
+                                onDismiss = { menuExpanded = false },
+                                onRemove = onRemove,
+                                onFavorite = onFavorite,
+                                onAddToPlaylist = onAddToPlaylist,
+                                onPlayNext = onPlayNext,
+                                onAddToQueue = onAddToQueue,
+                                onDownload = onDownload,
+                                onArtist = onArtist
+                            )
                         }
                     }
                     Text(
@@ -12913,6 +12845,264 @@ private fun RecentSearchesRow(
         }
     }
 }
+
+@Composable
+private fun SearchTrackActionsMenu(
+    track: Track,
+    expanded: Boolean,
+    isFavorite: Boolean,
+    isDownloaded: Boolean,
+    allowRemove: Boolean,
+    onDismiss: () -> Unit,
+    onRemove: (Track) -> Unit,
+    onFavorite: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit,
+    onPlayNext: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onDownload: (Track) -> Unit,
+    onArtist: (Track) -> Unit
+) {
+    val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss
+    ) {
+        DropdownMenuItem(
+            text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) },
+            leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) },
+            onClick = {
+                onDismiss()
+                onFavorite(track)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text(strings.playNext) },
+            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null) },
+            onClick = {
+                onDismiss()
+                onPlayNext(track)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text(strings.addToQueue) },
+            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
+            onClick = {
+                onDismiss()
+                onAddToQueue(track)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text(strings.addToPlaylist) },
+            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
+            onClick = {
+                onDismiss()
+                onAddToPlaylist(track)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) },
+            leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) },
+            onClick = {
+                onDismiss()
+                if (!isDownloaded) onDownload(track)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text(strings.openArtist) },
+            leadingIcon = { Icon(Icons.Rounded.Person, null) },
+            onClick = {
+                onDismiss()
+                onArtist(track)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text(strings.share) },
+            leadingIcon = { Icon(Icons.Rounded.Share, null) },
+            onClick = {
+                onDismiss()
+                val shareText = buildString {
+                    append(track.title)
+                    if (track.artist.isNotBlank()) append(" - ").append(track.artist)
+                    val link = track.videoUrl.ifBlank { track.streamUrl }
+                    if (link.isNotBlank()) append("\n").append(link)
+                }
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                context.startActivity(Intent.createChooser(intent, strings.shareSong))
+            }
+        )
+        if (allowRemove) {
+            DropdownMenuItem(
+                text = { Text(strings.removeFromRecentSearches) },
+                leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                onClick = {
+                    onDismiss()
+                    onRemove(track)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ListeningPicksGrid(
+    title: String,
+    tracks: List<Track>,
+    favoriteIds: Set<String>,
+    downloadedTrackIds: Set<String>,
+    onTrackClick: (Track) -> Unit,
+    onFavorite: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit,
+    onPlayNext: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onDownload: (Track) -> Unit,
+    onArtist: (Track) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val panelShape = RoundedCornerShape(22.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(panelShape)
+            .background(Brush.linearGradient(listOf(LevyraBlue.copy(alpha = 0.16f), Color.White.copy(alpha = 0.03f))))
+            .border(Dp.Hairline, LevyraBlue.copy(alpha = 0.22f), panelShape)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.AutoAwesome,
+                contentDescription = null,
+                tint = LevyraBlue,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = title,
+                color = LevyraText,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        tracks.take(LISTENING_PICKS_LIMIT).chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { track ->
+                    ListeningPickTile(
+                        track = track,
+                        isFavorite = track.id in favoriteIds,
+                        isDownloaded = track.id in downloadedTrackIds,
+                        actionsLabel = strings.actions,
+                        onClick = { onTrackClick(track) },
+                        onFavorite = onFavorite,
+                        onAddToPlaylist = onAddToPlaylist,
+                        onPlayNext = onPlayNext,
+                        onAddToQueue = onAddToQueue,
+                        onDownload = onDownload,
+                        onArtist = onArtist,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ListeningPickTile(
+    track: Track,
+    isFavorite: Boolean,
+    isDownloaded: Boolean,
+    actionsLabel: String,
+    onClick: () -> Unit,
+    onFavorite: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit,
+    onPlayNext: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onDownload: (Track) -> Unit,
+    onArtist: (Track) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var menuExpanded by remember(track.id) { mutableStateOf(false) }
+    Row(
+        modifier = modifier
+            .height(58.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .clickable(onClick = onClick)
+            .padding(start = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CoverImage(
+            track = track,
+            modifier = Modifier
+                .size(46.dp)
+                .clip(RoundedCornerShape(10.dp))
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = track.title,
+                color = LevyraText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                color = LevyraMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Box {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clickable { menuExpanded = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = actionsLabel,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            SearchTrackActionsMenu(
+                track = track,
+                expanded = menuExpanded,
+                isFavorite = isFavorite,
+                isDownloaded = isDownloaded,
+                allowRemove = false,
+                onDismiss = { menuExpanded = false },
+                onRemove = {},
+                onFavorite = onFavorite,
+                onAddToPlaylist = onAddToPlaylist,
+                onPlayNext = onPlayNext,
+                onAddToQueue = onAddToQueue,
+                onDownload = onDownload,
+                onArtist = onArtist
+            )
+        }
+    }
+}
+
+private const val LISTENING_PICKS_LIMIT = 6
 
 @Composable
 private fun SearchQueryChips(

@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal class HighQualityProviderLane(
     val provider: HighQualityAudioProvider,
@@ -95,9 +96,51 @@ internal class HighQualityProviderLane(
             }
             is AlternativeMatchSelection.Accepted -> {
                 HighQualityAudioDiagnostics.matchAccepted(query, finalSelection.evaluation)
-                resolveStream(identityKey, finalSelection.evaluation, queryFingerprint)
+                when (val hydration = hydrate(query, finalSelection.evaluation)) {
+                    is Hydration.Ready -> resolveStream(identityKey, hydration.evaluation, queryFingerprint)
+                    is Hydration.Refused -> hydration.fallback
+                }
             }
         }
+    }
+
+    private suspend fun hydrate(query: AlternativeTrackQuery, selected: AlternativeMatchEvaluation): Hydration {
+        val searched = selected.candidate
+        val outcome = withTimeoutOrNull(HYDRATION_TIMEOUT_MS) { provider.lookup(searched.providerTrackId) }
+        return when (outcome) {
+            null -> keepSearched(selected, "TIMEOUT", "${HYDRATION_TIMEOUT_MS}ms")
+            is ProviderLookupOutcome.Failed -> keepSearched(selected, "UNAVAILABLE", outcome.failure.name)
+            ProviderLookupOutcome.Missing -> refuse(searched, "MISSING", "details missing or restricted")
+            is ProviderLookupOutcome.Found -> {
+                val details = outcome.candidate
+                val evaluation = matcher.evaluate(query, details)
+                val sameTrack = details.providerId == searched.providerId &&
+                    details.providerTrackId == searched.providerTrackId
+                if (sameTrack && evaluation.accepted) {
+                    HighQualityAudioDiagnostics.hydration(
+                        provider.id,
+                        searched.providerTrackId,
+                        "HYDRATED",
+                        details.offers320,
+                        "verdict=${evaluation.verdict} confidence=${evaluation.confidence}"
+                    )
+                    Hydration.Ready(evaluation)
+                } else {
+                    refuse(searched, "CONFLICT", if (sameTrack) "${evaluation.rejection}" else "track id changed")
+                }
+            }
+        }
+    }
+
+    private fun keepSearched(selected: AlternativeMatchEvaluation, outcome: String, detail: String): Hydration {
+        val candidate = selected.candidate
+        HighQualityAudioDiagnostics.hydration(provider.id, candidate.providerTrackId, outcome, candidate.offers320, detail)
+        return Hydration.Ready(selected)
+    }
+
+    private fun refuse(searched: AlternativeTrackCandidate, outcome: String, detail: String): Hydration {
+        HighQualityAudioDiagnostics.hydration(provider.id, searched.providerTrackId, outcome, searched.offers320, detail)
+        return Hydration.Refused(HighQualityResolution.Fallback(HighQualityFallbackReason.NO_MATCH, "HYDRATION_$outcome"))
     }
 
     private fun isDecisive(selection: AlternativeMatchSelection, index: Int): Boolean = when (selection) {
@@ -139,7 +182,13 @@ internal class HighQualityProviderLane(
             HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
     }
 
+    private sealed interface Hydration {
+        data class Ready(val evaluation: AlternativeMatchEvaluation) : Hydration
+        data class Refused(val fallback: HighQualityResolution.Fallback) : Hydration
+    }
+
     companion object {
         const val ISRC_CONFIRMED_CONFIDENCE = 100
+        const val HYDRATION_TIMEOUT_MS = 1_500L
     }
 }

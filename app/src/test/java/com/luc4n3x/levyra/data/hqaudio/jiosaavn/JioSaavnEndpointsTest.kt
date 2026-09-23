@@ -77,15 +77,54 @@ class JioSaavnEndpointsTest {
     }
 
     @Test
+    fun legacyHttpTokenOnTheMediaCdnIsCanonicalizedToHttps() {
+        val location = JioSaavnMediaLocation.fromMediaToken(encrypt("http://aac.saavncdn.com/820/5ddb9a79_96.mp4"))!!
+        assertEquals("https://aac.saavncdn.com/820/5ddb9a79_320.mp4", location.openUrl(AudioQualityTier.KBPS_320))
+        val explicitPort = JioSaavnMediaLocation.fromMediaToken(encrypt("http://aac.saavncdn.com:80/820/5ddb9a79_96.mp4"))!!
+        assertEquals("https://aac.saavncdn.com/820/5ddb9a79_160.mp4", explicitPort.openUrl(AudioQualityTier.KBPS_160))
+    }
+
+    @Test
+    fun decryptedCdnHostIsPreservedForEveryTier() {
+        val location = JioSaavnMediaLocation.fromMediaToken(encrypt("https://c.saavncdn.com/820/5ddb9a79_96.m4a"))!!
+        assertEquals("c.saavncdn.com", location.openHost)
+        assertEquals("https://c.saavncdn.com/820/5ddb9a79_320.m4a", location.openUrl(AudioQualityTier.KBPS_320))
+        assertEquals("https://c.saavncdn.com/820/5ddb9a79_96.m4a", location.openUrl(AudioQualityTier.KBPS_96))
+    }
+
+    @Test
+    fun tierIsReplacedInTheFileNameOnly() {
+        val location = JioSaavnMediaLocation.fromMediaToken(
+            encrypt("https://aac.saavncdn.com/820/track_96_x_96.mp4?variant=_96.mp4#_96")
+        )!!
+        assertEquals("https://aac.saavncdn.com/820/track_96_x_320.mp4", location.openUrl(AudioQualityTier.KBPS_320))
+    }
+
+    @Test
+    fun authorizedLocationKeepsTheKnownOpenCdn() {
+        val location = JioSaavnMediaLocation.parse("https://web.saavncdn.com/820/abc_320.mp4?Expires=1&Signature=s")!!
+        assertEquals(JioSaavnEndpoints.OPEN_MEDIA_HOST, location.openHost)
+    }
+
+    @Test
     fun untrustedOrMalformedMediaTokensAreRejected() {
         assertNull(JioSaavnMediaLocation.fromMediaToken(""))
         assertNull(JioSaavnMediaLocation.fromMediaToken("token-pW-kkdqr"))
         assertNull(JioSaavnMediaLocation.fromMediaToken("ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDy"))
         assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://evil.example/820/5ddb9a79_96.mp4")))
-        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("http://aac.saavncdn.com/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("http://evil.example/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com.evil.example/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://evilsaavncdn.com/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://saavncdn.com/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://evil.example@aac.saavncdn.com/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com:8443/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("http://aac.saavncdn.com:443/820/5ddb9a79_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("ftp://aac.saavncdn.com/820/5ddb9a79_96.mp4")))
         assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/5ddb9a79_96.mp4")))
         assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/820/a%3Fb_96.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/8%2F20/5ddb9a79_96.mp4")))
         assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/820/5ddb9a79.mp4")))
+        assertNull(JioSaavnMediaLocation.fromMediaToken(encrypt("https://aac.saavncdn.com/820/5ddb9a79_96.mp3")))
     }
 
     private fun encrypt(plain: String): String {

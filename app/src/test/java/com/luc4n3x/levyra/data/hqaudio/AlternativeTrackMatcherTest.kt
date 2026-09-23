@@ -278,10 +278,92 @@ class AlternativeTrackMatcherTest {
     @Test
     fun ambiguousCandidatesAreRejected() {
         val selection = matcher.select(
-            query(durationMs = 201_000L),
-            listOf(candidate(id = "a", duration = 200), candidate(id = "b", duration = 202))
+            query(durationMs = 200_000L),
+            listOf(candidate(id = "a", duration = 197), candidate(id = "b", duration = 203))
         )
         assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun releasesOfOneRecordingWithSlightlyDifferentLengthsAreNotAmbiguous() {
+        val selection = matcher.select(
+            query(album = "YouTube Music", durationMs = 202_000L),
+            listOf(candidate(id = "album", duration = 200), candidate(id = "single", duration = 204), candidate(id = "deluxe", duration = 204))
+        )
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+    }
+
+    @Test
+    fun soundtrackReissuesTitledFromTheFilmAreTheSameRecording() {
+        val query = query(title = "Naattu Koothu", artist = "Rahul Sipligunj", album = "YouTube Music", durationMs = 215_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "original", title = "Naattu Koothu", primary = listOf("Rahul Sipligunj"), album = "RRR - Tamil", duration = 214),
+                candidate(id = "reissue", title = "Naattu Koothu (From \"Rrr\")", primary = listOf("Rahul Sipligunj"), album = "Top Hits", duration = 214)
+            )
+        )
+        assertEquals("original", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun dubbedReleasesInDifferentLanguagesStayAmbiguous() {
+        val query = query(title = "Srivalli", artist = "Singer", album = "YouTube Music", durationMs = 225_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "telugu", title = "Srivalli", primary = listOf("Singer"), album = "Pushpa", duration = 225).copy(language = "telugu"),
+                candidate(id = "hindi", title = "Srivalli", primary = listOf("Singer"), album = "Pushpa", duration = 225).copy(language = "hindi")
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun differentVersionsAreNeverMergedIntoOneRecording() {
+        val selection = matcher.select(
+            query(album = "YouTube Music"),
+            listOf(candidate(id = "original"), candidate(id = "remix", title = "Blinding Lights (Remix)"))
+        )
+        assertEquals("original", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun unknownAlbumToleratesSmallMasteringDriftOnlyWithExactTitleAndArtists() {
+        val query = query(title = "Bohemian Rhapsody", artist = "Queen", album = "YouTube Music", durationMs = 355_000L)
+        val exact = verdict(query, candidate(title = "Bohemian Rhapsody", primary = listOf("Queen"), album = "A Night At The Opera", duration = 358))
+        assertEquals(AlternativeMatchVerdict.HIGH, exact.verdict)
+        assertTrue(exact.confidence < AlternativeTrackMatcher.PERSISTABLE_CONFIDENCE)
+        assertRejected(
+            MatchRejection.DURATION_OUT_OF_RANGE,
+            query,
+            candidate(title = "Bohemian Rhapsody (From \"Wayne's World\")", primary = listOf("Queen"), album = "Soundtrack", duration = 358)
+        )
+        assertRejected(
+            MatchRejection.DURATION_OUT_OF_RANGE,
+            query,
+            candidate(title = "Bohemian Rhapsody", primary = listOf("Queen"), album = "A Night At The Opera", duration = 362)
+        )
+    }
+
+    @Test
+    fun dubbedAlbumInAnotherLanguageIsNeverTheSameAlbum() {
+        val query = query(title = "Srivalli", artist = "Javed Ali", album = "Pushpa - The Rise (Hindi)", durationMs = 225_000L)
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            query,
+            candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise (Telugu)", duration = 225)
+        )
+        val sameLanguage = verdict(query, candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise (Hindi)", duration = 225))
+        assertEquals(AlbumRelation.SAME, sameLanguage.albumRelation)
+    }
+
+    @Test
+    fun releaseLanguageSuffixDoesNotMakeTheAlbumDifferent() {
+        val query = query(title = "Naatu Naatu", artist = "Rahul Sipligunj", album = "RRR (Original Motion Picture Soundtrack)", durationMs = 214_000L)
+        val evaluation = verdict(query, candidate(title = "Naatu Naatu", primary = listOf("Rahul Sipligunj"), album = "RRR - Telugu", duration = 214))
+        assertTrue(evaluation.accepted)
+        assertEquals(AlbumRelation.EDITION_VARIANT, evaluation.albumRelation)
     }
 
     @Test

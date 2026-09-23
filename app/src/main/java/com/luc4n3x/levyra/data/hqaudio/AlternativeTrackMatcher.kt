@@ -24,8 +24,9 @@ data class AlternativeTrackCandidate(
     val durationSeconds: Int,
     val explicit: Boolean?,
     val isrc: String = "",
-    val offers320: Boolean = false,
-    val mediaToken: String = ""
+    val offers320: Boolean? = null,
+    val mediaToken: String = "",
+    val language: String = ""
 )
 
 enum class MatchRejection {
@@ -136,10 +137,11 @@ class AlternativeTrackMatcher {
         }
         val artistsExact = expectedArtists.containsAll(candidatePrimary) &&
             candidateArtists.containsAll(expectedCredit.names)
-        if (delta > EXCELLENT_DURATION_DELTA_SECONDS && !(relation == AlbumRelation.SAME && artistsExact)) {
+        val titleExact = expectedTitle.fullNormalized == candidateTitle.fullNormalized
+        val albumAllowsDrift = relation == AlbumRelation.SAME || (relation == AlbumRelation.UNVERIFIED && titleExact)
+        if (delta > EXCELLENT_DURATION_DELTA_SECONDS && !(albumAllowsDrift && artistsExact)) {
             return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
         }
-        val titleExact = expectedTitle.fullNormalized == candidateTitle.fullNormalized
         val confidence = confidence(titleExact, artistsExact, relation, delta, isrcConfirmed)
         val verdict = when {
             titleExact && artistsExact && relation == AlbumRelation.SAME && delta <= EXCELLENT_DURATION_DELTA_SECONDS ->
@@ -167,7 +169,7 @@ class AlternativeTrackMatcher {
             .sortedWith(
                 compareBy<AlternativeMatchEvaluation> { it.verdict.ordinal }
                     .thenByDescending { it.confidence }
-                    .thenByDescending { it.candidate.offers320 }
+                    .thenByDescending { it.candidate.offers320 == true }
             )
         val top = accepted.firstOrNull()
             ?: return AlternativeMatchSelection.Rejected(dominantRejection(evaluations), evaluations)
@@ -180,8 +182,9 @@ class AlternativeTrackMatcher {
             .filter { it.verdict == top.verdict && sameRecording(it, top, explicitKnown) }
             .maxWith(
                 compareBy<AlternativeMatchEvaluation> { it.candidate.explicit != true }
-                    .thenBy { it.candidate.offers320 }
+                    .thenBy { it.candidate.offers320 == true }
                     .thenBy { it.confidence }
+                    .thenByDescending { it.durationDeltaSeconds }
             )
         return AlternativeMatchSelection.Accepted(chosen, evaluations)
     }
@@ -194,10 +197,15 @@ class AlternativeTrackMatcher {
         val a = left.candidate
         val b = right.candidate
         if (a.providerId == b.providerId && a.providerTrackId == b.providerTrackId) return true
-        return AlternativeTrackText.title(a.title).fullNormalized == AlternativeTrackText.title(b.title).fullNormalized &&
+        val aTitle = AlternativeTrackText.title(a.title)
+        val bTitle = AlternativeTrackText.title(b.title)
+        return aTitle.core == bTitle.core &&
+            aTitle.versionSignature == bTitle.versionSignature &&
+            aTitle.featuredArtists == bTitle.featuredArtists &&
             primarySet(a) == primarySet(b) &&
-            abs(a.durationSeconds - b.durationSeconds) <= 1 &&
-            (!explicitKnown || a.explicit == b.explicit)
+            abs(a.durationSeconds - b.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
+            (!explicitKnown || a.explicit == b.explicit) &&
+            (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
     }
 
     private fun primarySet(candidate: AlternativeTrackCandidate): Set<String> =
@@ -223,10 +231,14 @@ class AlternativeTrackMatcher {
         val candidate = AlternativeTrackText.album(candidateRaw)
         if (candidate.isBlank) return AlbumRelation.UNVERIFIED
         if (expected.core == candidate.core) {
+            if (expected.language != null && candidate.language != null && expected.language != candidate.language) {
+                return AlbumRelation.MISMATCH
+            }
             val expectedRemaster = AlbumEdition.REMASTERED in expected.editions
             val candidateRemaster = AlbumEdition.REMASTERED in candidate.editions
             if (expectedRemaster != candidateRemaster) return AlbumRelation.REMASTER_CONFLICT
-            return if (expected.editions == candidate.editions) AlbumRelation.SAME else AlbumRelation.EDITION_VARIANT
+            val sameEdition = expected.editions == candidate.editions && expected.language == candidate.language
+            return if (sameEdition) AlbumRelation.SAME else AlbumRelation.EDITION_VARIANT
         }
         val expectedSingle = expected.core == expectedTitle.core || expected.editions.any(singleEditions::contains)
         val candidateSingle = candidate.core == candidateTitle.core || candidate.editions.any(singleEditions::contains)
@@ -273,6 +285,7 @@ class AlternativeTrackMatcher {
         const val MINIMUM_ACCEPTED_CONFIDENCE = 75
         const val PERSISTABLE_CONFIDENCE = 85
         const val AMBIGUITY_MARGIN = 8
+        const val SAME_RECORDING_DURATION_SECONDS = 4
 
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
         internal val untrustedAlbumNames = setOf(

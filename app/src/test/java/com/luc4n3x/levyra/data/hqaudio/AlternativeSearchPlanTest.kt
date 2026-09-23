@@ -28,6 +28,20 @@ class AlternativeSearchPlanTest {
     }
 
     @Test
+    fun lastPassDropsSoundtrackDecorationsThatBreakProviderSearch() {
+        val passes = AlternativeSearchPlan.queries(
+            query(title = "Arabic Kuthu - Halamithi Habibo (From \"Beast\")", artist = "Anirudh Ravichander", album = "Beast")
+        )
+        assertEquals("arabic kuthu halamithi habibo anirudh ravichander", passes.last())
+    }
+
+    @Test
+    fun lastPassKeepsVersionWordsSoRemixesAreStillSearchedAsRemixes() {
+        val passes = AlternativeSearchPlan.queries(query(title = "Kesariya (Dance Mix)", artist = "Arijit Singh", album = ""))
+        assertTrue(passes.all { it.contains("dance mix", ignoreCase = true) })
+    }
+
+    @Test
     fun primaryArtistIsUsedForFocusedPasses() {
         val passes = AlternativeSearchPlan.queries(query(title = "One Kiss", artist = "Calvin Harris & Dua Lipa", album = "One Kiss"))
         assertEquals("One Kiss Calvin Harris", passes.first())
