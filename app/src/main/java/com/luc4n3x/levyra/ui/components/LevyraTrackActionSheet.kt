@@ -55,6 +55,7 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Recommend
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.ThumbDown
@@ -98,6 +99,7 @@ import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import com.luc4n3x.levyra.ui.player.queueSpaceLabel
 import com.luc4n3x.levyra.ui.StableRemoteArtwork
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -153,9 +155,13 @@ internal fun LevyraTrackActionSheet(
     onRemoveFromHistory: () -> Unit,
     onMoreLikeThis: () -> Unit,
     onLessLikeThis: () -> Unit,
-    onToggleExcludeArtist: () -> Unit
+    onToggleExcludeArtist: () -> Unit,
+    isPinnedToHome: Boolean = false,
+    homePinsFull: Boolean = false,
+    onTogglePinToHome: (() -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
+    val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     val context = LocalContext.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -390,6 +396,19 @@ internal fun LevyraTrackActionSheet(
                                 label = strings.addToPlaylist,
                                 onClick = { perform(onAddToPlaylist) }
                             )
+                            if (onTogglePinToHome != null) {
+                                TrackActionRow(
+                                    icon = Icons.Rounded.PushPin,
+                                    label = when {
+                                        isPinnedToHome -> speedDialCopy.removeFromHome
+                                        homePinsFull -> speedDialCopy.homeFull
+                                        else -> speedDialCopy.addToHome
+                                    },
+                                    tint = if (isPinnedToHome) LevyraCyan else LevyraText,
+                                    enabled = isPinnedToHome || !homePinsFull,
+                                    onClick = { perform(onTogglePinToHome) }
+                                )
+                            }
                             when {
                                 isDownloading -> TrackActionRow(
                                     icon = Icons.Rounded.Download,

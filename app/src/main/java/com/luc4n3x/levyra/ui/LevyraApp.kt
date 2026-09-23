@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.isExcludableArtist
 import androidx.compose.runtime.key
@@ -564,6 +565,7 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.personalizedSearchCopy
 import com.luc4n3x.levyra.ui.i18n.personalizedSearchPromptText
@@ -579,6 +581,7 @@ import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
 import com.luc4n3x.levyra.ui.library.PlaylistStudioScreen
 import com.luc4n3x.levyra.ui.components.rememberLastNonNull
 import com.luc4n3x.levyra.ui.library.SavedAlbumBookmarkOverlay
+import com.luc4n3x.levyra.viewmodel.completedScanSongs
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
@@ -1058,7 +1061,7 @@ private fun RowScope.TabButton(
     }
 }
 @Composable
-private fun ActiveTrackEqualizer(
+internal fun ActiveTrackEqualizer(
     modifier: Modifier = Modifier,
     color: Color = LevyraCyan,
     isPlaying: Boolean = true,
@@ -1268,7 +1271,7 @@ private fun HomeChip(
 private val LevyraWideArtworkAlignment = BiasAlignment(0f, -0.35f)
 
 @Composable
-private fun CoverImage(
+internal fun CoverImage(
     track: Track,
     modifier: Modifier,
     highRes: Boolean = false,
@@ -2502,13 +2505,18 @@ fun LevyraApp(
                     onResetEqualizer = viewModel::resetEqualizer,
                     onApplyAutoEq = viewModel::applyAutoEqImport,
                     onSaveAutoEqPreset = viewModel::saveAutoEqCustomPreset,
-                    onParametricEnabled = viewModel::setParametricEqualizerEnabled,
-                    onParametricProfile = viewModel::selectParametricProfile,
-                    onParametricPreamp = viewModel::updateParametricPreamp,
-                    onParametricBand = viewModel::updateParametricBand,
-                    onAddParametricBand = viewModel::addParametricBand,
-                    onRemoveParametricBand = viewModel::removeParametricBand,
-                    onResetParametric = viewModel::resetParametricEqualizer,
+                    parametricActions = remember(viewModel) {
+                        ParametricProfileActions(
+                            onEnabled = viewModel::setParametricEqualizerEnabled,
+                            onActivateCustom = viewModel::selectParametricProfile,
+                            onActivateFlat = viewModel::resetParametricEqualizer,
+                            onSaveDraft = viewModel::saveParametricProfileDraft,
+                            onDuplicate = viewModel::duplicateParametricProfile,
+                            onRename = viewModel::renameParametricProfile,
+                            onDelete = viewModel::deleteParametricProfile,
+                            onAudition = viewModel::auditionParametricProfile
+                        )
+                    },
                     onApplyParametricAutoEq = viewModel::applyParametricAutoEq,
                     onSaveParametricProfile = viewModel::saveParametricProfile,
                     autoEqCatalog = autoEqCatalog,
@@ -2576,6 +2584,7 @@ fun LevyraApp(
                     onDownload = viewModel::exportTrack,
                     onDownloadAlbum = viewModel::exportCurrentAlbum,
                     onRetry = { state.albumDetail?.album?.let(viewModel::openAlbum) },
+                    onTogglePinToHome = viewModel::toggleSpeedDialAlbum,
 
                     onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
                     onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
@@ -2593,6 +2602,7 @@ fun LevyraApp(
                     onPlayAll = { tracks -> viewModel.playAll(tracks) },
                     onToggleFollow = viewModel::toggleFollowArtist,
                     onToggleExclude = { browseId, name -> viewModel.toggleExcludeArtist(browseId, name) },
+                    onTogglePinToHome = { artist -> viewModel.toggleSpeedDialArtist(artist.name, artist.browseId, artist.thumbnailUrl) },
                     onOpenArtist = viewModel::openArtistFromHit,
                     onOpenRelease = viewModel::openArtistRelease,
                     onClose = viewModel::closeArtist
@@ -2817,7 +2827,10 @@ fun LevyraApp(
                             target.artistBrowseIds.firstOrNull().orEmpty(),
                             target.artist
                         )
-                    }
+                    },
+                    isPinnedToHome = SpeedDial.songKey(target)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
+                    homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
+                    onTogglePinToHome = { viewModel.toggleSpeedDialTrack(target) }
                 )
             }
 
@@ -3516,7 +3529,7 @@ private fun AlbumOverlay(
     onDownload: (Track) -> Unit,
     onDownloadAlbum: () -> Unit,
     onRetry: () -> Unit,
-
+    onTogglePinToHome: (AlbumHit) -> Unit,
     onAddToPlaylist: (String, Track) -> Unit,
     onCreatePlaylistWithTrack: (String, Track) -> Unit,
     onOpenAlbumArtist: () -> Unit,
@@ -3594,6 +3607,9 @@ private fun AlbumOverlay(
                 onRetry = onRetry,
                 onOpenArtist = onOpenAlbumArtist,
                 onDownload = onDownloadAlbum,
+                isPinnedToHome = SpeedDial.albumKey(album)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
+                homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
+                onTogglePinToHome = { onTogglePinToHome(album) },
                 onShare = {
                     val shareText = buildString {
                         append(album.title)
@@ -4063,6 +4079,9 @@ private fun AlbumHeader(
     onRetry: () -> Unit,
     onOpenArtist: () -> Unit,
     onDownload: () -> Unit,
+    isPinnedToHome: Boolean,
+    homePinsFull: Boolean,
+    onTogglePinToHome: () -> Unit,
     onShare: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -4156,15 +4175,15 @@ private fun AlbumHeader(
             )
         }
         Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (trackCount > 0) {
-                AlbumQuietAction(icon = Icons.Rounded.Download, label = strings.offline, stage = stage, onClick = onDownload)
-            }
-            AlbumQuietAction(icon = Icons.Rounded.Share, label = strings.share, stage = stage, onClick = onShare)
-        }
+        AlbumQuietActions(
+            showDownload = trackCount > 0,
+            stage = stage,
+            isPinnedToHome = isPinnedToHome,
+            homePinsFull = homePinsFull,
+            onDownload = onDownload,
+            onShare = onShare,
+            onTogglePinToHome = onTogglePinToHome
+        )
         if (description.isNotBlank()) {
             Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
             Column(
@@ -4357,6 +4376,69 @@ private fun AlbumQuietAction(
             letterSpacing = (-0.2).sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun AlbumQuietActions(
+    showDownload: Boolean,
+    stage: AlbumStageColors,
+    isPinnedToHome: Boolean,
+    homePinsFull: Boolean,
+    onDownload: () -> Unit,
+    onShare: () -> Unit,
+    onTogglePinToHome: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val speedDialCopy = remember(strings) { strings.speedDialCopy() }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showDownload) {
+            AlbumQuietAction(icon = Icons.Rounded.Download, label = strings.offline, stage = stage, onClick = onDownload)
+        }
+        AlbumQuietAction(icon = Icons.Rounded.Share, label = strings.share, stage = stage, onClick = onShare)
+        AlbumPinAction(
+            pinned = isPinnedToHome,
+            enabled = isPinnedToHome || !homePinsFull,
+            label = when {
+                isPinnedToHome -> speedDialCopy.removeFromHome
+                homePinsFull -> speedDialCopy.homeFull
+                else -> speedDialCopy.addToHome
+            },
+            stage = stage,
+            onClick = onTogglePinToHome
+        )
+    }
+}
+
+@Composable
+private fun AlbumPinAction(
+    pinned: Boolean,
+    enabled: Boolean,
+    label: String,
+    stage: AlbumStageColors,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(LevyraPlayerDesign.MinimumTouchTarget)
+            .clip(CircleShape)
+            .semantics { toggleableState = ToggleableState(pinned) }
+            .pressable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.PushPin,
+            contentDescription = label,
+            tint = when {
+                pinned -> LevyraCyan
+                enabled -> stage.contentMuted
+                else -> stage.contentMuted.copy(alpha = 0.4f)
+            },
+            modifier = Modifier.size(18.dp)
         )
     }
 }
@@ -4656,11 +4738,15 @@ private fun ArtistOverlay(
     onPlayAll: (List<Track>) -> Unit,
     onToggleFollow: () -> Unit,
     onToggleExclude: (String, String) -> Unit,
+    onTogglePinToHome: (ArtistProfile) -> Unit,
     onOpenArtist: (ArtistHit) -> Unit,
     onOpenRelease: (ArtistRelease, String) -> Unit,
     onClose: () -> Unit
 ) {
     val profile = state.artistProfile
+    val pinnedToHome = profile != null && SpeedDial.artistKey(profile.name, profile.browseId)
+        ?.let { key -> state.speedDialPins.any { it.key == key } } == true
+    val homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS
     val isFollowed = profile != null && (
         (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) ||
             profile.name.trim().lowercase() in state.followedArtistKeys
@@ -4794,7 +4880,10 @@ private fun ArtistOverlay(
                                     ?.let { songs -> { onPlayAll(songs.shuffled()) } },
                                 onToggleFollow = onToggleFollow,
                                 isExcluded = isExcluded,
-                                onToggleExclude = { onToggleExclude(artist.browseId, artist.name) }
+                                onToggleExclude = { onToggleExclude(artist.browseId, artist.name) },
+                                isPinnedToHome = pinnedToHome,
+                                homePinsFull = homePinsFull,
+                                onTogglePinToHome = { onTogglePinToHome(artist) }
                             )
                             if (artist.hasBio) {
                                 ArtistBio(
@@ -4802,6 +4891,17 @@ private fun ArtistOverlay(
                                     accentStart = accentStart,
                                     accentEnd = accentEnd,
                                     modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                    if (state.artistLoading && artist.topSongs.isEmpty()) {
+                        item(key = "artist-loading", contentType = "artist-loading") {
+                            Box(modifier = Modifier.fillMaxWidth().padding(top = 28.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = highlight
                                 )
                             }
                         }
@@ -5363,9 +5463,13 @@ private fun ArtistActionBar(
     onShuffle: (() -> Unit)?,
     onToggleFollow: () -> Unit,
     isExcluded: Boolean,
-    onToggleExclude: () -> Unit
+    onToggleExclude: () -> Unit,
+    isPinnedToHome: Boolean,
+    homePinsFull: Boolean,
+    onTogglePinToHome: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     var artistMenuExpanded by remember(profile.browseId, profile.name) { mutableStateOf(false) }
     val onHighlight = remember(highlight) { Color.White.playerContentColor(listOf(highlight)) }
     Row(
@@ -5407,6 +5511,23 @@ private fun ArtistActionBar(
                     onClick = {
                         artistMenuExpanded = false
                         onToggleExclude()
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            when {
+                                isPinnedToHome -> speedDialCopy.removeFromHome
+                                homePinsFull -> speedDialCopy.homeFull
+                                else -> speedDialCopy.addToHome
+                            }
+                        )
+                    },
+                    leadingIcon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
+                    enabled = isPinnedToHome || !homePinsFull,
+                    onClick = {
+                        artistMenuExpanded = false
+                        onTogglePinToHome()
                     }
                 )
             }
@@ -8341,6 +8462,14 @@ private fun HomeScreen(
             LevyraPersonalOrbit.distinctRecordings(state.personalOrbitTracks)
         ).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
+    val localSongs = remember(state.localLibrary) { state.localLibrary.completedScanSongs() }
+    val speedDialPins = remember(state.speedDialPins, state.playlists, localSongs) {
+        SpeedDial.visible(
+            pins = state.speedDialPins,
+            playlists = state.playlists,
+            localTrackIds = localSongs?.mapTo(HashSet()) { it.id }
+        )
+    }
     val resonanceTracks = homeDerivedState.resonanceTracks
     LaunchedEffect(resonanceTracks, state.interfaceSettings.showResonance) {
         if (resonanceTracks.isNotEmpty() && state.interfaceSettings.showResonance) {
@@ -8619,6 +8748,23 @@ private fun HomeScreen(
                         selectedId = state.selectedMood?.id,
                         onSelect = viewModel::selectMood
                     )
+                }
+            }
+            if (speedDialPins.isNotEmpty()) {
+                item(key = "home-speed-dial", contentType = "home-speed-dial") {
+                    Box(modifier = Modifier.animateItem().padding(top = LevyraHomeDesign.sectionLead(compactHome))) {
+                        HomeSpeedDialStrip(
+                            pins = speedDialPins,
+                            currentTrackId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            animationsEnabled = state.animationsEnabled,
+                            onOpen = viewModel::openSpeedDialPin,
+                            onRemove = viewModel::removeSpeedDialPin,
+                            onReorder = viewModel::reorderSpeedDial,
+                            onTrackActions = onTrackActions
+                        )
+                    }
                 }
             }
             if (offlineHomeVisible) {

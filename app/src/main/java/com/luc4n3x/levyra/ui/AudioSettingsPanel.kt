@@ -103,7 +103,6 @@ import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
-import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.Track
@@ -111,6 +110,7 @@ import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
+import com.luc4n3x.levyra.ui.i18n.parametricProfileCopy
 import com.luc4n3x.levyra.ui.i18n.replayGainCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -158,13 +158,7 @@ internal fun AudioSettingsPanel(
     onResetEqualizer: () -> Unit,
     onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
     onSaveAutoEqPreset: (String, AutoEqImporter.ImportedProfile) -> Unit,
-    onParametricEnabled: (Boolean) -> Unit,
-    onParametricProfile: (String) -> Unit,
-    onParametricPreamp: (Float) -> Unit,
-    onParametricBand: (Int, ParametricEqBand) -> Unit,
-    onAddParametricBand: () -> Unit,
-    onRemoveParametricBand: (Int) -> Unit,
-    onResetParametric: () -> Unit,
+    parametricActions: ParametricProfileActions,
     onApplyParametricAutoEq: (ParametricEqProfile) -> Unit,
     onSaveParametricProfile: (String, ParametricEqProfile) -> Unit,
     autoEqCatalog: AutoEqCatalogUiState,
@@ -181,6 +175,7 @@ internal fun AudioSettingsPanel(
     val strings = LocalLevyraStrings.current
     val replayGainCopy = strings.replayGainCopy()
     val parametricCopy = strings.parametricEqCopy()
+    val parametricProfileCopy = strings.parametricProfileCopy()
     val outputState = rememberLevyraAudioOutputState()
     val blocker = remember { MutableInteractionSource() }
     val equalizerEnabled = audioSettings.equalizerEnabled
@@ -368,17 +363,11 @@ internal fun AudioSettingsPanel(
                     item {
                         ParametricEqualizerCard(
                             enabled = audioSettings.parametricEqualizerEnabled,
-                            profile = audioSettings.activeParametricProfile,
-                            savedProfiles = audioSettings.customParametricProfiles,
+                            activeProfile = audioSettings.activeParametricProfile,
+                            customProfiles = audioSettings.customParametricProfiles,
                             copy = parametricCopy,
-                            onEnabled = onParametricEnabled,
-                            onSelectProfile = onParametricProfile,
-                            onPreamp = onParametricPreamp,
-                            onBand = onParametricBand,
-                            onAddBand = onAddParametricBand,
-                            onRemoveBand = onRemoveParametricBand,
-                            onReset = onResetParametric,
-                            onSave = onSaveParametricProfile
+                            profileCopy = parametricProfileCopy,
+                            actions = parametricActions
                         )
                     }
                     item {

@@ -176,6 +176,9 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun refreshHomeResonanceComments(tracks: List<Track>) = root.refreshHomeResonanceComments(tracks)
     fun retryHomeContent() = root.retryHomeContent()
     fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
+    fun openSpeedDialPin(pin: com.luc4n3x.levyra.domain.SpeedDialPin) = root.openSpeedDialPin(pin)
+    fun removeSpeedDialPin(key: String) = root.removeSpeedDialPin(key)
+    fun reorderSpeedDial(orderedKeys: List<String>) = root.reorderSpeedDial(orderedKeys)
     fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
@@ -1050,7 +1053,9 @@ internal data class HomeProjection(
     val similarArtists: List<ArtistHit>,
     val tracks: List<Track>,
     val userName: String,
-    val interfaceSettings: LevyraInterfaceSettings
+    val interfaceSettings: LevyraInterfaceSettings,
+    val speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin>,
+    val localSongs: List<Track>?
 )
 
 internal fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjection(
@@ -1092,8 +1097,13 @@ internal fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjecti
     similarArtists = state.similarArtists,
     tracks = state.tracks,
     userName = state.userName,
-    interfaceSettings = state.interfaceSettings
+    interfaceSettings = state.interfaceSettings,
+    speedDialPins = state.speedDialPins,
+    localSongs = state.localLibrary.completedScanSongs()
 )
+
+internal fun LocalLibraryUiState.completedScanSongs(): List<Track>? =
+    if (permissionGranted && lastScanAt > 0L) catalog.songs else null
 
 internal data class SearchProjection(
     val currentTrack: Track?,
