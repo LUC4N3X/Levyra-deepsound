@@ -163,7 +163,7 @@ object AudioLanguageIntelligence {
             audioIsDefault && !acont.startsWith("dub") -> {
                 TrackClassification(AudioTrackKind.DEFAULT_AUDIO, TIER_DEFAULT_AUDIO)
             }
-            !hasAudioTrack && !hasXtags -> {
+            !hasAudioTrack && acont.isBlank() -> {
                 TrackClassification(AudioTrackKind.UNSPECIFIED, TIER_UNSPECIFIED)
             }
             acont == "secondary" -> {
