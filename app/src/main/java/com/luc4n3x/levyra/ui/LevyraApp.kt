@@ -11990,8 +11990,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     }
     val personalizedCopy = personalizedSearchCopy(state.languageCode)
     val personalizedTracks = remember(personalized.tracks, state.recentSearches) {
-        val recentIds = state.recentSearches.mapTo(HashSet()) { it.id }
-        personalized.tracks.filterNot { it.id in recentIds }
+        val recentIdentities = state.recentSearches.mapTo(HashSet(), LevyraPersonalOrbit::identityKey)
+        personalized.tracks.filterNot { LevyraPersonalOrbit.identityKey(it) in recentIdentities }
     }
     val personalizedArtists = remember(state.homeArtists, personalized.artistNames) {
         rankPersonalizedSearchArtists(state.homeArtists, personalized.artistNames)

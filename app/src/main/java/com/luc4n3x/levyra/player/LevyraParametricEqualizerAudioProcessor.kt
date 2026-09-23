@@ -31,6 +31,8 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
 
     private var inputFormat = AudioFormat.NOT_SET
     private var outputFormat = AudioFormat.NOT_SET
+    private var pendingInputFormat = AudioFormat.NOT_SET
+    private var pendingOutputFormat = AudioFormat.NOT_SET
     private var reusableBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var inputEnded = false
@@ -59,18 +61,16 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         ) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
-        inputFormat = inputAudioFormat
-        outputFormat = AudioFormat(inputAudioFormat.sampleRate, inputAudioFormat.channelCount, C.ENCODING_PCM_FLOAT)
-        banks[0].prepareChannels(inputAudioFormat.channelCount)
-        banks[1].prepareChannels(inputAudioFormat.channelCount)
-        configured = true
-        channelIndex = 0
-        appliedRevision = Long.MIN_VALUE
-        applyRequestedConfiguration(force = true)
-        return outputFormat
+        pendingInputFormat = inputAudioFormat
+        pendingOutputFormat = AudioFormat(
+            inputAudioFormat.sampleRate,
+            inputAudioFormat.channelCount,
+            C.ENCODING_PCM_FLOAT
+        )
+        return pendingOutputFormat
     }
 
-    override fun isActive(): Boolean = configured
+    override fun isActive(): Boolean = pendingOutputFormat != AudioFormat.NOT_SET
 
     override fun queueInput(inputBuffer: ByteBuffer) {
         val limit = inputBuffer.limit()
@@ -178,6 +178,13 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
     override fun isEnded(): Boolean = inputEnded && !outputBuffer.hasRemaining()
 
     override fun flush(streamMetadata: AudioProcessor.StreamMetadata) {
+        if (pendingInputFormat != AudioFormat.NOT_SET) {
+            inputFormat = pendingInputFormat
+            outputFormat = pendingOutputFormat
+            banks[0].prepareChannels(inputFormat.channelCount)
+            banks[1].prepareChannels(inputFormat.channelCount)
+            configured = true
+        }
         outputBuffer = AudioProcessor.EMPTY_BUFFER
         inputEnded = false
         channelIndex = 0
@@ -198,6 +205,8 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         transitionFramesRemaining = 0
         inputFormat = AudioFormat.NOT_SET
         outputFormat = AudioFormat.NOT_SET
+        pendingInputFormat = AudioFormat.NOT_SET
+        pendingOutputFormat = AudioFormat.NOT_SET
         banks[0].releaseChannels()
         banks[1].releaseChannels()
     }
@@ -259,9 +268,6 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
                 val band = bands[index]
                 if (band.enabled && band.frequencyHz < nyquistLimit) {
                     if (expectedIndex >= filterCount) return false
-                    if (types[expectedIndex] != band.filterType.ordinal ||
-                        frequencies[expectedIndex] != band.frequencyHz || qValues[expectedIndex] != band.q
-                    ) return false
                     expectedIndex += 1
                 }
                 index += 1

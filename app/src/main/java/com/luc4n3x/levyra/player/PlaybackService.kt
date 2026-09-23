@@ -1847,21 +1847,20 @@ class PlaybackService : MediaLibraryService() {
             )
         }
         transitionNormalization = normalization
+        val parametricActive = currentAudioSettings.parametricEqualizerEnabled &&
+            currentAudioSettings.activeParametricProfile != null
         val equalizer = LevyraEqualizerAudioProcessor().apply {
-            enabled = currentAudioSettings.equalizerEnabled && !currentAudioSettings.parametricEqualizerEnabled
+            enabled = currentAudioSettings.equalizerEnabled && !parametricActive
             setBandLevels(currentAudioSettings.bandLevels)
             bassBoost = currentAudioSettings.bassBoost
             preampDb = currentAudioSettings.preampDb
             outputProfile = equalizerProcessor.outputProfile
         }
         val parametricEqualizer = LevyraParametricEqualizerAudioProcessor().apply {
-            setConfiguration(
-                currentAudioSettings.parametricEqualizerEnabled,
-                currentAudioSettings.activeParametricProfile
-            )
+            setConfiguration(parametricActive, currentAudioSettings.activeParametricProfile)
         }
         val spatial = StereoSpatialAudioProcessor().apply {
-            strength = if (currentAudioSettings.equalizerEnabled || currentAudioSettings.parametricEqualizerEnabled) {
+            strength = if (currentAudioSettings.equalizerEnabled || parametricActive) {
                 currentAudioSettings.virtualizer
             } else {
                 0
@@ -1869,7 +1868,7 @@ class PlaybackService : MediaLibraryService() {
         }
         val limiter = TruePeakLimiterAudioProcessor().apply {
             enabled = currentAudioSettings.limiterEnabled &&
-                (currentAudioSettings.equalizerEnabled || currentAudioSettings.parametricEqualizerEnabled ||
+                (currentAudioSettings.equalizerEnabled || parametricActive ||
                     currentAudioSettings.virtualizer > 0 ||
                     currentAudioSettings.replayGainActive || currentAudioNormalization)
         }

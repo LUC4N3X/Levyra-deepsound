@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.feature.search
 
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.SmartMusicTasteSeed
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.primaryArtistSegment
@@ -37,7 +38,11 @@ internal fun buildPersonalizedSearchSnapshot(
         rotateWindow(personalOrbitTracks, dayBucket / 3L, 12),
         rotateWindow(recentSearches, dayBucket / 5L, 8)
     )
-    val tracks = interleaveDiverseTracks(sources, PERSONALIZED_TRACK_LIMIT)
+    val recentSearchIdentities = recentSearches.mapTo(HashSet(), LevyraPersonalOrbit::identityKey)
+    val trackSources = sources.take(3).map { source ->
+        source.filterNot { LevyraPersonalOrbit.identityKey(it) in recentSearchIdentities }
+    }
+    val tracks = interleaveDiverseTracks(trackSources, PERSONALIZED_TRACK_LIMIT)
     val artistNames = buildList {
         topArtists.asSequence().map(SmartMusicTasteSeed::label).forEach { add(it) }
         sources.asSequence().flatten().map(Track::artist).forEach { add(it) }

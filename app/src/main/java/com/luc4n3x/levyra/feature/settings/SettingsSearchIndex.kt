@@ -101,7 +101,11 @@ class SettingsSearchIndex(entries: List<SettingsSearchEntry>, locale: Locale) {
                 var previousWasSpace = true
                 decomposed.forEach { character ->
                     if (Character.getType(character) != Character.NON_SPACING_MARK.toInt()) {
-                        if (character.isLetterOrDigit()) {
+                        val type = Character.getType(character)
+                        if (character.isLetterOrDigit() ||
+                            type == Character.COMBINING_SPACING_MARK.toInt() ||
+                            type == Character.ENCLOSING_MARK.toInt()
+                        ) {
                             append(character)
                             previousWasSpace = false
                         } else if (!previousWasSpace) {

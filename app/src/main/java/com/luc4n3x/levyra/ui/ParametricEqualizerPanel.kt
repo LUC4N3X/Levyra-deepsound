@@ -369,7 +369,7 @@ private fun ParametricChip(
         modifier = modifier
             .heightIn(min = 44.dp)
             .alpha(if (enabled) 1f else 0.45f)
-            .clickable(enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
             Text(
