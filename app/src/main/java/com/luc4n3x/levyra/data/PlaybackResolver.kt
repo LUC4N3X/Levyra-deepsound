@@ -625,9 +625,11 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun invalidate(track: Track, isVideoMode: Boolean = false, offlineExport: Boolean = false) {
         if (offlineExport) return
-        val generation = resolverGeneration.get()
-        if (canReuseProvidedPlayback(track, generation)) {
-            remove(cacheKey(track, isVideoMode))
+        synchronized(streamCacheMutationLock) {
+            val generation = resolverGeneration.get()
+            if (canReuseProvidedPlayback(track, generation)) {
+                remove(cacheKey(track, isVideoMode))
+            }
         }
     }
 
