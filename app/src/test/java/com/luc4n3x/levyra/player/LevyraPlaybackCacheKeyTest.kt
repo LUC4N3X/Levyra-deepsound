@@ -60,6 +60,28 @@ class LevyraPlaybackCacheKeyTest {
     }
 
     @Test
+    fun sabrAudioKeysSeparateSameItagByLanguageAndContentLength() {
+        val italian = track("levyra-sabr://s/demo?itag=251&mime=audio%2Fmp4&clen=4500000&xtags=lang%3Dit")
+        val english = track("levyra-sabr://s/demo?itag=251&mime=audio%2Fmp4&clen=4500000&xtags=lang%3Den")
+        val italianOtherLength = track("levyra-sabr://s/demo?itag=251&mime=audio%2Fmp4&clen=4600000&xtags=lang%3Dit")
+
+        assertNotEquals(LevyraPlaybackCacheKey.stream(italian), LevyraPlaybackCacheKey.stream(english))
+        assertNotEquals(LevyraPlaybackCacheKey.stream(italian), LevyraPlaybackCacheKey.stream(italianOtherLength))
+    }
+
+    @Test
+    fun encodedXtagsStillSeparateLanguageCacheKeys() {
+        val italian = track(
+            "https://rr.example/videoplayback?foo=1%26itag%3D251%26clen%3D4500000%26xtags%3Dlang%253Dit"
+        )
+        val english = track(
+            "https://rr.example/videoplayback?foo=1%26itag%3D251%26clen%3D4500000%26xtags%3Dlang%253Den"
+        )
+
+        assertNotEquals(LevyraPlaybackCacheKey.stream(italian), LevyraPlaybackCacheKey.stream(english))
+    }
+
+    @Test
     fun offlineExportNeverSharesTheLiveStreamCacheKey() {
         val muxedFallback = track("https://rr.example/videoplayback?itag=18&mime=video%2Fmp4&ratebypass=yes")
         val audioMp4 = track("https://rr.example/videoplayback?itag=140&mime=audio%2Fmp4&ratebypass=yes")

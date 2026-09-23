@@ -220,7 +220,8 @@ internal fun audioContentLengthFromUrl(url: String): Long {
         ?.queryParameter("clen")
         ?.toLongOrNull()
         ?.takeIf { it > 0L }
-        ?: Regex("(?:[?&])clen=(\\d+)").find(url)?.groupValues?.getOrNull(1)?.toLongOrNull()
+        ?: Regex("(?:[?&]|%26)clen(?:=|%3D)(\\d+)", RegexOption.IGNORE_CASE)
+            .find(url)?.groupValues?.getOrNull(1)?.toLongOrNull()
         ?: -1L
 }
 

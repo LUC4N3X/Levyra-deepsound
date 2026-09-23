@@ -104,8 +104,9 @@ internal fun isMp4OfflineAudioCandidate(mimeOrFormat: String, url: String): Bool
         path.endsWith(".mp4")
 }
 
-private const val AUDIO_TRACK_SCORE_BAND = 10_000_000
-private const val AUDIO_FORMAT_SCORE_LIMIT = AUDIO_TRACK_SCORE_BAND / 2 - 1
+private const val AUDIO_TRACK_SCORE_BAND = 100_000_000
+private const val AUDIO_LANGUAGE_SCORE_BAND = 10_000_000
+private const val AUDIO_FORMAT_SCORE_LIMIT = AUDIO_LANGUAGE_SCORE_BAND / 2 - 1
 
 internal fun youtubeAudioTrackTier(format: JSONObject): Int {
     val audioTrack = format.optJSONObject("audioTrack") ?: return 1
@@ -137,8 +138,13 @@ internal fun extractorAudioTrackTier(
     preferredLanguage: String? = null
 ): Int = AudioLanguageIntelligence.parseFromExtractor(stream, preferredLanguage).tier
 
-internal fun strictAudioSelectionScore(trackTier: Int, formatScore: Int): Int =
+internal fun strictAudioSelectionScore(
+    trackTier: Int,
+    formatScore: Int,
+    languagePreferenceRank: Int = 0
+): Int =
     trackTier * AUDIO_TRACK_SCORE_BAND +
+        languagePreferenceRank.coerceIn(0, 2) * AUDIO_LANGUAGE_SCORE_BAND +
         formatScore.coerceIn(-AUDIO_FORMAT_SCORE_LIMIT, AUDIO_FORMAT_SCORE_LIMIT)
 
 internal fun playbackStreamDiagnostics(url: String): String {
@@ -398,6 +404,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     @Volatile
     private var selectedPreferredAudioLanguage = userPreferences.preferredAudioLanguage()
 
+    private val audioLanguageRevision = AtomicLong(0L)
+
     @Volatile
     private var lastNetworkWarmAt = 0L
 
@@ -436,15 +444,34 @@ class PlaybackResolver private constructor(private val context: Context) {
         synchronized(streamCacheMutationLock) {
             if (selectedPreferredAudioLanguage == normalized) return
             selectedPreferredAudioLanguage = normalized
+            audioLanguageRevision.incrementAndGet()
             resolverGeneration.incrementAndGet()
-            streamCache.clear()
-            prefs.edit().clear().apply()
-            strategyOriginByUrl.clear()
-            YoutubeStreamClientIdentityRegistry.clear()
         }
     }
 
     fun preferredAudioLanguage(): String = selectedPreferredAudioLanguage
+
+    private fun preferredAudioLanguageSnapshot(): Pair<String, Long> =
+        synchronized(streamCacheMutationLock) {
+            selectedPreferredAudioLanguage to audioLanguageRevision.get()
+        }
+
+    private fun canReuseProvidedPlayback(track: Track, expectedGeneration: Long): Boolean {
+        if (track.playbackManifest?.alternativeSource != null) return true
+        val manifestGeneration = track.playbackManifest?.provenance?.resolverGeneration ?: -1L
+        if (manifestGeneration >= 0L && manifestGeneration != expectedGeneration) return false
+        val (preferredLanguage, revision) = preferredAudioLanguageSnapshot()
+        if (preferredLanguage.isBlank()) {
+            return manifestGeneration == expectedGeneration || revision == 0L
+        }
+        val rawXtags = AudioLanguageIntelligence.extractXtagsFromUrl(track.streamUrl)
+        val streamLanguage = AudioLanguageIntelligence.normalizeLanguage(
+            AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
+        )
+        if (streamLanguage.isBlank()) return false
+        return streamLanguage == preferredLanguage ||
+            streamLanguage.substringBefore('-') == preferredLanguage.substringBefore('-')
+    }
 
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         highQualityPlayback.mode = mode
@@ -560,7 +587,8 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
         if (track.streamUrl.isNotBlank()) {
-            val valid = !isPlaybackUrlBlocked(track.streamUrl) &&
+            val valid = canReuseProvidedPlayback(track, resolverGeneration.get()) &&
+                !isPlaybackUrlBlocked(track.streamUrl) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
                 (!isVideoMode || track.hasVideoPlaybackPayload()) &&
@@ -575,7 +603,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             RuntimeHooks.cache(RuntimeSignal.CACHE_MISS)
             return null
         }
-        if (!isFresh(hit.expiresAt)) {
+        if (!isFresh(hit.expiresAt) ||
+            isPlaybackUrlBlocked(hit.track.streamUrl) ||
+            (hit.track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(hit.track.videoStreamUrl))
+        ) {
             remove(key)
             RuntimeHooks.cache(RuntimeSignal.CACHE_EVICTION)
             return null
@@ -704,17 +735,25 @@ class PlaybackResolver private constructor(private val context: Context) {
             lower.contains("decoder") || lower.contains("codec") -> recovery.quarantineMs
             else -> minOf(recovery.quarantineMs, 20_000L)
         }
-        sourceMatchScope.launch {
-            runCatchingPreservingCancellation {
-                sourceMatchStore.recordFailure(
-                    track = track,
-                    videoMode = isVideoMode,
-                    audioQuality = audioQuality?.let(::normalizeAudioQuality) ?: selectedAudioQuality,
-                    quarantineMs = sourceMatchQuarantineMs,
-                    preferMp4Audio = isOfflineExport
-                )
-            }.onFailure { error ->
-                Timber.w(error, "persistent source match failure update failed")
+        val failureGeneration = resolverGeneration.get()
+        if (canReuseProvidedPlayback(track, failureGeneration)) {
+            val (failurePreferredLanguage, failureLanguageRevision) = preferredAudioLanguageSnapshot()
+            sourceMatchScope.launch {
+                if (failureGeneration != resolverGeneration.get() ||
+                    failureLanguageRevision != audioLanguageRevision.get()
+                ) return@launch
+                runCatchingPreservingCancellation {
+                    sourceMatchStore.recordFailure(
+                        track = track,
+                        videoMode = isVideoMode,
+                        audioQuality = audioQuality?.let(::normalizeAudioQuality) ?: selectedAudioQuality,
+                        quarantineMs = sourceMatchQuarantineMs,
+                        preferMp4Audio = isOfflineExport,
+                        preferredAudioLanguage = failurePreferredLanguage
+                    )
+                }.onFailure { error ->
+                    Timber.w(error, "persistent source match failure update failed")
+                }
             }
         }
     }
@@ -915,17 +954,36 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
-        val alternativeQuery = highQualityPlayback
-            .queryFor(track, isVideoMode, selectedAudioQuality)
-            ?.takeIf { hasInternetCapableNetwork() }
-        val resolved = if (alternativeQuery == null) {
-            resolveForPlayback(track, isVideoMode)
-        } else {
-            highQualityPlayback.resolve(track, alternativeQuery, ::basePlaybackProvenance) {
-                resolveForPlayback(track, isVideoMode)
+        var requestTrack = track
+        while (true) {
+            val (_, languageRevision) = preferredAudioLanguageSnapshot()
+            val resolved = try {
+                val alternativeQuery = highQualityPlayback
+                    .queryFor(requestTrack, isVideoMode, selectedAudioQuality)
+                    ?.takeIf { hasInternetCapableNetwork() }
+                if (alternativeQuery == null) {
+                    resolveForPlayback(requestTrack, isVideoMode)
+                } else {
+                    highQualityPlayback.resolve(requestTrack, alternativeQuery, ::basePlaybackProvenance) {
+                        resolveForPlayback(requestTrack, isVideoMode)
+                    }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (languageRevision != audioLanguageRevision.get()) {
+                    requestTrack = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+                    continue
+                }
+                throw error
             }
+            if (resolved.playbackManifest?.alternativeSource != null ||
+                languageRevision == audioLanguageRevision.get()
+            ) {
+                return preserveEditorialArtwork(track, resolved)
+            }
+            requestTrack = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
         }
-        return preserveEditorialArtwork(track, resolved)
     }
 
     private suspend fun resolveForPlayback(track: Track, isVideoMode: Boolean): Track = resolveInternal(
@@ -940,25 +998,47 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
-        val reel = runCatchingPreservingCancellation {
-            resolveVideoWithAndroidReel(track.copy(streamUrl = "", videoStreamUrl = ""))
-        }.onFailure { error ->
-            Timber.d(error, "Offline Android Reel primary unavailable")
-        }.getOrNull()
-        val reelManifest = reel?.playbackManifest
-        if (reel != null && reelManifest != null && supportsOfflineExport(reelManifest)) {
-            return preserveEditorialArtwork(track, reel)
+        var requestTrack = track
+        while (true) {
+            val (preferredLanguage, languageRevision) = preferredAudioLanguageSnapshot()
+            val resolved = try {
+                val reel = if (preferredLanguage.isBlank()) {
+                    runCatchingPreservingCancellation {
+                        resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))
+                    }.onFailure { error ->
+                        Timber.d(error, "Offline Android Reel primary unavailable")
+                    }.getOrNull()
+                } else {
+                    null
+                }
+                val reelManifest = reel?.playbackManifest
+                if (reel != null && reelManifest != null && supportsOfflineExport(reelManifest)) {
+                    reel
+                } else {
+                    resolveInternal(
+                        track = requestTrack,
+                        isVideoMode = false,
+                        timeoutMs = offlineResolveTimeoutMs,
+                        preferMp4Audio = true,
+                        requestKind = "offline",
+                        audioQuality = quality,
+                        reuseProvidedStream = audioQualityOverride == null
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (languageRevision != audioLanguageRevision.get()) {
+                    requestTrack = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+                    continue
+                }
+                throw error
+            }
+            if (languageRevision == audioLanguageRevision.get()) {
+                return preserveEditorialArtwork(track, resolved)
+            }
+            requestTrack = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
         }
-        val resolved = resolveInternal(
-            track = track,
-            isVideoMode = false,
-            timeoutMs = offlineResolveTimeoutMs,
-            preferMp4Audio = true,
-            requestKind = "offline",
-            audioQuality = quality,
-            reuseProvidedStream = audioQualityOverride == null
-        )
-        return preserveEditorialArtwork(track, resolved)
     }
 
     private suspend fun resolveInternal(
@@ -982,6 +1062,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         track.streamUrl.takeIf {
             reuseProvidedStream &&
+            canReuseProvidedPlayback(track, expectedGeneration) &&
             it.isNotBlank() &&
                 !isPlaybackUrlBlocked(it) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
@@ -1048,6 +1129,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val expiresAt = track.playbackManifest.expiresAtMs
                 if (expiresAt > 0L && System.currentTimeMillis() + 90_000L >= expiresAt) return null
                 return track
+            }
+            if (!canReuseProvidedPlayback(track, resolverGeneration.get())) {
+                if (!hasInternetCapableNetwork()) return null
+                val unresolved = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+                return runCatchingPreservingCancellation { resolve(unresolved, isVideoMode) }.getOrNull()
             }
             if (streamStillFresh(track.streamUrl)) {
                 store(track, track, isVideoMode, expectedGeneration = resolverGeneration.get())
@@ -1170,11 +1256,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             val startedAt = System.currentTimeMillis()
             val errorsBefore = errors.size
             val resolved = when (strategy) {
-                PlaybackAudioStrategy.REEL_MUXED -> runCatchingPreservingCancellation {
-                    resolveVideoWithAndroidReel(track)
-                }.onFailure { error ->
-                    errors += "Android Reel muxed: ${error.playbackDiagnostic()}"
-                }.getOrNull()
+                PlaybackAudioStrategy.REEL_MUXED -> if (selectedPreferredAudioLanguage.isBlank()) {
+                    runCatchingPreservingCancellation {
+                        resolveVideoWithAndroidReel(track)
+                    }.onFailure { error ->
+                        errors += "Android Reel muxed: ${error.playbackDiagnostic()}"
+                    }.getOrNull()
+                } else {
+                    null
+                }
 
                 PlaybackAudioStrategy.REEL_AUDIO -> runCatchingPreservingCancellation {
                     resolveAudioWithAndroidReel(track, audioQuality)
@@ -1481,7 +1571,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                                 formatAudioQuality = format.optString("audioQuality"),
                                 preferMp4Audio = false,
                                 requestedAudioQuality = audioQuality
-                            ) + meta.tieBreakerBonus
+                            ),
+                            meta.tieBreakerBonus
                         )
                     )
                 )
@@ -2051,8 +2142,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (preferMp4Audio && !supportsOfflineExport(manifest)) return
         sourceMatchMutationMutex.withLock {
             val preferredAudioLanguage = synchronized(streamCacheMutationLock) {
-                if (resolverGeneration.get() == expectedGeneration) selectedPreferredAudioLanguage else null
-            } ?: return
+                if (resolverGeneration.get() != expectedGeneration) return
+                selectedPreferredAudioLanguage
+            }
             try {
                 sourceMatchStore.save(
                     original,
@@ -2678,7 +2770,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         val base = PlaybackSourceIdentity.canonicalKey(track)
         val quality = normalizeAudioQuality(audioQuality).lowercase()
         val lang = selectedPreferredAudioLanguage.ifBlank { "default" }
-        return if (isVideoMode) "${base}_video_$quality" else "${base}_audio_${quality}_lang_$lang"
+        return if (isVideoMode) {
+            "${base}_video_${quality}_lang_$lang"
+        } else {
+            "${base}_audio_${quality}_lang_$lang"
+        }
     }
 
     private suspend fun resolveWithInnerTube(
@@ -2869,7 +2965,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             format,
                             strictAudioSelectionScore(
                                 meta.tier,
-                                scoreAudioFormat(mime, itag, bitrate, formatAudioQuality, preferMp4Audio, audioQuality) + meta.tieBreakerBonus
+                                scoreAudioFormat(mime, itag, bitrate, formatAudioQuality, preferMp4Audio, audioQuality),
+                                meta.tieBreakerBonus
                             ),
                             formatLabel(mime, itag, bitrate, formatAudioQuality)
                         )
@@ -3272,7 +3369,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         val meta = AudioLanguageIntelligence.parseFromExtractor(stream, selectedPreferredAudioLanguage)
         return strictAudioSelectionScore(
             meta.tier,
-            scoreAudioFormat(mime, stream.formatId, stream.averageBitrate, "", preferMp4Audio, audioQuality) + meta.tieBreakerBonus
+            scoreAudioFormat(mime, stream.formatId, stream.averageBitrate, "", preferMp4Audio, audioQuality),
+            meta.tieBreakerBonus
         )
     }
 

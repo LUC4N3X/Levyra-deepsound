@@ -71,6 +71,12 @@ internal fun buildSabrStreamDescriptor(
         append(spec.toUri())
         append("?itag=").append(candidate.itag)
         append("&mime=").append(mimeType.replace("/", "%2F"))
+        append("&clen=").append(candidate.contentLength)
+        if (candidate.isAudio) {
+            AudioLanguageIntelligence.normalizeLanguage(candidate.audioLocale)
+                .takeIf { it.isNotBlank() }
+                ?.let { append("&xtags=lang%3D").append(it) }
+        }
         expiresAtMs.takeIf { it > 0L }?.let { append("&expire=").append(it / 1000L) }
     }
     return PlaybackStreamDescriptor(

@@ -236,7 +236,11 @@ class AudioLanguageIntelligenceTest {
         assertTrue(metaAutoDub.tieBreakerBonus > 0)
 
         val scoreOriginal = strictAudioSelectionScore(metaOriginal.tier, -100_000)
-        val scoreAutoDub = strictAudioSelectionScore(metaAutoDub.tier, 1_000_000 + metaAutoDub.tieBreakerBonus)
+        val scoreAutoDub = strictAudioSelectionScore(
+            metaAutoDub.tier,
+            1_000_000,
+            metaAutoDub.tieBreakerBonus
+        )
         assertTrue("Original must win over AI auto-dub even when auto-dub matches preferred language!", scoreOriginal > scoreAutoDub)
     }
 
@@ -336,6 +340,9 @@ class AudioLanguageIntelligenceTest {
         assertEquals("pt-br", AudioLanguageIntelligence.normalizeLanguage("pt_BR"))
         assertEquals("zh-hant", AudioLanguageIntelligence.normalizeLanguage("zh-Hant"))
         assertEquals("es-419", AudioLanguageIntelligence.normalizeLanguage("es-419"))
+        assertEquals("he", AudioLanguageIntelligence.normalizeLanguage("iw"))
+        assertEquals("id-id", AudioLanguageIntelligence.normalizeLanguage("in_ID"))
+        assertEquals("fil-ph", AudioLanguageIntelligence.normalizeLanguage("tl_PH"))
 
         val brazilian = formatJson(
             xtags = "acont=dubbed:lang=pt-BR",
@@ -352,6 +359,23 @@ class AudioLanguageIntelligenceTest {
         assertEquals(AudioLanguageIntelligence.TIER_PREFERRED_HUMAN, exact.tier)
         assertEquals(AudioLanguageIntelligence.TIER_PREFERRED_HUMAN, base.tier)
         assertTrue(exact.tieBreakerBonus > base.tieBreakerBonus)
+
+        val exactScore = strictAudioSelectionScore(exact.tier, -4_000_000, exact.tieBreakerBonus)
+        val baseScore = strictAudioSelectionScore(base.tier, 4_000_000, base.tieBreakerBonus)
+        assertTrue(
+            "Exact locale must beat a same-base locale regardless of codec or bitrate score",
+            exactScore > baseScore
+        )
+    }
+
+    @Test
+    fun encodedUrlXtagsAreStillDecodedForLanguageSelection() {
+        val encodedUrl =
+            "https://rr.example/videoplayback?foo=1%26itag%3D251%26xtags%3Dacont%253Ddubbed%253Alang%253Dit_IT"
+        val rawXtags = AudioLanguageIntelligence.extractXtagsFromUrl(encodedUrl)
+
+        assertEquals("dubbed", AudioLanguageIntelligence.extractXtag(rawXtags, "acont"))
+        assertEquals("it_IT", AudioLanguageIntelligence.extractXtag(rawXtags, "lang"))
     }
 
     // 14. JioSaavn non toccato: mapping e stream rimangono intatti e isolati

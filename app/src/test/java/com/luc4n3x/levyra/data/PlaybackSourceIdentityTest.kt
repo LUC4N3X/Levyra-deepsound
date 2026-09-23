@@ -155,7 +155,7 @@ class PlaybackSourceIdentityTest {
     }
 
     @Test
-    fun audioPersistentMatchesAreSeparatedByPreferredLanguageButVideoIsNot() {
+    fun persistentMatchesAreSeparatedByPreferredLanguageForAudioAndVideo() {
         val track = track()
 
         val italian = PlaybackSourceIdentity.matchKey(
@@ -193,7 +193,9 @@ class PlaybackSourceIdentityTest {
             audioQuality = "High",
             preferredAudioLanguage = "en-US"
         )
-        assertEquals(videoItalian, videoEnglish)
+        assertNotEquals(videoItalian, videoEnglish)
+        assertTrue(videoItalian.endsWith("|lang:it-it"))
+        assertTrue(videoEnglish.endsWith("|lang:en-us"))
     }
 
     @Test

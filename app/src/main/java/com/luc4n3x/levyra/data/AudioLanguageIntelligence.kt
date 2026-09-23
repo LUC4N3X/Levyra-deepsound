@@ -47,19 +47,26 @@ object AudioLanguageIntelligence {
     const val TIER_AUTO_DUB = 1
     const val TIER_DESCRIPTIVE = 0
 
-    private const val LANGUAGE_EXACT_MATCH_BONUS = 100_000
-    private const val LANGUAGE_BASE_MATCH_BONUS = 50_000
+    private const val LANGUAGE_EXACT_MATCH_BONUS = 2
+    private const val LANGUAGE_BASE_MATCH_BONUS = 1
 
     fun normalizeLanguage(code: String?): String {
         if (code.isNullOrBlank()) return ""
         val trimmed = code.trim().lowercase(Locale.ROOT)
         if (trimmed == "auto" || trimmed == "original" || trimmed == "default") return ""
-        return trimmed
+        val parts = trimmed
             .replace('_', '-')
             .split('-')
             .map(String::trim)
             .filter(String::isNotBlank)
-            .joinToString("-")
+        if (parts.isEmpty()) return ""
+        val canonicalBase = when (parts.first()) {
+            "iw" -> "he"
+            "in" -> "id"
+            "tl" -> "fil"
+            else -> parts.first()
+        }
+        return (listOf(canonicalBase) + parts.drop(1)).joinToString("-")
     }
 
     private fun preferredLanguageMatchBonus(language: String, preferredLanguage: String): Int {
@@ -95,7 +102,11 @@ object AudioLanguageIntelligence {
 
     fun extractXtagsFromUrl(url: String): String {
         if (url.isBlank()) return ""
-        return XTAGS_REGEX.find(url)?.groupValues?.getOrNull(1).orEmpty()
+        XTAGS_REGEX.find(url)?.groupValues?.getOrNull(1)?.let { return it }
+        val decodedUrl = runCatching {
+            URLDecoder.decode(url, StandardCharsets.UTF_8.name())
+        }.getOrDefault(url)
+        return XTAGS_REGEX.find(decodedUrl)?.groupValues?.getOrNull(1).orEmpty()
     }
 
     private fun isOriginalDisplayName(displayName: String): Boolean {
