@@ -11,6 +11,7 @@ class ProviderStreamValidatorTest {
         val validation = ProviderStreamValidator.validate(probeResponse(8_066_175L), AudioQualityTier.KBPS_320, 204)
         assertTrue(validation is StreamValidation.Valid)
         validation as StreamValidation.Valid
+        assertEquals(AudioQualityTier.KBPS_320, validation.tier)
         assertEquals("audio/mp4", validation.mimeType)
         assertEquals("mp4", validation.container)
         assertEquals("mp4a", validation.codec)
@@ -21,6 +22,40 @@ class ProviderStreamValidatorTest {
     fun fileThatIsReally96KbpsIsNotAccepted320() {
         val validation = ProviderStreamValidator.validate(probeResponse(2_457_549L), AudioQualityTier.KBPS_320, 204)
         assertEquals(StreamRejection.BITRATE_MISMATCH, (validation as StreamValidation.Invalid).rejection)
+        assertEquals(96, validation.estimatedKbps)
+    }
+
+    @Test
+    fun fileNamed320ThatMeasures160IsRejectedSoTheReal160FileIsProbed() {
+        val validation = ProviderStreamValidator.validate(probeResponse(bytesFor(160, 200)), AudioQualityTier.KBPS_320, 200)
+        assertEquals(StreamRejection.BITRATE_MISMATCH, (validation as StreamValidation.Invalid).rejection)
+        assertEquals(160, validation.estimatedKbps)
+    }
+
+    @Test
+    fun fileNamed320ThatMeasuresBetweenTiersIsLabelledWithTheLowerTier() {
+        val validation = ProviderStreamValidator.validate(probeResponse(bytesFor(248, 200)), AudioQualityTier.KBPS_320, 200)
+        validation as StreamValidation.Valid
+        assertEquals(AudioQualityTier.KBPS_160, validation.tier)
+        assertEquals(248, validation.estimatedKbps)
+    }
+
+    @Test
+    fun verifiedTierNeverExceedsTheMeasuredBitrate() {
+        assertEquals(AudioQualityTier.KBPS_320, ProviderStreamValidator.verifiedTier(272, AudioQualityTier.KBPS_320))
+        assertEquals(AudioQualityTier.KBPS_160, ProviderStreamValidator.verifiedTier(271, AudioQualityTier.KBPS_320))
+        assertEquals(AudioQualityTier.KBPS_160, ProviderStreamValidator.verifiedTier(193, AudioQualityTier.KBPS_320))
+        assertEquals(null, ProviderStreamValidator.verifiedTier(192, AudioQualityTier.KBPS_320))
+        assertEquals(null, ProviderStreamValidator.verifiedTier(377, AudioQualityTier.KBPS_320))
+        assertEquals(null, ProviderStreamValidator.verifiedTier(60, AudioQualityTier.KBPS_96))
+        AudioQualityTier.entries.forEach { requested ->
+            (1..500).forEach { kbps ->
+                ProviderStreamValidator.verifiedTier(kbps, requested)?.let { verified ->
+                    assertTrue(verified.kbps <= requested.kbps)
+                    assertTrue(kbps >= verified.kbps * 0.85)
+                }
+            }
+        }
     }
 
     @Test

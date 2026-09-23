@@ -52,13 +52,13 @@ class HighQualityPlaybackCoordinator(
         when (val resolution = resolver.await(pending, waitMs)) {
             is HighQualityResolution.Selected -> {
                 val normalKbps = normalTrack?.let(::normalAudioKbps)
-                if (HighQualityTierPolicy.accepts(resolution.stream.tier, normalKbps, normalTrack != null)) {
+                if (HighQualityTierPolicy.accepts(resolution.stream.deliveredKbps, normalKbps, normalTrack != null)) {
                     HighQualityAudioDiagnostics.selected(resolution.stream, resolution.evaluation, clock() - startedAt)
                     return applyStream(track, normalTrack, resolution, provenance())
                 }
                 HighQualityAudioDiagnostics.fallback(
                     HighQualityFallbackReason.QUALITY_NOT_HIGHER,
-                    "alternative=${resolution.stream.tier.kbps}kbps normal=${normalKbps ?: "unknown"}kbps",
+                    "alternative=${resolution.stream.deliveredKbps}kbps normal=${normalKbps ?: "unknown"}kbps",
                     track.title
                 )
             }
@@ -79,7 +79,7 @@ class HighQualityPlaybackCoordinator(
         queryFor(track, isVideoMode, audioQuality) ?: return null
         val selection = resolver.cachedSelection(identityKey(track)) ?: return null
         val normalKbps = normalCached?.let(::normalAudioKbps)
-        if (!HighQualityTierPolicy.accepts(selection.stream.tier, normalKbps, normalCached != null)) return null
+        if (!HighQualityTierPolicy.accepts(selection.stream.deliveredKbps, normalKbps, normalCached != null)) return null
         return applyStream(track, normalCached, selection, provenance())
     }
 
@@ -117,9 +117,9 @@ class HighQualityPlaybackCoordinator(
             container = stream.container,
             mimeType = stream.mimeType,
             codec = stream.codec,
-            bitrate = stream.tier.kbps * 1_000,
-            averageBitrate = stream.estimatedKbps * 1_000,
-            qualityLabel = "${stream.tier.kbps} kbps",
+            bitrate = stream.displayKbps * 1_000,
+            averageBitrate = stream.deliveredKbps * 1_000,
+            qualityLabel = stream.qualityLabel,
             expiresAtMs = stream.expiresAtMs,
             selected = true
         )
@@ -140,7 +140,7 @@ class HighQualityPlaybackCoordinator(
             alternativeSource = AlternativeAudioSource(
                 providerId = stream.providerId,
                 providerTrackId = stream.providerTrackId,
-                bitrateKbps = stream.tier.kbps,
+                bitrateKbps = stream.displayKbps,
                 verdict = selection.evaluation.verdict,
                 confidence = selection.evaluation.confidence
             )
@@ -150,7 +150,7 @@ class HighQualityPlaybackCoordinator(
             streamUrl = stream.url,
             videoStreamUrl = "",
             videoSubtitleTracks = emptyList(),
-            source = "$label ${stream.tier.kbps} kbps",
+            source = "$label ${stream.qualityLabel}",
             youtubeLoudnessDb = null,
             youtubePerceptualLoudnessDb = null,
             playbackManifest = manifest

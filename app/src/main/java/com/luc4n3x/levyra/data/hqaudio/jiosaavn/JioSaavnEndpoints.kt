@@ -45,38 +45,52 @@ internal data class JioSaavnMediaLocation(
     val authorizedUrl: String,
     val authorizedTier: AudioQualityTier?,
     val authorizedExpiresAtMs: Long?,
+    val openHost: String,
     val directory: String,
     val stem: String,
     val extension: String
 ) {
     fun openUrl(tier: AudioQualityTier): String =
-        "https://${JioSaavnEndpoints.OPEN_MEDIA_HOST}$directory/${stem}_${tier.kbps}.$extension"
+        "https://$openHost$directory/${stem}_${tier.kbps}.$extension"
 
     companion object {
-        private val mediaFile = Regex("^(.+)_(\\d{2,3})\\.(mp4|m4a)$", RegexOption.IGNORE_CASE)
-        private val openPathPart = Regex("^[A-Za-z0-9_-]+$")
+        private const val MEDIA_CDN_DOMAIN = "saavncdn.com"
+        private val mediaFile = Regex("^([A-Za-z0-9_-]+)_(\\d{2,3})\\.(mp4|m4a)$", RegexOption.IGNORE_CASE)
+        private val pathPart = Regex("^[A-Za-z0-9_-]+$")
+        private val hostLabel = Regex("^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 
         fun fromMediaToken(mediaToken: String): JioSaavnMediaLocation? {
-            val decoded = JioSaavnMediaToken.decode(mediaToken) ?: return null
-            if (decoded.toHttpUrlOrNull()?.host != JioSaavnEndpoints.OPEN_MEDIA_HOST) return null
-            val location = parse(decoded) ?: return null
-            val pathParts = location.directory.split('/').filter { it.isNotEmpty() } + location.stem
-            if (location.directory.isEmpty() || !pathParts.all(openPathPart::matches)) return null
-            return location.copy(authorizedUrl = "", authorizedTier = null, authorizedExpiresAtMs = null)
+            val decoded = JioSaavnMediaToken.decode(mediaToken)?.toHttpUrlOrNull() ?: return null
+            val host = mediaCdnHost(decoded) ?: return null
+            return locate(decoded, host, authorizedUrl = "")?.takeIf { it.directory.isNotEmpty() }
         }
 
         fun parse(authorizedUrl: String): JioSaavnMediaLocation? {
             val url = authorizedUrl.toHttpUrlOrNull() ?: return null
             if (!url.isHttps) return null
-            val segments = url.pathSegments.filter { it.isNotBlank() }
-            val file = segments.lastOrNull() ?: return null
-            val match = mediaFile.matchEntire(file) ?: return null
-            val directory = segments.dropLast(1).joinToString(separator = "/", prefix = "/").takeIf { it != "/" }.orEmpty()
+            return locate(url, JioSaavnEndpoints.OPEN_MEDIA_HOST, authorizedUrl)
+        }
+
+        private fun mediaCdnHost(url: HttpUrl): String? {
+            if (url.username.isNotEmpty() || url.password.isNotEmpty()) return null
+            if (url.port != HttpUrl.defaultPort(url.scheme)) return null
+            val host = url.host
+            if (!host.endsWith(".$MEDIA_CDN_DOMAIN")) return null
+            return host.takeIf { it.split('.').all(hostLabel::matches) }
+        }
+
+        private fun locate(url: HttpUrl, openHost: String, authorizedUrl: String): JioSaavnMediaLocation? {
+            val segments = url.encodedPathSegments.filter { it.isNotEmpty() }
+            val match = mediaFile.matchEntire(segments.lastOrNull() ?: return null) ?: return null
+            val folders = segments.dropLast(1)
+            if (!folders.all(pathPart::matches)) return null
+            val authorized = authorizedUrl.isNotEmpty()
             return JioSaavnMediaLocation(
                 authorizedUrl = authorizedUrl,
-                authorizedTier = match.groupValues[2].toIntOrNull()?.let(AudioQualityTier::fromKbps),
-                authorizedExpiresAtMs = url.queryParameter("Expires")?.toLongOrNull()?.times(1_000L),
-                directory = directory,
+                authorizedTier = if (authorized) match.groupValues[2].toIntOrNull()?.let(AudioQualityTier::fromKbps) else null,
+                authorizedExpiresAtMs = if (authorized) url.queryParameter("Expires")?.toLongOrNull()?.times(1_000L) else null,
+                openHost = openHost,
+                directory = folders.joinToString(separator = "") { "/$it" },
                 stem = match.groupValues[1],
                 extension = match.groupValues[3].lowercase()
             )

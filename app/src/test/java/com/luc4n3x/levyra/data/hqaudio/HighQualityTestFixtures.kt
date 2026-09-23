@@ -49,7 +49,8 @@ internal fun candidate(
 internal fun resolvedStream(
     candidate: AlternativeTrackCandidate,
     tier: AudioQualityTier = AudioQualityTier.KBPS_320,
-    expiresAtMs: Long = System.currentTimeMillis() + 3_600_000L
+    expiresAtMs: Long = System.currentTimeMillis() + 3_600_000L,
+    estimatedKbps: Int = tier.kbps
 ) = ResolvedHighQualityStream(
     providerId = candidate.providerId,
     providerTrackId = candidate.providerTrackId,
@@ -58,8 +59,8 @@ internal fun resolvedStream(
     mimeType = "audio/mp4",
     container = "mp4",
     codec = "mp4a",
-    contentLength = bytesFor(tier.kbps, candidate.durationSeconds),
-    estimatedKbps = tier.kbps,
+    contentLength = bytesFor(estimatedKbps, candidate.durationSeconds),
+    estimatedKbps = estimatedKbps,
     expiresAtMs = expiresAtMs
 )
 

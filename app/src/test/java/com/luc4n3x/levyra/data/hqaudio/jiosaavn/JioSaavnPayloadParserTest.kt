@@ -31,8 +31,27 @@ class JioSaavnPayloadParserTest {
         assertEquals("Future Nostalgia & More", candidate.album)
         assertEquals(203, candidate.durationSeconds)
         assertEquals(true, candidate.explicit)
-        assertTrue(candidate.offers320)
+        assertEquals(true, candidate.offers320)
         assertEquals("enc-2IuQsex6", candidate.mediaToken)
+    }
+
+    @Test
+    fun missingOrUnreadable320FlagIsKeptAsUnknown() {
+        val missing = saavnSong("m1", "Missing Flag", listOf("Artist"), "Album", 180).apply {
+            getJSONObject("more_info").remove("320kbps")
+        }
+        val unreadable = saavnSong("m2", "Odd Flag", listOf("Artist"), "Album", 180, offers320 = "maybe")
+        val candidates = JioSaavnPayloadParser.searchCandidates(searchBody(missing, unreadable))!!
+        assertEquals(listOf(null, null), candidates.map { it.offers320 })
+    }
+
+    @Test
+    fun songDetailsThatTurnRestrictedAreNotFound() {
+        val paywalled = saavnSong("pW-kkdqr", "Blinding Lights", listOf("The Weeknd"), "Blinding Lights", 204).apply {
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "2").put("reason", "PRO only"))
+        }
+        val body = JSONObject().put("songs", JSONArray().put(paywalled)).toString()
+        assertEquals(JioSaavnSongDetails.Missing, JioSaavnPayloadParser.songDetails(body, "pW-kkdqr"))
     }
 
     @Test
