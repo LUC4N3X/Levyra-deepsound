@@ -386,10 +386,10 @@
       <!-- Progress Bar -->
       <rect x="134" y="0" width="150.0" height="13" rx="2" fill="#1F6FEB"/>
       <!-- Code tag badge -->
-      <rect x="292" y="0" width="24" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
-      <text x="304" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ZH-TW</text>
+      <rect x="292" y="0" width="38" height="13" rx="3" fill="#1E293B" stroke="#334155" stroke-width="0.5"/>
+      <text x="311" y="10.5" text-anchor="middle" fill="#38BDF8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".2">ZH-TW</text>
       <!-- Percent -->
-      <text x="324" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
+      <text x="338" y="10.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="9" font-weight="600">100%</text>
     </g>
     <g transform="translate(0, 642.0)">
       <!-- Language Label -->
