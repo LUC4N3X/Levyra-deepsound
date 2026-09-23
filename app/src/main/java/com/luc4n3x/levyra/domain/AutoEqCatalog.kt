@@ -7,7 +7,8 @@ data class AutoEqCatalogEntry(
     val name: String,
     val source: String,
     val variant: String,
-    val graphicEqPath: String
+    val graphicEqPath: String,
+    val parametricEqPath: String
 ) {
     val key: String get() = graphicEqPath
 }
@@ -59,11 +60,13 @@ class AutoEqCatalog private constructor(
         val group = groups[index].toInt()
         val encodedName = encodePathSegment(names[index])
         val encodedFile = encodePathSegment("${names[index]}$GRAPHIC_EQ_SUFFIX")
+        val encodedParametricFile = encodePathSegment("${names[index]}$PARAMETRIC_EQ_SUFFIX")
         return AutoEqCatalogEntry(
             name = names[index],
             source = groupSources[group],
             variant = groupVariants[group],
-            graphicEqPath = "$RESULTS_ROOT/${groupPaths[group]}/$encodedName/$encodedFile"
+            graphicEqPath = "$RESULTS_ROOT/${groupPaths[group]}/$encodedName/$encodedFile",
+            parametricEqPath = "$RESULTS_ROOT/${groupPaths[group]}/$encodedName/$encodedParametricFile"
         )
     }
 
@@ -112,6 +115,7 @@ class AutoEqCatalog private constructor(
         private const val RIG_SEPARATOR = " on "
         private const val RESULTS_ROOT = "results"
         private const val GRAPHIC_EQ_SUFFIX = " GraphicEQ.txt"
+        private const val PARAMETRIC_EQ_SUFFIX = " ParametricEQ.txt"
         private const val KEY_SEPARATOR = '|'
         private const val UNRESERVED = "-._~"
         private const val ALLOWED_ENCODED_PATH = "!$%&'()+,-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"

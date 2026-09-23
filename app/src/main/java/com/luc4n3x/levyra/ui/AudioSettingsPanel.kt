@@ -103,11 +103,14 @@ import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.ParametricEqBand
+import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
+import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.replayGainCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -155,6 +158,15 @@ internal fun AudioSettingsPanel(
     onResetEqualizer: () -> Unit,
     onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
     onSaveAutoEqPreset: (String, AutoEqImporter.ImportedProfile) -> Unit,
+    onParametricEnabled: (Boolean) -> Unit,
+    onParametricProfile: (String) -> Unit,
+    onParametricPreamp: (Float) -> Unit,
+    onParametricBand: (Int, ParametricEqBand) -> Unit,
+    onAddParametricBand: () -> Unit,
+    onRemoveParametricBand: (Int) -> Unit,
+    onResetParametric: () -> Unit,
+    onApplyParametricAutoEq: (ParametricEqProfile) -> Unit,
+    onSaveParametricProfile: (String, ParametricEqProfile) -> Unit,
     autoEqCatalog: AutoEqCatalogUiState,
     onOpenAutoEqCatalog: () -> Unit,
     onAutoEqCatalogQuery: (String) -> Unit,
@@ -168,10 +180,22 @@ internal fun AudioSettingsPanel(
 ) {
     val strings = LocalLevyraStrings.current
     val replayGainCopy = strings.replayGainCopy()
+    val parametricCopy = strings.parametricEqCopy()
     val outputState = rememberLevyraAudioOutputState()
     val blocker = remember { MutableInteractionSource() }
     val equalizerEnabled = audioSettings.equalizerEnabled
     var showAutoEqImport by remember { mutableStateOf(false) }
+    var equalizerMode by rememberSaveable {
+        mutableStateOf(
+            if (audioSettings.parametricEqualizerEnabled) EqualizerEditorMode.PARAMETRIC else EqualizerEditorMode.GRAPHIC
+        )
+    }
+    LaunchedEffect(audioSettings.equalizerEnabled, audioSettings.parametricEqualizerEnabled) {
+        when {
+            audioSettings.parametricEqualizerEnabled -> equalizerMode = EqualizerEditorMode.PARAMETRIC
+            audioSettings.equalizerEnabled -> equalizerMode = EqualizerEditorMode.GRAPHIC
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -239,6 +263,14 @@ internal fun AudioSettingsPanel(
                 }
 
                 item { AudioSectionLabel(strings.audioSectionEqualizer) }
+                item {
+                    EqualizerModeSelector(
+                        selected = equalizerMode,
+                        copy = parametricCopy,
+                        onSelect = { equalizerMode = it }
+                    )
+                }
+                if (equalizerMode == EqualizerEditorMode.GRAPHIC) {
                 item {
                     val selectedCustomPreset = audioSettings.customPresets
                         .firstOrNull { it.id == audioSettings.presetId }
@@ -331,6 +363,44 @@ internal fun AudioSettingsPanel(
                         range = 0f..100f,
                         onValue = { onBassBoost(it.roundToInt()) }
                     )
+                }
+                } else {
+                    item {
+                        ParametricEqualizerCard(
+                            enabled = audioSettings.parametricEqualizerEnabled,
+                            profile = audioSettings.activeParametricProfile,
+                            savedProfiles = audioSettings.customParametricProfiles,
+                            copy = parametricCopy,
+                            onEnabled = onParametricEnabled,
+                            onSelectProfile = onParametricProfile,
+                            onPreamp = onParametricPreamp,
+                            onBand = onParametricBand,
+                            onAddBand = onAddParametricBand,
+                            onRemoveBand = onRemoveParametricBand,
+                            onReset = onResetParametric,
+                            onSave = onSaveParametricProfile
+                        )
+                    }
+                    item {
+                        AudioCard {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                AudioActionButton(
+                                    label = strings.autoEqCatalog,
+                                    icon = Icons.Rounded.Headphones,
+                                    primary = true,
+                                    enabled = true,
+                                    onClick = onOpenAutoEqCatalog
+                                )
+                                AudioActionButton(
+                                    label = strings.autoEqImport,
+                                    icon = Icons.Rounded.FileOpen,
+                                    primary = false,
+                                    enabled = true,
+                                    onClick = { showAutoEqImport = true }
+                                )
+                            }
+                        }
+                    }
                 }
 
                 item { AudioSectionLabel(strings.audioSectionSpatial) }
@@ -480,6 +550,14 @@ internal fun AudioSettingsPanel(
             onSavePreset = { name, profile ->
                 onSaveAutoEqPreset(name, profile)
                 showAutoEqImport = false
+            },
+            onApplyParametric = { profile ->
+                onApplyParametricAutoEq(profile)
+                showAutoEqImport = false
+            },
+            onSaveParametric = { name, profile ->
+                onSaveParametricProfile(name, profile)
+                showAutoEqImport = false
             }
         )
     }
@@ -497,6 +575,14 @@ internal fun AudioSettingsPanel(
             },
             onSavePreset = { name, profile ->
                 onSaveAutoEqPreset(name, profile)
+                onCloseAutoEqCatalog()
+            },
+            onApplyParametric = { profile ->
+                onApplyParametricAutoEq(profile)
+                onCloseAutoEqCatalog()
+            },
+            onSaveParametric = { name, profile ->
+                onSaveParametricProfile(name, profile)
                 onCloseAutoEqCatalog()
             }
         )
@@ -678,12 +764,15 @@ private fun AutoEqImportDialog(
     onDismiss: () -> Unit,
     onApply: (AutoEqImporter.ImportedProfile) -> Unit,
     onSavePreset: (String, AutoEqImporter.ImportedProfile) -> Unit,
+    onApplyParametric: (ParametricEqProfile) -> Unit,
+    onSaveParametric: (String, ParametricEqProfile) -> Unit,
     initialText: String = "",
     initialPresetName: String = "",
     catalogDetail: String? = null
 ) {
     val fromCatalog = catalogDetail != null
     val strings = LocalLevyraStrings.current
+    val parametricCopy = strings.parametricEqCopy()
     val context = LocalContext.current
     var rawText by remember(initialText) { mutableStateOf(initialText) }
     var presetName by remember(initialPresetName) { mutableStateOf(initialPresetName.take(48)) }
@@ -709,13 +798,14 @@ private fun AutoEqImportDialog(
         }
     }
 
-    val parsed = remember(rawText) {
-        if (rawText.isBlank()) null else AutoEqImporter.parse(rawText)
+    val parsed = remember(rawText, initialPresetName, parametricCopy.parametricEq) {
+        parseAutoEqImport(
+            text = rawText,
+            fallbackName = initialPresetName.ifBlank { parametricCopy.parametricEq }
+        )
     }
-    val profile = if (readError == null) {
-        (parsed as? AutoEqImporter.ParseResult.Success)?.profile
-    } else {
-        null
+    val profile = parsed.takeIf {
+        readError == null && (it is ParsedAutoEqImport.Graphic || it is ParsedAutoEqImport.Parametric)
     }
     LaunchedEffect(profile?.name) {
         if (!presetNameDirty) presetName = profile?.name.orEmpty()
@@ -745,7 +835,7 @@ private fun AutoEqImportDialog(
                     letterSpacing = (-0.4).sp
                 )
                 Text(
-                    catalogDetail ?: strings.autoEqImportHint,
+                    catalogDetail ?: parametricCopy.importHint,
                     color = LevyraMuted,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
@@ -781,11 +871,11 @@ private fun AutoEqImportDialog(
                     )
                 }
 
-                val errorMessage = readError ?: if (parsed is AutoEqImporter.ParseResult.Error) {
-                    if (parsed.error == AutoEqImporter.ParseError.TOO_LARGE) {
+                val errorMessage = readError ?: if (parsed is ParsedAutoEqImport.Error) {
+                    if (parsed.tooLarge) {
                         strings.autoEqInputTooLarge
                     } else {
-                        strings.autoEqInvalidProfile
+                        "${strings.autoEqInvalidProfile}. ${parametricCopy.invalidDetail}"
                     }
                 } else {
                     null
@@ -795,14 +885,20 @@ private fun AutoEqImportDialog(
                 }
 
                 if (profile != null) {
-                    AutoEqProfilePreview(
-                        profile = profile,
-                        title = if (fromCatalog) {
-                            strings.audioBands
-                        } else {
-                            presetName.ifBlank { profile.name ?: strings.audioPresetCustom }
-                        }
-                    )
+                    when (profile) {
+                        is ParsedAutoEqImport.Graphic -> AutoEqProfilePreview(
+                            profile = profile.profile,
+                            title = if (fromCatalog) strings.audioBands else presetName.ifBlank {
+                                profile.profile.name ?: strings.audioPresetCustom
+                            }
+                        )
+                        is ParsedAutoEqImport.Parametric -> ParametricAutoEqProfilePreview(
+                            profile = profile.profile,
+                            title = if (fromCatalog) parametricCopy.bands else presetName.ifBlank { profile.profile.name },
+                            copy = parametricCopy
+                        )
+                        is ParsedAutoEqImport.Error, ParsedAutoEqImport.Empty -> Unit
+                    }
                     OutlinedTextField(
                         value = presetName,
                         onValueChange = {
@@ -832,14 +928,26 @@ private fun AutoEqImportDialog(
                         primary = false,
                         enabled = profile != null && presetName.isNotBlank(),
                         modifier = Modifier.weight(1f),
-                        onClick = { profile?.let { onSavePreset(presetName.trim(), it) } }
+                        onClick = {
+                            when (val value = profile) {
+                                is ParsedAutoEqImport.Graphic -> onSavePreset(presetName.trim(), value.profile)
+                                is ParsedAutoEqImport.Parametric -> onSaveParametric(presetName.trim(), value.profile)
+                                is ParsedAutoEqImport.Error, ParsedAutoEqImport.Empty, null -> Unit
+                            }
+                        }
                     )
                     AutoEqDialogButton(
                         label = strings.autoEqApply,
                         primary = true,
                         enabled = profile != null,
                         modifier = Modifier.weight(1f),
-                        onClick = { profile?.let(onApply) }
+                        onClick = {
+                            when (val value = profile) {
+                                is ParsedAutoEqImport.Graphic -> onApply(value.profile)
+                                is ParsedAutoEqImport.Parametric -> onApplyParametric(value.profile)
+                                is ParsedAutoEqImport.Error, ParsedAutoEqImport.Empty, null -> Unit
+                            }
+                        }
                     )
                 }
                 AutoEqDialogButton(
@@ -848,6 +956,89 @@ private fun AutoEqImportDialog(
                     enabled = true,
                     modifier = Modifier.fillMaxWidth(),
                     onClick = onDismiss
+                )
+            }
+        }
+    }
+}
+
+private sealed interface ParsedAutoEqImport {
+    val name: String?
+
+    data object Empty : ParsedAutoEqImport {
+        override val name: String? = null
+    }
+
+    data class Error(val tooLarge: Boolean) : ParsedAutoEqImport {
+        override val name: String? = null
+    }
+
+    data class Graphic(val profile: AutoEqImporter.ImportedProfile) : ParsedAutoEqImport {
+        override val name: String? get() = profile.name
+    }
+
+    data class Parametric(val profile: ParametricEqProfile) : ParsedAutoEqImport {
+        override val name: String get() = profile.name
+    }
+}
+
+private fun parseAutoEqImport(text: String, fallbackName: String): ParsedAutoEqImport {
+    if (text.isBlank()) return ParsedAutoEqImport.Empty
+    val hasParametricFilters = text.lineSequence().any { it.trimStart().startsWith("Filter", ignoreCase = true) }
+    return if (hasParametricFilters) {
+        when (val result = AutoEqImporter.parseParametric(text, fallbackName)) {
+            is AutoEqImporter.ParametricParseResult.Success -> ParsedAutoEqImport.Parametric(result.profile)
+            is AutoEqImporter.ParametricParseResult.Error -> ParsedAutoEqImport.Error(
+                tooLarge = result.error == AutoEqImporter.ParametricParseError.TOO_LARGE
+            )
+        }
+    } else {
+        when (val result = AutoEqImporter.parse(text)) {
+            is AutoEqImporter.ParseResult.Success -> ParsedAutoEqImport.Graphic(result.profile)
+            is AutoEqImporter.ParseResult.Error -> ParsedAutoEqImport.Error(
+                tooLarge = result.error == AutoEqImporter.ParseError.TOO_LARGE
+            )
+        }
+    }
+}
+
+@Composable
+private fun ParametricAutoEqProfilePreview(
+    profile: ParametricEqProfile,
+    title: String,
+    copy: com.luc4n3x.levyra.ui.i18n.ParametricEqCopy
+) {
+    Surface(
+        color = LevyraAdaptiveCard,
+        shape = CardShape,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            AudioCardHeader(title = title, trailing = "${copy.bands} · ${profile.bands.size}")
+            Text(
+                text = "${LocalLevyraStrings.current.preamp} ${decibels(profile.preampDb)}",
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+            profile.bands.take(5).forEachIndexed { index, band ->
+                Text(
+                    text = "${index + 1} · ${band.filterType.autoEqCode} · ${band.frequencyHz.roundToInt()} Hz · " +
+                        "${decibels(band.gainDb)} · Q ${String.format(Locale.US, "%.2f", band.q)}",
+                    color = if (band.enabled) LevyraText else LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (profile.bands.size > 5) {
+                Text(
+                    text = "+${profile.bands.size - 5}",
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
