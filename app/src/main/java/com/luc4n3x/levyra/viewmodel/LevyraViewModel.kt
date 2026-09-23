@@ -130,6 +130,10 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
+import com.luc4n3x.levyra.domain.ParametricEqBand
+import com.luc4n3x.levyra.domain.ParametricEqProfile
+import com.luc4n3x.levyra.domain.ParametricEqualizer
+import com.luc4n3x.levyra.domain.ParametricFilterType
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
@@ -3578,7 +3582,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setEqualizerEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(equalizerEnabled = value))
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = value,
+                parametricEqualizerEnabled = if (value) false else _state.value.audioSettings.parametricEqualizerEnabled
+            )
+        )
     }
 
     fun setEqualizerPreset(presetId: String) {
@@ -3591,7 +3600,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     bandLevels = custom.levels,
                     bassBoost = custom.bassBoost,
                     virtualizer = custom.virtualizer,
-                    preampDb = custom.preampDb
+                    preampDb = custom.preampDb,
+                    parametricEqualizerEnabled = false
                 )
             )
             return
@@ -3603,7 +3613,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 presetId = preset.id,
                 bandLevels = preset.levels,
                 bassBoost = preset.bassBoost,
-                virtualizer = preset.virtualizer
+                virtualizer = preset.virtualizer,
+                parametricEqualizerEnabled = false
             )
         )
     }
@@ -3616,7 +3627,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 bandLevels = profile.bandLevels,
                 bassBoost = 0,
                 virtualizer = 0,
-                preampDb = profile.preampDb
+                preampDb = profile.preampDb,
+                parametricEqualizerEnabled = false
             )
         )
     }
@@ -3662,13 +3674,110 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 bassBoost = preset.bassBoost,
                 virtualizer = preset.virtualizer,
                 preampDb = preset.preampDb,
-                customPresets = customPresets
+                customPresets = customPresets,
+                parametricEqualizerEnabled = false
             )
         )
     }
 
+    fun setParametricEqualizerEnabled(value: Boolean) {
+        val settings = _state.value.audioSettings
+        updateAudioSettings(
+            settings.copy(
+                equalizerEnabled = if (value) false else settings.equalizerEnabled,
+                parametricEqualizerEnabled = value,
+                activeParametricProfile = settings.activeParametricProfile ?: ParametricEqualizer.defaultProfile
+            )
+        )
+    }
+
+    fun applyParametricAutoEq(profile: ParametricEqProfile) {
+        val normalized = profile.normalized() ?: return
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = false,
+                parametricEqualizerEnabled = true,
+                activeParametricProfile = normalized
+            )
+        )
+    }
+
+    fun selectParametricProfile(profileId: String) {
+        val profile = _state.value.audioSettings.customParametricProfiles.firstOrNull { it.id == profileId } ?: return
+        applyParametricAutoEq(profile)
+    }
+
+    fun saveParametricProfile(name: String, profile: ParametricEqProfile) {
+        val cleanName = name.trim().take(ParametricEqualizer.MAX_NAME_CHARS)
+        if (cleanName.isEmpty()) return
+        val normalized = profile.copy(
+            id = ParametricEqualizer.profileId(
+                prefix = ParametricEqualizer.CUSTOM_PROFILE_PREFIX,
+                name = cleanName,
+                preampDb = profile.preampDb,
+                bands = profile.bands
+            ),
+            name = cleanName
+        ).normalized() ?: return
+        val profiles = (_state.value.audioSettings.customParametricProfiles.filterNot { it.id == normalized.id } + normalized)
+            .takeLast(ParametricEqualizer.MAX_CUSTOM_PROFILES)
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = false,
+                parametricEqualizerEnabled = true,
+                activeParametricProfile = normalized,
+                customParametricProfiles = profiles
+            )
+        )
+    }
+
+    fun updateParametricPreamp(value: Float) {
+        val profile = _state.value.audioSettings.activeParametricProfile ?: ParametricEqualizer.defaultProfile
+        applyParametricAutoEq(profile.copy(preampDb = value))
+    }
+
+    fun updateParametricBand(index: Int, band: ParametricEqBand) {
+        val profile = _state.value.audioSettings.activeParametricProfile ?: ParametricEqualizer.defaultProfile
+        if (index !in profile.bands.indices || band.normalized() == null) return
+        val bands = profile.bands.toMutableList().apply { this[index] = band }
+        applyParametricAutoEq(profile.copy(bands = bands))
+    }
+
+    fun addParametricBand() {
+        val profile = _state.value.audioSettings.activeParametricProfile ?: ParametricEqualizer.defaultProfile
+        if (profile.bands.size >= ParametricEqualizer.MAX_BANDS) return
+        val previousFrequency = profile.bands.lastOrNull()?.frequencyHz ?: 500f
+        val frequency = (previousFrequency * 2f).coerceAtMost(ParametricEqualizer.MAX_FREQUENCY_HZ)
+        applyParametricAutoEq(
+            profile.copy(
+                bands = profile.bands + ParametricEqBand(
+                    frequencyHz = frequency,
+                    gainDb = 0f,
+                    q = 1f,
+                    filterType = ParametricFilterType.PEAK
+                )
+            )
+        )
+    }
+
+    fun removeParametricBand(index: Int) {
+        val profile = _state.value.audioSettings.activeParametricProfile ?: return
+        if (index !in profile.bands.indices || profile.bands.size <= 1) return
+        applyParametricAutoEq(profile.copy(bands = profile.bands.filterIndexed { bandIndex, _ -> bandIndex != index }))
+    }
+
+    fun resetParametricEqualizer() {
+        updateAudioSettings(_state.value.audioSettings.withNeutralParametricEqualizer())
+    }
+
     fun setBassBoost(value: Int) {
-        updateAudioSettings(_state.value.audioSettings.copy(equalizerEnabled = true, bassBoost = value))
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = true,
+                parametricEqualizerEnabled = false,
+                bassBoost = value
+            )
+        )
     }
 
     fun setEqualizerBand(index: Int, value: Int) {
@@ -3679,6 +3788,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateAudioSettings(
             _state.value.audioSettings.copy(
                 equalizerEnabled = true,
+                parametricEqualizerEnabled = false,
                 presetId = LevyraAudioPresets.FLAT,
                 bandLevels = levels
             )
@@ -3698,7 +3808,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setVirtualizer(value: Int) {
-        updateAudioSettings(_state.value.audioSettings.copy(equalizerEnabled = true, virtualizer = value))
+        val settings = _state.value.audioSettings
+        updateAudioSettings(settings.copy(equalizerEnabled = !settings.parametricEqualizerEnabled, virtualizer = value))
     }
 
     fun setCrossfadeSeconds(seconds: Int) {
@@ -7088,6 +7199,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 tracks.forEach { track -> add(LocalSearchCandidate(track, affinity)) }
             }
             addTracks(snapshot.recentSearches, LocalSearchAffinity.RECENT)
+            addTracks(snapshot.recentListens, LocalSearchAffinity.LISTENED)
             addTracks(snapshot.favorites, LocalSearchAffinity.FAVORITE)
             addTracks(
                 snapshot.localLibrary.catalog.songs.take(LOCAL_LIBRARY_SEARCH_CANDIDATE_LIMIT),
