@@ -3219,6 +3219,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun deletePlaylists(playlistIds: Collection<String>) {
         val uniqueIds = playlistIds.filter(String::isNotBlank).toSet()
         if (uniqueIds.isEmpty()) return
+        val pinKeys = uniqueIds.mapNotNullTo(HashSet()) { SpeedDial.playlistKey(it) }
+        if (pinKeys.isNotEmpty()) {
+            mutateSpeedDial { pins -> pins.filterNot { it.key in pinKeys } }
+        }
         viewModelScope.launch {
             uniqueIds.forEach { playlistStore.delete(it) }
             _state.update { current ->
@@ -5315,7 +5319,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun LocalLibraryStatus.completedIdle(): Boolean = permissionGranted && !scanning && lastScanAt > 0L
+    private fun LocalLibraryStatus.completedIdle(): Boolean {
+        val result = lastResult ?: return false
+        return permissionGranted && !scanning && lastScanAt > 0L && !result.failed && !result.permissionDenied
+    }
 
     private fun localScanMessage(status: LocalLibraryStatus): String {
         val strings = LevyraStrings.forCode(_state.value.languageCode)
