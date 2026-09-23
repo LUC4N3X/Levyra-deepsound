@@ -893,6 +893,9 @@ class ArtistLoreRepository(context: Context?) {
         private const val WIKIDATA_API_URL = "https://www.wikidata.org/w/api.php"
 
         internal fun preferredLanguage(languageCode: String): String {
+            val rawLanguage = languageCode.trim().replace('_', '-').substringBefore('-').lowercase(Locale.ROOT)
+            if (rawLanguage == "tl") return "tl"
+            if (rawLanguage == "no") return "no"
             val normalized = LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')
             return when (normalized) {
                 "fil" -> "tl"
