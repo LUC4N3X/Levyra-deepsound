@@ -459,11 +459,9 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun canReuseProvidedPlayback(track: Track, expectedGeneration: Long): Boolean {
         if (track.playbackManifest?.alternativeSource != null) return true
         val manifestGeneration = track.playbackManifest?.provenance?.resolverGeneration ?: -1L
-        if (manifestGeneration >= 0L && manifestGeneration != expectedGeneration) return false
+        if (manifestGeneration >= 0L) return manifestGeneration == expectedGeneration
         val (preferredLanguage, revision) = preferredAudioLanguageSnapshot()
-        if (preferredLanguage.isBlank()) {
-            return manifestGeneration == expectedGeneration || revision == 0L
-        }
+        if (preferredLanguage.isBlank()) return revision == 0L
         val rawXtags = AudioLanguageIntelligence.extractXtagsFromUrl(track.streamUrl)
         val streamLanguage = AudioLanguageIntelligence.normalizeLanguage(
             AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
@@ -627,7 +625,10 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun invalidate(track: Track, isVideoMode: Boolean = false, offlineExport: Boolean = false) {
         if (offlineExport) return
-        remove(cacheKey(track, isVideoMode))
+        val generation = resolverGeneration.get()
+        if (canReuseProvidedPlayback(track, generation)) {
+            remove(cacheKey(track, isVideoMode))
+        }
     }
 
     fun reportPlaybackFailure(
@@ -727,16 +728,21 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (recovery.rotateCodec && !isOfflineExport) {
             videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lower)
         }
-        if (!isOfflineExport && attributedUrl != null && isCandidateLevelPlaybackFailure(failureKind)) {
-            promoteAlternateCandidate(track, isVideoMode, audioQuality)
+        val failureGeneration = resolverGeneration.get()
+        val failureBelongsToCurrentGeneration = canReuseProvidedPlayback(track, failureGeneration)
+        if (!isOfflineExport &&
+            attributedUrl != null &&
+            isCandidateLevelPlaybackFailure(failureKind) &&
+            failureBelongsToCurrentGeneration
+        ) {
+            promoteAlternateCandidate(track, isVideoMode, audioQuality, failureGeneration)
         }
         val sourceMatchQuarantineMs = when {
             lower.contains("403") || lower.contains("410") || lower.contains("expired") || lower.contains("scadut") || lower.contains("signature") -> 0L
             lower.contains("decoder") || lower.contains("codec") -> recovery.quarantineMs
             else -> minOf(recovery.quarantineMs, 20_000L)
         }
-        val failureGeneration = resolverGeneration.get()
-        if (canReuseProvidedPlayback(track, failureGeneration)) {
+        if (failureBelongsToCurrentGeneration) {
             val (failurePreferredLanguage, failureLanguageRevision) = preferredAudioLanguageSnapshot()
             sourceMatchScope.launch {
                 if (failureGeneration != resolverGeneration.get() ||
@@ -758,7 +764,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun promoteAlternateCandidate(track: Track, isVideoMode: Boolean, audioQuality: String?) {
+    private fun promoteAlternateCandidate(
+        track: Track,
+        isVideoMode: Boolean,
+        audioQuality: String?,
+        expectedGeneration: Long
+    ) {
         val manifest = track.playbackManifest ?: return
         val burned = manifest.streams.count { isPlaybackUrlBlocked(it.url) }
         if (burned >= MAX_PROMOTED_PLAYBACK_CANDIDATES) return
@@ -774,7 +785,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             resolvedTrack = promotedTrack,
             isVideoMode = isVideoMode,
             audioQuality = audioQuality?.let(::normalizeAudioQuality) ?: selectedAudioQuality,
-            expectedGeneration = resolverGeneration.get()
+            expectedGeneration = expectedGeneration
         )
         Timber.i(
             "playback candidate promoted mode=%s burned=%d",
