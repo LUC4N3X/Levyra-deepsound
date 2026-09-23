@@ -258,6 +258,7 @@ import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.SponsorBlockSkipOnceTracker
 import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.data.locallibrary.LOCAL_MEDIA_TRACK_ID_PREFIX
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryRepository
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryStatus
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
@@ -295,6 +296,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
@@ -1629,11 +1632,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun toggleSpeedDialPin(pin: SpeedDialPin) = mutateSpeedDial { pins -> SpeedDial.toggle(pins, pin) }
 
-    private fun pruneMissingLocalSpeedDialPins() {
-        val library = _state.value.localLibrary
-        if (library.scanning) return
-        val songs = library.completedScanSongs() ?: return
-        val localIds = songs.mapTo(HashSet()) { it.id }
+    private fun pruneMissingLocalSpeedDialPins(localIds: Set<String>) {
         mutateSpeedDial { pins -> SpeedDial.withoutMissingLocalTracks(pins, localIds) }
     }
 
@@ -5301,10 +5300,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         buildLocalLibraryCatalog(rows, sort.first, sort.second)
                     }
                     _state.update { it.copy(localLibrary = it.localLibrary.copy(catalog = catalog)) }
-                    pruneMissingLocalSpeedDialPins()
                 }
         }
+        viewModelScope.launch {
+            localLibrary.availableMedia
+                .map { rows ->
+                    rows.mapTo(HashSet()) { row -> row.levyraTrackId.ifEmpty { LOCAL_MEDIA_TRACK_ID_PREFIX + row.identityKey } }
+                }
+                .flowOn(Dispatchers.Default)
+                .combine(localLibrary.status) { localIds, status -> localIds.takeIf { status.completedIdle() } }
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect(::pruneMissingLocalSpeedDialPins)
+        }
     }
+
+    private fun LocalLibraryStatus.completedIdle(): Boolean = permissionGranted && !scanning && lastScanAt > 0L
 
     private fun localScanMessage(status: LocalLibraryStatus): String {
         val strings = LevyraStrings.forCode(_state.value.languageCode)
