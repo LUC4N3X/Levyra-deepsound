@@ -346,7 +346,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val userPreferences = LevyraPreferences(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
     private val streamCacheMutationLock = Any()
-    private val resolverGeneration = AtomicLong(0L)
+    private val resolverGeneration = AtomicLong(System.currentTimeMillis().coerceAtLeast(1L))
     private val resolveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val singleFlight = PlaybackSingleFlight<String, Track>(resolveScope)
     private val clientHealth = ConcurrentHashMap<String, ClientHealth>()
@@ -1249,22 +1249,25 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         val policy = playbackPolicyStore.current()
-        for ((attemptIndex, strategy) in strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies).withIndex()) {
+        val healthyOrder = strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies)
+        val orderedStrategies = if (selectedPreferredAudioLanguage.isBlank()) {
+            healthyOrder
+        } else {
+            healthyOrder.filterNot { it == PlaybackAudioStrategy.REEL_MUXED } +
+                healthyOrder.filter { it == PlaybackAudioStrategy.REEL_MUXED }
+        }
+        for ((attemptIndex, strategy) in orderedStrategies.withIndex()) {
             currentCoroutineContext().ensureActive()
             RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
             if (attemptIndex > 0) RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
             val startedAt = System.currentTimeMillis()
             val errorsBefore = errors.size
             val resolved = when (strategy) {
-                PlaybackAudioStrategy.REEL_MUXED -> if (selectedPreferredAudioLanguage.isBlank()) {
-                    runCatchingPreservingCancellation {
-                        resolveVideoWithAndroidReel(track)
-                    }.onFailure { error ->
-                        errors += "Android Reel muxed: ${error.playbackDiagnostic()}"
-                    }.getOrNull()
-                } else {
-                    null
-                }
+                PlaybackAudioStrategy.REEL_MUXED -> runCatchingPreservingCancellation {
+                    resolveVideoWithAndroidReel(track)
+                }.onFailure { error ->
+                    errors += "Android Reel muxed: ${error.playbackDiagnostic()}"
+                }.getOrNull()
 
                 PlaybackAudioStrategy.REEL_AUDIO -> runCatchingPreservingCancellation {
                     resolveAudioWithAndroidReel(track, audioQuality)
