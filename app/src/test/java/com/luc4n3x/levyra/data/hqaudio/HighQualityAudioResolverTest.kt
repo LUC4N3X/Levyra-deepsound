@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data.hqaudio
 
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -87,12 +88,105 @@ class HighQualityAudioResolverTest {
     fun staleMappingWithChangedProviderMetadataIsReplaced() {
         resolver(exactProvider()).resolveNow()
         val provider = exactProvider().apply {
-            lookupOutcome = { ProviderLookupOutcome.Found(candidate(duration = 260)) }
+            lookupOutcome = { ProviderLookupOutcome.Found(if (lookups.size == 1) candidate(duration = 260) else candidate()) }
         }
         val result = resolver(provider).resolveNow()
         assertTrue(result is HighQualityResolution.Selected)
-        assertEquals(1, provider.lookups.size)
+        assertEquals(2, provider.lookups.size)
         assertTrue(provider.searches.isNotEmpty())
+    }
+
+    @Test
+    fun selectedSearchCandidateIsHydratedBeforeItsStreamIsResolved() {
+        val resolvedWith = CopyOnWriteArrayList<AlternativeTrackCandidate>()
+        val provider = FakeHighQualityProvider(
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate().copy(offers320 = null))) },
+            lookupOutcome = { ProviderLookupOutcome.Found(candidate(offers320 = true, isrc = "USUG11904206")) },
+            streamOutcome = {
+                resolvedWith += it
+                ProviderStreamOutcome.Resolved(resolvedStream(it))
+            }
+        )
+        val result = resolver(provider).resolveNow()
+        assertTrue(result is HighQualityResolution.Selected)
+        assertEquals(listOf("pW-kkdqr"), provider.lookups.toList())
+        assertEquals(true, resolvedWith.single().offers320)
+        assertEquals("USUG11904206", resolvedWith.single().isrc)
+    }
+
+    @Test
+    fun detailsThatContradictTheIdentityNeverReachStreamResolution() {
+        val conflicting = listOf(
+            candidate(title = "Blinding Lights (Remix)"),
+            candidate(title = "Blinding Lights (Live)"),
+            candidate(primary = listOf("Someone Else")),
+            candidate(duration = 260),
+            candidate(isrc = "GBAYE0000001"),
+            candidate(explicit = true),
+            candidate(id = "other-id")
+        )
+        conflicting.forEach { details ->
+            val provider = FakeHighQualityProvider(
+                searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate())) },
+                lookupOutcome = { ProviderLookupOutcome.Found(details) }
+            )
+            val result = resolver(provider).resolveNow(query(isrc = "USUG11904206", explicit = false))
+            assertEquals(HighQualityFallbackReason.NO_MATCH, (result as HighQualityResolution.Fallback).reason)
+            assertEquals("HYDRATION_CONFLICT", result.detail)
+            assertTrue(provider.streamRequests.isEmpty())
+            assertTrue(storage.values.isEmpty())
+        }
+    }
+
+    @Test
+    fun detailsMissingOrRestrictedNeverReachStreamResolution() {
+        val provider = FakeHighQualityProvider(
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate())) },
+            lookupOutcome = { ProviderLookupOutcome.Missing }
+        )
+        val result = resolver(provider).resolveNow()
+        assertEquals(HighQualityFallbackReason.NO_MATCH, (result as HighQualityResolution.Fallback).reason)
+        assertTrue(provider.streamRequests.isEmpty())
+    }
+
+    @Test
+    fun temporaryDetailsFailureKeepsTheSafeSearchCandidate() {
+        val provider = FakeHighQualityProvider(
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate())) },
+            lookupOutcome = { ProviderLookupOutcome.Failed(ProviderFailure.TIMEOUT) }
+        )
+        val result = resolver(provider).resolveNow()
+        assertEquals(AudioQualityTier.KBPS_320, (result as HighQualityResolution.Selected).stream.tier)
+        assertEquals(listOf("pW-kkdqr"), provider.streamRequests.toList())
+    }
+
+    @Test
+    fun slowDetailsAreBoundedAndKeepTheSafeSearchCandidate() {
+        val provider = FakeHighQualityProvider(
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate())) },
+            lookupOutcome = {
+                delay(30_000L)
+                ProviderLookupOutcome.Found(candidate(title = "Blinding Lights (Remix)"))
+            }
+        )
+        val startedAt = System.nanoTime()
+        val result = resolver(provider).resolveNow()
+        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000L
+        assertTrue(result is HighQualityResolution.Selected)
+        assertTrue(elapsedMs < HighQualityProviderLane.HYDRATION_TIMEOUT_MS + 2_000L)
+    }
+
+    @Test
+    fun hydratedMetadataIsWhatTheStoredMappingRemembers() {
+        val first = FakeHighQualityProvider(
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate(duration = 201))) },
+            lookupOutcome = { ProviderLookupOutcome.Found(candidate(duration = 200)) }
+        )
+        resolver(first).resolveNow()
+        val second = exactProvider()
+        assertTrue(resolver(second).resolveNow() is HighQualityResolution.Selected)
+        assertTrue(second.searches.isEmpty())
+        assertEquals(1, second.lookups.size)
     }
 
     @Test
@@ -147,7 +241,7 @@ class HighQualityAudioResolverTest {
         nowMs += HighQualityMappingStore.DEFAULT_TTL_MS
         val expired = exactProvider().apply { lookupOutcome = { ProviderLookupOutcome.Failed(ProviderFailure.TIMEOUT) } }
         assertTrue(timedResolver(expired).resolveNow() is HighQualityResolution.Selected)
-        assertTrue(expired.lookups.isEmpty())
+        assertEquals(1, expired.lookups.size)
         assertTrue(expired.searches.isNotEmpty())
     }
 
@@ -179,10 +273,10 @@ class HighQualityAudioResolverTest {
     fun ambiguousSearchFallsBackWithoutStreamRequest() {
         val provider = FakeHighQualityProvider(
             searchOutcome = {
-                ProviderSearchOutcome.Found(listOf(candidate(id = "a", duration = 200), candidate(id = "b", duration = 202)))
+                ProviderSearchOutcome.Found(listOf(candidate(id = "a", duration = 197), candidate(id = "b", duration = 203)))
             }
         )
-        val result = resolver(provider).resolveNow(query(durationMs = 201_000L))
+        val result = resolver(provider).resolveNow(query(durationMs = 200_000L))
         assertEquals(HighQualityFallbackReason.AMBIGUOUS, (result as HighQualityResolution.Fallback).reason)
         assertTrue(provider.streamRequests.isEmpty())
     }
@@ -297,7 +391,8 @@ class HighQualityAudioResolverTest {
         val provider = FakeHighQualityProvider(
             searchOutcome = {
                 ProviderSearchOutcome.Found(listOf(candidate(album = "Greatest Hits 2020", isrc = "USUG11904206")))
-            }
+            },
+            lookupOutcome = { ProviderLookupOutcome.Found(candidate(album = "Greatest Hits 2020", isrc = "USUG11904206")) }
         )
         val result = resolver(provider).resolveNow(query(isrc = "USUG11904206"))
         assertEquals(100, (result as HighQualityResolution.Selected).evaluation.confidence)

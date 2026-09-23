@@ -17,7 +17,8 @@ internal object AlternativeSearchPlan {
         val includeAlbum = !albumIdentity.isBlank &&
             albumIdentity.core != titleIdentity.core &&
             albumIdentity.core !in AlternativeTrackMatcher.untrustedAlbumNames
-        val canonical = (listOf(titleIdentity.fullNormalized) + AlternativeTrackText.artistNames(query.artist))
+        val searchableTitle = if (titleIdentity.versionSignature.isEmpty()) titleIdentity.core else titleIdentity.fullNormalized
+        val canonical = (listOf(searchableTitle) + AlternativeTrackText.artistNames(query.artist))
             .joinToString(" ")
         return buildList {
             if (includeAlbum) add("$title $primaryArtist ${clean(query.album)}")

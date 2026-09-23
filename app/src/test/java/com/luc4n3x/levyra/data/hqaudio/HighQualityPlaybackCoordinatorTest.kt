@@ -12,6 +12,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -36,10 +37,19 @@ class HighQualityPlaybackCoordinatorTest {
         HighQualityAudioResolver(provider, HighQualityMappingStore(InMemoryMappingStorage()), scope)
     ).apply { this.mode = mode }
 
-    private fun exactProvider(tier: AudioQualityTier = AudioQualityTier.KBPS_320) = FakeHighQualityProvider(
+    private fun exactProvider(
+        tier: AudioQualityTier = AudioQualityTier.KBPS_320,
+        estimatedKbps: Int = tier.kbps
+    ) = FakeHighQualityProvider(
         searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate())) },
-        streamOutcome = { ProviderStreamOutcome.Resolved(resolvedStream(it, tier)) }
+        lookupOutcome = { ProviderLookupOutcome.Found(candidate()) },
+        streamOutcome = { ProviderStreamOutcome.Resolved(resolvedStream(it, tier, estimatedKbps = estimatedKbps)) }
     )
+
+    private fun upgradeDecision(tier: AudioQualityTier, estimatedKbps: Int, normalKbps: Int): Track {
+        val normal = normalTrack(averageBitrate = normalKbps * 1_000)
+        return coordinator(exactProvider(tier, estimatedKbps)).play(normal = { normal })
+    }
 
     private fun HighQualityPlaybackCoordinator.play(
         requested: Track = playbackTrack(),
@@ -89,10 +99,44 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
-    fun alternativeNotMeaningfullyHigherKeepsNormalSource() {
-        val normal = normalTrack(averageBitrate = 150_000)
-        val result = coordinator(exactProvider(AudioQualityTier.KBPS_160)).play(normal = { normal })
-        assertSame(normal, result)
+    fun upgradeDecisionUsesTheMeasuredBitrateAgainstTheNormalStream() {
+        val cases = listOf(
+            Triple(AudioQualityTier.KBPS_160, 248, 160) to true,
+            Triple(AudioQualityTier.KBPS_160, 192, 160) to true,
+            Triple(AudioQualityTier.KBPS_160, 175, 160) to false,
+            Triple(AudioQualityTier.KBPS_160, 160, 128) to true,
+            Triple(AudioQualityTier.KBPS_160, 160, 160) to false,
+            Triple(AudioQualityTier.KBPS_96, 96, 160) to false,
+            Triple(AudioQualityTier.KBPS_320, 321, 160) to true
+        )
+        cases.forEach { (case, upgraded) ->
+            val (tier, estimated, normal) = case
+            val result = upgradeDecision(tier, estimated, normal)
+            assertEquals("$case", upgraded, result.playbackManifest?.alternativeSource != null)
+        }
+    }
+
+    @Test
+    fun streamMeasuredBetweenTiersIsReportedWithItsRealBitrate() {
+        val result = upgradeDecision(AudioQualityTier.KBPS_160, 248, 160)
+        val manifest = requireNotNull(result.playbackManifest)
+        val descriptor = manifest.streams.single()
+        assertEquals(248, manifest.alternativeSource?.bitrateKbps)
+        assertEquals("~248 kbps", descriptor.qualityLabel)
+        assertEquals(248_000, descriptor.bitrate)
+        assertEquals(248_000, descriptor.averageBitrate)
+        assertTrue(result.source.endsWith("~248 kbps"))
+        assertFalse(result.source.contains("320"))
+    }
+
+    @Test
+    fun verified320KeepsItsNominalLabelAndMeasuredAverage() {
+        val result = upgradeDecision(AudioQualityTier.KBPS_320, 322, 160)
+        val descriptor = requireNotNull(result.playbackManifest).streams.single()
+        assertEquals(320, result.playbackManifest?.alternativeSource?.bitrateKbps)
+        assertEquals("320 kbps", descriptor.qualityLabel)
+        assertEquals(320_000, descriptor.bitrate)
+        assertEquals(322_000, descriptor.averageBitrate)
     }
 
     @Test

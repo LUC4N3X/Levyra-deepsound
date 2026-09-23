@@ -16,6 +16,7 @@ enum class StreamRejection {
 
 sealed interface StreamValidation {
     data class Valid(
+        val tier: AudioQualityTier,
         val mimeType: String,
         val container: String,
         val codec: String,
@@ -25,7 +26,8 @@ sealed interface StreamValidation {
 
     data class Invalid(
         val rejection: StreamRejection,
-        val statusCode: Int = 0
+        val statusCode: Int = 0,
+        val estimatedKbps: Int = 0
     ) : StreamValidation
 }
 
@@ -64,10 +66,10 @@ internal object ProviderStreamValidator {
             return StreamValidation.Invalid(StreamRejection.UNKNOWN_LENGTH, response.code)
         }
         val estimatedKbps = (totalBytes * 8.0 / durationSeconds / 1000.0).roundToInt()
-        if (!bitrateMatches(estimatedKbps, tier)) {
-            return StreamValidation.Invalid(StreamRejection.BITRATE_MISMATCH, response.code)
-        }
+        val verifiedTier = verifiedTier(estimatedKbps, tier)
+            ?: return StreamValidation.Invalid(StreamRejection.BITRATE_MISMATCH, response.code, estimatedKbps)
         return StreamValidation.Valid(
+            tier = verifiedTier,
             mimeType = "audio/mp4",
             container = "mp4",
             codec = if (contains(body, aacSampleEntry)) "mp4a" else "",
@@ -76,11 +78,18 @@ internal object ProviderStreamValidator {
         )
     }
 
-    fun bitrateMatches(estimatedKbps: Int, tier: AudioQualityTier): Boolean {
-        val lower = tier.kbps * LOWER_BITRATE_RATIO
-        val upper = tier.kbps * UPPER_BITRATE_RATIO + UPPER_BITRATE_SLACK_KBPS
-        return estimatedKbps >= lower && estimatedKbps <= upper
+    fun bitrateMatches(estimatedKbps: Int, tier: AudioQualityTier): Boolean =
+        estimatedKbps >= lowerBound(tier) && estimatedKbps <= upperBound(tier)
+
+    fun verifiedTier(estimatedKbps: Int, requested: AudioQualityTier): AudioQualityTier? {
+        if (bitrateMatches(estimatedKbps, requested)) return requested
+        val lower = AudioQualityTier.entries.getOrNull(requested.ordinal + 1) ?: return null
+        return lower.takeIf { estimatedKbps > upperBound(it) && estimatedKbps < lowerBound(requested) }
     }
+
+    private fun lowerBound(tier: AudioQualityTier): Double = tier.kbps * LOWER_BITRATE_RATIO
+
+    private fun upperBound(tier: AudioQualityTier): Double = tier.kbps * UPPER_BITRATE_RATIO + UPPER_BITRATE_SLACK_KBPS
 
     private fun totalLength(response: ProviderHttpResponse): Long? {
         response.header("Content-Range")
