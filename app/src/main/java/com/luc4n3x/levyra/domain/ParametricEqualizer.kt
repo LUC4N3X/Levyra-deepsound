@@ -1,6 +1,14 @@
 package com.luc4n3x.levyra.domain
 
 import java.security.MessageDigest
+import java.util.Locale
+import java.util.UUID
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.log10
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 enum class ParametricFilterType(val autoEqCode: String) {
     PEAK("PK"),
@@ -93,4 +101,142 @@ object ParametricEqualizer {
             .take(16)
         return prefix + digest
     }
+}
+
+object ParametricBiquad {
+    const val COEFFICIENT_COUNT = 5
+
+    fun design(band: ParametricEqBand, sampleRate: Int, out: DoubleArray): Boolean {
+        val frequency = band.frequencyHz.toDouble()
+        val q = band.q.toDouble()
+        if (sampleRate <= 0 || frequency <= 0.0 || frequency >= sampleRate * 0.5 || q <= 0.0) return false
+        val amplitude = 10.0.pow(band.gainDb.toDouble() / 40.0)
+        val omega = 2.0 * PI * frequency / sampleRate
+        val cosine = cos(omega)
+        val alpha = sin(omega) / (2.0 * q)
+        when (band.filterType) {
+            ParametricFilterType.PEAK -> {
+                val a0 = 1.0 + alpha / amplitude
+                out[0] = (1.0 + alpha * amplitude) / a0
+                out[1] = -2.0 * cosine / a0
+                out[2] = (1.0 - alpha * amplitude) / a0
+                out[3] = -2.0 * cosine / a0
+                out[4] = (1.0 - alpha / amplitude) / a0
+            }
+            ParametricFilterType.LOW_SHELF, ParametricFilterType.HIGH_SHELF -> {
+                val sign = if (band.filterType == ParametricFilterType.HIGH_SHELF) 1.0 else -1.0
+                val plus = amplitude + 1.0
+                val minus = amplitude - 1.0
+                val beta = 2.0 * sqrt(amplitude) * alpha
+                val a0 = plus - sign * minus * cosine + beta
+                out[0] = amplitude * (plus + sign * minus * cosine + beta) / a0
+                out[1] = -sign * 2.0 * amplitude * (minus + sign * plus * cosine) / a0
+                out[2] = amplitude * (plus + sign * minus * cosine - beta) / a0
+                out[3] = sign * 2.0 * (minus - sign * plus * cosine) / a0
+                out[4] = (plus - sign * minus * cosine - beta) / a0
+            }
+        }
+        return out.all { it.isFinite() }
+    }
+
+    fun responseDb(profile: ParametricEqProfile, frequenciesHz: FloatArray, sampleRate: Int, out: FloatArray) {
+        val coefficients = DoubleArray(COEFFICIENT_COUNT)
+        for (index in frequenciesHz.indices) out[index] = profile.preampDb
+        profile.bands.forEach { band ->
+            if (!band.enabled || !design(band, sampleRate, coefficients)) return@forEach
+            for (index in frequenciesHz.indices) {
+                out[index] += magnitudeDb(coefficients, frequenciesHz[index].toDouble(), sampleRate).toFloat()
+            }
+        }
+    }
+
+    private fun magnitudeDb(c: DoubleArray, frequencyHz: Double, sampleRate: Int): Double {
+        val omega = 2.0 * PI * frequencyHz / sampleRate
+        val cos1 = cos(omega)
+        val sin1 = sin(omega)
+        val cos2 = cos(2.0 * omega)
+        val sin2 = sin(2.0 * omega)
+        val numeratorReal = c[0] + c[1] * cos1 + c[2] * cos2
+        val numeratorImaginary = -(c[1] * sin1 + c[2] * sin2)
+        val denominatorReal = 1.0 + c[3] * cos1 + c[4] * cos2
+        val denominatorImaginary = -(c[3] * sin1 + c[4] * sin2)
+        val numerator = numeratorReal * numeratorReal + numeratorImaginary * numeratorImaginary
+        val denominator = denominatorReal * denominatorReal + denominatorImaginary * denominatorImaginary
+        if (numerator <= 0.0 || denominator <= 0.0) return 0.0
+        return 10.0 * log10(numerator / denominator)
+    }
+}
+
+object ParametricProfiles {
+    const val EDITOR_MIN_FREQUENCY_HZ = 20f
+    const val EDITOR_MAX_FREQUENCY_HZ = 20_000f
+
+    fun isCustom(profile: ParametricEqProfile): Boolean =
+        profile.id.startsWith(ParametricEqualizer.CUSTOM_PROFILE_PREFIX)
+
+    fun newId(): String = ParametricEqualizer.CUSTOM_PROFILE_PREFIX + UUID.randomUUID().toString().replace("-", "")
+
+    fun create(name: String): ParametricEqProfile =
+        ParametricEqualizer.defaultProfile.copy(id = newId(), name = cleanName(name))
+
+    fun duplicate(source: ParametricEqProfile, name: String): ParametricEqProfile =
+        source.copy(id = newId(), name = cleanName(name), bands = source.bands.map { it.copy() })
+
+    fun cleanName(name: String): String = name.trim().take(ParametricEqualizer.MAX_NAME_CHARS)
+
+    fun nameTaken(name: String, selfId: String?, profiles: List<ParametricEqProfile>): Boolean {
+        val key = cleanName(name).lowercase(Locale.ROOT)
+        return key.isNotEmpty() && profiles.any { it.id != selfId && it.name.trim().lowercase(Locale.ROOT) == key }
+    }
+
+    fun availableName(
+        first: String,
+        stem: String,
+        profiles: List<ParametricEqProfile>,
+        variant: (String, Int) -> String
+    ): String {
+        if (!nameTaken(first, null, profiles)) return cleanName(first)
+        var candidate = cleanName(first)
+        for (index in 2..profiles.size + 2) {
+            candidate = fittedVariant(stem, index, variant)
+            if (!nameTaken(candidate, null, profiles)) return candidate
+        }
+        return candidate
+    }
+
+    private fun fittedVariant(stem: String, index: Int, variant: (String, Int) -> String): String {
+        var fitted = stem.trim()
+        var candidate = variant(fitted, index).trim()
+        while (candidate.length > ParametricEqualizer.MAX_NAME_CHARS && fitted.isNotEmpty()) {
+            fitted = fitted.dropLast(candidate.length - ParametricEqualizer.MAX_NAME_CHARS).trimEnd()
+            candidate = variant(fitted, index).trim()
+        }
+        return cleanName(candidate)
+    }
+
+    fun upsert(profiles: List<ParametricEqProfile>, profile: ParametricEqProfile): List<ParametricEqProfile> {
+        val index = profiles.indexOfFirst { it.id == profile.id }
+        return if (index >= 0) {
+            profiles.toMutableList().apply { this[index] = profile }
+        } else {
+            (profiles + profile).takeLast(ParametricEqualizer.MAX_CUSTOM_PROFILES)
+        }
+    }
+
+    fun parseDecimal(text: String): Float? {
+        val value = text.trim().replace(',', '.').toFloatOrNull() ?: return null
+        return value.takeIf { it.isFinite() }
+    }
+
+    fun validFrequency(value: Float): Boolean =
+        value.isFinite() && value in EDITOR_MIN_FREQUENCY_HZ..EDITOR_MAX_FREQUENCY_HZ
+
+    fun validGain(value: Float): Boolean =
+        value.isFinite() && value in -ParametricEqualizer.MAX_GAIN_DB..ParametricEqualizer.MAX_GAIN_DB
+
+    fun validQ(value: Float): Boolean =
+        value.isFinite() && value in ParametricEqualizer.MIN_Q..ParametricEqualizer.MAX_Q
+
+    fun validPreamp(value: Float): Boolean =
+        value.isFinite() && value in ParametricEqualizer.MIN_PREAMP_DB..ParametricEqualizer.MAX_PREAMP_DB
 }
