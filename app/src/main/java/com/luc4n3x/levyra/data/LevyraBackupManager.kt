@@ -1622,6 +1622,11 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("gaplessEnabled", value.gaplessEnabled)
     .put("aaudioOutputEnabled", value.aaudioOutputEnabled)
     .put("customPresets", JSONArray().apply { value.customPresets.forEach { put(customPresetToJson(it)) } })
+    .put("parametricEqualizerEnabled", value.parametricEqualizerEnabled)
+    .put("activeParametricProfile", value.activeParametricProfile?.let(::parametricProfileToJson))
+    .put("customParametricProfiles", JSONArray().apply {
+        value.customParametricProfiles.forEach { put(parametricProfileToJson(it)) }
+    })
 
 internal fun backupAudioQualityFromJson(settings: JSONObject): String =
     LevyraAudioQuality.normalize(settings.optString("audioQuality"))
@@ -1642,6 +1647,16 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
     }
     val legacyReplayGain = json.optBoolean("replayGainEnabled")
     val replayGainMode = ReplayGainMode.fromStorage(json.optString("replayGainMode"), legacyReplayGain)
+    val customParametricArray = json.optJSONArray("customParametricProfiles")
+    val customParametricProfiles = if (customParametricArray == null) {
+        emptyList()
+    } else {
+        buildList {
+            for (index in 0 until customParametricArray.length()) {
+                customParametricArray.optJSONObject(index)?.let(::parametricProfileFromJson)?.let(::add)
+            }
+        }
+    }
     return LevyraAudioSettings(
         equalizerEnabled = json.optBoolean("equalizerEnabled"),
         presetId = json.optString("presetId"),
@@ -1660,7 +1675,10 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         pitch = json.optDouble("pitch", 1.0).toFloat(),
         gaplessEnabled = json.optBoolean("gaplessEnabled", true),
         aaudioOutputEnabled = json.optBoolean("aaudioOutputEnabled", false),
-        customPresets = customPresets
+        customPresets = customPresets,
+        parametricEqualizerEnabled = json.optBoolean("parametricEqualizerEnabled", false),
+        activeParametricProfile = json.optJSONObject("activeParametricProfile")?.let(::parametricProfileFromJson),
+        customParametricProfiles = customParametricProfiles
     ).normalized()
 }
 

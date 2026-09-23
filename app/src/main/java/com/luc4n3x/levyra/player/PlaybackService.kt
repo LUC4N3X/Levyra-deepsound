@@ -152,6 +152,7 @@ class PlaybackService : MediaLibraryService() {
     private var currentAudioNormalization = false
     private val normalizationProcessor = NormalizationAudioProcessor()
     private val equalizerProcessor = LevyraEqualizerAudioProcessor()
+    private val parametricEqualizerProcessor = LevyraParametricEqualizerAudioProcessor()
     private val spatialAudioProcessor = StereoSpatialAudioProcessor()
     private val limiterProcessor = TruePeakLimiterAudioProcessor()
     private val visualizerProcessor = VisualizerAudioProcessor()
@@ -393,14 +394,16 @@ class PlaybackService : MediaLibraryService() {
         audioNormalization: Boolean
     ) {
         val normalized = settings.normalized()
+        val parametricEnabled = normalized.parametricEqualizerEnabled && normalized.activeParametricProfile != null
         normalizationProcessor.enabled = audioNormalization || normalized.replayGainActive
-        equalizerProcessor.enabled = normalized.equalizerEnabled
+        equalizerProcessor.enabled = normalized.equalizerEnabled && !parametricEnabled
         equalizerProcessor.setBandLevels(normalized.bandLevels)
         equalizerProcessor.bassBoost = normalized.bassBoost
         equalizerProcessor.preampDb = normalized.preampDb
-        spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
+        parametricEqualizerProcessor.setConfiguration(parametricEnabled, normalized.activeParametricProfile)
+        spatialAudioProcessor.strength = if (normalized.equalizerEnabled || parametricEnabled) normalized.virtualizer else 0
         limiterProcessor.enabled = normalized.limiterEnabled &&
-            (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
+            (normalized.equalizerEnabled || parametricEnabled || normalized.virtualizer > 0 ||
                 normalized.replayGainActive || audioNormalization)
         updateQueueTransitionSettings(normalized, audioNormalization)
         activePlayer?.currentMediaItem?.mediaMetadata?.extras?.let { extras ->
@@ -677,6 +680,7 @@ class PlaybackService : MediaLibraryService() {
                         arrayOf(
                             normalizationProcessor,
                             equalizerProcessor,
+                            parametricEqualizerProcessor,
                             spatialAudioProcessor,
                             limiterProcessor,
                             visualizerProcessor,
@@ -1843,19 +1847,29 @@ class PlaybackService : MediaLibraryService() {
             )
         }
         transitionNormalization = normalization
+        val parametricActive = currentAudioSettings.parametricEqualizerEnabled &&
+            currentAudioSettings.activeParametricProfile != null
         val equalizer = LevyraEqualizerAudioProcessor().apply {
-            enabled = currentAudioSettings.equalizerEnabled
+            enabled = currentAudioSettings.equalizerEnabled && !parametricActive
             setBandLevels(currentAudioSettings.bandLevels)
             bassBoost = currentAudioSettings.bassBoost
             preampDb = currentAudioSettings.preampDb
             outputProfile = equalizerProcessor.outputProfile
         }
+        val parametricEqualizer = LevyraParametricEqualizerAudioProcessor().apply {
+            setConfiguration(parametricActive, currentAudioSettings.activeParametricProfile)
+        }
         val spatial = StereoSpatialAudioProcessor().apply {
-            strength = if (currentAudioSettings.equalizerEnabled) currentAudioSettings.virtualizer else 0
+            strength = if (currentAudioSettings.equalizerEnabled || parametricActive) {
+                currentAudioSettings.virtualizer
+            } else {
+                0
+            }
         }
         val limiter = TruePeakLimiterAudioProcessor().apply {
             enabled = currentAudioSettings.limiterEnabled &&
-                (currentAudioSettings.equalizerEnabled || currentAudioSettings.virtualizer > 0 ||
+                (currentAudioSettings.equalizerEnabled || parametricActive ||
+                    currentAudioSettings.virtualizer > 0 ||
                     currentAudioSettings.replayGainActive || currentAudioNormalization)
         }
         val renderers = object : DefaultRenderersFactory(this) {
@@ -1881,6 +1895,7 @@ class PlaybackService : MediaLibraryService() {
                     arrayOf(
                         normalization,
                         equalizer,
+                        parametricEqualizer,
                         spatial,
                         limiter,
                         Pcm16OutputAudioProcessor()
