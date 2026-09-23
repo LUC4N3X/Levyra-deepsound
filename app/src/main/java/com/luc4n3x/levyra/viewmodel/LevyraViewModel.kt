@@ -52,6 +52,7 @@ import com.luc4n3x.levyra.data.ReturnYoutubeDislikeResult
 import com.luc4n3x.levyra.data.YoutubeCommentsRepository
 import com.luc4n3x.levyra.data.YoutubeCommentsResult
 import com.luc4n3x.levyra.data.SponsorBlockRepository
+import com.luc4n3x.levyra.data.SpeedDialStore
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.YoutubeMusicWatchTrack
@@ -121,6 +122,9 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SimilarSongsSelector
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.SponsorSegment
+import com.luc4n3x.levyra.domain.SpeedDial
+import com.luc4n3x.levyra.domain.SpeedDialKind
+import com.luc4n3x.levyra.domain.SpeedDialPin
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraContentLocales
@@ -130,10 +134,9 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
-import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricEqualizer
-import com.luc4n3x.levyra.domain.ParametricFilterType
+import com.luc4n3x.levyra.domain.ParametricProfiles
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
@@ -255,6 +258,7 @@ import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.SponsorBlockSkipOnceTracker
 import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.data.locallibrary.LOCAL_MEDIA_TRACK_ID_PREFIX
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryRepository
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryStatus
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
@@ -269,6 +273,7 @@ import com.luc4n3x.levyra.player.queue.queueTracksAfterPlayNext
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -291,6 +296,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
@@ -310,7 +317,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
-private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
+private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
 private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
@@ -773,6 +780,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val favoriteMutationMutex = Mutex()
     private val recommendationFeedbackMutationMutex = Mutex()
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
+    private val speedDialStore = SpeedDialStore(application.applicationContext)
+    private val speedDialLoaded = CompletableDeferred<Unit>()
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
@@ -900,6 +909,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
     private var artistJob: Job? = null
+    @Volatile private var artistPlaceholder: ArtistProfile? = null
     private var artistLoreJob: Job? = null
     private var albumJob: Job? = null
     private var albumFavoriteJob: Job? = null
@@ -1470,6 +1480,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         }
+        viewModelScope.launch {
+            try {
+                val pins = speedDialStore.load()
+                _state.update { it.copy(speedDialPins = pins) }
+            } finally {
+                speedDialLoaded.complete(Unit)
+            }
+        }
         val followedLoadGeneration = followedArtistsGeneration
         viewModelScope.launch(Dispatchers.IO) {
             val followed = followedArtistsStore.load()
@@ -1574,6 +1592,59 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         _state.update { it.copy(followedArtists = artists, followedArtistKeys = keys) }
+    }
+
+    fun toggleSpeedDialTrack(track: Track) {
+        SpeedDial.song(track, System.currentTimeMillis())?.let(::toggleSpeedDialPin)
+    }
+
+    fun toggleSpeedDialAlbum(album: AlbumHit) {
+        SpeedDial.album(album, System.currentTimeMillis())?.let(::toggleSpeedDialPin)
+    }
+
+    fun toggleSpeedDialArtist(name: String, browseId: String, artworkUrl: String) {
+        SpeedDial.artist(name, browseId, artworkUrl, System.currentTimeMillis())?.let(::toggleSpeedDialPin)
+    }
+
+    fun toggleSpeedDialPlaylist(playlist: com.luc4n3x.levyra.domain.Playlist) {
+        SpeedDial.playlist(playlist, System.currentTimeMillis())?.let(::toggleSpeedDialPin)
+    }
+
+    fun removeSpeedDialPin(key: String) = mutateSpeedDial { pins -> SpeedDial.remove(pins, key) }
+
+    fun reorderSpeedDial(orderedKeys: List<String>) = mutateSpeedDial { pins -> SpeedDial.reorder(pins, orderedKeys) }
+
+    fun openSpeedDialPin(pin: SpeedDialPin) {
+        when (pin.kind) {
+            SpeedDialKind.SONG -> pin.track?.let { track ->
+                val current = _state.value
+                if (!current.isVideoMode && current.currentTrack?.id == track.id) togglePlay() else playAudioFrom(listOf(track), track)
+            }
+            SpeedDialKind.ALBUM -> pin.album?.let(::openAlbum)
+            SpeedDialKind.ARTIST -> openArtistReference(
+                name = pin.title,
+                browseId = SpeedDial.artistBrowseId(pin),
+                artworkHint = pin.artworkUrl
+            )
+            SpeedDialKind.PLAYLIST -> openPlaylist(pin.targetId)
+        }
+    }
+
+    private fun toggleSpeedDialPin(pin: SpeedDialPin) = mutateSpeedDial { pins -> SpeedDial.toggle(pins, pin) }
+
+    private fun pruneMissingLocalSpeedDialPins(localIds: Set<String>) {
+        mutateSpeedDial { pins -> SpeedDial.withoutMissingLocalTracks(pins, localIds) }
+    }
+
+    private fun mutateSpeedDial(transform: (List<SpeedDialPin>) -> List<SpeedDialPin>) {
+        viewModelScope.launch {
+            speedDialLoaded.await()
+            val before = _state.value.speedDialPins
+            val after = SpeedDial.sanitize(transform(before))
+            if (after == before) return@launch
+            _state.update { it.copy(speedDialPins = after) }
+            speedDialStore.save { _state.value.speedDialPins }
+        }
     }
 
     fun toggleFollowArtist() {
@@ -3137,6 +3208,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun deletePlaylist(playlistId: String) {
+        SpeedDial.playlistKey(playlistId)?.let(::removeSpeedDialPin)
         viewModelScope.launch {
             playlistStore.delete(playlistId)
             _state.update { if (it.openPlaylist?.id == playlistId) it.copy(openPlaylist = null) else it }
@@ -3147,6 +3219,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun deletePlaylists(playlistIds: Collection<String>) {
         val uniqueIds = playlistIds.filter(String::isNotBlank).toSet()
         if (uniqueIds.isEmpty()) return
+        val pinKeys = uniqueIds.mapNotNullTo(HashSet()) { SpeedDial.playlistKey(it) }
+        if (pinKeys.isNotEmpty()) {
+            mutateSpeedDial { pins -> pins.filterNot { it.key in pinKeys } }
+        }
         viewModelScope.launch {
             uniqueIds.forEach { playlistStore.delete(it) }
             _state.update { current ->
@@ -3731,39 +3807,71 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    fun updateParametricPreamp(value: Float) {
-        val profile = _state.value.audioSettings.activeParametricProfile ?: ParametricEqualizer.defaultProfile
-        applyParametricAutoEq(profile.copy(preampDb = value))
+    fun saveParametricProfileDraft(draft: ParametricEqProfile): Boolean {
+        val normalized = draft.copy(name = ParametricProfiles.cleanName(draft.name)).normalized() ?: return false
+        if (!ParametricProfiles.isCustom(normalized)) return false
+        val settings = _state.value.audioSettings
+        if (ParametricProfiles.nameTaken(normalized.name, normalized.id, settings.customParametricProfiles)) return false
+        val isNew = settings.customParametricProfiles.none { it.id == normalized.id }
+        if (isNew && settings.customParametricProfiles.size >= ParametricEqualizer.MAX_CUSTOM_PROFILES) return false
+        val editingActive = settings.activeParametricProfile?.id == normalized.id
+        updateAudioSettings(
+            settings.copy(
+                customParametricProfiles = ParametricProfiles.upsert(settings.customParametricProfiles, normalized),
+                activeParametricProfile = if (editingActive) normalized else settings.activeParametricProfile
+            )
+        )
+        return true
     }
 
-    fun updateParametricBand(index: Int, band: ParametricEqBand) {
-        val profile = _state.value.audioSettings.activeParametricProfile ?: ParametricEqualizer.defaultProfile
-        if (index !in profile.bands.indices || band.normalized() == null) return
-        val bands = profile.bands.toMutableList().apply { this[index] = band }
-        applyParametricAutoEq(profile.copy(bands = bands))
+    fun duplicateParametricProfile(source: ParametricEqProfile, name: String): ParametricEqProfile? {
+        val settings = _state.value.audioSettings
+        if (settings.customParametricProfiles.size >= ParametricEqualizer.MAX_CUSTOM_PROFILES) return null
+        val copy = ParametricProfiles.duplicate(source, name).normalized() ?: return null
+        if (ParametricProfiles.nameTaken(copy.name, copy.id, settings.customParametricProfiles)) return null
+        updateAudioSettings(settings.copy(customParametricProfiles = settings.customParametricProfiles + copy))
+        return copy
     }
 
-    fun addParametricBand() {
-        val profile = _state.value.audioSettings.activeParametricProfile ?: ParametricEqualizer.defaultProfile
-        if (profile.bands.size >= ParametricEqualizer.MAX_BANDS) return
-        val previousFrequency = profile.bands.lastOrNull()?.frequencyHz ?: 500f
-        val frequency = (previousFrequency * 2f).coerceAtMost(ParametricEqualizer.MAX_FREQUENCY_HZ)
-        applyParametricAutoEq(
-            profile.copy(
-                bands = profile.bands + ParametricEqBand(
-                    frequencyHz = frequency,
-                    gainDb = 0f,
-                    q = 1f,
-                    filterType = ParametricFilterType.PEAK
-                )
+    fun renameParametricProfile(profileId: String, name: String): Boolean {
+        val settings = _state.value.audioSettings
+        val existing = settings.customParametricProfiles.firstOrNull { it.id == profileId } ?: return false
+        val cleanName = ParametricProfiles.cleanName(name)
+        if (cleanName.isEmpty() || ParametricProfiles.nameTaken(cleanName, profileId, settings.customParametricProfiles)) return false
+        val renamed = existing.copy(name = cleanName)
+        updateAudioSettings(
+            settings.copy(
+                customParametricProfiles = ParametricProfiles.upsert(settings.customParametricProfiles, renamed),
+                activeParametricProfile = settings.activeParametricProfile?.let { active ->
+                    if (active.id == profileId) active.copy(name = cleanName) else active
+                }
+            )
+        )
+        return true
+    }
+
+    fun deleteParametricProfile(profileId: String) {
+        val settings = _state.value.audioSettings
+        if (settings.customParametricProfiles.none { it.id == profileId }) return
+        val deletingActive = settings.activeParametricProfile?.id == profileId
+        updateAudioSettings(
+            settings.copy(
+                customParametricProfiles = settings.customParametricProfiles.filterNot { it.id == profileId },
+                parametricEqualizerEnabled = settings.parametricEqualizerEnabled && !deletingActive,
+                activeParametricProfile = if (deletingActive) null else settings.activeParametricProfile
             )
         )
     }
 
-    fun removeParametricBand(index: Int) {
-        val profile = _state.value.audioSettings.activeParametricProfile ?: return
-        if (index !in profile.bands.indices || profile.bands.size <= 1) return
-        applyParametricAutoEq(profile.copy(bands = profile.bands.filterIndexed { bandIndex, _ -> bandIndex != index }))
+    fun auditionParametricProfile(draft: ParametricEqProfile?) {
+        val settings = _state.value.audioSettings
+        val preview = draft?.normalized()
+        val effective = if (preview == null) {
+            settings
+        } else {
+            settings.copy(equalizerEnabled = false, parametricEqualizerEnabled = true, activeParametricProfile = preview)
+        }
+        player.setPremiumAudioSettings(effective, _state.value.audioNormalization)
     }
 
     fun resetParametricEqualizer() {
@@ -5198,6 +5306,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     _state.update { it.copy(localLibrary = it.localLibrary.copy(catalog = catalog)) }
                 }
         }
+        viewModelScope.launch {
+            localLibrary.availableMedia
+                .map { rows ->
+                    rows.mapTo(HashSet()) { row -> row.levyraTrackId.ifEmpty { LOCAL_MEDIA_TRACK_ID_PREFIX + row.identityKey } }
+                }
+                .flowOn(Dispatchers.Default)
+                .combine(localLibrary.status) { localIds, status -> localIds.takeIf { status.completedIdle() } }
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect(::pruneMissingLocalSpeedDialPins)
+        }
+    }
+
+    private fun LocalLibraryStatus.completedIdle(): Boolean {
+        val result = lastResult ?: return false
+        return permissionGranted && !scanning && lastScanAt > 0L && !result.failed && !result.permissionDenied
     }
 
     private fun localScanMessage(status: LocalLibraryStatus): String {
@@ -6230,7 +6354,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         openArtistReference(name = name, browseId = "")
     }
 
-    private fun openArtistReference(name: String, browseId: String) {
+    private fun openArtistReference(name: String, browseId: String, artworkHint: String = "") {
         val clean = name.trim()
         val normalizedBrowseId = browseId.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
@@ -6260,6 +6384,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             )
         }
+        val placeholder = artistPlaceholder(normalizedBrowseId, clean, artworkHint)
+        artistPlaceholder = placeholder
         _state.update { current ->
             val sameProfile = current.artistProfile?.let { profile ->
                 if (normalizedBrowseId.isNotBlank()) {
@@ -6273,7 +6399,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 showArtist = true,
                 artistLoading = true,
                 artistError = null,
-                artistProfile = current.artistProfile?.takeIf { sameProfile && it.hasBio },
+                artistProfile = current.artistProfile?.takeIf { sameProfile && it.hasBio } ?: placeholder,
                 artistMotionArtwork = current.artistMotionArtwork.takeIf { sameProfile },
                 artistListStateKey = requestedArtistListStateKey,
                 openPlaylist = null,
@@ -6282,17 +6408,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         artistJob = viewModelScope.launch {
             coroutineScope {
+                val biographyDeferred = async {
+                    runCatchingPreservingCancellation { artistRepository.biographyFor(clean, normalizedBrowseId) }.getOrNull()
+                }
                 val profileDeferred = async {
                     resolveArtistProfileReference(
                         browseId = normalizedBrowseId,
                         name = clean,
                         isActive = { isActive },
-                        profileByBrowseId = artistRepository::profile,
+                        profileByBrowseId = { id, fallbackName ->
+                            artistRepository.profile(id, fallbackName) { preview ->
+                                publishArtistPreview(preview, requestedArtistListStateKey, biographyDeferred.completedOrNull())
+                            }
+                        },
                         profileByName = artistRepository::profileFor
                     )
-                }
-                val biographyDeferred = async {
-                    runCatching { artistRepository.biographyFor(clean, normalizedBrowseId) }.getOrNull()
                 }
                 val profile = profileDeferred.await()
                 if (!isActive) return@coroutineScope
@@ -6307,9 +6437,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     return@coroutineScope
                 }
-                val initialBiography = withTimeoutOrNull(ARTIST_INITIAL_BIOGRAPHY_WAIT_MS) {
-                    biographyDeferred.await()
-                }
+                val initialBiography = biographyDeferred.completedOrNull()
+                    ?: withTimeoutOrNull(ARTIST_INITIAL_BIOGRAPHY_WAIT_MS) { biographyDeferred.await() }
                 val initialProfile = initialBiography?.let { biography ->
                     artistRepository.mergeBiography(profile, biography)
                 } ?: profile
@@ -6331,12 +6460,39 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun artistPlaceholder(browseId: String, name: String, artworkUrl: String): ArtistProfile? {
+        if (browseId.isBlank()) return null
+        val artwork = artworkUrl.trim()
+        val accent = artistRepository.accentFor(browseId, name)
+        return ArtistProfile(
+            browseId = browseId,
+            name = name,
+            subscribers = "",
+            monthlyListeners = "",
+            thumbnailUrl = artwork,
+            bannerUrl = artwork,
+            topSongs = emptyList(),
+            albums = emptyList(),
+            singles = emptyList(),
+            accentStart = accent.first,
+            accentEnd = accent.second
+        )
+    }
+
+    private fun publishArtistPreview(preview: ArtistProfile, requestKey: String, biography: ArtistBiography?) {
+        _state.update { current ->
+            if (!current.showArtist || !current.artistLoading || current.artistListStateKey != requestKey) return@update current
+            if (current.artistProfile != null && current.artistProfile !== artistPlaceholder) return@update current
+            current.copy(artistProfile = biography?.let { artistRepository.mergeBiography(preview, it) } ?: preview)
+        }
+    }
+
     private fun launchArtistLoreAwait(
         profile: ArtistProfile,
         biographyDeferred: Deferred<ArtistBiography?>
     ): Job {
         return viewModelScope.launch {
-            runCatching { biographyDeferred.await() }.getOrNull()?.let { biography ->
+            runCatchingPreservingCancellation { biographyDeferred.await() }.getOrNull()?.let { biography ->
                 _state.update { current ->
                     val visible = current.artistProfile ?: return@update current
                     if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
@@ -7273,7 +7429,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openArtistFromHit(hit: ArtistHit) {
-        openArtistReference(name = hit.name, browseId = hit.browseId)
+        openArtistReference(name = hit.name, browseId = hit.browseId, artworkHint = hit.thumbnailUrl)
     }
 
     private fun recordPlaybackHistory(track: Track) {

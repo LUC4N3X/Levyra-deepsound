@@ -27,6 +27,37 @@ class AudioSettingsLocalizationTest {
     }
 
     @Test
+    fun everySupportedLanguageShipsSpeedDialCopy() {
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(catalogCodes, speedDialLocalizationCodes())
+        LevyraStrings.all().forEach { strings ->
+            val copy = strings.speedDialCopy()
+            val values = listOf(
+                copy.title, copy.addToHome, copy.removeFromHome, copy.homeFull, copy.moveEarlier, copy.moveLater,
+                copy.song, copy.album, copy.artist, copy.playlist, copy.reorderHint
+            )
+            assertTrue(strings.code, values.all(String::isNotBlank))
+            if (strings.code != "en") assertFalse(strings.code, copy.addToHome == speedDialCopyFor("en").addToHome)
+        }
+    }
+
+    @Test
+    fun everySupportedLanguageShipsParametricProfileCopy() {
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(catalogCodes, parametricProfileLocalizationCodes())
+        LevyraStrings.all().forEach { strings ->
+            val copy = strings.parametricProfileCopy()
+            assertTrue(strings.code, copy.band(3).contains("3"))
+            assertTrue(strings.code, copy.range("1", "9").contains("1") && copy.range("1", "9").contains("9"))
+            assertTrue(strings.code, copy.copyName("X", 2).contains("X") && copy.copyName("X", 2).contains("2"))
+            assertTrue(strings.code, copy.deleteTitle("Y").contains("Y"))
+        }
+    }
+
+    private fun speedDialCopyFor(code: String): SpeedDialCopy =
+        LevyraStrings.all().first { it.code == code }.speedDialCopy()
+
+    @Test
     fun everySupportedLanguageShipsParametricEqualizerCopy() {
         val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
         assertEquals(catalogCodes, parametricEqLocalizationCodes())
