@@ -683,14 +683,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         applyPlaybackRecoveryActions(track, isVideoMode, isOfflineExport, reason, lower, recovery)
 
         val failureGeneration = resolverGeneration.get()
+        val canPromoteAlternate = !isOfflineExport &&
+            attributedUrl != null &&
+            isCandidateLevelPlaybackFailure(failureKind)
         maybePromoteAlternateCandidate(
             track = track,
             isVideoMode = isVideoMode,
-            isOfflineExport = isOfflineExport,
             audioQuality = audioQuality,
-            failureKind = failureKind,
-            attributedUrl = attributedUrl,
-            expectedGeneration = failureGeneration
+            expectedGeneration = failureGeneration,
+            eligible = canPromoteAlternate
         )
         recordPersistentSourceFailureForGeneration(
             track = track,
@@ -800,14 +801,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun maybePromoteAlternateCandidate(
         track: Track,
         isVideoMode: Boolean,
-        isOfflineExport: Boolean,
         audioQuality: String?,
-        failureKind: PlaybackFailureKind,
-        attributedUrl: String?,
-        expectedGeneration: Long
+        expectedGeneration: Long,
+        eligible: Boolean
     ) {
-        if (isOfflineExport || attributedUrl == null || !isCandidateLevelPlaybackFailure(failureKind)) return
-        if (!canReuseProvidedPlayback(track, expectedGeneration)) return
+        if (!eligible || !canReuseProvidedPlayback(track, expectedGeneration)) return
         promoteAlternateCandidate(track, isVideoMode, audioQuality, expectedGeneration)
     }
 
