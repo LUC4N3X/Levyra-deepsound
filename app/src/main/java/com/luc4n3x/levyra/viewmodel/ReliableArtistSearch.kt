@@ -8,6 +8,8 @@ import com.luc4n3x.levyra.domain.artistAudienceWeight
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.artistIdentityKeys
 import com.luc4n3x.levyra.domain.artistIdentityMatches
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 /**
  * Merges the exact, independently verified artist lookup with the artists returned by the
@@ -60,6 +62,10 @@ internal fun mergeReliableArtistSearchResults(
  * still fall back to the canonical name lookup instead of failing the whole screen, and the
  * fallback is skipped once the caller is no longer active.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
+internal fun <T> Deferred<T>.completedOrNull(): T? =
+    if (isCompleted && !isCancelled) runCatching { getCompleted() }.getOrNull() else null
+
 internal suspend fun resolveArtistProfileReference(
     browseId: String,
     name: String,

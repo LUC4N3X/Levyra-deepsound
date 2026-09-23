@@ -278,6 +278,7 @@ data class LevyraUiState(
     val mostPlayedTracks: List<Track> = emptyList(),
     val followedArtists: List<FollowedArtist> = emptyList(),
     val followedArtistKeys: Set<String> = emptySet(),
+    val speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin> = emptyList(),
     val excludedArtists: List<ExcludedArtist> = emptyList(),
     val artistExclusions: ArtistExclusions = ArtistExclusions.Empty,
     val recommendationFeedback: RecommendationFeedback = RecommendationFeedback.Empty,

@@ -77,6 +77,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.offlineDownloadStageOf
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.domain.DownloadedTrack
@@ -1315,7 +1316,10 @@ internal fun LevyraPlaylistDetailScreen(
                         coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
                     onResetCover = { viewModel.resetPlaylistCover(playlist.id) },
-                    onOpenStudio = { viewModel.openPlaylistStudio(playlist.id) }
+                    onOpenStudio = { viewModel.openPlaylistStudio(playlist.id) },
+                    isPinnedToHome = SpeedDial.playlistKey(playlist.id)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
+                    homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
+                    onTogglePinToHome = { viewModel.toggleSpeedDialPlaylist(playlist) }
                 )
             }
 
