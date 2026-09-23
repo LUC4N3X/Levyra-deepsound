@@ -88,6 +88,93 @@ object AudioLanguageIntelligence {
         return lower.contains("original") || lower.contains("originale")
     }
 
+    private fun extractBaseLanguageCode(rawId: String): String {
+        val dotIndex = rawId.indexOf('.')
+        return if (dotIndex >= 0) rawId.substring(0, dotIndex) else rawId
+    }
+
+    private data class TrackClassification(
+        val kind: AudioTrackKind,
+        val tier: Int,
+        val tieBreakerBonus: Int = 0
+    )
+
+    private fun resolvePrimaryClassification(
+        isAutoDubbed: Boolean,
+        isDescriptive: Boolean,
+        isExplicitOriginal: Boolean,
+        matchesPreferred: Boolean
+    ): TrackClassification? {
+        return when {
+            isAutoDubbed -> {
+                val bonus = if (matchesPreferred) PREFERRED_AUTO_DUB_BONUS else 0
+                TrackClassification(AudioTrackKind.AUTO_DUB, TIER_AUTO_DUB, bonus)
+            }
+            isDescriptive -> {
+                TrackClassification(AudioTrackKind.DESCRIPTIVE, TIER_DESCRIPTIVE)
+            }
+            isExplicitOriginal && matchesPreferred -> {
+                TrackClassification(AudioTrackKind.ORIGINAL, TIER_ORIGINAL_PREFERRED)
+            }
+            matchesPreferred -> {
+                TrackClassification(AudioTrackKind.PREFERRED_HUMAN, TIER_PREFERRED_HUMAN)
+            }
+            isExplicitOriginal -> {
+                TrackClassification(AudioTrackKind.ORIGINAL, TIER_ORIGINAL)
+            }
+            else -> null
+        }
+    }
+
+    private fun classifyFormatFallback(
+        audioIsDefault: Boolean,
+        acont: String,
+        hasAudioTrack: Boolean,
+        hasXtags: Boolean
+    ): TrackClassification {
+        return when {
+            audioIsDefault && !acont.startsWith("dub") -> {
+                TrackClassification(AudioTrackKind.DEFAULT_AUDIO, TIER_DEFAULT_AUDIO)
+            }
+            !hasAudioTrack && !hasXtags -> {
+                TrackClassification(AudioTrackKind.UNSPECIFIED, TIER_UNSPECIFIED)
+            }
+            acont == "secondary" -> {
+                TrackClassification(AudioTrackKind.SECONDARY, TIER_SECONDARY)
+            }
+            acont == "dubbed" -> {
+                TrackClassification(AudioTrackKind.HUMAN_DUB, TIER_HUMAN_DUB)
+            }
+            audioIsDefault -> {
+                TrackClassification(AudioTrackKind.DEFAULT_AUDIO, TIER_DEFAULT_AUDIO)
+            }
+            else -> {
+                TrackClassification(AudioTrackKind.HUMAN_DUB, TIER_HUMAN_DUB)
+            }
+        }
+    }
+
+    private fun classifyExtractorFallback(
+        trackType: AudioTrackType?,
+        acont: String,
+        hasXtags: Boolean
+    ): TrackClassification {
+        return when {
+            trackType == null && !hasXtags -> {
+                TrackClassification(AudioTrackKind.UNSPECIFIED, TIER_UNSPECIFIED)
+            }
+            trackType == AudioTrackType.SECONDARY || acont == "secondary" -> {
+                TrackClassification(AudioTrackKind.SECONDARY, TIER_SECONDARY)
+            }
+            trackType == AudioTrackType.DUBBED || acont == "dubbed" -> {
+                TrackClassification(AudioTrackKind.HUMAN_DUB, TIER_HUMAN_DUB)
+            }
+            else -> {
+                TrackClassification(AudioTrackKind.UNSPECIFIED, TIER_UNSPECIFIED)
+            }
+        }
+    }
+
     fun parseFromFormat(
         format: JSONObject,
         resolvedUrl: String = "",
@@ -100,16 +187,14 @@ object AudioLanguageIntelligence {
         val langXtag = extractXtag(rawXtags, "lang").orEmpty()
         val audioTrackId = audioTrack?.optString("id").orEmpty()
         val displayName = audioTrack?.optString("displayName").orEmpty()
-        val audioIsDefault = audioTrack?.optBoolean("audioIsDefault", false) ?: false
-        val isAutoDubbedJson = audioTrack?.optBoolean("isAutoDubbed", false) ?: false
+        val audioIsDefault = audioTrack?.optBoolean("audioIsDefault", false) == true
+        val isAutoDubbedJson = audioTrack?.optBoolean("isAutoDubbed", false) == true
 
         val isAutoDubbed = isAutoDubbedJson || acont == "dubbed-auto"
         val isDescriptive = acont == "descriptive"
         val isExplicitOriginal = acont == "original" || isOriginalDisplayName(displayName)
 
-        val rawLang = langXtag.ifBlank {
-            if (audioTrackId.contains('.')) audioTrackId.substringBefore('.') else audioTrackId
-        }
+        val rawLang = langXtag.ifBlank { extractBaseLanguageCode(audioTrackId) }
         val normalizedLang = normalizeLanguage(rawLang)
         val normalizedPref = normalizeLanguage(preferredLanguage)
         val matchesPreferred = normalizedPref.isNotEmpty() && normalizedLang == normalizedPref
@@ -118,58 +203,20 @@ object AudioLanguageIntelligence {
         val declaredClen = format.optString("contentLength").toLongOrNull() ?: 0L
         val contentLength = if (clenFromUrl > 0L) clenFromUrl else declaredClen
 
-        val kind: AudioTrackKind
-        val tier: Int
-        var tieBreaker = 0
-
-        when {
-            isAutoDubbed -> {
-                kind = AudioTrackKind.AUTO_DUB
-                tier = TIER_AUTO_DUB
-                if (matchesPreferred) {
-                    tieBreaker = PREFERRED_AUTO_DUB_BONUS
-                }
-            }
-            isDescriptive -> {
-                kind = AudioTrackKind.DESCRIPTIVE
-                tier = TIER_DESCRIPTIVE
-            }
-            isExplicitOriginal && matchesPreferred -> {
-                kind = AudioTrackKind.ORIGINAL
-                tier = TIER_ORIGINAL_PREFERRED
-            }
-            matchesPreferred && !isAutoDubbed && !isDescriptive -> {
-                kind = AudioTrackKind.PREFERRED_HUMAN
-                tier = TIER_PREFERRED_HUMAN
-            }
-            isExplicitOriginal -> {
-                kind = AudioTrackKind.ORIGINAL
-                tier = TIER_ORIGINAL
-            }
-            audioIsDefault && !acont.startsWith("dub") -> {
-                kind = AudioTrackKind.DEFAULT_AUDIO
-                tier = TIER_DEFAULT_AUDIO
-            }
-            audioTrack == null && rawXtags.isBlank() -> {
-                kind = AudioTrackKind.UNSPECIFIED
-                tier = TIER_UNSPECIFIED
-            }
-            acont == "secondary" -> {
-                kind = AudioTrackKind.SECONDARY
-                tier = TIER_SECONDARY
-            }
-            acont == "dubbed" -> {
-                kind = AudioTrackKind.HUMAN_DUB
-                tier = TIER_HUMAN_DUB
-            }
-            else -> {
-                kind = if (audioIsDefault) AudioTrackKind.DEFAULT_AUDIO else AudioTrackKind.HUMAN_DUB
-                tier = if (audioIsDefault) TIER_DEFAULT_AUDIO else TIER_HUMAN_DUB
-            }
-        }
+        val classification = resolvePrimaryClassification(
+            isAutoDubbed = isAutoDubbed,
+            isDescriptive = isDescriptive,
+            isExplicitOriginal = isExplicitOriginal,
+            matchesPreferred = matchesPreferred
+        ) ?: classifyFormatFallback(
+            audioIsDefault = audioIsDefault,
+            acont = acont,
+            hasAudioTrack = audioTrack != null,
+            hasXtags = rawXtags.isNotBlank()
+        )
 
         return LevyraAudioTrackMetadata(
-            kind = kind,
+            kind = classification.kind,
             language = normalizedLang,
             rawLanguage = rawLang,
             displayName = displayName,
@@ -179,8 +226,8 @@ object AudioLanguageIntelligence {
             isExplicitOriginal = isExplicitOriginal,
             contentLength = contentLength,
             xtags = rawXtags,
-            tier = tier,
-            tieBreakerBonus = tieBreaker
+            tier = classification.tier,
+            tieBreakerBonus = classification.tieBreakerBonus
         )
     }
 
@@ -201,8 +248,7 @@ object AudioLanguageIntelligence {
 
         val rawLang = langFromXtags.ifBlank {
             stream.audioLocale.orEmpty().ifBlank {
-                val trackId = stream.audioTrackId.orEmpty()
-                if (trackId.contains('.')) trackId.substringBefore('.') else trackId
+                extractBaseLanguageCode(stream.audioTrackId.orEmpty())
             }
         }
         val normalizedLang = normalizeLanguage(rawLang)
@@ -212,54 +258,19 @@ object AudioLanguageIntelligence {
         val clenFromUrl = audioContentLengthFromUrl(content)
         val contentLength = if (clenFromUrl > 0L) clenFromUrl else 0L
 
-        val kind: AudioTrackKind
-        val tier: Int
-        var tieBreaker = 0
-
-        when {
-            isAutoGenerated -> {
-                kind = AudioTrackKind.AUTO_DUB
-                tier = TIER_AUTO_DUB
-                if (matchesPreferred) {
-                    tieBreaker = PREFERRED_AUTO_DUB_BONUS
-                }
-            }
-            isDescriptive -> {
-                kind = AudioTrackKind.DESCRIPTIVE
-                tier = TIER_DESCRIPTIVE
-            }
-            isExplicitOriginal && matchesPreferred -> {
-                kind = AudioTrackKind.ORIGINAL
-                tier = TIER_ORIGINAL_PREFERRED
-            }
-            matchesPreferred && !isAutoGenerated && !isDescriptive -> {
-                kind = AudioTrackKind.PREFERRED_HUMAN
-                tier = TIER_PREFERRED_HUMAN
-            }
-            isExplicitOriginal -> {
-                kind = AudioTrackKind.ORIGINAL
-                tier = TIER_ORIGINAL
-            }
-            trackType == null && rawXtags.isBlank() -> {
-                kind = AudioTrackKind.UNSPECIFIED
-                tier = TIER_UNSPECIFIED
-            }
-            trackType == AudioTrackType.SECONDARY || acontFromXtags == "secondary" -> {
-                kind = AudioTrackKind.SECONDARY
-                tier = TIER_SECONDARY
-            }
-            trackType == AudioTrackType.DUBBED || acontFromXtags == "dubbed" -> {
-                kind = AudioTrackKind.HUMAN_DUB
-                tier = TIER_HUMAN_DUB
-            }
-            else -> {
-                kind = AudioTrackKind.UNSPECIFIED
-                tier = TIER_UNSPECIFIED
-            }
-        }
+        val classification = resolvePrimaryClassification(
+            isAutoDubbed = isAutoGenerated,
+            isDescriptive = isDescriptive,
+            isExplicitOriginal = isExplicitOriginal,
+            matchesPreferred = matchesPreferred
+        ) ?: classifyExtractorFallback(
+            trackType = trackType,
+            acont = acontFromXtags,
+            hasXtags = rawXtags.isNotBlank()
+        )
 
         return LevyraAudioTrackMetadata(
-            kind = kind,
+            kind = classification.kind,
             language = normalizedLang,
             rawLanguage = rawLang,
             displayName = stream.audioTrackName.orEmpty(),
@@ -269,8 +280,8 @@ object AudioLanguageIntelligence {
             isExplicitOriginal = isExplicitOriginal,
             contentLength = contentLength,
             xtags = rawXtags,
-            tier = tier,
-            tieBreakerBonus = tieBreaker
+            tier = classification.tier,
+            tieBreakerBonus = classification.tieBreakerBonus
         )
     }
 
@@ -291,54 +302,19 @@ object AudioLanguageIntelligence {
         val normalizedPref = normalizeLanguage(preferredLanguage)
         val matchesPreferred = normalizedPref.isNotEmpty() && normalizedLang == normalizedPref
 
-        val kind: AudioTrackKind
-        val tier: Int
-        var tieBreaker = 0
-
-        when {
-            isAutoDubbed -> {
-                kind = AudioTrackKind.AUTO_DUB
-                tier = TIER_AUTO_DUB
-                if (matchesPreferred) {
-                    tieBreaker = PREFERRED_AUTO_DUB_BONUS
-                }
-            }
-            isDescriptive -> {
-                kind = AudioTrackKind.DESCRIPTIVE
-                tier = TIER_DESCRIPTIVE
-            }
-            isExplicitOriginal && matchesPreferred -> {
-                kind = AudioTrackKind.ORIGINAL
-                tier = TIER_ORIGINAL_PREFERRED
-            }
-            matchesPreferred && !isAutoDubbed && !isDescriptive -> {
-                kind = AudioTrackKind.PREFERRED_HUMAN
-                tier = TIER_PREFERRED_HUMAN
-            }
-            isExplicitOriginal -> {
-                kind = AudioTrackKind.ORIGINAL
-                tier = TIER_ORIGINAL
-            }
-            candidate.audioTrackType == null && rawXtags.isBlank() -> {
-                kind = AudioTrackKind.UNSPECIFIED
-                tier = TIER_UNSPECIFIED
-            }
-            candidate.audioTrackType == AudioTrackType.SECONDARY || acont == "secondary" -> {
-                kind = AudioTrackKind.SECONDARY
-                tier = TIER_SECONDARY
-            }
-            candidate.audioTrackType == AudioTrackType.DUBBED || acont == "dubbed" -> {
-                kind = AudioTrackKind.HUMAN_DUB
-                tier = TIER_HUMAN_DUB
-            }
-            else -> {
-                kind = AudioTrackKind.UNSPECIFIED
-                tier = TIER_UNSPECIFIED
-            }
-        }
+        val classification = resolvePrimaryClassification(
+            isAutoDubbed = isAutoDubbed,
+            isDescriptive = isDescriptive,
+            isExplicitOriginal = isExplicitOriginal,
+            matchesPreferred = matchesPreferred
+        ) ?: classifyExtractorFallback(
+            trackType = candidate.audioTrackType,
+            acont = acont,
+            hasXtags = rawXtags.isNotBlank()
+        )
 
         return LevyraAudioTrackMetadata(
-            kind = kind,
+            kind = classification.kind,
             language = normalizedLang,
             rawLanguage = rawLang,
             displayName = "",
@@ -348,8 +324,8 @@ object AudioLanguageIntelligence {
             isExplicitOriginal = isExplicitOriginal,
             contentLength = candidate.contentLength,
             xtags = rawXtags,
-            tier = tier,
-            tieBreakerBonus = tieBreaker
+            tier = classification.tier,
+            tieBreakerBonus = classification.tieBreakerBonus
         )
     }
 }
