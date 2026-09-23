@@ -135,9 +135,11 @@ private val EqualizerHandleRadius = 5.dp
 @Composable
 internal fun AudioSettingsPanel(
     selected: String,
+    preferredAudioLanguage: String = "",
     currentTrack: Track?,
     audioSettings: LevyraAudioSettings,
     onSelect: (String) -> Unit,
+    onPreferredAudioLanguage: (String) -> Unit = {},
     highQualityAudioMode: HighQualityAudioMode,
     onHighQualityAudioMode: (HighQualityAudioMode) -> Unit,
     onEqualizerEnabled: (Boolean) -> Unit,
@@ -254,6 +256,24 @@ internal fun AudioSettingsPanel(
                             HighQualityAudioMode.PREFER_320 to strings.alternativeAudioPrefer320
                         ),
                         onSelect = onHighQualityAudioMode
+                    )
+                }
+                item {
+                    AudioLanguageCard(
+                        title = if (strings.code == "it") "Lingua Traccia Audio" else "Audio Track Language",
+                        description = if (strings.code == "it") "Seleziona la lingua preferita o mantieni l'audio originale YouTube." else "Select preferred audio track language or keep original YouTube audio.",
+                        selected = preferredAudioLanguage,
+                        options = listOf(
+                            "" to if (strings.code == "it") "Originale / Predefinito" else "Original / Default",
+                            "en" to "🇬🇧 English",
+                            "it" to "🇮🇹 Italiano",
+                            "es" to "🇪🇸 Español",
+                            "fr" to "🇫🇷 Français",
+                            "de" to "🇩🇪 Deutsch",
+                            "ja" to "🇯🇵 日本語",
+                            "pt" to "🇵🇹 Português"
+                        ),
+                        onSelect = onPreferredAudioLanguage
                     )
                 }
 
@@ -1480,6 +1500,65 @@ private fun AlternativeAudioCard(
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioLanguageCard(
+    title: String,
+    description: String,
+    selected: String,
+    options: List<Pair<String, String>>,
+    onSelect: (String) -> Unit
+) {
+    AudioCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(
+                    description,
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 16.sp
+                )
+            }
+            Column(
+                modifier = Modifier.selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                options.forEach { (lang, label) ->
+                    val isSelected = lang == selected
+                    Surface(
+                        color = if (isSelected) LevyraCyan.copy(alpha = 0.18f) else LevyraAdaptiveChip,
+                        shape = ChipShape,
+                        border = BorderStroke(1.dp, if (isSelected) LevyraCyan.copy(alpha = 0.7f) else LevyraAdaptiveHairline),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 44.dp)
+                            .selectable(
+                                selected = isSelected,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(lang) }
+                            )
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.CenterStart,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                label,
+                                color = if (isSelected) LevyraCyan else LevyraText,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }

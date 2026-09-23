@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
+import com.luc4n3x.levyra.data.AudioLanguageIntelligence
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.deduplicateSearchSongs
 import com.luc4n3x.levyra.data.areAllFavoriteTracks
@@ -1310,6 +1311,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             ?.let(LevyraPersonalOrbit::withoutVideoArtwork)
         pendingSeekMs = settings.lastPositionMs.coerceAtLeast(0L)
         resolver.setAudioQuality(settings.audioQuality)
+        resolver.setPreferredAudioLanguage(settings.preferredAudioLanguage)
         _state.update {
             it.copy(
                 favorites = favorites,
@@ -1341,6 +1343,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 sponsorBlockEnabled = settings.sponsorBlock,
                 skipSilence = settings.skipSilence,
                 audioQuality = settings.audioQuality,
+                preferredAudioLanguage = settings.preferredAudioLanguage,
                 highQualityAudioMode = preferences.highQualityAudioMode(),
                 audioNormalization = settings.audioNormalization,
                 audioSettings = settings.audioSettings,
@@ -3997,6 +4000,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(audioQuality = normalized) }
     }
 
+    fun setPreferredAudioLanguage(value: String) {
+        val normalized = AudioLanguageIntelligence.normalizeLanguage(value)
+        preferences.setPreferredAudioLanguage(normalized)
+        resolver.setPreferredAudioLanguage(normalized)
+        _state.update { it.copy(preferredAudioLanguage = normalized) }
+    }
+
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         preferences.setHighQualityAudioMode(mode)
         resolver.setHighQualityAudioMode(mode)
@@ -5060,6 +5070,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 sponsorBlockEnabled = snapshot.sponsorBlock,
                 skipSilence = snapshot.skipSilence,
                 audioQuality = snapshot.audioQuality,
+                preferredAudioLanguage = snapshot.preferredAudioLanguage,
                 highQualityAudioMode = snapshot.highQualityAudioMode,
                 audioNormalization = snapshot.audioNormalization,
                 audioSettings = snapshot.audioSettings,
@@ -5085,6 +5096,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
         player.setPlayback(snapshot.audioSettings.playbackSpeed, snapshot.audioSettings.pitch)
         resolver.setAudioQuality(snapshot.audioQuality)
+        resolver.setPreferredAudioLanguage(snapshot.preferredAudioLanguage)
         resolver.setHighQualityAudioMode(snapshot.highQualityAudioMode)
         withContext(Dispatchers.IO) {
             queueEngine.restore(

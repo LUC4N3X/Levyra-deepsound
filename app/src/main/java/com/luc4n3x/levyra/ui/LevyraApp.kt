@@ -2482,9 +2482,11 @@ fun LevyraApp(
                 val autoEqCatalog by viewModel.autoEqCatalog.collectAsStateWithLifecycle()
                 AudioSettingsPanel(
                     selected = state.audioQuality,
+                    preferredAudioLanguage = state.preferredAudioLanguage,
                     currentTrack = state.currentTrack,
                     audioSettings = state.audioSettings,
                     onSelect = viewModel::setAudioQuality,
+                    onPreferredAudioLanguage = viewModel::setPreferredAudioLanguage,
                     highQualityAudioMode = state.highQualityAudioMode,
                     onHighQualityAudioMode = viewModel::setHighQualityAudioMode,
                     onEqualizerEnabled = viewModel::setEqualizerEnabled,

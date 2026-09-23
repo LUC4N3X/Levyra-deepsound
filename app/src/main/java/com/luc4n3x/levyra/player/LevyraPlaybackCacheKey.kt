@@ -59,7 +59,21 @@ object LevyraPlaybackCacheKey {
     private fun variant(url: String): String {
         val clean = url.lowercase()
         val itag = itagPattern.find(url)?.groupValues?.getOrNull(1)
-        if (!itag.isNullOrBlank()) return "itag-$itag"
+        if (!itag.isNullOrBlank()) {
+            val rawXtags = com.luc4n3x.levyra.data.AudioLanguageIntelligence.extractXtagsFromUrl(url)
+            val lang = com.luc4n3x.levyra.data.AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
+                ?.takeIf { it.isNotBlank() }
+            val clen = com.luc4n3x.levyra.player.offline.audioContentLengthFromUrl(url).takeIf { it > 0L }
+            return if (!lang.isNullOrBlank() || clen != null) {
+                buildString {
+                    append("itag-$itag")
+                    if (!lang.isNullOrBlank()) append("-lang-$lang")
+                    if (clen != null) append("-clen-$clen")
+                }
+            } else {
+                "itag-$itag"
+            }
+        }
         return when {
             clean.contains(".m3u8") || clean.contains("/hls_playlist") || clean.contains("/manifest/hls") -> "hls"
             clean.contains("mime=audio%2fwebm") || clean.contains("mime=audio/webm") -> "audio-webm"
