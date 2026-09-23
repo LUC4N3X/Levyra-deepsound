@@ -223,9 +223,9 @@ Both platforms share the same core Kotlin extraction logic, but each client targ
 
 Levyra does not bundle Chromium, Electron, or WebView containers.
 
-On Windows, relying on libVLC and Compose Multiplatform keeps idle RAM usage under 90 MB and offloads audio decoding directly to native C libraries, avoiding the memory bloat and occasional playback stutter common in web wrappers.
+On Windows, playback runs through libVLC while the interface uses Compose Multiplatform. This keeps the player separate from a browser runtime and lets VLC handle audio decoding natively.
 
-On Android, using Media3 directly lets the app hook cleanly into system audio focus, Bluetooth media controls, lockscreen sessions, and AutoEQ DSP filters without running unnecessary background web processes.
+On Android, Media3 integrates directly with system audio focus, Bluetooth controls, lockscreen playback, media sessions, and Android Auto, keeping background audio independent of any browser process.
 
 ## ✦ Privacy
 
