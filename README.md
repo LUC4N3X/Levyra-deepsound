@@ -38,7 +38,7 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2"><img src="docs/assets/levyra-windows-download.svg" width="200" alt="Download Levyra for Windows"></a>
 </p>
 
-<p align="center">🌍 <b>Levyra speaks 37 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
+<p align="center"><b>Levyra speaks 37 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
 <p align="center">
   <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
