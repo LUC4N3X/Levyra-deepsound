@@ -665,48 +665,107 @@ class PlaybackResolver private constructor(private val context: Context) {
         Timber.w(
             "playback failure source=%s mode=%s reason=%s stream=%s",
             track.source,
-            if (isVideoMode) "video" else if (isOfflineExport) "offline" else "audio",
+            playbackFailureMode(isVideoMode, isOfflineExport),
             reason.take(120),
             playbackStreamDiagnostics(track.streamUrl)
         )
         invalidate(track, isVideoMode, isOfflineExport)
         resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
         val failureKind = classifyPlaybackFailureReason(reason)
-        if (!isOfflineExport) {
-            strategyOriginFor(track, isVideoMode)?.let { origin ->
-                strategyHealth.recordRuntimeFailure(
-                    mode = origin.mode,
-                    strategy = origin.strategy,
-                    kind = failureKind
-                )
-            }
-        }
+        recordRuntimeStrategyFailure(track, isVideoMode, isOfflineExport, failureKind)
+
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
         val recovery = resilienceEngine.recoveryPlan(reason)
         val provenance = track.playbackManifest?.provenance
-        val attributedUrl = failedUrl?.takeIf { it.isNotBlank() }
-            ?: if (isVideoMode) {
-                track.videoStreamUrl.ifBlank { track.streamUrl }
-            } else {
-                track.streamUrl
-            }.takeIf { it.isNotBlank() }
-        val quarantineTargets = if (isCandidateLevelPlaybackFailure(failureKind)) {
+        val attributedUrl = attributedPlaybackUrl(track, isVideoMode, failedUrl)
+        quarantinePlaybackFailureTargets(track, failureKind, attributedUrl, recovery.quarantineMs, now)
+        applyPlaybackRecoveryActions(track, isVideoMode, isOfflineExport, reason, lower, recovery)
+
+        val failureGeneration = resolverGeneration.get()
+        maybePromoteAlternateCandidate(
+            track = track,
+            isVideoMode = isVideoMode,
+            isOfflineExport = isOfflineExport,
+            audioQuality = audioQuality,
+            failureKind = failureKind,
+            attributedUrl = attributedUrl,
+            expectedGeneration = failureGeneration
+        )
+        recordPersistentSourceFailureForGeneration(
+            track = track,
+            isVideoMode = isVideoMode,
+            isOfflineExport = isOfflineExport,
+            audioQuality = audioQuality,
+            quarantineMs = sourceMatchQuarantineMs(lower, recovery.quarantineMs),
+            expectedGeneration = failureGeneration
+        )
+    }
+
+    private fun playbackFailureMode(isVideoMode: Boolean, isOfflineExport: Boolean): String = when {
+        isVideoMode -> "video"
+        isOfflineExport -> "offline"
+        else -> "audio"
+    }
+
+    private fun recordRuntimeStrategyFailure(
+        track: Track,
+        isVideoMode: Boolean,
+        isOfflineExport: Boolean,
+        failureKind: PlaybackFailureKind
+    ) {
+        if (isOfflineExport) return
+        strategyOriginFor(track, isVideoMode)?.let { origin ->
+            strategyHealth.recordRuntimeFailure(
+                mode = origin.mode,
+                strategy = origin.strategy,
+                kind = failureKind
+            )
+        }
+    }
+
+    private fun attributedPlaybackUrl(track: Track, isVideoMode: Boolean, failedUrl: String?): String? {
+        failedUrl?.takeIf { it.isNotBlank() }?.let { return it }
+        val resolvedUrl = if (isVideoMode) {
+            track.videoStreamUrl.ifBlank { track.streamUrl }
+        } else {
+            track.streamUrl
+        }
+        return resolvedUrl.takeIf { it.isNotBlank() }
+    }
+
+    private fun quarantinePlaybackFailureTargets(
+        track: Track,
+        failureKind: PlaybackFailureKind,
+        attributedUrl: String?,
+        quarantineMs: Long,
+        now: Long
+    ) {
+        val targets = if (isCandidateLevelPlaybackFailure(failureKind)) {
             listOfNotNull(attributedUrl)
         } else {
             listOf(track.streamUrl, track.videoStreamUrl)
         }
-        quarantineTargets
+        targets
             .filter { it.isNotBlank() }
-            .forEach { quarantinePlaybackUrl(it, now + recovery.quarantineMs, now) }
+            .forEach { quarantinePlaybackUrl(it, now + quarantineMs, now) }
+    }
+
+    private fun applyPlaybackRecoveryActions(
+        track: Track,
+        isVideoMode: Boolean,
+        isOfflineExport: Boolean,
+        reason: String,
+        lowerReason: String,
+        recovery: PlaybackRecoveryPlan
+    ) {
+        val provenance = track.playbackManifest?.provenance
         if (recovery.rotateClient) {
             val profile = provenance?.clientName
                 ?.takeIf { it.isNotBlank() }
                 ?.let { expected -> effectiveProfiles().firstOrNull { it.clientName == expected } }
                 ?: profileFromSource(track.source)
-            profile?.let {
-                recordClientFailure(it, null, PlaybackBlockedException(reason))
-            }
+            profile?.let { recordClientFailure(it, null, PlaybackBlockedException(reason)) }
         }
         if (recovery.refreshDecoder) {
             YoutubeLocalDecoder.notifyStreamRejected(track.source, provenance?.playerConfigIdentity)
@@ -734,30 +793,32 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
         }
         if (recovery.rotateCodec && !isOfflineExport) {
-            videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lower)
+            videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lowerReason)
         }
-        val failureGeneration = resolverGeneration.get()
-        val failureBelongsToCurrentGeneration = canReuseProvidedPlayback(track, failureGeneration)
-        if (!isOfflineExport &&
-            attributedUrl != null &&
-            isCandidateLevelPlaybackFailure(failureKind) &&
-            failureBelongsToCurrentGeneration
-        ) {
-            promoteAlternateCandidate(track, isVideoMode, audioQuality, failureGeneration)
-        }
-        val sourceMatchQuarantineMs = when {
-            lower.contains("403") || lower.contains("410") || lower.contains("expired") || lower.contains("scadut") || lower.contains("signature") -> 0L
-            lower.contains("decoder") || lower.contains("codec") -> recovery.quarantineMs
-            else -> minOf(recovery.quarantineMs, 20_000L)
-        }
-        recordPersistentSourceFailureForGeneration(
-            track = track,
-            isVideoMode = isVideoMode,
-            isOfflineExport = isOfflineExport,
-            audioQuality = audioQuality,
-            quarantineMs = sourceMatchQuarantineMs,
-            expectedGeneration = failureGeneration
-        )
+    }
+
+    private fun maybePromoteAlternateCandidate(
+        track: Track,
+        isVideoMode: Boolean,
+        isOfflineExport: Boolean,
+        audioQuality: String?,
+        failureKind: PlaybackFailureKind,
+        attributedUrl: String?,
+        expectedGeneration: Long
+    ) {
+        if (isOfflineExport || attributedUrl == null || !isCandidateLevelPlaybackFailure(failureKind)) return
+        if (!canReuseProvidedPlayback(track, expectedGeneration)) return
+        promoteAlternateCandidate(track, isVideoMode, audioQuality, expectedGeneration)
+    }
+
+    private fun sourceMatchQuarantineMs(lowerReason: String, recoveryQuarantineMs: Long): Long = when {
+        lowerReason.contains("403") ||
+            lowerReason.contains("410") ||
+            lowerReason.contains("expired") ||
+            lowerReason.contains("scadut") ||
+            lowerReason.contains("signature") -> 0L
+        lowerReason.contains("decoder") || lowerReason.contains("codec") -> recoveryQuarantineMs
+        else -> minOf(recoveryQuarantineMs, 20_000L)
     }
 
     private fun recordPersistentSourceFailureForGeneration(
