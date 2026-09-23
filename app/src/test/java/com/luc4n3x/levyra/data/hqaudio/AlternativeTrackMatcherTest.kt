@@ -320,6 +320,48 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun metadataOnlyFeaturedArtistsKeepDifferentRecordingsApart() {
+        val selection = matcher.select(
+            query(album = "YouTube Music"),
+            listOf(
+                candidate(id = "with-x", featured = listOf("Artist X")),
+                candidate(id = "with-y", featured = listOf("Artist Y"))
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun featuringInTitleAndInMetadataIsTheSameCredit() {
+        val query = query(title = "Levitating (feat. DaBaby)", artist = "Dua Lipa", album = "YouTube Music", durationMs = 203_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "title-credit", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), album = "Future Nostalgia", duration = 203),
+                candidate(id = "both-credits", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Levitating", duration = 203)
+            )
+        )
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+    }
+
+    @Test
+    fun providerLanguageContradictingTheAlbumLanguageIsRejected() {
+        val query = query(title = "Srivalli", artist = "Javed Ali", album = "Pushpa - The Rise (Hindi)", durationMs = 225_000L)
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            query,
+            candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise", duration = 225).copy(language = "telugu")
+        )
+        val sameLanguage = verdict(
+            query,
+            candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise", duration = 225).copy(language = "hindi")
+        )
+        assertTrue(sameLanguage.accepted)
+        val unknownLanguage = verdict(query, candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise", duration = 225))
+        assertTrue(unknownLanguage.accepted)
+    }
+
+    @Test
     fun differentVersionsAreNeverMergedIntoOneRecording() {
         val selection = matcher.select(
             query(album = "YouTube Music"),

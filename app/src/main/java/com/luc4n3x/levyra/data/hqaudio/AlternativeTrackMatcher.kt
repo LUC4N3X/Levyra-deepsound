@@ -126,7 +126,7 @@ class AlternativeTrackMatcher {
             return rejected(MatchRejection.EXPLICIT_MISMATCH)
         }
         val isrcConfirmed = expectedIsrc.isNotEmpty() && expectedIsrc == candidateIsrc
-        val relation = albumRelation(query.album, candidate.album, expectedTitle, candidateTitle)
+        val relation = albumRelation(query.album, candidate, expectedTitle, candidateTitle)
         if (!isrcConfirmed && (relation == AlbumRelation.REMASTER_CONFLICT || relation == AlbumRelation.MISMATCH)) {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
@@ -201,12 +201,18 @@ class AlternativeTrackMatcher {
         val bTitle = AlternativeTrackText.title(b.title)
         return aTitle.core == bTitle.core &&
             aTitle.versionSignature == bTitle.versionSignature &&
-            aTitle.featuredArtists == bTitle.featuredArtists &&
+            sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
             primarySet(a) == primarySet(b) &&
             abs(a.durationSeconds - b.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
             (!explicitKnown || a.explicit == b.explicit) &&
             (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
     }
+
+    private fun featuredSet(candidate: AlternativeTrackCandidate, title: TitleIdentity): Set<String> =
+        candidate.featuredArtists.flatMap(AlternativeTrackText::artistNames).toSet() + title.featuredArtists
+
+    private fun sameFeaturedCredits(left: Set<String>, right: Set<String>): Boolean =
+        left.isEmpty() || right.isEmpty() || left == right
 
     private fun primarySet(candidate: AlternativeTrackCandidate): Set<String> =
         candidate.primaryArtists.flatMap(AlternativeTrackText::artistNames).toSet()
@@ -222,18 +228,19 @@ class AlternativeTrackMatcher {
 
     private fun albumRelation(
         expectedRaw: String,
-        candidateRaw: String,
+        candidateTrack: AlternativeTrackCandidate,
         expectedTitle: TitleIdentity,
         candidateTitle: TitleIdentity
     ): AlbumRelation {
         val expected = AlternativeTrackText.album(expectedRaw)
         if (expected.isBlank || expected.core in untrustedAlbumNames) return AlbumRelation.UNVERIFIED
-        val candidate = AlternativeTrackText.album(candidateRaw)
+        val candidate = AlternativeTrackText.album(candidateTrack.album)
+        val candidateLanguage = candidate.language ?: candidateTrack.language.takeIf { it.isNotBlank() }
+        if (expected.language != null && candidateLanguage != null && expected.language != candidateLanguage) {
+            return AlbumRelation.MISMATCH
+        }
         if (candidate.isBlank) return AlbumRelation.UNVERIFIED
         if (expected.core == candidate.core) {
-            if (expected.language != null && candidate.language != null && expected.language != candidate.language) {
-                return AlbumRelation.MISMATCH
-            }
             val expectedRemaster = AlbumEdition.REMASTERED in expected.editions
             val candidateRemaster = AlbumEdition.REMASTERED in candidate.editions
             if (expectedRemaster != candidateRemaster) return AlbumRelation.REMASTER_CONFLICT
