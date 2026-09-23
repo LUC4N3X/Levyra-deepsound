@@ -46,7 +46,12 @@ class ParametricProfilesTest {
         val existing = listOf(ParametricProfiles.create("Warm"))
         assertTrue(ParametricProfiles.nameTaken(" warm ", null, existing))
         assertFalse(ParametricProfiles.nameTaken("Warm", existing.first().id, existing))
-        assertEquals("Warm 2", ParametricProfiles.availableName("Warm", existing) { "Warm $it" })
+        assertEquals("Warm 2", ParametricProfiles.availableName("Warm", "Warm", existing) { stem, n -> "$stem $n" })
+        val longName = "L".repeat(ParametricEqualizer.MAX_NAME_CHARS)
+        val crowded = listOf(ParametricProfiles.create(longName), ParametricProfiles.create(longName.dropLast(2) + " 2"))
+        val next = ParametricProfiles.availableName(longName, longName, crowded) { stem, n -> "$stem $n" }
+        assertTrue(next.length <= ParametricEqualizer.MAX_NAME_CHARS)
+        assertTrue(next.endsWith(" 3"))
     }
 
     @Test

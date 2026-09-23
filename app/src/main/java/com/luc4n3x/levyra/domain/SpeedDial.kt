@@ -143,6 +143,11 @@ object SpeedDial {
         }
     }
 
+    fun withoutMissingLocalTracks(pins: List<SpeedDialPin>, localTrackIds: Set<String>): List<SpeedDialPin> =
+        pins.filterNot { pin ->
+            pin.kind == SpeedDialKind.SONG && pin.targetId.startsWith(LOCAL_TRACK_PREFIX) && pin.targetId !in localTrackIds
+        }
+
     private fun SpeedDialPin.sanitized(): SpeedDialPin? {
         val cleanId = targetId.trim()
         val cleanTitle = title.trim().take(MAX_TEXT_CHARS)

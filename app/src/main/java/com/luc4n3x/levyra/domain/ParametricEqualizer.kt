@@ -189,11 +189,29 @@ object ParametricProfiles {
         return key.isNotEmpty() && profiles.any { it.id != selfId && it.name.trim().lowercase(Locale.ROOT) == key }
     }
 
-    fun availableName(base: String, profiles: List<ParametricEqProfile>, variant: (Int) -> String): String {
-        if (!nameTaken(base, null, profiles)) return cleanName(base)
-        var index = 2
-        while (nameTaken(variant(index), null, profiles)) index += 1
-        return cleanName(variant(index))
+    fun availableName(
+        first: String,
+        stem: String,
+        profiles: List<ParametricEqProfile>,
+        variant: (String, Int) -> String
+    ): String {
+        if (!nameTaken(first, null, profiles)) return cleanName(first)
+        var candidate = cleanName(first)
+        for (index in 2..profiles.size + 2) {
+            candidate = fittedVariant(stem, index, variant)
+            if (!nameTaken(candidate, null, profiles)) return candidate
+        }
+        return candidate
+    }
+
+    private fun fittedVariant(stem: String, index: Int, variant: (String, Int) -> String): String {
+        var fitted = stem.trim()
+        var candidate = variant(fitted, index).trim()
+        while (candidate.length > ParametricEqualizer.MAX_NAME_CHARS && fitted.isNotEmpty()) {
+            fitted = fitted.dropLast(candidate.length - ParametricEqualizer.MAX_NAME_CHARS).trimEnd()
+            candidate = variant(fitted, index).trim()
+        }
+        return cleanName(candidate)
     }
 
     fun upsert(profiles: List<ParametricEqProfile>, profile: ParametricEqProfile): List<ParametricEqProfile> {

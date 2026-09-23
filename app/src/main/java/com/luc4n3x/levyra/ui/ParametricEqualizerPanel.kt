@@ -183,8 +183,8 @@ internal fun ParametricEqualizerCard(
 
     fun duplicateAndEdit(source: ParametricEqProfile) {
         val base = source.name.ifBlank { profileCopy.flat }
-        val name = ParametricProfiles.availableName(profileCopy.copyName(base), customProfiles) { number ->
-            profileCopy.copyName(base, number)
+        val name = ParametricProfiles.availableName(profileCopy.copyName(base), base, customProfiles) { stem, number ->
+            profileCopy.copyName(stem, number)
         }
         actions.onDuplicate(source, name)?.let { created -> editing = ParametricEditorSession.of(created, isNew = false) }
     }
@@ -259,9 +259,11 @@ internal fun ParametricEqualizerCard(
                 enabled = !limitReached,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    val name = ParametricProfiles.availableName(profileCopy.newProfile, customProfiles) { number ->
-                        "${profileCopy.newProfile} $number"
-                    }
+                    val name = ParametricProfiles.availableName(
+                        profileCopy.newProfile,
+                        profileCopy.newProfile,
+                        customProfiles
+                    ) { stem, number -> "$stem $number" }
                     editing = ParametricEditorSession.of(ParametricProfiles.create(name), isNew = true)
                 }
             )

@@ -1629,6 +1629,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun toggleSpeedDialPin(pin: SpeedDialPin) = mutateSpeedDial { pins -> SpeedDial.toggle(pins, pin) }
 
+    private fun pruneMissingLocalSpeedDialPins() {
+        val library = _state.value.localLibrary
+        if (library.scanning) return
+        val songs = library.completedScanSongs() ?: return
+        val localIds = songs.mapTo(HashSet()) { it.id }
+        mutateSpeedDial { pins -> SpeedDial.withoutMissingLocalTracks(pins, localIds) }
+    }
+
     private fun mutateSpeedDial(transform: (List<SpeedDialPin>) -> List<SpeedDialPin>) {
         viewModelScope.launch {
             speedDialLoaded.await()
@@ -5293,6 +5301,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         buildLocalLibraryCatalog(rows, sort.first, sort.second)
                     }
                     _state.update { it.copy(localLibrary = it.localLibrary.copy(catalog = catalog)) }
+                    pruneMissingLocalSpeedDialPins()
                 }
         }
     }
@@ -6465,7 +6474,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         biographyDeferred: Deferred<ArtistBiography?>
     ): Job {
         return viewModelScope.launch {
-            runCatching { biographyDeferred.await() }.getOrNull()?.let { biography ->
+            runCatchingPreservingCancellation { biographyDeferred.await() }.getOrNull()?.let { biography ->
                 _state.update { current ->
                     val visible = current.artistProfile ?: return@update current
                     if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
