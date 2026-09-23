@@ -433,10 +433,14 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun setPreferredAudioLanguage(value: String) {
         val normalized = AudioLanguageIntelligence.normalizeLanguage(value)
-        if (selectedPreferredAudioLanguage == normalized) return
-        selectedPreferredAudioLanguage = normalized
-        resolveScope.launch {
-            clearResolvedStreamCaches()
+        synchronized(streamCacheMutationLock) {
+            if (selectedPreferredAudioLanguage == normalized) return
+            selectedPreferredAudioLanguage = normalized
+            resolverGeneration.incrementAndGet()
+            streamCache.clear()
+            prefs.edit().clear().apply()
+            strategyOriginByUrl.clear()
+            YoutubeStreamClientIdentityRegistry.clear()
         }
     }
 
@@ -1829,8 +1833,18 @@ class PlaybackResolver private constructor(private val context: Context) {
         allowNetworkRefresh: Boolean = true,
         expectedGeneration: Long
     ): Track? {
-        val stored = runCatchingPreservingCancellation { sourceMatchStore.load(track, isVideoMode, audioQuality, preferMp4Audio) }
-            .onFailure { error ->
+        val preferredAudioLanguage = synchronized(streamCacheMutationLock) {
+            if (resolverGeneration.get() == expectedGeneration) selectedPreferredAudioLanguage else null
+        } ?: return null
+        val stored = runCatchingPreservingCancellation {
+            sourceMatchStore.load(
+                track,
+                isVideoMode,
+                audioQuality,
+                preferMp4Audio,
+                preferredAudioLanguage
+            )
+        }.onFailure { error ->
                 Timber.w(error, "persistent source match load failed")
             }
             .getOrNull() ?: return null
@@ -1844,7 +1858,14 @@ class PlaybackResolver private constructor(private val context: Context) {
                 source = stored.entity.provider.ifBlank { "Persistent source match" }
             )
             if (!isVideoMode || restored.hasVideoPlaybackPayload()) {
-                recordSourceMatchSuccess(track, isVideoMode, audioQuality, preferMp4Audio)
+                if (resolverGeneration.get() != expectedGeneration) return null
+                recordSourceMatchSuccess(
+                    track,
+                    isVideoMode,
+                    audioQuality,
+                    preferMp4Audio,
+                    preferredAudioLanguage
+                )
                 return restored
             }
         }
@@ -1869,7 +1890,14 @@ class PlaybackResolver private constructor(private val context: Context) {
             null
         }
         if (refreshed == null) {
-            recordSourceMatchFailure(track, isVideoMode, audioQuality, 90_000L, preferMp4Audio)
+            recordSourceMatchFailure(
+                track,
+                isVideoMode,
+                audioQuality,
+                90_000L,
+                preferMp4Audio,
+                preferredAudioLanguage
+            )
             return null
         }
         val rebased = rebaseResolvedTrack(track, refreshed)
@@ -1968,10 +1996,17 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         isVideoMode: Boolean,
         audioQuality: String,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        preferredAudioLanguage: String = selectedPreferredAudioLanguage
     ) {
         try {
-            sourceMatchStore.recordSuccess(track, isVideoMode, audioQuality, preferMp4Audio)
+            sourceMatchStore.recordSuccess(
+                track,
+                isVideoMode,
+                audioQuality,
+                preferMp4Audio,
+                preferredAudioLanguage
+            )
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -1984,10 +2019,18 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         audioQuality: String,
         quarantineMs: Long,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        preferredAudioLanguage: String = selectedPreferredAudioLanguage
     ) {
         try {
-            sourceMatchStore.recordFailure(track, isVideoMode, audioQuality, quarantineMs, preferMp4Audio)
+            sourceMatchStore.recordFailure(
+                track,
+                isVideoMode,
+                audioQuality,
+                quarantineMs,
+                preferMp4Audio,
+                preferredAudioLanguage
+            )
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -2007,9 +2050,19 @@ class PlaybackResolver private constructor(private val context: Context) {
         val manifest = resolved.playbackManifest ?: return
         if (preferMp4Audio && !supportsOfflineExport(manifest)) return
         sourceMatchMutationMutex.withLock {
-            if (resolverGeneration.get() != expectedGeneration) return
+            val preferredAudioLanguage = synchronized(streamCacheMutationLock) {
+                if (resolverGeneration.get() == expectedGeneration) selectedPreferredAudioLanguage else null
+            } ?: return
             try {
-                sourceMatchStore.save(original, resolved, isVideoMode, audioQuality, confidence, preferMp4Audio)
+                sourceMatchStore.save(
+                    original,
+                    resolved,
+                    isVideoMode,
+                    audioQuality,
+                    confidence,
+                    preferMp4Audio,
+                    preferredAudioLanguage
+                )
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
