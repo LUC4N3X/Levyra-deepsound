@@ -39,6 +39,9 @@ import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
+import com.luc4n3x.levyra.domain.ParametricEqBand
+import com.luc4n3x.levyra.domain.ParametricEqProfile
+import com.luc4n3x.levyra.domain.ParametricFilterType
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
@@ -174,6 +177,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_PITCH] = normalizedAudio.pitch
             mutable[KEY_AUDIO_GAPLESS] = normalizedAudio.gaplessEnabled
             mutable[KEY_AUDIO_AAUDIO_OUTPUT] = normalizedAudio.aaudioOutputEnabled
+            mutable[KEY_AUDIO_PARAMETRIC_ENABLED] = normalizedAudio.parametricEqualizerEnabled
+            mutable[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalizedAudio.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
+            mutable[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalizedAudio.customParametricProfiles)
             mutable[KEY_UI_COMPACT_HOME] = normalizedInterface.compactHome
             mutable[KEY_UI_PERSONAL_ORBIT] = normalizedInterface.showPersonalOrbit
             mutable[KEY_UI_RESONANCE] = normalizedInterface.showResonance
@@ -462,6 +468,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_PITCH] = normalized.pitch
             it[KEY_AUDIO_GAPLESS] = normalized.gaplessEnabled
             it[KEY_AUDIO_AAUDIO_OUTPUT] = normalized.aaudioOutputEnabled
+            it[KEY_AUDIO_PARAMETRIC_ENABLED] = normalized.parametricEqualizerEnabled
+            it[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalized.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
+            it[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalized.customParametricProfiles)
         }
     }
 
@@ -825,6 +834,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     private fun audioSettingsFrom(preferences: Preferences): LevyraAudioSettings {
         val customPresets = customPresetsFromJson(preferences[KEY_AUDIO_CUSTOM_PRESETS].orEmpty())
+        val activeParametricProfile = parametricProfileFromJsonText(preferences[KEY_AUDIO_PARAMETRIC_ACTIVE].orEmpty())
+        val customParametricProfiles = parametricProfilesFromJson(preferences[KEY_AUDIO_PARAMETRIC_PROFILES].orEmpty())
         val storedPresetId = preferences[KEY_AUDIO_EQ_PRESET].orEmpty()
         val customPreset = customPresets.firstOrNull { it.id == storedPresetId }
         val presetId = customPreset?.id ?: LevyraAudioPresets.normalizePreset(storedPresetId)
@@ -850,7 +861,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             pitch = preferences[KEY_AUDIO_PITCH] ?: 1f,
             gaplessEnabled = preferences[KEY_AUDIO_GAPLESS] ?: true,
             aaudioOutputEnabled = preferences[KEY_AUDIO_AAUDIO_OUTPUT] ?: false,
-            customPresets = customPresets
+            customPresets = customPresets,
+            parametricEqualizerEnabled = preferences[KEY_AUDIO_PARAMETRIC_ENABLED] ?: false,
+            activeParametricProfile = activeParametricProfile,
+            customParametricProfiles = customParametricProfiles
         ).normalized()
     }
 
@@ -990,6 +1004,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_PITCH = floatPreferencesKey("audio_pitch")
         val KEY_AUDIO_GAPLESS = booleanPreferencesKey("audio_gapless")
         val KEY_AUDIO_AAUDIO_OUTPUT = booleanPreferencesKey("audio_aaudio_output")
+        val KEY_AUDIO_PARAMETRIC_ENABLED = booleanPreferencesKey("audio_parametric_equalizer_enabled")
+        val KEY_AUDIO_PARAMETRIC_ACTIVE = stringPreferencesKey("audio_parametric_active_profile")
+        val KEY_AUDIO_PARAMETRIC_PROFILES = stringPreferencesKey("audio_parametric_profiles")
         val KEY_LISTENING_PULSE_LAST_PRUNE = longPreferencesKey("listening_pulse_last_prune")
         val KEY_LISTENING_LIFETIME_BACKFILL = intPreferencesKey("listening_lifetime_backfill")
         val KEY_UI_COMPACT_HOME = booleanPreferencesKey("ui_compact_home")
@@ -1086,6 +1103,61 @@ internal fun customPresetsFromJson(value: String): List<LevyraAudioPreset> = run
     buildList {
         for (index in 0 until array.length()) {
             array.optJSONObject(index)?.let(::customPresetFromJson)?.let(::add)
+        }
+    }
+}.getOrDefault(emptyList())
+
+internal fun parametricBandToJson(band: ParametricEqBand): JSONObject = JSONObject()
+    .put("frequencyHz", band.frequencyHz.toDouble())
+    .put("gainDb", band.gainDb.toDouble())
+    .put("q", band.q.toDouble())
+    .put("filterType", band.filterType.autoEqCode)
+    .put("enabled", band.enabled)
+
+internal fun parametricBandFromJson(json: JSONObject): ParametricEqBand? {
+    val filterType = ParametricFilterType.fromAutoEqCode(json.optString("filterType")) ?: return null
+    return ParametricEqBand(
+        frequencyHz = json.optDouble("frequencyHz", Double.NaN).toFloat(),
+        gainDb = json.optDouble("gainDb", Double.NaN).toFloat(),
+        q = json.optDouble("q", Double.NaN).toFloat(),
+        filterType = filterType,
+        enabled = json.optBoolean("enabled", true)
+    ).normalized()
+}
+
+internal fun parametricProfileToJson(profile: ParametricEqProfile): JSONObject = JSONObject()
+    .put("id", profile.id)
+    .put("name", profile.name)
+    .put("preampDb", profile.preampDb.toDouble())
+    .put("bands", JSONArray().apply { profile.bands.forEach { put(parametricBandToJson(it)) } })
+
+internal fun parametricProfileFromJson(json: JSONObject): ParametricEqProfile? {
+    val bandsArray = json.optJSONArray("bands") ?: return null
+    val bands = ArrayList<ParametricEqBand>(bandsArray.length())
+    for (index in 0 until bandsArray.length()) {
+        val band = bandsArray.optJSONObject(index)?.let(::parametricBandFromJson) ?: return null
+        bands += band
+    }
+    return ParametricEqProfile(
+        id = json.optString("id"),
+        name = json.optString("name"),
+        preampDb = json.optDouble("preampDb", Double.NaN).toFloat(),
+        bands = bands
+    ).normalized()
+}
+
+internal fun parametricProfileFromJsonText(value: String): ParametricEqProfile? = runCatching {
+    if (value.isBlank()) null else parametricProfileFromJson(JSONObject(value))
+}.getOrNull()
+
+internal fun parametricProfilesToJson(profiles: List<ParametricEqProfile>): String =
+    JSONArray().apply { profiles.forEach { put(parametricProfileToJson(it)) } }.toString()
+
+internal fun parametricProfilesFromJson(value: String): List<ParametricEqProfile> = runCatching {
+    val array = JSONArray(value)
+    buildList {
+        for (index in 0 until array.length()) {
+            array.optJSONObject(index)?.let(::parametricProfileFromJson)?.let(::add)
         }
     }
 }.getOrDefault(emptyList())

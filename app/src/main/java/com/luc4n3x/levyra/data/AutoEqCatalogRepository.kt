@@ -56,12 +56,15 @@ internal class AutoEqCatalogRepository(context: Context) : AutoEqCatalogSource {
     }
 
     override suspend fun loadProfile(entry: AutoEqCatalogEntry): String? = withContext(Dispatchers.IO) {
-        if (!isSafeProfilePath(entry.graphicEqPath)) return@withContext null
-        val cacheFile = File(profileDirectory, profileCacheName(entry.graphicEqPath))
-        readCachedProfile(cacheFile)?.let { return@withContext it }
-        val text = downloadProfile(entry.graphicEqPath) ?: return@withContext null
-        storeProfile(cacheFile, text)
-        text
+        for (path in listOf(entry.parametricEqPath, entry.graphicEqPath)) {
+            if (!isSafeProfilePath(path)) continue
+            val cacheFile = File(profileDirectory, profileCacheName(path))
+            readCachedProfile(cacheFile, path)?.let { return@withContext it }
+            val text = downloadProfile(path) ?: continue
+            storeProfile(cacheFile, text)
+            return@withContext text
+        }
+        null
     }
 
     override fun releaseMemory() {
@@ -132,7 +135,7 @@ internal class AutoEqCatalogRepository(context: Context) : AutoEqCatalogSource {
                 val body = response.body
                 val bytes = body.byteStream().use { readBounded(it, body.contentLength(), AutoEqImporter.MAX_INPUT_CHARS) }
                     ?: return@use null
-                bytes.toString(Charsets.UTF_8).takeIf { AutoEqImporter.parse(it) is AutoEqImporter.ParseResult.Success }
+                bytes.toString(Charsets.UTF_8).takeIf { isValidProfile(path, it) }
             }
         } catch (error: IOException) {
             Timber.d(error, "AutoEQ profile download failed")
@@ -140,11 +143,11 @@ internal class AutoEqCatalogRepository(context: Context) : AutoEqCatalogSource {
         }
     }
 
-    private fun readCachedProfile(file: File): String? {
+    private fun readCachedProfile(file: File, path: String): String? {
         if (!file.isFile || file.length() !in 1..AutoEqImporter.MAX_INPUT_CHARS.toLong()) return null
         return try {
             val text = file.readText(Charsets.UTF_8)
-            if (AutoEqImporter.parse(text) !is AutoEqImporter.ParseResult.Success) return null
+            if (!isValidProfile(path, text)) return null
             file.setLastModified(System.currentTimeMillis())
             text
         } catch (error: IOException) {
@@ -152,6 +155,13 @@ internal class AutoEqCatalogRepository(context: Context) : AutoEqCatalogSource {
             null
         }
     }
+
+    private fun isValidProfile(path: String, text: String): Boolean =
+        if (path.endsWith(PARAMETRIC_SUFFIX)) {
+            AutoEqImporter.parseParametric(text) is AutoEqImporter.ParametricParseResult.Success
+        } else {
+            AutoEqImporter.parse(text) is AutoEqImporter.ParseResult.Success
+        }
 
     private fun storeProfile(file: File, text: String) {
         try {
@@ -196,8 +206,13 @@ internal class AutoEqCatalogRepository(context: Context) : AutoEqCatalogSource {
         private const val SAFE_PATH_CHARACTERS =
             "%()!$&'+,-./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~"
 
+        private const val GRAPHIC_SUFFIX = "%20GraphicEQ.txt"
+        private const val PARAMETRIC_SUFFIX = "%20ParametricEQ.txt"
+
         internal fun isSafeProfilePath(path: String): Boolean {
-            if (!path.startsWith("results/") || !path.endsWith("%20GraphicEQ.txt")) return false
+            if (!path.startsWith("results/") ||
+                (!path.endsWith(GRAPHIC_SUFFIX) && !path.endsWith(PARAMETRIC_SUFFIX))
+            ) return false
             if (path.any { it !in SAFE_PATH_CHARACTERS }) return false
             return path.split('/').none { it.isEmpty() || it == "." || it == ".." }
         }

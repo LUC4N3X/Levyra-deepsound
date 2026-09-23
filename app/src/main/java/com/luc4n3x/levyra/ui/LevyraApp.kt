@@ -512,6 +512,8 @@ import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import com.luc4n3x.levyra.domain.LevyraNetworkSettingsError
 import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
+import com.luc4n3x.levyra.feature.search.buildPersonalizedSearchSnapshot
+import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
 import com.luc4n3x.levyra.ui.settings.NetworkSettingsPanel
@@ -562,6 +564,9 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
+import com.luc4n3x.levyra.ui.i18n.personalizedSearchCopy
+import com.luc4n3x.levyra.ui.i18n.personalizedSearchPromptText
 import com.luc4n3x.levyra.ui.i18n.queueSectionCopy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.automationCopy
@@ -2348,6 +2353,10 @@ fun LevyraApp(
                         viewModel.closeSettings()
                         viewModel.openThemeStudio()
                     },
+                    onOpenAudioSettings = {
+                        viewModel.closeSettings()
+                        viewModel.openAudioQualityPanel()
+                    },
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onAmbientSettings = viewModel::updateAmbientSettings,
                     onOpenAmbient = {
@@ -2493,6 +2502,15 @@ fun LevyraApp(
                     onResetEqualizer = viewModel::resetEqualizer,
                     onApplyAutoEq = viewModel::applyAutoEqImport,
                     onSaveAutoEqPreset = viewModel::saveAutoEqCustomPreset,
+                    onParametricEnabled = viewModel::setParametricEqualizerEnabled,
+                    onParametricProfile = viewModel::selectParametricProfile,
+                    onParametricPreamp = viewModel::updateParametricPreamp,
+                    onParametricBand = viewModel::updateParametricBand,
+                    onAddParametricBand = viewModel::addParametricBand,
+                    onRemoveParametricBand = viewModel::removeParametricBand,
+                    onResetParametric = viewModel::resetParametricEqualizer,
+                    onApplyParametricAutoEq = viewModel::applyParametricAutoEq,
+                    onSaveParametricProfile = viewModel::saveParametricProfile,
                     autoEqCatalog = autoEqCatalog,
                     onOpenAutoEqCatalog = viewModel::openAutoEqCatalog,
                     onAutoEqCatalogQuery = viewModel::updateAutoEqCatalogQuery,
@@ -11955,6 +11973,32 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    val personalized = remember(
+        state.favorites,
+        state.recentListens,
+        state.recentSearches,
+        state.personalOrbitTracks,
+        state.smartProfile.topArtists
+    ) {
+        buildPersonalizedSearchSnapshot(
+            favorites = state.favorites,
+            recentListens = state.recentListens,
+            recentSearches = state.recentSearches,
+            personalOrbitTracks = state.personalOrbitTracks,
+            topArtists = state.smartProfile.topArtists
+        )
+    }
+    val personalizedCopy = personalizedSearchCopy(state.languageCode)
+    val personalizedTracks = remember(personalized.tracks, state.recentSearches) {
+        val recentIds = state.recentSearches.mapTo(HashSet()) { it.id }
+        personalized.tracks.filterNot { it.id in recentIds }
+    }
+    val personalizedArtists = remember(state.homeArtists, personalized.artistNames) {
+        rankPersonalizedSearchArtists(state.homeArtists, personalized.artistNames)
+    }
+    val personalizedPlaceholder = remember(state.languageCode, personalized.prompt) {
+        personalizedSearchPromptText(state.languageCode, personalized.prompt)
+    }
 
     LaunchedEffect(state.languageCode) {
         viewModel.refreshArtistSuggestions()
@@ -11969,6 +12013,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     ) {
         SearchHeader(
             query = state.query,
+            placeholder = personalizedPlaceholder ?: strings.searchPlaceholder,
             isSearching = state.isSearching,
             recognitionAvailable = state.recognitionAvailable,
             recognitionBusy = state.recognitionState is RecognitionState.Listening ||
@@ -12008,7 +12053,9 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                 if (state.recentSearches.isNotEmpty()) {
                     item(key = "search-recent", contentType = "search-recent") {
                         RecentSearchesRow(
+                            title = strings.recentSearches,
                             tracks = state.recentSearches,
+                            allowRemove = true,
                             favoriteIds = state.favoriteIds,
                             downloadedTrackIds = state.downloadedTrackIds,
                             onTrackClick = { track ->
@@ -12027,12 +12074,40 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                     }
                 }
 
+                if (personalizedTracks.isNotEmpty()) {
+                    item(key = "search-personalized", contentType = "search-personalized") {
+                        RecentSearchesRow(
+                            title = personalizedCopy.basedOnListening,
+                            tracks = personalizedTracks,
+                            allowRemove = false,
+                            favoriteIds = state.favoriteIds,
+                            downloadedTrackIds = state.downloadedTrackIds,
+                            onTrackClick = { track ->
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                viewModel.playFrom(personalizedTracks, track)
+                            },
+                            onRemove = {},
+                            onFavorite = viewModel::toggleFavorite,
+                            onAddToPlaylist = { addTarget = it },
+                            onPlayNext = viewModel::playNext,
+                            onAddToQueue = viewModel::addToQueue,
+                            onDownload = viewModel::exportTrack,
+                            onArtist = viewModel::openArtist
+                        )
+                    }
+                }
+
                 item(key = "search-artist-suggestions", contentType = "search-artist-suggestions") {
                     val fallbackSuggestions = LevyraContentLocales.artistSuggestions(state.languageCode)
                     SearchArtistSuggestions(
-                        title = LevyraContentLocales.artistSuggestionsTitle(state.languageCode),
-                        artists = state.homeArtists,
-                        fallbackNames = fallbackSuggestions,
+                        title = if (personalized.artistNames.isEmpty()) {
+                            LevyraContentLocales.artistSuggestionsTitle(state.languageCode)
+                        } else {
+                            personalizedCopy.artistsForYou
+                        },
+                        artists = personalizedArtists,
+                        fallbackNames = (personalized.artistNames + fallbackSuggestions).distinct(),
                         loading = state.homeArtistsLoading,
                         onArtistClick = { hit ->
                             focusManager.clearFocus()
@@ -12303,6 +12378,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
 @Composable
 private fun SearchHeader(
     query: String,
+    placeholder: String,
     isSearching: Boolean,
     recognitionAvailable: Boolean,
     recognitionBusy: Boolean,
@@ -12398,7 +12474,7 @@ private fun SearchHeader(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty()) {
                                 Text(
-                                    text = strings.searchPlaceholder,
+                                    text = placeholder,
                                     color = LevyraMuted.copy(alpha = 0.82f),
                                     fontWeight = FontWeight.Medium,
                                     fontSize = 14.sp,
@@ -12486,7 +12562,9 @@ private fun SearchHeader(
 
 @Composable
 private fun RecentSearchesRow(
+    title: String,
     tracks: List<Track>,
+    allowRemove: Boolean,
     favoriteIds: Set<String>,
     downloadedTrackIds: Set<String>,
     onTrackClick: (Track) -> Unit,
@@ -12503,7 +12581,7 @@ private fun RecentSearchesRow(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = strings.recentSearches,
+            text = title,
             color = LevyraText,
             fontSize = 18.sp,
             fontWeight = FontWeight.ExtraBold
@@ -12655,14 +12733,16 @@ private fun RecentSearchesRow(
                                         context.startActivity(Intent.createChooser(intent, strings.shareSong))
                                     }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text(strings.removeFromRecentSearches) },
-                                    leadingIcon = { Icon(Icons.Rounded.Delete, null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onRemove(track)
-                                    }
-                                )
+                                if (allowRemove) {
+                                    DropdownMenuItem(
+                                        text = { Text(strings.removeFromRecentSearches) },
+                                        leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onRemove(track)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -17601,6 +17681,7 @@ private fun SettingsOverlay(
     onTestNetwork: (LevyraNetworkSettings, String?) -> Unit,
     onOpenJam: () -> Unit,
     onOpenThemeStudio: () -> Unit,
+    onOpenAudioSettings: () -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onAmbientSettings: (LevyraAmbientSettings) -> Unit,
     onOpenAmbient: () -> Unit,
@@ -17641,6 +17722,7 @@ private fun SettingsOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val automationCopy = strings.automationCopy()
+    val parametricCopy = strings.parametricEqCopy()
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var settingsQuery by rememberSaveable { mutableStateOf("") }
@@ -17678,6 +17760,7 @@ private fun SettingsOverlay(
             SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
             SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet),
             SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
+            SettingsCategoryMeta("audio", strings.audioEngine, strings.audioEngineSubtitle, Icons.Rounded.GraphicEq, LevyraCyan),
             SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
             SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
             SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
@@ -17694,23 +17777,47 @@ private fun SettingsOverlay(
                 SettingsSearchEntry(strings.themeStudio, strings.themeStudioSubtitle, "${strings.theme} ${strings.themeAccent}", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.animations, strings.animationsSubtitle, strings.motionArtwork, "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.dynamicColor, strings.dynamicColorSubtitle, strings.design, "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.appFont, strings.appFontSubtitle, "font typography text", "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.pureBlack, strings.pureBlackSubtitle, "amoled black", "home", categoryTitle(strings.homeInterfaceSection)),
                 SettingsSearchEntry(strings.compactHome, strings.compactHomeSubtitle, "home releases charts", "home", categoryTitle(strings.homeInterfaceSection)),
+                SettingsSearchEntry(strings.yourOrbitSetting, strings.showPersonalListening, "personal orbit listening", "home", categoryTitle(strings.homeInterfaceSection)),
                 SettingsSearchEntry(strings.newReleases, strings.homeInterfaceSection, "releases", "home", categoryTitle(strings.homeInterfaceSection)),
                 SettingsSearchEntry(strings.top50Charts, strings.homeInterfaceSection, "charts", "home", categoryTitle(strings.homeInterfaceSection)),
+                SettingsSearchEntry(strings.audioEngine, strings.audioEngineSubtitle, "audio sound autoeq parametric eq normalization limiter bluetooth output", "audio", strings.audioEngine),
+                SettingsSearchEntry(
+                    strings.equalizer,
+                    strings.equalizerSubtitle,
+                    "${parametricCopy.graphicEq} ${parametricCopy.parametricEq} autoeq preamp bands",
+                    "audio",
+                    strings.audioEngine
+                ),
+                SettingsSearchEntry(strings.crossfade, strings.audioEngineSubtitle, "transition dj soft gapless", "audio", strings.audioEngine),
+                SettingsSearchEntry(strings.replayGain, strings.audioEngineSubtitle, "normalization loudness clipping headroom", "audio", strings.audioEngine),
+                SettingsSearchEntry(strings.gapless, strings.audioEngineSubtitle, "seamless playback", "audio", strings.audioEngine),
                 SettingsSearchEntry(strings.advancedGestures, strings.advancedGesturesSubtitle, strings.player, "player", categoryTitle(strings.player)),
+                SettingsSearchEntry(strings.playerVisualMode, strings.playerVisualModeSubtitle, "canvas artwork immersive player", "player", categoryTitle(strings.player)),
+                SettingsSearchEntry(strings.canvasQuality, strings.canvasQualitySubtitle, "canvas video quality", "player", categoryTitle(strings.player)),
+                SettingsSearchEntry(strings.canvasSource, strings.canvasSourceSubtitle, "canvas provider apple tidal", "player", categoryTitle(strings.player)),
+                SettingsSearchEntry(strings.continuousRadio, strings.continuousRadioSubtitle, "radio autoplay", "player", categoryTitle(strings.player)),
                 SettingsSearchEntry(strings.sponsorBlock, strings.sponsorBlockSubtitle, "segments", "player", categoryTitle(strings.player)),
                 SettingsSearchEntry(strings.skipSilence, strings.skipSilenceSubtitle, "silence", "player", categoryTitle(strings.player)),
                 SettingsSearchEntry(strings.downloadLocation, strings.downloadLocationSubtitle, "folder sd card storage", "downloads", categoryTitle(strings.downloads)),
+                SettingsSearchEntry(strings.downloadQualityPreset, strings.downloadQualityPresetSubtitle, "quality bitrate audio", "downloads", categoryTitle(strings.downloads)),
+                SettingsSearchEntry(strings.downloadSpeedLimit, strings.downloadSpeedLimitSubtitle, "speed bandwidth", "downloads", categoryTitle(strings.downloads)),
                 SettingsSearchEntry(strings.wifiOnly, strings.wifiOnlySubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
+                SettingsSearchEntry(strings.chargingOnly, strings.chargingOnlySubtitle, "battery download", "downloads", categoryTitle(strings.downloads)),
                 SettingsSearchEntry(strings.simultaneousDownloads, strings.simultaneousDownloadsSubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
+                SettingsSearchEntry(strings.downloadEngineSection, strings.downloadTrackHint, "cache offline storage", "downloads", categoryTitle(strings.downloads)),
                 SettingsSearchEntry(strings.lyricsAnalysisSection, strings.lyricsAnalysisCompactSubtitle, strings.lyrics, "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
+                SettingsSearchEntry(strings.automaticLyrics, strings.lyrics, "synced provider", "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
+                SettingsSearchEntry(strings.lyricsRomanization, strings.lyrics, "romanized transliteration", "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
                 SettingsSearchEntry(strings.createDataBackup, strings.createDataBackupSubtitle, "backup", "backup", strings.vaultTitle),
                 SettingsSearchEntry(strings.restoreBackup, strings.restoreBackupSubtitle, "backup", "backup", strings.vaultTitle),
                 SettingsSearchEntry(strings.batteryUnrestricted, strings.batteryUnrestrictedSubtitle, "battery", "system", categoryTitle(strings.preferences)),
                 SettingsSearchEntry(strings.language, strings.languageSubtitle, "locale", "system", categoryTitle(strings.preferences)),
                 SettingsSearchEntry(strings.updates, strings.checkNewVersions, "version", "app", categoryTitle(strings.app))
                 , SettingsSearchEntry(strings.integrations, "Last.fm ListenBrainz AudD", "scrobbling recognition", "integrations", categoryTitle(strings.integrations))
-                , SettingsSearchEntry(strings.networkTitle, strings.networkSubtitle, "dns proxy doh", "network", categoryTitle(strings.networkTitle))
+                , SettingsSearchEntry(strings.networkTitle, strings.networkSubtitle, "dns proxy doh jiosaavn youtube provider", "network", categoryTitle(strings.networkTitle))
                 , SettingsSearchEntry(strings.jamTitle, strings.jamSubtitle, "jam session listen together", "jam", categoryTitle(strings.jamTitle))
             ),
             locale = categoryLocale
@@ -17799,8 +17906,12 @@ private fun SettingsOverlay(
                     }
                     if (settingsQuery.isNotBlank()) {
                         items(settingsSearchResults, key = { result -> "${result.categoryId}:${result.title}" }) { result ->
-                            SettingsSearchResultRow(result.title, result.categoryLabel) {
-                                activeCategory = result.categoryId
+                            SettingsSearchResultRow(result.title, result.description, result.categoryLabel) {
+                                if (result.categoryId == "audio") {
+                                    onOpenAudioSettings()
+                                } else {
+                                    activeCategory = result.categoryId
+                                }
                                 settingsQuery = ""
                             }
                         }
@@ -17809,7 +17920,9 @@ private fun SettingsOverlay(
                         SettingsCategoryCard(
                             meta = category,
                             showDivider = index < categories.lastIndex
-                        ) { activeCategory = category.id }
+                        ) {
+                            if (category.id == "audio") onOpenAudioSettings() else activeCategory = category.id
+                        }
                     }
                     item { SettingsHubFooter() }
                     }
@@ -18815,7 +18928,7 @@ private fun SettingsOverlay(
 }
 
 @Composable
-private fun SettingsSearchResultRow(title: String, category: String, onClick: () -> Unit) {
+private fun SettingsSearchResultRow(title: String, description: String, category: String, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -18826,6 +18939,15 @@ private fun SettingsSearchResultRow(title: String, category: String, onClick: ()
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            if (description.isNotBlank()) {
+                Text(
+                    description,
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Text(category, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
     }
