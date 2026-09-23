@@ -750,24 +750,41 @@ class PlaybackResolver private constructor(private val context: Context) {
             lower.contains("decoder") || lower.contains("codec") -> recovery.quarantineMs
             else -> minOf(recovery.quarantineMs, 20_000L)
         }
-        if (failureBelongsToCurrentGeneration) {
-            val (failurePreferredLanguage, failureLanguageRevision) = preferredAudioLanguageSnapshot()
-            sourceMatchScope.launch {
-                if (failureGeneration != resolverGeneration.get() ||
-                    failureLanguageRevision != audioLanguageRevision.get()
-                ) return@launch
-                runCatchingPreservingCancellation {
-                    sourceMatchStore.recordFailure(
-                        track = track,
-                        videoMode = isVideoMode,
-                        audioQuality = audioQuality?.let(::normalizeAudioQuality) ?: selectedAudioQuality,
-                        quarantineMs = sourceMatchQuarantineMs,
-                        preferMp4Audio = isOfflineExport,
-                        preferredAudioLanguage = failurePreferredLanguage
-                    )
-                }.onFailure { error ->
-                    Timber.w(error, "persistent source match failure update failed")
-                }
+        recordPersistentSourceFailureForGeneration(
+            track = track,
+            isVideoMode = isVideoMode,
+            isOfflineExport = isOfflineExport,
+            audioQuality = audioQuality,
+            quarantineMs = sourceMatchQuarantineMs,
+            expectedGeneration = failureGeneration
+        )
+    }
+
+    private fun recordPersistentSourceFailureForGeneration(
+        track: Track,
+        isVideoMode: Boolean,
+        isOfflineExport: Boolean,
+        audioQuality: String?,
+        quarantineMs: Long,
+        expectedGeneration: Long
+    ) {
+        if (!canReuseProvidedPlayback(track, expectedGeneration)) return
+        val (preferredLanguage, languageRevision) = preferredAudioLanguageSnapshot()
+        sourceMatchScope.launch {
+            if (expectedGeneration != resolverGeneration.get() ||
+                languageRevision != audioLanguageRevision.get()
+            ) return@launch
+            runCatchingPreservingCancellation {
+                sourceMatchStore.recordFailure(
+                    track = track,
+                    videoMode = isVideoMode,
+                    audioQuality = audioQuality?.let(::normalizeAudioQuality) ?: selectedAudioQuality,
+                    quarantineMs = quarantineMs,
+                    preferMp4Audio = isOfflineExport,
+                    preferredAudioLanguage = preferredLanguage
+                )
+            }.onFailure { error ->
+                Timber.w(error, "persistent source match failure update failed")
             }
         }
     }
