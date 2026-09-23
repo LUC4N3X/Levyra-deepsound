@@ -9,6 +9,53 @@ import java.util.Locale
 
 class AudioSettingsLocalizationTest {
     @Test
+    fun everySupportedLanguageShipsPersonalizedSearchCopy() {
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(catalogCodes, personalizedSearchLocalizationCodes())
+        LevyraStrings.all().forEach { strings ->
+            val copy = personalizedSearchCopy(strings.code)
+            val values = listOf(
+                copy.basedOnListening,
+                copy.artistsForYou,
+                copy.searchArtist,
+                copy.findMoreLike,
+                copy.backToAlbum
+            )
+            assertTrue(strings.code, values.all(String::isNotBlank))
+            assertTrue(strings.code, values.drop(2).all { "%s" in it })
+        }
+    }
+
+    @Test
+    fun everySupportedLanguageShipsParametricEqualizerCopy() {
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(catalogCodes, parametricEqLocalizationCodes())
+        LevyraStrings.all().forEach { strings ->
+            val copy = strings.parametricEqCopy()
+            val values = listOf(
+                copy.graphicEq,
+                copy.parametricEq,
+                copy.parametricSubtitle,
+                copy.activeProfile,
+                copy.bands,
+                copy.addBand,
+                copy.removeBand,
+                copy.frequency,
+                copy.gain,
+                copy.qFactor,
+                copy.saveProfile,
+                copy.reset,
+                copy.peak,
+                copy.lowShelf,
+                copy.highShelf,
+                copy.importHint,
+                copy.invalidDetail
+            )
+            assertTrue(strings.code, values.all(String::isNotBlank))
+        }
+    }
+
+    @Test
     fun everySupportedLanguageShipsTheAudioScreenCopy() {
         val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
         assertEquals(catalogCodes, audioLocalizationCodes())

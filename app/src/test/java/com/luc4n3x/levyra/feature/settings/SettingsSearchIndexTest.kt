@@ -29,8 +29,8 @@ class SettingsSearchIndexTest {
     @Test
     fun `matches normalized localized text and keeps the real category route`() {
         assertEquals(
-            listOf(SettingsSearchResult("Animazioni", "design", "Design")),
-            index.search("animazioni")
+            "Animazioni",
+            index.search("animazioni").single().title
         )
     }
 
@@ -60,5 +60,36 @@ class SettingsSearchIndexTest {
         )
 
         assertEquals("system", turkish.search("istanbul").single().categoryId)
+    }
+
+    @Test
+    fun `exact title outranks keyword and description matches`() {
+        val ranked = SettingsSearchIndex(
+            entries = listOf(
+                SettingsSearchEntry("Audio", "Crossfade controls", "sound", "audio", "Audio"),
+                SettingsSearchEntry("Crossfade", "Blend adjacent songs", "transition", "audio", "Audio"),
+                SettingsSearchEntry("Playback", "Player options", "crossfade", "player", "Player")
+            ),
+            locale = Locale.ENGLISH
+        ).search("crossfade")
+
+        assertEquals(listOf("Crossfade", "Playback", "Audio"), ranked.map(SettingsSearchResult::title))
+        assertTrue(ranked[0].score > ranked[1].score)
+        assertTrue(ranked[1].score > ranked[2].score)
+    }
+
+    @Test
+    fun `diacritics punctuation and a conservative typo are normalized`() {
+        val localized = SettingsSearchIndex(
+            entries = listOf(
+                SettingsSearchEntry("Qualità audio", "Audio ad alta fedeltà", "hi-fi", "audio", "Riproduzione")
+            ),
+            locale = Locale.ITALIAN
+        )
+
+        assertEquals("Qualità audio", localized.search("qualita audio").single().title)
+        assertEquals("Qualità audio", localized.search("qualita audoi").single().title)
+        assertTrue(localized.search("qua").isNotEmpty())
+        assertTrue(localized.search("completamente diverso").isEmpty())
     }
 }

@@ -43,6 +43,7 @@ import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.domain.prepareMixPlaybackTracks
@@ -1101,6 +1102,7 @@ internal data class SearchProjection(
     val downloadingTrackIds: Set<String>,
     val downloads: List<DownloadedTrack>,
     val favoriteIds: Set<String>,
+    val favorites: List<Track>,
     val homeArtists: List<ArtistHit>,
     val homeArtistsLoading: Boolean,
     val isPlaying: Boolean,
@@ -1108,10 +1110,12 @@ internal data class SearchProjection(
     val isSearching: Boolean,
     val languageCode: String,
     val playlists: List<Playlist>,
+    val personalOrbitTracks: List<Track>,
     val query: String,
     val recognitionAvailable: Boolean,
     val recognitionState: RecognitionState,
     val recentSearches: List<Track>,
+    val recentListens: List<Track>,
     val searchData: SearchResults,
     val searchError: String?,
     val searchFilter: SearchFilter,
@@ -1119,7 +1123,8 @@ internal data class SearchProjection(
     val searchSectionContinuations: Map<SearchFilter, String>,
     val searchSectionLoading: Set<SearchFilter>,
     val searchSuggestions: List<String>,
-    val searchPending: Boolean
+    val searchPending: Boolean,
+    val smartProfile: SmartMusicProfile
 )
 
 internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
@@ -1129,6 +1134,7 @@ internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchPr
     downloadingTrackIds = state.downloadingTrackIds,
     downloads = state.downloads,
     favoriteIds = state.favoriteIds,
+    favorites = state.favorites,
     homeArtists = state.homeArtists,
     homeArtistsLoading = state.homeArtistsLoading,
     isPlaying = state.isPlaying,
@@ -1136,10 +1142,12 @@ internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchPr
     isSearching = state.isSearching,
     languageCode = state.languageCode,
     playlists = state.playlists,
+    personalOrbitTracks = state.personalOrbitTracks,
     query = state.query,
     recognitionAvailable = state.recognitionAvailable,
     recognitionState = state.recognitionState,
     recentSearches = state.recentSearches,
+    recentListens = state.recentListens,
     searchData = state.searchData,
     searchError = state.searchError,
     searchFilter = state.searchFilter,
@@ -1147,7 +1155,8 @@ internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchPr
     searchSectionContinuations = state.searchSectionContinuations,
     searchSectionLoading = state.searchSectionLoading,
     searchSuggestions = state.searchSuggestions,
-    searchPending = state.searchPending
+    searchPending = state.searchPending,
+    smartProfile = state.smartProfile
 )
 
 internal data class ExploreProjection(
