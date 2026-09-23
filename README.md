@@ -317,7 +317,9 @@ Levyra is built for lawful use, research, and interoperability, not for piracy o
 
 Streaming, downloading, format conversion, and offline caching are software features. They do not transfer copyright or ownership of third-party media.
 
-You are responsible for making sure you are allowed to use third-party content and for following the terms of the services you choose to use.
+Levyra may cache media temporarily for playback and can save user-requested downloads as standard media files. Neither feature gives you permission to redistribute third-party content.
+
+You are responsible for making sure your use of Levyra complies with applicable law and with the terms of any third-party service you choose to access.
 
 ### Support artists and creators
 
@@ -325,11 +327,15 @@ Levyra does not unlock paid subscriptions or grant access rights offered by thir
 
 You can also support artists directly through licensed streaming services, music purchases, concerts, merchandise, and other official channels.
 
+### Privacy
+
+Levyra does not require a Levyra account and does not include telemetry, analytics, or ads. Network requests go directly to the services used by the features you enable, including optional integrations.
+
 ### Technical interoperability and access restrictions
 
-Levyra includes client-side code for stream resolution, request processing, token handling, and compatibility with external services.
+Levyra includes client-side code for compatibility with external services. It handles things like stream resolution, requests, and tokens so those integrations can work.
 
-Those features are there to keep Levyra working with the services it connects to. They are not meant to bypass access controls, technological protection measures, geographic restrictions, or paid subscription requirements.
+These are interoperability features, not tools for bypassing access controls, geographic restrictions, or paid entitlements.
 
 ### Warranty and third-party availability
 
