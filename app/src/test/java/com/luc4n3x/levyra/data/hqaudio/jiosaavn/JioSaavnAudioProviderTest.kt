@@ -19,7 +19,10 @@ import com.luc4n3x.levyra.data.hqaudio.saavnSong
 import com.luc4n3x.levyra.data.hqaudio.searchBody
 import java.io.IOException
 import java.net.SocketTimeoutException
+import java.util.Base64
 import java.util.concurrent.CopyOnWriteArrayList
+import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlinx.coroutines.CompletableDeferred
@@ -148,11 +151,115 @@ class JioSaavnAudioProviderTest {
     }
 
     @Test
-    fun unavailable320IsNotEvenRequested() {
-        val exchange = streamExchange { tier -> if (tier == 160) validFor(160) else htmlResponse(404) }
-        val stream = (runBlocking { provider(exchange).resolveStream(candidate(duration = 200, offers320 = false)) } as ProviderStreamOutcome.Resolved).stream
+    fun genuine320IsSelectedWhateverTheAdvertisedFlagSays() {
+        listOf(true, false, null).forEach { advertised ->
+            val exchange = ScriptedExchange { request -> if (request.url.endsWith("_320.mp4")) validFor(320) else htmlResponse(404) }
+            val outcome = runBlocking { provider(exchange).resolveStream(localCandidate.copy(offers320 = advertised)) }
+            val stream = (outcome as ProviderStreamOutcome.Resolved).stream
+            assertEquals(AudioQualityTier.KBPS_320, stream.tier)
+            assertEquals("https://aac.saavncdn.com/396/$REAL_MEDIA_STEM" + "_320.mp4", stream.url)
+            assertEquals(0, exchange.authorizations())
+        }
+    }
+
+    @Test
+    fun authorized320IsProbedEvenWhenNotAdvertised() {
+        val exchange = streamExchange(signedResponse = validFor(320)) { htmlResponse(404) }
+        val outcome = runBlocking { provider(exchange).resolveStream(candidate(duration = 200, offers320 = false)) }
+        val stream = (outcome as ProviderStreamOutcome.Resolved).stream
+        assertEquals(signedUrl, stream.url)
+        assertEquals(AudioQualityTier.KBPS_320, stream.tier)
+    }
+
+    @Test
+    fun direct320ThatMeasures160IsRejectedAndTheReal160IsUsed() {
+        val exchange = ScriptedExchange { request ->
+            when {
+                request.url.contains("song.generateAuthToken") -> jsonResponse("{\"auth_url\":false,\"status\":\"success\"}")
+                request.url.endsWith("_320.mp4") -> validFor(320, actualKbps = 160)
+                request.url.endsWith("_160.mp4") -> validFor(160)
+                else -> htmlResponse(404)
+            }
+        }
+        val stream = (runBlocking { provider(exchange).resolveStream(localCandidate) } as ProviderStreamOutcome.Resolved).stream
         assertEquals(AudioQualityTier.KBPS_160, stream.tier)
-        assertFalse(exchange.requests.any { it.url.endsWith("_320.mp4") })
+        assertEquals(160, stream.estimatedKbps)
+        assertTrue(stream.url.endsWith("_160.mp4"))
+    }
+
+    @Test
+    fun direct320BetweenTiersIsKeptWithAnHonestLowerLabel() {
+        val exchange = ScriptedExchange { request -> if (request.url.endsWith("_320.mp4")) validFor(320, actualKbps = 248) else validFor(160) }
+        val stream = (runBlocking { provider(exchange).resolveStream(localCandidate) } as ProviderStreamOutcome.Resolved).stream
+        assertEquals(AudioQualityTier.KBPS_160, stream.tier)
+        assertEquals(248, stream.estimatedKbps)
+        assertEquals(248, stream.deliveredKbps)
+        assertEquals("~248 kbps", stream.qualityLabel)
+        assertTrue(stream.url.endsWith("_320.mp4"))
+        assertEquals(1, exchange.requests.size)
+    }
+
+    @Test
+    fun rejectedDirect320FallsBackThroughAuthorizationThen160Then96() {
+        val signedSameMedia = "https://web.saavncdn.com/396/$REAL_MEDIA_STEM" + "_320.mp4?Expires=4102444800&Signature=s&Key-Pair-Id=k"
+        val authorization = JSONObject().put("auth_url", signedSameMedia).put("status", "success").toString()
+        val failures: List<(ProviderHttpRequest) -> ProviderHttpResponse> = listOf(
+            { htmlResponse(404) },
+            { htmlResponse(403) },
+            { throw IOException("connection reset") },
+            { probeResponse(bytesFor(320, 200), contentType = "text/html", code = 200) },
+            { probeResponse(bytesFor(320, 200), body = ByteArray(64)) },
+            { probeResponse(0L) }
+        )
+        failures.forEach { failed320 ->
+            val exchange = ScriptedExchange { request ->
+                when {
+                    request.url.contains("song.generateAuthToken") -> jsonResponse(authorization)
+                    request.url.startsWith("https://web.saavncdn.com/") -> htmlResponse(403)
+                    request.url.endsWith("_320.mp4") -> failed320(request)
+                    request.url.endsWith("_160.mp4") -> htmlResponse(404)
+                    request.url.endsWith("_96.mp4") -> validFor(96)
+                    else -> htmlResponse(404)
+                }
+            }
+            val stream = (runBlocking { provider(exchange).resolveStream(localCandidate) } as ProviderStreamOutcome.Resolved).stream
+            assertEquals(AudioQualityTier.KBPS_96, stream.tier)
+            val order = exchange.requests.map { request ->
+                when {
+                    request.url.contains("song.generateAuthToken") -> "auth"
+                    request.url.startsWith("https://web.saavncdn.com/") -> "signed"
+                    else -> tierPattern.find(request.url)!!.groupValues[1]
+                }
+            }
+            assertEquals(listOf("320", "auth", "signed", "160", "96"), order)
+        }
+    }
+
+    @Test
+    fun legacyHttpTokenIsResolvedOverHttpsOnTheSameCdn() {
+        val encryptedMedia = encrypt("http://aac.saavncdn.com/396/$REAL_MEDIA_STEM" + "_96.mp4")
+        val exchange = ScriptedExchange { request -> if (request.url.endsWith("_320.mp4")) validFor(320) else htmlResponse(404) }
+        val stream = (runBlocking { provider(exchange).resolveStream(localCandidate.copy(mediaToken = encryptedMedia)) } as ProviderStreamOutcome.Resolved).stream
+        assertEquals("https://aac.saavncdn.com/396/$REAL_MEDIA_STEM" + "_320.mp4", stream.url)
+        assertTrue(exchange.requests.all { it.url.startsWith("https://") })
+    }
+
+    @Test
+    fun decryptedCdnSubdomainIsProbedWithoutInventingAnotherHost() {
+        val encryptedMedia = encrypt("https://c.saavncdn.com/396/$REAL_MEDIA_STEM" + "_96.mp4")
+        val exchange = ScriptedExchange { request -> if (request.url.startsWith("https://c.saavncdn.com/")) validFor(320) else htmlResponse(404) }
+        val stream = (runBlocking { provider(exchange).resolveStream(localCandidate.copy(mediaToken = encryptedMedia)) } as ProviderStreamOutcome.Resolved).stream
+        assertEquals("https://c.saavncdn.com/396/$REAL_MEDIA_STEM" + "_320.mp4", stream.url)
+        assertEquals(1, exchange.requests.size)
+    }
+
+    @Test
+    fun untrustedDecryptedHostIsNeverContacted() {
+        val encryptedMedia = encrypt("https://evil.example/396/$REAL_MEDIA_STEM" + "_96.mp4")
+        val exchange = streamExchange(authorization = "{\"auth_url\":false,\"status\":\"success\"}") { validFor(it) }
+        val outcome = runBlocking { provider(exchange).resolveStream(localCandidate.copy(mediaToken = encryptedMedia)) }
+        assertTrue(outcome is ProviderStreamOutcome.Unavailable)
+        assertTrue(exchange.requests.none { it.url.contains("evil.example") })
     }
 
     @Test
@@ -608,6 +715,12 @@ class JioSaavnAudioProviderTest {
             assertFalse(request.headers.containsKey("Accept-Language"))
             assertEquals("bytes=0-8191", request.headers["Range"])
         }
+    }
+
+    private fun encrypt(plain: String): String {
+        val cipher = Cipher.getInstance("DES/ECB/PKCS5Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec("38346591".toByteArray(Charsets.US_ASCII), "DES"))
+        return Base64.getEncoder().encodeToString(cipher.doFinal(plain.toByteArray(Charsets.UTF_8)))
     }
 
     private companion object {

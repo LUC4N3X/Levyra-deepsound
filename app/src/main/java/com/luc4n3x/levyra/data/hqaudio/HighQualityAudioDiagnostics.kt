@@ -4,6 +4,8 @@ import timber.log.Timber
 
 internal object HighQualityAudioDiagnostics {
     private const val MAX_TEXT = 120
+    private const val MAX_DETAIL_TEXT = 48
+    private const val MAX_REJECTED_DETAILS = 4
 
     fun indiaProfile(providerId: String, operator: String, maskedAddress: String, acceptLanguage: String) {
         Timber.d(
@@ -30,8 +32,26 @@ internal object HighQualityAudioDiagnostics {
         Timber.d("HQ_PROVIDER_CIRCUIT provider=%s state=%s detail=%s", providerId, state, detail)
     }
 
-    fun mediaRoute(providerId: String, providerTrackId: String, route: String) {
-        Timber.d("HQ_PROVIDER_MEDIA_ROUTE provider=%s id=%s route=%s", providerId, providerTrackId, route)
+    fun mediaRoute(providerId: String, providerTrackId: String, route: String, advertised320: Boolean?, host: String) {
+        Timber.d(
+            "HQ_PROVIDER_MEDIA_ROUTE provider=%s id=%s route=%s advertised320=%s host=%s",
+            providerId,
+            providerTrackId,
+            route,
+            advertisedLabel(advertised320),
+            host
+        )
+    }
+
+    fun hydration(providerId: String, providerTrackId: String, outcome: String, advertised320: Boolean?, detail: String) {
+        Timber.d(
+            "HQ_PROVIDER_HYDRATION provider=%s id=%s outcome=%s advertised320=%s detail=%s",
+            providerId,
+            providerTrackId,
+            outcome,
+            advertisedLabel(advertised320),
+            detail.ifBlank { "-" }
+        )
     }
 
     fun mappingRetained(providerId: String, providerTrackId: String, cause: String) {
@@ -59,7 +79,7 @@ internal object HighQualityAudioDiagnostics {
     fun matchAccepted(query: AlternativeTrackQuery, evaluation: AlternativeMatchEvaluation) {
         val candidate = evaluation.candidate
         Timber.d(
-            "HQ_PROVIDER_MATCH_ACCEPTED provider=%s id=%s verdict=%s confidence=%d expectedTitle=\"%s\" providerTitle=\"%s\" expectedArtist=\"%s\" primaryArtist=\"%s\" album=\"%s\" providerAlbum=\"%s\" albumRelation=%s durationDelta=%ds version=%s explicit=%s offers320=%s",
+            "HQ_PROVIDER_MATCH_ACCEPTED provider=%s id=%s verdict=%s confidence=%d expectedTitle=\"%s\" providerTitle=\"%s\" expectedArtist=\"%s\" primaryArtist=\"%s\" album=\"%s\" providerAlbum=\"%s\" albumRelation=%s durationDelta=%ds version=%s explicit=%s advertised320=%s",
             candidate.providerId,
             candidate.providerTrackId,
             evaluation.verdict,
@@ -74,7 +94,7 @@ internal object HighQualityAudioDiagnostics {
             evaluation.durationDeltaSeconds,
             versionLabel(evaluation.versionSignature),
             candidate.explicit,
-            candidate.offers320
+            advertisedLabel(candidate.offers320)
         )
     }
 
@@ -86,29 +106,44 @@ internal object HighQualityAudioDiagnostics {
             .entries
             .joinToString(",") { "${it.key}=${it.value}" }
             .ifBlank { "-" }
+        val closest = selection.evaluations
+            .sortedWith(compareBy<AlternativeMatchEvaluation> { it.rejection != null }.thenByDescending { it.confidence })
+            .take(MAX_REJECTED_DETAILS)
+            .joinToString(";") { evaluation ->
+                val candidate = evaluation.candidate
+                "${candidate.providerTrackId}:${evaluation.rejection ?: evaluation.verdict}:${evaluation.confidence}:" +
+                    "${candidate.durationSeconds}s:${evaluation.albumRelation}:\"${candidate.title.take(MAX_DETAIL_TEXT)}\""
+            }
+            .ifBlank { "-" }
         Timber.d(
-            "HQ_PROVIDER_MATCH_REJECTED provider=%s reason=%s candidates=%d expectedTitle=\"%s\" expectedArtist=\"%s\" breakdown=%s",
+            "HQ_PROVIDER_MATCH_REJECTED provider=%s reason=%s candidates=%d expectedTitle=\"%s\" expectedArtist=\"%s\" expectedAlbum=\"%s\" expectedDuration=%ds breakdown=%s closest=%s",
             providerId,
             selection.reason,
             selection.evaluations.size,
             query.title.take(MAX_TEXT),
             query.artist.take(MAX_TEXT),
-            breakdown
+            query.album.take(MAX_TEXT),
+            query.durationMs / 1_000L,
+            breakdown,
+            closest
         )
     }
 
     fun streamValid(
         providerId: String,
         providerTrackId: String,
-        tier: AudioQualityTier,
+        route: String,
+        requestedTier: AudioQualityTier,
         host: String,
         validation: StreamValidation.Valid
     ) {
         Timber.d(
-            "HQ_PROVIDER_STREAM_VALID provider=%s id=%s quality=%dkbps estimated=%dkbps mime=%s container=%s codec=%s bytes=%d host=%s",
+            "HQ_PROVIDER_STREAM_VALID provider=%s id=%s route=%s requested=%dkbps verified=%dkbps estimated=%dkbps mime=%s container=%s codec=%s bytes=%d host=%s",
             providerId,
             providerTrackId,
-            tier.kbps,
+            route,
+            requestedTier.kbps,
+            validation.tier.kbps,
             validation.estimatedKbps,
             validation.mimeType,
             validation.container,
@@ -121,29 +156,32 @@ internal object HighQualityAudioDiagnostics {
     fun streamInvalid(
         providerId: String,
         providerTrackId: String,
-        tier: AudioQualityTier,
+        route: String,
+        requestedTier: AudioQualityTier,
         host: String,
-        rejection: StreamRejection,
-        statusCode: Int
+        validation: StreamValidation.Invalid
     ) {
         Timber.d(
-            "HQ_PROVIDER_STREAM_INVALID provider=%s id=%s quality=%dkbps reason=%s status=%d host=%s",
+            "HQ_PROVIDER_STREAM_INVALID provider=%s id=%s route=%s requested=%dkbps reason=%s status=%d estimated=%dkbps host=%s",
             providerId,
             providerTrackId,
-            tier.kbps,
-            rejection,
-            statusCode,
+            route,
+            requestedTier.kbps,
+            validation.rejection,
+            validation.statusCode,
+            validation.estimatedKbps,
             host
         )
     }
 
     fun selected(stream: ResolvedHighQualityStream, evaluation: AlternativeMatchEvaluation, waitedMs: Long) {
         Timber.d(
-            "HQ_PROVIDER_SELECTED provider=%s id=%s quality=%dkbps estimated=%dkbps mime=%s host=%s verdict=%s confidence=%d waitedMs=%d",
+            "HQ_PROVIDER_SELECTED provider=%s id=%s tier=%dkbps estimated=%dkbps label=\"%s\" mime=%s host=%s verdict=%s confidence=%d waitedMs=%d",
             stream.providerId,
             stream.providerTrackId,
             stream.tier.kbps,
             stream.estimatedKbps,
+            stream.qualityLabel,
             stream.mimeType,
             stream.host,
             evaluation.verdict,
@@ -163,6 +201,8 @@ internal object HighQualityAudioDiagnostics {
 
     fun hostOf(url: String): String =
         url.substringAfter("://", "").substringBefore('/').substringBefore('?').ifBlank { "-" }
+
+    private fun advertisedLabel(advertised320: Boolean?): String = advertised320?.toString() ?: "missing"
 
     private fun versionLabel(signature: Set<String>): String =
         if (signature.isEmpty()) "ORIGINAL" else signature.sorted().joinToString("+")

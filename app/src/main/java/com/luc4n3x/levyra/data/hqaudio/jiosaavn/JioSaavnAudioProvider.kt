@@ -84,43 +84,42 @@ internal class JioSaavnAudioProvider(
 
     override suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome {
         if (candidate.mediaToken.isBlank()) return ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
-        val tiers = tiersFor(candidate)
         val rejections = mutableListOf<StreamRejection>()
         val probed = mutableSetOf<String>()
-        val local = JioSaavnMediaLocation.fromMediaToken(candidate.mediaToken)
-        if (local != null) {
-            HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_LOCAL)
-            probeTiers(candidate, local, tiers.take(1), rejections, probed)?.let { return it }
+        val direct = JioSaavnMediaLocation.fromMediaToken(candidate.mediaToken)
+        if (direct != null) {
+            HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_DIRECT, candidate.offers320, direct.openHost)
+            probeTiers(candidate, direct, QUALITY_ORDER.take(1), rejections, probed)?.let { return it }
         }
-        HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_AUTHORIZED)
+        HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_AUTHORIZED, candidate.offers320, "-")
         val authorizeUrl = JioSaavnEndpoints.authorizeMedia(candidate.mediaToken, AudioQualityTier.KBPS_320)
         val authorization = when (val result = api(authorizeUrl, authorizationCircuitBreaker)) {
             is ApiResult.Success -> JioSaavnPayloadParser.mediaAuthorization(result.body)
             is ApiResult.Failure ->
-                return localFallback(candidate, local, tiers, rejections, probed) ?: ProviderStreamOutcome.Failed(result.failure)
+                return directFallback(candidate, direct, rejections, probed) ?: ProviderStreamOutcome.Failed(result.failure)
         }
         val location = when (authorization) {
             is JioSaavnMediaAuthorization.Granted -> JioSaavnMediaLocation.parse(authorization.url)
-                ?: return localFallback(candidate, local, tiers, rejections, probed)
+                ?: return directFallback(candidate, direct, rejections, probed)
                     ?: ProviderStreamOutcome.Failed(ProviderFailure.MALFORMED_RESPONSE)
             JioSaavnMediaAuthorization.Denied ->
-                return localFallback(candidate, local, tiers, rejections, probed)
+                return directFallback(candidate, direct, rejections, probed)
                     ?: ProviderStreamOutcome.Unavailable(rejections + StreamRejection.NO_MEDIA)
             JioSaavnMediaAuthorization.Malformed ->
-                return localFallback(candidate, local, tiers, rejections, probed)
+                return directFallback(candidate, direct, rejections, probed)
                     ?: ProviderStreamOutcome.Failed(ProviderFailure.MALFORMED_RESPONSE)
         }
-        return probeTiers(candidate, location, tiers, rejections, probed)
+        return probeTiers(candidate, location, QUALITY_ORDER, rejections, probed)
+            ?: directFallback(candidate, direct, rejections, probed)
             ?: ProviderStreamOutcome.Unavailable(rejections)
     }
 
-    private suspend fun localFallback(
+    private suspend fun directFallback(
         candidate: AlternativeTrackCandidate,
-        local: JioSaavnMediaLocation?,
-        tiers: List<AudioQualityTier>,
+        direct: JioSaavnMediaLocation?,
         rejections: MutableList<StreamRejection>,
         probed: MutableSet<String>
-    ): ProviderStreamOutcome? = local?.let { probeTiers(candidate, it, tiers.drop(1), rejections, probed) }
+    ): ProviderStreamOutcome? = direct?.let { probeTiers(candidate, it, QUALITY_ORDER.drop(1), rejections, probed) }
 
     private suspend fun probeTiers(
         candidate: AlternativeTrackCandidate,
@@ -134,15 +133,16 @@ internal class JioSaavnAudioProvider(
                 if (!probed.add(url)) continue
                 currentCoroutineContext().ensureActive()
                 val host = HighQualityAudioDiagnostics.hostOf(url)
+                val route = routeOf(location, url)
                 when (val validation = probe(url, tier, candidate.durationSeconds)) {
                     is StreamValidation.Valid -> {
-                        HighQualityAudioDiagnostics.streamValid(id, candidate.providerTrackId, tier, host, validation)
+                        HighQualityAudioDiagnostics.streamValid(id, candidate.providerTrackId, route, tier, host, validation)
                         return ProviderStreamOutcome.Resolved(
                             ResolvedHighQualityStream(
                                 providerId = id,
                                 providerTrackId = candidate.providerTrackId,
                                 url = url,
-                                tier = tier,
+                                tier = validation.tier,
                                 mimeType = validation.mimeType,
                                 container = validation.container,
                                 codec = validation.codec,
@@ -154,14 +154,7 @@ internal class JioSaavnAudioProvider(
                     }
                     is StreamValidation.Invalid -> {
                         rejections += validation.rejection
-                        HighQualityAudioDiagnostics.streamInvalid(
-                            id,
-                            candidate.providerTrackId,
-                            tier,
-                            host,
-                            validation.rejection,
-                            validation.statusCode
-                        )
+                        HighQualityAudioDiagnostics.streamInvalid(id, candidate.providerTrackId, route, tier, host, validation)
                         if (url == location.authorizedUrl && validation.statusCode == HTTP_FORBIDDEN) {
                             authorizedCdnRejectedUntilMs = clock() + AUTHORIZED_CDN_BACKOFF_MS
                         }
@@ -172,12 +165,11 @@ internal class JioSaavnAudioProvider(
         return null
     }
 
-    private fun tiersFor(candidate: AlternativeTrackCandidate): List<AudioQualityTier> =
-        if (candidate.offers320) {
-            listOf(AudioQualityTier.KBPS_320, AudioQualityTier.KBPS_160, AudioQualityTier.KBPS_96)
-        } else {
-            listOf(AudioQualityTier.KBPS_160, AudioQualityTier.KBPS_96)
-        }
+    private fun routeOf(location: JioSaavnMediaLocation, url: String): String = when {
+        location.authorizedUrl.isEmpty() -> ROUTE_DIRECT
+        url == location.authorizedUrl -> ROUTE_AUTHORIZED
+        else -> ROUTE_AUTHORIZED_OPEN
+    }
 
     private fun urlsFor(location: JioSaavnMediaLocation, tier: AudioQualityTier): List<String> = buildList {
         if (location.authorizedTier == tier && clock() >= authorizedCdnRejectedUntilMs) add(location.authorizedUrl)
@@ -296,8 +288,10 @@ internal class JioSaavnAudioProvider(
         const val BLOCK_COOLDOWN_MS = 10L * 60L * 1_000L
         const val CATALOG_CIRCUIT = "jiosaavn-catalog"
         const val AUTHORIZATION_CIRCUIT = "jiosaavn-authorization"
-        private const val ROUTE_LOCAL = "LOCAL_TOKEN"
+        private val QUALITY_ORDER = listOf(AudioQualityTier.KBPS_320, AudioQualityTier.KBPS_160, AudioQualityTier.KBPS_96)
+        private const val ROUTE_DIRECT = "DIRECT_DECRYPTED"
         private const val ROUTE_AUTHORIZED = "AUTHORIZED"
+        private const val ROUTE_AUTHORIZED_OPEN = "AUTHORIZED_OPEN"
         private const val HTTP_FORBIDDEN = 403
         private const val HTTP_NOT_FOUND = 404
         private const val HTTP_TOO_MANY_REQUESTS = 429

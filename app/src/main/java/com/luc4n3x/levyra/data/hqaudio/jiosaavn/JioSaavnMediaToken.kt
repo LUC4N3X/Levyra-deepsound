@@ -16,6 +16,6 @@ internal object JioSaavnMediaToken {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, key)
             String(cipher.doFinal(Base64.getDecoder().decode(trimmed)), Charsets.UTF_8)
-        }.getOrNull()?.takeIf { it.startsWith("https://") }
+        }.getOrNull()?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
     }
 }
