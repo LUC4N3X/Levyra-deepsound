@@ -38,7 +38,7 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2"><img src="docs/assets/levyra-windows-download.svg" width="200" alt="Download Levyra for Windows"></a>
 </p>
 
-<p align="center">🌍 <b>Levyra speaks 36 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
+<p align="center">🌍 <b>Levyra speaks 37 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
 <p align="center">
   <code>100% Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>AndroidX Media3</code> &nbsp;·&nbsp; <code>libvlc</code> &nbsp;·&nbsp; <code>Zero Tracking</code>
@@ -227,9 +227,13 @@ Microphone access is requested only when you trigger song identification. Custom
 
 ## ✦ Translations
 
-Levyra is translated into 36 languages, with community translations maintained on Weblate.
+Levyra is translated into 37 languages, including Estonian (Eesti), with community translations maintained on Weblate.
 
 <div align="center">
+
+<a href="https://hosted.weblate.org/engage/levyra/"><img src="https://hosted.weblate.org/widgets/levyra/-/svg-badge.svg" alt="Translation status"></a>
+
+<br>
 
 <a href="https://hosted.weblate.org/engage/levyra/">
   <picture>
