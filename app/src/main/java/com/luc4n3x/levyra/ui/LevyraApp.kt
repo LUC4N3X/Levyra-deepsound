@@ -13061,7 +13061,11 @@ private fun ListeningPickTile(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee(
+                    iterations = Int.MAX_VALUE,
+                    repeatDelayMillis = LISTENING_PICK_MARQUEE_DELAY_MS
+                )
             )
             Text(
                 text = track.artist,
@@ -13106,6 +13110,7 @@ private fun ListeningPickTile(
 }
 
 private const val LISTENING_PICKS_LIMIT = 6
+private const val LISTENING_PICK_MARQUEE_DELAY_MS = 3_200
 
 @Composable
 private fun SearchQueryChips(
