@@ -821,7 +821,7 @@ private fun ParametricValueEditor(
                 },
                 singleLine = true,
                 isError = error != null,
-                suffix = if (unit.isNotEmpty()) ({ Text(unit, fontSize = 12.sp, color = LevyraMuted) }) else null,
+                suffix = unitSuffix(unit),
                 textStyle = TextStyle(color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { commit() }),
@@ -848,6 +848,9 @@ private fun ParametricValueEditor(
         )
     }
 }
+
+private fun unitSuffix(unit: String): (@Composable () -> Unit)? =
+    if (unit.isEmpty()) null else { { Text(unit, fontSize = 12.sp, color = LevyraMuted) } }
 
 @Composable
 private fun parametricFieldColors() = OutlinedTextFieldDefaults.colors(

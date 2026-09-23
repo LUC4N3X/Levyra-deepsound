@@ -4085,7 +4085,6 @@ private fun AlbumHeader(
     onShare: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     var descriptionExpanded by rememberSaveable(album.browseId, album.title) { mutableStateOf(false) }
     val meta = remember(album.year, trackCount, strings) {
         listOf(album.year, if (trackCount > 0) strings.formatTrackCount(trackCount) else "")
@@ -4176,26 +4175,15 @@ private fun AlbumHeader(
             )
         }
         Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (trackCount > 0) {
-                AlbumQuietAction(icon = Icons.Rounded.Download, label = strings.offline, stage = stage, onClick = onDownload)
-            }
-            AlbumQuietAction(icon = Icons.Rounded.Share, label = strings.share, stage = stage, onClick = onShare)
-            AlbumPinAction(
-                pinned = isPinnedToHome,
-                enabled = isPinnedToHome || !homePinsFull,
-                label = when {
-                    isPinnedToHome -> speedDialCopy.removeFromHome
-                    homePinsFull -> speedDialCopy.homeFull
-                    else -> speedDialCopy.addToHome
-                },
-                stage = stage,
-                onClick = onTogglePinToHome
-            )
-        }
+        AlbumQuietActions(
+            showDownload = trackCount > 0,
+            stage = stage,
+            isPinnedToHome = isPinnedToHome,
+            homePinsFull = homePinsFull,
+            onDownload = onDownload,
+            onShare = onShare,
+            onTogglePinToHome = onTogglePinToHome
+        )
         if (description.isNotBlank()) {
             Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
             Column(
@@ -4388,6 +4376,40 @@ private fun AlbumQuietAction(
             letterSpacing = (-0.2).sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun AlbumQuietActions(
+    showDownload: Boolean,
+    stage: AlbumStageColors,
+    isPinnedToHome: Boolean,
+    homePinsFull: Boolean,
+    onDownload: () -> Unit,
+    onShare: () -> Unit,
+    onTogglePinToHome: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val speedDialCopy = remember(strings) { strings.speedDialCopy() }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showDownload) {
+            AlbumQuietAction(icon = Icons.Rounded.Download, label = strings.offline, stage = stage, onClick = onDownload)
+        }
+        AlbumQuietAction(icon = Icons.Rounded.Share, label = strings.share, stage = stage, onClick = onShare)
+        AlbumPinAction(
+            pinned = isPinnedToHome,
+            enabled = isPinnedToHome || !homePinsFull,
+            label = when {
+                isPinnedToHome -> speedDialCopy.removeFromHome
+                homePinsFull -> speedDialCopy.homeFull
+                else -> speedDialCopy.addToHome
+            },
+            stage = stage,
+            onClick = onTogglePinToHome
         )
     }
 }

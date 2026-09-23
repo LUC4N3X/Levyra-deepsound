@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -125,27 +128,7 @@ internal fun HomeSpeedDialStrip(
     var menuKey by remember { mutableStateOf<String?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.PushPin,
-                contentDescription = null,
-                tint = LevyraMuted.copy(alpha = 0.8f),
-                modifier = Modifier.size(13.dp)
-            )
-            Text(
-                text = copy.title,
-                color = LevyraMuted,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.1.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        SpeedDialHeader(copy.title)
         LazyRow(
             state = listState,
             contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
@@ -156,26 +139,9 @@ internal fun HomeSpeedDialStrip(
                 val dragging = reorder.draggingKey == pin.key
                 val index = displayedPins.indexOf(pin)
                 val moveBy: (Int) -> Unit = { step ->
-                    val keys = displayedPins.map { it.key }.toMutableList()
-                    val target = (index + step).coerceIn(0, keys.lastIndex)
-                    if (index >= 0 && target != index) {
-                        keys.add(target, keys.removeAt(index))
-                        latestOnReorder(keys)
-                    }
+                    movedSpeedDialKeys(displayedPins.map { it.key }, index, step)?.let(latestOnReorder)
                 }
-                Box(
-                    modifier = Modifier
-                        .zIndex(if (dragging) 1f else 0f)
-                        .animateItem(
-                            fadeInSpec = if (animationsEnabled) spring(stiffness = 600f) else null,
-                            placementSpec = if (animationsEnabled && !dragging) {
-                                spring(dampingRatio = 0.86f, stiffness = 520f)
-                            } else {
-                                null
-                            },
-                            fadeOutSpec = if (animationsEnabled) spring(stiffness = 600f) else null
-                        )
-                ) {
+                Box(modifier = speedDialItemModifier(animationsEnabled, dragging)) {
                     SpeedDialTile(
                         pin = pin,
                         copy = copy,
@@ -183,10 +149,7 @@ internal fun HomeSpeedDialStrip(
                         isPlaying = isPlaying,
                         isResolving = isResolving,
                         dragging = dragging,
-                        dragOffset = {
-                            val logical = if (reorder.draggingKey == pin.key) reorder.dragOffset else 0f
-                            if (rtl) -logical else logical
-                        },
+                        dragOffset = { reorder.screenOffsetFor(pin.key, rtl) },
                         animationsEnabled = animationsEnabled,
                         canMoveEarlier = index > 0,
                         canMoveLater = index < displayedPins.lastIndex,
@@ -199,44 +162,101 @@ internal fun HomeSpeedDialStrip(
                             reorder.start(pin.key, displayedPins.map { it.key })
                         },
                         onDrag = { dx ->
-                            val logicalDx = if (rtl) -dx else dx
-                            if (reorder.drag(logicalDx, edgePx, autoScrollStepPx)) haptics.perform(LevyraHapticAction.Reorder)
+                            if (reorder.dragOnScreen(dx, rtl, edgePx, autoScrollStepPx)) haptics.perform(LevyraHapticAction.Reorder)
                         },
                         onDrop = { moved, completed ->
-                            val finalOrder = reorder.finish(pin.key, completed)
-                            when {
-                                !completed -> Unit
-                                moved -> if (finalOrder != null && finalOrder != pinKeys) latestOnReorder(finalOrder)
-                                else -> menuKey = pin.key
-                            }
+                            reorder.orderToPersist(pin.key, moved, completed, pinKeys)?.let(latestOnReorder)
+                            if (completed && !moved) menuKey = pin.key
                         }
                     )
-                    DropdownMenu(
+                    SpeedDialPinMenu(
                         expanded = menuKey == pin.key,
-                        onDismissRequest = { menuKey = null }
-                    ) {
-                        pin.track?.let { track ->
-                            DropdownMenuItem(
-                                text = { Text(strings.songOptions) },
-                                leadingIcon = { Icon(Icons.Rounded.MoreHoriz, contentDescription = null) },
-                                onClick = {
-                                    menuKey = null
-                                    onTrackActions(track)
-                                }
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text(copy.removeFromHome) },
-                            leadingIcon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
-                            onClick = {
-                                menuKey = null
-                                onRemove(pin.key)
-                            }
-                        )
-                    }
+                        pin = pin,
+                        songOptionsLabel = strings.songOptions,
+                        removeLabel = copy.removeFromHome,
+                        onDismiss = { menuKey = null },
+                        onTrackActions = onTrackActions,
+                        onRemove = { onRemove(pin.key) }
+                    )
                 }
             }
         }
+    }
+}
+
+private fun movedSpeedDialKeys(keys: List<String>, index: Int, step: Int): List<String>? {
+    if (index !in keys.indices) return null
+    val target = (index + step).coerceIn(0, keys.lastIndex)
+    if (target == index) return null
+    return keys.toMutableList().apply { add(target, removeAt(index)) }
+}
+
+@Composable
+private fun SpeedDialHeader(title: String) {
+    Row(
+        modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.PushPin,
+            contentDescription = null,
+            tint = LevyraMuted.copy(alpha = 0.8f),
+            modifier = Modifier.size(13.dp)
+        )
+        Text(
+            text = title,
+            color = LevyraMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.1.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+private fun LazyItemScope.speedDialItemModifier(animated: Boolean, dragging: Boolean): Modifier {
+    val fade = if (animated) spring<Float>(stiffness = 600f) else null
+    val placement = if (animated && !dragging) {
+        spring(dampingRatio = 0.86f, stiffness = 520f, visibilityThreshold = IntOffset.VisibilityThreshold)
+    } else {
+        null
+    }
+    return Modifier
+        .zIndex(if (dragging) 1f else 0f)
+        .animateItem(fadeInSpec = fade, placementSpec = placement, fadeOutSpec = fade)
+}
+
+@Composable
+private fun SpeedDialPinMenu(
+    expanded: Boolean,
+    pin: SpeedDialPin,
+    songOptionsLabel: String,
+    removeLabel: String,
+    onDismiss: () -> Unit,
+    onTrackActions: (Track) -> Unit,
+    onRemove: () -> Unit
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        pin.track?.let { track ->
+            DropdownMenuItem(
+                text = { Text(songOptionsLabel) },
+                leadingIcon = { Icon(Icons.Rounded.MoreHoriz, contentDescription = null) },
+                onClick = {
+                    onDismiss()
+                    onTrackActions(track)
+                }
+            )
+        }
+        DropdownMenuItem(
+            text = { Text(removeLabel) },
+            leadingIcon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
+            onClick = {
+                onDismiss()
+                onRemove()
+            }
+        )
     }
 }
 
@@ -246,8 +266,6 @@ private class SpeedDialReorderState(private val listState: LazyListState) {
     var draggingKey by mutableStateOf<String?>(null)
         private set
     private val offsetState = mutableFloatStateOf(0f)
-    val dragOffset: Float
-        get() = offsetState.floatValue
 
     fun displayedKeys(pinKeys: List<String>): List<String> {
         val local = localOrder ?: return pinKeys
@@ -298,6 +316,19 @@ private class SpeedDialReorderState(private val listState: LazyListState) {
         return swapped
     }
 
+    fun screenOffsetFor(key: String, rtl: Boolean): Float {
+        val logical = if (draggingKey == key) offsetState.floatValue else 0f
+        return if (rtl) -logical else logical
+    }
+
+    fun dragOnScreen(deltaX: Float, rtl: Boolean, edgePx: Float, stepPx: Float): Boolean =
+        drag(if (rtl) -deltaX else deltaX, edgePx, stepPx)
+
+    fun orderToPersist(key: String, moved: Boolean, completed: Boolean, persisted: List<String>): List<String>? {
+        val finalOrder = finish(key, completed) ?: return null
+        return finalOrder.takeIf { completed && moved && it != persisted }
+    }
+
     fun finish(key: String, completed: Boolean): List<String>? {
         if (draggingKey != key) return null
         draggingKey = null
@@ -346,12 +377,7 @@ private fun SpeedDialTile(
     val latestLift by rememberUpdatedState(onLift)
     val latestDrag by rememberUpdatedState(onDrag)
     val latestDrop by rememberUpdatedState(onDrop)
-    val kindLabel = when (pin.kind) {
-        SpeedDialKind.SONG -> copy.song
-        SpeedDialKind.ALBUM -> copy.album
-        SpeedDialKind.ARTIST -> copy.artist
-        SpeedDialKind.PLAYLIST -> copy.playlist
-    }
+    val kindLabel = pin.kind.label(copy)
     val actions = buildList {
         if (canMoveEarlier) add(CustomAccessibilityAction(copy.moveEarlier) { onMoveEarlier(); true })
         if (canMoveLater) add(CustomAccessibilityAction(copy.moveLater) { onMoveLater(); true })
@@ -368,86 +394,24 @@ private fun SpeedDialTile(
                 onLongClick(label = copy.reorderHint, action = null)
                 customActions = actions
             }
-            .pointerInput(pin.key) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    pressed = true
-                    val longPress = awaitLongPressOrCancellation(down.id)
-                    if (longPress == null) {
-                        pressed = false
-                        val up = currentEvent.changes.firstOrNull { it.id == down.id }
-                        if (up != null && up.changedToUp() && !up.isConsumed) {
-                            up.consume()
-                            latestOpen()
-                        }
-                        return@awaitEachGesture
-                    }
-                    latestLift()
-                    var travel = 0f
-                    var completed = false
-                    try {
-                        completed = drag(longPress.id) { change ->
-                            val dx = change.positionChange().x
-                            travel += abs(dx)
-                            latestDrag(dx)
-                            change.consume()
-                        }
-                    } finally {
-                        pressed = false
-                        latestDrop(travel > viewConfiguration.touchSlop, completed)
-                    }
-                }
-            },
+            .speedDialGestures(
+                key = pin.key,
+                onPressed = { pressed = it },
+                onOpen = { latestOpen() },
+                onLift = { latestLift() },
+                onDrag = { latestDrag(it) },
+                onDrop = { moved, completed -> latestDrop(moved, completed) }
+            ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(SpeedDialTileSize)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    this.shape = shape
-                    clip = true
-                    shadowElevation = if (dragging) 10.dp.toPx() else 0f
-                }
-                .background(LevyraAdaptiveChip),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = pin.kind.fallbackIcon(),
-                contentDescription = null,
-                tint = LevyraMuted.copy(alpha = 0.7f),
-                modifier = Modifier.size(24.dp)
-            )
-            val track = pin.track
-            if (track != null) {
-                CoverImage(track, Modifier.fillMaxSize())
-            } else if (pin.artworkUrl.isNotBlank()) {
-                StableRemoteArtwork(
-                    url = pin.artworkUrl,
-                    contentDescription = pin.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(shape)
-                )
-            }
-            if (isCurrent) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(5.dp)
-                        .size(20.dp)
-                        .background(Color.Black.copy(alpha = 0.62f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    ActiveTrackEqualizer(
-                        color = LevyraCyan,
-                        isPlaying = isPlaying && !isResolving,
-                        width = 10.dp,
-                        height = 8.dp
-                    )
-                }
-            }
-        }
+        SpeedDialArtwork(
+            pin = pin,
+            shape = shape,
+            scale = { scale },
+            dragging = dragging,
+            isCurrent = isCurrent,
+            isPlaying = isPlaying && !isResolving
+        )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = pin.title,
@@ -461,6 +425,110 @@ private fun SpeedDialTile(
             modifier = Modifier.fillMaxWidth()
         )
     }
+}
+
+@Composable
+private fun SpeedDialArtwork(
+    pin: SpeedDialPin,
+    shape: Shape,
+    scale: () -> Float,
+    dragging: Boolean,
+    isCurrent: Boolean,
+    isPlaying: Boolean
+) {
+    Box(
+        modifier = Modifier
+            .size(SpeedDialTileSize)
+            .graphicsLayer {
+                scaleX = scale()
+                scaleY = scale()
+                this.shape = shape
+                clip = true
+                shadowElevation = if (dragging) 10.dp.toPx() else 0f
+            }
+            .background(LevyraAdaptiveChip),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = pin.kind.fallbackIcon(),
+            contentDescription = null,
+            tint = LevyraMuted.copy(alpha = 0.7f),
+            modifier = Modifier.size(24.dp)
+        )
+        val track = pin.track
+        if (track != null) {
+            CoverImage(track, Modifier.fillMaxSize())
+        } else if (pin.artworkUrl.isNotBlank()) {
+            StableRemoteArtwork(
+                url = pin.artworkUrl,
+                contentDescription = pin.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(shape)
+            )
+        }
+        if (isCurrent) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(5.dp)
+                    .size(20.dp)
+                    .background(Color.Black.copy(alpha = 0.62f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                ActiveTrackEqualizer(
+                    color = LevyraCyan,
+                    isPlaying = isPlaying,
+                    width = 10.dp,
+                    height = 8.dp
+                )
+            }
+        }
+    }
+}
+
+private fun Modifier.speedDialGestures(
+    key: String,
+    onPressed: (Boolean) -> Unit,
+    onOpen: () -> Unit,
+    onLift: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDrop: (moved: Boolean, completed: Boolean) -> Unit
+): Modifier = pointerInput(key) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        onPressed(true)
+        val longPress = awaitLongPressOrCancellation(down.id)
+        if (longPress == null) {
+            onPressed(false)
+            val up = currentEvent.changes.firstOrNull { it.id == down.id }
+            if (up != null && up.changedToUp() && !up.isConsumed) {
+                up.consume()
+                onOpen()
+            }
+            return@awaitEachGesture
+        }
+        onLift()
+        var travel = 0f
+        var completed = false
+        try {
+            completed = drag(longPress.id) { change ->
+                val dx = change.positionChange().x
+                travel += abs(dx)
+                onDrag(dx)
+                change.consume()
+            }
+        } finally {
+            onPressed(false)
+            onDrop(travel > viewConfiguration.touchSlop, completed)
+        }
+    }
+}
+
+private fun SpeedDialKind.label(copy: SpeedDialCopy): String = when (this) {
+    SpeedDialKind.SONG -> copy.song
+    SpeedDialKind.ALBUM -> copy.album
+    SpeedDialKind.ARTIST -> copy.artist
+    SpeedDialKind.PLAYLIST -> copy.playlist
 }
 
 private fun SpeedDialKind.fallbackIcon(): ImageVector = when (this) {
