@@ -4002,6 +4002,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setPreferredAudioLanguage(value: String) {
         val normalized = AudioLanguageIntelligence.normalizeLanguage(value)
+        if (_state.value.preferredAudioLanguage == normalized) return
         preferences.setPreferredAudioLanguage(normalized)
         resolver.setPreferredAudioLanguage(normalized)
         _state.update { it.copy(preferredAudioLanguage = normalized) }

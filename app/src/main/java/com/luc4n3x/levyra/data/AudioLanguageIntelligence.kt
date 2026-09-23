@@ -75,9 +75,11 @@ object AudioLanguageIntelligence {
         return null
     }
 
+    private val XTAGS_REGEX = Regex("(?:[?&])xtags=([^&]+)")
+
     fun extractXtagsFromUrl(url: String): String {
         if (url.isBlank()) return ""
-        return Regex("(?:[?&])xtags=([^&]+)").find(url)?.groupValues?.getOrNull(1).orEmpty()
+        return XTAGS_REGEX.find(url)?.groupValues?.getOrNull(1).orEmpty()
     }
 
     private fun isOriginalDisplayName(displayName: String): Boolean {

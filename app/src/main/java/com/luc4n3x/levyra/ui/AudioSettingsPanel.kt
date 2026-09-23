@@ -260,19 +260,24 @@ internal fun AudioSettingsPanel(
                 }
                 item {
                     AudioLanguageCard(
-                        title = if (strings.code == "it") "Lingua Traccia Audio" else "Audio Track Language",
-                        description = if (strings.code == "it") "Seleziona la lingua preferita o mantieni l'audio originale YouTube." else "Select preferred audio track language or keep original YouTube audio.",
+                        title = strings.audioLanguageTitle,
+                        description = strings.audioLanguageSubtitle,
                         selected = preferredAudioLanguage,
-                        options = listOf(
-                            "" to if (strings.code == "it") "Originale / Predefinito" else "Original / Default",
-                            "en" to "🇬🇧 English",
-                            "it" to "🇮🇹 Italiano",
-                            "es" to "🇪🇸 Español",
-                            "fr" to "🇫🇷 Français",
-                            "de" to "🇩🇪 Deutsch",
-                            "ja" to "🇯🇵 日本語",
-                            "pt" to "🇵🇹 Português"
-                        ),
+                        options = remember(strings.audioLanguageOriginalDefault) {
+                            listOf(
+                                "" to strings.audioLanguageOriginalDefault,
+                                "en" to "🇬🇧 English",
+                                "it" to "🇮🇹 Italiano",
+                                "es" to "🇪🇸 Español",
+                                "fr" to "🇫🇷 Français",
+                                "de" to "🇩🇪 Deutsch",
+                                "pt" to "🇵🇹 Português",
+                                "ja" to "🇯🇵 日本語",
+                                "ko" to "🇰🇷 한국어",
+                                "ru" to "🇷🇺 Русский",
+                                "hi" to "🇮🇳 हिन्दी"
+                            )
+                        },
                         onSelect = onPreferredAudioLanguage
                     )
                 }
