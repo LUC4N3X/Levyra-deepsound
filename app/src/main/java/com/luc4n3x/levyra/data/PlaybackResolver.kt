@@ -990,36 +990,22 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
-        var requestTrack = track
-        while (true) {
-            val (_, languageRevision) = preferredAudioLanguageSnapshot()
-            val resolved = try {
-                val alternativeQuery = highQualityPlayback
-                    .queryFor(requestTrack, isVideoMode, selectedAudioQuality)
-                    ?.takeIf { hasInternetCapableNetwork() }
-                if (alternativeQuery == null) {
+        val resolved = resolveWithLanguageRevisionRetry(
+            originalTrack = track,
+            acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
+        ) { requestTrack, _ ->
+            val alternativeQuery = highQualityPlayback
+                .queryFor(requestTrack, isVideoMode, selectedAudioQuality)
+                ?.takeIf { hasInternetCapableNetwork() }
+            if (alternativeQuery == null) {
+                resolveForPlayback(requestTrack, isVideoMode)
+            } else {
+                highQualityPlayback.resolve(requestTrack, alternativeQuery, ::basePlaybackProvenance) {
                     resolveForPlayback(requestTrack, isVideoMode)
-                } else {
-                    highQualityPlayback.resolve(requestTrack, alternativeQuery, ::basePlaybackProvenance) {
-                        resolveForPlayback(requestTrack, isVideoMode)
-                    }
                 }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                if (languageRevision != audioLanguageRevision.get()) {
-                    requestTrack = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
-                    continue
-                }
-                throw error
             }
-            if (resolved.playbackManifest?.alternativeSource != null ||
-                languageRevision == audioLanguageRevision.get()
-            ) {
-                return preserveEditorialArtwork(track, resolved)
-            }
-            requestTrack = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
         }
+        return preserveEditorialArtwork(track, resolved)
     }
 
     private suspend fun resolveForPlayback(track: Track, isVideoMode: Boolean): Track = resolveInternal(
@@ -1034,46 +1020,55 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
-        var requestTrack = track
+        val resolved = resolveWithLanguageRevisionRetry(track) { requestTrack, preferredLanguage ->
+            val reel = if (preferredLanguage.isBlank()) {
+                runCatchingPreservingCancellation {
+                    resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))
+                }.onFailure { error ->
+                    Timber.d(error, "Offline Android Reel primary unavailable")
+                }.getOrNull()
+            } else {
+                null
+            }
+            val reelManifest = reel?.playbackManifest
+            if (reel != null && reelManifest != null && supportsOfflineExport(reelManifest)) {
+                reel
+            } else {
+                resolveInternal(
+                    track = requestTrack,
+                    isVideoMode = false,
+                    timeoutMs = offlineResolveTimeoutMs,
+                    preferMp4Audio = true,
+                    requestKind = "offline",
+                    audioQuality = quality,
+                    reuseProvidedStream = audioQualityOverride == null
+                )
+            }
+        }
+        return preserveEditorialArtwork(track, resolved)
+    }
+
+    private suspend fun resolveWithLanguageRevisionRetry(
+        originalTrack: Track,
+        acceptAcrossLanguageChange: (Track) -> Boolean = { false },
+        attempt: suspend (Track, String) -> Track
+    ): Track {
+        var requestTrack = originalTrack
         while (true) {
             val (preferredLanguage, languageRevision) = preferredAudioLanguageSnapshot()
             val resolved = try {
-                val reel = if (preferredLanguage.isBlank()) {
-                    runCatchingPreservingCancellation {
-                        resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))
-                    }.onFailure { error ->
-                        Timber.d(error, "Offline Android Reel primary unavailable")
-                    }.getOrNull()
-                } else {
-                    null
-                }
-                val reelManifest = reel?.playbackManifest
-                if (reel != null && reelManifest != null && supportsOfflineExport(reelManifest)) {
-                    reel
-                } else {
-                    resolveInternal(
-                        track = requestTrack,
-                        isVideoMode = false,
-                        timeoutMs = offlineResolveTimeoutMs,
-                        preferMp4Audio = true,
-                        requestKind = "offline",
-                        audioQuality = quality,
-                        reuseProvidedStream = audioQualityOverride == null
-                    )
-                }
+                attempt(requestTrack, preferredLanguage)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                if (languageRevision != audioLanguageRevision.get()) {
-                    requestTrack = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
-                    continue
-                }
-                throw error
+                if (languageRevision == audioLanguageRevision.get()) throw error
+                requestTrack = originalTrack.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+                continue
             }
-            if (languageRevision == audioLanguageRevision.get()) {
-                return preserveEditorialArtwork(track, resolved)
+            if (languageRevision == audioLanguageRevision.get() || acceptAcrossLanguageChange(resolved)) {
+                return resolved
             }
-            requestTrack = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+            requestTrack = originalTrack.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
         }
     }
 
