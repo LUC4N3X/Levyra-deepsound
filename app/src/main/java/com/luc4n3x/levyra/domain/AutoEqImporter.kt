@@ -146,6 +146,7 @@ object AutoEqImporter {
         )
     }
 
+    @Suppress("ComplexMethod")
     fun parseParametric(
         text: String,
         fallbackName: String = "Imported Parametric EQ"
@@ -187,6 +188,9 @@ object AutoEqImporter {
                 }
                 preampDb = value
                 hasPreamp = true
+                return@forEachIndexed
+            }
+            if (line.startsWith("GraphicEQ", ignoreCase = true)) {
                 return@forEachIndexed
             }
             if (!line.startsWith("Filter", ignoreCase = true)) {

@@ -367,9 +367,9 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
                     val a0 = 1.0 + alpha / amplitude
                     assign(
                         (1.0 + alpha * amplitude) / a0,
-                        (-2.0 * cosOmega) / a0,
+                        -2.0 * cosOmega / a0,
                         (1.0 - alpha * amplitude) / a0,
-                        (-2.0 * cosOmega) / a0,
+                        -2.0 * cosOmega / a0,
                         (1.0 - alpha / amplitude) / a0
                     )
                 }
