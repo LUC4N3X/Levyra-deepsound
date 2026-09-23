@@ -208,14 +208,24 @@ More technical notes and platform details are available in the [documentation](h
 
 ## ✦ Under the hood
 
-| | Android | Windows |
-| --- | --- | --- |
-| Interface | Kotlin + Jetpack Compose | Compose Multiplatform |
-| Playback | Media3 / ExoPlayer | libVLC |
-| Local data | SQLite, MediaStore, and standard media files | Local file storage |
-| Focus | Mobile playback, downloads, local storage, Android Auto | Desktop playback and local library management |
+Both platforms share the same core Kotlin extraction logic, but each client targets the native media and UI stack of its operating system.
 
-Levyra uses native platform APIs for Android and Windows rather than wrapping a web app in Electron or a WebView.
+| Layer | Android | Windows |
+| --- | --- | --- |
+| **Interface** | Jetpack Compose + Material 3 | Compose Multiplatform (Desktop JVM) |
+| **Audio engine** | AndroidX Media3 / ExoPlayer | libVLC via vlcj (native C bindings) |
+| **Extraction & network** | LevyraExtractor, OkHttp (Brotli, DoH) | LevyraExtractor, OkHttp (Brotli) |
+| **Persistence** | Room (SQLite), DataStore, MediaStore | Local file storage, JSON serialization |
+| **OS integration** | MediaSessionService, Android Auto, Quick Settings | Native desktop windowing, system audio |
+| **Optimization** | R8, ProGuard, Android Baseline Profiles | JVM 21 bytecode, zero Chromium runtime |
+
+### Why native instead of a web wrapper
+
+Levyra does not bundle Chromium, Electron, or WebView containers.
+
+On Windows, playback runs through libVLC while the interface uses Compose Multiplatform. This keeps the player separate from a browser runtime and lets VLC handle audio decoding natively.
+
+On Android, Media3 integrates directly with system audio focus, Bluetooth controls, lockscreen playback, media sessions, and Android Auto, keeping background audio independent of any browser process.
 
 ## ✦ Privacy
 
