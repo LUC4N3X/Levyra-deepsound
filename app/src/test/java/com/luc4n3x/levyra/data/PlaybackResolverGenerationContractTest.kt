@@ -28,7 +28,7 @@ class PlaybackResolverGenerationContractTest {
                 clear.indexOf("resolverGeneration.incrementAndGet()")
         )
         assertTrue(resolution.contains("val expectedGeneration = resolverGeneration.get()"))
-        assertTrue(resolution.contains("_${'$'}expectedGeneration"))
+        assertTrue(resolution.contains("_\$expectedGeneration"))
         assertTrue(store.contains("resolverGeneration.get() != expectedGeneration"))
         assertTrue(persist.contains("sourceMatchMutationMutex.withLock"))
         assertTrue(persist.contains("resolverGeneration.get() != expectedGeneration"))
@@ -55,36 +55,8 @@ class PlaybackResolverGenerationContractTest {
             .substringAfter("private fun cacheKey(")
             .substringBefore("private suspend fun resolveWithInnerTube")
 
-        assertTrue(cacheKey.contains("_video_${'        Files.readString(sourceFile()).replace("\r\n", "\n")
-
-    private fun sourceFile(): Path = sequenceOf(
-        Path.of("app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"),
-        Path.of("src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt")
-    ).firstOrNull(Files::exists) ?: error("PlaybackResolver source file not found")
-}
-}{quality}_lang_${'        Files.readString(sourceFile()).replace("\r\n", "\n")
-
-    private fun sourceFile(): Path = sequenceOf(
-        Path.of("app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"),
-        Path.of("src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt")
-    ).firstOrNull(Files::exists) ?: error("PlaybackResolver source file not found")
-}
-}lang"))
-        assertTrue(cacheKey.contains("_audio_${'        Files.readString(sourceFile()).replace("\r\n", "\n")
-
-    private fun sourceFile(): Path = sequenceOf(
-        Path.of("app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"),
-        Path.of("src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt")
-    ).firstOrNull(Files::exists) ?: error("PlaybackResolver source file not found")
-}
-}{quality}_lang_${'        Files.readString(sourceFile()).replace("\r\n", "\n")
-
-    private fun sourceFile(): Path = sequenceOf(
-        Path.of("app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"),
-        Path.of("src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt")
-    ).firstOrNull(Files::exists) ?: error("PlaybackResolver source file not found")
-}
-}lang"))
+        assertTrue(cacheKey.contains("_video_\${quality}_lang_\$lang"))
+        assertTrue(cacheKey.contains("_audio_\${quality}_lang_\$lang"))
     }
 
     private fun readResolverSource(): String =
