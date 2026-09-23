@@ -458,18 +458,24 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun canReuseProvidedPlayback(track: Track, expectedGeneration: Long): Boolean {
         if (track.playbackManifest?.alternativeSource != null) return true
-        val manifestGeneration = track.playbackManifest?.provenance?.resolverGeneration ?: -1L
-        if (manifestGeneration >= 0L) return manifestGeneration == expectedGeneration
         val (preferredLanguage, revision) = preferredAudioLanguageSnapshot()
+        val manifest = track.playbackManifest
+        if (preferredLanguage.isNotBlank() && manifest?.let(::isLanguageBlindFallbackManifest) == true) {
+            return false
+        }
+        val manifestGeneration = manifest?.provenance?.resolverGeneration ?: -1L
+        if (manifestGeneration >= 0L) return manifestGeneration == expectedGeneration
         if (preferredLanguage.isBlank()) return revision == 0L
         val rawXtags = AudioLanguageIntelligence.extractXtagsFromUrl(track.streamUrl)
-        val streamLanguage = AudioLanguageIntelligence.normalizeLanguage(
-            AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
-        )
-        if (streamLanguage.isBlank()) return false
-        return streamLanguage == preferredLanguage ||
-            streamLanguage.substringBefore('-') == preferredLanguage.substringBefore('-')
+        val streamLanguage = AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
+        return AudioLanguageIntelligence.canReuseResolvedLanguage(streamLanguage, preferredLanguage)
     }
+
+    private fun isLanguageBlindFallbackManifest(manifest: ResolvedPlaybackManifest): Boolean =
+        manifest.isMuxed ||
+            manifest.streams.any { descriptor ->
+                descriptor.selected && descriptor.kind == PlaybackStreamKind.HLS
+            }
 
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         highQualityPlayback.mode = mode
@@ -1958,6 +1964,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         if (stored.entity.blockedUntil > now) return null
         val manifest = stored.manifest
+        if (preferredAudioLanguage.isNotBlank() && manifest?.let(::isLanguageBlindFallbackManifest) == true) {
+            return null
+        }
         if (manifest != null && manifest.isFresh(now) && manifestUrlsUsable(manifest, isVideoMode, preferMp4Audio)) {
             val restored = track.applyManifest(
                 manifest = manifest,
@@ -2161,6 +2170,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (resolverGeneration.get() != expectedGeneration) return
                 selectedPreferredAudioLanguage
             }
+            if (preferredAudioLanguage.isNotBlank() && isLanguageBlindFallbackManifest(manifest)) return
             try {
                 sourceMatchStore.save(
                     original,
@@ -2608,6 +2618,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         synchronized(streamCacheMutationLock) {
             if (resolverGeneration.get() != expectedGeneration) return
+            if (
+                selectedPreferredAudioLanguage.isNotBlank() &&
+                resolvedTrack.playbackManifest?.let(::isLanguageBlindFallbackManifest) == true
+            ) return
             val editor = prefs.edit()
             var preferencesChanged = false
             expiringCacheKeysToRemove(

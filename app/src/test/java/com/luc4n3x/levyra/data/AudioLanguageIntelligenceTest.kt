@@ -378,6 +378,15 @@ class AudioLanguageIntelligenceTest {
     }
 
     @Test
+    fun reusableLanguageRequiresExactLocaleWhenPreferenceIsRegional() {
+        assertTrue(AudioLanguageIntelligence.canReuseResolvedLanguage("pt-BR", "pt-BR"))
+        assertFalse(AudioLanguageIntelligence.canReuseResolvedLanguage("pt-PT", "pt-BR"))
+        assertTrue(AudioLanguageIntelligence.canReuseResolvedLanguage("pt-BR", "pt"))
+        assertTrue(AudioLanguageIntelligence.canReuseResolvedLanguage("pt-PT", "pt"))
+        assertFalse(AudioLanguageIntelligence.canReuseResolvedLanguage("", "pt-BR"))
+    }
+
+    @Test
     fun encodedUrlXtagsAreStillDecodedForLanguageSelection() {
         val encodedUrl =
             "https://rr.example/videoplayback?foo=1%26itag%3D251%26xtags%3Dacont%253Ddubbed%253Alang%253Dit_IT"
