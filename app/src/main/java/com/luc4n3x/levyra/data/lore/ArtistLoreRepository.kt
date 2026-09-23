@@ -132,16 +132,22 @@ class ArtistLoreRepository(context: Context?) {
     private suspend fun resolvePreferredBiography(
         request: LoreObservationRequest,
         cacheState: LoreCacheState
-    ): ArtistBiography? {
-        for (language in request.languages) {
-            if (cacheState.shouldSkip(language)) continue
-            val outcome = resolveNetwork(request.artistName, request.browseId, language)
-            outcome.biography?.let { return it }
+    ): ArtistBiography? = coroutineScope {
+        val attempts = request.languages
+            .filterNot(cacheState::shouldSkip)
+            .map { language -> language to async { resolveNetwork(request.artistName, request.browseId, language) } }
+        for ((index, attempt) in attempts.withIndex()) {
+            val (language, deferred) = attempt
+            val outcome = deferred.await()
+            outcome.biography?.let { biography ->
+                attempts.drop(index + 1).forEach { (_, pending) -> pending.cancel() }
+                return@coroutineScope biography
+            }
             if (outcome.completedWithoutTransientFailure) {
                 persistNegative(request.artistKey, request.browseId, language, request.now)
             }
         }
-        return null
+        null
     }
 
     private suspend fun resolveCrossLanguageBiography(request: LoreObservationRequest): ArtistBiography? {
@@ -887,9 +893,14 @@ class ArtistLoreRepository(context: Context?) {
         private const val WIKIDATA_API_URL = "https://www.wikidata.org/w/api.php"
 
         internal fun preferredLanguage(languageCode: String): String {
+            val rawLanguage = languageCode.trim().replace('_', '-').substringBefore('-').lowercase(Locale.ROOT)
+            if (rawLanguage == "tl") return "tl"
+            if (rawLanguage == "no") return "no"
             val normalized = LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')
             return when (normalized) {
                 "fil" -> "tl"
+                "nb" -> "no"
+                "sk", "hr", "bg", "hu", "fi", "et", "ca", "fa", "ms",
                 "zh", "ar", "pt", "uk", "ru", "tr", "el", "sv", "da", "cs", "pl", "ro", "nl", "de", "fr", "es", "it", "ja", "ko", "hi", "id", "vi", "th", "he" -> normalized
                 else -> "en"
             }

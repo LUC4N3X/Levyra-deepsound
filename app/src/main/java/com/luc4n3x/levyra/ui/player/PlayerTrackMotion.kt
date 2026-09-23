@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -70,6 +71,7 @@ internal fun rememberTrackStepDirection(
 internal class PlayerSwipeMotion(private val scope: CoroutineScope) {
     private val offset = Animatable(0f)
     private var ownerId by mutableStateOf<String?>(null)
+    private var releaseJob: Job? = null
     internal var animated: Boolean = true
     internal var carryLimitPx: Float = Float.POSITIVE_INFINITY
 
@@ -77,6 +79,8 @@ internal class PlayerSwipeMotion(private val scope: CoroutineScope) {
         if (trackId != null && trackId == ownerId) offset.value else 0f
 
     fun follow(trackId: String, offsetPx: Float) {
+        releaseJob?.cancel()
+        releaseJob = null
         ownerId = trackId
         scope.launch { offset.snapTo(offsetPx) }
     }
@@ -88,7 +92,8 @@ internal class PlayerSwipeMotion(private val scope: CoroutineScope) {
      * ready; if no track change follows, it springs home.
      */
     fun release(committed: Boolean, carry: Boolean) {
-        scope.launch {
+        releaseJob?.cancel()
+        releaseJob = scope.launch {
             if (!animated) {
                 offset.snapTo(0f)
                 return@launch

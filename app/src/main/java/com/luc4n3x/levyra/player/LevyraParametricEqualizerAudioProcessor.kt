@@ -3,19 +3,15 @@ package com.luc4n3x.levyra.player
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
+import com.luc4n3x.levyra.domain.ParametricBiquad
 import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricEqualizer
-import com.luc4n3x.levyra.domain.ParametricFilterType
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
     private data class RequestedConfiguration(
@@ -361,30 +357,11 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         var a2 = 0f
             private set
 
+        private val design = DoubleArray(ParametricBiquad.COEFFICIENT_COUNT)
+
         fun set(band: ParametricEqBand, sampleRate: Int): Boolean {
-            val frequency = band.frequencyHz.toDouble()
-            val gain = band.gainDb.toDouble()
-            val q = band.q.toDouble()
-            if (sampleRate <= 0 || frequency <= 0.0 || frequency >= sampleRate * 0.5 || q <= 0.0) return false
-            val amplitude = 10.0.pow(gain / 40.0)
-            val omega = 2.0 * PI * frequency / sampleRate
-            val sinOmega = sin(omega)
-            val cosOmega = cos(omega)
-            val alpha = sinOmega / (2.0 * q)
-            return when (band.filterType) {
-                ParametricFilterType.PEAK -> {
-                    val a0 = 1.0 + alpha / amplitude
-                    assign(
-                        (1.0 + alpha * amplitude) / a0,
-                        -2.0 * cosOmega / a0,
-                        (1.0 - alpha * amplitude) / a0,
-                        -2.0 * cosOmega / a0,
-                        (1.0 - alpha / amplitude) / a0
-                    )
-                }
-                ParametricFilterType.LOW_SHELF -> shelf(amplitude, cosOmega, alpha, high = false)
-                ParametricFilterType.HIGH_SHELF -> shelf(amplitude, cosOmega, alpha, high = true)
-            }
+            if (!ParametricBiquad.design(band, sampleRate, design)) return false
+            return assign(design[0], design[1], design[2], design[3], design[4])
         }
 
         fun copyFrom(other: BiquadCoefficients) {
@@ -401,22 +378,6 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
             b2 += (target.b2 - b2) * amount
             a1 += (target.a1 - a1) * amount
             a2 += (target.a2 - a2) * amount
-        }
-
-        private fun shelf(amplitude: Double, cosine: Double, alpha: Double, high: Boolean): Boolean {
-            val plus = amplitude + 1.0
-            val minus = amplitude - 1.0
-            val root = sqrt(amplitude)
-            val beta = 2.0 * root * alpha
-            val sign = if (high) 1.0 else -1.0
-            val a0 = plus - sign * minus * cosine + beta
-            return assign(
-                amplitude * (plus + sign * minus * cosine + beta) / a0,
-                -sign * 2.0 * amplitude * (minus + sign * plus * cosine) / a0,
-                amplitude * (plus + sign * minus * cosine - beta) / a0,
-                sign * 2.0 * (minus - sign * plus * cosine) / a0,
-                (plus - sign * minus * cosine - beta) / a0
-            )
         }
 
         private fun assign(
