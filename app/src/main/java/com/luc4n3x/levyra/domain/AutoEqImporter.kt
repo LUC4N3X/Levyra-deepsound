@@ -29,6 +29,11 @@ object AutoEqImporter {
         data class Error(val error: ParseError) : ParseResult
     }
 
+    sealed interface ParametricParseResult {
+        data class Success(val profile: ParametricEqProfile) : ParametricParseResult
+        data class Error(val error: ParametricParseError, val lineNumber: Int? = null) : ParametricParseResult
+    }
+
     enum class ParseError {
         EMPTY,
         TOO_LARGE,
@@ -38,6 +43,21 @@ object AutoEqImporter {
         NON_FINITE_VALUE,
         TOO_MANY_POINTS,
         INSUFFICIENT_POINTS
+    }
+
+    enum class ParametricParseError {
+        EMPTY,
+        TOO_LARGE,
+        NO_PARAMETRIC_EQ,
+        INVALID_PREAMP,
+        INVALID_FILTER,
+        UNSUPPORTED_FILTER,
+        DUPLICATE_FILTER,
+        TOO_MANY_FILTERS,
+        INVALID_FREQUENCY,
+        INVALID_GAIN,
+        INVALID_Q,
+        NON_FINITE_VALUE
     }
 
     fun parse(text: String): ParseResult {
@@ -126,6 +146,171 @@ object AutoEqImporter {
         )
     }
 
+    fun parseParametric(
+        text: String,
+        fallbackName: String = "Imported Parametric EQ"
+    ): ParametricParseResult {
+        if (text.isBlank()) return ParametricParseResult.Error(ParametricParseError.EMPTY)
+        if (text.length > MAX_INPUT_CHARS) return ParametricParseResult.Error(ParametricParseError.TOO_LARGE)
+
+        val state = ParametricParsingState()
+
+        text.lineSequence().forEachIndexed { index, rawLine ->
+            consumeParametricLine(state, rawLine, index + 1)?.let { return it }
+        }
+
+        if (state.bands.isEmpty()) return ParametricParseResult.Error(ParametricParseError.NO_PARAMETRIC_EQ)
+        val profileName = state.name?.take(ParametricEqualizer.MAX_NAME_CHARS)
+            ?: fallbackName.trim().take(ParametricEqualizer.MAX_NAME_CHARS).ifEmpty { "Imported Parametric EQ" }
+        return ParametricParseResult.Success(
+            ParametricEqProfile(
+                id = ParametricEqualizer.profileId(
+                    prefix = ParametricEqualizer.IMPORTED_PROFILE_PREFIX,
+                    name = profileName,
+                    preampDb = state.preampDb,
+                    bands = state.bands
+                ),
+                name = profileName,
+                preampDb = state.preampDb,
+                bands = state.bands
+            )
+        )
+    }
+
+    private class ParametricParsingState {
+        var preampDb = 0f
+        var hasPreamp = false
+        var name: String? = null
+        val filterNumbers = HashSet<Int>(ParametricEqualizer.MAX_BANDS)
+        val bands = ArrayList<ParametricEqBand>(ParametricEqualizer.MAX_BANDS)
+    }
+
+    private sealed interface ParametricPreampResult {
+        data class Success(val value: Float) : ParametricPreampResult
+        data class Error(val error: ParametricParseError) : ParametricPreampResult
+    }
+
+    private sealed interface ParametricFilterResult {
+        data class Success(val number: Int, val band: ParametricEqBand) : ParametricFilterResult
+        data class Error(val error: ParametricParseError) : ParametricFilterResult
+    }
+
+    private fun consumeParametricLine(
+        state: ParametricParsingState,
+        rawLine: String,
+        lineNumber: Int
+    ): ParametricParseResult.Error? {
+        val line = rawLine.trim().removePrefix("\uFEFF")
+        if (line.isEmpty()) return null
+        return when {
+            line.startsWith("#") -> {
+                if (state.name == null) {
+                    state.name = NAME_LINE.matchEntire(line)
+                        ?.groupValues
+                        ?.get(1)
+                        ?.trim()
+                        ?.takeIf { it.isNotBlank() }
+                }
+                null
+            }
+            line.startsWith("Preamp", ignoreCase = true) -> consumeParametricPreamp(state, line, lineNumber)
+            line.startsWith("GraphicEQ", ignoreCase = true) -> null
+            line.startsWith("Filter", ignoreCase = true) -> consumeParametricFilter(state, line, lineNumber)
+            else -> ParametricParseResult.Error(ParametricParseError.INVALID_FILTER, lineNumber)
+        }
+    }
+
+    private fun consumeParametricPreamp(
+        state: ParametricParsingState,
+        line: String,
+        lineNumber: Int
+    ): ParametricParseResult.Error? {
+        if (state.hasPreamp) return ParametricParseResult.Error(ParametricParseError.INVALID_PREAMP, lineNumber)
+        return when (val parsed = parseParametricPreamp(line)) {
+            is ParametricPreampResult.Error -> ParametricParseResult.Error(parsed.error, lineNumber)
+            is ParametricPreampResult.Success -> {
+                state.preampDb = parsed.value
+                state.hasPreamp = true
+                null
+            }
+        }
+    }
+
+    private fun consumeParametricFilter(
+        state: ParametricParsingState,
+        line: String,
+        lineNumber: Int
+    ): ParametricParseResult.Error? {
+        if (state.bands.size >= ParametricEqualizer.MAX_BANDS) {
+            return ParametricParseResult.Error(ParametricParseError.TOO_MANY_FILTERS, lineNumber)
+        }
+        return when (val parsed = parseParametricFilter(line)) {
+            is ParametricFilterResult.Error -> ParametricParseResult.Error(parsed.error, lineNumber)
+            is ParametricFilterResult.Success -> {
+                if (!state.filterNumbers.add(parsed.number)) {
+                    ParametricParseResult.Error(ParametricParseError.DUPLICATE_FILTER, lineNumber)
+                } else {
+                    state.bands += parsed.band
+                    null
+                }
+            }
+        }
+    }
+
+    private fun parseParametricPreamp(line: String): ParametricPreampResult {
+        val match = PARAMETRIC_PREAMP_LINE.matchEntire(line)
+            ?: return ParametricPreampResult.Error(ParametricParseError.INVALID_PREAMP)
+        val value = match.groupValues[1].toFloatOrNull()
+            ?: return ParametricPreampResult.Error(ParametricParseError.INVALID_PREAMP)
+        if (!value.isFinite()) return ParametricPreampResult.Error(ParametricParseError.NON_FINITE_VALUE)
+        if (value !in ParametricEqualizer.MIN_PREAMP_DB..ParametricEqualizer.MAX_PREAMP_DB) {
+            return ParametricPreampResult.Error(ParametricParseError.INVALID_PREAMP)
+        }
+        return ParametricPreampResult.Success(value)
+    }
+
+    private fun parseParametricFilter(line: String): ParametricFilterResult {
+        val match = PARAMETRIC_FILTER_LINE.matchEntire(line)
+            ?: return ParametricFilterResult.Error(ParametricParseError.INVALID_FILTER)
+        val number = match.groupValues[1].toIntOrNull()
+            ?: return ParametricFilterResult.Error(ParametricParseError.INVALID_FILTER)
+        if (number <= 0) return ParametricFilterResult.Error(ParametricParseError.INVALID_FILTER)
+        val filterType = ParametricFilterType.fromAutoEqCode(match.groupValues[3])
+            ?: return ParametricFilterResult.Error(ParametricParseError.UNSUPPORTED_FILTER)
+        val frequency = match.groupValues[4].toFloatOrNull()
+            ?: return ParametricFilterResult.Error(ParametricParseError.INVALID_FREQUENCY)
+        val gain = match.groupValues[5].toFloatOrNull()
+            ?: return ParametricFilterResult.Error(ParametricParseError.INVALID_GAIN)
+        val q = match.groupValues[6].toFloatOrNull()
+            ?: return ParametricFilterResult.Error(ParametricParseError.INVALID_Q)
+        validateParametricFilterValues(frequency, gain, q)?.let { error ->
+            return ParametricFilterResult.Error(error)
+        }
+        return ParametricFilterResult.Success(
+            number = number,
+            band = ParametricEqBand(
+                frequencyHz = frequency,
+                gainDb = gain,
+                q = q,
+                filterType = filterType,
+                enabled = match.groupValues[2].equals("ON", ignoreCase = true)
+            )
+        )
+    }
+
+    private fun validateParametricFilterValues(
+        frequency: Float,
+        gain: Float,
+        q: Float
+    ): ParametricParseError? = when {
+        !frequency.isFinite() || !gain.isFinite() || !q.isFinite() -> ParametricParseError.NON_FINITE_VALUE
+        frequency !in ParametricEqualizer.MIN_FREQUENCY_HZ..ParametricEqualizer.MAX_FREQUENCY_HZ ->
+            ParametricParseError.INVALID_FREQUENCY
+        gain !in -ParametricEqualizer.MAX_GAIN_DB..ParametricEqualizer.MAX_GAIN_DB -> ParametricParseError.INVALID_GAIN
+        q !in ParametricEqualizer.MIN_Q..ParametricEqualizer.MAX_Q -> ParametricParseError.INVALID_Q
+        else -> null
+    }
+
     fun customPresetId(name: String, profile: ImportedProfile): String {
         val stable = "$name|${profile.bandLevels.joinToString(",")}|${profile.preampDb}"
         val digest = MessageDigest.getInstance("SHA-256")
@@ -182,6 +367,17 @@ object AutoEqImporter {
     )
     private val NAME_LINE = Regex(
         """^#\s*(?:Name|Profile)\s*:\s*(.+)$""",
+        RegexOption.IGNORE_CASE
+    )
+    private const val PARAMETRIC_NUMBER = "[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?"
+    private val PARAMETRIC_PREAMP_LINE = Regex(
+        "^Preamp\\s*:\\s*($PARAMETRIC_NUMBER)\\s*(?:dB)?\\s*$",
+        RegexOption.IGNORE_CASE
+    )
+    private val PARAMETRIC_FILTER_LINE = Regex(
+        "^Filter\\s+(\\d+)\\s*:\\s*(ON|OFF)\\s+([A-Za-z0-9]+)\\s+" +
+            "Fc\\s+($PARAMETRIC_NUMBER)\\s*Hz\\s+Gain\\s+($PARAMETRIC_NUMBER)\\s*dB\\s+" +
+            "Q\\s+($PARAMETRIC_NUMBER)\\s*$",
         RegexOption.IGNORE_CASE
     )
 

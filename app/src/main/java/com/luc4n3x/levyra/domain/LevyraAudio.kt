@@ -70,7 +70,10 @@ data class LevyraAudioSettings(
     val pitch: Float = 1f,
     val gaplessEnabled: Boolean = true,
     val aaudioOutputEnabled: Boolean = false,
-    val customPresets: List<LevyraAudioPreset> = emptyList()
+    val customPresets: List<LevyraAudioPreset> = emptyList(),
+    val parametricEqualizerEnabled: Boolean = false,
+    val activeParametricProfile: ParametricEqProfile? = null,
+    val customParametricProfiles: List<ParametricEqProfile> = emptyList()
 ) {
     val effectiveReplayGainMode: ReplayGainMode
         get() = if (replayGainMode == ReplayGainMode.OFF && replayGainEnabled) ReplayGainMode.SMART else replayGainMode
@@ -84,12 +87,20 @@ data class LevyraAudioSettings(
     fun withNeutralEqualizer(): LevyraAudioSettings {
         val flat = LevyraAudioPresets.preset(LevyraAudioPresets.FLAT)
         return copy(
+            equalizerEnabled = true,
             presetId = flat.id,
             bandLevels = flat.levels,
             bassBoost = flat.bassBoost,
-            preampDb = 0f
+            preampDb = 0f,
+            parametricEqualizerEnabled = false
         )
     }
+
+    fun withNeutralParametricEqualizer(): LevyraAudioSettings = copy(
+        equalizerEnabled = false,
+        parametricEqualizerEnabled = true,
+        activeParametricProfile = ParametricEqualizer.defaultProfile
+    )
 
     fun normalized(): LevyraAudioSettings {
         val builtInIds = LevyraAudioPresets.presets.map { it.id }.toSet()
@@ -116,7 +127,15 @@ data class LevyraAudioSettings(
             ?: LevyraAudioPresets.levelsFor(preset)
         val levels = bandLevels.takeIf { it.size == LevyraAudioPresets.bandCount } ?: fallbackLevels
         val normalizedReplayGainMode = effectiveReplayGainMode
+        val parametricProfiles = customParametricProfiles
+            .mapNotNull(ParametricEqProfile::normalized)
+            .filter { it.id.startsWith(ParametricEqualizer.CUSTOM_PROFILE_PREFIX) }
+            .distinctBy { it.id }
+            .takeLast(ParametricEqualizer.MAX_CUSTOM_PROFILES)
+        val activeParametric = activeParametricProfile?.normalized()
+        val parametricEnabled = parametricEqualizerEnabled && activeParametric != null
         return copy(
+            equalizerEnabled = equalizerEnabled && !parametricEnabled,
             presetId = preset,
             bandLevels = levels.map { it.coerceIn(-100, 100) },
             bassBoost = bassBoost.coerceIn(0, 100),
@@ -128,7 +147,10 @@ data class LevyraAudioSettings(
             crossfadeSeconds = crossfadeSeconds.coerceIn(0, 12),
             playbackSpeed = playbackSpeed.coerceIn(0.5f, 2.0f),
             pitch = pitch.coerceIn(0.5f, 2.0f),
-            customPresets = custom
+            customPresets = custom,
+            parametricEqualizerEnabled = parametricEnabled,
+            activeParametricProfile = activeParametric,
+            customParametricProfiles = parametricProfiles
         )
     }
 }
