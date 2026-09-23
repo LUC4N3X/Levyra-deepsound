@@ -636,7 +636,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         }
         val artwork = parseArtistHeaderArtwork(header)
         val searchPortrait = cachedPortrait.ifBlank {
-            portraitSearch?.await() ?: searchArtistPortrait(name, browseId)
+            portraitSearch?.await().orEmpty().ifBlank { searchArtistPortrait(name, browseId) }
         }
         val thumb = upgradeThumbnail(
             chooseVerifiedArtistShelfThumbnail(
@@ -667,7 +667,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         assembleProfile(root, header, browseId, name, thumb, artwork.bannerUrl, expanded)
     }
 
-    private suspend fun searchArtistPortrait(query: String, browseId: String): String = runCatching {
+    private suspend fun searchArtistPortrait(query: String, browseId: String): String = runCatchingPreservingCancellation {
         music.searchEverything(query, contentLanguage()).artists.firstOrNull { candidate ->
             candidate.browseId.equals(browseId, ignoreCase = true) && artistNameMatches(query, candidate.name)
         }?.thumbnailUrl.orEmpty()
