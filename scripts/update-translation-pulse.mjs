@@ -59,6 +59,7 @@ const LOCALE_META = {
   'bg': { name: 'Български', code: 'BG' },
   'hu': { name: 'Magyar', code: 'HU' },
   'fi': { name: 'Suomi', code: 'FI' },
+  'et': { name: 'Eesti', code: 'ET' },
   'nb': { name: 'Norsk bokmål', code: 'NB' },
   'ca': { name: 'Català', code: 'CA' },
   'uk': { name: 'Українська', code: 'UK' },

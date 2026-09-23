@@ -263,7 +263,7 @@
     </g>
     <g transform="translate(0, 442.0)">
       <!-- Language Label -->
-      <text x="124" y="11.0" text-anchor="end" fill="#24292F" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">et</text>
+      <text x="124" y="11.0" text-anchor="end" fill="#24292F" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Eesti</text>
       <!-- Track background -->
       <rect x="134" y="0" width="150" height="13" rx="2" fill="#F0F3F6"/>
       <!-- Progress Bar -->

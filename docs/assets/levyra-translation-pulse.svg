@@ -275,7 +275,7 @@
     <text x="774.0" y="70" text-anchor="middle" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="8.5">100%</text>
     <g transform="translate(0, 82.0)">
       <!-- Language Label -->
-      <text x="584" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">et</text>
+      <text x="584" y="11.0" text-anchor="end" fill="#C9D1D9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="500">Eesti</text>
       <!-- Track background -->
       <rect x="594" y="0" width="180" height="13" rx="2" fill="#161B22"/>
       <!-- Progress Bar -->
