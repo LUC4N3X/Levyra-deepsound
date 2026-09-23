@@ -357,6 +357,7 @@ class AlternativeTrackMatcherTest {
             candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise", duration = 225).copy(language = "hindi")
         )
         assertTrue(sameLanguage.accepted)
+        assertEquals(AlbumRelation.SAME, sameLanguage.albumRelation)
         val unknownLanguage = verdict(query, candidate(title = "Srivalli", primary = listOf("Javed Ali"), album = "Pushpa - The Rise", duration = 225))
         assertTrue(unknownLanguage.accepted)
     }

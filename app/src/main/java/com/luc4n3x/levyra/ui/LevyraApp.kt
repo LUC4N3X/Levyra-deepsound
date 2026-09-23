@@ -13010,6 +13010,9 @@ private fun ListeningPicksGrid(
                         modifier = Modifier.weight(1f)
                     )
                 }
+                if (pair.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }

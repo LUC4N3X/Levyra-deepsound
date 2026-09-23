@@ -244,7 +244,8 @@ class AlternativeTrackMatcher {
             val expectedRemaster = AlbumEdition.REMASTERED in expected.editions
             val candidateRemaster = AlbumEdition.REMASTERED in candidate.editions
             if (expectedRemaster != candidateRemaster) return AlbumRelation.REMASTER_CONFLICT
-            val sameEdition = expected.editions == candidate.editions && expected.language == candidate.language
+            val sameEdition = expected.editions == candidate.editions &&
+                expected.language == (candidate.language ?: candidateLanguage.takeIf { expected.language != null })
             return if (sameEdition) AlbumRelation.SAME else AlbumRelation.EDITION_VARIANT
         }
         val expectedSingle = expected.core == expectedTitle.core || expected.editions.any(singleEditions::contains)
