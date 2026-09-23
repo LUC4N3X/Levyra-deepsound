@@ -1,0 +1,1 @@
+Levyra 2.5.10 rende più affidabili il playback e JioSaavn HQ e aggiunge EQ parametrico con AutoEQ, ReplayGain 2.0, info audio tecniche, Home Speed Dial, ricerca personalizzata, avvisi per le nuove uscite degli artisti seguiti, Playlist PRO, traduzione testi migliorata e tile di riproduzione nei Quick Settings. Migliorati anche animazioni, pagine artista e radio live.
