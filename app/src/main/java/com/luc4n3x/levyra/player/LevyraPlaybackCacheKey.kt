@@ -66,11 +66,19 @@ object LevyraPlaybackCacheKey {
                     com.luc4n3x.levyra.data.AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
                 )
                 .takeIf { it.isNotBlank() }
+            val audioContent = com.luc4n3x.levyra.data.AudioLanguageIntelligence
+                .extractXtag(rawXtags, "acont")
+                ?.trim()
+                ?.lowercase()
+                ?.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+                ?.take(32)
+                ?.takeIf { it.isNotBlank() }
             val clen = com.luc4n3x.levyra.player.offline.audioContentLengthFromUrl(url).takeIf { it > 0L }
-            return if (!lang.isNullOrBlank() || clen != null) {
+            return if (!lang.isNullOrBlank() || !audioContent.isNullOrBlank() || clen != null) {
                 buildString {
                     append("itag-$itag")
                     if (!lang.isNullOrBlank()) append("-lang-$lang")
+                    if (!audioContent.isNullOrBlank()) append("-acont-$audioContent")
                     if (clen != null) append("-clen-$clen")
                 }
             } else {

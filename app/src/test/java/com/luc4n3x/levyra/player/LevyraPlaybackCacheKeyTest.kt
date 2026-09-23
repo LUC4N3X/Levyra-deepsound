@@ -70,6 +70,18 @@ class LevyraPlaybackCacheKeyTest {
     }
 
     @Test
+    fun sameLanguageAndLengthStillSeparateDifferentAudioContentKinds() {
+        val original = track(
+            "https://rr.example/videoplayback?itag=251&clen=4500000&xtags=lang%3Den%3Aacont%3Doriginal"
+        )
+        val descriptive = track(
+            "https://rr.example/videoplayback?itag=251&clen=4500000&xtags=lang%3Den%3Aacont%3Ddescriptive"
+        )
+
+        assertNotEquals(LevyraPlaybackCacheKey.stream(original), LevyraPlaybackCacheKey.stream(descriptive))
+    }
+
+    @Test
     fun encodedXtagsStillSeparateLanguageCacheKeys() {
         val italian = track(
             "https://rr.example/videoplayback?foo=1%26itag%3D251%26clen%3D4500000%26xtags%3Dlang%253Dit"

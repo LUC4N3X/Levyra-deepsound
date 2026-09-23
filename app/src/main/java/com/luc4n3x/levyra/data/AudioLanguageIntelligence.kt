@@ -79,6 +79,16 @@ object AudioLanguageIntelligence {
         }
     }
 
+    internal fun canReuseResolvedLanguage(language: String?, preferredLanguage: String?): Boolean {
+        val normalizedPreferred = normalizeLanguage(preferredLanguage)
+        if (normalizedPreferred.isBlank()) return true
+        val normalizedLanguage = normalizeLanguage(language)
+        if (normalizedLanguage.isBlank()) return false
+        if (normalizedLanguage == normalizedPreferred) return true
+        if ('-' in normalizedPreferred) return false
+        return normalizedLanguage.substringBefore('-') == normalizedPreferred
+    }
+
     fun extractXtag(xtags: String?, key: String): String? {
         if (xtags.isNullOrBlank()) return null
         val helperVal = runCatching { YoutubeParsingHelper.extractXtagsValue(xtags, key) }.getOrNull()
