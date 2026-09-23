@@ -49,7 +49,7 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 ---
 
 > [!IMPORTANT]
-> **Legal & responsible use · No piracy.** Levyra is independent open-source client software and does not host or distribute third-party music. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Only access, save, convert, or export media when you have the rights, permission, licence, or other lawful basis to do so, and respect the applicable terms of third-party services.
+> **Legal & responsible use · No piracy.** Levyra is independent open-source client software and does not host or distribute third-party music. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Use Levyra only with media you are allowed to access or save, and follow the terms of any third-party service you use.
 >
 > For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
 >
@@ -103,7 +103,7 @@ External services provide some of the music, lyrics, artwork and metadata Levyra
 
 When enabled, Levyra can search JioSaavn for a matching track and stream the higher-bitrate source (up to 320 kbps) when there is an exact match.
 
-Matching goes beyond comparing titles. The resolver checks artist name, album, duration, explicit tags, ISRC metadata when present, and keywords indicating alternate versions. If a candidate looks like a remix, live recording, acoustic take, or sped-up edit, Levyra ignores it and plays the default stream instead.
+The resolver checks the artist, album, duration, explicit tag, ISRC when available, and signs of alternate versions. If a candidate looks like a remix, live recording, acoustic take, or sped-up edit, Levyra ignores it and plays the default stream instead.
 
 Your library track remains untouched. Artwork, lyrics, queue placement, listening history, and recommendations stay linked to the original track. JioSaavn is only used as an alternative audio stream.
 
@@ -208,7 +208,7 @@ More technical notes and platform details are available in the [documentation](h
 
 ## ✦ Under the hood
 
-Both platforms share the same core Kotlin extraction logic, but each client targets the native media and UI stack of its operating system.
+Android and Windows share the same Kotlin extraction code, while playback and UI stay native to each platform.
 
 | Layer | Android | Windows |
 | --- | --- | --- |
@@ -231,7 +231,7 @@ On Android, Media3 integrates directly with system audio focus, Bluetooth contro
 
 Levyra contains no telemetry, analytics, or ads, and does not require an account.
 
-Play history, stats, playlists, and cached metadata stay on your device. Network requests go directly to whichever services provide the features you use, such as streaming endpoints, lyrics providers, or scrobbling APIs.
+Play history, stats, playlists, and cached metadata stay on your device. When a feature needs an online service, Levyra connects to it directly. That includes streaming, lyrics, and optional scrobbling.
 
 Microphone access is requested only when you trigger song identification. Custom proxy and DNS settings can be configured directly in the app.
 
@@ -263,7 +263,7 @@ Levyra is translated into 37 languages, including Estonian (Eesti), with communi
 
 ## ✦ Open-source acknowledgements
 
-Levyra builds on work and ideas from across the open-source music ecosystem:
+Levyra uses and learns from several open-source projects:
 
 - [Metrolist](https://github.com/MetrolistGroup/Metrolist): reference work for renderer recovery and BetterLyrics TTML parsing.
 - [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor): base architecture for LevyraExtractor, adapted with custom stream resolution and retry logic.
