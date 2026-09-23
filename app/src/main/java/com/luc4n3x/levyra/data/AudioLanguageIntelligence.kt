@@ -156,8 +156,7 @@ object AudioLanguageIntelligence {
     private fun classifyFormatFallback(
         audioIsDefault: Boolean,
         acont: String,
-        hasAudioTrack: Boolean,
-        hasXtags: Boolean
+        hasAudioTrack: Boolean
     ): TrackClassification {
         return when {
             audioIsDefault && !acont.startsWith("dub") -> {
@@ -238,8 +237,7 @@ object AudioLanguageIntelligence {
         ) ?: classifyFormatFallback(
             audioIsDefault = audioIsDefault,
             acont = acont,
-            hasAudioTrack = audioTrack != null,
-            hasXtags = rawXtags.isNotBlank()
+            hasAudioTrack = audioTrack != null
         )
 
         return LevyraAudioTrackMetadata(
