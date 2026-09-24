@@ -179,7 +179,7 @@ class PlaybackSourceIdentityTest {
         assertNotEquals(italian, english)
         assertNotEquals(italian, defaultAudio)
         assertTrue(italian.endsWith("|lang:it-it"))
-        assertTrue(defaultAudio.endsWith("|lang:default"))
+        assertTrue(defaultAudio.endsWith("|audio|high"))
 
         val videoItalian = PlaybackSourceIdentity.matchKey(
             track,

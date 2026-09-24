@@ -53,8 +53,9 @@ object PlaybackSourceIdentity {
             else -> "audio"
         }
         val quality = audioQuality.trim().lowercase(Locale.ROOT)
-        val language = AudioLanguageIntelligence.normalizeLanguage(preferredAudioLanguage).ifBlank { "default" }
-        return "${persistentCanonicalKey(track)}|$mode|$quality|lang:$language"
+        val language = AudioLanguageIntelligence.normalizeLanguage(preferredAudioLanguage)
+        val base = "${persistentCanonicalKey(track)}|$mode|$quality"
+        return if (language.isBlank()) base else "$base|lang:$language"
     }
 
     private fun persistentCanonicalKey(track: Track): String {
