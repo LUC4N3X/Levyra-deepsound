@@ -63,7 +63,8 @@ internal fun PlayerProgress(
             trailingColor = secondaryColor,
             inactiveColor = LevyraPlayerDesign.TrackInactive,
             animated = animationsEnabled,
-            waveform = waveform
+            waveform = waveform,
+            interactionKey = mediaId
         )
         Row(
             modifier = Modifier
