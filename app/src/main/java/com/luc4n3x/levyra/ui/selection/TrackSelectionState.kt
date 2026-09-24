@@ -25,7 +25,11 @@ internal class TrackSelectionState {
     fun start(id: String) {
         val clean = id.trim()
         if (clean.isBlank()) return
-        selectedIds = linkedSetOf(clean)
+        if (isActive) {
+            toggle(clean)
+        } else {
+            selectedIds = linkedSetOf(clean)
+        }
     }
 
     fun toggle(id: String) {
