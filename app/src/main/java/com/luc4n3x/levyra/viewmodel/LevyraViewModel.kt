@@ -6314,7 +6314,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleFavorites(tracks: List<Track>) {
         val cleanTracks = tracks
             .asSequence()
-            .filterNot(Track::isLiveRadio)
+            .filterNot { track -> track.isLiveRadio() }
             .distinctBy { track -> track.id.ifBlank { track.isrc.ifBlank { track.audioVideoId.ifBlank { track.title + "|" + track.artist } } } }
             .toList()
         if (cleanTracks.isEmpty()) return
