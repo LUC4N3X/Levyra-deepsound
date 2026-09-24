@@ -536,6 +536,7 @@ import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.search.buildPersonalizedSearchSnapshot
 import com.luc4n3x.levyra.feature.search.buildSearchPlaceholderCycle
+import com.luc4n3x.levyra.feature.search.buildSearchTasteHintExclusions
 import com.luc4n3x.levyra.feature.search.buildSearchTasteHints
 import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
@@ -12622,10 +12623,18 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             fallbacks = listOf(strings.searchPlaceholder, strings.searchSongsArtists, strings.emptySearchPrompt)
         )
     }
-    val tasteHintQueries = remember(personalized.prompts, state.languageCode) {
+    val listeningPickTasteExclusions = remember(personalizedTracks) {
+        buildSearchTasteHintExclusions(personalizedTracks.take(LISTENING_PICKS_LIMIT))
+    }
+    val tasteHintQueries = remember(
+        personalized.prompts,
+        state.languageCode,
+        listeningPickTasteExclusions
+    ) {
         buildSearchTasteHints(
             prompts = personalized.prompts,
-            fallbacks = LevyraContentLocales.quickSearches(state.languageCode)
+            fallbacks = LevyraContentLocales.quickSearches(state.languageCode),
+            excludedValues = listeningPickTasteExclusions
         )
     }
     var placeholderIndex by remember(personalizedPlaceholders) { mutableIntStateOf(0) }
