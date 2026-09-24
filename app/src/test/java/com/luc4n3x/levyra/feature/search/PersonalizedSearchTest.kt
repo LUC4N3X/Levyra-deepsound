@@ -148,4 +148,35 @@ class PersonalizedSearchTest {
 
         assertEquals(listOf("Bresh", "Lontano", "Nuove uscite"), hints)
     }
+
+    @Test
+    fun `taste hints exclude content already visible in listening picks`() {
+        val visiblePick = searchTestTrack("dua-1", "Levitating", "Dua Lipa").copy(album = "Future Nostalgia")
+        val exclusions = buildSearchTasteHintExclusions(listOf(visiblePick))
+        val hints = buildSearchTasteHints(
+            prompts = listOf(
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Dua Lipa"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Bresh"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.SIMILAR_TRACK, "Levitating"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.SIMILAR_TRACK, "Lontano"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ALBUM, "Future Nostalgia"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ALBUM, "Santana Money Gang")
+            ),
+            fallbacks = listOf("Nuove uscite", "Mix per te"),
+            excludedValues = exclusions
+        )
+
+        assertEquals(listOf("Bresh", "Lontano", "Santana Money Gang"), hints)
+    }
+
+    @Test
+    fun `listening pick exclusions include title primary artist and album ignoring case`() {
+        val track = searchTestTrack("x1", "Levitating", "Dua Lipa & DaBaby").copy(album = "Future Nostalgia")
+
+        val exclusions = buildSearchTasteHintExclusions(listOf(track))
+
+        assertTrue("levitating" in exclusions)
+        assertTrue("dua lipa" in exclusions)
+        assertTrue("future nostalgia" in exclusions)
+    }
 }
