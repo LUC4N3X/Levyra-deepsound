@@ -536,7 +536,6 @@ import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.search.buildPersonalizedSearchSnapshot
 import com.luc4n3x.levyra.feature.search.buildSearchPlaceholderCycle
-import com.luc4n3x.levyra.feature.search.PersonalizedSearchPrompt
 import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
@@ -12623,15 +12622,10 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         )
     }
     val tasteHintQueries = remember(personalized.prompts, state.languageCode) {
-        personalized.prompts
-            .asSequence()
-            .distinctBy(PersonalizedSearchPrompt::kind)
-            .map(PersonalizedSearchPrompt::value)
-            .filter(String::isNotBlank)
-            .distinct()
-            .take(3)
-            .toList()
-            .ifEmpty { LevyraContentLocales.quickSearches(state.languageCode).take(3) }
+        buildSearchPlaceholderCycle(
+            personalized = personalized.prompts.map { it.value },
+            fallbacks = LevyraContentLocales.quickSearches(state.languageCode)
+        ).take(3)
     }
     var placeholderIndex by remember(personalizedPlaceholders) { mutableIntStateOf(0) }
     val activePlaceholder = personalizedPlaceholders[placeholderIndex % personalizedPlaceholders.size]

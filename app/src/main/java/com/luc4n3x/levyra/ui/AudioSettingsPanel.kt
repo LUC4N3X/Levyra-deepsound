@@ -1369,13 +1369,15 @@ private fun CrossfadeCurveLab(
                 )
             }
 
-            Text(
-                copy.sameReleasePolicy,
-                color = LevyraMuted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 15.sp
-            )
+            if (gaplessEnabled) {
+                Text(
+                    copy.sameReleasePolicy,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 15.sp
+                )
+            }
         }
     }
 }

@@ -53,6 +53,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import java.util.Locale
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -83,6 +84,7 @@ fun PremiumSeekbar(
     }
 
     var isDragging by remember(interactionKey) { mutableStateOf(false) }
+    var pendingSeekFraction by remember(interactionKey) { mutableStateOf<Float?>(null) }
     var dragProgressFraction by remember(interactionKey) {
         mutableFloatStateOf(seekbarProgressFraction(positionMs, durationMs))
     }
@@ -95,12 +97,31 @@ fun PremiumSeekbar(
     }
     val playbackProgress = seekbarProgressFraction(positionMs, durationMs)
     val animatedProgress = remember(interactionKey) { Animatable(playbackProgress) }
-    LaunchedEffect(playbackProgress, durationMs, playbackSpeed, animated, isPlaying, isDragging, interactionKey) {
+    LaunchedEffect(
+        playbackProgress,
+        durationMs,
+        playbackSpeed,
+        animated,
+        isPlaying,
+        isDragging,
+        pendingSeekFraction,
+        interactionKey
+    ) {
+        val pendingSeek = pendingSeekFraction
         if (
             isDragging ||
-            !seekbarShouldSmoothProgress(animatedProgress.value, playbackProgress, isPlaying, animated)
+            !seekbarShouldSmoothProgress(
+                currentFraction = animatedProgress.value,
+                targetFraction = playbackProgress,
+                isPlaying = isPlaying,
+                animated = animated,
+                seekOrDiscontinuity = pendingSeek != null
+            )
         ) {
             animatedProgress.snapTo(playbackProgress)
+            if (pendingSeek != null && abs(playbackProgress - pendingSeek) <= 0.001f) {
+                pendingSeekFraction = null
+            }
         } else {
             animatedProgress.animateTo(
                 targetValue = playbackProgress,
@@ -217,7 +238,9 @@ fun PremiumSeekbar(
                     )
                     setProgress { targetValue ->
                         if (durationMs > 0L) {
-                            onSeekTo(seekbarSeekMillis(targetValue, durationMs))
+                            val targetFraction = targetValue.coerceIn(0f, 1f)
+                            pendingSeekFraction = targetFraction
+                            onSeekTo(seekbarSeekMillis(targetFraction, durationMs))
                             true
                         } else {
                             false
@@ -228,6 +251,7 @@ fun PremiumSeekbar(
                     detectTapGestures { offset ->
                         if (durationMs > 0L && size.width > 0) {
                             val fraction = seekbarFractionAt(offset.x, size.width.toFloat())
+                            pendingSeekFraction = fraction
                             haptics.perform(LevyraHapticAction.SeekSnap)
                             onSeekTo(seekbarSeekMillis(fraction, durationMs))
                         }
@@ -242,6 +266,7 @@ fun PremiumSeekbar(
                             haptics.perform(LevyraHapticAction.SeekSnap)
                         },
                         onDragEnd = {
+                            pendingSeekFraction = dragProgressFraction
                             isDragging = false
                             haptics.perform(LevyraHapticAction.SeekSnap)
                             onSeekTo(seekbarSeekMillis(dragProgressFraction, durationMs))

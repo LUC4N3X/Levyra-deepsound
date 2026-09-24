@@ -35,9 +35,16 @@ internal fun seekbarShouldSmoothProgress(
     currentFraction: Float,
     targetFraction: Float,
     isPlaying: Boolean,
-    animated: Boolean
+    animated: Boolean,
+    seekOrDiscontinuity: Boolean = false
 ): Boolean {
-    if (!animated || !isPlaying || !currentFraction.isFinite() || !targetFraction.isFinite()) return false
+    if (
+        seekOrDiscontinuity ||
+        !animated ||
+        !isPlaying ||
+        !currentFraction.isFinite() ||
+        !targetFraction.isFinite()
+    ) return false
     val delta = targetFraction - currentFraction
     return delta > 0f && delta <= MAX_SMOOTH_PROGRESS_DELTA
 }
