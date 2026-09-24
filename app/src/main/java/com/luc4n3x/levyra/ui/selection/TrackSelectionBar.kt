@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -57,9 +58,6 @@ internal fun TrackSelectionBar(
 ) {
     if (!state.isActive) return
     val strings = LocalLevyraStrings.current
-    val allSelected = allVisibleIds.isNotEmpty() &&
-        state.selectedIds.size == allVisibleIds.distinct().size &&
-        allVisibleIds.all(state.selectedIds::contains)
 
     Surface(
         color = LevyraGlass,
@@ -93,9 +91,7 @@ internal fun TrackSelectionBar(
             SelectionAction(
                 label = strings.selectAll,
                 icon = { Icon(Icons.Rounded.SelectAll, contentDescription = null) },
-                onClick = {
-                    if (allSelected) state.deselectAll() else state.selectAll(allVisibleIds)
-                }
+                onClick = { state.toggleSelectAll(allVisibleIds) }
             )
             Spacer(Modifier.size(2.dp))
             actions.onPlayNext?.let {
@@ -149,7 +145,7 @@ private fun SelectionAction(
         modifier = Modifier
             .size(48.dp)
             .semantics { contentDescription = label }
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
     ) {
         Box(contentAlignment = Alignment.Center) {
             androidx.compose.material3.ProvideTextStyle(

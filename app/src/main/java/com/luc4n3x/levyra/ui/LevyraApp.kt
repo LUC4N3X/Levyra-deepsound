@@ -22015,7 +22015,6 @@ private fun TopResultCard(
     onMix: () -> Unit
 ) {
     val hero = tracks.firstOrNull() ?: return
-    val strings = LocalLevyraStrings.current
 
     val cardBg = if (LevyraIsLight) LevyraPanel else if (LevyraIsPureBlack) Color(0xFF101114) else LevyraPanel
     val cardBorder = if (LevyraIsLight) LevyraAdaptiveHairline else Color.White.copy(alpha = 0.06f)
@@ -22029,141 +22028,18 @@ private fun TopResultCard(
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
         Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = !selection.isActive, onClick = onArtist)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val avatarUrl = artist?.thumbnailUrl?.ifBlank { null } ?: hero.thumbnailUrl
-                val artistDisplayName = artist?.name?.ifBlank { null } ?: hero.artist
-                val artistSubtitle = remember(artist?.subscribers, strings.artistLabel) {
-                    artist?.subscribers?.trim()?.takeIf(String::isNotBlank) ?: strings.artistLabel
-                }
+            TopResultArtistHeader(
+                hero = hero,
+                artist = artist,
+                enabled = !selection.isActive,
+                onArtist = onArtist
+            )
 
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(avatarUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = artistDisplayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(LevyraPanelSoft)
-                )
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = artistDisplayName,
-                        color = LevyraText,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = artistSubtitle,
-                        color = LevyraMuted,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = strings.openArtist,
-                    tint = LevyraMuted,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                val shuffleBg = if (LevyraIsLight) LevyraText else Color.White
-                val shuffleFg = if (LevyraIsLight) LevyraPanel else LevyraBlack
-
-                Surface(
-                    color = shuffleBg,
-                    shape = RoundedCornerShape(99.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 38.dp)
-                        .clickable(enabled = !selection.isActive, onClick = onShuffle)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Shuffle,
-                            contentDescription = null,
-                            tint = shuffleFg,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = strings.shuffle,
-                            color = shuffleFg,
-                            fontSize = 14.sp,
-                            lineHeight = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                val mixBg = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f)
-                val mixFg = LevyraText
-                val mixBorder = if (LevyraIsLight) BorderStroke(1.dp, LevyraAdaptiveHairline) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
-
-                Surface(
-                    color = mixBg,
-                    border = mixBorder,
-                    shape = RoundedCornerShape(99.dp),
-                    modifier = Modifier
-                        .heightIn(min = 38.dp)
-                        .clickable(enabled = !selection.isActive, onClick = onMix)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Radio,
-                            contentDescription = null,
-                            tint = mixFg,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = strings.mix,
-                            color = mixFg,
-                            fontSize = 14.sp,
-                            lineHeight = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
+            TopResultActions(
+                enabled = !selection.isActive,
+                onShuffle = onShuffle,
+                onMix = onMix
+            )
 
             tracks.take(3).forEach { track ->
                 val selectionKey = trackSelectionKey(track)
@@ -22184,6 +22060,159 @@ private fun TopResultCard(
                     onPlayNext = { onPlayNext(track) },
                     onAddToQueue = { onAddToQueue(track) },
                     onArtist = onArtist
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopResultArtistHeader(
+    hero: Track,
+    artist: ArtistHit?,
+    enabled: Boolean,
+    onArtist: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onArtist)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val avatarUrl = artist?.thumbnailUrl?.ifBlank { null } ?: hero.thumbnailUrl
+        val artistDisplayName = artist?.name?.ifBlank { null } ?: hero.artist
+        val artistSubtitle = remember(artist?.subscribers, strings.artistLabel) {
+            artist?.subscribers?.trim()?.takeIf(String::isNotBlank) ?: strings.artistLabel
+        }
+
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(avatarUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = artistDisplayName,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(LevyraPanelSoft)
+        )
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = artistDisplayName,
+                color = LevyraText,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = artistSubtitle,
+                color = LevyraMuted,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = strings.openArtist,
+            tint = LevyraMuted,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun TopResultActions(
+    enabled: Boolean,
+    onShuffle: () -> Unit,
+    onMix: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        val shuffleBg = if (LevyraIsLight) LevyraText else Color.White
+        val shuffleFg = if (LevyraIsLight) LevyraPanel else LevyraBlack
+
+        Surface(
+            color = shuffleBg,
+            shape = RoundedCornerShape(99.dp),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 38.dp)
+                .clickable(enabled = enabled, onClick = onShuffle)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Shuffle,
+                    contentDescription = null,
+                    tint = shuffleFg,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = strings.shuffle,
+                    color = shuffleFg,
+                    fontSize = 14.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        val mixBg = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f)
+        val mixFg = LevyraText
+        val mixBorder = if (LevyraIsLight) BorderStroke(1.dp, LevyraAdaptiveHairline) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+
+        Surface(
+            color = mixBg,
+            border = mixBorder,
+            shape = RoundedCornerShape(99.dp),
+            modifier = Modifier
+                .heightIn(min = 38.dp)
+                .clickable(enabled = enabled, onClick = onMix)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Radio,
+                    contentDescription = null,
+                    tint = mixFg,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = strings.mix,
+                    color = mixFg,
+                    fontSize = 14.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
                 )
             }
         }
