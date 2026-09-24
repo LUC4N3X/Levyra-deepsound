@@ -21,8 +21,11 @@ internal data class PersonalizedSearchPrompt(
 internal data class PersonalizedSearchSnapshot(
     val tracks: List<Track> = emptyList(),
     val artistNames: List<String> = emptyList(),
-    val prompt: PersonalizedSearchPrompt? = null
-)
+    val prompts: List<PersonalizedSearchPrompt> = emptyList()
+) {
+    val prompt: PersonalizedSearchPrompt?
+        get() = prompts.firstOrNull()
+}
 
 internal fun buildPersonalizedSearchSnapshot(
     favorites: List<Track>,
@@ -67,8 +70,8 @@ internal fun buildPersonalizedSearchSnapshot(
             .take(2)
             .forEach { add(PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ALBUM, it)) }
     }
-    val prompt = prompts.getOrNull(stableIndex(dayBucket, prompts.size))
-    return PersonalizedSearchSnapshot(tracks = tracks, artistNames = artistNames, prompt = prompt)
+    val orderedPrompts = rotateWindow(prompts, dayBucket, prompts.size)
+    return PersonalizedSearchSnapshot(tracks = tracks, artistNames = artistNames, prompts = orderedPrompts)
 }
 
 internal fun rankPersonalizedSearchArtists(
@@ -84,6 +87,61 @@ internal fun rankPersonalizedSearchArtists(
             }.thenBy(IndexedValue<ArtistHit>::index)
         )
         .map(IndexedValue<ArtistHit>::value)
+}
+
+internal fun buildSearchPlaceholderCycle(
+    personalized: List<String>,
+    fallbacks: List<String>,
+    minimumCandidates: Int = 3
+): List<String> {
+    val candidates = LinkedHashSet<String>()
+    personalized.asSequence().map(String::trim).filter(String::isNotEmpty).forEach(candidates::add)
+    if (candidates.size < minimumCandidates) {
+        for (fallback in fallbacks) {
+            fallback.trim().takeIf(String::isNotEmpty)?.let(candidates::add)
+            if (candidates.size >= minimumCandidates) break
+        }
+    }
+    return candidates.toList()
+}
+
+internal fun buildSearchTasteHints(
+    prompts: List<PersonalizedSearchPrompt>,
+    fallbacks: List<String>,
+    limit: Int = 3
+): List<String> {
+    if (limit <= 0) return emptyList()
+
+    val result = ArrayList<String>(limit)
+    val identities = HashSet<String>()
+    val usedKinds = HashSet<PersonalizedSearchPromptKind>()
+
+    fun add(value: String): Boolean {
+        val trimmed = value.trim()
+        if (trimmed.isEmpty()) return false
+        val identity = trimmed.lowercase(Locale.ROOT)
+        if (!identities.add(identity)) return false
+        result += trimmed
+        return true
+    }
+
+    for (prompt in prompts) {
+        if (prompt.kind in usedKinds) continue
+        if (add(prompt.value)) usedKinds += prompt.kind
+        if (result.size == limit) return result
+    }
+
+    for (fallback in fallbacks) {
+        add(fallback)
+        if (result.size == limit) return result
+    }
+
+    for (prompt in prompts) {
+        add(prompt.value)
+        if (result.size == limit) break
+    }
+
+    return result
 }
 
 private fun interleaveDiverseTracks(sources: List<List<Track>>, limit: Int): List<Track> {

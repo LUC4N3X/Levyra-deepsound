@@ -132,6 +132,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
@@ -534,6 +535,8 @@ import com.luc4n3x.levyra.domain.LevyraNetworkSettingsError
 import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.search.buildPersonalizedSearchSnapshot
+import com.luc4n3x.levyra.feature.search.buildSearchPlaceholderCycle
+import com.luc4n3x.levyra.feature.search.buildSearchTasteHints
 import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
@@ -1250,7 +1253,8 @@ private fun HomeChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    leading: String? = null
+    leading: String? = null,
+    exposeSelectionState: Boolean = true
 ) {
     val background = when {
         selected && LevyraIsLight -> Color(0xFF11131F)
@@ -1267,7 +1271,9 @@ private fun HomeChip(
         modifier = Modifier
             .height(LevyraHomeDesign.MoodChipHeight)
             .pressable(onClick = onClick)
-            .semantics { this.selected = selected },
+            .then(
+                if (exposeSelectionState) Modifier.semantics { this.selected = selected } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -12602,8 +12608,36 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val personalizedArtists = remember(state.homeArtists, personalized.artistNames) {
         rankPersonalizedSearchArtists(state.homeArtists, personalized.artistNames)
     }
-    val personalizedPlaceholder = remember(state.languageCode, personalized.prompt) {
-        personalizedSearchPromptText(state.languageCode, personalized.prompt)
+    val personalizedPlaceholders = remember(
+        state.languageCode,
+        personalized.prompts,
+        strings.searchPlaceholder,
+        strings.searchSongsArtists,
+        strings.emptySearchPrompt
+    ) {
+        buildSearchPlaceholderCycle(
+            personalized = personalized.prompts.mapNotNull { prompt ->
+                personalizedSearchPromptText(state.languageCode, prompt)
+            },
+            fallbacks = listOf(strings.searchPlaceholder, strings.searchSongsArtists, strings.emptySearchPrompt)
+        )
+    }
+    val tasteHintQueries = remember(personalized.prompts, state.languageCode) {
+        buildSearchTasteHints(
+            prompts = personalized.prompts,
+            fallbacks = LevyraContentLocales.quickSearches(state.languageCode)
+        )
+    }
+    var placeholderIndex by remember(personalizedPlaceholders) { mutableIntStateOf(0) }
+    val activePlaceholder = personalizedPlaceholders[placeholderIndex % personalizedPlaceholders.size]
+    val queryClean = state.query.trim()
+    LaunchedEffect(queryClean.isEmpty(), state.animationsEnabled, personalizedPlaceholders) {
+        placeholderIndex = placeholderIndex.coerceIn(personalizedPlaceholders.indices)
+        if (queryClean.isNotEmpty() || !state.animationsEnabled || personalizedPlaceholders.size < 2) return@LaunchedEffect
+        while (true) {
+            delay(10_000L)
+            placeholderIndex = (placeholderIndex + 1) % personalizedPlaceholders.size
+        }
     }
 
     LaunchedEffect(state.languageCode) {
@@ -12619,7 +12653,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     ) {
         SearchHeader(
             query = state.query,
-            placeholder = personalizedPlaceholder ?: strings.searchPlaceholder,
+            placeholder = activePlaceholder,
+            animatePlaceholder = state.animationsEnabled,
             isSearching = state.isSearching,
             recognitionAvailable = state.recognitionAvailable,
             recognitionBusy = state.recognitionState is RecognitionState.Listening ||
@@ -12637,7 +12672,6 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             }
         )
 
-        val queryClean = state.query.trim()
         val data = state.searchData
         val filter = state.searchFilter
         val topResultTracks = remember(data.topTrack, data.songs, filter) {
@@ -12674,6 +12708,18 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             if (queryClean.isEmpty()) {
+                item(key = "search-taste-hints", contentType = "search-taste-hints") {
+                    SearchTasteHints(
+                        suggestions = tasteHintQueries,
+                        onClick = { suggestion ->
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                            viewModel.setQuery(suggestion)
+                            viewModel.searchNow(suggestion)
+                        }
+                    )
+                }
+
                 if (state.recentSearches.isNotEmpty()) {
                     item(key = "search-recent", contentType = "search-recent") {
                         RecentSearchesRow(
@@ -13076,6 +13122,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
 private fun SearchHeader(
     query: String,
     placeholder: String,
+    animatePlaceholder: Boolean,
     isSearching: Boolean,
     recognitionAvailable: Boolean,
     recognitionBusy: Boolean,
@@ -13170,14 +13217,20 @@ private fun SearchHeader(
                     decorationBox = { innerTextField ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty()) {
-                                Text(
-                                    text = placeholder,
-                                    color = LevyraMuted.copy(alpha = 0.82f),
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 14.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                Crossfade(
+                                    targetState = placeholder,
+                                    animationSpec = if (animatePlaceholder) tween(360) else snap(),
+                                    label = "search-taste-placeholder"
+                                ) { text ->
+                                    Text(
+                                        text = text,
+                                        color = LevyraMuted.copy(alpha = 0.82f),
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 14.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                             innerTextField()
                         }
@@ -13694,6 +13747,30 @@ private fun SearchQueryChips(
                     modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchTasteHints(
+    suggestions: List<String>,
+    onClick: (String) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items(
+            items = suggestions,
+            key = { suggestion -> suggestion }
+        ) { suggestion ->
+            HomeChip(
+                label = suggestion,
+                selected = false,
+                exposeSelectionState = false,
+                onClick = { onClick(suggestion) }
+            )
         }
     }
 }
