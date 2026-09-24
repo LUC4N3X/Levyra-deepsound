@@ -212,6 +212,12 @@ class OfflineAudioExporterTest {
         val url = "https://rr1---sn.googlevideo.com/videoplayback?mime=audio%2Fmp4&clen=73400320&expire=9999999999"
 
         assertEquals(73400320L, audioContentLengthFromUrl(url))
+        assertEquals(
+            73400320L,
+            audioContentLengthFromUrl(
+                "https://rr1---sn.googlevideo.com/videoplayback?foo=1%26clen%3D73400320"
+            )
+        )
         assertEquals(-1L, audioContentLengthFromUrl("https://example.com/audio.m4a"))
     }
 

@@ -94,7 +94,8 @@ data class LevyraPreferencesSnapshot(
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
     val jamDisplayName: String = "",
     val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
-    val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles()
+    val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
+    val preferredAudioLanguage: String = ""
 )
 
 @Volatile
@@ -139,6 +140,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_SPONSORBLOCK] = snapshot.sponsorBlock
             mutable[KEY_SKIP_SILENCE] = snapshot.skipSilence
             mutable[KEY_AUDIO_QUALITY] = normalizeAudioQuality(snapshot.audioQuality)
+            mutable[KEY_PREFERRED_AUDIO_LANGUAGE] = AudioLanguageIntelligence.normalizeLanguage(snapshot.preferredAudioLanguage)
             mutable[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = snapshot.highQualityAudioMode.storageValue
             mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
@@ -480,6 +482,13 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[KEY_AUDIO_QUALITY] = normalizeAudioQuality(value) }
     }
 
+    fun preferredAudioLanguage(): String =
+        read { AudioLanguageIntelligence.normalizeLanguage(it[KEY_PREFERRED_AUDIO_LANGUAGE].orEmpty()) }
+
+    fun setPreferredAudioLanguage(value: String) {
+        write { it[KEY_PREFERRED_AUDIO_LANGUAGE] = AudioLanguageIntelligence.normalizeLanguage(value) }
+    }
+
     fun highQualityAudioMode(): HighQualityAudioMode =
         read { HighQualityAudioMode.fromStorage(it[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO]) }
 
@@ -665,7 +674,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             automationSettings = automationSettingsFrom(preferences),
             jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty(),
             highQualityAudioMode = HighQualityAudioMode.fromStorage(preferences[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO]),
-            lyricsLatencyProfiles = LyricsLatencyProfiles.decode(preferences[KEY_LYRICS_LATENCY_PROFILES].orEmpty())
+            lyricsLatencyProfiles = LyricsLatencyProfiles.decode(preferences[KEY_LYRICS_LATENCY_PROFILES].orEmpty()),
+            preferredAudioLanguage = AudioLanguageIntelligence.normalizeLanguage(preferences[KEY_PREFERRED_AUDIO_LANGUAGE].orEmpty())
         )
     }
 
@@ -973,6 +983,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_BEDTIME_DURATION_MINUTES = intPreferencesKey("bedtime_duration_minutes")
         val KEY_BEDTIME_DAYS = stringSetPreferencesKey("bedtime_days")
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
+        val KEY_PREFERRED_AUDIO_LANGUAGE = stringPreferencesKey("preferred_audio_language")
         val KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO = stringPreferencesKey("high_quality_alternative_audio")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
