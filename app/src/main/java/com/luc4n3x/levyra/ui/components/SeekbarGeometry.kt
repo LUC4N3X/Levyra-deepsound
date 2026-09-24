@@ -50,7 +50,7 @@ internal fun seekbarProgressAnimationDurationMs(
 ): Int {
     if (durationMs <= 0L || !currentFraction.isFinite() || !targetFraction.isFinite()) return 0
     val safeSpeed = playbackSpeed.takeIf { it.isFinite() && it > 0f } ?: 1f
-    return (((targetFraction - currentFraction).coerceAtLeast(0f) * durationMs.toFloat()) / safeSpeed)
+    return ((targetFraction - currentFraction).coerceAtLeast(0f) * durationMs.toFloat() / safeSpeed)
         .roundToInt()
         .coerceIn(MIN_PROGRESS_ANIMATION_MS, MAX_PROGRESS_ANIMATION_MS)
 }
