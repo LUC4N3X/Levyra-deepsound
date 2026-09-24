@@ -19,15 +19,16 @@ internal fun trackBelongsToArtist(
     }
 
     val targetKeys = artistIdentityKeys(artistName)
-    if (targetKeys.isEmpty()) return false
-
-    if (artistIdentityKeys(track.artist).any(targetKeys::contains)) return true
-    return ARTIST_CREDIT_SEPARATOR
-        .split(track.artist)
-        .asSequence()
-        .map(String::trim)
-        .filter(String::isNotBlank)
-        .any { credit -> artistIdentityKeys(credit).any(targetKeys::contains) }
+    val directMatch = targetKeys.isNotEmpty() &&
+        artistIdentityKeys(track.artist).any(targetKeys::contains)
+    val creditMatch = targetKeys.isNotEmpty() &&
+        ARTIST_CREDIT_SEPARATOR
+            .split(track.artist)
+            .asSequence()
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .any { credit -> artistIdentityKeys(credit).any(targetKeys::contains) }
+    return directMatch || creditMatch
 }
 
 internal fun likedTracksByArtist(
