@@ -4763,26 +4763,12 @@ private fun AlbumTrackRow(
                     maxLines = 1
                 )
             }
-            if (presentation.selectionActive) {
-                Icon(
-                    imageVector = if (presentation.selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                    contentDescription = null,
-                    tint = if (presentation.selected) stage.accent else stage.contentMuted,
-                    modifier = Modifier.size(28.dp)
-                )
-            } else {
-                AlbumTrackMenu(
-                    track = track,
-                    isFavorite = presentation.isFavorite,
-                    isDownloaded = presentation.isDownloaded,
-                    isDownloading = presentation.isDownloading,
-                    tint = stage.contentMuted,
-                    onFavorite = actions.onFavorite,
-                    onDownload = actions.onDownload,
-                    onAddToPlaylist = actions.onAddToPlaylist,
-                    onArtist = actions.onArtist
-                )
-            }
+            AlbumTrackTrailing(
+                track = track,
+                stage = stage,
+                presentation = presentation,
+                actions = actions
+            )
         }
         if (presentation.showDivider) {
             Box(
@@ -4793,6 +4779,39 @@ private fun AlbumTrackRow(
                     .background(stage.hairline)
             )
         }
+    }
+}
+
+@Composable
+private fun AlbumTrackTrailing(
+    track: Track,
+    stage: AlbumStageColors,
+    presentation: AlbumTrackRowPresentation,
+    actions: AlbumTrackRowActions
+) {
+    if (presentation.selectionActive) {
+        Icon(
+            imageVector = if (presentation.selected) {
+                Icons.Rounded.CheckCircle
+            } else {
+                Icons.Rounded.RadioButtonUnchecked
+            },
+            contentDescription = null,
+            tint = if (presentation.selected) stage.accent else stage.contentMuted,
+            modifier = Modifier.size(28.dp)
+        )
+    } else {
+        AlbumTrackMenu(
+            track = track,
+            isFavorite = presentation.isFavorite,
+            isDownloaded = presentation.isDownloaded,
+            isDownloading = presentation.isDownloading,
+            tint = stage.contentMuted,
+            onFavorite = actions.onFavorite,
+            onDownload = actions.onDownload,
+            onAddToPlaylist = actions.onAddToPlaylist,
+            onArtist = actions.onArtist
+        )
     }
 }
 
