@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.selection
 
+import com.luc4n3x.levyra.domain.Track
+import java.util.Locale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -92,4 +94,27 @@ internal fun <T> TrackSelectionState.resolveSelected(
 ): List<T> {
     if (selectedIds.isEmpty()) return emptyList()
     return available.filter { keyOf(it) in selectedIds }
+}
+
+
+internal fun trackSelectionKey(track: Track): String {
+    track.isrc.trim().takeIf(String::isNotBlank)?.let {
+        return "isrc:" + it.lowercase(Locale.ROOT)
+    }
+    track.id.trim().takeIf(String::isNotBlank)?.let {
+        return "id:" + it.lowercase(Locale.ROOT)
+    }
+    track.audioVideoId.trim().takeIf(String::isNotBlank)?.let {
+        return "audio:" + it.lowercase(Locale.ROOT)
+    }
+    track.counterpartVideoId.trim().takeIf(String::isNotBlank)?.let {
+        return "video:" + it.lowercase(Locale.ROOT)
+    }
+    track.streamUrl.trim().takeIf(String::isNotBlank)?.let {
+        return "stream:" + it
+    }
+    val title = track.title.trim().lowercase(Locale.ROOT)
+    val artist = track.artist.trim().lowercase(Locale.ROOT)
+    val durationBucket = track.durationMs.coerceAtLeast(0L) / 1_000L
+    return "meta:" + title + "|" + artist + "|" + durationBucket
 }
