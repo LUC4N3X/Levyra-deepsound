@@ -93,6 +93,8 @@ External services provide some of the music, lyrics, artwork and metadata Levyra
     &nbsp;·&nbsp;
     <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php"><b>SecurityLab.ru</b></a>
     &nbsp;·&nbsp;
+    <a href="https://www.geekparadize.fr/articles/levyra-lecteur-musical-open-source-android-windows"><b>GeekParadize</b></a>
+    &nbsp;·&nbsp;
     <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
   </sub>
 </p>
