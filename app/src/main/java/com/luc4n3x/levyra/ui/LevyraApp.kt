@@ -3592,6 +3592,12 @@ private fun AlbumOverlay(
     onTogglePinToHome: (AlbumHit) -> Unit,
     onAddToPlaylist: (String, Track) -> Unit,
     onCreatePlaylistWithTrack: (String, Track) -> Unit,
+    onPlayTracksNext: (List<Track>) -> Unit,
+    onAddTracksToQueue: (List<Track>) -> Unit,
+    onToggleFavorites: (List<Track>) -> Unit,
+    onExportTracks: (List<Track>) -> Unit,
+    onAddTracksToPlaylist: (String, List<Track>) -> Unit,
+    onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
     onOpenAlbumArtist: () -> Unit,
     onOpenTrackArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
@@ -3609,6 +3615,14 @@ private fun AlbumOverlay(
         LazyListState()
     }
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selection = rememberTrackSelectionState()
+    val selectableIds = remember(tracks) { tracks.map(::trackSelectionKey) }
+    val selectedTracks = remember(tracks, selection.selectedIds) {
+        selection.resolveSelected(tracks, ::trackSelectionKey)
+    }
+    LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+    BackHandler(enabled = selection.isActive) { selection.exit() }
     val albumCurrentTrack = remember(tracks, state.currentTrack) {
         tracks.firstOrNull { candidate -> uiTrackMatches(state.currentTrack, candidate) }
     }
@@ -3699,6 +3713,7 @@ private fun AlbumOverlay(
                 key = { index, track -> "album-track-$index-${track.id}" },
                 contentType = { _, _ -> "album-track" }
             ) { index, track ->
+                val selectionKey = trackSelectionKey(track)
                 AlbumTrackRow(
                     index = index,
                     track = track,
@@ -3711,8 +3726,17 @@ private fun AlbumOverlay(
                     isDownloaded = track.id in state.downloadedTrackIds,
                     downloadProgress = state.downloadProgressByTrackId[track.id],
                     showDivider = index < tracks.lastIndex,
+                    selected = selection.isSelected(selectionKey),
+                    selectionActive = selection.isActive,
+                    onLongClick = { selection.start(selectionKey) },
                     onPlay = {
-                        if (uiTrackMatches(state.currentTrack, track)) onOpenPlayer() else onPlay(track)
+                        if (selection.isActive) {
+                            selection.toggle(selectionKey)
+                        } else if (uiTrackMatches(state.currentTrack, track)) {
+                            onOpenPlayer()
+                        } else {
+                            onPlay(track)
+                        }
                     },
                     onFavorite = { onFavorite(track) },
                     onDownload = { onDownload(track) },
@@ -3898,6 +3922,41 @@ private fun AlbumOverlay(
             )
         }
 
+        TrackSelectionBar(
+            state = selection,
+            allVisibleIds = selectableIds,
+            onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onPlayTracksNext(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onAddTracksToQueue(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                { batchAddTargets = selectedTracks }
+            },
+            onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onToggleFavorites(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onExportTracks(selectedTracks)
+                    selection.exit()
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 92.dp else 12.dp)
+        )
+
         addTarget?.let { track ->
             AddToPlaylistDialog(
                 track = track,
@@ -3910,6 +3969,24 @@ private fun AlbumOverlay(
                 onCreateWith = { name ->
                     onCreatePlaylistWithTrack(name, track)
                     addTarget = null
+                }
+            )
+        }
+
+        if (batchAddTargets.isNotEmpty()) {
+            com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+                tracks = batchAddTargets,
+                playlists = state.playlists,
+                onDismiss = { batchAddTargets = emptyList() },
+                onAdd = { playlistId ->
+                    onAddTracksToPlaylist(playlistId, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                },
+                onCreate = { name ->
+                    onCreatePlaylistWithTracks(name, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
                 }
             )
         }
