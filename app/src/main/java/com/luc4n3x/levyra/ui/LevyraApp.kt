@@ -3934,34 +3934,33 @@ private fun AlbumOverlay(
             allVisibleIds = selectableIds,
             actions = TrackSelectionActions(
                 onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                {
-                    onPlayTracksNext(selectedTracks)
-                    selection.exit()
+                    {
+                        onPlayTracksNext(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onAddTracksToQueue(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToPlaylist = selectedTracks
+                    .filter { it.id.isNotBlank() }
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
+                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onToggleFavorites(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onExportTracks(selectedTracks)
+                        selection.exit()
+                    }
                 }
-            },
-            onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                {
-                    onAddTracksToQueue(selectedTracks)
-                    selection.exit()
-                }
-            },
-            onAddToPlaylist = selectedTracks
-                .takeIf { tracks -> tracks.isNotEmpty() && tracks.all { it.id.isNotBlank() } }
-                ?.let {
-                { batchAddTargets = selectedTracks }
-            },
-            onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                {
-                    onToggleFavorites(selectedTracks)
-                    selection.exit()
-                }
-            },
-            onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                {
-                    onExportTracks(selectedTracks)
-                    selection.exit()
-                }
-            }
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -5233,34 +5232,33 @@ private fun ArtistOverlay(
             allVisibleIds = selectableIds,
             actions = TrackSelectionActions(
                 onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                {
-                    onPlayTracksNext(selectedTracks)
-                    selection.exit()
+                    {
+                        onPlayTracksNext(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onAddTracksToQueue(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToPlaylist = selectedTracks
+                    .filter { it.id.isNotBlank() }
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
+                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onToggleFavorites(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onExportTracks(selectedTracks)
+                        selection.exit()
+                    }
                 }
-            },
-            onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                {
-                    onAddTracksToQueue(selectedTracks)
-                    selection.exit()
-                }
-            },
-            onAddToPlaylist = selectedTracks
-                .takeIf { tracks -> tracks.isNotEmpty() && tracks.all { it.id.isNotBlank() } }
-                ?.let {
-                { batchAddTargets = selectedTracks }
-            },
-            onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                {
-                    onToggleFavorites(selectedTracks)
-                    selection.exit()
-                }
-            },
-            onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                {
-                    onExportTracks(selectedTracks)
-                    selection.exit()
-                }
-            }
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -13011,10 +13009,9 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                         }
                     },
                     onAddToPlaylist = selectedTracks
-                        .takeIf { tracks -> tracks.isNotEmpty() && tracks.all { it.id.isNotBlank() } }
-                        ?.let {
-                            { batchAddTargets = selectedTracks }
-                        },
+                        .filter { it.id.isNotBlank() }
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
                     onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
                         {
                             viewModel.toggleFavorites(selectedTracks)

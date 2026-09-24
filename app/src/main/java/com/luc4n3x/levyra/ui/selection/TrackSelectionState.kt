@@ -102,11 +102,11 @@ internal fun <T> TrackSelectionState.resolveSelected(
 
 
 internal fun trackSelectionKey(track: Track): String {
-    track.isrc.trim().takeIf(String::isNotBlank)?.let {
-        return "isrc:" + it.lowercase(Locale.ROOT)
-    }
     track.id.trim().takeIf(String::isNotBlank)?.let {
         return "id:" + it.lowercase(Locale.ROOT)
+    }
+    track.isrc.trim().takeIf(String::isNotBlank)?.let {
+        return "isrc:" + it.lowercase(Locale.ROOT)
     }
     track.audioVideoId.trim().takeIf(String::isNotBlank)?.let {
         return "audio:" + it.lowercase(Locale.ROOT)

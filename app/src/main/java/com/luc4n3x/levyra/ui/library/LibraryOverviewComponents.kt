@@ -462,6 +462,15 @@ internal fun SmartCollectionDetail(
     val selection = rememberTrackSelectionState()
     var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
     val selectableIds = remember(tracks) { tracks.map(::trackSelectionKey) }
+    val lazyItemKeys = remember(tracks) {
+        val occurrences = HashMap<String, Int>()
+        tracks.map { track ->
+            val key = trackSelectionKey(track)
+            val occurrence = (occurrences[key] ?: 0) + 1
+            occurrences[key] = occurrence
+            if (occurrence == 1) key else key + "#" + occurrence
+        }
+    }
     val selectedTracks = remember(tracks, selection.selectedIds) {
         selection.resolveSelected(tracks, ::trackSelectionKey)
     }
@@ -499,7 +508,7 @@ internal fun SmartCollectionDetail(
                 } else {
                     items(
                         count = tracks.size,
-                        key = { index -> "smart-" + collectionId + "-" + trackSelectionKey(tracks[index]) }
+                        key = { index -> "smart-" + collectionId + "-" + lazyItemKeys[index] }
                     ) { index ->
                         val track = tracks[index]
                         val key = trackSelectionKey(track)
@@ -536,10 +545,9 @@ internal fun SmartCollectionDetail(
                         }
                     },
                     onAddToPlaylist = selectedTracks
-                        .takeIf { tracks -> tracks.isNotEmpty() && tracks.all { it.id.isNotBlank() } }
-                        ?.let {
-                            { batchAddTargets = selectedTracks }
-                        },
+                        .filter { it.id.isNotBlank() }
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
                     onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
                         {
                             viewModel.toggleFavorites(selectedTracks)
