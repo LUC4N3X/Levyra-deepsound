@@ -1944,7 +1944,8 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    val rootOverlayOpen = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
+    BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
         } else if (state.showRecognition) {
@@ -2162,6 +2163,7 @@ fun LevyraApp(
                                 viewModel = exploreViewModel,
                                 state = screenState,
                                 liveRadioOpen = liveRadioOpen,
+                                liveRadioBackEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Explore,
                                 onLiveRadioOpenChange = { liveRadioOpen = it },
                                 onOpenJam = viewModel::openJam
                             )
@@ -23440,6 +23442,7 @@ private fun ExploreScreen(
     viewModel: ExploreViewModel,
     state: LevyraUiState,
     liveRadioOpen: Boolean,
+    liveRadioBackEnabled: Boolean,
     onLiveRadioOpenChange: (Boolean) -> Unit,
     onOpenJam: () -> Unit
 ) {
@@ -23732,6 +23735,7 @@ private fun ExploreScreen(
                     ?.id
                     ?.removePrefix("live-radio:"),
                 isPlaying = state.isPlaying,
+                backEnabled = liveRadioBackEnabled,
                 onBack = { onLiveRadioOpenChange(false) },
                 onPlay = viewModel::playLiveRadio
             )
