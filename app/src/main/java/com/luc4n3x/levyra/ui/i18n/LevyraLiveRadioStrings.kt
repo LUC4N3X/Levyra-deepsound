@@ -99,6 +99,28 @@ internal object LevyraLiveRadioCatalog {
         "fil" to "Hindi available ang live stream", "he" to "השידור החי אינו זמין"
     )
 
+    private val advertisementValues = mapOf(
+        "en" to "Advertisement", "it" to "Pubblicità",
+        "es" to "Publicidad", "fr" to "Publicité",
+        "de" to "Werbung", "pt" to "Publicidade",
+        "nl" to "Advertentie", "pl" to "Reklama",
+        "ro" to "Publicitate", "el" to "Διαφήμιση",
+        "sv" to "Reklam", "da" to "Reklame",
+        "cs" to "Reklama", "sk" to "Reklama",
+        "hr" to "Oglas", "bg" to "Реклама",
+        "hu" to "Reklám", "fi" to "Mainos",
+        "et" to "Reklaam", "nb" to "Reklame",
+        "ca" to "Publicitat", "uk" to "Реклама",
+        "ru" to "Реклама", "tr" to "Reklam",
+        "ar" to "إعلان", "fa" to "تبلیغ",
+        "zh" to "广告", "zh-Hant" to "廣告",
+        "ja" to "広告", "ko" to "광고",
+        "hi" to "विज्ञापन", "id" to "Iklan",
+        "ms" to "Iklan", "vi" to "Quảng cáo",
+        "th" to "โฆษณา", "fil" to "Patalastas",
+        "he" to "פרסומת"
+    )
+
     private val values = mapOf(
         "en" to radio("Live stations from around the world", "Live stations", "Popular in %s", "Worldwide", "Categories", "Countries", "Languages", "Search by name, country, tag or language", "No matching live stations", "Showing saved stations while the catalog reconnects", "An Internet connection is required to play live radio", "Load more", englishCategories),
         "it" to radio("Stazioni in diretta da tutto il mondo", "Stazioni in diretta", "Popolari in %s", "Tutto il mondo", "Categorie", "Paesi", "Lingue", "Cerca per nome, paese, genere o lingua", "Nessuna stazione live corrispondente", "Stazioni salvate visibili mentre il catalogo si riconnette", "Serve una connessione Internet per ascoltare la radio live", "Carica altre", listOf("Popolari", "Musica", "Pop", "Rock", "Hip-Hop", "Elettronica", "Dance", "Chill", "Jazz", "Classica", "Notizie", "Talk", "Sport", "Locali", "Tutto il mondo")),
@@ -146,6 +168,7 @@ internal object LevyraLiveRadioCatalog {
         check(values.keys == languageCodes)
         check(localizedCategories.keys == languageCodes)
         check(unavailableValues.keys == languageCodes)
+        check(advertisementValues.keys == languageCodes)
         check(localizedCategories.values.all { it.size == RadioCategory.entries.size })
         check(values.values.all { it.exploreSubtitle.isNotBlank() })
     }
@@ -155,6 +178,9 @@ internal object LevyraLiveRadioCatalog {
 
     fun streamUnavailable(code: String): String =
         localizedValueOrEnglish(unavailableValues, LevyraLanguageCatalog.normalize(code))
+
+    fun advertisement(code: String): String =
+        localizedValueOrEnglish(advertisementValues, LevyraLanguageCatalog.normalize(code))
 
     private fun radio(
         subtitle: String,

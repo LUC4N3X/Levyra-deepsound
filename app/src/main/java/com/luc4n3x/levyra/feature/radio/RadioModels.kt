@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
 import java.net.InetAddress
 import java.net.URI
+import java.text.Normalizer
 import java.net.UnknownHostException
 import java.util.Locale
 import okhttp3.Dns
@@ -36,7 +37,7 @@ data class RadioStation(
 
     val alternateStreamUrl: String
         get() = streamUrl.takeIf {
-            it != preferredStreamUrl && RadioUrlPolicy.isAllowed(it)
+            it != preferredStreamUrl && RadioUrlPolicy.isAllowed(it) && !isRadioPlaylistUrl(it)
         }.orEmpty()
 
     val safeFaviconUrl: String
@@ -44,11 +45,11 @@ data class RadioStation(
 
     val qualityLabel: String
         get() = listOfNotNull(
-            codec.trim().takeIf(String::isNotBlank),
+            codec.trim().takeIf { it.isNotBlank() && !it.equals("UNKNOWN", ignoreCase = true) },
             bitrateKbps.takeIf { it > 0 }?.let { "$it kbps" }
         ).joinToString(" / ")
 
-    fun toTrack(stream: String = preferredStreamUrl): Track = Track(
+    fun toTrack(stream: String = preferredStreamUrl, artwork: String = ""): Track = Track(
         id = "live-radio:$uuid",
         title = name,
         artist = country.ifBlank { language }.ifBlank { LIVE_RADIO_SOURCE },
@@ -56,8 +57,8 @@ data class RadioStation(
         durationMs = 0L,
         streamUrl = stream,
         videoUrl = "",
-        thumbnailUrl = faviconUrl.takeIf(RadioUrlPolicy::isAllowed).orEmpty(),
-        largeThumbnailUrl = faviconUrl.takeIf(RadioUrlPolicy::isAllowed).orEmpty(),
+        thumbnailUrl = artwork,
+        largeThumbnailUrl = artwork,
         source = LIVE_RADIO_SOURCE,
         moodTags = tags.take(12).map { it.lowercase(Locale.ROOT) }.toSet(),
         energy = 50,
@@ -203,11 +204,15 @@ internal fun Track.isLiveRadio(): Boolean = source == LIVE_RADIO_SOURCE && id.st
 
 private val radioNameSeparatorPattern = Regex("[^\\p{L}\\p{N}]+")
 
-internal fun normalizeRadioName(value: String): String = value
-    .trim()
-    .lowercase(Locale.ROOT)
-    .replace(radioNameSeparatorPattern, " ")
-    .trim()
+private val radioCombiningMarkPattern = Regex("\\p{Mn}+")
+private val radioApostrophePattern = Regex("['’ʼ`´]")
+
+internal fun normalizeRadioName(value: String): String =
+    Normalizer.normalize(value.trim().lowercase(Locale.ROOT), Normalizer.Form.NFD)
+        .replace(radioCombiningMarkPattern, "")
+        .replace(radioApostrophePattern, "")
+        .replace(radioNameSeparatorPattern, " ")
+        .trim()
 
 internal fun radioSearchTokens(value: String): List<String> =
     normalizeRadioName(value)
@@ -216,6 +221,13 @@ internal fun radioSearchTokens(value: String): List<String> =
         .filter { it.length >= 2 }
         .distinct()
         .take(8)
+
+private val genericRadioSearchTokens = setOf("fm", "am", "radio", "the")
+
+internal fun radioSearchRequestTokens(value: String): List<String> =
+    radioSearchTokens(value)
+        .filterNot(genericRadioSearchTokens::contains)
+        .sortedByDescending(String::length)
 
 internal fun radioStationMatchesSearch(station: RadioStation, query: String): Boolean {
     val tokens = radioSearchTokens(query)
@@ -248,48 +260,115 @@ internal fun radioStationScore(station: RadioStation): Long {
         station.clickCount.toLong().coerceAtMost(1_000_000L) + codecScore + bitrateScore + httpsScore
 }
 
-internal fun filterAndRankRadioStations(stations: List<RadioStation>): List<RadioStation> {
-    val candidates = stations.asSequence()
-        .filter { it.lastCheckOk }
-        .filter { it.uuid.isNotBlank() && it.name.trim().length in 2..160 }
-        .filter { it.preferredStreamUrl.isNotBlank() }
-        .sortedByDescending(::radioStationScore)
-        .toList()
-    val seenUuids = hashSetOf<String>()
-    val seenSignatures = hashSetOf<String>()
-    return candidates.filter { station ->
-        val uuid = station.uuid.lowercase(Locale.ROOT)
-        val streamUri = runCatching { URI(station.preferredStreamUrl) }.getOrNull()
-        val host = streamUri?.host.orEmpty().lowercase(Locale.ROOT)
-        val streamPath = streamUri?.let { "${it.path.orEmpty()}?${it.query.orEmpty()}" }.orEmpty()
-        val signature = "${normalizeRadioName(station.name)}|$host|$streamPath|${station.countryCode.uppercase(Locale.ROOT)}"
-        seenUuids.add(uuid) && seenSignatures.add(signature)
-    }
-}
+internal fun filterAndRankRadioStations(stations: List<RadioStation>): List<RadioStation> =
+    distinctRadioStations(
+        stations.asSequence()
+            .filter { it.lastCheckOk }
+            .filter { it.uuid.isNotBlank() && it.name.trim().length in 2..160 }
+            .filter { it.preferredStreamUrl.isNotBlank() }
+            .sortedByDescending(::radioStationScore)
+            .toList()
+    )
 
 internal fun filterAndRankRadioSearchResults(
     stations: List<RadioStation>,
     query: String
 ): List<RadioStation> {
     val normalizedQuery = normalizeRadioName(query)
-    val candidates = stations.asSequence()
-        .filter { it.uuid.isNotBlank() && it.name.trim().length in 2..160 }
-        .filter { it.preferredStreamUrl.isNotBlank() }
-        .filter { radioStationMatchesSearch(it, query) }
-        .sortedByDescending { station ->
-            radioStationScore(station) +
-                if (station.lastCheckOk) 5_000_000L else 0L +
-                if (normalizeRadioName(station.name) == normalizedQuery) 2_000_000L else 0L
-        }
-        .toList()
-    val seenUuids = hashSetOf<String>()
-    val seenSignatures = hashSetOf<String>()
-    return candidates.filter { station ->
-        val uuid = station.uuid.lowercase(Locale.ROOT)
-        val streamUri = runCatching { URI(station.preferredStreamUrl) }.getOrNull()
-        val host = streamUri?.host.orEmpty().lowercase(Locale.ROOT)
-        val streamPath = streamUri?.let { "${it.path.orEmpty()}?${it.query.orEmpty()}" }.orEmpty()
-        val signature = "${normalizeRadioName(station.name)}|$host|$streamPath|${station.countryCode.uppercase(Locale.ROOT)}"
-        seenUuids.add(uuid) && seenSignatures.add(signature)
+    val tokens = radioSearchTokens(query)
+    return distinctRadioStations(
+        stations.asSequence()
+            .filter { it.uuid.isNotBlank() && it.name.trim().length in 2..160 }
+            .filter { it.preferredStreamUrl.isNotBlank() }
+            .filter { radioStationMatchesSearch(it, query) }
+            .map { it to radioSearchScore(it, normalizedQuery, tokens) }
+            .sortedByDescending { it.second }
+            .map { it.first }
+            .toList()
+    )
+}
+
+private fun radioSearchScore(station: RadioStation, normalizedQuery: String, tokens: List<String>): Long {
+    val name = normalizeRadioName(station.name)
+    val health = if (station.lastCheckOk) 100_000_000L else 0L
+    val relevance = when {
+        name == normalizedQuery -> 30_000_000L
+        name.startsWith(normalizedQuery) -> 20_000_000L
+        tokens.all(name::contains) -> 10_000_000L
+        else -> 0L
     }
+    return health + relevance + radioStationScore(station)
+}
+
+private fun distinctRadioStations(ranked: List<RadioStation>): List<RadioStation> {
+    val seenUuids = hashSetOf<String>()
+    val seenStreams = hashSetOf<String>()
+    return ranked.filter { station ->
+        val streamUri = runCatching { URI(station.preferredStreamUrl) }.getOrNull()
+        val stream = streamUri?.let {
+            "${it.host.orEmpty().lowercase(Locale.ROOT)}:${it.port}${it.path.orEmpty().trimEnd('/', ';')}?${it.query.orEmpty()}"
+        } ?: station.preferredStreamUrl
+        seenUuids.add(station.uuid.lowercase(Locale.ROOT)) && seenStreams.add(stream)
+    }
+}
+
+private val radioPlaylistExtensions = listOf(".pls", ".m3u", ".asx", ".xspf", ".ram", ".wax")
+
+internal fun isRadioPlaylistUrl(value: String): Boolean {
+    val path = runCatching { URI(value.trim()).path }.getOrNull().orEmpty().lowercase(Locale.ROOT)
+    return radioPlaylistExtensions.any(path::endsWith)
+}
+
+internal data class LiveRadioStreamMetadata(
+    val title: String = "",
+    val advertisement: Boolean = false
+)
+
+private val liveRadioAdvertisementMarker = Regex(
+    """(?:^|[;\s])(?:adw_ad\s*=\s*'true'|insertionType\s*=\s*'(?:preroll|midroll|postroll)')""",
+    RegexOption.IGNORE_CASE
+)
+
+internal fun liveRadioStreamMetadata(title: String?, rawMetadata: String): LiveRadioStreamMetadata {
+    val advertisement = liveRadioAdvertisementMarker.containsMatchIn(rawMetadata)
+    return LiveRadioStreamMetadata(
+        title = if (advertisement) "" else sanitizeLiveRadioTitle(title.orEmpty()),
+        advertisement = advertisement
+    )
+}
+
+private const val LIVE_RADIO_RECORD_MIN_FIELDS = 5
+private val liveRadioTitleSeparator = Regex("""\s+(?:-|–|—|\|{1,2})\s+""")
+private val liveRadioDiscardableSegment = Regex(
+    """(?i)^(?:https?://\S+|www\.\S+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{16,})$"""
+)
+
+internal fun sanitizeLiveRadioTitle(value: String): String {
+    val record = value.trim().split('~')
+    if (record.size >= LIVE_RADIO_RECORD_MIN_FIELDS) {
+        return record.take(2).map(String::trim).filter(String::isNotEmpty).joinToString(" - ").take(240)
+    }
+    val segments = value.trim().split(liveRadioTitleSeparator)
+    val kept = segments.map(String::trim).filterNot { it.isEmpty() || liveRadioDiscardableSegment.matches(it) }
+    val title = if (kept.size == segments.size) value.trim() else kept.joinToString(" - ")
+    return title.take(240)
+}
+
+internal fun nextLiveRadioStreamMetadata(
+    current: LiveRadioStreamMetadata,
+    received: LiveRadioStreamMetadata
+): LiveRadioStreamMetadata = when {
+    received.advertisement || received.title.isNotBlank() -> received
+    current.advertisement -> LiveRadioStreamMetadata()
+    else -> current
+}
+
+internal fun liveRadioNowPlaying(
+    metadata: LiveRadioStreamMetadata,
+    stationName: String,
+    advertisementLabel: String
+): String = when {
+    metadata.advertisement -> advertisementLabel
+    normalizeRadioName(metadata.title) == normalizeRadioName(stationName) -> ""
+    else -> metadata.title
 }

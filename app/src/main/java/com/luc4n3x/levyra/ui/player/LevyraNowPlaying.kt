@@ -315,7 +315,7 @@ fun LevyraNowPlaying(
             pane = playerPane,
             hasTrack = track != null
         )
-        val deckMode = resolvePlayerDeckVisualMode(visualMode, deckLayout)
+        val deckMode = if (liveRadio) PlayerVisualMode.Artwork else resolvePlayerDeckVisualMode(visualMode, deckLayout)
         val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 380.dp || maxHeight < 720.dp)
         val fitsViewport = maxHeight >= MinimumFittedPlayerHeight || playerPane == LevyraPlayerPane.SideBySide
         val gutter = if (state.isVideoMode) {
@@ -328,7 +328,7 @@ fun LevyraNowPlaying(
         val containerHeightPx = with(density) { maxHeight.toPx() }
         val scrollingArtworkHeight = min(maxWidth - gutter * 2, ScrollingArtworkMax)
 
-        val artworkPreviewAvailable = !state.isVideoMode && artworkUrl.isNotBlank() && deckMode == PlayerVisualMode.Artwork
+        val artworkPreviewAvailable = !liveRadio && !state.isVideoMode && artworkUrl.isNotBlank() && deckMode == PlayerVisualMode.Artwork
         var showArtworkPreview by remember(track?.id, state.isVideoMode) { mutableStateOf(false) }
         var videoFullscreen by remember(track?.id, state.isVideoMode) { mutableStateOf(false) }
         val videoTransform = remember(track?.id, state.isVideoMode) {
