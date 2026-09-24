@@ -7,7 +7,7 @@
     <string name="widget_previous">Nakaraang kanta</string>
     <string name="widget_favorites">Mga paborito</string>
     <string name="widget_flow">Daily Flow</string>
-    <string name="widget_offline">Offline mix</string>
+    <string name="widget_offline">Offline na mix</string>
     <string name="widget_lyrics">Mga liriko</string>
     <string name="radar_channel_name">Release Radar</string>
     <string name="radar_channel_description">Mga bagong release mula sa mga artist na sinusundan mo</string>
@@ -23,8 +23,8 @@
     <string name="car_no_results">Walang resulta</string>
     <string name="car_connecting_player">Kumokonekta sa player</string>
     <string name="car_now_playing">Tumutugtog ngayon</string>
-    <string name="car_queue">Queue</string>
-    <string name="notification_shuffle">Shuffle</string>
+    <string name="car_queue">Pila ng kanta</string>
+    <string name="notification_shuffle">I-shuffle</string>
     <string name="notification_favorite">Paborito</string>
     <string name="tile_recognize_music">Kilalanin ang musika</string>
     <string name="tile_playback">Playback</string>
