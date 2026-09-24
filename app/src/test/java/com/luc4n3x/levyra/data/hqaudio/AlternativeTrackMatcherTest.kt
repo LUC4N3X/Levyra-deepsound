@@ -320,10 +320,39 @@ class AlternativeTrackMatcherTest {
                     primary = listOf("Palak Muchhal", "Arijit Singh", "Mithoon", "Irshad Kamil"),
                     album = "Love Forever - Valentine's Day Special",
                     duration = 266
-                )
+                ).copy(creatorArtists = setOf("Mithoon", "Irshad Kamil"))
             ).map { it.copy(language = "hindi") }
         )
         assertEquals("KVi55vCq", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun soloAndDuetReleasesStayAmbiguous() {
+        val query = query(title = "Song", artist = "Singer", album = "YouTube Music", durationMs = 200_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "solo", title = "Song", primary = listOf("Singer"), album = "One", duration = 200),
+                candidate(id = "duet", title = "Song", primary = listOf("Singer", "Partner A"), album = "Two", duration = 200)
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun everyNearTopPairMustBeTheSameRecording() {
+        val query = query(title = "Song", artist = "Singer", album = "YouTube Music", durationMs = 200_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "solo", title = "Song", primary = listOf("Singer"), album = "One", duration = 200),
+                candidate(id = "with-a", title = "Song", primary = listOf("Singer", "Writer A"), album = "Two", duration = 200)
+                    .copy(creatorArtists = setOf("Writer A")),
+                candidate(id = "with-b", title = "Song", primary = listOf("Singer", "Writer B"), album = "Three", duration = 200)
+                    .copy(creatorArtists = setOf("Writer B"))
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
     }
 
     @Test

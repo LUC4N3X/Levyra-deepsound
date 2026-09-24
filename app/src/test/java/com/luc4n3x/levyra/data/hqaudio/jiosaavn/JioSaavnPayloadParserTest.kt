@@ -52,6 +52,7 @@ class JioSaavnPayloadParserTest {
         }
         val candidate = JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.single()
         assertEquals(setOf("Mithoon", "Shraddha Kapoor"), candidate.nonPerformingArtists)
+        assertEquals(setOf("Mithoon", "Irshad Kamil", "Shraddha Kapoor"), candidate.creatorArtists)
         assertEquals(2013, candidate.releaseYear)
     }
 
@@ -60,6 +61,7 @@ class JioSaavnPayloadParserTest {
         val song = saavnSong("n1", "Song", listOf("Artist"), "Album", 180).apply { put("year", "20xx") }
         val candidate = JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.single()
         assertEquals(emptySet<String>(), candidate.nonPerformingArtists)
+        assertEquals(emptySet<String>(), candidate.creatorArtists)
         assertEquals(0, candidate.releaseYear)
     }
 

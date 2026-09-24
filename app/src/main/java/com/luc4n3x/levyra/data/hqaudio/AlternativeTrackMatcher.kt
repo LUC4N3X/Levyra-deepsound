@@ -28,6 +28,7 @@ data class AlternativeTrackCandidate(
     val mediaToken: String = "",
     val language: String = "",
     val nonPerformingArtists: Set<String> = emptySet(),
+    val creatorArtists: Set<String> = emptySet(),
     val releaseYear: Int = 0
 )
 
@@ -179,10 +180,11 @@ class AlternativeTrackMatcher {
         val top = accepted.firstOrNull()
             ?: return AlternativeMatchSelection.Rejected(dominantRejection(evaluations), evaluations)
         val explicitKnown = (query.explicit ?: AlternativeTrackText.title(query.title).explicitHint) != null
-        val contender = accepted.firstOrNull { it.verdict == top.verdict && !sameRecording(it, top, explicitKnown) }
-        if (contender != null && top.confidence - contender.confidence < AMBIGUITY_MARGIN) {
-            return AlternativeMatchSelection.Rejected(MatchRejection.AMBIGUOUS, evaluations)
+        val nearTop = accepted.filter { it.verdict == top.verdict && top.confidence - it.confidence < AMBIGUITY_MARGIN }
+        val ambiguous = nearTop.withIndex().any { (index, left) ->
+            nearTop.drop(index + 1).any { right -> !sameRecording(left, right, explicitKnown) }
         }
+        if (ambiguous) return AlternativeMatchSelection.Rejected(MatchRejection.AMBIGUOUS, evaluations)
         val chosen = accepted
             .filter { it.verdict == top.verdict && sameRecording(it, top, explicitKnown) }
             .maxWith(
@@ -208,7 +210,7 @@ class AlternativeTrackMatcher {
         return aTitle.core == bTitle.core &&
             aTitle.versionSignature == bTitle.versionSignature &&
             sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
-            samePrimaryCredits(primarySet(a), primarySet(b)) &&
+            samePrimaryCredits(a, b) &&
             abs(a.durationSeconds - b.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
             (!explicitKnown || a.explicit == b.explicit) &&
             (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
@@ -220,8 +222,17 @@ class AlternativeTrackMatcher {
     private fun sameFeaturedCredits(left: Set<String>, right: Set<String>): Boolean =
         left.isEmpty() || right.isEmpty() || left == right
 
-    private fun samePrimaryCredits(left: Set<String>, right: Set<String>): Boolean =
-        left.isNotEmpty() && right.isNotEmpty() && (left.containsAll(right) || right.containsAll(left))
+    private fun samePrimaryCredits(a: AlternativeTrackCandidate, b: AlternativeTrackCandidate): Boolean {
+        val left = primarySet(a)
+        val right = primarySet(b)
+        if (left.isEmpty() || right.isEmpty()) return false
+        return left == right ||
+            (left.containsAll(right) && creators(a).containsAll(left - right)) ||
+            (right.containsAll(left) && creators(b).containsAll(right - left))
+    }
+
+    private fun creators(candidate: AlternativeTrackCandidate): Set<String> =
+        candidate.creatorArtists.flatMap(AlternativeTrackText::artistNames).toSet()
 
     private fun primarySet(candidate: AlternativeTrackCandidate): Set<String> =
         performers(candidate, candidate.primaryArtists.flatMap(AlternativeTrackText::artistNames).distinct()).toSet()

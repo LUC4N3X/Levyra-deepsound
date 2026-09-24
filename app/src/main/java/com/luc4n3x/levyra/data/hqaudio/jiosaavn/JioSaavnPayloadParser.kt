@@ -65,6 +65,7 @@ internal object JioSaavnPayloadParser {
         val offers320 = (info.opt("320kbps") ?: json.opt("320kbps"))?.toString()?.let(::flag)
         val mediaToken = info.optString("encrypted_media_url").ifBlank { json.optString("encrypted_media_url") }.trim()
         if (providerTrackId.isBlank() || title.isBlank() || primaryArtists.isEmpty() || mediaToken.isBlank()) return null
+        val creditRoles = creditRoles(artistMap?.optJSONArray("artists"))
         return AlternativeTrackCandidate(
             providerId = JIOSAAVN_PROVIDER_ID,
             providerTrackId = providerTrackId,
@@ -77,19 +78,16 @@ internal object JioSaavnPayloadParser {
             offers320 = offers320,
             mediaToken = mediaToken,
             language = json.optString("language").trim().lowercase().takeUnless { it == "unknown" }.orEmpty(),
-            nonPerformingArtists = nonPerformingArtists(artistMap?.optJSONArray("artists")),
+            nonPerformingArtists = creditRoles.filterValues { roles -> roles.all { it in NON_PERFORMING_ROLES } }.keys,
+            creatorArtists = creditRoles.filterValues { roles -> roles.any { it in NON_PERFORMING_ROLES } }.keys,
             releaseYear = json.optString("year").trim().toIntOrNull()?.takeIf { it in 1900..2100 } ?: 0
         )
     }
 
-    private fun nonPerformingArtists(credits: JSONArray?): Set<String> {
-        val rolesByName = credits?.let(::objects).orEmpty()
+    private fun creditRoles(credits: JSONArray?): Map<String, List<String>> =
+        credits?.let(::objects).orEmpty()
             .groupBy({ decode(it.optString("name")) }, { it.optString("role").trim().lowercase() })
             .filterKeys { it.isNotBlank() }
-        return rolesByName
-            .filterValues { roles -> roles.all { it in NON_PERFORMING_ROLES } }
-            .keys
-    }
 
     private fun flag(value: String): Boolean? = when (value.trim().lowercase()) {
         "1", "true" -> true
