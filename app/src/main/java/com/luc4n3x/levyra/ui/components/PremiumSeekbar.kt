@@ -92,6 +92,28 @@ fun PremiumSeekbar(
     } else {
         seekbarProgressFraction(positionMs, durationMs)
     }
+    val playbackProgress = seekbarProgressFraction(positionMs, durationMs)
+    val animatedProgress = remember(interactionKey) { Animatable(playbackProgress) }
+    LaunchedEffect(playbackProgress, durationMs, animated, isPlaying, isDragging, interactionKey) {
+        if (
+            isDragging ||
+            !seekbarShouldSmoothProgress(animatedProgress.value, playbackProgress, isPlaying, animated)
+        ) {
+            animatedProgress.snapTo(playbackProgress)
+        } else {
+            animatedProgress.animateTo(
+                targetValue = playbackProgress,
+                animationSpec = tween(
+                    durationMillis = seekbarProgressAnimationDurationMs(
+                        animatedProgress.value,
+                        playbackProgress,
+                        durationMs
+                    ),
+                    easing = LinearEasing
+                )
+            )
+        }
+    }
     val bufferedProgress = remember(bufferedPositionMs, durationMs, effectiveProgress) {
         seekbarProgressFraction(bufferedPositionMs, durationMs).coerceAtLeast(effectiveProgress)
     }
@@ -232,6 +254,7 @@ fun PremiumSeekbar(
         ) {
             val totalWidth = size.width
             if (totalWidth <= 0f) return@Canvas
+            val renderedProgress = if (isDragging) dragProgressFraction else animatedProgress.value
             val centerY = size.height / 2f
             val scrub = scrubAmount.value
 
@@ -246,7 +269,7 @@ fun PremiumSeekbar(
             val radius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
             val trackTop = centerY - trackHeight / 2f
 
-            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, thumbRadius * 2f)
+            val handleX = trackStart + seekbarHandleCenterX(renderedProgress, trackSpan, thumbRadius * 2f)
 
             drawRoundRect(
                 color = inactiveColor,

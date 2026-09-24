@@ -28,3 +28,29 @@ internal fun seekbarSeekMillis(fraction: Float, durationMs: Long): Long {
     if (!fraction.isFinite() || durationMs <= 0L) return 0L
     return (fraction.coerceIn(0f, 1f) * durationMs).toLong().coerceIn(0L, durationMs)
 }
+
+internal fun seekbarShouldSmoothProgress(
+    currentFraction: Float,
+    targetFraction: Float,
+    isPlaying: Boolean,
+    animated: Boolean
+): Boolean {
+    if (!animated || !isPlaying || !currentFraction.isFinite() || !targetFraction.isFinite()) return false
+    val delta = targetFraction - currentFraction
+    return delta > 0f && delta <= MAX_SMOOTH_PROGRESS_DELTA
+}
+
+internal fun seekbarProgressAnimationDurationMs(
+    currentFraction: Float,
+    targetFraction: Float,
+    durationMs: Long
+): Int {
+    if (durationMs <= 0L || !currentFraction.isFinite() || !targetFraction.isFinite()) return 0
+    return ((targetFraction - currentFraction).coerceAtLeast(0f) * durationMs.toFloat())
+        .toInt()
+        .coerceIn(MIN_PROGRESS_ANIMATION_MS, MAX_PROGRESS_ANIMATION_MS)
+}
+
+private const val MAX_SMOOTH_PROGRESS_DELTA = 0.025f
+private const val MIN_PROGRESS_ANIMATION_MS = 90
+private const val MAX_PROGRESS_ANIMATION_MS = 1_000

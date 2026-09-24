@@ -78,6 +78,23 @@ class SeekbarGeometryTest {
     }
 
     @Test
+    fun `small forward playback ticks are smoothed but seeks and paused state snap`() {
+        assertTrue(seekbarShouldSmoothProgress(0.20f, 0.205f, isPlaying = true, animated = true))
+        assertTrue(!seekbarShouldSmoothProgress(0.20f, 0.40f, isPlaying = true, animated = true))
+        assertTrue(!seekbarShouldSmoothProgress(0.40f, 0.20f, isPlaying = true, animated = true))
+        assertTrue(!seekbarShouldSmoothProgress(0.20f, 0.205f, isPlaying = false, animated = true))
+        assertTrue(!seekbarShouldSmoothProgress(0.20f, 0.205f, isPlaying = true, animated = false))
+    }
+
+    @Test
+    fun `progress interpolation follows media time within a bounded window`() {
+        assertEquals(500, seekbarProgressAnimationDurationMs(0.10f, 0.105f, 100_000L))
+        assertEquals(90, seekbarProgressAnimationDurationMs(0.10f, 0.1001f, 100_000L))
+        assertEquals(1_000, seekbarProgressAnimationDurationMs(0.10f, 0.12f, 100_000L))
+        assertEquals(0, seekbarProgressAnimationDurationMs(0.10f, 0.12f, 0L))
+    }
+
+    @Test
     fun `scrub label switches to hours only for long tracks`() {
         assertEquals("0:00", formatSeekbarMillis(-5_000L))
         assertEquals("3:07", formatSeekbarMillis(187_000L))
