@@ -32,6 +32,15 @@ class SeekbarGeometryTest {
     }
 
     @Test
+    fun `non finite geometry inputs are rejected`() {
+        assertEquals(0f, seekbarFractionAt(Float.NaN, 200f), 0f)
+        assertEquals(0f, seekbarFractionAt(20f, Float.POSITIVE_INFINITY), 0f)
+        assertEquals(0f, seekbarHandleCenterX(Float.NaN, 200f, 12f), 0f)
+        assertEquals(0f, seekbarTooltipOffsetX(Float.POSITIVE_INFINITY, 200f, 80f), 0f)
+        assertEquals(0L, seekbarSeekMillis(Float.NaN, 60_000L))
+    }
+
+    @Test
     fun `handle stays fully inside the track at both ends`() {
         val width = 300f
         val handle = 12f
