@@ -535,9 +535,11 @@ internal fun SmartCollectionDetail(
                             selection.exit()
                         }
                     },
-                    onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        { batchAddTargets = selectedTracks }
-                    },
+                    onAddToPlaylist = selectedTracks
+                        .takeIf { tracks -> tracks.isNotEmpty() && tracks.all { it.id.isNotBlank() } }
+                        ?.let {
+                            { batchAddTargets = selectedTracks }
+                        },
                     onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
                         {
                             viewModel.toggleFavorites(selectedTracks)
