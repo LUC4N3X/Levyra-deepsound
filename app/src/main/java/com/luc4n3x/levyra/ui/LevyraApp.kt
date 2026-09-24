@@ -6,6 +6,17 @@ import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.isExcludableArtist
 import androidx.compose.runtime.key
 import com.luc4n3x.levyra.ui.components.LevyraPlayPauseGlyph
+import com.luc4n3x.levyra.ui.artwork.ArtworkBackdropWash
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveDockSurface
+import com.luc4n3x.levyra.ui.components.animatedCompaction
+import com.luc4n3x.levyra.ui.components.dockClipHeight
+import com.luc4n3x.levyra.ui.components.dockFade
+import com.luc4n3x.levyra.ui.components.dockFoldHeight
+import com.luc4n3x.levyra.ui.components.dockFoldWidth
+import com.luc4n3x.levyra.ui.components.dockLerpHeight
+import com.luc4n3x.levyra.ui.components.dockLerpSize
+import com.luc4n3x.levyra.ui.components.rememberLevyraDockState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.luc4n3x.levyra.ui.components.LevyraIonicons
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsLink
 import com.luc4n3x.levyra.ui.components.PlaybackDiagnosticsDialog
@@ -37,6 +48,7 @@ import com.luc4n3x.levyra.ui.album.AlbumHeroDissolve
 import com.luc4n3x.levyra.ui.album.AlbumSplitHeroFraction
 import com.luc4n3x.levyra.ui.album.AlbumSplitListStartFraction
 import com.luc4n3x.levyra.ui.album.AlbumStageColors
+import com.luc4n3x.levyra.ui.album.AlbumFieldTail
 import com.luc4n3x.levyra.ui.album.albumContentGutter
 import com.luc4n3x.levyra.ui.album.albumStackedHeroHeight
 import com.luc4n3x.levyra.ui.album.albumStageColors
@@ -695,12 +707,12 @@ private val HOME_ARTIST_CARD_WIDTH = 148.dp
 private val HOME_ARTIST_ARTWORK_SIZE = 140.dp
 private val HOME_COLLECTION_SHELF_END_PADDING = 42.dp
 private val LevyraTabBarHeight = 76.dp
+private val LevyraTabBarCompactHeight = 54.dp
 private val LevyraMiniPlayerHeight = 77.dp
 private val LevyraBottomContentGap = 16.dp
 private val LevyraTabIndicatorTop = 11.dp
 private val LevyraTabIndicatorHeight = 36.dp
 private val LevyraTabIndicatorShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 15.dp, bottomEnd = 15.dp)
-private val LevyraTabBarTopCorner = 26.dp
 private val LevyraTabScrimHeight = 22.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
 private val LevyraHomeGlowViolet = Color(0xFF6E5CF0)
@@ -972,6 +984,7 @@ private fun RowScope.TabButton(
     entry: LevyraTabEntry,
     isSelected: Boolean,
     accent: Color,
+    compaction: () -> Float,
     onClick: () -> Unit
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
@@ -1055,7 +1068,9 @@ private fun RowScope.TabButton(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 3.dp)
+                modifier = Modifier
+                    .padding(horizontal = 3.dp)
+                    .graphicsLayer { alpha = dockFade(compaction()) }
             )
         }
     }
@@ -1960,7 +1975,8 @@ fun LevyraApp(
                     .fillMaxSize()
                     .background(LevyraBlack)
             ) {
-            LevyraBackground()
+            val dockState = rememberLevyraDockState()
+            val dockGlass = rememberGlassBackdropState(enabled = state.animationsEnabled && rememberGlassBlurAllowed())
 
             val homeListState = rememberLazyListState()
             val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
@@ -2087,6 +2103,16 @@ fun LevyraApp(
                 }
             }
 
+            LaunchedEffect(backgroundTab) { dockState.expand() }
+            LaunchedEffect(state.currentTrack == null) { dockState.expand() }
+            LaunchedEffect(chromeVisible) { if (!chromeVisible) dockState.expand() }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(dockState)
+                    .glassBackdropSource(dockGlass)
+            ) {
+            LevyraBackground()
             AnimatedContent(
                 targetState = backgroundTab,
                 modifier = Modifier
@@ -2141,6 +2167,7 @@ fun LevyraApp(
                     }
                 }
             }
+            }
 
             if (chromeVisible) {
                 val miniMaxWidth = levyraMiniPlayerMaxWidthDp(rootLayoutMode)
@@ -2153,6 +2180,16 @@ fun LevyraApp(
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     BottomTabsScrim()
+                    val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
+                    val compactionProvider: () -> Float = { dockCompaction.value }
+                    LevyraAdaptiveDockSurface(
+                        glass = dockGlass,
+                        modifier = if (miniMaxWidth.isFinite()) {
+                            Modifier.widthIn(max = miniMaxWidth.dp)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+                    ) {
                     AnimatedVisibility(
                         visible = state.currentTrack != null && !state.isSamplesOpen,
                         enter = miniEnter,
@@ -2185,6 +2222,7 @@ fun LevyraApp(
                                         stepDirection = miniStepDirection
                                     ),
                                     morphAnchors = morphAnchors,
+                                    compaction = compactionProvider,
                                     artworkHidden = { artworkMorphActive },
                                     playbackActions = MiniPlayerPlaybackActions(
                                         open = { viewModel.selectTab(LevyraTab.Player) },
@@ -2211,9 +2249,10 @@ fun LevyraApp(
                     ) {
                         BottomTabs(
                             selected = backgroundTab,
-                            hasActiveTrack = state.currentTrack != null && !state.isSamplesOpen,
+                            compaction = compactionProvider,
                             onSelect = viewModel::selectTab
                         )
+                    }
                     }
                 }
             }
@@ -3742,43 +3781,21 @@ private fun AlbumOverlay(
                 val gutter = albumContentGutter(maxWidth)
                 val overlapPx = with(density) { AlbumHeaderOverlap.toPx() }
                 val parallax = state.animationsEnabled
-                Box(
+                val heroScroll: () -> Float = {
+                    if (listState.firstVisibleItemIndex == 0) {
+                        listState.firstVisibleItemScrollOffset.toFloat()
+                    } else {
+                        heroPx
+                    }
+                }
+                ArtworkBackdropWash(
+                    artworkUrl = cover,
+                    tint = stage.fieldTop,
+                    base = stage.base,
                     modifier = Modifier
-                        .matchParentSize()
-                        .drawBehind {
-                            val visible = listState.layoutInfo.visibleItemsInfo
-                            val header = visible.firstOrNull { it.key == "album-header" }
-                            val hero = visible.firstOrNull { it.key == "album-hero" }
-                            val heroBottom = when {
-                                header != null -> header.offset + overlapPx
-                                hero != null -> hero.offset + heroPx
-                                else -> return@drawBehind
-                            }
-                            val fieldEnd = if (header != null) {
-                                (header.offset + header.size).toFloat()
-                            } else {
-                                heroBottom + overlapPx
-                            }
-                            if (heroBottom > 0f) {
-                                drawRect(
-                                    color = stage.fieldTop,
-                                    size = Size(size.width, heroBottom.coerceAtMost(size.height))
-                                )
-                            }
-                            if (fieldEnd > heroBottom && fieldEnd > 0f) {
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        0f to stage.fieldTop,
-                                        0.55f to stage.fieldMid,
-                                        1f to stage.base,
-                                        startY = heroBottom,
-                                        endY = fieldEnd
-                                    ),
-                                    topLeft = Offset(0f, heroBottom),
-                                    size = Size(size.width, fieldEnd - heroBottom)
-                                )
-                            }
-                        }
+                        .fillMaxWidth()
+                        .height(stackedHeroHeight + AlbumFieldTail)
+                        .graphicsLayer { translationY = -heroScroll() }
                 )
                 LazyColumn(
                     state = listState,
@@ -4829,6 +4846,17 @@ private fun ArtistOverlay(
         val titleDocked by remember(artistListState, heroHeightPx, topBarPx) {
             derivedStateOf { collapse() >= ArtistTitleDockStart }
         }
+        if (profile != null) {
+            ArtworkBackdropWash(
+                artworkUrl = heroArtwork,
+                tint = atmosphere,
+                base = LevyraBlack,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(heroHeight + ArtistBackdropTail)
+                    .graphicsLayer { translationY = -heroScroll() }
+            )
+        }
 
         LazyColumn(
             state = artistListState,
@@ -5215,6 +5243,7 @@ private fun ArtistSectionTitle(title: String) {
 }
 
 private const val ArtistHeroAspect = 1.08f
+private val ArtistBackdropTail = 420.dp
 private val ArtistHeroMinHeight = 340.dp
 private val ArtistHeroMaxHeight = 520.dp
 private const val ArtistHeroViewportShare = 0.62f
@@ -7641,7 +7670,14 @@ private suspend fun centerLyricsItem(
     if (index < 0) return
     var itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
     if (itemInfo == null) {
-        listState.scrollToItem(index)
+        val layoutInfo = listState.layoutInfo
+        val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+        val desiredOffset = if (viewportHeight > 0) {
+            -(viewportHeight * anchorFraction.coerceIn(0.25f, 0.70f)).toInt()
+        } else {
+            0
+        }
+        listState.scrollToItem(index, scrollOffset = desiredOffset)
         withFrameNanos { }
         itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
     }
@@ -7655,7 +7691,10 @@ private suspend fun centerLyricsItem(
     val hysteresis = maxOf(8f, viewportHeight * 0.018f)
     if (kotlin.math.abs(delta) <= hysteresis) return
     if (animate && kotlin.math.abs(delta) <= viewportHeight * 0.55f) {
-        listState.animateScrollBy(delta)
+        listState.animateScrollBy(
+            value = delta,
+            animationSpec = LevyraMotion.spatial.spec()
+        )
     } else {
         listState.scrollBy(delta)
     }
@@ -7847,8 +7886,12 @@ private fun KaraokeLyricLine(
         LyricVocalRole.MAIN -> 1f
     }
     val activeScale by animateFloatAsState(
-        targetValue = if (isPrimaryActive) 1.008f else 1f,
-        animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.expressive),
+        targetValue = when {
+            isPrimaryActive && compact -> 1.018f
+            isPrimaryActive -> 1.025f
+            else -> 1f
+        },
+        animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
         label = "lyrics-line-scale"
     )
     val targetAlpha = lyricsFocusAlpha(
@@ -7859,12 +7902,12 @@ private fun KaraokeLyricLine(
     )
     val lineAlpha by animateFloatAsState(
         targetValue = targetAlpha,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = 110)),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
         label = "lyrics-line-alpha"
     )
     val lineBlur by animateDpAsState(
         targetValue = lyricsFocusBlurDp(distanceFromActive, focusMode, synced, blurEnabled).dp,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = 160)),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short + 20, easing = LevyraMotion.Easings.Standard)),
         label = "lyrics-line-blur"
     )
     val baseFontSizeSp = when {
@@ -7903,6 +7946,31 @@ private fun KaraokeLyricLine(
         })
         else -> Color.White.copy(alpha = 0.88f)
     }
+    val animatedMainColor by animateColorAsState(
+        targetValue = if (isActive || isPrimaryActive) Color.White else inactiveColor,
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-main-text-color"
+    )
+    val animatedInactiveColor by animateColorAsState(
+        targetValue = inactiveColor,
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-inactive-color"
+    )
+    val animatedSectionColor by animateColorAsState(
+        targetValue = accentEnd.copy(alpha = if (isPrimaryActive) 0.92f else 0.56f),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-section-color"
+    )
+    val animatedRomanizationColor by animateColorAsState(
+        targetValue = if (isActive) Color.White.copy(alpha = 0.76f) else Color.White.copy(alpha = 0.40f),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-romanization-color"
+    )
+    val animatedTranslationColor by animateColorAsState(
+        targetValue = if (isActive) accentEnd.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.44f),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-translation-color"
+    )
     val horizontalPadding = when (line.role) {
         LyricVocalRole.BACKGROUND -> if (compact) 16.dp else 24.dp
         LyricVocalRole.DUET_LEFT, LyricVocalRole.DUET_RIGHT -> 10.dp
@@ -7956,7 +8024,7 @@ private fun KaraokeLyricLine(
         if (!sectionLabel.isNullOrBlank()) {
             Text(
                 text = sectionLabel.uppercase(sectionLocale),
-                color = accentEnd.copy(alpha = if (isPrimaryActive) 0.92f else 0.56f),
+                color = animatedSectionColor,
                 fontSize = if (compact) 9.sp else 10.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(if (compact) 9.sp else 10.sp),
                 fontWeight = FontWeight.Black,
@@ -7982,7 +8050,7 @@ private fun KaraokeLyricLine(
                 fontSize = resolvedFontSize,
                 lineHeight = lineHeight,
                 textAlign = textAlign,
-                inactiveColor = inactiveColor,
+                inactiveColor = animatedInactiveColor,
                 completedColor = completedWordColor,
                 activeColor = activeWordColor,
                 pendingColor = pendingWordColor,
@@ -7991,7 +8059,7 @@ private fun KaraokeLyricLine(
         } else {
             Text(
                 text = if (line.isInstrumental) "♪" else line.text,
-                color = if (isActive || isPrimaryActive) Color.White else inactiveColor,
+                color = animatedMainColor,
                 fontSize = resolvedFontSize,
                 lineHeight = lineHeight,
                 fontWeight = if (isPrimaryActive) FontWeight.ExtraBold else FontWeight.Bold,
@@ -8002,7 +8070,7 @@ private fun KaraokeLyricLine(
         if (showRomanization && resolvedRomanization.isNotBlank()) {
             Text(
                 text = resolvedRomanization,
-                color = if (isActive) Color.White.copy(alpha = 0.76f) else Color.White.copy(alpha = 0.40f),
+                color = animatedRomanizationColor,
                 fontSize = when {
                     compact -> 11.sp
                     cinema && isPrimaryActive -> 15.sp
@@ -8017,7 +8085,7 @@ private fun KaraokeLyricLine(
         if (line.translated.isNotBlank()) {
             Text(
                 text = line.translated,
-                color = if (isActive) accentEnd.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.44f),
+                color = animatedTranslationColor,
                 fontSize = when {
                     compact -> 12.sp
                     cinema && isPrimaryActive -> 16.sp
@@ -16088,15 +16156,31 @@ private fun PlayerInlineLyricsSection(
                         key = { index, line -> "${line.startMs}-${line.role.name}-$index" }
                     ) { index, line ->
                         val isActive = index == visualActiveIndex
+                        val lineColor by animateColorAsState(
+                            targetValue = if (isActive) primaryContent else Color.White.copy(alpha = 0.48f),
+                            animationSpec = LevyraMotion.spec(lyricsAnimationsEnabled, tween(LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+                            label = "inline-lyrics-color"
+                        )
+                        val lineScale by animateFloatAsState(
+                            targetValue = if (isActive) 1.02f else 1f,
+                            animationSpec = LevyraMotion.physics(lyricsAnimationsEnabled, LevyraMotion.spatial),
+                            label = "inline-lyrics-scale"
+                        )
                         Text(
                             text = line.text,
-                            color = if (isActive) primaryContent else Color.White.copy(alpha = 0.48f),
+                            color = lineColor,
                             fontSize = if (isActive) 24.sp else 19.sp,
                             lineHeight = if (isActive) 29.sp else 24.sp,
                             fontWeight = if (isActive) FontWeight.Black else FontWeight.Medium,
-                            modifier = Modifier.clickable {
-                                onSeek(progressOf(line.startMs, durationMs))
-                            }
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = lineScale
+                                    scaleY = lineScale
+                                    transformOrigin = TransformOrigin(0f, 0.5f)
+                                }
+                                .clickable {
+                                    onSeek(progressOf(line.startMs, durationMs))
+                                }
                         )
                     }
                 }
@@ -22391,13 +22475,11 @@ private val MiniPlayerTrayTop = 8.dp
 private val MiniPlayerTrayBottom = 5.dp
 private val MiniPlayerCardGutter = 8.dp
 
-private val miniPlayerTrayColor: Color
-    get() = if (LevyraIsLight) Color.White else LevyraInk
-
 @Composable
 private fun MiniPlayer(
     model: MiniPlayerModel,
     morphAnchors: PlayerMorphAnchors,
+    compaction: () -> Float,
     artworkHidden: () -> Boolean,
     playbackActions: MiniPlayerPlaybackActions,
     expansionActions: MiniPlayerExpansionActions
@@ -22471,22 +22553,13 @@ private fun MiniPlayer(
     val swipe = rememberPlayerSwipeMotion(animated)
     val cardShape = RoundedCornerShape(LevyraPlayerDesign.MiniCorner)
     val artworkShape = RoundedCornerShape(LevyraPlayerDesign.MiniArtworkCorner)
-    val trayShape = RoundedCornerShape(
-        topStart = LevyraPlayerDesign.DockTrayCorner,
-        topEnd = LevyraPlayerDesign.DockTrayCorner
-    )
     val horizontalGesturesEnabled = miniPlayerHorizontalGesturesEnabled(
         gesturesEnabled = gesturesEnabled,
         swipeTrackChangeEnabled = model.swipeTrackChangeEnabled,
         liveRadio = liveRadio
     )
 
-    Surface(
-        color = miniPlayerTrayColor,
-        shape = trayShape,
-        shadowElevation = if (LevyraIsLight) 10.dp else 16.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -22500,7 +22573,7 @@ private fun MiniPlayer(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(LevyraPlayerDesign.MiniHeight)
+                    .dockLerpHeight(compaction, LevyraPlayerDesign.MiniHeight, LevyraPlayerDesign.MiniHeightCompact)
                     .clip(cardShape)
                     .drawBehind {
                         drawRect(
@@ -22591,7 +22664,7 @@ private fun MiniPlayer(
                         Box(
                             modifier = Modifier
                                 .then(if (current) Modifier.playerMorphAnchor(morphAnchors, PlayerMorphSlot.Mini) else Modifier)
-                                .size(LevyraPlayerDesign.MiniArtwork)
+                                .dockLerpSize(compaction, LevyraPlayerDesign.MiniArtwork, LevyraPlayerDesign.MiniArtworkCompact)
                                 .graphicsLayer { alpha = if (current && artworkHidden()) 0f else 1f }
                                 .clip(artworkShape)
                         ) {
@@ -22628,7 +22701,8 @@ private fun MiniPlayer(
                                 lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.dockFoldHeight(compaction)
                             )
                         }
                     }
@@ -22640,6 +22714,10 @@ private fun MiniPlayer(
                         buttonColor = miniPrimaryContent,
                         onToggle = playbackActions.toggle
                     )
+                    Row(
+                        modifier = Modifier.dockFoldWidth(compaction),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                     if (!liveRadio) {
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.SkipNext,
@@ -22664,6 +22742,7 @@ private fun MiniPlayer(
                             tint = LevyraPlayerDesign.TextTertiary,
                             modifier = Modifier.size(18.dp)
                         )
+                    }
                     }
                 }
             }
@@ -23823,7 +23902,7 @@ private fun BottomTabsScrim() {
 @Composable
 private fun BottomTabs(
     selected: LevyraTab,
-    hasActiveTrack: Boolean,
+    compaction: () -> Float,
     onSelect: (LevyraTab) -> Unit
 ) {
     val entries = rememberLevyraTabEntries()
@@ -23841,22 +23920,6 @@ private fun BottomTabs(
         },
         label = "tab-indicator-position"
     )
-    val topCorner by animateDpAsState(
-        targetValue = if (hasActiveTrack) 0.dp else LevyraTabBarTopCorner,
-        animationSpec = if (animationsEnabled) tween(280, easing = FastOutSlowInEasing) else snap(),
-        label = "tab-bar-corner"
-    )
-    val barShape = RoundedCornerShape(topStart = topCorner, topEnd = topCorner)
-    val barBase = LevyraBlack
-    val barInk = LevyraInk
-    val barPanel = LevyraPanel
-    val barBrush = remember(isLight, barBase, barInk, barPanel) {
-        if (isLight) {
-            Brush.verticalGradient(listOf(Color.White, barInk, barPanel))
-        } else {
-            Brush.verticalGradient(listOf(barInk, barBase, barBase))
-        }
-    }
     val indicatorBrush = remember(isLight, accentStart) {
         Brush.verticalGradient(
             listOf(
@@ -23866,41 +23929,11 @@ private fun BottomTabs(
         )
     }
     val indicatorBorderColor = accentStart.copy(alpha = if (isLight) 0.24f else 0.20f)
-    val hairline = if (hasActiveTrack) {
-        Color.Transparent
-    } else if (isLight) {
-        Color(0x1A11131F)
-    } else {
-        Color.White.copy(alpha = 0.085f)
-    }
 
-    Surface(
-        color = barBase,
-        shape = barShape,
-        shadowElevation = when {
-            hasActiveTrack -> 0.dp
-            isLight -> 10.dp
-            else -> 16.dp
-        },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(barBrush)
-                .drawBehind {
-                    val strokeWidth = 1.dp.toPx()
-                    val y = strokeWidth / 2f
-                    drawLine(
-                        color = hairline,
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = strokeWidth
-                    )
-                }
-        ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
             BoxWithConstraints(
                 modifier = Modifier
+                    .dockClipHeight(compaction, LevyraTabBarHeight - LevyraTabBarCompactHeight)
                     .fillMaxWidth()
                     .height(LevyraTabBarHeight)
             ) {
@@ -23941,6 +23974,7 @@ private fun BottomTabs(
                             entry = entry,
                             isSelected = isSelected,
                             accent = accentStart,
+                            compaction = compaction,
                             onClick = {
                                 if (!isSelected) {
                                     haptics.perform(LevyraHapticAction.SeekSnap)
@@ -23952,7 +23986,6 @@ private fun BottomTabs(
                 }
             }
             Spacer(modifier = Modifier.navigationBarsPadding())
-        }
     }
 }
 

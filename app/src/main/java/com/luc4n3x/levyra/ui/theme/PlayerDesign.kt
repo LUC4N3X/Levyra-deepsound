@@ -71,6 +71,8 @@ object LevyraPlayerDesign {
     val MiniArtwork: Dp = 46.dp
     val MiniArtworkCorner: Dp = 13.dp
     val MiniHeight: Dp = 64.dp
+    val MiniHeightCompact: Dp = 50.dp
+    val MiniArtworkCompact: Dp = 36.dp
     val DockTrayCorner: Dp = 28.dp
 
     val Hairline: Dp = 1.dp
