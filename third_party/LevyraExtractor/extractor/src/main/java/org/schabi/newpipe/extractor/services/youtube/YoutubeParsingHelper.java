@@ -1439,7 +1439,8 @@ YoutubeParsingHelper {
         }
 
         if (textObject.has("simpleText")) {
-            return textObject.getString("simpleText");
+            final String simpleText = textObject.getString("simpleText");
+            return html && simpleText != null ? Entities.escape(simpleText) : simpleText;
         }
 
         if (textObject.getArray("runs").isEmpty()) {
