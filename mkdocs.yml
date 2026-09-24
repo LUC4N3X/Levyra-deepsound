@@ -66,6 +66,7 @@ nav:
       - FAQ & Troubleshooting: troubleshooting.md
   - Development:
       - Build & Contribute: development.md
+      - How I work on Levyra: development-notes.md
       - Architecture: architecture.md
   - Project:
       - Roadmap: roadmap.md
