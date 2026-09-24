@@ -57,11 +57,11 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 
 ## ✦ Why Levyra
 
-I started Levyra because I wanted one music player for both streaming and the music already on my devices. I did not want local tracks to feel like a second-class feature, and I did not want playlists, history or downloads tied to an account I had to keep.
+I started Levyra because I wanted one music player for streaming and the music already on my devices. Local tracks should sit naturally beside streamed ones, and playlists, history and downloads should keep working without a Levyra account.
 
-That is still the basic idea behind the project. Downloads are normal audio files in your storage, local and streamed tracks can live in the same library, and listening data stays on the device.
+Downloads are normal audio files in your storage, local and streamed tracks can live in the same library, and listening data stays on the device.
 
-Over time I added the things I personally missed elsewhere: synced lyrics, timing offsets, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, backups and a Windows version. The goal is not to collect features for the sake of it; they should still feel like parts of the same player.
+Over time I added the things I personally missed elsewhere: synced lyrics, timing offsets, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, backups and a Windows version. I try to keep those features connected through the same library and playback flow.
 
 Levyra uses external services for some music, lyrics, artwork and metadata, but the app itself stays open source and the library remains under your control.
 
@@ -221,17 +221,15 @@ Android and Windows share the same Kotlin extraction and networking code, but ea
 
 ### Why native instead of a web wrapper
 
-I did not want Levyra to be a browser shell with a music player inside it.
+Windows uses Compose Multiplatform for the interface and libVLC for playback. Android uses Media3 for audio focus, Bluetooth controls, lockscreen playback, media sessions and Android Auto.
 
-On Windows, the interface uses Compose Multiplatform and playback runs through libVLC. On Android, Media3 handles audio focus, Bluetooth controls, lockscreen playback, media sessions and Android Auto directly.
-
-There is no bundled Chromium, Electron or WebView runtime in the player.
+Levyra does not bundle Chromium, Electron or a WebView runtime.
 
 ## ✦ Development
 
-Levyra is developed in public. I use the tools that help me get the job done, including AI-assisted tools when they are useful, but generated output is never treated as finished code. I still have to understand it, fit it into the existing codebase, test the parts it can affect, and decide whether it belongs.
+Levyra is developed in public. I use AI-assisted tools for research, debugging and review when they help. Any generated code is treated as a draft: I read it, fit it to the existing codebase, test the parts it can affect, and decide whether it belongs.
 
-The history is there to inspect: commits, pull requests, issues, engineering rules and releases are public. [More about how I work on Levyra](docs/site/development-notes.md).
+Commits, pull requests, issues and releases are public, and the repository includes the engineering rules I use while working on it. [More about how I work on Levyra](docs/site/development-notes.md).
 
 ## ✦ Privacy
 
