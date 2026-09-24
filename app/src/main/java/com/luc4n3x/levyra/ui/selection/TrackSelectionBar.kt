@@ -35,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
-import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -144,7 +143,7 @@ private fun SelectionAction(
         color = Color.Transparent,
         shape = CircleShape,
         modifier = Modifier
-            .size(44.dp)
+            .size(48.dp)
             .semantics { contentDescription = label }
             .clickable(onClick = onClick)
     ) {
