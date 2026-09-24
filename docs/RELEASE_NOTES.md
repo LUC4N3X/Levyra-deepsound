@@ -1,138 +1,102 @@
-# Levyra 2.5.10
+# Levyra 2.5.11
 
 ## Highlights
 
-2.5.10 puts a lot of work into the parts of Levyra you notice every day: playback recovery, audio control, search, lyrics, the player, and the little shortcuts that make the app quicker to use.
+2.5.11 is a smaller release than 2.5.10, and most of it comes from using Levyra every day and fixing what still felt wrong.
 
-The biggest change is not a single screen. Levyra now has more ways to recover when a YouTube player configuration or an alternative audio source goes bad, while keeping a clearer line between verified data and emergency fallbacks. On top of that, this release adds Parametric EQ with AutoEQ support, ReplayGain 2.0, a proper technical audio panel, Home Speed Dial, more personal search results, followed-artist release alerts, Playlist PRO improvements, better lyric translation and sync controls, and a Quick Settings playback tile.
+Live Radio got the biggest pass. Stations with dots, dashes, accents or apostrophes in their names are much easier to find, the station you actually typed now shows up first, and most stations finally have a real logo instead of two initials. Now Playing is cleaner too, and when a broadcaster marks a spot as an ad, Levyra now says so instead of showing it as a song.
 
-There is also a substantial visual pass across the player and artist pages. Motion is more consistent, artwork transitions are cleaner, queue interactions feel less abrupt, and long track titles in listening picks no longer disappear into cramped layouts.
+Around that there is a new audio language preference for YouTube tracks, a player dock that gets out of the way while you scroll, favorites and multi-selection on artist pages, a steadier wavy seekbar and more accurate JioSaavn HQ matching.
 
-## ✦ Playback recovery with more than one way out
+## ✦ Live Radio you can actually search
 
-The player configuration system now uses multiple sources instead of depending on a single upstream path.
+Searching for a station used to be hit and miss. `181.fm salsa` returned nothing because the catalog calls it `181.FM - Salsa`, and a ranking bug pushed exact name matches below more popular stations that only matched a tag.
 
-Levyra keeps the repository-built configuration as the verified source of truth, compares upstream registries before publishing new data, preserves the last known good configuration when sources disagree, and can use bounded provisional data as an emergency recovery path without letting it overwrite verified state.
+That is fixed. Search now ignores punctuation, accents and apostrophes, so `salsa clasica` finds `Salsa Clásica Éxitos` and `80s` finds `80's`. Exact names rank first, then names that start with what you typed, then names that contain every word. The same stream listed twice under slightly different names only appears once.
 
-That recovery work also closes several edge cases around player identity, aliases, stale data and partial writes. Configuration and metadata are committed together, temporary files are cleaned up on failure, and ambiguous entries fail safely instead of silently replacing a known-good player.
+Playback is more careful as well:
 
-Video identity handling was tightened at the same time. Audio-only identities are no longer accidentally reused as native-video candidates, and likes, dislikes and comments can resolve the real paired video when a trustworthy counterpart is available.
+- the stream URL policy and the ICY metadata request now apply to every redirect, not just the first request;
+- a playlist file (`.pls`, `.m3u` and similar) is never picked as the fallback stream, because the player cannot open it;
+- a short pause keeps the same connection, while a pause longer than 20 seconds reconnects to the live edge instead of playing old buffered audio;
+- switching stations cancels any pending reconnect from the previous one.
 
-## ✦ JioSaavn HQ is more accurate and more resilient
+## ✦ Cleaner Now Playing and honest ads
 
-The alternative high-quality audio path received another large pass.
+Some stations send messy metadata. Radio 105, for example, sends a whole record like `ARTIST~TITLE~~0~~131~date~date~Radio 105`. Levyra now turns that into `Artist - Title`, drops URL, UUID and hash fragments from titles, and stops showing the station's own name as if it were a song.
 
-Levyra now tries the high-quality JioSaavn variant whenever the track match is safe, even when the provider metadata does not advertise the 320 flag. The flag is treated as a hint, not proof. The selected stream is measured, so a file that is really around 250 kbps is shown as roughly 250 kbps instead of being called 320.
+Stations that declare their ads in the stream metadata, like Virgin Radio Italia, now show "Advertisement" (localized in every supported language) while the spot is playing. Ads never end up as the current song title.
 
-The resolver now:
+To be clear about the limit: some stations stitch the ad straight into the audio on the server and send no marker at all. 181.FM Salsa is one of them. Levyra cannot detect or skip those spots, and skipping a declared ad would not help either, because the server only sends the live audio once the ad time has passed. What Levyra does now is avoid opening extra sessions, so it does not trigger extra pre-rolls on its own.
 
-- probes the decrypted CDN URL first;
-- requests an auth token only when the direct stream needs it;
-- falls back through 160 and 96 kbps on the same trusted CDN path;
-- keeps approved JioSaavn CDN hosts on HTTPS and rejects unexpected hosts, ports or user information;
-- hydrates the selected candidate with song details when needed and rechecks the match before playback;
-- handles re-releases, soundtrack decorations, featured artists, language differences and small duration drift more carefully;
-- keeps already cached playback available when the HQ lookup pool is busy instead of unnecessarily blocking the song.
+## ✦ Real station logos
 
-The first-play path was also fixed so a cached normal stream does not start before the first JioSaavn lookup has a chance to resolve. This HQ path and the first-play behavior were tested on a physical Android phone during development.
+Radio Browser is missing a logo for a lot of stations, and many of the ones it has are broken links. Among the most voted Italian stations, most had no working logo at all.
 
-## ✦ Parametric EQ, AutoEQ and ReplayGain 2.0
+When the catalog logo is missing or fails, Levyra now looks at the station's own website for its app icon, large icon, share image or favicon. It rejects SVG and non-image responses, caches the result, and does not keep retrying sites that are down. In testing, most of the popular Italian stations went from initials to their real logo.
 
-Levyra now has a real parametric equalizer path with persistence, profile handling and an AutoEQ importer/catalog flow.
+In the full player the logo is now shown whole and centered on a card instead of being stretched across the screen, so a small icon no longer turns into a blurry wall of pixels. The same image reaches the notification and the lock screen. It is downloaded once through the same guarded connection used for radio, so the player never fetches station-provided image URLs through the general image loader.
 
-You can build and save your own parametric profiles, switch between them without the old stale-profile edge cases, and use imported AutoEQ data through the same audio pipeline. The player-side processor was also tightened so profile transitions and DSP state stay in sync with what the UI shows.
+## ✦ Audio language for YouTube tracks
 
-ReplayGain has been expanded into ReplayGain 2.0. It now supports selectable modes, preamp control and clipping protection, reads ReplayGain information from local tags, carries the metadata through playback, and preserves the related settings in backups.
+Some YouTube videos carry several audio tracks: the original, dubbed versions and automatic AI dubs. Levyra now picks between them on purpose.
 
-Album context, shuffle order, duplicate queue occurrences and local album-artist metadata received extra handling so smart ReplayGain selection does not drift to the wrong track or album.
+A new Audio language option in the audio settings lets you keep the original audio or prefer a specific language. Original human audio always beats an automatic dub, whatever the bitrate or codec. Streams in different languages no longer share a cache entry, so switching languages cannot play the wrong one back to you. JioSaavn HQ playback is not affected.
 
-## ✦ Technical Audio Info that tells you what is really playing
+## ✦ A player dock that makes room
 
-The Now Playing screen now has a much more useful technical audio panel.
+The mini player and the bottom tabs now share one dock. When you scroll down, it compacts in place: the artist line, the next and close buttons and the tab labels fold away. Scroll back up and it expands again.
 
-It can show live codec, bitrate, sample rate, channels, MIME type, codec ID, provider, transport, container, stream quality and verified HQ information. It also separates source information from what Levyra is doing locally, including ReplayGain, normalization, equalizer, limiter, virtualizer and preamp state.
+On Android 12 and newer the dock uses a blurred glass surface over the page. Low-RAM devices, battery saver and older Android versions keep the solid background, and the dock does not compact while TalkBack touch exploration is on. Artist and album pages also get a soft color wash taken from their artwork, and the lyrics motion was refined.
 
-Output information includes the current route, volume, playback engine and local audio path. Cast playback is treated separately so Levyra does not pretend local decoder or DSP information belongs to the remote receiver.
+## ✦ Artist pages, selection and the seekbar
 
-Muxed YouTube streams are handled more carefully too, avoiding cases where video codec data or a combined audio/video bitrate could be presented as if it were audio-only information.
+Artist pages can now tell which of the artist's songs are already in your favorites, even when the same recording shows up with slightly different credits. Tracks can be multi-selected and added to or removed from your favorites in one go, and search results expose the same batch actions.
 
-## ✦ Search and Home are more personal
+The wavy seekbar is steadier. It handles odd geometry edge cases without breaking, scrubbing state resets properly when the song changes, and the wave restarts with the new track instead of carrying over from the old one.
 
-Search can now use listening history more directly instead of treating every query as if Levyra knew nothing about you.
+## ✦ More accurate JioSaavn HQ
 
-Personalized search, local matching and deduplication were tightened, and the "Based on your listening" area now has its own picks grid. Long titles use marquee behavior instead of being clipped into unreadable text.
+JioSaavn HQ matching now uses the artist roles and release year that already come with search results, without extra requests. Composers, lyricists and actors listed as main artists no longer decide the lead-artist check, compilations of the same recording are no longer treated as a different song, and a solo version and a duet stay apart. Songs like Meri Aashiqui now get the HQ stream instead of falling back to YouTube.
 
-Home also gains Speed Dial. Frequently used destinations and media can be pinned for quicker access, with cleanup logic that removes stale local pins after the library has actually finished scanning instead of deleting them too early.
+Levyra also stopped fetching dislike estimates it does not need, and comments keep literal text like `<3` or `AT&T` intact.
 
-Settings search was expanded alongside this work, and artist pages now load portrait and biography data more defensively, cancel stale work correctly and preserve useful language aliases for biography lookups.
+## ✦ Smaller fixes
 
-## ✦ A smoother player and better artist pages
-
-2.5.10 introduces a shared motion vocabulary across the player instead of a collection of unrelated animations.
-
-The mini player to full player artwork transition now aims at the real resting frame, bridges from cached artwork, hides the duplicate mini cover during the flight and prewarms the destination so the opening animation is not swallowed by first composition.
-
-The artist hero has also been rebuilt with artwork-driven atmosphere, parallax, a docking title and a stable Follow control. The player adds a morphing play/pause glyph, clearer download-state motion, smoother queue-item changes and a more immediate drag handle.
-
-The goal is simple: movement should explain where something went, not make the interface feel busy.
-
-## ✦ Lyrics and system controls are easier to live with
-
-Lyrics fusion and translation were reworked so Levyra can combine sources more cleanly and use on-device translation with better cancellation and failure handling.
-
-Tracks that cannot be translated are no longer retried pointlessly, and stale lyric requests are less likely to leak into the next song.
-
-A manual lyrics offset stepper makes small sync corrections faster, while the new Quick Settings playback tile gives Android a proper system-level play/pause shortcut. Idle tile taps open Levyra without waking the playback service just to do it, and ended playback is handled separately from an active paused session.
-
-## ✦ Followed releases and Playlist PRO
-
-Levyra can now notify you about new releases from artists you follow.
-
-The release radar work includes its own persistence and delivery policy instead of being tied to a screen lifecycle, with additional safeguards around duplicate or stale delivery.
-
-Playlist PRO also gained search and multi-select tools, making larger playlists easier to manage without replacing the existing playlist model.
-
-## ✦ Live radio compatibility is broader
-
-Some real-world radio stations still serve streams over plain HTTP. Levyra can now handle those legacy streams without opening cleartext networking for the rest of the app.
-
-The exception is scoped to live radio, search matching is more tolerant of human station names, stale search results can remain playable when appropriate, and returning from the player keeps the radio screen and destination state instead of dropping you somewhere unexpected.
-
-## ✦ Localization, dependencies and project polish
-
-Finnish and Estonian received full localization passes, smaller gaps were closed in other locales, and the project now documents support across 37 languages.
-
-Android core and Media3-related dependencies were refreshed during this cycle. PR validation also gained more caching and parallel work so normal development checks spend less time repeating the same setup.
-
-There was a large documentation cleanup too: clearer architecture notes, more natural README copy, simpler legal and privacy wording, corrected download links and a cleaner separation between store listings and independent media coverage. Those changes matter to the project, but they are kept out of the main feature story here because they do not change Android playback by themselves.
+- Pressing Back from the expanded player now returns to Live Radio instead of closing it.
+- Radio quality labels no longer show a literal `UNKNOWN` codec.
+- Filipino and Estonian translations are complete.
+- Some complex Home and listening-recap code was simplified without changing behavior.
 
 ## Validation
 
-The feature range was reviewed from `v2.5.9` through commit `371ccd4`, covering 360 commits before this release-version commit. Repetitive README badge refreshes were treated as repository housekeeping rather than padded into the product changelog.
+This release covers `v2.5.10` through `ceb6774`, 37 commits before the version commit. 21 of them are README badge refreshes, and several more are documentation updates and player-config syncs, so they are left out of the feature story above.
 
-This range includes focused automated coverage for the areas changed in 2.5.10, including player-config recovery, YouTube identity handling, lyrics parsing and translation, Quick Settings playback state, lyrics timing, ReplayGain selection and DSP, Technical Audio Info, followed-release policy, Playlist PRO logic, live-radio transport, Parametric EQ and AutoEQ import, personalized search, Settings search, Speed Dial, HQ audio resolution, JioSaavn parsing and matching, localization and queue identity behavior.
+The commits in this range add focused unit tests for track multi-selection, liked-song artist matching, seekbar geometry, audio language ranking, caching and localization, and Live Radio search, metadata parsing, ad markers, artwork discovery and playlist handling.
 
-The Android release pipeline publishes only from `main`. It validates the version and release-note wiring, runs release lint, builds the signed release APK, verifies the APK version and canonical signing certificate, generates a SHA-256 checksum, creates the GitHub release from this curated note and downloads the published assets again for verification. The F-Droid path then builds and checks its separate reproducible variant.
+The Live Radio changes were tested on a physical Android phone with a debug build during development: search, cold start, short and long pauses, station switching, declared ads, HLS and redirecting stations, station logos, the full player and the media notification. That was a development build, not the signed release APK.
 
-The JioSaavn HQ and first-play path were also exercised on a physical Android phone during development. This version-bump commit itself does not claim a fresh manual pass of every OEM, Bluetooth device, Android Auto setup or background-restriction combination.
+The Android release pipeline publishes only from `main`. It checks the version and these release notes, runs release lint, builds the signed release APK, verifies the APK version and signing certificate, generates a SHA-256 checksum, publishes the GitHub release and downloads the assets again to verify them. The F-Droid path then builds its own reproducible variant.
+
+This version commit does not claim a fresh manual pass on every device, Android Auto setup, Bluetooth route or background-restriction combination.
 
 ## Versioning
 
-- Version name: `2.5.10`
-- Version code: `2051000`
+- Version name: `2.5.11`
+- Version code: `2051100`
 
 This is an Android release. Levyra Desktop keeps its own independent version line.
 
 ## Upgrade notes
 
-No manual migration is required for this version bump.
+No manual migration is required.
 
-Existing supported favorites, playlists, queues, listening history, local-library data, audio settings and other persisted preferences continue through Levyra's existing storage and migration paths. New audio and personalization settings use the same backup and preference infrastructure where supported.
+Favorites, playlists, queues, listening history, local library data, radio favorites and recents, audio settings and other preferences carry over unchanged. The new audio language option starts on original audio.
 
-GitHub users can update from the signed APK attached to the release. Third-party stores and repositories may publish the update on their own schedule.
+GitHub users can update from the signed APK attached to this release. F-Droid and other repositories publish on their own schedule.
 
 ## Final note
 
-2.5.10 is a fairly dense update, but the direction is straightforward: playback should recover more gracefully, audio controls should tell the truth about what they are doing, and the app should get out of your way faster.
+2.5.11 is mostly about trust. When you search for a station it should be there, when a logo exists it should show up, and when something is an ad Levyra should not pretend it is a song.
 
-A lot of the work here is the kind you only notice when it is missing. That is exactly the point.
+Small things, fixed properly.
