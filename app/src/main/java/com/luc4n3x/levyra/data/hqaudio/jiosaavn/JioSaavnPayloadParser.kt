@@ -76,8 +76,19 @@ internal object JioSaavnPayloadParser {
             explicit = explicit,
             offers320 = offers320,
             mediaToken = mediaToken,
-            language = json.optString("language").trim().lowercase().takeUnless { it == "unknown" }.orEmpty()
+            language = json.optString("language").trim().lowercase().takeUnless { it == "unknown" }.orEmpty(),
+            nonPerformingArtists = nonPerformingArtists(artistMap?.optJSONArray("artists")),
+            releaseYear = json.optString("year").trim().toIntOrNull()?.takeIf { it in 1900..2100 } ?: 0
         )
+    }
+
+    private fun nonPerformingArtists(credits: JSONArray?): Set<String> {
+        val rolesByName = credits?.let(::objects).orEmpty()
+            .groupBy({ decode(it.optString("name")) }, { it.optString("role").trim().lowercase() })
+            .filterKeys { it.isNotBlank() }
+        return rolesByName
+            .filterValues { roles -> roles.all { it in NON_PERFORMING_ROLES } }
+            .keys
     }
 
     private fun flag(value: String): Boolean? = when (value.trim().lowercase()) {
@@ -125,4 +136,6 @@ internal object JioSaavnPayloadParser {
     }
 
     private fun parseObject(body: String): JSONObject? = runCatching { JSONObject(body.trim()) }.getOrNull()
+
+    private val NON_PERFORMING_ROLES = setOf("music", "lyricist", "starring", "composer")
 }

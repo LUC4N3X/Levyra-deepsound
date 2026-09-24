@@ -36,6 +36,34 @@ class JioSaavnPayloadParserTest {
     }
 
     @Test
+    fun artistRolesAndReleaseYearAreReadFromSearchMetadata() {
+        val song = saavnSong("OFkbNs2Q", "Meri Aashiqui", listOf("Mithoon", "Palak Muchhal", "Arijit Singh"), "Sound Of Bollywood", 267).apply {
+            put("year", "2013")
+            getJSONObject("more_info").getJSONObject("artistMap").put(
+                "artists",
+                JSONArray()
+                    .put(JSONObject().put("name", "Mithoon").put("role", "music"))
+                    .put(JSONObject().put("name", "Palak Muchhal").put("role", "singer"))
+                    .put(JSONObject().put("name", "Arijit Singh").put("role", "singer"))
+                    .put(JSONObject().put("name", "Irshad Kamil").put("role", "lyricist"))
+                    .put(JSONObject().put("name", "Irshad Kamil").put("role", "singer"))
+                    .put(JSONObject().put("name", "Shraddha Kapoor").put("role", "starring"))
+            )
+        }
+        val candidate = JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.single()
+        assertEquals(setOf("Mithoon", "Shraddha Kapoor"), candidate.nonPerformingArtists)
+        assertEquals(2013, candidate.releaseYear)
+    }
+
+    @Test
+    fun missingRolesAndMalformedYearStayNeutral() {
+        val song = saavnSong("n1", "Song", listOf("Artist"), "Album", 180).apply { put("year", "20xx") }
+        val candidate = JioSaavnPayloadParser.searchCandidates(searchBody(song))!!.single()
+        assertEquals(emptySet<String>(), candidate.nonPerformingArtists)
+        assertEquals(0, candidate.releaseYear)
+    }
+
+    @Test
     fun missingOrUnreadable320FlagIsKeptAsUnknown() {
         val missing = saavnSong("m1", "Missing Flag", listOf("Artist"), "Album", 180).apply {
             getJSONObject("more_info").remove("320kbps")

@@ -307,6 +307,80 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun compilationsCreditingExtraPrimaryArtistsAreTheSameRecording() {
+        val query = query(title = "Meri Aashiqui", artist = "Palak Muchhal", album = "YouTube Music", durationMs = 266_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "KVi55vCq", title = "Meri Aashiqui", primary = listOf("Palak Muchhal", "Arijit Singh"), album = "Rising Star - Palak Muchhal", duration = 266),
+                candidate(id = "GTxcx4AR", title = "Meri Aashiqui (From \"Aashiqui 2\")", primary = listOf("Palak Muchhal", "Arijit Singh"), album = "Best Of Palak Muchhal", duration = 266),
+                candidate(
+                    id = "LQ4Ie1Fm",
+                    title = "Meri Aashiqui (From \"Aashiqui 2\")",
+                    primary = listOf("Palak Muchhal", "Arijit Singh", "Mithoon", "Irshad Kamil"),
+                    album = "Love Forever - Valentine's Day Special",
+                    duration = 266
+                )
+            ).map { it.copy(language = "hindi") }
+        )
+        assertEquals("KVi55vCq", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun composerListedFirstDoesNotHideThePerformingArtist() {
+        val query = query(title = "Meri Aashiqui", artist = "Palak Muchhal", album = "YouTube Music", durationMs = 266_000L)
+        val composerFirst = candidate(
+            id = "OFkbNs2Q",
+            title = "Meri Aashiqui",
+            primary = listOf("Mithoon", "Palak Muchhal", "Arijit Singh"),
+            album = "Sound Of Bollywood - Vol. 2",
+            duration = 266
+        )
+        assertRejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, query, composerFirst)
+        val withRoles = verdict(query, composerFirst.copy(nonPerformingArtists = setOf("Mithoon", "Irshad Kamil")))
+        assertEquals(AlternativeMatchVerdict.HIGH, withRoles.verdict)
+    }
+
+    @Test
+    fun composerCreditedAsSourceArtistStillMatches() {
+        val query = query(title = "Meri Aashiqui", artist = "Mithoon", album = "YouTube Music", durationMs = 266_000L)
+        val candidate = candidate(
+            title = "Meri Aashiqui",
+            primary = listOf("Mithoon", "Palak Muchhal", "Arijit Singh"),
+            album = "Aashiqui 2",
+            duration = 266
+        ).copy(nonPerformingArtists = setOf("Mithoon"))
+        assertTrue(verdict(query, candidate).accepted)
+    }
+
+    @Test
+    fun sameRecordingPrefersTheEarliestKnownRelease() {
+        val query = query(title = "Song", artist = "Singer", album = "YouTube Music", durationMs = 200_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "reissue", title = "Song", primary = listOf("Singer"), album = "Hits 2021", duration = 200).copy(releaseYear = 2021),
+                candidate(id = "unknown", title = "Song", primary = listOf("Singer"), album = "Hits", duration = 200),
+                candidate(id = "original", title = "Song", primary = listOf("Singer"), album = "Debut", duration = 200).copy(releaseYear = 2013)
+            )
+        )
+        assertEquals("original", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun differentPrimaryCreditsThatDoNotContainEachOtherStayAmbiguous() {
+        val query = query(title = "Song", artist = "Singer", album = "YouTube Music", durationMs = 200_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "duet-a", title = "Song", primary = listOf("Singer", "Partner A"), album = "One", duration = 200),
+                candidate(id = "duet-b", title = "Song", primary = listOf("Singer", "Partner B"), album = "Two", duration = 200)
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
     fun dubbedReleasesInDifferentLanguagesStayAmbiguous() {
         val query = query(title = "Srivalli", artist = "Singer", album = "YouTube Music", durationMs = 225_000L)
         val selection = matcher.select(

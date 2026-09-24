@@ -26,7 +26,9 @@ data class AlternativeTrackCandidate(
     val isrc: String = "",
     val offers320: Boolean? = null,
     val mediaToken: String = "",
-    val language: String = ""
+    val language: String = "",
+    val nonPerformingArtists: Set<String> = emptySet(),
+    val releaseYear: Int = 0
 )
 
 enum class MatchRejection {
@@ -88,6 +90,7 @@ class AlternativeTrackMatcher {
         val expectedCredit = AlternativeTrackText.artistCredit(query.artist)
         val expectedArtists = expectedCredit.names + expectedTitle.featuredArtists
         val candidatePrimary = candidate.primaryArtists.flatMap(AlternativeTrackText::artistNames).distinct()
+        val performingPrimary = performers(candidate, candidatePrimary)
         val candidateFeatured = candidate.featuredArtists.flatMap(AlternativeTrackText::artistNames).toSet() +
             candidateTitle.featuredArtists
         val delta = durationDeltaSeconds(query.durationMs, candidate.durationSeconds)
@@ -119,7 +122,9 @@ class AlternativeTrackMatcher {
             val featuredOnly = expectedCredit.primary in candidateFeatured
             return rejected(if (featuredOnly) MatchRejection.FEATURED_ARTIST_ONLY else MatchRejection.PRIMARY_ARTIST_MISMATCH)
         }
-        if (candidatePrimary.first() !in expectedArtists) return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH)
+        if (candidatePrimary.first() !in expectedArtists && performingPrimary.first() !in expectedArtists) {
+            return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH)
+        }
         val expectedExplicit = query.explicit ?: expectedTitle.explicitHint
         val candidateExplicit = candidate.explicit ?: candidateTitle.explicitHint
         if (expectedExplicit != null && candidateExplicit != null && expectedExplicit != candidateExplicit) {
@@ -135,7 +140,7 @@ class AlternativeTrackMatcher {
         if (!candidateArtists.containsAll(expectedCredit.names)) {
             return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, relation)
         }
-        val artistsExact = expectedArtists.containsAll(candidatePrimary) &&
+        val artistsExact = expectedArtists.containsAll(performingPrimary) &&
             candidateArtists.containsAll(expectedCredit.names)
         val titleExact = expectedTitle.fullNormalized == candidateTitle.fullNormalized
         val albumAllowsDrift = relation == AlbumRelation.SAME || (relation == AlbumRelation.UNVERIFIED && titleExact)
@@ -184,6 +189,7 @@ class AlternativeTrackMatcher {
                 compareBy<AlternativeMatchEvaluation> { it.candidate.explicit != true }
                     .thenBy { it.candidate.offers320 == true }
                     .thenBy { it.confidence }
+                    .thenByDescending { it.candidate.releaseYear.takeIf { year -> year > 0 } ?: Int.MAX_VALUE }
                     .thenByDescending { it.durationDeltaSeconds }
             )
         return AlternativeMatchSelection.Accepted(chosen, evaluations)
@@ -202,7 +208,7 @@ class AlternativeTrackMatcher {
         return aTitle.core == bTitle.core &&
             aTitle.versionSignature == bTitle.versionSignature &&
             sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
-            primarySet(a) == primarySet(b) &&
+            samePrimaryCredits(primarySet(a), primarySet(b)) &&
             abs(a.durationSeconds - b.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
             (!explicitKnown || a.explicit == b.explicit) &&
             (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
@@ -214,8 +220,17 @@ class AlternativeTrackMatcher {
     private fun sameFeaturedCredits(left: Set<String>, right: Set<String>): Boolean =
         left.isEmpty() || right.isEmpty() || left == right
 
+    private fun samePrimaryCredits(left: Set<String>, right: Set<String>): Boolean =
+        left.isNotEmpty() && right.isNotEmpty() && (left.containsAll(right) || right.containsAll(left))
+
     private fun primarySet(candidate: AlternativeTrackCandidate): Set<String> =
-        candidate.primaryArtists.flatMap(AlternativeTrackText::artistNames).toSet()
+        performers(candidate, candidate.primaryArtists.flatMap(AlternativeTrackText::artistNames).distinct()).toSet()
+
+    private fun performers(candidate: AlternativeTrackCandidate, primary: List<String>): List<String> {
+        if (candidate.nonPerformingArtists.isEmpty()) return primary
+        val nonPerforming = candidate.nonPerformingArtists.flatMap(AlternativeTrackText::artistNames).toSet()
+        return primary.filterNot { it in nonPerforming }.ifEmpty { primary }
+    }
 
     private fun dominantRejection(evaluations: List<AlternativeMatchEvaluation>): MatchRejection {
         val counts = evaluations.mapNotNull { it.rejection }.groupingBy { it }.eachCount()
