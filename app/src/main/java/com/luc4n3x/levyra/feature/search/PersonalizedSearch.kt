@@ -21,8 +21,11 @@ internal data class PersonalizedSearchPrompt(
 internal data class PersonalizedSearchSnapshot(
     val tracks: List<Track> = emptyList(),
     val artistNames: List<String> = emptyList(),
-    val prompt: PersonalizedSearchPrompt? = null
-)
+    val prompts: List<PersonalizedSearchPrompt> = emptyList()
+) {
+    val prompt: PersonalizedSearchPrompt?
+        get() = prompts.firstOrNull()
+}
 
 internal fun buildPersonalizedSearchSnapshot(
     favorites: List<Track>,
@@ -67,8 +70,8 @@ internal fun buildPersonalizedSearchSnapshot(
             .take(2)
             .forEach { add(PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ALBUM, it)) }
     }
-    val prompt = prompts.getOrNull(stableIndex(dayBucket, prompts.size))
-    return PersonalizedSearchSnapshot(tracks = tracks, artistNames = artistNames, prompt = prompt)
+    val orderedPrompts = rotateWindow(prompts, dayBucket, prompts.size)
+    return PersonalizedSearchSnapshot(tracks = tracks, artistNames = artistNames, prompts = orderedPrompts)
 }
 
 internal fun rankPersonalizedSearchArtists(

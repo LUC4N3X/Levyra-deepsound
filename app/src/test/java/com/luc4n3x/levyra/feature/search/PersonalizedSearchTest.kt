@@ -21,6 +21,7 @@ class PersonalizedSearchTest {
 
         assertTrue(snapshot.tracks.isEmpty())
         assertTrue(snapshot.artistNames.isEmpty())
+        assertTrue(snapshot.prompts.isEmpty())
         assertNull(snapshot.prompt)
     }
 
@@ -67,6 +68,7 @@ class PersonalizedSearchTest {
 
         assertEquals("Daft Punk", snapshot.artistNames.first())
         assertTrue(snapshot.prompt != null)
+        assertTrue(snapshot.prompts.size > 1)
     }
 
     @Test
