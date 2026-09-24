@@ -31,6 +31,7 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
 import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
@@ -3927,7 +3928,8 @@ private fun AlbumOverlay(
         TrackSelectionBar(
             state = selection,
             allVisibleIds = selectableIds,
-            onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+            actions = TrackSelectionActions(
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
                 {
                     onPlayTracksNext(selectedTracks)
                     selection.exit()
@@ -3953,7 +3955,8 @@ private fun AlbumOverlay(
                     onExportTracks(selectedTracks)
                     selection.exit()
                 }
-            },
+            }
+            ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 92.dp else 12.dp)
@@ -5155,7 +5158,8 @@ private fun ArtistOverlay(
         TrackSelectionBar(
             state = selection,
             allVisibleIds = selectableIds,
-            onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+            actions = TrackSelectionActions(
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
                 {
                     onPlayTracksNext(selectedTracks)
                     selection.exit()
@@ -5181,7 +5185,8 @@ private fun ArtistOverlay(
                     onExportTracks(selectedTracks)
                     selection.exit()
                 }
-            },
+            }
+            ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 88.dp else 12.dp)
@@ -12612,6 +12617,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                         selection.exit()
                     }
                 }
+            )
             )
         }
 
