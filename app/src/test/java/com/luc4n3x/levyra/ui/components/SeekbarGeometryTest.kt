@@ -95,6 +95,13 @@ class SeekbarGeometryTest {
     }
 
     @Test
+    fun `progress interpolation follows effective playback speed`() {
+        assertEquals(1_000, seekbarProgressAnimationDurationMs(0.10f, 0.11f, 100_000L, playbackSpeed = 0.5f))
+        assertEquals(500, seekbarProgressAnimationDurationMs(0.10f, 0.11f, 100_000L, playbackSpeed = 2f))
+        assertEquals(1_000, seekbarProgressAnimationDurationMs(0.10f, 0.11f, 100_000L, playbackSpeed = Float.NaN))
+    }
+
+    @Test
     fun `scrub label switches to hours only for long tracks`() {
         assertEquals("0:00", formatSeekbarMillis(-5_000L))
         assertEquals("3:07", formatSeekbarMillis(187_000L))

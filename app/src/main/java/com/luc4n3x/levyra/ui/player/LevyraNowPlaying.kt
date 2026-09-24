@@ -808,6 +808,7 @@ fun LevyraNowPlaying(
                     secondaryColor = secondary,
                     surfaces = surfaces,
                     isPlaying = state.isPlaying,
+                    playbackSpeed = state.playbackSpeed,
                     animationsEnabled = animated,
                     compact = compactPlayer,
                     onSeek = viewModel::seekTo

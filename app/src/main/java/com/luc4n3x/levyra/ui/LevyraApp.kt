@@ -535,6 +535,7 @@ import com.luc4n3x.levyra.domain.LevyraNetworkSettingsError
 import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.search.buildPersonalizedSearchSnapshot
+import com.luc4n3x.levyra.feature.search.buildSearchPlaceholderCycle
 import com.luc4n3x.levyra.feature.search.PersonalizedSearchPrompt
 import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
@@ -1252,7 +1253,8 @@ private fun HomeChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    leading: String? = null
+    leading: String? = null,
+    exposeSelectionState: Boolean = true
 ) {
     val background = when {
         selected && LevyraIsLight -> Color(0xFF11131F)
@@ -1269,7 +1271,9 @@ private fun HomeChip(
         modifier = Modifier
             .height(LevyraHomeDesign.MoodChipHeight)
             .pressable(onClick = onClick)
-            .semantics { this.selected = selected },
+            .then(
+                if (exposeSelectionState) Modifier.semantics { this.selected = selected } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -12604,11 +12608,19 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val personalizedArtists = remember(state.homeArtists, personalized.artistNames) {
         rankPersonalizedSearchArtists(state.homeArtists, personalized.artistNames)
     }
-    val personalizedPlaceholders = remember(state.languageCode, personalized.prompts, strings.searchPlaceholder) {
-        personalized.prompts
-            .mapNotNull { prompt -> personalizedSearchPromptText(state.languageCode, prompt) }
-            .distinct()
-            .ifEmpty { listOf(strings.searchPlaceholder) }
+    val personalizedPlaceholders = remember(
+        state.languageCode,
+        personalized.prompts,
+        strings.searchPlaceholder,
+        strings.searchSongsArtists,
+        strings.emptySearchPrompt
+    ) {
+        buildSearchPlaceholderCycle(
+            personalized = personalized.prompts.mapNotNull { prompt ->
+                personalizedSearchPromptText(state.languageCode, prompt)
+            },
+            fallbacks = listOf(strings.searchPlaceholder, strings.searchSongsArtists, strings.emptySearchPrompt)
+        )
     }
     val tasteHintQueries = remember(personalized.prompts, state.languageCode) {
         personalized.prompts
@@ -13761,7 +13773,7 @@ private fun SearchTasteHints(
             HomeChip(
                 label = suggestion,
                 selected = false,
-                leading = "♫",
+                exposeSelectionState = false,
                 onClick = { onClick(suggestion) }
             )
         }

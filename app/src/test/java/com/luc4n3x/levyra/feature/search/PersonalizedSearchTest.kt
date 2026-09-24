@@ -84,4 +84,25 @@ class PersonalizedSearchTest {
 
         assertEquals(listOf("Adele", "Daft Punk", "Coldplay"), ranked.map { it.name })
     }
+
+    @Test
+    fun `generic copy keeps an empty profile placeholder cycle dynamic`() {
+        val cycle = buildSearchPlaceholderCycle(
+            personalized = emptyList(),
+            fallbacks = listOf("Search music", "What do you want to hear?", "Discover something new")
+        )
+
+        assertEquals(3, cycle.size)
+        assertEquals("Search music", cycle.first())
+    }
+
+    @Test
+    fun `local taste leads the placeholder cycle without duplicate fallback copy`() {
+        val cycle = buildSearchPlaceholderCycle(
+            personalized = listOf("Back to Adele", "Back to Adele"),
+            fallbacks = listOf("Back to Adele", "Search music", "Discover something new")
+        )
+
+        assertEquals(listOf("Back to Adele", "Search music", "Discover something new"), cycle)
+    }
 }

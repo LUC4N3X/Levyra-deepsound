@@ -70,6 +70,7 @@ fun PremiumSeekbar(
     inactiveColor: Color = LevyraMuted.copy(alpha = 0.35f),
     thumbColor: Color = Color.White,
     isPlaying: Boolean = true,
+    playbackSpeed: Float = 1f,
     animated: Boolean = true,
     contentDescription: String? = null,
     waveform: FloatArray? = null,
@@ -94,7 +95,7 @@ fun PremiumSeekbar(
     }
     val playbackProgress = seekbarProgressFraction(positionMs, durationMs)
     val animatedProgress = remember(interactionKey) { Animatable(playbackProgress) }
-    LaunchedEffect(playbackProgress, durationMs, animated, isPlaying, isDragging, interactionKey) {
+    LaunchedEffect(playbackProgress, durationMs, playbackSpeed, animated, isPlaying, isDragging, interactionKey) {
         if (
             isDragging ||
             !seekbarShouldSmoothProgress(animatedProgress.value, playbackProgress, isPlaying, animated)
@@ -107,7 +108,8 @@ fun PremiumSeekbar(
                     durationMillis = seekbarProgressAnimationDurationMs(
                         animatedProgress.value,
                         playbackProgress,
-                        durationMs
+                        durationMs,
+                        playbackSpeed
                     ),
                     easing = LinearEasing
                 )

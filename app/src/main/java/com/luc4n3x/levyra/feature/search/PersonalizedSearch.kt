@@ -89,6 +89,22 @@ internal fun rankPersonalizedSearchArtists(
         .map(IndexedValue<ArtistHit>::value)
 }
 
+internal fun buildSearchPlaceholderCycle(
+    personalized: List<String>,
+    fallbacks: List<String>,
+    minimumCandidates: Int = 3
+): List<String> {
+    val candidates = LinkedHashSet<String>()
+    personalized.asSequence().map(String::trim).filter(String::isNotEmpty).forEach(candidates::add)
+    if (candidates.size < minimumCandidates) {
+        for (fallback in fallbacks) {
+            fallback.trim().takeIf(String::isNotEmpty)?.let(candidates::add)
+            if (candidates.size >= minimumCandidates) break
+        }
+    }
+    return candidates.toList()
+}
+
 private fun interleaveDiverseTracks(sources: List<List<Track>>, limit: Int): List<Track> {
     val result = ArrayList<Track>(limit)
     val identities = HashSet<String>()

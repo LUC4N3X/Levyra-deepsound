@@ -1286,7 +1286,10 @@ private fun CrossfadeCurveLab(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(copy.title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
                     Text(
                         "$seconds s · $status",
