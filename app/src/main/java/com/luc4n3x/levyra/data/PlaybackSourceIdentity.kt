@@ -44,14 +44,18 @@ object PlaybackSourceIdentity {
         track: Track,
         videoMode: Boolean,
         audioQuality: String,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        preferredAudioLanguage: String = ""
     ): String {
         val mode = when {
             videoMode -> "video-v4"
             preferMp4Audio -> "audio-mp4"
             else -> "audio"
         }
-        return "${persistentCanonicalKey(track)}|$mode|${audioQuality.trim().lowercase(Locale.ROOT)}"
+        val quality = audioQuality.trim().lowercase(Locale.ROOT)
+        val language = AudioLanguageIntelligence.normalizeLanguage(preferredAudioLanguage)
+        val base = "${persistentCanonicalKey(track)}|$mode|$quality"
+        return if (language.isBlank()) base else "$base|lang:$language"
     }
 
     private fun persistentCanonicalKey(track: Track): String {
