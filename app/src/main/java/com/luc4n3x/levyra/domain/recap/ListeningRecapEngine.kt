@@ -18,6 +18,50 @@ object ListeningRecapEngine {
     private const val TOP_LIMIT = 5
     private const val DISCOVERY_REFERENCE_DAYS = 30L
 
+    private data class ScopeStats(
+        val totalListenMs: Long,
+        val completionRate: Int,
+        val totalPlays: Int,
+        val uniqueTrackKeys: Set<String>,
+        val uniqueArtists: Int,
+        val uniqueAlbums: Int,
+        val byDay: Map<LocalDate, List<ListenEvent>>,
+        val currentStreak: Int,
+        val bestStreak: Int,
+        val mostActiveDayDate: LocalDate?,
+        val mostActiveDayMinutes: Long,
+        val averageMinutesPerDay: Long
+    )
+
+    private data class ListeningTimeProfile(
+        val favoriteHour: Int,
+        val favoriteDaypart: Daypart?
+    )
+
+    private data class DiscoveryMix(
+        val discoveryRate: Int,
+        val repeatRate: Int
+    )
+
+    private data class RecapFinalState(
+        val totalListenMs: Long,
+        val totalPlays: Int,
+        val uniqueTracks: Int,
+        val uniqueArtists: Int,
+        val uniqueAlbums: Int,
+        val completionRate: Int,
+        val bestStreak: Int,
+        val averageMinutesPerDay: Long,
+        val mostActiveDayDate: LocalDate?,
+        val mostActiveDayMinutes: Long,
+        val favoriteHour: Int,
+        val favoriteDaypart: Daypart?,
+        val mostReplayedTrack: TopTrackStat?,
+        val topTracks: List<TopTrackStat>,
+        val topArtists: List<TopArtistStat>,
+        val topAlbums: List<TopAlbumStat>
+    )
+
     fun periodCutoffMs(period: ListeningRecapPeriod, today: LocalDate, zone: ZoneId): Long {
         if (period.days <= 0) return 0L
         val startDate = today.minusDays(period.days - 1L)
@@ -35,215 +79,299 @@ object ListeningRecapEngine {
         val valid = events.filter {
             ListenPlayPolicy.isRecordableEvent(it.listenedMs) && it.startedAt in 1..nowMs
         }
-
         val today = dayOf(nowMs, zone)
         val cutoff = periodCutoffMs(period, today, zone)
         val scoped = if (cutoff <= 0L) valid else valid.filter { it.startedAt >= cutoff }
 
         if (scoped.isEmpty()) {
-            return if (period == ListeningRecapPeriod.AllTime && lifetime != null && lifetime.hasSignal) {
-                buildFromLifetime(lifetime, period, nowMs, zone)
-            } else {
-                ListeningRecapSummary(
-                    period = period,
-                    dailyActivity = emptyDailyPoints(period, today)
-                )
-            }
+            return emptyOrLifetimeSummary(period, lifetime, nowMs, zone, today)
         }
 
-        val totalListenMs = scoped.sumOf { it.listenedMs }
-        val completedCount = scoped.count { it.completed }
-        val completionRate = if (scoped.isNotEmpty()) (completedCount * 100) / scoped.size else 0
-
-        val totalPlays = scoped.count { ListenPlayPolicy.isCountedPlay(it) }
-        val uniqueTrackKeys = scoped.map { ListenIdentity.trackKey(it) }.toSet()
-        val uniqueArtists = scoped.mapNotNull { event ->
-            primaryArtistIdentityKey(event).takeIf { it.isNotBlank() }
-        }.toSet().size
-        val uniqueAlbums = scoped.map { albumKey(it.album, it.artist) }.filter { it.isNotBlank() }.toSet().size
-
-        val byDay = scoped.groupBy { dayOf(it.startedAt, zone) }
-        val activeDates = byDay.keys
-        val currentStreak = calculateStreak(activeDates, today)
-        val bestStreak = calculateLongestStreak(activeDates)
-
-        val mostActiveDayEntry = byDay.entries.maxByOrNull { it.value.sumOf { ev -> ev.listenedMs } }
-        val mostActiveDayDate = mostActiveDayEntry?.key
-        val mostActiveDayMinutes = (mostActiveDayEntry?.value?.sumOf { it.listenedMs } ?: 0L) / 60_000L
-
-        val averageMinutesPerDay = when {
-            period.days > 0 -> (totalListenMs / 60_000L) / period.days.toLong()
-            activeDates.isNotEmpty() -> (totalListenMs / 60_000L) / activeDates.size.toLong()
-            else -> 0L
-        }
-
-        val hourlyBuckets = LongArray(24)
-        var morningMs = 0L
-        var afternoonMs = 0L
-        var eveningMs = 0L
-        var nightMs = 0L
-
-        for (event in scoped) {
-            val hour = Instant.ofEpochMilli(event.startedAt).atZone(zone).hour
-            if (hour in 0..23) {
-                hourlyBuckets[hour] += event.listenedMs
-                when (hour) {
-                    in 5..11 -> morningMs += event.listenedMs
-                    in 12..16 -> afternoonMs += event.listenedMs
-                    in 17..21 -> eveningMs += event.listenedMs
-                    else -> nightMs += event.listenedMs
-                }
-            }
-        }
-
-        var peakHour = -1
-        var peakHourMs = 0L
-        for (h in 0..23) {
-            if (hourlyBuckets[h] > peakHourMs) {
-                peakHourMs = hourlyBuckets[h]
-                peakHour = h
-            }
-        }
-
-        val favoriteDaypart = listOf(
-            Daypart.Morning to morningMs,
-            Daypart.Afternoon to afternoonMs,
-            Daypart.Evening to eveningMs,
-            Daypart.Night to nightMs
-        ).filter { it.second > 0L }.maxByOrNull { it.second }?.first
-
-        val allTrackStats = allTrackStats(scoped)
-        val topTracks = allTrackStats
+        val stats = scopedStats(scoped, period, today, zone)
+        val timeProfile = listeningTimeProfile(scoped, zone)
+        val allTracks = allTrackStats(scoped)
+        val topTracks = allTracks
             .sortedWith(compareByDescending<TopTrackStat> { it.listenedMs }.thenByDescending { it.plays })
             .take(TOP_LIMIT)
             .mapIndexed { index, item -> item.copy(rank = index + 1) }
         val topArtists = topArtists(scoped)
         val topAlbums = topAlbums(scoped)
-
-        val mostReplayedTrack = allTrackStats
+        val mostReplayedTrack = allTracks
             .filter { it.plays >= 2 }
             .maxWithOrNull(compareBy<TopTrackStat> { it.plays }.thenBy { it.listenedMs })
 
         val hasLifetimeOlderHistory = period == ListeningRecapPeriod.AllTime &&
-            lifetime != null && lifetime.hasSignal && lifetime.totalListenMs > totalListenMs
-
-        val isDiscoveryPeriod = period == ListeningRecapPeriod.Days7 || period == ListeningRecapPeriod.Days30
-        val hasAuthoritativeFirstPlayed = isDiscoveryPeriod &&
-            uniqueTrackKeys.isNotEmpty() &&
-            uniqueTrackKeys.all { key ->
-                (firstPlayedMap[key] ?: 0L) > 0L
-            }
-        val hasPriorHistory = hasAuthoritativeFirstPlayed && (
-            firstPlayedMap.values.any { it in 1 until cutoff } || valid.any { it.startedAt in 1 until cutoff }
+            lifetime != null && lifetime.hasSignal && lifetime.totalListenMs > stats.totalListenMs
+        val discovery = discoveryMix(
+            period = period,
+            uniqueTrackKeys = stats.uniqueTrackKeys,
+            firstPlayedMap = firstPlayedMap,
+            validEvents = valid,
+            cutoff = cutoff
         )
 
-        val (discoveryRate, repeatRate) = if (hasAuthoritativeFirstPlayed && hasPriorHistory) {
-            val discoveredCount = uniqueTrackKeys.count { key ->
-                (firstPlayedMap[key] ?: 0L) >= cutoff
-            }
-            val disc = ((discoveredCount * 100) / uniqueTrackKeys.size).coerceIn(0, 100)
-            val rep = (100 - disc).coerceIn(0, 100)
-            disc to rep
-        } else {
-            -1 to -1
-        }
-
-        val dailyActivity = generateDailyActivity(byDay, period, today)
-
-        var finalListenMs = totalListenMs
-        var finalPlays = totalPlays
-        var finalTracks = uniqueTrackKeys.size
-        var finalArtists = uniqueArtists
-        var finalTopTracks = topTracks
-        var finalTopArtists = topArtists
-        var finalTopAlbums = topAlbums
-        var finalUniqueAlbums = uniqueAlbums
-        var finalBestStreak = bestStreak
-        var finalFavoriteDaypart: Daypart? = favoriteDaypart
-        var finalFavoriteHour = peakHour
-        var finalMostActiveDayDate: LocalDate? = mostActiveDayDate
-        var finalMostActiveDayMinutes = mostActiveDayMinutes
-        var finalMostReplayedTrack = mostReplayedTrack
-        var finalCompletionRate = completionRate
-        var finalAverageMinutesPerDay = averageMinutesPerDay
-
-        if (period == ListeningRecapPeriod.AllTime && lifetime != null && lifetime.hasSignal) {
-            if (lifetime.eventCount > 0) {
-                finalCompletionRate = ((lifetime.completedCount.toLong() * 100L) / lifetime.eventCount.toLong()).toInt().coerceIn(0, 100)
-            }
-            if (lifetime.totalListenMs > finalListenMs) {
-                finalListenMs = lifetime.totalListenMs
-                finalPlays = lifetime.countedPlays
-                finalTracks = maxOf(finalTracks, lifetime.distinctTracks)
-                finalArtists = maxOf(finalArtists, lifetime.distinctArtists)
-            }
-            if ((finalTopTracks.isEmpty() || hasLifetimeOlderHistory) && lifetime.tracks.isNotEmpty()) {
-                val thumbMap = scoped.filter { it.thumbnailUrl.isNotBlank() }
-                    .associate { ListenIdentity.trackKey(it) to it.thumbnailUrl }
-                finalTopTracks = lifetime.tracks.take(TOP_LIMIT).mapIndexed { idx, t ->
-                    TopTrackStat(
-                        rank = idx + 1,
-                        trackId = t.trackId,
-                        title = t.title,
-                        artist = t.artist,
-                        thumbnailUrl = thumbMap[ListenIdentity.trackKey(t.trackId, t.title, t.artist)] ?: "",
-                        plays = t.plays,
-                        listenedMs = t.listenedMs
-                    )
-                }
-            }
-            if ((finalTopArtists.isEmpty() || hasLifetimeOlderHistory) && lifetime.artists.isNotEmpty()) {
-                finalTopArtists = lifetime.artists.take(TOP_LIMIT).mapIndexed { idx, a ->
-                    TopArtistStat(
-                        rank = idx + 1,
-                        name = a.name,
-                        thumbnailUrl = "",
-                        plays = a.countedPlays,
-                        listenedMs = a.listenedMs
-                    )
-                }
-            }
-            if (hasLifetimeOlderHistory) {
-                finalTopAlbums = emptyList()
-                finalUniqueAlbums = 0
-                finalBestStreak = 0
-                finalFavoriteDaypart = null
-                finalFavoriteHour = -1
-                finalMostActiveDayDate = null
-                finalMostActiveDayMinutes = 0L
-                finalMostReplayedTrack = null
-                finalAverageMinutesPerDay = calculateLifetimeDailyAverage(finalListenMs, lifetime.firstPlayedAt, today, zone)
-            }
-        }
-
-        val highlights = RecapHighlightStat(
-            currentStreakDays = currentStreak,
-            bestStreakDays = finalBestStreak,
-            averageMinutesPerDay = finalAverageMinutesPerDay,
-            mostActiveDayDate = finalMostActiveDayDate,
-            mostActiveDayMinutes = finalMostActiveDayMinutes,
-            favoriteHour = finalFavoriteHour,
-            favoriteDaypart = finalFavoriteDaypart,
-            mostReplayedTrack = finalMostReplayedTrack,
-            discoveryRate = discoveryRate,
-            repeatRate = repeatRate,
-            isWindowBounded = hasLifetimeOlderHistory
+        val finalState = mergeLifetimeStats(
+            base = RecapFinalState(
+                totalListenMs = stats.totalListenMs,
+                totalPlays = stats.totalPlays,
+                uniqueTracks = stats.uniqueTrackKeys.size,
+                uniqueArtists = stats.uniqueArtists,
+                uniqueAlbums = stats.uniqueAlbums,
+                completionRate = stats.completionRate,
+                bestStreak = stats.bestStreak,
+                averageMinutesPerDay = stats.averageMinutesPerDay,
+                mostActiveDayDate = stats.mostActiveDayDate,
+                mostActiveDayMinutes = stats.mostActiveDayMinutes,
+                favoriteHour = timeProfile.favoriteHour,
+                favoriteDaypart = timeProfile.favoriteDaypart,
+                mostReplayedTrack = mostReplayedTrack,
+                topTracks = topTracks,
+                topArtists = topArtists,
+                topAlbums = topAlbums
+            ),
+            period = period,
+            lifetime = lifetime,
+            scoped = scoped,
+            hasLifetimeOlderHistory = hasLifetimeOlderHistory,
+            today = today,
+            zone = zone
         )
 
         return ListeningRecapSummary(
             period = period,
-            totalListenMs = finalListenMs,
-            totalPlays = finalPlays,
-            uniqueTracks = finalTracks,
-            uniqueArtists = finalArtists,
-            uniqueAlbums = finalUniqueAlbums,
-            completionRate = finalCompletionRate,
-            highlights = highlights,
-            topTracks = finalTopTracks,
-            topArtists = finalTopArtists,
-            topAlbums = finalTopAlbums,
-            dailyActivity = dailyActivity
+            totalListenMs = finalState.totalListenMs,
+            totalPlays = finalState.totalPlays,
+            uniqueTracks = finalState.uniqueTracks,
+            uniqueArtists = finalState.uniqueArtists,
+            uniqueAlbums = finalState.uniqueAlbums,
+            completionRate = finalState.completionRate,
+            highlights = RecapHighlightStat(
+                currentStreakDays = stats.currentStreak,
+                bestStreakDays = finalState.bestStreak,
+                averageMinutesPerDay = finalState.averageMinutesPerDay,
+                mostActiveDayDate = finalState.mostActiveDayDate,
+                mostActiveDayMinutes = finalState.mostActiveDayMinutes,
+                favoriteHour = finalState.favoriteHour,
+                favoriteDaypart = finalState.favoriteDaypart,
+                mostReplayedTrack = finalState.mostReplayedTrack,
+                discoveryRate = discovery.discoveryRate,
+                repeatRate = discovery.repeatRate,
+                isWindowBounded = hasLifetimeOlderHistory
+            ),
+            topTracks = finalState.topTracks,
+            topArtists = finalState.topArtists,
+            topAlbums = finalState.topAlbums,
+            dailyActivity = generateDailyActivity(stats.byDay, period, today)
         )
+    }
+
+    private fun emptyOrLifetimeSummary(
+        period: ListeningRecapPeriod,
+        lifetime: LifetimeListening?,
+        nowMs: Long,
+        zone: ZoneId,
+        today: LocalDate
+    ): ListeningRecapSummary {
+        return if (period == ListeningRecapPeriod.AllTime && lifetime != null && lifetime.hasSignal) {
+            buildFromLifetime(lifetime, period, nowMs, zone)
+        } else {
+            ListeningRecapSummary(
+                period = period,
+                dailyActivity = emptyDailyPoints(period, today)
+            )
+        }
+    }
+
+    private fun scopedStats(
+        scoped: List<ListenEvent>,
+        period: ListeningRecapPeriod,
+        today: LocalDate,
+        zone: ZoneId
+    ): ScopeStats {
+        val totalListenMs = scoped.sumOf { it.listenedMs }
+        val completedCount = scoped.count { it.completed }
+        val uniqueTrackKeys = scoped.map { ListenIdentity.trackKey(it) }.toSet()
+        val byDay = scoped.groupBy { dayOf(it.startedAt, zone) }
+        val activeDates = byDay.keys
+        val mostActiveDayEntry = byDay.entries.maxByOrNull { entry ->
+            entry.value.sumOf { event -> event.listenedMs }
+        }
+        val totalMinutes = totalListenMs / 60_000L
+        val averageMinutesPerDay = when {
+            period.days > 0 -> totalMinutes / period.days.toLong()
+            activeDates.isNotEmpty() -> totalMinutes / activeDates.size.toLong()
+            else -> 0L
+        }
+
+        return ScopeStats(
+            totalListenMs = totalListenMs,
+            completionRate = (completedCount * 100) / scoped.size,
+            totalPlays = scoped.count { ListenPlayPolicy.isCountedPlay(it) },
+            uniqueTrackKeys = uniqueTrackKeys,
+            uniqueArtists = scoped.mapNotNull { event ->
+                primaryArtistIdentityKey(event).takeIf { it.isNotBlank() }
+            }.toSet().size,
+            uniqueAlbums = scoped.map { albumKey(it.album, it.artist) }
+                .filter { it.isNotBlank() }
+                .toSet()
+                .size,
+            byDay = byDay,
+            currentStreak = calculateStreak(activeDates, today),
+            bestStreak = calculateLongestStreak(activeDates),
+            mostActiveDayDate = mostActiveDayEntry?.key,
+            mostActiveDayMinutes = (mostActiveDayEntry?.value?.sumOf { it.listenedMs } ?: 0L) / 60_000L,
+            averageMinutesPerDay = averageMinutesPerDay
+        )
+    }
+
+    private fun listeningTimeProfile(events: List<ListenEvent>, zone: ZoneId): ListeningTimeProfile {
+        val hourlyBuckets = LongArray(24)
+        val daypartBuckets = LongArray(Daypart.entries.size)
+
+        events.forEach { event ->
+            val hour = Instant.ofEpochMilli(event.startedAt).atZone(zone).hour
+            if (hour !in 0..23) return@forEach
+            hourlyBuckets[hour] += event.listenedMs
+            val daypart = when (hour) {
+                in 5..11 -> Daypart.Morning
+                in 12..16 -> Daypart.Afternoon
+                in 17..21 -> Daypart.Evening
+                else -> Daypart.Night
+            }
+            daypartBuckets[daypart.ordinal] += event.listenedMs
+        }
+
+        val favoriteHour = hourlyBuckets.indices
+            .filter { hourlyBuckets[it] > 0L }
+            .maxByOrNull { hourlyBuckets[it] }
+            ?: -1
+        val favoriteDaypart = Daypart.entries
+            .filter { daypartBuckets[it.ordinal] > 0L }
+            .maxByOrNull { daypartBuckets[it.ordinal] }
+
+        return ListeningTimeProfile(
+            favoriteHour = favoriteHour,
+            favoriteDaypart = favoriteDaypart
+        )
+    }
+
+    private fun discoveryMix(
+        period: ListeningRecapPeriod,
+        uniqueTrackKeys: Set<String>,
+        firstPlayedMap: Map<String, Long>,
+        validEvents: List<ListenEvent>,
+        cutoff: Long
+    ): DiscoveryMix {
+        val isDiscoveryPeriod = period == ListeningRecapPeriod.Days7 ||
+            period == ListeningRecapPeriod.Days30
+        if (!isDiscoveryPeriod || uniqueTrackKeys.isEmpty()) return DiscoveryMix(-1, -1)
+
+        val hasAuthoritativeFirstPlayed = uniqueTrackKeys.all { key ->
+            (firstPlayedMap[key] ?: 0L) > 0L
+        }
+        if (!hasAuthoritativeFirstPlayed) return DiscoveryMix(-1, -1)
+
+        val hasPriorHistory = firstPlayedMap.values.any { it in 1 until cutoff } ||
+            validEvents.any { it.startedAt in 1 until cutoff }
+        if (!hasPriorHistory) return DiscoveryMix(-1, -1)
+
+        val discoveredCount = uniqueTrackKeys.count { key ->
+            (firstPlayedMap[key] ?: 0L) >= cutoff
+        }
+        val discoveryRate = ((discoveredCount * 100) / uniqueTrackKeys.size).coerceIn(0, 100)
+        return DiscoveryMix(
+            discoveryRate = discoveryRate,
+            repeatRate = (100 - discoveryRate).coerceIn(0, 100)
+        )
+    }
+
+    private fun mergeLifetimeStats(
+        base: RecapFinalState,
+        period: ListeningRecapPeriod,
+        lifetime: LifetimeListening?,
+        scoped: List<ListenEvent>,
+        hasLifetimeOlderHistory: Boolean,
+        today: LocalDate,
+        zone: ZoneId
+    ): RecapFinalState {
+        if (period != ListeningRecapPeriod.AllTime || lifetime == null || !lifetime.hasSignal) {
+            return base
+        }
+
+        var merged = base
+        if (lifetime.eventCount > 0) {
+            merged = merged.copy(
+                completionRate = (
+                    (lifetime.completedCount.toLong() * 100L) / lifetime.eventCount.toLong()
+                ).toInt().coerceIn(0, 100)
+            )
+        }
+        if (lifetime.totalListenMs > merged.totalListenMs) {
+            merged = merged.copy(
+                totalListenMs = lifetime.totalListenMs,
+                totalPlays = lifetime.countedPlays,
+                uniqueTracks = maxOf(merged.uniqueTracks, lifetime.distinctTracks),
+                uniqueArtists = maxOf(merged.uniqueArtists, lifetime.distinctArtists)
+            )
+        }
+        if ((merged.topTracks.isEmpty() || hasLifetimeOlderHistory) && lifetime.tracks.isNotEmpty()) {
+            merged = merged.copy(topTracks = lifetimeTopTracks(lifetime, scoped))
+        }
+        if ((merged.topArtists.isEmpty() || hasLifetimeOlderHistory) && lifetime.artists.isNotEmpty()) {
+            merged = merged.copy(topArtists = lifetimeTopArtists(lifetime))
+        }
+        if (!hasLifetimeOlderHistory) return merged
+
+        return merged.copy(
+            uniqueAlbums = 0,
+            bestStreak = 0,
+            averageMinutesPerDay = calculateLifetimeDailyAverage(
+                merged.totalListenMs,
+                lifetime.firstPlayedAt,
+                today,
+                zone
+            ),
+            mostActiveDayDate = null,
+            mostActiveDayMinutes = 0L,
+            favoriteHour = -1,
+            favoriteDaypart = null,
+            mostReplayedTrack = null,
+            topAlbums = emptyList()
+        )
+    }
+
+    private fun lifetimeTopTracks(
+        lifetime: LifetimeListening,
+        scoped: List<ListenEvent>
+    ): List<TopTrackStat> {
+        val thumbnailMap = scoped
+            .filter { it.thumbnailUrl.isNotBlank() }
+            .associate { ListenIdentity.trackKey(it) to it.thumbnailUrl }
+        return lifetime.tracks.take(TOP_LIMIT).mapIndexed { index, track ->
+            TopTrackStat(
+                rank = index + 1,
+                trackId = track.trackId,
+                title = track.title,
+                artist = track.artist,
+                thumbnailUrl = thumbnailMap[
+                    ListenIdentity.trackKey(track.trackId, track.title, track.artist)
+                ] ?: "",
+                plays = track.plays,
+                listenedMs = track.listenedMs
+            )
+        }
+    }
+
+    private fun lifetimeTopArtists(lifetime: LifetimeListening): List<TopArtistStat> {
+        return lifetime.artists.take(TOP_LIMIT).mapIndexed { index, artist ->
+            TopArtistStat(
+                rank = index + 1,
+                name = artist.name,
+                thumbnailUrl = "",
+                plays = artist.countedPlays,
+                listenedMs = artist.listenedMs
+            )
+        }
     }
 
     private fun allTrackStats(events: List<ListenEvent>): List<TopTrackStat> {
