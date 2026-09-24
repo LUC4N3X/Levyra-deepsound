@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.feature.radio.LiveRadioArtworkLoader
+import com.luc4n3x.levyra.feature.radio.LiveRadioArtworkResolver
 import com.luc4n3x.levyra.feature.radio.LiveRadioUiState
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioCategory
@@ -92,10 +93,11 @@ internal fun LiveRadioScreen(
     languageCode: String,
     currentStationId: String?,
     isPlaying: Boolean,
+    backEnabled: Boolean,
     onBack: () -> Unit,
     onPlay: (RadioStation) -> Unit
 ) {
-    BackHandler(onBack = onBack)
+    BackHandler(enabled = backEnabled, onBack = onBack)
     val context = androidx.compose.ui.platform.LocalContext.current
     val factory = remember(context.applicationContext) { LiveRadioViewModel.factory(context.applicationContext) }
     val viewModel: LiveRadioViewModel = composeViewModel(key = "levyra-live-radio", factory = factory)
@@ -624,7 +626,18 @@ private fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.D
     val context = androidx.compose.ui.platform.LocalContext.current
     val imageLoader = remember(context.applicationContext) { LiveRadioArtworkLoader.get(context.applicationContext) }
     val safeFavicon = remember(station.faviconUrl) { station.safeFaviconUrl }
-    var failed by remember(safeFavicon) { mutableStateOf(false) }
+    var faviconFailed by remember(safeFavicon) { mutableStateOf(false) }
+    val needsFallback = safeFavicon.isBlank() || faviconFailed
+    var fallbackArtwork by remember(station.homepageUrl) { mutableStateOf<String?>(null) }
+    var fallbackFailed by remember(fallbackArtwork) { mutableStateOf(false) }
+    LaunchedEffect(needsFallback, station.homepageUrl) {
+        if (needsFallback) fallbackArtwork = LiveRadioArtworkResolver.resolve(station.homepageUrl)
+    }
+    val artwork = when {
+        !needsFallback -> safeFavicon
+        !fallbackFailed -> fallbackArtwork
+        else -> null
+    }
     val initials = remember(station.name) {
         station.name.split(radioArtworkWordPattern).mapNotNull { it.firstOrNull()?.uppercaseChar() }.take(2).joinToString("").ifBlank { "LR" }
     }
@@ -635,13 +648,13 @@ private fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.D
         contentAlignment = Alignment.Center
     ) {
         Text(initials, color = LevyraCyan.copy(alpha = 0.88f), fontSize = if (size > 70.dp) 26.sp else 18.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
-        if (safeFavicon.isNotBlank() && !failed) {
+        if (artwork != null) {
             AsyncImage(
-                model = safeFavicon,
+                model = artwork,
                 imageLoader = imageLoader,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                onError = { failed = true },
+                onError = { if (needsFallback) fallbackFailed = true else faviconFailed = true },
                 modifier = Modifier.fillMaxSize().padding(7.dp)
             )
         }
