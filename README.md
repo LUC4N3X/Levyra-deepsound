@@ -229,6 +229,12 @@ On Windows, playback runs through libVLC while the interface uses Compose Multip
 
 On Android, Media3 integrates directly with system audio focus, Bluetooth controls, lockscreen playback, media sessions, and Android Auto, keeping background audio independent of any browser process.
 
+## ✦ Development
+
+Levyra is developed in public. I use whatever tools are useful for research, debugging and review, including AI-assisted tools when they help, but I do not treat generated code as finished code. Changes still have to fit the existing architecture, preserve behavior, pass the repository checks, and make sense to me before they ship.
+
+If you want to judge the project, you do not have to take that paragraph on faith. The commit history, pull requests, issues, engineering rules and release history are public. [More about how I work on Levyra](docs/site/development-notes.md).
+
 ## ✦ Privacy
 
 Levyra contains no telemetry, analytics, or ads, and does not require an account.
