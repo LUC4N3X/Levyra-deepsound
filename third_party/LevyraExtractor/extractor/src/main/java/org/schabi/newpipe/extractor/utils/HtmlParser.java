@@ -1,5 +1,7 @@
 package org.schabi.newpipe.extractor.utils;
 
+import org.jsoup.parser.Parser;
+
 public class HtmlParser {
 
     public static String htmlToString(String html) {
@@ -12,6 +14,6 @@ public class HtmlParser {
 
         // Remove all other HTML tags
 
-        return withNewLines.replaceAll("<[^>]*>", "");
+        return Parser.unescapeEntities(withNewLines.replaceAll("<[^>]*>", ""), false);
     }
 }

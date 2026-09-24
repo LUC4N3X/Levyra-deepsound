@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player.queue
 
 import android.content.Context
 import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
+import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
@@ -834,7 +835,7 @@ class PersistentQueueEngine internal constructor(
     private suspend fun persistLatest() = persistMutex.withLock {
         if (!queuePersistenceAllowed(transientPlaybackActive)) return@withLock
         val snapshot = _state.value.toPersistent()
-        runCatching { store.save(snapshot) }
+        runCatchingPreservingCancellation { store.save(snapshot) }
             .onFailure { Timber.w(it, "Persistent queue save failed") }
     }
 
@@ -891,7 +892,9 @@ class PersistentQueueEngine internal constructor(
                 ) {
                     return@withLock
                 }
-                runCatching { store.updatePosition(current.spaceId, current.positionMs, current.updatedAt) }
+                runCatchingPreservingCancellation {
+                    store.updatePosition(current.spaceId, current.positionMs, current.updatedAt)
+                }
                     .onFailure { Timber.w(it, "Persistent queue position save failed") }
             }
         }
