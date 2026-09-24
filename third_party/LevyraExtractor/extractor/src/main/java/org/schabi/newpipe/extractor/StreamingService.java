@@ -114,7 +114,7 @@ public abstract class StreamingService {
 
     private int loadingTimeout = 5;
     private boolean fetchFullPlaylist = false;
-    private boolean fetchDislike = true;
+    private boolean fetchDislike = false;
     private long feedFetchInterval = 0;
 
 
