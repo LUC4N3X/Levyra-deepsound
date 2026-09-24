@@ -48,6 +48,7 @@ import com.luc4n3x.levyra.ui.album.AlbumHeroDissolve
 import com.luc4n3x.levyra.ui.album.AlbumSplitHeroFraction
 import com.luc4n3x.levyra.ui.album.AlbumSplitListStartFraction
 import com.luc4n3x.levyra.ui.album.AlbumStageColors
+import com.luc4n3x.levyra.ui.album.AlbumFieldTail
 import com.luc4n3x.levyra.ui.album.albumContentGutter
 import com.luc4n3x.levyra.ui.album.albumStackedHeroHeight
 import com.luc4n3x.levyra.ui.album.albumStageColors
@@ -1975,7 +1976,7 @@ fun LevyraApp(
                     .background(LevyraBlack)
             ) {
             val dockState = rememberLevyraDockState()
-            val dockGlass = rememberGlassBackdropState(enabled = rememberGlassBlurAllowed())
+            val dockGlass = rememberGlassBackdropState(enabled = state.animationsEnabled && rememberGlassBlurAllowed())
 
             val homeListState = rememberLazyListState()
             val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
@@ -3780,43 +3781,21 @@ private fun AlbumOverlay(
                 val gutter = albumContentGutter(maxWidth)
                 val overlapPx = with(density) { AlbumHeaderOverlap.toPx() }
                 val parallax = state.animationsEnabled
-                Box(
+                val heroScroll: () -> Float = {
+                    if (listState.firstVisibleItemIndex == 0) {
+                        listState.firstVisibleItemScrollOffset.toFloat()
+                    } else {
+                        heroPx
+                    }
+                }
+                ArtworkBackdropWash(
+                    artworkUrl = cover,
+                    tint = stage.fieldTop,
+                    base = stage.base,
                     modifier = Modifier
-                        .matchParentSize()
-                        .drawBehind {
-                            val visible = listState.layoutInfo.visibleItemsInfo
-                            val header = visible.firstOrNull { it.key == "album-header" }
-                            val hero = visible.firstOrNull { it.key == "album-hero" }
-                            val heroBottom = when {
-                                header != null -> header.offset + overlapPx
-                                hero != null -> hero.offset + heroPx
-                                else -> return@drawBehind
-                            }
-                            val fieldEnd = if (header != null) {
-                                (header.offset + header.size).toFloat()
-                            } else {
-                                heroBottom + overlapPx
-                            }
-                            if (heroBottom > 0f) {
-                                drawRect(
-                                    color = stage.fieldTop,
-                                    size = Size(size.width, heroBottom.coerceAtMost(size.height))
-                                )
-                            }
-                            if (fieldEnd > heroBottom && fieldEnd > 0f) {
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        0f to stage.fieldTop,
-                                        0.55f to stage.fieldMid,
-                                        1f to stage.base,
-                                        startY = heroBottom,
-                                        endY = fieldEnd
-                                    ),
-                                    topLeft = Offset(0f, heroBottom),
-                                    size = Size(size.width, fieldEnd - heroBottom)
-                                )
-                            }
-                        }
+                        .fillMaxWidth()
+                        .height(stackedHeroHeight + AlbumFieldTail)
+                        .graphicsLayer { translationY = -heroScroll() }
                 )
                 LazyColumn(
                     state = listState,
@@ -7691,7 +7670,14 @@ private suspend fun centerLyricsItem(
     if (index < 0) return
     var itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
     if (itemInfo == null) {
-        listState.scrollToItem(index)
+        val layoutInfo = listState.layoutInfo
+        val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+        val desiredOffset = if (viewportHeight > 0) {
+            -(viewportHeight * anchorFraction.coerceIn(0.25f, 0.70f)).toInt()
+        } else {
+            0
+        }
+        listState.scrollToItem(index, scrollOffset = desiredOffset)
         withFrameNanos { }
         itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
     }
@@ -7705,7 +7691,10 @@ private suspend fun centerLyricsItem(
     val hysteresis = maxOf(8f, viewportHeight * 0.018f)
     if (kotlin.math.abs(delta) <= hysteresis) return
     if (animate && kotlin.math.abs(delta) <= viewportHeight * 0.55f) {
-        listState.animateScrollBy(delta)
+        listState.animateScrollBy(
+            value = delta,
+            animationSpec = LevyraMotion.spatial.spec()
+        )
     } else {
         listState.scrollBy(delta)
     }
@@ -7897,8 +7886,12 @@ private fun KaraokeLyricLine(
         LyricVocalRole.MAIN -> 1f
     }
     val activeScale by animateFloatAsState(
-        targetValue = if (isPrimaryActive) 1.008f else 1f,
-        animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.expressive),
+        targetValue = when {
+            isPrimaryActive && compact -> 1.018f
+            isPrimaryActive -> 1.025f
+            else -> 1f
+        },
+        animationSpec = LevyraMotion.physics(animationsEnabled, LevyraMotion.spatial),
         label = "lyrics-line-scale"
     )
     val targetAlpha = lyricsFocusAlpha(
@@ -7909,12 +7902,12 @@ private fun KaraokeLyricLine(
     )
     val lineAlpha by animateFloatAsState(
         targetValue = targetAlpha,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = 110)),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
         label = "lyrics-line-alpha"
     )
     val lineBlur by animateDpAsState(
         targetValue = lyricsFocusBlurDp(distanceFromActive, focusMode, synced, blurEnabled).dp,
-        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = 160)),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short + 20, easing = LevyraMotion.Easings.Standard)),
         label = "lyrics-line-blur"
     )
     val baseFontSizeSp = when {
@@ -7953,6 +7946,31 @@ private fun KaraokeLyricLine(
         })
         else -> Color.White.copy(alpha = 0.88f)
     }
+    val animatedMainColor by animateColorAsState(
+        targetValue = if (isActive || isPrimaryActive) Color.White else inactiveColor,
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-main-text-color"
+    )
+    val animatedInactiveColor by animateColorAsState(
+        targetValue = inactiveColor,
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-inactive-color"
+    )
+    val animatedSectionColor by animateColorAsState(
+        targetValue = accentEnd.copy(alpha = if (isPrimaryActive) 0.92f else 0.56f),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-section-color"
+    )
+    val animatedRomanizationColor by animateColorAsState(
+        targetValue = if (isActive) Color.White.copy(alpha = 0.76f) else Color.White.copy(alpha = 0.40f),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-romanization-color"
+    )
+    val animatedTranslationColor by animateColorAsState(
+        targetValue = if (isActive) accentEnd.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.44f),
+        animationSpec = LevyraMotion.spec(animationsEnabled, tween(durationMillis = LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+        label = "lyrics-translation-color"
+    )
     val horizontalPadding = when (line.role) {
         LyricVocalRole.BACKGROUND -> if (compact) 16.dp else 24.dp
         LyricVocalRole.DUET_LEFT, LyricVocalRole.DUET_RIGHT -> 10.dp
@@ -8006,7 +8024,7 @@ private fun KaraokeLyricLine(
         if (!sectionLabel.isNullOrBlank()) {
             Text(
                 text = sectionLabel.uppercase(sectionLocale),
-                color = accentEnd.copy(alpha = if (isPrimaryActive) 0.92f else 0.56f),
+                color = animatedSectionColor,
                 fontSize = if (compact) 9.sp else 10.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(if (compact) 9.sp else 10.sp),
                 fontWeight = FontWeight.Black,
@@ -8032,7 +8050,7 @@ private fun KaraokeLyricLine(
                 fontSize = resolvedFontSize,
                 lineHeight = lineHeight,
                 textAlign = textAlign,
-                inactiveColor = inactiveColor,
+                inactiveColor = animatedInactiveColor,
                 completedColor = completedWordColor,
                 activeColor = activeWordColor,
                 pendingColor = pendingWordColor,
@@ -8041,7 +8059,7 @@ private fun KaraokeLyricLine(
         } else {
             Text(
                 text = if (line.isInstrumental) "♪" else line.text,
-                color = if (isActive || isPrimaryActive) Color.White else inactiveColor,
+                color = animatedMainColor,
                 fontSize = resolvedFontSize,
                 lineHeight = lineHeight,
                 fontWeight = if (isPrimaryActive) FontWeight.ExtraBold else FontWeight.Bold,
@@ -8052,7 +8070,7 @@ private fun KaraokeLyricLine(
         if (showRomanization && resolvedRomanization.isNotBlank()) {
             Text(
                 text = resolvedRomanization,
-                color = if (isActive) Color.White.copy(alpha = 0.76f) else Color.White.copy(alpha = 0.40f),
+                color = animatedRomanizationColor,
                 fontSize = when {
                     compact -> 11.sp
                     cinema && isPrimaryActive -> 15.sp
@@ -8067,7 +8085,7 @@ private fun KaraokeLyricLine(
         if (line.translated.isNotBlank()) {
             Text(
                 text = line.translated,
-                color = if (isActive) accentEnd.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.44f),
+                color = animatedTranslationColor,
                 fontSize = when {
                     compact -> 12.sp
                     cinema && isPrimaryActive -> 16.sp
@@ -16138,15 +16156,31 @@ private fun PlayerInlineLyricsSection(
                         key = { index, line -> "${line.startMs}-${line.role.name}-$index" }
                     ) { index, line ->
                         val isActive = index == visualActiveIndex
+                        val lineColor by animateColorAsState(
+                            targetValue = if (isActive) primaryContent else Color.White.copy(alpha = 0.48f),
+                            animationSpec = LevyraMotion.spec(lyricsAnimationsEnabled, tween(LevyraMotion.Durations.Short, easing = LevyraMotion.Easings.Decelerate)),
+                            label = "inline-lyrics-color"
+                        )
+                        val lineScale by animateFloatAsState(
+                            targetValue = if (isActive) 1.02f else 1f,
+                            animationSpec = LevyraMotion.physics(lyricsAnimationsEnabled, LevyraMotion.spatial),
+                            label = "inline-lyrics-scale"
+                        )
                         Text(
                             text = line.text,
-                            color = if (isActive) primaryContent else Color.White.copy(alpha = 0.48f),
+                            color = lineColor,
                             fontSize = if (isActive) 24.sp else 19.sp,
                             lineHeight = if (isActive) 29.sp else 24.sp,
                             fontWeight = if (isActive) FontWeight.Black else FontWeight.Medium,
-                            modifier = Modifier.clickable {
-                                onSeek(progressOf(line.startMs, durationMs))
-                            }
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = lineScale
+                                    scaleY = lineScale
+                                    transformOrigin = TransformOrigin(0f, 0.5f)
+                                }
+                                .clickable {
+                                    onSeek(progressOf(line.startMs, durationMs))
+                                }
                         )
                     }
                 }

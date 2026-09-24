@@ -16,34 +16,42 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.ui.playerMix
+import com.luc4n3x.levyra.ui.rememberGlassBlurAllowed
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraIsPureBlack
 
 private const val WashArtworkPx = 96
-private const val WashImageFraction = 0.62f
-private const val WashOverscale = 1.35f
-private val WashBlur = 64.dp
+private const val DefaultWashImageFraction = 0.62f
+private const val DefaultWashOverscale = 1.35f
+private val DefaultWashBlur = 64.dp
 
 @Composable
 internal fun ArtworkBackdropWash(
     artworkUrl: String,
     tint: Color,
     base: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    washFraction: Float = DefaultWashImageFraction,
+    overscale: Float = DefaultWashOverscale,
+    blurRadius: Dp = DefaultWashBlur,
+    blurAllowed: Boolean = rememberGlassBlurAllowed()
 ) {
     val isLight = LevyraActivePalette.isLight
     val pureBlack = LevyraIsPureBlack
     val context = LocalContext.current
-    val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && artworkUrl.isNotBlank()
+    val canBlur = blurAllowed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && artworkUrl.isNotBlank()
     val request = remember(artworkUrl) {
         ImageRequest.Builder(context)
             .data(LevyraArtworkCache.small(artworkUrl))
             .size(WashArtworkPx, WashArtworkPx)
+            .crossfade(true)
             .build()
     }
     val imageAlpha = when {
@@ -73,13 +81,13 @@ internal fun ArtworkBackdropWash(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(WashImageFraction)
+                    .fillMaxHeight(washFraction)
                     .graphicsLayer {
-                        scaleX = WashOverscale
-                        scaleY = WashOverscale
+                        scaleX = overscale
+                        scaleY = overscale
                         alpha = imageAlpha
                     }
-                    .blur(WashBlur, BlurredEdgeTreatment.Unbounded)
+                    .blur(blurRadius, BlurredEdgeTreatment.Unbounded)
             )
         }
         Box(modifier = Modifier.fillMaxSize().drawBehind { drawRect(scrim) })

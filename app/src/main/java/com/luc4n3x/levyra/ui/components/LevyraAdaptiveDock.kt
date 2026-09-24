@@ -71,7 +71,7 @@ class LevyraDockState internal constructor(
         }
         val delta = consumed.y
         if (delta == 0f || !delta.isFinite()) return Offset.Zero
-        if (travelPx != 0f && (travelPx > 0f) != (delta > 0f)) travelPx = 0f
+        if (travelPx != 0f && (travelPx > 0f != delta > 0f)) travelPx = 0f
         travelPx += delta
         if (!compact && travelPx <= -collapseDistancePx) {
             travelPx = 0f
