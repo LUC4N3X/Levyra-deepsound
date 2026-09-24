@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.components
 
+import kotlin.math.roundToInt
+
 internal fun seekbarFractionAt(x: Float, widthPx: Float): Float {
     if (!x.isFinite() || !widthPx.isFinite() || widthPx <= 0f) return 0f
     return (x / widthPx).coerceIn(0f, 1f)
@@ -28,3 +30,38 @@ internal fun seekbarSeekMillis(fraction: Float, durationMs: Long): Long {
     if (!fraction.isFinite() || durationMs <= 0L) return 0L
     return (fraction.coerceIn(0f, 1f) * durationMs).toLong().coerceIn(0L, durationMs)
 }
+
+internal fun seekbarShouldSmoothProgress(
+    currentFraction: Float,
+    targetFraction: Float,
+    isPlaying: Boolean,
+    animated: Boolean,
+    seekOrDiscontinuity: Boolean = false
+): Boolean {
+    if (
+        seekOrDiscontinuity ||
+        !animated ||
+        !isPlaying ||
+        !currentFraction.isFinite() ||
+        !targetFraction.isFinite()
+    ) return false
+    val delta = targetFraction - currentFraction
+    return delta > 0f && delta <= MAX_SMOOTH_PROGRESS_DELTA
+}
+
+internal fun seekbarProgressAnimationDurationMs(
+    currentFraction: Float,
+    targetFraction: Float,
+    durationMs: Long,
+    playbackSpeed: Float = 1f
+): Int {
+    if (durationMs <= 0L || !currentFraction.isFinite() || !targetFraction.isFinite()) return 0
+    val safeSpeed = playbackSpeed.takeIf { it.isFinite() && it > 0f } ?: 1f
+    return ((targetFraction - currentFraction).coerceAtLeast(0f) * durationMs.toFloat() / safeSpeed)
+        .roundToInt()
+        .coerceIn(MIN_PROGRESS_ANIMATION_MS, MAX_PROGRESS_ANIMATION_MS)
+}
+
+private const val MAX_SMOOTH_PROGRESS_DELTA = 0.025f
+private const val MIN_PROGRESS_ANIMATION_MS = 90
+private const val MAX_PROGRESS_ANIMATION_MS = 1_000
