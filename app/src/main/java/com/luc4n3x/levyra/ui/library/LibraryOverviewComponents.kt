@@ -553,7 +553,11 @@ internal fun SmartCollectionDetail(
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 84.dp else 12.dp)
+                    .padding(
+                        start = 12.dp,
+                        end = 12.dp,
+                        bottom = if (state.currentTrack != null) 84.dp else 12.dp
+                    )
             )
 
             if (batchAddTargets.isNotEmpty()) {
