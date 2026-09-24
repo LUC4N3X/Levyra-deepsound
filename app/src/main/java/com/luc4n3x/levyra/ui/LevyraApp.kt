@@ -5253,7 +5253,7 @@ private fun ArtistFavoriteTracksShelf(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = strings.favorites,
+                    text = strings.favoritesPlain,
                     color = LevyraText,
                     fontSize = 22.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
