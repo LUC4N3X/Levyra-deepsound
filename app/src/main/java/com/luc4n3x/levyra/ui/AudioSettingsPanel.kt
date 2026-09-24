@@ -107,7 +107,10 @@ import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
+import com.luc4n3x.levyra.player.equalPowerCrossfade
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.CrossfadeLabCopy
+import com.luc4n3x.levyra.ui.i18n.crossfadeLabCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.parametricProfileCopy
@@ -130,6 +133,7 @@ private val PanelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
 private val CardShape = RoundedCornerShape(20.dp)
 private val ChipShape = RoundedCornerShape(14.dp)
 private const val DISABLED_ALPHA = 0.42f
+private const val CROSSFADE_CURVE_SAMPLE_COUNT = 49
 private val EqualizerHandleRadius = 5.dp
 
 @Composable
@@ -491,6 +495,14 @@ internal fun AudioSettingsPanel(
                         value = audioSettings.crossfadeSeconds.toFloat(),
                         range = 0f..12f,
                         onValue = { onCrossfade(it.roundToInt()) }
+                    )
+                }
+                item {
+                    CrossfadeCurveLab(
+                        seconds = audioSettings.crossfadeSeconds,
+                        autoMixEnabled = audioSettings.djSoftMode,
+                        gaplessEnabled = audioSettings.gaplessEnabled,
+                        copy = crossfadeLabCopy(strings.code)
                     )
                 }
                 item {
@@ -1237,6 +1249,139 @@ private fun AudioCard(content: @Composable () -> Unit) {
         Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
             content()
         }
+    }
+}
+
+@Composable
+private fun CrossfadeCurveLab(
+    seconds: Int,
+    autoMixEnabled: Boolean,
+    gaplessEnabled: Boolean,
+    copy: CrossfadeLabCopy
+) {
+    val outgoingColor = LevyraOrange
+    val incomingColor = LevyraCyan
+    val enabled = gaplessEnabled && seconds > 0
+    val samples = remember {
+        val outgoing = FloatArray(CROSSFADE_CURVE_SAMPLE_COUNT)
+        val incoming = FloatArray(CROSSFADE_CURVE_SAMPLE_COUNT)
+        for (index in 0 until CROSSFADE_CURVE_SAMPLE_COUNT) {
+            val gains = equalPowerCrossfade(index.toFloat() / (CROSSFADE_CURVE_SAMPLE_COUNT - 1).toFloat())
+            outgoing[index] = gains.outgoing
+            incoming[index] = gains.incoming
+        }
+        outgoing to incoming
+    }
+    val status = when {
+        !gaplessEnabled -> copy.gaplessRequired
+        seconds <= 0 -> copy.off
+        autoMixEnabled -> copy.adaptiveDuration
+        else -> copy.fixedDuration
+    }
+
+    AudioCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(copy.title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        "$seconds s · $status",
+                        color = LevyraMuted,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Surface(
+                    color = LevyraCyan.copy(alpha = 0.13f),
+                    border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f)),
+                    shape = ChipShape
+                ) {
+                    Text(
+                        copy.equalPower,
+                        color = LevyraCyan,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                CrossfadeLegend(copy.outgoing, outgoingColor)
+                CrossfadeLegend(copy.incoming, incomingColor)
+            }
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(116.dp)
+                    .semantics {
+                        contentDescription = "${copy.title}: ${copy.equalPower}, $seconds s. $status"
+                    }
+            ) {
+                val horizontalInset = 5.dp.toPx()
+                val verticalInset = 7.dp.toPx()
+                val graphWidth = (size.width - horizontalInset * 2f).coerceAtLeast(1f)
+                val graphHeight = (size.height - verticalInset * 2f).coerceAtLeast(1f)
+                val gridColor = LevyraMuted.copy(alpha = if (enabled) 0.18f else 0.10f)
+                for (step in 0..4) {
+                    val fraction = step / 4f
+                    val x = horizontalInset + graphWidth * fraction
+                    val y = verticalInset + graphHeight * fraction
+                    drawLine(gridColor, Offset(x, verticalInset), Offset(x, size.height - verticalInset), 1f)
+                    drawLine(gridColor, Offset(horizontalInset, y), Offset(size.width - horizontalInset, y), 1f)
+                }
+
+                val outgoingPath = Path()
+                val incomingPath = Path()
+                samples.first.indices.forEach { index ->
+                    val fraction = index.toFloat() / (samples.first.size - 1).toFloat()
+                    val x = horizontalInset + graphWidth * fraction
+                    val outgoingY = verticalInset + (1f - samples.first[index]) * graphHeight
+                    val incomingY = verticalInset + (1f - samples.second[index]) * graphHeight
+                    if (index == 0) {
+                        outgoingPath.moveTo(x, outgoingY)
+                        incomingPath.moveTo(x, incomingY)
+                    } else {
+                        outgoingPath.lineTo(x, outgoingY)
+                        incomingPath.lineTo(x, incomingY)
+                    }
+                }
+                val alpha = if (enabled) 1f else DISABLED_ALPHA
+                drawPath(
+                    outgoingPath,
+                    outgoingColor.copy(alpha = alpha),
+                    style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                )
+                drawPath(
+                    incomingPath,
+                    incomingColor.copy(alpha = alpha),
+                    style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
+
+            Text(
+                copy.sameReleasePolicy,
+                color = LevyraMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 15.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun CrossfadeLegend(label: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(modifier = Modifier.size(7.dp).background(color, RoundedCornerShape(50)))
+        Text(label, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
