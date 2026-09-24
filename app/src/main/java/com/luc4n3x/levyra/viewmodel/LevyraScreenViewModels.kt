@@ -234,10 +234,14 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
     fun addToQueue(track: Track) = root.addToQueue(track)
+    fun addTracksToQueue(tracks: List<Track>) = root.addTracksToQueue(tracks)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
+    fun createPlaylistWithTracks(name: String, tracks: List<Track>) = root.createPlaylistWithTracks(name, tracks)
     fun deleteDownload(download: DownloadedTrack) = root.deleteDownload(download)
     fun exportTrack(track: Track) = root.exportTrack(track)
+    fun exportTracks(tracks: List<Track>, label: String) = root.exportTracks(tracks, label)
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openArtist(track: Track) = root.openArtist(track)
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
@@ -245,6 +249,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun playDownloaded(download: DownloadedTrack) = root.playDownloaded(download)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun playNext(track: Track) = root.playNext(track)
+    fun playTracksNext(tracks: List<Track>) = root.playTracksNext(tracks)
     fun removeRecentSearch(track: Track) = root.removeRecentSearch(track)
     fun refreshArtistSuggestions() = root.refreshHomeArtists()
     fun searchNow() = root.searchNow()
@@ -258,6 +263,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun exportPlaylistHit(playlist: PlaylistHit) = root.exportPlaylistHit(playlist)
     fun exportAlbumHit(album: AlbumHit) = root.exportAlbumHit(album)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun toggleFavorites(tracks: List<Track>) = root.toggleFavorites(tracks)
     fun startSongRadio() = root.startSongRadio()
     fun startSongRadioFrom(track: Track, context: List<Track> = emptyList()) = root.startSongRadioFrom(track, context)
 }
