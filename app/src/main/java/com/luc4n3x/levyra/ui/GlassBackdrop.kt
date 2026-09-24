@@ -1,10 +1,17 @@
 package com.luc4n3x.levyra.ui
 
+import android.app.ActivityManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
 import android.os.Build
+import android.os.PowerManager
 import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -19,16 +26,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toIntSize
+import androidx.core.content.ContextCompat
 
 /**
  * Lightweight, dependency-free backdrop-blur system for Levyra "real glass" panels.
@@ -71,6 +81,33 @@ fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
     return state
 }
 
+@Composable
+fun rememberGlassBlurAllowed(): Boolean {
+    if (!blurSupported) return false
+    val context = LocalContext.current.applicationContext
+    val lowRam = remember(context) {
+        context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
+    }
+    val powerManager = remember(context) { context.getSystemService(PowerManager::class.java) }
+    var powerSave by remember(powerManager) { mutableStateOf(powerManager?.isPowerSaveMode == true) }
+    DisposableEffect(context, powerManager) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(receiverContext: Context?, intent: Intent?) {
+                powerSave = powerManager?.isPowerSaveMode == true
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        powerSave = powerManager?.isPowerSaveMode == true
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
+    return !lowRam && !powerSave
+}
+
 /**
  * Marks the receiver as the blur source. Records its drawn content (backdrop gradients, aurora,
  * motion artwork) into the shared layer every frame and draws that layer so the backdrop stays
@@ -94,18 +131,15 @@ fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
 }
 
 /**
- * Renders the receiver as a frosted-glass surface: blurred backdrop sample + [tint] + [borderColor]
- * outline, clipped to [shape]. Replaces a `.background(...).border(...)` pair on a panel.
- * Falls back to a flat [fallbackColor] fill when real blur is unavailable.
+ * Draws the blurred backdrop sample behind the receiver's content with [onDrawFrosted] on top of
+ * it. Without real blur only [onDrawFallback] is drawn, so the surface keeps a solid material.
  */
-fun Modifier.glassSurface(
+fun Modifier.glassFrost(
     state: GlassBackdropState,
-    shape: Shape,
-    tint: Color,
-    fallbackColor: Color,
-    borderColor: Color,
     blurRadius: Dp = 26.dp,
-    borderWidth: Dp = 1.dp
+    groundColor: Color = Color.Transparent,
+    onDrawFrosted: DrawScope.() -> Unit,
+    onDrawFallback: DrawScope.() -> Unit
 ): Modifier = composed {
     val density = LocalDensity.current
     val blurPx = with(density) { blurRadius.toPx() }
@@ -124,12 +158,12 @@ fun Modifier.glassSurface(
 
     this
         .onGloballyPositioned { panelOrigin = it.positionInRoot() }
-        .clip(shape)
         .drawWithContent {
             val source = state.layer
             if (active && source != null && blurEffect != null) {
                 val dx = state.sourceOrigin.x - panelOrigin.x
                 val dy = state.sourceOrigin.y - panelOrigin.y
+                if (groundColor.alpha > 0f) drawRect(groundColor)
                 frost.renderEffect = blurEffect
                 frost.record(size = size.toIntSize()) {
                     translate(dx, dy) {
@@ -137,11 +171,33 @@ fun Modifier.glassSurface(
                     }
                 }
                 drawLayer(frost)
-                drawRect(tint)
+                onDrawFrosted()
             } else {
-                drawRect(fallbackColor)
+                onDrawFallback()
             }
             drawContent()
         }
-        .border(borderWidth, borderColor, shape)
 }
+
+/**
+ * Renders the receiver as a frosted-glass surface: blurred backdrop sample + [tint] + [borderColor]
+ * outline, clipped to [shape]. Replaces a `.background(...).border(...)` pair on a panel.
+ * Falls back to a flat [fallbackColor] fill when real blur is unavailable.
+ */
+fun Modifier.glassSurface(
+    state: GlassBackdropState,
+    shape: Shape,
+    tint: Color,
+    fallbackColor: Color,
+    borderColor: Color,
+    blurRadius: Dp = 26.dp,
+    borderWidth: Dp = 1.dp
+): Modifier = this
+    .clip(shape)
+    .glassFrost(
+        state = state,
+        blurRadius = blurRadius,
+        onDrawFrosted = { drawRect(tint) },
+        onDrawFallback = { drawRect(fallbackColor) }
+    )
+    .border(borderWidth, borderColor, shape)
