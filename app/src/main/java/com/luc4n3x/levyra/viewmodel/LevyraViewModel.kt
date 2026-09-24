@@ -246,8 +246,10 @@ import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaResolver
+import com.luc4n3x.levyra.feature.radio.LiveRadioArtworkResolver
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
+import com.luc4n3x.levyra.feature.radio.liveRadioNowPlaying
 import com.luc4n3x.levyra.feature.radio.liveRadioRetryPlan
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.theme.LevyraTypographyController
@@ -431,12 +433,6 @@ internal fun shouldRefreshMotionArtworkOwnership(
 ): Boolean = previous.canvasSource != next.canvasSource ||
     previous.motionArtworkWifiOnly != next.motionArtworkWifiOnly
 
-/**
- * Saved position a restored track should start from, or 0 when there is nothing to resume.
- *
- * Very early positions are not worth restoring, and a position at or past the known duration is
- * treated as a finished track.
- */
 internal fun resumeStartPositionMs(pendingSeekMs: Long, durationMs: Long): Long =
     pendingSeekMs.takeIf { positionMs ->
         positionMs > 1500L && (durationMs <= 0L || positionMs < durationMs)
@@ -582,7 +578,6 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
         YoutubeMusicVideoType.isVideo(type) -> 1_000
         else -> 0
     }
-    // A shared artist channel is structured proof of an official upload and outranks title text.
     val officialChannel = target.artistBrowseIds.isNotEmpty() &&
         candidate.artistBrowseIds.any { it in target.artistBrowseIds }
     val audioOnlyUpload = PLAYBACK_AUDIO_ONLY_MARKER.containsMatchIn(candidate.title)
@@ -592,18 +587,9 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
         videoViewCountBonus(candidate.youtubeViewCount)
 }
 
-/**
- * Clears every stream artifact of the previous mode. Keeping the old [Track.playbackManifest] would
- * carry the other mode's stream descriptors into the new resolution and its cache entry.
- */
 internal fun Track.forModeResolution(): Track =
     copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
 
-/**
- * Song mode resolves from [Track.audioVideoId] and falls back to the video URL when it is blank,
- * so a video-mode replacement must carry the original song identity or returning to song mode
- * would resolve the official video as if it were the song.
- */
 internal fun Track.withPreservedAudioIdentity(source: Track): Track {
     if (audioVideoId.isNotBlank()) return this
     val audioId = source.audioVideoId.trim().ifBlank {
@@ -615,11 +601,6 @@ internal fun Track.withPreservedAudioIdentity(source: Track): Track {
 internal fun videoCandidateId(candidate: Track): String =
     youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
 
-/**
- * YouTube Music's own song/video pairing is authoritative, so a candidate in [authoritativeIds]
- * only loses to structurally stronger evidence such as an exact ISRC match. Without this a
- * title-compatible official video of a *different* recording could replace the declared pairing.
- */
 internal const val VIDEO_PAIRING_AUTHORITY_BONUS = 20_000
 
 internal const val VIDEO_PROVIDER_RANK_STEP = 200
@@ -629,10 +610,6 @@ internal fun selectPreferredVideoPlaybackCandidate(
     candidates: List<Track>,
     authoritativeIds: Set<String> = emptySet()
 ): Track? {
-    // A track's own audio identity (ATV id, catalog id, or the id in videoUrl) must never be
-    // selected as its native video. The exclusion cannot depend on the declared musicVideoType:
-    // chart entries resolved by search may carry no type while the watch list still offers the
-    // bare ATV, which then loses only if we always exclude the audio identity itself.
     val videoPrimary = YoutubeMusicVideoType.isVideo(target.videoType)
     val audioIdentityIds = buildSet {
         add(target.audioVideoId.trim())
@@ -652,9 +629,6 @@ internal fun selectPreferredVideoPlaybackCandidate(
         .filter { (_, candidate) -> isPlaybackCandidateCompatible(target, candidate) }
         .maxByOrNull { (rank, candidate) ->
             val candidateId = videoCandidateId(candidate)
-            // Pairing authority only applies to a candidate YouTube Music declares as a video.
-            // An untyped watch entry that merely mirrors the song's own ATV identity must not
-            // outrank a real official video.
             val authority = if (
                 candidateId in authoritativeIds && YoutubeMusicVideoType.isVideo(candidate.videoType)
             ) {
@@ -667,7 +641,6 @@ internal fun selectPreferredVideoPlaybackCandidate(
         ?.second
 }
 
-// Precompiled: playback candidate scoring normalizes every candidate title in a loop.
 private val PLAYBACK_TEXT_BRACKETS = Regex("""[()\[\]]""")
 private val PLAYBACK_TEXT_NON_WORD = Regex("""[^a-z0-9àèéìòóùçñäöüß\s]""")
 private val PLAYBACK_TEXT_WHITESPACE = Regex("""\s+""")
@@ -695,10 +668,6 @@ internal fun selectArtistMotionSeed(
     isLocal: (Track) -> Boolean
 ): Track? = selectArtistMotionSeeds(profileName, tracks, isLocal).firstOrNull()
 
-/**
- * The hero needs a real canvas, and only some of an artist's top tracks have one. Returning a short
- * ordered list lets the caller keep asking until a provider actually answers.
- */
 internal fun selectArtistMotionSeeds(
     profileName: String,
     tracks: List<Track>,
@@ -1025,6 +994,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var samplesPlaybackSession: SamplesPlaybackSession? = null
     private var liveRadioQueueSnapshot: PlaybackQueueSnapshot? = null
     private var liveRadioRecoveryAttempt = 0
+    private var liveRadioArtworkJob: Job? = null
+    private var liveRadioArtwork = ""
     private var deferredPlaybackStartSideEffectsKey: String? = null
     @Volatile
     private var listeningSignals: com.luc4n3x.levyra.domain.ListeningSignalProfile? = null
@@ -1481,10 +1452,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             PlaybackService.liveRadioMetadataFlow.collect { metadata ->
                 val snapshot = _state.value
                 val station = snapshot.liveRadioStation ?: return@collect
-                val clean = metadata.trim().take(240)
-                val nowPlaying = clean.takeUnless { value ->
-                    value.equals(station.name, ignoreCase = true) || value.equals(snapshot.liveRadioNowPlaying, ignoreCase = true)
-                } ?: if (clean.isBlank()) "" else snapshot.liveRadioNowPlaying
+                val nowPlaying = liveRadioNowPlaying(
+                    metadata = metadata,
+                    stationName = station.name,
+                    advertisementLabel = LevyraLiveRadioCatalog.advertisement(snapshot.languageCode)
+                )
                 if (nowPlaying != snapshot.liveRadioNowPlaying) {
                     _state.update { current ->
                         if (current.liveRadioStation?.uuid == station.uuid) current.copy(liveRadioNowPlaying = nowPlaying) else current
@@ -6121,10 +6093,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         prefetchChartRegions(normalizedRegionId)
     }
 
-    /**
-     * Loads every persisted and editorial country into memory. All chips therefore render a chart
-     * immediately; slower artwork/playback enrichment continues independently in the background.
-     */
     private fun warmChartRegionMemoryCache() {
         chartMemoryWarmJob?.cancel()
         chartCatalogPrimeJob?.cancel()
@@ -8169,7 +8137,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         sponsorSegments = emptyList()
         sponsorSkipTracker.reset()
         loopCurrentQueueOnCompletion = false
+        streamRecoveryJob?.cancel()
         liveRadioRecoveryAttempt = 0
+        liveRadioArtwork = ""
         if (liveRadioQueueSnapshot == null) {
             liveRadioQueueSnapshot = queueEngine.state.value
             queueEngine.beginTransientPlayback(liveRadioQueueSnapshot!!, listOf(track), 0)
@@ -8208,6 +8178,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         updateWidget()
+        refreshLiveRadioArtwork(station, track.id)
+    }
+
+    private fun refreshLiveRadioArtwork(station: RadioStation, trackId: String) {
+        liveRadioArtworkJob?.cancel()
+        liveRadioArtworkJob = viewModelScope.launch {
+            val artwork = LiveRadioArtworkResolver.playerArtwork(getApplication(), station) ?: return@launch
+            if (_state.value.liveRadioStation?.uuid != station.uuid) return@launch
+            liveRadioArtwork = artwork
+            var published = false
+            _state.update { current ->
+                val activeTrack = current.currentTrack?.takeIf {
+                    it.id == trackId && current.liveRadioStation?.uuid == station.uuid
+                }
+                if (activeTrack == null) {
+                    current
+                } else {
+                    published = true
+                    current.copy(currentTrack = activeTrack.copy(thumbnailUrl = artwork, largeThumbnailUrl = artwork))
+                }
+            }
+            if (!published) return@launch
+            PlaybackService.publishLiveRadioArtwork(trackId, artwork)
+            updateWidget()
+        }
     }
 
     private fun recoverLiveRadioStream(failedTrack: Track, playWhenReady: Boolean, errorMessage: String) {
@@ -8239,7 +8234,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob = viewModelScope.launch {
             delay(recovery.delayMs)
             if (!isActive || _state.value.liveRadioStation?.uuid != station.uuid) return@launch
-            val replacement = station.toTrack(recovery.streamUrl)
+            val replacement = station.toTrack(recovery.streamUrl, liveRadioArtwork)
             queueEngine.replaceTransient(listOf(replacement), 0)
             player.replaceSource(
                 track = replacement,
@@ -8271,6 +8266,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         liveRadioQueueSnapshot = null
         liveRadioRecoveryAttempt = 0
         streamRecoveryJob?.cancel()
+        liveRadioArtworkJob?.cancel()
+        liveRadioArtwork = ""
         queueEngine.endTransientPlayback(preserved)
         _state.update {
             it.copy(
@@ -9067,8 +9064,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val selectedIndex = queueEngine.state.value.currentIndex
         if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)
         repository.replace(playable)
-        // Media3 contract: the session resolves media items asynchronously, so a follow-up seek
-        // is discarded by the resolved startPositionMs. The resume position must travel with the item.
         val resumeMs = resumePositionFor(playable)
         player.play(playable, _state.value.isVideoMode, startPositionMs = resumeMs)
         if (startPaused) player.pause()
@@ -9831,8 +9826,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtworkPrefetchKey = nextKey
         motionArtworkPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Yield briefly to audible playback, then warm the next Canvas early enough that a
-                // queue transition can usually enter the immersive layer with the real asset ready.
                 delay(180L)
                 if (!isActive || _state.value.isVideoMode) return@launch
                 val active = _state.value.currentTrack ?: return@launch
@@ -9903,9 +9896,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (artistVideo == null) {
                 Timber.d("Artist hero Apple motion unavailable; trying track canvas fallback artist=%s", profile.name)
             }
-            // The hero needs a real video. When Apple exposes no artist motion the seed track is
-            // resolved across every provider, so a Community canvas can still drive the hero even
-            // when the player is pinned to a single source.
             val resolved = artistVideo ?: seeds.firstNotNullOfOrNull { track ->
                 if (!isActive) return@launch
                 runCatching { motionArtworkEngine.resolve(track, LevyraCanvasSource.Auto) }
@@ -10730,9 +10720,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             related to search.await()
         }
 
-        // Rank every candidate together so a confirmed official video from search can win, while
-        // YouTube Music's own pairing keeps authority unless the search hit proves a stronger
-        // identity (exact ISRC) rather than a merely title-compatible official video.
         val authoritativeIds = watchCandidates.map(::videoCandidateId).filter { it.isNotBlank() }.toSet()
         val selected = selectPreferredVideoPlaybackCandidate(
             track,
@@ -10744,9 +10731,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return track.withVerifiedVideoCandidate(selected, sourceId)
         }
 
-        // A catalog counterpart remains a bounded availability fallback when the
-        // authoritative YouTube lookup is temporarily inconclusive. Never fall
-        // back to the ATV itself in native-video mode.
         return youtubePlayableTrack(track, preferVideo = true)
     }
 
@@ -10771,7 +10755,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .ifBlank { candidate.id.trim() }
             .takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches)
             ?: return null
-        // A stale cached candidate must never turn the song's own audio identity into a "video".
         val targetVideoTyped = videoType.contains("OMV", ignoreCase = true) ||
             videoType.contains("UGC", ignoreCase = true)
         if (!targetVideoTyped && videoId == sourceId.trim()) return null
@@ -11108,8 +11091,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
-        // Apple publishes the most-played feed about once a day, so a region fetched within the
-        // last hour is served straight from memory instead of paying for another round trip.
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28
         private const val HOME_ARTIST_SHELF_SIZE = 20
@@ -11118,10 +11099,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
         private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 18_000L
-        // Native-video mode is an explicit user request, so the authoritative YouTube Music lookup
-        // gets a real budget. At 3s both InnerTube calls routinely timed out on mobile networks,
-        // leaving no candidate at all and silently falling back to the catalog counterpart. The two
-        // lookups run in parallel, so this bounds added latency rather than doubling it.
         private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 9_000L
         private const val VERIFIED_VIDEO_IDENTITY_CACHE_SIZE = 64
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
@@ -11668,8 +11645,6 @@ internal fun youtubeEngagementVideoId(track: Track): String {
     ) {
         return selectedVideoId
     }
-    // Prefer the counterpart only when the track still carries a confirmed audio identity.
-    // This proves the pair is audio -> video instead of treating any untyped counterpart as trusted.
     if (youtubeBacked) {
         val audioVideoId = track.audioVideoId.trim()
         val counterpart = track.counterpartVideoId.trim()

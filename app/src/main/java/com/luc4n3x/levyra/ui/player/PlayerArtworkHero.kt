@@ -22,12 +22,16 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.InstantArtworkPlaceholder
 import com.luc4n3x.levyra.ui.MotionArtworkLayer
@@ -133,7 +137,9 @@ internal fun PlayerArtworkHero(
                 .clip(artworkShape)
                 .background(Color.Black.copy(alpha = 0.24f), artworkShape)
         ) {
-            when (visualMode) {
+            if (track.isLiveRadio()) {
+                LiveRadioLogoArtwork(track = track, artworkUrl = artworkUrl)
+            } else when (visualMode) {
                 PlayerVisualMode.Artwork -> {
                     SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
                         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
@@ -173,3 +179,35 @@ internal fun PlayerArtworkHero(
         }
     }
 }
+
+@Composable
+private fun LiveRadioLogoArtwork(track: Track, artworkUrl: String) {
+    var failed by remember(artworkUrl) { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(track.accentStart).copy(alpha = 0.30f), Color(0xFF10242E), Color(0xFF070B10))
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (artworkUrl.isBlank() || failed) {
+            InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+        } else {
+            AsyncImage(
+                model = artworkUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                filterQuality = FilterQuality.High,
+                onError = { failed = true },
+                modifier = Modifier
+                    .fillMaxSize(LIVE_RADIO_LOGO_FRACTION)
+                    .clip(RoundedCornerShape(LevyraPlayerDesign.CornerMd))
+            )
+        }
+    }
+}
+
+private const val LIVE_RADIO_LOGO_FRACTION = 0.6f
