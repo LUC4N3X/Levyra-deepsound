@@ -24,6 +24,7 @@ data class PlaybackStreamProvenance(
     val referer: String = "",
     val requiresPoToken: Boolean = false,
     val resolverGeneration: Long = -1L,
+    val preferredAudioLanguage: String? = null,
     val playerHash: String = "",
     val playerConfigIdentity: String = "",
     val playerConfigEpoch: Long = -1L,

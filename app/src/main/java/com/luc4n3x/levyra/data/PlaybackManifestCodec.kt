@@ -112,6 +112,7 @@ private fun PlaybackStreamProvenance.toJson(): JSONObject = JSONObject()
     .put("referer", referer)
     .put("requiresPoToken", requiresPoToken)
     .put("resolverGeneration", resolverGeneration)
+    .put("preferredAudioLanguage", preferredAudioLanguage)
     .put("playerHash", playerHash)
     .put("playerConfigIdentity", playerConfigIdentity)
     .put("playerConfigEpoch", playerConfigEpoch)
@@ -132,6 +133,11 @@ private fun JSONObject.toPlaybackStreamProvenance(): PlaybackStreamProvenance = 
     referer = optString("referer"),
     requiresPoToken = optBoolean("requiresPoToken", false),
     resolverGeneration = optLong("resolverGeneration", -1L),
+    preferredAudioLanguage = if (has("preferredAudioLanguage")) {
+        AudioLanguageIntelligence.normalizeLanguage(optString("preferredAudioLanguage"))
+    } else {
+        null
+    },
     playerHash = optString("playerHash"),
     playerConfigIdentity = optString("playerConfigIdentity"),
     playerConfigEpoch = optLong("playerConfigEpoch", -1L),
