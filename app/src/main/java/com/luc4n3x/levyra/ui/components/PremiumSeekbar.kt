@@ -127,7 +127,7 @@ fun PremiumSeekbar(
     }
 
     val wavePhase = remember { Animatable(0f) }
-    LaunchedEffect(animated, isPlaying, isDragging, measuredWaveform) {
+    LaunchedEffect(animated, isPlaying, isDragging, measuredWaveform, interactionKey) {
         if (measuredWaveform != null || !animated || !isPlaying || isDragging) return@LaunchedEffect
         val fullPhase = 2f * PI.toFloat()
         while (true) {
