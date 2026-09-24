@@ -5216,8 +5216,87 @@ private fun ArtistOverlay(
     }
 }
 
+private const val ARTIST_FAVORITES_COLLAPSED_COUNT = 4
 private const val ARTIST_POPULAR_COLLAPSED_COUNT = 5
 private const val ARTIST_POPULAR_MAX_COUNT = 10
+
+@Composable
+private fun ArtistFavoriteTracksShelf(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    selection: TrackSelectionState,
+    onPlay: (Track) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val distinctTracks = remember(tracks) { tracks.distinctBy(::trackSelectionKey) }
+    if (distinctTracks.isEmpty()) return
+    var expanded by rememberSaveable(distinctTracks.firstOrNull()?.let(::trackSelectionKey), distinctTracks.size) {
+        mutableStateOf(false)
+    }
+    val visibleTracks = remember(distinctTracks, expanded) {
+        if (expanded) distinctTracks else distinctTracks.take(ARTIST_FAVORITES_COLLAPSED_COUNT)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = strings.favorites,
+                    color = LevyraText,
+                    fontSize = 22.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.45).sp
+                )
+                Text(
+                    text = strings.formatTrackCount(distinctTracks.size),
+                    color = LevyraMuted,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            if (distinctTracks.size > ARTIST_FAVORITES_COLLAPSED_COUNT) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(
+                        text = if (expanded) strings.showLess else strings.showAll,
+                        color = LevyraCyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        visibleTracks.forEachIndexed { index, track ->
+            val key = trackSelectionKey(track)
+            val current = track.id == currentId
+            ArtistPopularTrackRow(
+                rank = index + 1,
+                track = track,
+                isCurrent = current,
+                isPlaying = isPlaying && current,
+                isResolving = isResolving && current,
+                selected = selection.isSelected(key),
+                selectionActive = selection.isActive,
+                onLongClick = { selection.start(key) },
+                onPlay = {
+                    if (selection.isActive) selection.toggle(key) else onPlay(track)
+                }
+            )
+        }
+    }
+}
 
 @Composable
 private fun ArtistPopularTracksShelf(
@@ -5225,6 +5304,7 @@ private fun ArtistPopularTracksShelf(
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
+    selection: TrackSelectionState,
     onPlay: (Track) -> Unit,
     onPlayAll: (List<Track>) -> Unit
 ) {
@@ -5293,13 +5373,19 @@ private fun ArtistPopularTracksShelf(
         ) {
             visibleTracks.forEachIndexed { index, track ->
                 val isCurrent = track.id == currentId
+                val selectionKey = trackSelectionKey(track)
                 ArtistPopularTrackRow(
                     rank = index + 1,
                     track = track,
                     isCurrent = isCurrent,
                     isPlaying = isPlaying && isCurrent,
                     isResolving = isResolving && isCurrent,
-                    onPlay = { onPlay(track) }
+                    selected = selection.isSelected(selectionKey),
+                    selectionActive = selection.isActive,
+                    onLongClick = { selection.start(selectionKey) },
+                    onPlay = {
+                        if (selection.isActive) selection.toggle(selectionKey) else onPlay(track)
+                    }
                 )
             }
         }
@@ -5340,6 +5426,9 @@ private fun ArtistPopularTrackRow(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
+    selected: Boolean,
+    selectionActive: Boolean,
+    onLongClick: () -> Unit,
     onPlay: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -5352,11 +5441,15 @@ private fun ArtistPopularTrackRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .then(
-                if (isCurrent) Modifier.background(LevyraCyan.copy(alpha = 0.08f))
-                else Modifier
+                when {
+                    selected -> Modifier.background(LevyraCyan.copy(alpha = 0.16f))
+                    isCurrent -> Modifier.background(LevyraCyan.copy(alpha = 0.08f))
+                    else -> Modifier
+                }
             )
+            .semantics { this.selected = selected }
             .heightIn(min = 62.dp)
-            .pressable(onClick = onPlay)
+            .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
             .padding(start = 6.dp, top = 4.dp, end = 6.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -5412,10 +5505,16 @@ private fun ArtistPopularTrackRow(
         }
 
         Box(
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(40.dp),
             contentAlignment = Alignment.Center
         ) {
             when {
+                selectionActive -> Icon(
+                    imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (selected) LevyraCyan else LevyraMuted,
+                    modifier = Modifier.size(26.dp)
+                )
                 isResolving -> CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
