@@ -36,8 +36,6 @@ The [development guide](development.md) documents the available options, includi
 
 ## Public history
 
-Useful places to check:
-
 - [Commits](https://github.com/LUC4N3X/Levyra-deepsound/commits/main/) show how the project changes over time.
 - [Pull requests](https://github.com/LUC4N3X/Levyra-deepsound/pulls) show proposed changes and review history.
 - [Issues](https://github.com/LUC4N3X/Levyra-deepsound/issues) show bugs, requests and technical discussion.
