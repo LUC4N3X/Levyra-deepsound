@@ -36,6 +36,7 @@ import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.HomeInteractionGate
 import com.luc4n3x.levyra.data.HomeOfflinePolicy
 import com.luc4n3x.levyra.data.HomeRefreshStability
+import com.luc4n3x.levyra.data.HomeSectionMergeResult
 import com.luc4n3x.levyra.data.HomeStartupWorkPlan
 import com.luc4n3x.levyra.data.HomeStartupWorkPolicy
 import com.luc4n3x.levyra.data.StartupPlaybackWarmPolicy
@@ -77,6 +78,7 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
@@ -332,6 +334,13 @@ private const val SEARCH_LATENCY_LOG_TAG = "LevyraSearch"
 private data class HomeArtistCandidate(
     val name: String,
     val browseId: String
+)
+
+private data class HomeArtistPlan(
+    val languageCode: String,
+    val orderedCandidates: List<HomeArtistCandidate>,
+    val trustedArtistKeys: Set<String>,
+    val blockedArtistKeys: Set<String>
 )
 
 private data class SamplesDiscoveryInput(
@@ -1988,218 +1997,51 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             return
         }
+
         val startupSnapshot = _state.value
         homeArtistsJob?.cancel()
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
-            val languageCode = LevyraLanguageCatalog.normalize(startupSnapshot.languageCode)
-            val localizedSeedNames = (
-                LevyraContentLocales.artistSuggestions(languageCode) + GLOBAL_HOME_ARTIST_FALLBACKS
-            ).distinctBy(::artistIdentityKey)
-            val localizedSeedKeys = localizedSeedNames
-                .map(::artistIdentityKey)
-                .filter { it.isNotBlank() }
-                .toSet()
-            val blockedItalianArtistKeys: Set<String> = if (languageCode == "it") {
-                emptySet()
-            } else {
-                LevyraContentLocales.artistSuggestions("it")
-                    .map(::artistIdentityKey)
-                    .filter { it.isNotBlank() }
-                    .toSet()
+            val plan = buildHomeArtistPlan(startupSnapshot)
+            val visibleArtists = visibleHomeArtists(startupSnapshot, plan)
+            val fingerprint = homeArtistFingerprint(plan.languageCode, plan.orderedCandidates)
+
+            if (fingerprint == homeArtistsFingerprint && visibleArtists.size >= HOME_ARTIST_SHELF_SIZE) {
+                return@launch
             }
-            val rankedHistory = listeningPulseStore.personalizedArtists(limit = HOME_ARTIST_HISTORY_LIMIT)
-            val candidates = LinkedHashMap<String, HomeArtistCandidate>()
-            val trustedArtistKeys = LinkedHashSet<String>()
-
-            fun addCandidate(nameValue: String, browseIdValue: String) {
-                val browseId = browseIdValue.trim()
-                val cleanName = nameValue.trim()
-                val name = if (LevyraContentLocales.isArtistSuggestionForLanguage(cleanName, languageCode)) {
-                    cleanName
-                } else {
-                    primaryArtistSegment(cleanName).ifBlank { cleanName }
-                }
-                val identity = artistIdentityKey(name)
-                if (name.length < 2 || identity.isBlank() || !isArtistShelfNameEligible(name)) return
-                if (identity in blockedItalianArtistKeys && identity !in localizedSeedKeys) return
-                trustedArtistKeys += identity
-                val existing = candidates[identity]
-                if (existing == null || existing.browseId.isBlank() && browseId.isNotBlank()) {
-                    candidates[identity] = HomeArtistCandidate(name, browseId)
-                }
-            }
-
-            localizedSeedNames.forEach { name -> addCandidate(name, "") }
-            rankedHistory
-                .filter { ranked -> LevyraContentLocales.isArtistSuggestionForLanguage(ranked.name, languageCode) }
-                .forEach { ranked -> addCandidate(ranked.name, ranked.browseId) }
-
-            buildList {
-                startupSnapshot.homeSections.forEach { section -> addAll(section.tracks) }
-                addAll(startupSnapshot.charts)
-            }
-                .asSequence()
-                .filter(LevyraPersonalOrbit::isReliableMusicCandidate)
-                .filter { track ->
-                    languageCode == "en" || LevyraPersonalOrbit.isLanguagePreferred(track, languageCode)
-                }
-                .distinctBy(LevyraPersonalOrbit::identityKey)
-                .forEach { track ->
-                    addCandidate(track.artist, track.artistBrowseIds.firstOrNull().orEmpty())
-                }
-
-            if (languageCode != "en") {
-                buildList {
-                    addAll(startupSnapshot.recentListens)
-                    addAll(startupSnapshot.personalOrbitTracks)
-                    addAll(startupSnapshot.favorites)
-                    startupSnapshot.currentTrack?.let(::add)
-                }
-                    .asSequence()
-                    .filter(LevyraPersonalOrbit::isReliableMusicCandidate)
-                    .filter { track -> LevyraPersonalOrbit.isLanguagePreferred(track, languageCode) }
-                    .distinctBy(LevyraPersonalOrbit::identityKey)
-                    .forEach { track ->
-                        addCandidate(track.artist, track.artistBrowseIds.firstOrNull().orEmpty())
-                    }
-            }
-
-            val orderedCandidates = candidates.values.take(HOME_ARTIST_CANDIDATE_LIMIT)
-            val fingerprint = buildString {
-                append(languageCode)
-                append('|')
-                append(orderedCandidates.joinToString("|") { candidate ->
-                    "${candidate.browseId.lowercase()}:${artistIdentityKey(candidate.name)}"
-                })
-            }
-            val visibleArtists = startupSnapshot.homeArtists
-                .filter { hit ->
-                    val identity = artistIdentityKey(hit.name)
-                    hit.name.isNotBlank() &&
-                        hit.thumbnailUrl.isNotBlank() &&
-                        hit.browseId.isNotBlank() &&
-                        hit.officialArtwork &&
-                        identity in trustedArtistKeys &&
-                        identity !in blockedItalianArtistKeys &&
-                        isArtistShelfNameEligible(hit.name)
-                }
-                .distinctBy { it.browseId.lowercase() }
-                .take(HOME_ARTIST_SHELF_SIZE)
-
-            if (fingerprint == homeArtistsFingerprint && visibleArtists.size >= HOME_ARTIST_SHELF_SIZE) return@launch
             homeArtistsFingerprint = fingerprint
 
             val freezeVisibleShelf = visibleArtists.size >= HOME_ARTIST_SHELF_SIZE
-            val visibleByBrowseId = visibleArtists.associateBy { it.browseId.lowercase() }
-            val visibleByIdentity = visibleArtists.associateBy { artistIdentityKey(it.name) }
-            val resolved = LinkedHashMap<String, ArtistHit>()
-            val semaphore = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
-
             val startupPlan = homeStartupWorkPlan()
-            if (freezeVisibleShelf) {
-                awaitHomeUiIdle(startupPlan)
-            } else {
-                _state.update { current ->
-                    if (current.languageCode == languageCode) {
-                        current.copy(
-                            homeArtists = visibleArtists,
-                            homeArtistsLoading = visibleArtists.isEmpty()
-                        )
-                    } else {
-                        current
-                    }
-                }
-                delay(
-                    if (visibleArtists.isEmpty()) {
-                        HOME_ARTIST_STARTUP_GRACE_MS
-                    } else {
-                        maxOf(HOME_ARTIST_STARTUP_GRACE_MS, startupPlan.artistStartDelayMs)
-                    }
-                )
-                awaitHomeUiIdle(startupPlan)
-            }
+            prepareHomeArtistResolution(
+                languageCode = plan.languageCode,
+                visibleArtists = visibleArtists,
+                freezeVisibleShelf = freezeVisibleShelf,
+                startupPlan = startupPlan
+            )
 
-            withTimeoutOrNull(HOME_ARTIST_TOTAL_TIMEOUT_MS) {
-                for (batch in orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
-                    val hits = coroutineScope {
-                        batch.map { candidate ->
-                            async {
-                                val identity = artistIdentityKey(candidate.name)
-                                val cached = candidate.browseId
-                                    .takeIf { it.isNotBlank() }
-                                    ?.let { visibleByBrowseId[it.lowercase()] }
-                                    ?: visibleByIdentity[identity]
-                                cached?.takeIf { hit ->
-                                    hit.thumbnailUrl.isNotBlank() &&
-                                        hit.officialArtwork &&
-                                        artistIdentityKey(hit.name) == identity &&
-                                        isArtistShelfNameEligible(hit.name)
-                                } ?: semaphore.withPermit {
-                                    withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
-                                        runCatching {
-                                            if (candidate.browseId.isNotBlank()) {
-                                                artistRepository.artistHit(candidate.browseId, candidate.name)
-                                            } else {
-                                                artistRepository.artistHitFor(candidate.name)
-                                            }
-                                        }.getOrNull()
-                                    }
-                                }
-                            }
-                        }.awaitAll()
-                    }
-                    hits.filterNotNull().forEach { hit ->
-                        val identity = artistIdentityKey(hit.name)
-                        if (
-                            hit.name.isNotBlank() &&
-                            hit.thumbnailUrl.isNotBlank() &&
-                            hit.browseId.isNotBlank() &&
-                            hit.officialArtwork &&
-                            identity in trustedArtistKeys &&
-                            identity !in blockedItalianArtistKeys &&
-                            isArtistShelfNameEligible(hit.name)
-                        ) {
-                            resolved.putIfAbsent(hit.browseId.lowercase(), hit)
-                        }
-                    }
-                    if (!freezeVisibleShelf && resolved.isNotEmpty() && homeArtistsFingerprint == fingerprint) {
-                        val partialArtists = (resolved.values + visibleArtists)
-                            .distinctBy { it.browseId.lowercase() }
-                            .take(HOME_ARTIST_SHELF_SIZE)
-                        _state.update { current ->
-                            if (current.languageCode == languageCode) current.copy(homeArtists = partialArtists) else current
-                        }
-                    }
-                    if (resolved.size >= HOME_ARTIST_SHELF_SIZE) break
-                }
+            val resolved = resolveHomeArtistShelf(
+                plan = plan,
+                visibleArtists = visibleArtists,
+                fingerprint = fingerprint,
+                freezeVisibleShelf = freezeVisibleShelf
+            )
+            if (
+                !isActive ||
+                homeArtistsFingerprint != fingerprint ||
+                _state.value.languageCode != plan.languageCode
+            ) {
+                return@launch
             }
-
-            visibleArtists.forEach { hit ->
-                if (resolved.size < HOME_ARTIST_SHELF_SIZE) {
-                    resolved.putIfAbsent(hit.browseId.lowercase(), hit)
-                }
-            }
-
-            if (!isActive || homeArtistsFingerprint != fingerprint || _state.value.languageCode != languageCode) return@launch
 
             val finalArtists = resolved.values.take(HOME_ARTIST_SHELF_SIZE)
-            val complete = finalArtists.size >= HOME_ARTIST_SHELF_SIZE
-
             if (freezeVisibleShelf) {
-                if (complete) {
-                    deferredHomeArtistsSnapshot.set(finalArtists)
-                    scheduleDeferredHomeSnapshotApply()
-                    persistHomeSnapshotSync(languageCode)
-                }
-                _state.update { current ->
-                    if (current.languageCode == languageCode) current.copy(homeArtistsLoading = false) else current
-                }
+                finishFrozenHomeArtistRefresh(plan.languageCode, finalArtists)
                 return@launch
             }
 
             deferredHomeArtistsSnapshot.set(null)
             _state.update { current ->
-                if (current.languageCode == languageCode) {
+                if (current.languageCode == plan.languageCode) {
                     current.copy(
                         homeArtists = finalArtists,
                         homeArtistsLoading = false
@@ -2208,7 +2050,303 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     current
                 }
             }
+            persistHomeSnapshotSync(plan.languageCode)
+        }
+    }
+
+    private suspend fun buildHomeArtistPlan(startupSnapshot: LevyraUiState): HomeArtistPlan {
+        val languageCode = LevyraLanguageCatalog.normalize(startupSnapshot.languageCode)
+        val localizedSeedNames = (
+            LevyraContentLocales.artistSuggestions(languageCode) + GLOBAL_HOME_ARTIST_FALLBACKS
+        ).distinctBy(::artistIdentityKey)
+        val localizedSeedKeys = localizedSeedNames
+            .map(::artistIdentityKey)
+            .filter { it.isNotBlank() }
+            .toSet()
+        val blockedArtistKeys = if (languageCode == "it") {
+            emptySet()
+        } else {
+            LevyraContentLocales.artistSuggestions("it")
+                .map(::artistIdentityKey)
+                .filter { it.isNotBlank() }
+                .toSet()
+        }
+
+        val candidates = LinkedHashMap<String, HomeArtistCandidate>()
+        val trustedArtistKeys = LinkedHashSet<String>()
+        fun addCandidate(nameValue: String, browseIdValue: String) {
+            val browseId = browseIdValue.trim()
+            val cleanName = nameValue.trim()
+            val name = if (LevyraContentLocales.isArtistSuggestionForLanguage(cleanName, languageCode)) {
+                cleanName
+            } else {
+                primaryArtistSegment(cleanName).ifBlank { cleanName }
+            }
+            val identity = artistIdentityKey(name)
+            if (name.length < 2 || identity.isBlank() || !isArtistShelfNameEligible(name)) return
+            if (identity in blockedArtistKeys && identity !in localizedSeedKeys) return
+            trustedArtistKeys += identity
+            val existing = candidates[identity]
+            if (existing == null || existing.browseId.isBlank() && browseId.isNotBlank()) {
+                candidates[identity] = HomeArtistCandidate(name, browseId)
+            }
+        }
+
+        localizedSeedNames.forEach { name -> addCandidate(name, "") }
+        listeningPulseStore.personalizedArtists(limit = HOME_ARTIST_HISTORY_LIMIT)
+            .filter { ranked ->
+                LevyraContentLocales.isArtistSuggestionForLanguage(ranked.name, languageCode)
+            }
+            .forEach { ranked -> addCandidate(ranked.name, ranked.browseId) }
+
+        homeArtistFeedTracks(startupSnapshot, languageCode).forEach { track ->
+            addCandidate(track.artist, track.artistBrowseIds.firstOrNull().orEmpty())
+        }
+        if (languageCode != "en") {
+            homeArtistPersonalTracks(startupSnapshot, languageCode).forEach { track ->
+                addCandidate(track.artist, track.artistBrowseIds.firstOrNull().orEmpty())
+            }
+        }
+
+        return HomeArtistPlan(
+            languageCode = languageCode,
+            orderedCandidates = candidates.values.take(HOME_ARTIST_CANDIDATE_LIMIT),
+            trustedArtistKeys = trustedArtistKeys,
+            blockedArtistKeys = blockedArtistKeys
+        )
+    }
+
+    private fun homeArtistFeedTracks(
+        state: LevyraUiState,
+        languageCode: String
+    ): Sequence<Track> {
+        return buildList {
+            state.homeSections.forEach { section -> addAll(section.tracks) }
+            addAll(state.charts)
+        }
+            .asSequence()
+            .filter(LevyraPersonalOrbit::isReliableMusicCandidate)
+            .filter { track ->
+                languageCode == "en" || LevyraPersonalOrbit.isLanguagePreferred(track, languageCode)
+            }
+            .distinctBy(LevyraPersonalOrbit::identityKey)
+    }
+
+    private fun homeArtistPersonalTracks(
+        state: LevyraUiState,
+        languageCode: String
+    ): Sequence<Track> {
+        return buildList {
+            addAll(state.recentListens)
+            addAll(state.personalOrbitTracks)
+            addAll(state.favorites)
+            state.currentTrack?.let(::add)
+        }
+            .asSequence()
+            .filter(LevyraPersonalOrbit::isReliableMusicCandidate)
+            .filter { track -> LevyraPersonalOrbit.isLanguagePreferred(track, languageCode) }
+            .distinctBy(LevyraPersonalOrbit::identityKey)
+    }
+
+    private fun homeArtistFingerprint(
+        languageCode: String,
+        candidates: List<HomeArtistCandidate>
+    ): String {
+        return buildString {
+            append(languageCode)
+            append('|')
+            append(candidates.joinToString("|") { candidate ->
+                "${candidate.browseId.lowercase()}:${artistIdentityKey(candidate.name)}"
+            })
+        }
+    }
+
+    private fun visibleHomeArtists(
+        startupSnapshot: LevyraUiState,
+        plan: HomeArtistPlan
+    ): List<ArtistHit> {
+        return startupSnapshot.homeArtists
+            .filter { hit ->
+                isTrustedHomeArtistHit(
+                    hit = hit,
+                    trustedArtistKeys = plan.trustedArtistKeys,
+                    blockedArtistKeys = plan.blockedArtistKeys
+                )
+            }
+            .distinctBy { it.browseId.lowercase() }
+            .take(HOME_ARTIST_SHELF_SIZE)
+    }
+
+    private fun isTrustedHomeArtistHit(
+        hit: ArtistHit,
+        trustedArtistKeys: Set<String>,
+        blockedArtistKeys: Set<String>
+    ): Boolean {
+        val identity = artistIdentityKey(hit.name)
+        return hit.name.isNotBlank() &&
+            hit.thumbnailUrl.isNotBlank() &&
+            hit.browseId.isNotBlank() &&
+            hit.officialArtwork &&
+            identity in trustedArtistKeys &&
+            identity !in blockedArtistKeys &&
+            isArtistShelfNameEligible(hit.name)
+    }
+
+    private fun isReusableHomeArtistHit(hit: ArtistHit, expectedIdentity: String): Boolean {
+        return hit.thumbnailUrl.isNotBlank() &&
+            hit.officialArtwork &&
+            artistIdentityKey(hit.name) == expectedIdentity &&
+            isArtistShelfNameEligible(hit.name)
+    }
+
+    private suspend fun prepareHomeArtistResolution(
+        languageCode: String,
+        visibleArtists: List<ArtistHit>,
+        freezeVisibleShelf: Boolean,
+        startupPlan: HomeStartupWorkPlan
+    ) {
+        if (freezeVisibleShelf) {
+            awaitHomeUiIdle(startupPlan)
+            return
+        }
+
+        _state.update { current ->
+            if (current.languageCode == languageCode) {
+                current.copy(
+                    homeArtists = visibleArtists,
+                    homeArtistsLoading = visibleArtists.isEmpty()
+                )
+            } else {
+                current
+            }
+        }
+        delay(
+            if (visibleArtists.isEmpty()) {
+                HOME_ARTIST_STARTUP_GRACE_MS
+            } else {
+                maxOf(HOME_ARTIST_STARTUP_GRACE_MS, startupPlan.artistStartDelayMs)
+            }
+        )
+        awaitHomeUiIdle(startupPlan)
+    }
+
+    private suspend fun resolveHomeArtistShelf(
+        plan: HomeArtistPlan,
+        visibleArtists: List<ArtistHit>,
+        fingerprint: String,
+        freezeVisibleShelf: Boolean
+    ): LinkedHashMap<String, ArtistHit> {
+        val visibleByBrowseId = visibleArtists.associateBy { it.browseId.lowercase() }
+        val visibleByIdentity = visibleArtists.associateBy { artistIdentityKey(it.name) }
+        val resolved = LinkedHashMap<String, ArtistHit>()
+        val semaphore = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
+
+        withTimeoutOrNull(HOME_ARTIST_TOTAL_TIMEOUT_MS) {
+            for (batch in plan.orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
+                val hits = coroutineScope {
+                    batch.map { candidate ->
+                        async {
+                            resolveHomeArtistHit(
+                                candidate = candidate,
+                                visibleByBrowseId = visibleByBrowseId,
+                                visibleByIdentity = visibleByIdentity,
+                                semaphore = semaphore
+                            )
+                        }
+                    }.awaitAll()
+                }
+                hits.filterNotNull()
+                    .filter { hit ->
+                        isTrustedHomeArtistHit(
+                            hit = hit,
+                            trustedArtistKeys = plan.trustedArtistKeys,
+                            blockedArtistKeys = plan.blockedArtistKeys
+                        )
+                    }
+                    .forEach { hit ->
+                        resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+                    }
+
+                publishPartialHomeArtists(
+                    languageCode = plan.languageCode,
+                    visibleArtists = visibleArtists,
+                    resolved = resolved,
+                    fingerprint = fingerprint,
+                    freezeVisibleShelf = freezeVisibleShelf
+                )
+                if (resolved.size >= HOME_ARTIST_SHELF_SIZE) break
+            }
+        }
+
+        visibleArtists.forEach { hit ->
+            if (resolved.size < HOME_ARTIST_SHELF_SIZE) {
+                resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+            }
+        }
+        return resolved
+    }
+
+    private suspend fun resolveHomeArtistHit(
+        candidate: HomeArtistCandidate,
+        visibleByBrowseId: Map<String, ArtistHit>,
+        visibleByIdentity: Map<String, ArtistHit>,
+        semaphore: Semaphore
+    ): ArtistHit? {
+        val identity = artistIdentityKey(candidate.name)
+        val cached = candidate.browseId
+            .takeIf { it.isNotBlank() }
+            ?.let { visibleByBrowseId[it.lowercase()] }
+            ?: visibleByIdentity[identity]
+        cached?.takeIf { hit -> isReusableHomeArtistHit(hit, identity) }?.let { return it }
+
+        return semaphore.withPermit {
+            withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
+                runCatching {
+                    if (candidate.browseId.isNotBlank()) {
+                        artistRepository.artistHit(candidate.browseId, candidate.name)
+                    } else {
+                        artistRepository.artistHitFor(candidate.name)
+                    }
+                }.getOrNull()
+            }
+        }
+    }
+
+    private fun publishPartialHomeArtists(
+        languageCode: String,
+        visibleArtists: List<ArtistHit>,
+        resolved: LinkedHashMap<String, ArtistHit>,
+        fingerprint: String,
+        freezeVisibleShelf: Boolean
+    ) {
+        if (freezeVisibleShelf || resolved.isEmpty() || homeArtistsFingerprint != fingerprint) return
+        val partialArtists = (resolved.values + visibleArtists)
+            .distinctBy { it.browseId.lowercase() }
+            .take(HOME_ARTIST_SHELF_SIZE)
+        _state.update { current ->
+            if (current.languageCode == languageCode) {
+                current.copy(homeArtists = partialArtists)
+            } else {
+                current
+            }
+        }
+    }
+
+    private fun finishFrozenHomeArtistRefresh(
+        languageCode: String,
+        finalArtists: List<ArtistHit>
+    ) {
+        if (finalArtists.size >= HOME_ARTIST_SHELF_SIZE) {
+            deferredHomeArtistsSnapshot.set(finalArtists)
+            scheduleDeferredHomeSnapshotApply()
             persistHomeSnapshotSync(languageCode)
+        }
+        _state.update { current ->
+            if (current.languageCode == languageCode) {
+                current.copy(homeArtistsLoading = false)
+            } else {
+                current
+            }
         }
     }
 
@@ -4115,6 +4253,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             clearRemoteHomeLoadingFlags()
             return
         }
+
         ensureMusicVideosLoaded()
         val requestGeneration = homeFeedRequestGeneration.incrementAndGet()
         homeFeedJob?.cancel()
@@ -4122,50 +4261,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val initialState = _state.value
             val languageCode = initialState.languageCode
             val hasVisibleHome = initialState.homeSections.isNotEmpty() || initialState.tracks.isNotEmpty()
-            if (!isActive || _state.value.languageCode != languageCode) return@launch
-            _state.update { current ->
-                if (current.languageCode != languageCode) current
-                else current.copy(
-                    isLoadingHome = HomeOfflinePolicy.remoteLoading(!hasVisibleHome, current.isDeviceOffline),
-                    homeError = null
-                )
-            }
 
-            val networkSections = try {
-                repository.homeFeed(languageCode)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                Timber.w(error, "Home feed refresh failed")
-                emptyList()
-            }
+            if (!isActive || !isHomeFeedRequestCurrent(requestGeneration, languageCode)) return@launch
+            beginHomeFeedRefresh(languageCode, hasVisibleHome)
 
-            if (
-                !isActive ||
-                homeFeedRequestGeneration.get() != requestGeneration ||
-                _state.value.languageCode != languageCode
-            ) return@launch
+            val networkSections = fetchHomeFeedSections(languageCode)
+            if (!isActive || !isHomeFeedRequestCurrent(requestGeneration, languageCode)) return@launch
 
             val sanitizedSections = withContext(Dispatchers.Default) {
                 HomeRefreshStability.sanitizeSections(networkSections)
             }
             if (sanitizedSections.isEmpty()) {
-                loadHomeAlbums(languageCode, deferUntilHomeIdle)
-                if (hasVisibleHome) {
-                    _state.update { current ->
-                        if (current.languageCode == languageCode && current.isLoadingHome) {
-                            current.copy(isLoadingHome = false)
-                        } else {
-                            current
-                        }
-                    }
-                } else {
-                    loadFallbackHome(
-                        languageCode = languageCode,
-                        requestGeneration = requestGeneration,
-                        deferUntilHomeIdle = deferUntilHomeIdle
-                    )
-                }
+                handleEmptyHomeFeed(
+                    languageCode = languageCode,
+                    requestGeneration = requestGeneration,
+                    deferUntilHomeIdle = deferUntilHomeIdle,
+                    hasVisibleHome = hasVisibleHome
+                )
                 return@launch
             }
 
@@ -4182,124 +4294,222 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (previewMerge.changed && (deferUntilHomeIdle || (homeScreenActive && homeScrollInProgress))) {
                 awaitHomeUiIdle()
             }
-            if (
-                !isActive ||
-                homeFeedRequestGeneration.get() != requestGeneration ||
-                _state.value.languageCode != languageCode
-            ) return@launch
+            if (!isActive || !isHomeFeedRequestCurrent(requestGeneration, languageCode)) return@launch
 
-            var mergeBaseSections = _state.value.homeSections
-            var mergeResult = withContext(Dispatchers.Default) {
+            val (mergeBaseSections, mergeResult) = stableHomeMerge(sanitizedSections)
+            val visibleTracks = withContext(Dispatchers.Default) {
+                mergeResult.visible.flatMap { it.tracks }.distinctBy { it.id }
+            }
+            if (visibleTracks.isEmpty()) {
+                publishHomeUnavailable(languageCode)
+                return@launch
+            }
+
+            val instantAlbums = homeInstantAlbums(_state.value, visibleTracks)
+            if (
+                !publishHomeFeed(
+                    languageCode = languageCode,
+                    mergeBaseSections = mergeBaseSections,
+                    mergeResult = mergeResult,
+                    instantAlbums = instantAlbums,
+                    visibleTracks = visibleTracks
+                )
+            ) {
+                stopHomeLoading(languageCode)
+                return@launch
+            }
+
+            finishHomeFeedRefresh(
+                languageCode = languageCode,
+                mergeResult = mergeResult,
+                visibleTracks = visibleTracks,
+                deferUntilHomeIdle = deferUntilHomeIdle
+            )
+        }
+    }
+
+    private fun isHomeFeedRequestCurrent(requestGeneration: Long, languageCode: String): Boolean {
+        return homeFeedRequestGeneration.get() == requestGeneration &&
+            _state.value.languageCode == languageCode
+    }
+
+    private fun beginHomeFeedRefresh(languageCode: String, hasVisibleHome: Boolean) {
+        _state.update { current ->
+            if (current.languageCode != languageCode) {
+                current
+            } else {
+                current.copy(
+                    isLoadingHome = HomeOfflinePolicy.remoteLoading(!hasVisibleHome, current.isDeviceOffline),
+                    homeError = null
+                )
+            }
+        }
+    }
+
+    private suspend fun fetchHomeFeedSections(languageCode: String): List<HomeSection> {
+        return try {
+            repository.homeFeed(languageCode)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.w(error, "Home feed refresh failed")
+            emptyList()
+        }
+    }
+
+    private suspend fun handleEmptyHomeFeed(
+        languageCode: String,
+        requestGeneration: Long,
+        deferUntilHomeIdle: Boolean,
+        hasVisibleHome: Boolean
+    ) {
+        loadHomeAlbums(languageCode, deferUntilHomeIdle)
+        if (hasVisibleHome) {
+            stopHomeLoading(languageCode)
+        } else {
+            loadFallbackHome(
+                languageCode = languageCode,
+                requestGeneration = requestGeneration,
+                deferUntilHomeIdle = deferUntilHomeIdle
+            )
+        }
+    }
+
+    private suspend fun stableHomeMerge(
+        sanitizedSections: List<HomeSection>
+    ): Pair<List<HomeSection>, HomeSectionMergeResult> {
+        var mergeBaseSections = _state.value.homeSections
+        var mergeResult = withContext(Dispatchers.Default) {
+            HomeRefreshStability.mergeSections(
+                previous = mergeBaseSections,
+                incoming = sanitizedSections,
+                allowStructuralChanges = canApplyHomeStructuralChanges()
+            )
+        }
+        if (_state.value.homeSections != mergeBaseSections) {
+            mergeBaseSections = _state.value.homeSections
+            mergeResult = withContext(Dispatchers.Default) {
                 HomeRefreshStability.mergeSections(
                     previous = mergeBaseSections,
                     incoming = sanitizedSections,
                     allowStructuralChanges = canApplyHomeStructuralChanges()
                 )
             }
-            if (_state.value.homeSections != mergeBaseSections) {
-                mergeBaseSections = _state.value.homeSections
-                mergeResult = withContext(Dispatchers.Default) {
-                    HomeRefreshStability.mergeSections(
-                        previous = mergeBaseSections,
-                        incoming = sanitizedSections,
-                        allowStructuralChanges = canApplyHomeStructuralChanges()
-                    )
-                }
-            }
-            val visibleTracks = withContext(Dispatchers.Default) {
-                mergeResult.visible.flatMap { it.tracks }.distinctBy { it.id }
-            }
-            if (visibleTracks.isEmpty()) {
-                val unavailableMessage = LevyraStrings.forCode(languageCode).homeRemoteUnavailable
-                _state.update { current ->
-                    if (current.languageCode == languageCode) {
-                        current.copy(
-                            isLoadingHome = false,
-                            homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
-                                HomeOfflinePolicy.homeErrorAfterRemoteFailure(
-                                    deviceOffline = current.isDeviceOffline,
-                                    fallback = unavailableMessage
-                                )
-                            } else {
-                                current.homeError
-                            }
+        }
+        return mergeBaseSections to mergeResult
+    }
+
+    private fun publishHomeUnavailable(languageCode: String) {
+        val unavailableMessage = LevyraStrings.forCode(languageCode).homeRemoteUnavailable
+        _state.update { current ->
+            if (current.languageCode != languageCode) {
+                current
+            } else {
+                current.copy(
+                    isLoadingHome = false,
+                    homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
+                        HomeOfflinePolicy.homeErrorAfterRemoteFailure(
+                            deviceOffline = current.isDeviceOffline,
+                            fallback = unavailableMessage
                         )
                     } else {
-                        current
+                        current.homeError
                     }
-                }
-                return@launch
-            }
-
-            val latestState = _state.value
-            val instantAlbums = latestState.homeAlbums.ifEmpty {
-                withContext(Dispatchers.Default) {
-                    instantAlbumRecommendationsFromTracks(
-                        primary = latestState.recentListens + latestState.recentSearches + latestState.favorites,
-                        secondary = latestState.personalOrbitTracks + visibleTracks,
-                        limit = HOME_ALBUM_RECOMMENDATION_LIMIT,
-                        profile = latestState.smartProfile
-                    )
-                }
-            }
-            var published = false
-            while (!published) {
-                val current = _state.value
-                if (
-                    current.languageCode != languageCode ||
-                    current.homeSections != mergeBaseSections
-                ) break
-                val updated = if (
-                    !mergeResult.changed &&
-                    current.homeAlbums == instantAlbums &&
-                    current.tracks == visibleTracks &&
-                    !current.isLoadingHome &&
-                    current.homeError == null
-                ) {
-                    current
-                } else {
-                    current.copy(
-                        homeSections = if (mergeResult.changed) mergeResult.visible else current.homeSections,
-                        homeAlbums = instantAlbums,
-                        homeAlbumsLoading = instantAlbums.isEmpty(),
-                        tracks = visibleTracks,
-                        isLoadingHome = false,
-                        homeError = null,
-                        cacheReport = repository.cacheReport()
-                    )
-                }
-                published = updated === current || _state.compareAndSet(current, updated)
-            }
-            if (!published) {
-                _state.update { current ->
-                    if (current.languageCode == languageCode && current.isLoadingHome) {
-                        current.copy(isLoadingHome = false)
-                    } else {
-                        current
-                    }
-                }
-                return@launch
-            }
-            pendingHomeSectionsSnapshot.set(mergeResult.deferredStructural)
-            if (mergeResult.deferredStructural != null) {
-                scheduleDeferredHomeSnapshotApply()
-            }
-
-            persistHomeSnapshot()
-            val startupPlan = homeStartupWorkPlan()
-            viewModelScope.launch(Dispatchers.IO) {
-                if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
-                LevyraArtworkCache.preloadHome(
-                    getApplication<Application>().applicationContext,
-                    visibleTracks,
-                    startupPlan.refreshedArtworkCount
                 )
             }
-            prefetchTop(visibleTracks, HOME_STARTUP_STREAM_PREFETCH_COUNT, respectHomeScroll = deferUntilHomeIdle)
-            refreshOfficialMetadataBatch(visibleTracks, HOME_STARTUP_METADATA_REFRESH_COUNT, deferUntilHomeIdle)
-            loadHomeAlbums(languageCode, deferUntilHomeIdle)
-            refreshHomeResonanceIfStale()
         }
+    }
+
+    private suspend fun homeInstantAlbums(
+        latestState: LevyraUiState,
+        visibleTracks: List<Track>
+    ): List<AlbumHit> {
+        return latestState.homeAlbums.ifEmpty {
+            withContext(Dispatchers.Default) {
+                instantAlbumRecommendationsFromTracks(
+                    primary = latestState.recentListens + latestState.recentSearches + latestState.favorites,
+                    secondary = latestState.personalOrbitTracks + visibleTracks,
+                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT,
+                    profile = latestState.smartProfile
+                )
+            }
+        }
+    }
+
+    private fun publishHomeFeed(
+        languageCode: String,
+        mergeBaseSections: List<HomeSection>,
+        mergeResult: HomeSectionMergeResult,
+        instantAlbums: List<AlbumHit>,
+        visibleTracks: List<Track>
+    ): Boolean {
+        while (true) {
+            val current = _state.value
+            if (
+                current.languageCode != languageCode ||
+                current.homeSections != mergeBaseSections
+            ) {
+                return false
+            }
+
+            val updated = if (
+                !mergeResult.changed &&
+                current.homeAlbums == instantAlbums &&
+                current.tracks == visibleTracks &&
+                !current.isLoadingHome &&
+                current.homeError == null
+            ) {
+                current
+            } else {
+                current.copy(
+                    homeSections = if (mergeResult.changed) mergeResult.visible else current.homeSections,
+                    homeAlbums = instantAlbums,
+                    homeAlbumsLoading = instantAlbums.isEmpty(),
+                    tracks = visibleTracks,
+                    isLoadingHome = false,
+                    homeError = null,
+                    cacheReport = repository.cacheReport()
+                )
+            }
+            if (updated === current || _state.compareAndSet(current, updated)) return true
+        }
+    }
+
+    private fun stopHomeLoading(languageCode: String) {
+        _state.update { current ->
+            if (current.languageCode == languageCode && current.isLoadingHome) {
+                current.copy(isLoadingHome = false)
+            } else {
+                current
+            }
+        }
+    }
+
+    private fun finishHomeFeedRefresh(
+        languageCode: String,
+        mergeResult: HomeSectionMergeResult,
+        visibleTracks: List<Track>,
+        deferUntilHomeIdle: Boolean
+    ) {
+        pendingHomeSectionsSnapshot.set(mergeResult.deferredStructural)
+        if (mergeResult.deferredStructural != null) {
+            scheduleDeferredHomeSnapshotApply()
+        }
+
+        persistHomeSnapshot()
+        val startupPlan = homeStartupWorkPlan()
+        viewModelScope.launch(Dispatchers.IO) {
+            if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
+            LevyraArtworkCache.preloadHome(
+                getApplication<Application>().applicationContext,
+                visibleTracks,
+                startupPlan.refreshedArtworkCount
+            )
+        }
+        prefetchTop(visibleTracks, HOME_STARTUP_STREAM_PREFETCH_COUNT, respectHomeScroll = deferUntilHomeIdle)
+        refreshOfficialMetadataBatch(visibleTracks, HOME_STARTUP_METADATA_REFRESH_COUNT, deferUntilHomeIdle)
+        loadHomeAlbums(languageCode, deferUntilHomeIdle)
+        refreshHomeResonanceIfStale()
     }
 
     private fun loadHomeAlbums(languageCode: String, deferUntilHomeIdle: Boolean = false) {
