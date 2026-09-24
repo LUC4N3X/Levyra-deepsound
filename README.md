@@ -235,6 +235,8 @@ Play history, stats, playlists, and cached metadata stay on your device. When a 
 
 Microphone access is requested only when you trigger song identification. Custom proxy and DNS settings can be configured directly in the app.
 
+For an outside check, Apptizo scanned a Levyra build from F-Droid and reported no known third-party tracker SDKs. [See the scan](https://apptizo.com/app/levyra/).
+
 ## ✦ Translations
 
 Levyra is translated into 37 languages, including Estonian (Eesti), with community translations maintained on Weblate.
