@@ -48,28 +48,28 @@ internal class RadioBrowserApi(
         val boundedLimit = limit.coerceIn(1, MAX_STATION_LIMIT)
         val requests = buildList {
             listOf("name", "country", "language", "tag").forEach { field ->
-                add(field to clean)
+                add(SearchRequest(field, clean, boundedLimit))
             }
-            radioSearchTokens(clean).take(MAX_TOKEN_SEARCHES).forEach { token ->
+            radioSearchRequestTokens(clean).take(MAX_TOKEN_SEARCHES).forEach { token ->
                 if (!token.equals(clean, ignoreCase = true)) {
-                    add("name" to token)
+                    add(SearchRequest("name", token, MAX_STATION_LIMIT))
                 }
             }
-        }.distinct()
+        }.distinctBy { it.field to it.value.lowercase(Locale.ROOT) }
 
         return coroutineScope {
-            val deferreds = requests.map { (field, value) ->
+            val deferreds = requests.map { request ->
                 async {
                     try {
                         Result.success(
                             stationRequest(
                                 path = "json/stations/search",
                                 params = mapOf(
-                                    field to value,
+                                    request.field to request.value,
                                     "order" to "votes",
                                     "reverse" to "true",
                                     "hidebroken" to "false",
-                                    "limit" to boundedLimit.toString()
+                                    "limit" to request.limit.toString()
                                 )
                             )
                         )
@@ -196,6 +196,8 @@ internal class RadioBrowserApi(
             lastCheckOk = optInt("lastcheckok", 0) == 1 || optBoolean("lastcheckok", false)
         )
     }
+
+    private data class SearchRequest(val field: String, val value: String, val limit: Int)
 
     private companion object {
         val USER_AGENT = "Levyra/${BuildConfig.VERSION_NAME} (Android; Live Radio)"

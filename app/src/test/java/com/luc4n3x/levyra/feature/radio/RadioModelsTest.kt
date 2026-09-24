@@ -143,6 +143,116 @@ class RadioModelsTest {
         assertEquals(null, liveRadioRetryPlan(station, station.streamUrl, 4))
     }
 
+    @Test
+    fun playlistUrlIsNeverUsedAsAlternateStream() {
+        val station = station(uuid = "181-salsa").copy(
+            streamUrl = "http://www.181.fm/stream/pls/181-salsa.pls",
+            resolvedStreamUrl = "http://listen.181fm.com/181-salsa_128k.mp3"
+        )
+
+        assertEquals("http://listen.181fm.com/181-salsa_128k.mp3", station.preferredStreamUrl)
+        assertEquals("", station.alternateStreamUrl)
+        assertEquals(station.preferredStreamUrl, liveRadioRetryPlan(station, station.preferredStreamUrl, 1)?.streamUrl)
+        assertTrue(isRadioPlaylistUrl("https://radio.example/live.M3U?x=1"))
+        assertFalse(isRadioPlaylistUrl("https://radio.example/live.m3u8"))
+    }
+
+    @Test
+    fun searchRanksExactNameAboveMorePopularPartialMatches() {
+        val exact = station(
+            uuid = "181-salsa",
+            name = "181.FM - Salsa",
+            url = "http://listen.181fm.com/181-salsa_128k.mp3",
+            votes = 800
+        )
+        val popular = station(
+            uuid = "salsa-181",
+            name = "Salsa Hits",
+            url = "https://radio.example/salsa",
+            votes = 90_000
+        ).copy(tags = listOf("181", "fm"))
+
+        val result = filterAndRankRadioSearchResults(listOf(popular, exact), "181.fm salsa")
+
+        assertEquals(listOf(exact, popular), result)
+        assertEquals(listOf("salsa", "181"), radioSearchRequestTokens("181.fm salsa"))
+    }
+
+    @Test
+    fun searchIgnoresDiacriticsInNamesAndQueries() {
+        val precomposed = station(uuid = "a", name = "Salsa Clásica Éxitos", url = "https://radio.example/a")
+        val decomposed = station(uuid = "b", name = "Radio Clásica", url = "https://radio.example/b")
+
+        assertTrue(radioStationMatchesSearch(precomposed, "salsa clasica exitos"))
+        assertTrue(radioStationMatchesSearch(decomposed, "clásica"))
+        assertEquals("181 fm awesome 80s", normalizeRadioName("181.FM - Awesome 80’s"))
+        assertEquals("rocknroll", normalizeRadioName("Rock'n'Roll"))
+        assertEquals("", station(uuid = "c").copy(codec = "UNKNOWN", bitrateKbps = 0).qualityLabel)
+    }
+
+    @Test
+    fun playerTrackNeverCarriesUnverifiedRemoteArtwork() {
+        val station = station(uuid = "a").copy(faviconUrl = "https://station.example/logo.png")
+
+        assertEquals("", station.toTrack().thumbnailUrl)
+        assertEquals("", station.toTrack().largeThumbnailUrl)
+        assertEquals("file:///cache/a.img", station.toTrack(artwork = "file:///cache/a.img").thumbnailUrl)
+    }
+
+    @Test
+    fun searchDropsSameStreamPublishedUnderDifferentNames() {
+        val first = station(uuid = "a", name = "181.FM Salsa", url = "http://relay.181.fm:8098/", votes = 900)
+        val second = station(uuid = "b", name = "181.FM - Salsa", url = "https://relay.181.fm:8098", votes = 10)
+
+        assertEquals(listOf(first), filterAndRankRadioSearchResults(listOf(second, first), "181 salsa"))
+    }
+
+    @Test
+    fun icyAdvertisementNeedsExplicitBroadcasterMarker() {
+        val adswizz = liveRadioStreamMetadata("Shopify", "StreamTitle='Shopify';adw_ad='true';durationMilliseconds='30000';")
+        val preroll = liveRadioStreamMetadata("", "StreamTitle='';insertionType='preroll';")
+        val song = liveRadioStreamMetadata("Advert - Commercial Break", "StreamTitle='Advert - Commercial Break';StreamUrl='';")
+
+        assertTrue(adswizz.advertisement)
+        assertEquals("", adswizz.title)
+        assertTrue(preroll.advertisement)
+        assertFalse(song.advertisement)
+        assertEquals("Advert - Commercial Break", song.title)
+    }
+
+    @Test
+    fun icyTitleDropsUrlUuidAndHashSegmentsOnly() {
+        assertEquals("Artist - Song", sanitizeLiveRadioTitle("Artist - Song - https://station.example/now"))
+        assertEquals("Artist - Song", sanitizeLiveRadioTitle("Artist - Song || 0123456789abcdef0123"))
+        assertEquals("AC/DC - T.N.T.", sanitizeLiveRadioTitle("  AC/DC - T.N.T.  "))
+        assertEquals(
+            "AITCH - RMB (RING MY BELL)",
+            sanitizeLiveRadioTitle("AITCH~RMB (RING MY BELL)~~0~~131~2026-09-24T20:42:27~2026-09-24T20:42:27~Radio 105")
+        )
+        assertEquals("Up~Down Mix", sanitizeLiveRadioTitle("Up~Down Mix"))
+        assertEquals("AC~DC~Live", sanitizeLiveRadioTitle("AC~DC~Live"))
+        assertEquals("Sarah Brightman - Time To Say Goodbye", sanitizeLiveRadioTitle("Sarah Brightman - Time To Say Goodbye"))
+    }
+
+    @Test
+    fun blankIcyBlockKeepsSongButEndsAdvertisement() {
+        val song = LiveRadioStreamMetadata("Artist - Song")
+        val ad = LiveRadioStreamMetadata(advertisement = true)
+        val blank = LiveRadioStreamMetadata()
+
+        assertEquals(song, nextLiveRadioStreamMetadata(song, blank))
+        assertEquals(blank, nextLiveRadioStreamMetadata(ad, blank))
+        assertEquals(ad, nextLiveRadioStreamMetadata(song, ad))
+    }
+
+    @Test
+    fun nowPlayingHidesStationIdentAndLocalizesAdvertisement() {
+        assertEquals("", liveRadioNowPlaying(LiveRadioStreamMetadata("181.FM Salsa"), "181.FM - Salsa", "Ad"))
+        assertEquals("Ad", liveRadioNowPlaying(LiveRadioStreamMetadata(advertisement = true), "181.FM - Salsa", "Ad"))
+        assertEquals("Artist - Song", liveRadioNowPlaying(LiveRadioStreamMetadata("Artist - Song"), "181.FM - Salsa", "Ad"))
+        assertEquals("Pubblicità", LevyraLiveRadioCatalog.advertisement("it"))
+    }
+
     private fun station(
         uuid: String,
         name: String = "Test Radio",
@@ -192,12 +302,10 @@ class RadioModelsTest {
         pool.servers()
         assertEquals(1, lookupCount)
 
-        // Before fallback TTL (5 min), should use cache
         currentTime += 4 * 60 * 1000L
         pool.servers()
         assertEquals(1, lookupCount)
 
-        // After fallback TTL (5 min), should query again
         currentTime += 2 * 60 * 1000L
         pool.servers()
         assertEquals(2, lookupCount)
