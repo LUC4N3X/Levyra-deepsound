@@ -241,7 +241,7 @@ For an outside check, Apptizo scanned a Levyra build from F-Droid and reported n
 
 ## ✦ Translations
 
-Levyra is translated into 37 languages, including Estonian (Eesti), with community translations maintained on Weblate.
+Levyra is available in 37 languages. Translations are maintained by the community on Weblate.
 
 <div align="center">
 
