@@ -21,6 +21,7 @@ class PersonalizedSearchTest {
 
         assertTrue(snapshot.tracks.isEmpty())
         assertTrue(snapshot.artistNames.isEmpty())
+        assertTrue(snapshot.prompts.isEmpty())
         assertNull(snapshot.prompt)
     }
 
@@ -67,6 +68,7 @@ class PersonalizedSearchTest {
 
         assertEquals("Daft Punk", snapshot.artistNames.first())
         assertTrue(snapshot.prompt != null)
+        assertTrue(snapshot.prompts.size > 1)
     }
 
     @Test
@@ -81,5 +83,69 @@ class PersonalizedSearchTest {
         )
 
         assertEquals(listOf("Adele", "Daft Punk", "Coldplay"), ranked.map { it.name })
+    }
+
+    @Test
+    fun `generic copy keeps an empty profile placeholder cycle dynamic`() {
+        val cycle = buildSearchPlaceholderCycle(
+            personalized = emptyList(),
+            fallbacks = listOf("Search music", "What do you want to hear?", "Discover something new")
+        )
+
+        assertEquals(3, cycle.size)
+        assertEquals("Search music", cycle.first())
+    }
+
+    @Test
+    fun `local taste leads the placeholder cycle without duplicate fallback copy`() {
+        val cycle = buildSearchPlaceholderCycle(
+            personalized = listOf("Back to Adele", "Back to Adele"),
+            fallbacks = listOf("Back to Adele", "Search music", "Discover something new")
+        )
+
+        assertEquals(listOf("Back to Adele", "Search music", "Discover something new"), cycle)
+    }
+
+    @Test
+    fun `taste hints prefer different content types over repeated artists`() {
+        val hints = buildSearchTasteHints(
+            prompts = listOf(
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Bresh"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Artie 5ive"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Sfera Ebbasta"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.SIMILAR_TRACK, "Lontano"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ALBUM, "Santana Money Gang")
+            ),
+            fallbacks = listOf("Nuove uscite", "Mix per te")
+        )
+
+        assertEquals(listOf("Bresh", "Lontano", "Santana Money Gang"), hints)
+    }
+
+    @Test
+    fun `taste hints use discovery fallbacks instead of repeating artist-only prompts`() {
+        val hints = buildSearchTasteHints(
+            prompts = listOf(
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Bresh"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Artie 5ive"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Sfera Ebbasta")
+            ),
+            fallbacks = listOf("Nuove uscite", "Mix per te", "Scopri qualcosa")
+        )
+
+        assertEquals(listOf("Bresh", "Nuove uscite", "Mix per te"), hints)
+    }
+
+    @Test
+    fun `taste hints deduplicate values ignoring case`() {
+        val hints = buildSearchTasteHints(
+            prompts = listOf(
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.ARTIST, "Bresh"),
+                PersonalizedSearchPrompt(PersonalizedSearchPromptKind.SIMILAR_TRACK, "Lontano")
+            ),
+            fallbacks = listOf("bresh", "LONTANO", "Nuove uscite")
+        )
+
+        assertEquals(listOf("Bresh", "Lontano", "Nuove uscite"), hints)
     }
 }
