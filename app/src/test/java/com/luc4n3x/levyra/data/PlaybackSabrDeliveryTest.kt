@@ -16,7 +16,7 @@ class PlaybackSabrDeliveryTest {
 
     @Test
     fun audioDescriptorCarriesEnoughForTheDataSourceAndForLevyraUrlChecks() {
-        val descriptor = descriptor(audio(itag = 140))
+        val descriptor = descriptor(audio(itag = 140, audioLocale = "it-IT"))
 
         assertNotNull(descriptor)
         assertEquals(PlaybackDeliveryMethod.SABR, descriptor!!.deliveryMethod)
@@ -24,6 +24,8 @@ class PlaybackSabrDeliveryTest {
         assertEquals("audio/mp4", descriptor.mimeType)
         assertEquals(140, descriptor.itag)
         assertTrue(descriptor.url.contains("mime=audio%2Fmp4"))
+        assertTrue(descriptor.url.contains("clen=9397248"))
+        assertTrue(descriptor.url.contains("xtags=lang%3Dit-it"))
         assertTrue(descriptor.url.contains("expire=1788000000"))
         assertTrue(SabrStreamSpec.isSabrUri(descriptor.url))
 
@@ -73,6 +75,35 @@ class PlaybackSabrDeliveryTest {
         assertEquals(
             listOf(139, 140),
             orderSabrAudioCandidates(candidates, preferHighestBitrate = false).map { it.itag }
+        )
+    }
+
+    @Test
+    fun audioOrderingKeepsTierAndLocaleAheadOfBitrate() {
+        val exact = audio(
+            itag = 250,
+            averageBitrate = 64_000,
+            audioLocale = "pt-br",
+            audioTier = AudioLanguageIntelligence.TIER_PREFERRED_HUMAN,
+            tieBreakerBonus = 2
+        )
+        val base = audio(
+            itag = 251,
+            averageBitrate = 192_000,
+            audioLocale = "pt-pt",
+            audioTier = AudioLanguageIntelligence.TIER_PREFERRED_HUMAN,
+            tieBreakerBonus = 1
+        )
+        val original = audio(
+            itag = 140,
+            averageBitrate = 256_000,
+            audioLocale = "en",
+            audioTier = AudioLanguageIntelligence.TIER_ORIGINAL
+        )
+
+        assertEquals(
+            listOf(250, 251, 140),
+            orderSabrAudioCandidates(listOf(original, base, exact), preferHighestBitrate = true).map { it.itag }
         )
     }
 
@@ -129,13 +160,19 @@ class PlaybackSabrDeliveryTest {
         lastModified: Long = 1_766_955_925_572_207L,
         contentLength: Long = 9_397_248L,
         averageBitrate: Int = 128_000,
-        mimeType: String = "audio/mp4; codecs=\"mp4a.40.2\""
+        mimeType: String = "audio/mp4; codecs=\"mp4a.40.2\"",
+        audioLocale: String? = null,
+        audioTier: Int = 0,
+        tieBreakerBonus: Int = 0
     ) = SabrFormatCandidate(
         itag = itag,
         lastModified = lastModified,
         mimeType = mimeType,
         contentLength = contentLength,
-        averageBitrate = averageBitrate
+        averageBitrate = averageBitrate,
+        audioLocale = audioLocale,
+        audioTier = audioTier,
+        tieBreakerBonus = tieBreakerBonus
     )
 
     private fun video(itag: Int, height: Int) = SabrFormatCandidate(

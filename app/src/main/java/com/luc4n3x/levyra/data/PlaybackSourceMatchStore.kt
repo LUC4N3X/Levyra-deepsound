@@ -17,9 +17,10 @@ internal class PlaybackSourceMatchStore(
         track: Track,
         videoMode: Boolean,
         audioQuality: String,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        preferredAudioLanguage: String = ""
     ): StoredPlaybackSourceMatch? {
-        val matchKey = PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio)
+        val matchKey = PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio, preferredAudioLanguage)
         val entity = dao.get(matchKey) ?: return null
         val manifest = PlaybackManifestCodec.decode(entity.manifestJson)
         if (
@@ -38,14 +39,15 @@ internal class PlaybackSourceMatchStore(
         videoMode: Boolean,
         audioQuality: String,
         confidence: Int,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        preferredAudioLanguage: String = ""
     ) {
         val manifest = resolved.playbackManifest ?: return
         if (!videoMode && !isResolvedPlaybackDurationCompatible(original, manifest.durationMs)) return
         val sourceVideoId = manifest.sourceVideoId.ifBlank { PlaybackSourceIdentity.sourceVideoId(resolved) }
         if (sourceVideoId.isBlank()) return
         val now = System.currentTimeMillis()
-        val matchKey = PlaybackSourceIdentity.matchKey(original, videoMode, audioQuality, preferMp4Audio)
+        val matchKey = PlaybackSourceIdentity.matchKey(original, videoMode, audioQuality, preferMp4Audio, preferredAudioLanguage)
         val previous = dao.get(matchKey)
         dao.upsert(
             PlaybackSourceMatchEntity(
@@ -76,9 +78,10 @@ internal class PlaybackSourceMatchStore(
         track: Track,
         videoMode: Boolean,
         audioQuality: String,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        preferredAudioLanguage: String = ""
     ) {
-        val matchKey = PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio)
+        val matchKey = PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio, preferredAudioLanguage)
         dao.recordSuccess(matchKey, System.currentTimeMillis())
     }
 
@@ -87,11 +90,12 @@ internal class PlaybackSourceMatchStore(
         videoMode: Boolean,
         audioQuality: String,
         quarantineMs: Long,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        preferredAudioLanguage: String = ""
     ) {
         val now = System.currentTimeMillis()
         dao.recordFailure(
-            PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio),
+            PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio, preferredAudioLanguage),
             now + quarantineMs.coerceAtLeast(0L),
             now
         )
@@ -101,9 +105,10 @@ internal class PlaybackSourceMatchStore(
         track: Track,
         videoMode: Boolean,
         audioQuality: String,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        preferredAudioLanguage: String = ""
     ) {
-        dao.delete(PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio))
+        dao.delete(PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio, preferredAudioLanguage))
     }
 
     suspend fun clearOnline() {
