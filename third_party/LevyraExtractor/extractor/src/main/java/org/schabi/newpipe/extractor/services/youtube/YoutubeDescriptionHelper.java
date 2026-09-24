@@ -137,7 +137,7 @@ public final class YoutubeDescriptionHelper {
                     : closers.get(closersIndex).pos;
 
             // append piece of text until current index
-            textBuilder.append(content, currentTextPos, minPos);
+            appendEscapedText(textBuilder, content, currentTextPos, minPos);
             currentTextPos = minPos;
 
             if (closers.get(closersIndex).pos == minPos) {
@@ -176,7 +176,7 @@ public final class YoutubeDescriptionHelper {
         }
 
         // append last piece of text
-        textBuilder.append(content, currentTextPos, content.length());
+        appendEscapedText(textBuilder, content, currentTextPos, content.length());
 
         return textBuilder.toString()
                 .replace("\n", "<br>")
@@ -185,6 +185,31 @@ public final class YoutubeDescriptionHelper {
                 .replace("\">\u00a0\u00a0/\u00a0", "\">")
                 .replace("\">\u00a0\u00a0•\u00a0", "\">")
                 .replace("\u00a0\u00a0</a>", "</a>");
+    }
+
+    private static void appendEscapedText(
+            @Nonnull final StringBuilder textBuilder,
+            @Nonnull final String content,
+            final int start,
+            final int end
+    ) {
+        for (int i = start; i < end; ++i) {
+            final char c = content.charAt(i);
+            switch (c) {
+                case '&':
+                    textBuilder.append("&amp;");
+                    break;
+                case '<':
+                    textBuilder.append("&lt;");
+                    break;
+                case '>':
+                    textBuilder.append("&gt;");
+                    break;
+                default:
+                    textBuilder.append(c);
+                    break;
+            }
+        }
     }
 
     private static void addAllCommandRuns(
