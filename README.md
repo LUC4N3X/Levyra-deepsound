@@ -235,7 +235,7 @@ Play history, stats, playlists, and cached metadata stay on your device. When a 
 
 Microphone access is requested only when you trigger song identification. Custom proxy and DNS settings can be configured directly in the app.
 
-For an outside check, Apptizo scanned a Levyra build from F-Droid and reported no known third-party tracker SDKs. [See the Apptizo scan](https://apptizo.com/app/levyra/). You can also view the [VirusTotal scan](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1) for that APK.
+For an outside check, Apptizo scanned a Levyra build from F-Droid and reported no known third-party tracker SDKs. [See the Apptizo scan](https://apptizo.com/app/levyra/). The Levyra 2.5.10 APK also returned **0/68 detections** on [VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1).
 
 ## ✦ Translations
 
