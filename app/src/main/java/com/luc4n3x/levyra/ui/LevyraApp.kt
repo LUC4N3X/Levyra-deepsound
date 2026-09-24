@@ -4744,7 +4744,7 @@ private fun AlbumTrackRow(
             if (selectionActive) {
                 Icon(
                     imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                    contentDescription = if (selected) strings.selected else strings.select,
+                    contentDescription = null,
                     tint = if (selected) stage.accent else stage.contentMuted,
                     modifier = Modifier.size(28.dp)
                 )
