@@ -4665,6 +4665,9 @@ private fun AlbumTrackRow(
     isDownloaded: Boolean,
     downloadProgress: Int?,
     showDivider: Boolean,
+    selected: Boolean,
+    selectionActive: Boolean,
+    onLongClick: () -> Unit,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
@@ -4691,8 +4694,15 @@ private fun AlbumTrackRow(
                 .fillMaxWidth()
                 .heightIn(min = ALBUM_TRACK_ROW_HEIGHT)
                 .clip(RoundedCornerShape(LevyraPlayerDesign.CornerXs))
-                .background(if (isCurrent) stage.accent.copy(alpha = 0.12f) else Color.Transparent)
-                .clickable(onClick = onPlay)
+                .background(
+                    when {
+                        selected -> stage.accent.copy(alpha = 0.18f)
+                        isCurrent -> stage.accent.copy(alpha = 0.12f)
+                        else -> Color.Transparent
+                    }
+                )
+                .semantics { this.selected = selected }
+                .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
                 .padding(start = LevyraPlayerDesign.SpaceXs, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
@@ -4731,17 +4741,26 @@ private fun AlbumTrackRow(
                     maxLines = 1
                 )
             }
-            AlbumTrackMenu(
-                track = track,
-                isFavorite = isFavorite,
-                isDownloaded = isDownloaded,
-                isDownloading = isDownloading,
-                tint = stage.contentMuted,
-                onFavorite = onFavorite,
-                onDownload = onDownload,
-                onAddToPlaylist = onAddToPlaylist,
-                onArtist = onArtist
-            )
+            if (selectionActive) {
+                Icon(
+                    imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = if (selected) strings.selected else strings.select,
+                    tint = if (selected) stage.accent else stage.contentMuted,
+                    modifier = Modifier.size(28.dp)
+                )
+            } else {
+                AlbumTrackMenu(
+                    track = track,
+                    isFavorite = isFavorite,
+                    isDownloaded = isDownloaded,
+                    isDownloading = isDownloading,
+                    tint = stage.contentMuted,
+                    onFavorite = onFavorite,
+                    onDownload = onDownload,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onArtist = onArtist
+                )
+            }
         }
         if (showDivider) {
             Box(
