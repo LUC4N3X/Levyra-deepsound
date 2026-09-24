@@ -88,6 +88,7 @@ import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
@@ -521,33 +522,35 @@ internal fun SmartCollectionDetail(
             TrackSelectionBar(
                 state = selection,
                 allVisibleIds = selectableIds,
-                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        viewModel.playTracksNext(selectedTracks)
-                        selection.exit()
+                actions = TrackSelectionActions(
+                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.playTracksNext(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.addTracksToQueue(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        { batchAddTargets = selectedTracks }
+                    },
+                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.toggleFavorites(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.exportTracks(selectedTracks, strings.offline)
+                            selection.exit()
+                        }
                     }
-                },
-                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        viewModel.addTracksToQueue(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    { batchAddTargets = selectedTracks }
-                },
-                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        viewModel.toggleFavorites(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        viewModel.exportTracks(selectedTracks, strings.offline)
-                        selection.exit()
-                    }
-                },
+                ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 84.dp else 12.dp)
