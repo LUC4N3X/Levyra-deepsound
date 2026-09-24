@@ -12496,6 +12496,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selection = rememberTrackSelectionState()
     val personalized = remember(
         state.favorites,
         state.recentListens,
@@ -12565,6 +12567,52 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         }
         val visibleSongs = remember(data.songs, topResultTracks, filter) {
             if (filter == SearchFilter.All) filterSearchSongsExcludingTopResult(data.songs, topResultTracks) else data.songs
+        }
+        val selectableTracks = remember(visibleSongs, data.videos, filter) {
+            buildList {
+                if (filter == SearchFilter.All || filter == SearchFilter.Songs) addAll(visibleSongs)
+                if (filter == SearchFilter.All || filter == SearchFilter.Videos) addAll(data.videos)
+            }.distinctBy(::trackSelectionKey)
+        }
+        val selectableIds = remember(selectableTracks) { selectableTracks.map(::trackSelectionKey) }
+        val selectedTracks = remember(selectableTracks, selection.selectedIds) {
+            selection.resolveSelected(selectableTracks, ::trackSelectionKey)
+        }
+        LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+        BackHandler(enabled = selection.isActive) { selection.exit() }
+
+        if (selection.isActive) {
+            TrackSelectionBar(
+                state = selection,
+                allVisibleIds = selectableIds,
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.playTracksNext(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.addTracksToQueue(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    { batchAddTargets = selectedTracks }
+                },
+                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.toggleFavorites(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.exportTracks(selectedTracks, strings.offline)
+                        selection.exit()
+                    }
+                }
+            )
         }
 
         LazyColumn(
@@ -12801,10 +12849,17 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     isDownloading = track.id in state.downloadingTrackIds,
                                     isDownloaded = track.id in state.downloadedTrackIds,
                                     downloadProgress = state.downloadProgressByTrackId[track.id],
+                                    selected = selection.isSelected(trackSelectionKey(track)),
+                                    selectionActive = selection.isActive,
+                                    onLongClick = { selection.start(trackSelectionKey(track)) },
                                     onClick = {
-                                        focusManager.clearFocus()
-                                        keyboardController?.hide()
-                                        viewModel.playFrom(data.videos, track)
+                                        if (selection.isActive) {
+                                            selection.toggle(trackSelectionKey(track))
+                                        } else {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                            viewModel.playFrom(data.videos, track)
+                                        }
                                     },
                                     onFavorite = { viewModel.toggleFavorite(track) },
                                     onAddToPlaylist = { addTarget = track },
@@ -12833,10 +12888,17 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         isDownloading = track.id in state.downloadingTrackIds,
                                         isDownloaded = track.id in state.downloadedTrackIds,
                                         downloadProgress = state.downloadProgressByTrackId[track.id],
+                                        selected = selection.isSelected(trackSelectionKey(track)),
+                                        selectionActive = selection.isActive,
+                                        onLongClick = { selection.start(trackSelectionKey(track)) },
                                         onClick = {
-                                            focusManager.clearFocus()
-                                            keyboardController?.hide()
-                                            viewModel.playFrom(data.songs, track)
+                                            if (selection.isActive) {
+                                                selection.toggle(trackSelectionKey(track))
+                                            } else {
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                                viewModel.playFrom(data.songs, track)
+                                            }
                                         },
                                         onFavorite = { viewModel.toggleFavorite(track) },
                                         onAddToPlaylist = { addTarget = track },
@@ -12891,6 +12953,23 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             onCreateWith = { name ->
                 viewModel.createPlaylist(name, track)
                 addTarget = null
+            }
+        )
+    }
+    if (batchAddTargets.isNotEmpty()) {
+        com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+            tracks = batchAddTargets,
+            playlists = state.playlists,
+            onDismiss = { batchAddTargets = emptyList() },
+            onAdd = { playlistId ->
+                viewModel.addTracksToPlaylist(playlistId, batchAddTargets)
+                batchAddTargets = emptyList()
+                selection.exit()
+            },
+            onCreate = { name ->
+                viewModel.createPlaylistWithTracks(name, batchAddTargets)
+                batchAddTargets = emptyList()
+                selection.exit()
             }
         )
     }
@@ -22227,6 +22306,9 @@ private fun SearchTrackCard(
     isPlaying: Boolean,
     isResolving: Boolean,
     isFavorite: Boolean,
+    selected: Boolean = false,
+    selectionActive: Boolean = false,
+    onLongClick: () -> Unit = {},
     isDownloading: Boolean,
     isDownloaded: Boolean,
     downloadProgress: Int?,
@@ -22249,11 +22331,16 @@ private fun SearchTrackCard(
             )
             .border(
                 1.dp,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.30f) else Color.Transparent,
+                when {
+                    selected -> LevyraCyan.copy(alpha = 0.58f)
+                    isCurrent -> LevyraCyan.copy(alpha = 0.30f)
+                    else -> Color.Transparent
+                },
                 RoundedCornerShape(18.dp)
             )
-            .pressable(onClick = onClick)
-            .padding(horizontal = if (isCurrent) 9.dp else 0.dp, vertical = 7.dp),
+            .semantics { this.selected = selected }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = if (isCurrent || selected) 9.dp else 0.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
@@ -22280,18 +22367,27 @@ private fun SearchTrackCard(
                 modifier = Modifier.clickable { onArtist() }
             )
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
-            IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
-            }
-            IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = LocalLevyraStrings.current.favorite,
-                    tint = if (isFavorite) LevyraPink else LevyraMuted,
-                    modifier = Modifier.size(24.dp)
-                )
+        if (selectionActive) {
+            Icon(
+                imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (selected) LevyraCyan else LevyraMuted,
+                modifier = Modifier.size(28.dp)
+            )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+                IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                }
+                IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = LocalLevyraStrings.current.favorite,
+                        tint = if (isFavorite) LevyraPink else LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
