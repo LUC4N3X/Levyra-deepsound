@@ -6337,6 +6337,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 updated,
                 6
             )
+            cleanTracks.forEach { track ->
+                val isFavorite = areAllFavoriteTracks(updated, listOf(track))
+                recordSmartFavorite(track, isFavorite)
+                autoDownloadFavorite(track, isFavorite)
+            }
         }
     }
 
