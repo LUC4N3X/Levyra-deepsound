@@ -72,7 +72,8 @@ fun PremiumSeekbar(
     isPlaying: Boolean = true,
     animated: Boolean = true,
     contentDescription: String? = null,
-    waveform: FloatArray? = null
+    waveform: FloatArray? = null,
+    interactionKey: Any? = null
 ) {
     val density = LocalDensity.current
     val haptics = LocalLevyraHaptics.current
@@ -80,8 +81,10 @@ fun PremiumSeekbar(
         values.isNotEmpty() && values.all { it.isFinite() }
     }
 
-    var isDragging by remember { mutableStateOf(false) }
-    var dragProgressFraction by remember { mutableFloatStateOf(0f) }
+    var isDragging by remember(interactionKey) { mutableStateOf(false) }
+    var dragProgressFraction by remember(interactionKey) {
+        mutableFloatStateOf(seekbarProgressFraction(positionMs, durationMs))
+    }
     var widthPx by remember { mutableFloatStateOf(0f) }
 
     val effectiveProgress = if (isDragging) {
@@ -94,6 +97,13 @@ fun PremiumSeekbar(
     }
 
     val scrubAmount = remember { Animatable(0f) }
+    val waveIntensity = remember { Animatable(if (animated && isPlaying) 1f else 0f) }
+    LaunchedEffect(animated, isPlaying, isDragging, interactionKey) {
+        waveIntensity.animateTo(
+            targetValue = if (animated && isPlaying && !isDragging) 1f else 0f,
+            animationSpec = if (animated) tween(180) else snap()
+        )
+    }
     val scrubSpec: AnimationSpec<Float> =
         if (animated) LevyraPlayerDesign.expressiveSpring() else snap()
     LaunchedEffect(isDragging, animated) {
@@ -117,7 +127,7 @@ fun PremiumSeekbar(
     }
 
     val wavePhase = remember { Animatable(0f) }
-    LaunchedEffect(animated, isPlaying, isDragging, measuredWaveform) {
+    LaunchedEffect(animated, isPlaying, isDragging, measuredWaveform, interactionKey) {
         if (measuredWaveform != null || !animated || !isPlaying || isDragging) return@LaunchedEffect
         val fullPhase = 2f * PI.toFloat()
         while (true) {
@@ -190,7 +200,7 @@ fun PremiumSeekbar(
                         }
                     }
                 }
-                .pointerInput(durationMs) {
+                .pointerInput(durationMs, interactionKey) {
                     detectTapGestures { offset ->
                         if (durationMs > 0L && size.width > 0) {
                             val fraction = seekbarFractionAt(offset.x, size.width.toFloat())
@@ -199,7 +209,7 @@ fun PremiumSeekbar(
                         }
                     }
                 }
-                .pointerInput(durationMs) {
+                .pointerInput(durationMs, interactionKey) {
                     if (durationMs <= 0L) return@pointerInput
                     detectHorizontalDragGestures(
                         onDragStart = { offset ->
@@ -265,7 +275,8 @@ fun PremiumSeekbar(
                     trackHeight = trackHeight,
                     handleX = handleX,
                     inactiveColor = inactiveColor,
-                    activeColor = activeColor
+                    activeColor = activeColor,
+                    waveIntensity = waveIntensity.value
                 )
             } else if (handleX > trackStart) {
                 drawAnimatedWaveform(
@@ -278,7 +289,8 @@ fun PremiumSeekbar(
                     waveReveal = waveReveal.value,
                     wavePhase = wavePhase.value,
                     trailingColor = trailingColor,
-                    activeColor = activeColor
+                    activeColor = activeColor,
+                    waveIntensity = waveIntensity.value
                 )
             }
 
@@ -313,7 +325,8 @@ private fun DrawScope.drawMeasuredWaveform(
     trackHeight: Float,
     handleX: Float,
     inactiveColor: Color,
-    activeColor: Color
+    activeColor: Color,
+    waveIntensity: Float
 ) {
     val slotWidth = trackSpan / waveform.size
     val barWidth = minOf(2.dp.toPx(), slotWidth * 0.58f).coerceAtLeast(1f)
@@ -323,8 +336,10 @@ private fun DrawScope.drawMeasuredWaveform(
     fun drawBars(color: Color) {
         waveform.forEachIndexed { index, rawAmplitude ->
             val amplitude = rawAmplitude.coerceIn(0f, 1f)
-            val halfHeight = minimumHalfHeight +
+            val expandedHalfHeight = minimumHalfHeight +
                 (maximumHalfHeight - minimumHalfHeight) * amplitude
+            val halfHeight = trackHeight / 2f +
+                (expandedHalfHeight - trackHeight / 2f) * waveIntensity.coerceIn(0f, 1f)
             val x = trackStart + (index + 0.5f) * slotWidth
             drawRoundRect(
                 color = color,
@@ -358,11 +373,21 @@ private fun DrawScope.drawAnimatedWaveform(
     waveReveal: Float,
     wavePhase: Float,
     trailingColor: Color,
-    activeColor: Color
+    activeColor: Color,
+    waveIntensity: Float
 ) {
     val centerY = size.height / 2f
     val radius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
     val activeSpan = handleX - trackStart
+    if (waveIntensity <= 0.001f) {
+        drawRoundRect(
+            color = activeColor,
+            topLeft = Offset(trackStart, centerY - trackHeight / 2f),
+            size = Size(activeSpan, trackHeight),
+            cornerRadius = radius
+        )
+        return
+    }
     clipRect(
         left = trackStart,
         top = 0f,
@@ -388,7 +413,7 @@ private fun DrawScope.drawAnimatedWaveform(
         val waveLength = activeSpan / waveCount
         val minimumWaveSpan = 56.dp.toPx()
         val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
-        val waveHeight = 9.5.dp.toPx() * waveReveal * amplitudeScale
+        val waveHeight = 9.5.dp.toPx() * waveReveal * amplitudeScale * waveIntensity.coerceIn(0f, 1f)
         val baselineY = centerY + trackHeight / 2f
         val topBaseY = centerY - trackHeight / 2f
         val step = 2.dp.toPx().coerceAtLeast(1f)
