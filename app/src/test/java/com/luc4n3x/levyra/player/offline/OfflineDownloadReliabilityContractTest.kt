@@ -99,11 +99,13 @@ class OfflineDownloadReliabilityContractTest {
     fun offlineResolutionPrefersTheWorkingReelMuxedRouteBeforeLegacyMp4Fallbacks() {
         val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
         val offlineStart = resolver.indexOf("suspend fun resolveForOffline")
-        val reel = resolver.indexOf("resolveVideoWithAndroidReel", offlineStart)
-        val legacy = resolver.indexOf("val resolved = resolveInternal", offlineStart)
+        val retryHelper = resolver.indexOf("resolveWithLanguageRevisionRetry(track)", offlineStart)
+        val reel = resolver.indexOf("resolveVideoWithAndroidReel", retryHelper)
+        val legacy = resolver.indexOf("resolveInternal(", reel)
 
         assertTrue(offlineStart >= 0)
-        assertTrue(reel > offlineStart)
+        assertTrue(retryHelper > offlineStart)
+        assertTrue(reel > retryHelper)
         assertTrue(legacy > reel)
     }
 
@@ -114,7 +116,8 @@ class OfflineDownloadReliabilityContractTest {
 
         assertTrue(player.contains("mediaItem.localConfiguration?.uri?.toString()"))
         assertTrue(player.contains("queueTrack.copy(streamUrl = playingUri)"))
-        assertTrue(resolver.contains("quarantinePlaybackUrl(it, now + recovery.quarantineMs, now)"))
+        assertTrue(resolver.contains("quarantinePlaybackFailureTargets("))
+        assertTrue(resolver.contains("quarantinePlaybackUrl(it, now + quarantineMs, now)"))
         assertTrue(resolver.contains("!isPlaybackUrlBlocked(it.content)"))
     }
 

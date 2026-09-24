@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import java.nio.file.Files
 import java.nio.file.Path
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,10 +28,50 @@ class PlaybackResolverGenerationContractTest {
                 clear.indexOf("resolverGeneration.incrementAndGet()")
         )
         assertTrue(resolution.contains("val expectedGeneration = resolverGeneration.get()"))
-        assertTrue(resolution.contains("_${'$'}expectedGeneration"))
+        assertTrue(resolution.contains("_\$expectedGeneration"))
         assertTrue(store.contains("resolverGeneration.get() != expectedGeneration"))
         assertTrue(persist.contains("sourceMatchMutationMutex.withLock"))
         assertTrue(persist.contains("resolverGeneration.get() != expectedGeneration"))
+    }
+
+    @Test
+    fun `language changes rotate generation without destroying unrelated playback state`() {
+        val resolver = readResolverSource()
+        val setter = resolver
+            .substringAfter("fun setPreferredAudioLanguage")
+            .substringBefore("fun preferredAudioLanguage")
+
+        assertTrue(setter.contains("audioLanguageRevision.incrementAndGet()"))
+        assertTrue(setter.contains("resolverGeneration.incrementAndGet()"))
+        assertFalse(setter.contains("streamCache.clear()"))
+        assertFalse(setter.contains("sourceMatchStore.clearOnline()"))
+        assertFalse(setter.contains("YoutubeStreamClientIdentityRegistry.clear()"))
+    }
+
+    @Test
+    fun `manifest provenance persists the language it was resolved for`() {
+        val resolver = readResolverSource()
+        val provenance = resolver
+            .substringAfter("private fun basePlaybackProvenance")
+            .substringBefore("private fun buildManifest")
+        val reuse = resolver
+            .substringAfter("private fun canReuseProvidedPlayback")
+            .substringBefore("fun setHighQualityAudioMode")
+
+        assertTrue(provenance.contains("synchronized(streamCacheMutationLock)"))
+        assertTrue(provenance.contains("preferredAudioLanguage = preferredLanguage"))
+        assertFalse(reuse.contains("resolverGeneration"))
+    }
+
+    @Test
+    fun `video runtime cache identity includes the preferred audio language`() {
+        val resolver = readResolverSource()
+        val cacheKey = resolver
+            .substringAfter("private fun cacheKey(")
+            .substringBefore("private suspend fun resolveWithInnerTube")
+
+        assertTrue(cacheKey.contains("_video_\${quality}_lang_\$lang"))
+        assertTrue(cacheKey.contains("_audio_\${quality}_lang_\$lang"))
     }
 
     private fun readResolverSource(): String =

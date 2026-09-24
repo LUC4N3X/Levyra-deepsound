@@ -155,6 +155,50 @@ class PlaybackSourceIdentityTest {
     }
 
     @Test
+    fun persistentMatchesAreSeparatedByPreferredLanguageForAudioAndVideo() {
+        val track = track()
+
+        val italian = PlaybackSourceIdentity.matchKey(
+            track,
+            videoMode = false,
+            audioQuality = "High",
+            preferredAudioLanguage = "it-IT"
+        )
+        val english = PlaybackSourceIdentity.matchKey(
+            track,
+            videoMode = false,
+            audioQuality = "High",
+            preferredAudioLanguage = "en-US"
+        )
+        val defaultAudio = PlaybackSourceIdentity.matchKey(
+            track,
+            videoMode = false,
+            audioQuality = "High"
+        )
+
+        assertNotEquals(italian, english)
+        assertNotEquals(italian, defaultAudio)
+        assertTrue(italian.endsWith("|lang:it-it"))
+        assertTrue(defaultAudio.endsWith("|audio|high"))
+
+        val videoItalian = PlaybackSourceIdentity.matchKey(
+            track,
+            videoMode = true,
+            audioQuality = "High",
+            preferredAudioLanguage = "it-IT"
+        )
+        val videoEnglish = PlaybackSourceIdentity.matchKey(
+            track,
+            videoMode = true,
+            audioQuality = "High",
+            preferredAudioLanguage = "en-US"
+        )
+        assertNotEquals(videoItalian, videoEnglish)
+        assertTrue(videoItalian.endsWith("|lang:it-it"))
+        assertTrue(videoEnglish.endsWith("|lang:en-us"))
+    }
+
+    @Test
     fun offlineMp4MatchesUseASeparatePersistentKey() {
         val track = track()
 
