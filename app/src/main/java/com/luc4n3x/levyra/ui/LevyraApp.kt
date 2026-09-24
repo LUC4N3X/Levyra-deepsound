@@ -3963,7 +3963,11 @@ private fun AlbumOverlay(
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 92.dp else 12.dp)
+                .padding(
+                    start = 12.dp,
+                    end = 12.dp,
+                    bottom = if (state.currentTrack != null) 92.dp else 12.dp
+                )
         )
 
         addTarget?.let { track ->
@@ -5225,7 +5229,11 @@ private fun ArtistOverlay(
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 88.dp else 12.dp)
+                .padding(
+                    start = 12.dp,
+                    end = 12.dp,
+                    bottom = if (state.currentTrack != null) 88.dp else 12.dp
+                )
         )
 
         if (batchAddTargets.isNotEmpty()) {
@@ -12626,34 +12634,35 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             TrackSelectionBar(
                 state = selection,
                 allVisibleIds = selectableIds,
-                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        viewModel.playTracksNext(selectedTracks)
-                        selection.exit()
+                actions = TrackSelectionActions(
+                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.playTracksNext(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.addTracksToQueue(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        { batchAddTargets = selectedTracks }
+                    },
+                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.toggleFavorites(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.exportTracks(selectedTracks, strings.offline)
+                            selection.exit()
+                        }
                     }
-                },
-                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        viewModel.addTracksToQueue(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    { batchAddTargets = selectedTracks }
-                },
-                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        viewModel.toggleFavorites(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        viewModel.exportTracks(selectedTracks, strings.offline)
-                        selection.exit()
-                    }
-                }
-            )
+                )
             )
         }
 
