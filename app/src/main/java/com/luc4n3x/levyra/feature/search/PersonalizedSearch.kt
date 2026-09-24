@@ -105,6 +105,45 @@ internal fun buildSearchPlaceholderCycle(
     return candidates.toList()
 }
 
+internal fun buildSearchTasteHints(
+    prompts: List<PersonalizedSearchPrompt>,
+    fallbacks: List<String>,
+    limit: Int = 3
+): List<String> {
+    if (limit <= 0) return emptyList()
+
+    val result = ArrayList<String>(limit)
+    val identities = HashSet<String>()
+    val usedKinds = HashSet<PersonalizedSearchPromptKind>()
+
+    fun add(value: String): Boolean {
+        val trimmed = value.trim()
+        if (trimmed.isEmpty()) return false
+        val identity = trimmed.lowercase(Locale.ROOT)
+        if (!identities.add(identity)) return false
+        result += trimmed
+        return true
+    }
+
+    for (prompt in prompts) {
+        if (prompt.kind in usedKinds) continue
+        if (add(prompt.value)) usedKinds += prompt.kind
+        if (result.size == limit) return result
+    }
+
+    for (fallback in fallbacks) {
+        add(fallback)
+        if (result.size == limit) return result
+    }
+
+    for (prompt in prompts) {
+        add(prompt.value)
+        if (result.size == limit) break
+    }
+
+    return result
+}
+
 private fun interleaveDiverseTracks(sources: List<List<Track>>, limit: Int): List<Track> {
     val result = ArrayList<Track>(limit)
     val identities = HashSet<String>()
