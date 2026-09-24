@@ -4357,7 +4357,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun handleEmptyHomeFeed(
+    private suspend fun handleEmptyHomeFeed(
         languageCode: String,
         requestGeneration: Long,
         deferUntilHomeIdle: Boolean,
