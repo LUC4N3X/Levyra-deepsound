@@ -40,15 +40,19 @@ import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
 
+internal data class TrackSelectionActions(
+    val onPlayNext: (() -> Unit)? = null,
+    val onAddToQueue: (() -> Unit)? = null,
+    val onAddToPlaylist: (() -> Unit)? = null,
+    val onFavorite: (() -> Unit)? = null,
+    val onDownload: (() -> Unit)? = null
+)
+
 @Composable
 internal fun TrackSelectionBar(
     state: TrackSelectionState,
     allVisibleIds: List<String>,
-    onPlayNext: (() -> Unit)?,
-    onAddToQueue: (() -> Unit)?,
-    onAddToPlaylist: (() -> Unit)?,
-    onFavorite: (() -> Unit)?,
-    onDownload: (() -> Unit)?,
+    actions: TrackSelectionActions,
     modifier: Modifier = Modifier
 ) {
     if (!state.isActive) return
@@ -94,35 +98,35 @@ internal fun TrackSelectionBar(
                 }
             )
             Spacer(Modifier.size(2.dp))
-            onPlayNext?.let {
+            actions.onPlayNext?.let {
                 SelectionAction(
                     label = strings.playNext,
                     icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null) },
                     onClick = it
                 )
             }
-            onAddToQueue?.let {
+            actions.onAddToQueue?.let {
                 SelectionAction(
                     label = strings.addToQueue,
                     icon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null) },
                     onClick = it
                 )
             }
-            onAddToPlaylist?.let {
+            actions.onAddToPlaylist?.let {
                 SelectionAction(
                     label = strings.addToPlaylist,
                     icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
                     onClick = it
                 )
             }
-            onFavorite?.let {
+            actions.onFavorite?.let {
                 SelectionAction(
                     label = strings.favorite,
                     icon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
                     onClick = it
                 )
             }
-            onDownload?.let {
+            actions.onDownload?.let {
                 SelectionAction(
                     label = strings.download,
                     icon = { Icon(Icons.Rounded.Download, contentDescription = null) },
