@@ -34,6 +34,7 @@ internal fun PlayerProgress(
     secondaryColor: Color,
     surfaces: PlayerSurfaceTokens,
     isPlaying: Boolean,
+    playbackSpeed: Float,
     animationsEnabled: Boolean,
     compact: Boolean,
     onSeek: (Float) -> Unit,
@@ -54,6 +55,7 @@ internal fun PlayerProgress(
             durationMs = durationMs,
             bufferedPositionMs = bufferedPositionMs,
             isPlaying = isPlaying,
+            playbackSpeed = playbackSpeed,
             onSeekTo = { seekMs ->
                 if (durationMs > 0L) {
                     onSeek((seekMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f))
