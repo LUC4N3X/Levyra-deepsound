@@ -49,6 +49,21 @@ class PlaybackResolverGenerationContractTest {
     }
 
     @Test
+    fun `manifest provenance persists the language it was resolved for`() {
+        val resolver = readResolverSource()
+        val provenance = resolver
+            .substringAfter("private fun basePlaybackProvenance")
+            .substringBefore("private fun buildManifest")
+        val reuse = resolver
+            .substringAfter("private fun canReuseProvidedPlayback")
+            .substringBefore("fun setHighQualityAudioMode")
+
+        assertTrue(provenance.contains("synchronized(streamCacheMutationLock)"))
+        assertTrue(provenance.contains("preferredAudioLanguage = preferredLanguage"))
+        assertFalse(reuse.contains("resolverGeneration"))
+    }
+
+    @Test
     fun `video runtime cache identity includes the preferred audio language`() {
         val resolver = readResolverSource()
         val cacheKey = resolver

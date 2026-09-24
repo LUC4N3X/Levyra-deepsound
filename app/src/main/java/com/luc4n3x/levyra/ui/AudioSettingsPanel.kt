@@ -263,19 +263,22 @@ internal fun AudioSettingsPanel(
                         title = strings.audioLanguageTitle,
                         description = strings.audioLanguageSubtitle,
                         selected = preferredAudioLanguage,
-                        options = remember(strings.audioLanguageOriginalDefault) {
-                            listOf(
-                                "" to strings.audioLanguageOriginalDefault,
-                                "en" to "🇬🇧 English",
-                                "it" to "🇮🇹 Italiano",
-                                "es" to "🇪🇸 Español",
-                                "fr" to "🇫🇷 Français",
-                                "de" to "🇩🇪 Deutsch",
-                                "pt" to "🇵🇹 Português",
-                                "ja" to "🇯🇵 日本語",
-                                "ko" to "🇰🇷 한국어",
-                                "ru" to "🇷🇺 Русский",
-                                "hi" to "🇮🇳 हिन्दी"
+                        options = remember(strings.audioLanguageOriginalDefault, preferredAudioLanguage) {
+                            audioLanguageSelectorOptions(
+                                baseOptions = listOf(
+                                    "" to strings.audioLanguageOriginalDefault,
+                                    "en" to "🇬🇧 English",
+                                    "it" to "🇮🇹 Italiano",
+                                    "es" to "🇪🇸 Español",
+                                    "fr" to "🇫🇷 Français",
+                                    "de" to "🇩🇪 Deutsch",
+                                    "pt" to "🇵🇹 Português",
+                                    "ja" to "🇯🇵 日本語",
+                                    "ko" to "🇰🇷 한국어",
+                                    "ru" to "🇷🇺 Русский",
+                                    "hi" to "🇮🇳 हिन्दी"
+                                ),
+                                storedLanguage = preferredAudioLanguage
                             )
                         },
                         onSelect = onPreferredAudioLanguage
@@ -1513,6 +1516,21 @@ private fun AlternativeAudioCard(
             }
         }
     }
+}
+
+internal fun audioLanguageSelectorOptions(
+    baseOptions: List<Pair<String, String>>,
+    storedLanguage: String
+): List<Pair<String, String>> {
+    if (storedLanguage.isBlank() || baseOptions.any { (code, _) -> code == storedLanguage }) return baseOptions
+    return baseOptions + (storedLanguage to storedAudioLanguageLabel(storedLanguage))
+}
+
+private fun storedAudioLanguageLabel(code: String): String {
+    val locale = Locale.forLanguageTag(code)
+    val name = locale.getDisplayName(locale)
+    if (name.isBlank() || name.equals(code, ignoreCase = true)) return code
+    return name.replaceFirstChar { it.titlecase(locale) }
 }
 
 @Composable

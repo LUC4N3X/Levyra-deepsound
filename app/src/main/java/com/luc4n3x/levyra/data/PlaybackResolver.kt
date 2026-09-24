@@ -456,26 +456,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             selectedPreferredAudioLanguage to audioLanguageRevision.get()
         }
 
-    private fun canReuseProvidedPlayback(track: Track, expectedGeneration: Long): Boolean {
-        if (track.playbackManifest?.alternativeSource != null) return true
+    private fun canReuseProvidedPlayback(track: Track): Boolean {
         val (preferredLanguage, revision) = preferredAudioLanguageSnapshot()
-        val manifest = track.playbackManifest
-        if (preferredLanguage.isNotBlank() && manifest?.let(::isLanguageBlindFallbackManifest) == true) {
-            return false
-        }
-        val manifestGeneration = manifest?.provenance?.resolverGeneration ?: -1L
-        if (manifestGeneration >= 0L) return manifestGeneration == expectedGeneration
-        if (preferredLanguage.isBlank()) return revision == 0L
-        val rawXtags = AudioLanguageIntelligence.extractXtagsFromUrl(track.streamUrl)
-        val streamLanguage = AudioLanguageIntelligence.extractXtag(rawXtags, "lang")
-        return AudioLanguageIntelligence.canReuseResolvedLanguage(streamLanguage, preferredLanguage)
+        return AudioLanguageIntelligence.canReuseProvidedPlayback(
+            manifest = track.playbackManifest,
+            streamUrl = track.streamUrl,
+            preferredLanguage = preferredLanguage,
+            languageRevision = revision
+        )
     }
-
-    private fun isLanguageBlindFallbackManifest(manifest: ResolvedPlaybackManifest): Boolean =
-        manifest.isMuxed ||
-            manifest.streams.any { descriptor ->
-                descriptor.selected && descriptor.kind == PlaybackStreamKind.HLS
-            }
 
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         highQualityPlayback.mode = mode
@@ -591,7 +580,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
         if (track.streamUrl.isNotBlank()) {
-            val valid = canReuseProvidedPlayback(track, resolverGeneration.get()) &&
+            val valid = canReuseProvidedPlayback(track) &&
                 !isPlaybackUrlBlocked(track.streamUrl) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
@@ -632,8 +621,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     fun invalidate(track: Track, isVideoMode: Boolean = false, offlineExport: Boolean = false) {
         if (offlineExport) return
         synchronized(streamCacheMutationLock) {
-            val generation = resolverGeneration.get()
-            if (canReuseProvidedPlayback(track, generation)) {
+            if (canReuseProvidedPlayback(track)) {
                 remove(cacheKey(track, isVideoMode))
             }
         }
@@ -805,7 +793,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long,
         eligible: Boolean
     ) {
-        if (!eligible || !canReuseProvidedPlayback(track, expectedGeneration)) return
+        if (!eligible || !canReuseProvidedPlayback(track)) return
         promoteAlternateCandidate(track, isVideoMode, audioQuality, expectedGeneration)
     }
 
@@ -827,7 +815,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         quarantineMs: Long,
         expectedGeneration: Long
     ) {
-        if (!canReuseProvidedPlayback(track, expectedGeneration)) return
+        if (!canReuseProvidedPlayback(track)) return
         val (preferredLanguage, languageRevision) = preferredAudioLanguageSnapshot()
         sourceMatchScope.launch {
             if (expectedGeneration != resolverGeneration.get() ||
@@ -1152,7 +1140,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         track.streamUrl.takeIf {
             reuseProvidedStream &&
-            canReuseProvidedPlayback(track, expectedGeneration) &&
+            canReuseProvidedPlayback(track) &&
             it.isNotBlank() &&
                 !isPlaybackUrlBlocked(it) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
@@ -1220,7 +1208,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (expiresAt > 0L && System.currentTimeMillis() + 90_000L >= expiresAt) return null
                 return track
             }
-            if (!canReuseProvidedPlayback(track, resolverGeneration.get())) {
+            if (!canReuseProvidedPlayback(track)) {
                 if (!hasInternetCapableNetwork()) return null
                 val unresolved = track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
                 return runCatchingPreservingCancellation { resolve(unresolved, isVideoMode) }.getOrNull()
@@ -2035,7 +2023,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         if (stored.entity.blockedUntil > now) return null
         val manifest = stored.manifest
-        if (preferredAudioLanguage.isNotBlank() && manifest?.let(::isLanguageBlindFallbackManifest) == true) {
+        if (preferredAudioLanguage.isNotBlank() && manifest?.let(AudioLanguageIntelligence::isLanguageBlindFallback) == true) {
             return null
         }
         if (manifest != null && manifest.isFresh(now) && manifestUrlsUsable(manifest, isVideoMode, preferMp4Audio)) {
@@ -2241,7 +2229,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (resolverGeneration.get() != expectedGeneration) return
                 selectedPreferredAudioLanguage
             }
-            if (preferredAudioLanguage.isNotBlank() && isLanguageBlindFallbackManifest(manifest)) return
+            if (preferredAudioLanguage.isNotBlank() && AudioLanguageIntelligence.isLanguageBlindFallback(manifest)) return
             try {
                 sourceMatchStore.save(
                     original,
@@ -2691,7 +2679,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (resolverGeneration.get() != expectedGeneration) return
             if (
                 selectedPreferredAudioLanguage.isNotBlank() &&
-                resolvedTrack.playbackManifest?.let(::isLanguageBlindFallbackManifest) == true
+                resolvedTrack.playbackManifest?.let(AudioLanguageIntelligence::isLanguageBlindFallback) == true
             ) return
             val editor = prefs.edit()
             var preferencesChanged = false
@@ -3804,8 +3792,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             settings.usesProxy -> "streaming-proxy"
             else -> "streaming-direct"
         }
+        val (generation, preferredLanguage) = synchronized(streamCacheMutationLock) {
+            resolverGeneration.get() to selectedPreferredAudioLanguage
+        }
         return PlaybackStreamProvenance(
-            resolverGeneration = resolverGeneration.get(),
+            resolverGeneration = generation,
+            preferredAudioLanguage = preferredLanguage,
             networkGeneration = LevyraNetworkConfiguration.generation,
             networkRoute = route
         )

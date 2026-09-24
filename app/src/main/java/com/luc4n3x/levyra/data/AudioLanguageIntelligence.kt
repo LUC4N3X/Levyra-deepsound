@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.player.offline.audioContentLengthFromUrl
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
@@ -87,6 +89,26 @@ object AudioLanguageIntelligence {
         if (normalizedLanguage == normalizedPreferred) return true
         if ('-' in normalizedPreferred) return false
         return normalizedLanguage.substringBefore('-') == normalizedPreferred
+    }
+
+    internal fun isLanguageBlindFallback(manifest: ResolvedPlaybackManifest): Boolean =
+        manifest.isMuxed ||
+            manifest.streams.any { descriptor ->
+                descriptor.selected && descriptor.kind == PlaybackStreamKind.HLS
+            }
+
+    internal fun canReuseProvidedPlayback(
+        manifest: ResolvedPlaybackManifest?,
+        streamUrl: String,
+        preferredLanguage: String,
+        languageRevision: Long
+    ): Boolean {
+        if (manifest?.alternativeSource != null) return true
+        if (preferredLanguage.isNotBlank() && manifest?.let(::isLanguageBlindFallback) == true) return false
+        manifest?.provenance?.preferredAudioLanguage?.let { return it == preferredLanguage }
+        if (preferredLanguage.isBlank()) return languageRevision == 0L
+        val streamLanguage = extractXtag(extractXtagsFromUrl(streamUrl), "lang")
+        return canReuseResolvedLanguage(streamLanguage, preferredLanguage)
     }
 
     fun extractXtag(xtags: String?, key: String): String? {
