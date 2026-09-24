@@ -6311,6 +6311,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun toggleFavorites(tracks: List<Track>) {
+        val cleanTracks = tracks
+            .asSequence()
+            .filterNot(Track::isLiveRadio)
+            .distinctBy { track -> track.id.ifBlank { track.isrc.ifBlank { track.audioVideoId.ifBlank { track.title + "|" + track.artist } } } }
+            .toList()
+        if (cleanTracks.isEmpty()) return
+        viewModelScope.launch {
+            val updated = favoriteMutationMutex.withLock {
+                favoritesStore.toggleFavorites(cleanTracks).also { favorites ->
+                    val timestamps = favoritesStore.loadTimestampsSuspending()
+                    _state.update { state ->
+                        state.copy(
+                            favorites = favorites,
+                            favoriteIds = favorites.map { favorite -> favorite.id }.toSet(),
+                            favoriteTimestamps = timestamps
+                        )
+                    }
+                }
+            }
+            refreshForgottenFavorites()
+            LevyraArtworkCache.preloadPriority(
+                getApplication<Application>().applicationContext,
+                updated,
+                6
+            )
+        }
+    }
+
     fun removeFavorites(tracks: List<Track>) {
         val ids = tracks.map { it.id }.filter(String::isNotBlank).toSet()
         if (ids.isEmpty()) return
