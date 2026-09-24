@@ -38,6 +38,7 @@ Use these pages to get started, learn how features work, troubleshoot issues, or
 
 ## Learn more
 
+- [How I work on Levyra](development-notes.md) explains how changes are reviewed and checked before they ship.
 - [Architecture](architecture.md) explains how the Android and Windows apps are structured.
 - [Roadmap](roadmap.md) shows the current engineering direction.
 - [Privacy & Data](privacy.md) explains what Levyra stores locally and which network services it contacts.
