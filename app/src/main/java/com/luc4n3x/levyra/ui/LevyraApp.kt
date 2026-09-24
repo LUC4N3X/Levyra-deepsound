@@ -4595,8 +4595,15 @@ private fun AlbumTrackRow(
                 .fillMaxWidth()
                 .heightIn(min = ALBUM_TRACK_ROW_HEIGHT)
                 .clip(RoundedCornerShape(LevyraPlayerDesign.CornerXs))
-                .background(if (isCurrent) stage.accent.copy(alpha = 0.12f) else Color.Transparent)
-                .clickable(onClick = onPlay)
+                .background(
+                    when {
+                        isFavorite -> stage.accent.copy(alpha = 0.18f)
+                        isCurrent -> stage.accent.copy(alpha = 0.12f)
+                        else -> Color.Transparent
+                    }
+                )
+                .semantics { selected = isFavorite }
+                .combinedClickable(onClick = onPlay, onLongClick = {})
                 .padding(start = LevyraPlayerDesign.SpaceXs, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
