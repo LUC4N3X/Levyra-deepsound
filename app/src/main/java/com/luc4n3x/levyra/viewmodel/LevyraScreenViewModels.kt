@@ -414,6 +414,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun reorderPlaylist(playlistId: String, tracks: List<Track>) = root.reorderPlaylist(playlistId, tracks)
     fun resumeDownload(taskKey: String) = root.resumeDownload(taskKey)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun toggleFavorites(tracks: List<Track>) = root.toggleFavorites(tracks)
     fun togglePlay() = root.togglePlay()
 }
 
