@@ -4719,12 +4719,17 @@ private fun AlbumTrackRow(
                     }
                 )
                 .semantics { this.selected = presentation.selected }
-                .combinedClickable(onClick = actions.onPlay, actions.onLongClick = actions.onLongClick)
+                .combinedClickable(onClick = actions.onPlay, onLongClick = actions.onLongClick)
                 .padding(start = LevyraPlayerDesign.SpaceXs, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
         ) {
-            AlbumTrackIndex(index = index, presentation.isCurrent = presentation.isCurrent, presentation.isPlaying = presentation.isPlaying, stage = stage)
+            AlbumTrackIndex(
+                index = index,
+                isCurrent = presentation.isCurrent,
+                isPlaying = presentation.isPlaying,
+                stage = stage
+            )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = track.title,
@@ -4768,14 +4773,14 @@ private fun AlbumTrackRow(
             } else {
                 AlbumTrackMenu(
                     track = track,
-                    presentation.isFavorite = presentation.isFavorite,
-                    presentation.isDownloaded = presentation.isDownloaded,
-                    presentation.isDownloading = presentation.isDownloading,
+                    isFavorite = presentation.isFavorite,
+                    isDownloaded = presentation.isDownloaded,
+                    isDownloading = presentation.isDownloading,
                     tint = stage.contentMuted,
-                    actions.onFavorite = actions.onFavorite,
-                    actions.onDownload = actions.onDownload,
-                    actions.onAddToPlaylist = actions.onAddToPlaylist,
-                    actions.onArtist = actions.onArtist
+                    onFavorite = actions.onFavorite,
+                    onDownload = actions.onDownload,
+                    onAddToPlaylist = actions.onAddToPlaylist,
+                    onArtist = actions.onArtist
                 )
             }
         }
