@@ -80,12 +80,15 @@ import com.luc4n3x.levyra.domain.selectReplayGain
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_SOURCE
+import com.luc4n3x.levyra.feature.radio.LiveRadioStreamMetadata
 import com.luc4n3x.levyra.feature.systemintegration.OPLUS_LYRIC_INFO_KEY
 import com.luc4n3x.levyra.feature.systemintegration.OPlusLyricsPayloadContext
 import com.luc4n3x.levyra.feature.systemintegration.buildOPlusLyricsPayload
 import com.luc4n3x.levyra.feature.systemintegration.detectLevyraRomMediaCapabilities
 import com.luc4n3x.levyra.feature.radio.RadioUrlPolicy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
+import com.luc4n3x.levyra.feature.radio.liveRadioStreamMetadata
+import com.luc4n3x.levyra.feature.radio.nextLiveRadioStreamMetadata
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackBackendProvider
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackState
 import com.luc4n3x.levyra.feature.cast.CastHandoffConverter
@@ -231,6 +234,7 @@ class PlaybackService : MediaLibraryService() {
         private const val VOLUME_CHANGED_ACTION = "android.media.VOLUME_CHANGED_ACTION"
         private const val EXTRA_VOLUME_STREAM_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
         private const val WATCHDOG_INTERVAL_MS = 5_000L
+        private const val LIVE_RADIO_STALE_PAUSE_MS = 20_000L
         private const val WATCHDOG_STALL_TIMEOUT_MS = 15_000L
         private const val MAX_TRANSITION_LOOKAHEAD_MS = 20_000L
         private const val TRANSITION_PREPARE_TIMEOUT_MS = 8_000L
@@ -256,8 +260,8 @@ class PlaybackService : MediaLibraryService() {
         private val _sleepTimerStateFlow = MutableStateFlow<PlaybackSleepTimerState>(PlaybackSleepTimerState.Disabled)
         val sleepTimerStateFlow: StateFlow<PlaybackSleepTimerState> = _sleepTimerStateFlow.asStateFlow()
 
-        private val _liveRadioMetadataFlow = MutableStateFlow("")
-        val liveRadioMetadataFlow: StateFlow<String> = _liveRadioMetadataFlow.asStateFlow()
+        private val _liveRadioMetadataFlow = MutableStateFlow(LiveRadioStreamMetadata())
+        internal val liveRadioMetadataFlow: StateFlow<LiveRadioStreamMetadata> = _liveRadioMetadataFlow.asStateFlow()
 
         @Volatile
         var activePlayer: ExoPlayer? = null
@@ -286,6 +290,12 @@ class PlaybackService : MediaLibraryService() {
         fun cancelSleepTimer(): Boolean {
             val service = activeService ?: return false
             service.sleepTimer.cancel()
+            return true
+        }
+
+        fun publishLiveRadioArtwork(trackId: String, artworkUri: String): Boolean {
+            val service = activeService ?: return false
+            service.serviceScope.launch { service.publishLiveRadioArtworkInternal(trackId, artworkUri) }
             return true
         }
 
@@ -376,6 +386,9 @@ class PlaybackService : MediaLibraryService() {
     private val playbackFailureGuard = ConsecutivePlaybackFailureGuard()
     private var sleepFadeBaselineVolume: Float? = null
     private var pausedByRouteLossAtMs: Long? = null
+    private var liveRadioPausedAtMs = C.TIME_UNSET
+    private var liveRadioReconnectJob: Job? = null
+    private var lastTransitionMediaId: String? = null
     private val romMediaCapabilities by lazy { detectLevyraRomMediaCapabilities() }
     private var romMediaId = ""
     private var romMediaGeneration = 0L
@@ -549,6 +562,20 @@ class PlaybackService : MediaLibraryService() {
         romMediaGeneration = (romMediaGeneration + 1L).coerceAtLeast(1L)
     }
 
+    private fun publishLiveRadioArtworkInternal(trackId: String, artworkUri: String) {
+        val player = activePlayer ?: return
+        val current = player.currentMediaItem ?: return
+        if (current.mediaId != trackId || !isLiveRadioMediaItem(current)) return
+        val artwork = Uri.parse(artworkUri)
+        if (current.mediaMetadata.artworkUri == artwork) return
+        val updatedItem = current
+            .buildUpon()
+            .setMediaMetadata(current.mediaMetadata.buildUpon().setArtworkUri(artwork).build())
+            .build()
+        val index = player.currentMediaItemIndex
+        if (index in 0 until player.mediaItemCount) player.replaceMediaItem(index, updatedItem)
+    }
+
     private fun publishSystemLyricsInternal(
         track: Track,
         lines: List<LyricLine>,
@@ -624,12 +651,12 @@ class PlaybackService : MediaLibraryService() {
             )
         val upstreamFactory = LevyraYoutubeDataSource.Factory(baseHttpFactory)
         val liveRadioHttpClient = LevyraHttpClientFactory.streaming(this).newBuilder()
-            .addInterceptor { chain ->
+            .addNetworkInterceptor { chain ->
                 val request = chain.request()
                 if (!RadioUrlPolicy.isAllowed(request.url.toString())) {
                     throw IOException("Blocked unsafe live radio URL")
                 }
-                chain.proceed(request)
+                chain.proceed(request.newBuilder().header("Icy-MetaData", "1").build())
             }
             .dns(RadioUrlPolicy.publicDns)
             .build()
@@ -726,7 +753,12 @@ class PlaybackService : MediaLibraryService() {
         activePlayer = player
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                _liveRadioMetadataFlow.value = ""
+                if (mediaItem?.mediaId != lastTransitionMediaId) {
+                    lastTransitionMediaId = mediaItem?.mediaId
+                    _liveRadioMetadataFlow.value = LiveRadioStreamMetadata()
+                    liveRadioPausedAtMs = C.TIME_UNSET
+                    liveRadioReconnectJob?.cancel()
+                }
                 updateRomMediaGeneration(mediaItem)
                 RuntimeHooks.player(
                     action = RuntimeSignal.PLAYER_TRANSITION,
@@ -772,12 +804,9 @@ class PlaybackService : MediaLibraryService() {
 
             override fun onMetadata(metadata: Metadata) {
                 if (!isLiveRadioMediaItem(player.currentMediaItem)) return
-                val title = (0 until metadata.length())
-                    .mapNotNull { index -> (metadata[index] as? IcyInfo)?.title?.trim() }
-                    .firstOrNull(String::isNotBlank)
-                    .orEmpty()
-                    .take(240)
-                if (title.isNotBlank()) _liveRadioMetadataFlow.value = title
+                val icy = (0 until metadata.length()).firstNotNullOfOrNull { index -> metadata[index] as? IcyInfo } ?: return
+                val received = liveRadioStreamMetadata(icy.title, String(icy.rawMetadata, Charsets.UTF_8))
+                _liveRadioMetadataFlow.value = nextLiveRadioStreamMetadata(_liveRadioMetadataFlow.value, received)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -840,6 +869,9 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (isLiveRadioMediaItem(player.currentMediaItem)) {
+                    if (playWhenReady) reconnectStaleLiveRadio(player) else liveRadioPausedAtMs = SystemClock.elapsedRealtime()
+                }
                 if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) {
                     lostRouteWasBluetooth = lostRouteWasBluetooth || routedOutputIsBluetooth
                     pausedByRouteLossAtMs = SystemClock.elapsedRealtime()
@@ -2216,7 +2248,7 @@ class PlaybackService : MediaLibraryService() {
         updateDeviceVolumeReceiver(false)
         sleepTimer.cancel()
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
-        _liveRadioMetadataFlow.value = ""
+        _liveRadioMetadataFlow.value = LiveRadioStreamMetadata()
         _remotePlaybackStateFlow.value = RemotePlaybackState()
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
@@ -2336,6 +2368,22 @@ class PlaybackService : MediaLibraryService() {
         } else if (!shouldPreservePlaybackExpectation(player)) {
             releasePlaybackWakeLock()
             markPlaybackExpected(false)
+        }
+    }
+
+    private fun reconnectStaleLiveRadio(player: ExoPlayer) {
+        val pausedAtMs = liveRadioPausedAtMs
+        liveRadioPausedAtMs = C.TIME_UNSET
+        if (pausedAtMs == C.TIME_UNSET || SystemClock.elapsedRealtime() - pausedAtMs < LIVE_RADIO_STALE_PAUSE_MS) return
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        liveRadioReconnectJob?.cancel()
+        liveRadioReconnectJob = serviceScope.launch {
+            val stillCurrent = player.currentMediaItem?.mediaId == mediaId && player.playWhenReady
+            val loaded = player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING
+            if (!stillCurrent || !loaded) return@launch
+            _liveRadioMetadataFlow.value = LiveRadioStreamMetadata()
+            player.stop()
+            player.prepare()
         }
     }
 
