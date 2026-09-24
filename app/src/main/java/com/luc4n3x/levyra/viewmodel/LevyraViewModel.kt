@@ -6315,7 +6315,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val cleanTracks = tracks
             .asSequence()
             .filterNot { track -> track.isLiveRadio() }
-            .distinctBy { track -> track.id.ifBlank { track.isrc.ifBlank { track.audioVideoId.ifBlank { track.title + "|" + track.artist } } } }
+            .distinctBy { track ->
+                track.id.ifBlank {
+                    track.isrc.ifBlank {
+                        track.audioVideoId.ifBlank { track.title + "|" + track.artist }
+                    }
+                }
+            }
             .toList()
         if (cleanTracks.isEmpty()) return
         viewModelScope.launch {
