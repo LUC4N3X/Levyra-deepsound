@@ -57,15 +57,13 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 
 ## ✦ Why Levyra
 
-Levyra started as the player I wanted for myself: one place for streaming, local audio files, and a library I can actually keep.
+I started Levyra because I wanted one music player for both streaming and the music already on my devices. I did not want local tracks to feel like a second-class feature, and I did not want playlists, history or downloads tied to an account I had to keep.
 
-I kept running into music apps that handled one side well and made the other feel secondary. Streaming lived in one place, local files in another, downloads were often locked inside the app, and basic things like playlists or listening history could depend on an account. I wanted those parts to feel like one library instead.
+That is still the basic idea behind the project. Downloads are normal audio files in your storage, local and streamed tracks can live in the same library, and listening data stays on the device.
 
-That shaped a lot of the decisions in Levyra. Downloads are normal audio files saved to your storage. Local tracks can sit next to streamed music. Playlists, history and listening stats stay on the device, and Levyra does not need its own account to remember how you use it.
+Over time I added the things I personally missed elsewhere: synced lyrics, timing offsets, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, backups and a Windows version. The goal is not to collect features for the sake of it; they should still feel like parts of the same player.
 
-As the project grew, I added the things I kept missing in other players: proper synced lyrics, timing offsets, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, local backups and a Windows version. Some people will use only a few of those. I still want them to feel like parts of the same player instead of a pile of separate tools.
-
-External services provide some of the music, lyrics, artwork and metadata Levyra can use, but the library itself stays under your control. The app is open source, keeps its own data local where it can, and is built so that changing a source or service does not mean losing the rest of your setup.
+Levyra uses external services for some music, lyrics, artwork and metadata, but the app itself stays open source and the library remains under your control.
 
 ## ✦ Project recognition
 
@@ -210,7 +208,7 @@ More technical notes and platform details are available in the [documentation](h
 
 ## ✦ Under the hood
 
-Android and Windows share the same Kotlin extraction code, while playback and UI stay native to each platform.
+Android and Windows share the same Kotlin extraction and networking code, but each platform keeps its own native playback and UI stack.
 
 | Layer | Android | Windows |
 | --- | --- | --- |
@@ -223,17 +221,17 @@ Android and Windows share the same Kotlin extraction code, while playback and UI
 
 ### Why native instead of a web wrapper
 
-Levyra does not bundle Chromium, Electron, or WebView containers.
+I did not want Levyra to be a browser shell with a music player inside it.
 
-On Windows, playback runs through libVLC while the interface uses Compose Multiplatform. This keeps the player separate from a browser runtime and lets VLC handle audio decoding natively.
+On Windows, the interface uses Compose Multiplatform and playback runs through libVLC. On Android, Media3 handles audio focus, Bluetooth controls, lockscreen playback, media sessions and Android Auto directly.
 
-On Android, Media3 integrates directly with system audio focus, Bluetooth controls, lockscreen playback, media sessions, and Android Auto, keeping background audio independent of any browser process.
+There is no bundled Chromium, Electron or WebView runtime in the player.
 
 ## ✦ Development
 
-Levyra is developed in public. I use whatever tools are useful for research, debugging and review, including AI-assisted tools when they help, but I do not treat generated code as finished code. Changes still have to fit the existing architecture, preserve behavior, pass the repository checks, and make sense to me before they ship.
+Levyra is developed in public. I use the tools that help me get the job done, including AI-assisted tools when they are useful, but generated output is never treated as finished code. I still have to understand it, fit it into the existing codebase, test the parts it can affect, and decide whether it belongs.
 
-If you want to judge the project, you do not have to take that paragraph on faith. The commit history, pull requests, issues, engineering rules and release history are public. [More about how I work on Levyra](docs/site/development-notes.md).
+The history is there to inspect: commits, pull requests, issues, engineering rules and releases are public. [More about how I work on Levyra](docs/site/development-notes.md).
 
 ## ✦ Privacy
 
@@ -299,7 +297,7 @@ Contributions and bug reports are welcome. Technical documentation and architect
 
 **Creator & Lead Developer**
 
-Independent developer building Levyra for Android and Windows.
+Levyra is a personal project. I maintain the Android and Windows apps, review changes, and decide what ships.
 
 <a href="https://github.com/LUC4N3X"><b>GitHub</b></a>
 &nbsp;&nbsp;·&nbsp;&nbsp;
