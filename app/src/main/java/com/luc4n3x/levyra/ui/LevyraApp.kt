@@ -22382,9 +22382,19 @@ private fun SearchTrackCard(
             )
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+                DownloadButton(
+                    isDownloading = isDownloading,
+                    isDownloaded = isDownloaded,
+                    progress = downloadProgress,
+                    onDownload = onDownload
+                )
                 IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                    Icon(
+                        Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        contentDescription = LocalLevyraStrings.current.addToPlaylist,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
                 IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
                     Icon(
@@ -22668,11 +22678,21 @@ private fun TrackRow(
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             if (onDownload != null) {
-                DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+                DownloadButton(
+                    isDownloading = isDownloading,
+                    isDownloaded = isDownloaded,
+                    progress = downloadProgress,
+                    onDownload = onDownload
+                )
             }
             if (onAddToPlaylist != null) {
                 IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                    Icon(
+                        Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        contentDescription = LocalLevyraStrings.current.addToPlaylist,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
             IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
