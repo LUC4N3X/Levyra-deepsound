@@ -31,6 +31,10 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.resolveSelected
+import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
+import com.luc4n3x.levyra.ui.selection.trackSelectionKey
 import com.luc4n3x.levyra.ui.components.SpringIconButton
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.playerGlass
@@ -95,6 +99,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -2629,6 +2635,12 @@ fun LevyraApp(
 
                     onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
                     onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
+                    onPlayTracksNext = viewModel::playTracksNext,
+                    onAddTracksToQueue = viewModel::addTracksToQueue,
+                    onToggleFavorites = viewModel::toggleFavorites,
+                    onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
+                    onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
+                    onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                     onOpenAlbumArtist = viewModel::openArtistFromAlbum,
                     onOpenTrackArtist = viewModel::openArtist,
                     onOpenPlayer = viewModel::openPlayerScreen,
@@ -2641,6 +2653,13 @@ fun LevyraApp(
                     state = state,
                     onPlay = viewModel::playArtistSong,
                     onPlayAll = { tracks -> viewModel.playAll(tracks) },
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onPlayTracksNext = viewModel::playTracksNext,
+                    onAddTracksToQueue = viewModel::addTracksToQueue,
+                    onToggleFavorites = viewModel::toggleFavorites,
+                    onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
+                    onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
+                    onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                     onToggleFollow = viewModel::toggleFollowArtist,
                     onToggleExclude = { browseId, name -> viewModel.toggleExcludeArtist(browseId, name) },
                     onTogglePinToHome = { artist -> viewModel.toggleSpeedDialArtist(artist.name, artist.browseId, artist.thumbnailUrl) },
