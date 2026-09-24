@@ -3722,29 +3722,33 @@ private fun AlbumOverlay(
                     track = track,
                     albumArtist = album?.artist.orEmpty(),
                     stage = stage,
-                    isCurrent = uiTrackMatches(state.currentTrack, track),
-                    isPlaying = state.isPlaying,
-                    isFavorite = track.id in state.favoriteIds,
-                    isDownloading = track.id in state.downloadingTrackIds,
-                    isDownloaded = track.id in state.downloadedTrackIds,
-                    downloadProgress = state.downloadProgressByTrackId[track.id],
-                    showDivider = index < tracks.lastIndex,
-                    selected = selection.isSelected(selectionKey),
-                    selectionActive = selection.isActive,
-                    onLongClick = { selection.start(selectionKey) },
-                    onPlay = {
-                        if (selection.isActive) {
-                            selection.toggle(selectionKey)
-                        } else if (uiTrackMatches(state.currentTrack, track)) {
-                            onOpenPlayer()
-                        } else {
-                            onPlay(track)
-                        }
-                    },
-                    onFavorite = { onFavorite(track) },
-                    onDownload = { onDownload(track) },
-                    onAddToPlaylist = { addTarget = track },
-                    onArtist = { onOpenTrackArtist(track) },
+                    presentation = AlbumTrackRowPresentation(
+                        isCurrent = uiTrackMatches(state.currentTrack, track),
+                        isPlaying = state.isPlaying,
+                        isFavorite = track.id in state.favoriteIds,
+                        isDownloading = track.id in state.downloadingTrackIds,
+                        isDownloaded = track.id in state.downloadedTrackIds,
+                        downloadProgress = state.downloadProgressByTrackId[track.id],
+                        showDivider = index < tracks.lastIndex,
+                        selected = selection.isSelected(selectionKey),
+                        selectionActive = selection.isActive
+                    ),
+                    actions = AlbumTrackRowActions(
+                        onLongClick = { selection.start(selectionKey) },
+                        onPlay = {
+                            if (selection.isActive) {
+                                selection.toggle(selectionKey)
+                            } else if (uiTrackMatches(state.currentTrack, track)) {
+                                onOpenPlayer()
+                            } else {
+                                onPlay(track)
+                            }
+                        },
+                        onFavorite = { onFavorite(track) },
+                        onDownload = { onDownload(track) },
+                        onAddToPlaylist = { addTarget = track },
+                        onArtist = { onOpenTrackArtist(track) }
+                    ),
                     modifier = Modifier.padding(horizontal = gutter)
                 )
             }
@@ -4657,27 +4661,35 @@ private fun LinearMiniLoading(modifier: Modifier = Modifier) {
     }
 }
 
+private data class AlbumTrackRowPresentation(
+    val isCurrent: Boolean,
+    val isPlaying: Boolean,
+    val isFavorite: Boolean,
+    val isDownloading: Boolean,
+    val isDownloaded: Boolean,
+    val downloadProgress: Int?,
+    val showDivider: Boolean,
+    val selected: Boolean,
+    val selectionActive: Boolean
+)
+
+private data class AlbumTrackRowActions(
+    val onLongClick: () -> Unit,
+    val onPlay: () -> Unit,
+    val onFavorite: () -> Unit,
+    val onDownload: () -> Unit,
+    val onAddToPlaylist: () -> Unit,
+    val onArtist: () -> Unit
+)
+
 @Composable
 private fun AlbumTrackRow(
     index: Int,
     track: Track,
     albumArtist: String,
     stage: AlbumStageColors,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    isFavorite: Boolean,
-    isDownloading: Boolean,
-    isDownloaded: Boolean,
-    downloadProgress: Int?,
-    showDivider: Boolean,
-    selected: Boolean,
-    selectionActive: Boolean,
-    onLongClick: () -> Unit,
-    onPlay: () -> Unit,
-    onFavorite: () -> Unit,
-    onDownload: () -> Unit,
-    onAddToPlaylist: () -> Unit,
-    onArtist: () -> Unit,
+    presentation: AlbumTrackRowPresentation,
+    actions: AlbumTrackRowActions,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -4685,8 +4697,8 @@ private fun AlbumTrackRow(
         track.artist.isNotBlank() && !track.artist.trim().equals(albumArtist.trim(), ignoreCase = true)
     }
     val status = when {
-        isDownloaded -> strings.offline
-        isDownloading -> strings.formatDownloadProgress(downloadProgress ?: 1)
+        presentation.isDownloaded -> strings.offline
+        presentation.isDownloading -> strings.formatDownloadProgress(presentation.downloadProgress ?: 1)
         else -> ""
     }
     val subtitle = listOf(if (showArtist) track.artist else "", status)
@@ -4701,22 +4713,22 @@ private fun AlbumTrackRow(
                 .clip(RoundedCornerShape(LevyraPlayerDesign.CornerXs))
                 .background(
                     when {
-                        selected -> stage.accent.copy(alpha = 0.18f)
-                        isCurrent -> stage.accent.copy(alpha = 0.12f)
+                        presentation.selected -> stage.accent.copy(alpha = 0.18f)
+                        presentation.isCurrent -> stage.accent.copy(alpha = 0.12f)
                         else -> Color.Transparent
                     }
                 )
-                .semantics { this.selected = selected }
-                .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
+                .semantics { this.selected = presentation.selected }
+                .combinedClickable(onClick = actions.onPlay, actions.onLongClick = actions.onLongClick)
                 .padding(start = LevyraPlayerDesign.SpaceXs, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
         ) {
-            AlbumTrackIndex(index = index, isCurrent = isCurrent, isPlaying = isPlaying, stage = stage)
+            AlbumTrackIndex(index = index, presentation.isCurrent = presentation.isCurrent, presentation.isPlaying = presentation.isPlaying, stage = stage)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = track.title,
-                    color = if (isCurrent) stage.accent else stage.content,
+                    color = if (presentation.isCurrent) stage.accent else stage.content,
                     fontSize = 15.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
                     fontWeight = FontWeight.SemiBold,
@@ -4746,28 +4758,28 @@ private fun AlbumTrackRow(
                     maxLines = 1
                 )
             }
-            if (selectionActive) {
+            if (presentation.selectionActive) {
                 Icon(
-                    imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    imageVector = if (presentation.selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                     contentDescription = null,
-                    tint = if (selected) stage.accent else stage.contentMuted,
+                    tint = if (presentation.selected) stage.accent else stage.contentMuted,
                     modifier = Modifier.size(28.dp)
                 )
             } else {
                 AlbumTrackMenu(
                     track = track,
-                    isFavorite = isFavorite,
-                    isDownloaded = isDownloaded,
-                    isDownloading = isDownloading,
+                    presentation.isFavorite = presentation.isFavorite,
+                    presentation.isDownloaded = presentation.isDownloaded,
+                    presentation.isDownloading = presentation.isDownloading,
                     tint = stage.contentMuted,
-                    onFavorite = onFavorite,
-                    onDownload = onDownload,
-                    onAddToPlaylist = onAddToPlaylist,
-                    onArtist = onArtist
+                    actions.onFavorite = actions.onFavorite,
+                    actions.onDownload = actions.onDownload,
+                    actions.onAddToPlaylist = actions.onAddToPlaylist,
+                    actions.onArtist = actions.onArtist
                 )
             }
         }
-        if (showDivider) {
+        if (presentation.showDivider) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
