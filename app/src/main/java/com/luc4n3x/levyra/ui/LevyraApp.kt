@@ -31,6 +31,12 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
+import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionState
+import com.luc4n3x.levyra.ui.selection.resolveSelected
+import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
+import com.luc4n3x.levyra.ui.selection.trackSelectionKey
 import com.luc4n3x.levyra.ui.components.SpringIconButton
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.playerGlass
@@ -95,6 +101,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -2629,6 +2637,12 @@ fun LevyraApp(
 
                     onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
                     onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
+                    onPlayTracksNext = viewModel::playTracksNext,
+                    onAddTracksToQueue = viewModel::addTracksToQueue,
+                    onToggleFavorites = viewModel::toggleFavorites,
+                    onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
+                    onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
+                    onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                     onOpenAlbumArtist = viewModel::openArtistFromAlbum,
                     onOpenTrackArtist = viewModel::openArtist,
                     onOpenPlayer = viewModel::openPlayerScreen,
@@ -2640,7 +2654,15 @@ fun LevyraApp(
                 ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
+                    onPlayFrom = { tracks, track -> viewModel.playFrom(tracks, track) },
                     onPlayAll = { tracks -> viewModel.playAll(tracks) },
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onPlayTracksNext = viewModel::playTracksNext,
+                    onAddTracksToQueue = viewModel::addTracksToQueue,
+                    onToggleFavorites = viewModel::toggleFavorites,
+                    onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
+                    onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
+                    onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                     onToggleFollow = viewModel::toggleFollowArtist,
                     onToggleExclude = { browseId, name -> viewModel.toggleExcludeArtist(browseId, name) },
                     onTogglePinToHome = { artist -> viewModel.toggleSpeedDialArtist(artist.name, artist.browseId, artist.thumbnailUrl) },
@@ -3573,6 +3595,12 @@ private fun AlbumOverlay(
     onTogglePinToHome: (AlbumHit) -> Unit,
     onAddToPlaylist: (String, Track) -> Unit,
     onCreatePlaylistWithTrack: (String, Track) -> Unit,
+    onPlayTracksNext: (List<Track>) -> Unit,
+    onAddTracksToQueue: (List<Track>) -> Unit,
+    onToggleFavorites: (List<Track>) -> Unit,
+    onExportTracks: (List<Track>) -> Unit,
+    onAddTracksToPlaylist: (String, List<Track>) -> Unit,
+    onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
     onOpenAlbumArtist: () -> Unit,
     onOpenTrackArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
@@ -3590,6 +3618,14 @@ private fun AlbumOverlay(
         LazyListState()
     }
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selection = rememberTrackSelectionState()
+    val selectableIds = remember(tracks) { tracks.map(::trackSelectionKey) }
+    val selectedTracks = remember(tracks, selection.selectedIds) {
+        selection.resolveSelected(tracks, ::trackSelectionKey)
+    }
+    LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+    BackHandler(enabled = selection.isActive) { selection.exit() }
     val albumCurrentTrack = remember(tracks, state.currentTrack) {
         tracks.firstOrNull { candidate -> uiTrackMatches(state.currentTrack, candidate) }
     }
@@ -3680,25 +3716,39 @@ private fun AlbumOverlay(
                 key = { index, track -> "album-track-$index-${track.id}" },
                 contentType = { _, _ -> "album-track" }
             ) { index, track ->
+                val selectionKey = trackSelectionKey(track)
                 AlbumTrackRow(
                     index = index,
                     track = track,
                     albumArtist = album?.artist.orEmpty(),
                     stage = stage,
-                    isCurrent = uiTrackMatches(state.currentTrack, track),
-                    isPlaying = state.isPlaying,
-                    isFavorite = track.id in state.favoriteIds,
-                    isDownloading = track.id in state.downloadingTrackIds,
-                    isDownloaded = track.id in state.downloadedTrackIds,
-                    downloadProgress = state.downloadProgressByTrackId[track.id],
-                    showDivider = index < tracks.lastIndex,
-                    onPlay = {
-                        if (uiTrackMatches(state.currentTrack, track)) onOpenPlayer() else onPlay(track)
-                    },
-                    onFavorite = { onFavorite(track) },
-                    onDownload = { onDownload(track) },
-                    onAddToPlaylist = { addTarget = track },
-                    onArtist = { onOpenTrackArtist(track) },
+                    presentation = AlbumTrackRowPresentation(
+                        isCurrent = uiTrackMatches(state.currentTrack, track),
+                        isPlaying = state.isPlaying,
+                        isFavorite = track.id in state.favoriteIds,
+                        isDownloading = track.id in state.downloadingTrackIds,
+                        isDownloaded = track.id in state.downloadedTrackIds,
+                        downloadProgress = state.downloadProgressByTrackId[track.id],
+                        showDivider = index < tracks.lastIndex,
+                        selected = selection.isSelected(selectionKey),
+                        selectionActive = selection.isActive
+                    ),
+                    actions = AlbumTrackRowActions(
+                        onLongClick = { selection.start(selectionKey) },
+                        onPlay = {
+                            if (selection.isActive) {
+                                selection.toggle(selectionKey)
+                            } else if (uiTrackMatches(state.currentTrack, track)) {
+                                onOpenPlayer()
+                            } else {
+                                onPlay(track)
+                            }
+                        },
+                        onFavorite = { onFavorite(track) },
+                        onDownload = { onDownload(track) },
+                        onAddToPlaylist = { addTarget = track },
+                        onArtist = { onOpenTrackArtist(track) }
+                    ),
                     modifier = Modifier.padding(horizontal = gutter)
                 )
             }
@@ -3879,6 +3929,48 @@ private fun AlbumOverlay(
             )
         }
 
+        TrackSelectionBar(
+            state = selection,
+            allVisibleIds = selectableIds,
+            actions = TrackSelectionActions(
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onPlayTracksNext(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onAddTracksToQueue(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToPlaylist = selectedTracks
+                    .filter { it.id.isNotBlank() }
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
+                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onToggleFavorites(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onExportTracks(selectedTracks)
+                        selection.exit()
+                    }
+                }
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    start = 12.dp,
+                    end = 12.dp,
+                    bottom = if (state.currentTrack != null) 92.dp else 12.dp
+                )
+        )
+
         addTarget?.let { track ->
             AddToPlaylistDialog(
                 track = track,
@@ -3891,6 +3983,24 @@ private fun AlbumOverlay(
                 onCreateWith = { name ->
                     onCreatePlaylistWithTrack(name, track)
                     addTarget = null
+                }
+            )
+        }
+
+        if (batchAddTargets.isNotEmpty()) {
+            com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+                tracks = batchAddTargets,
+                playlists = state.playlists,
+                onDismiss = { batchAddTargets = emptyList() },
+                onAdd = { playlistId ->
+                    onAddTracksToPlaylist(playlistId, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                },
+                onCreate = { name ->
+                    onCreatePlaylistWithTracks(name, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
                 }
             )
         }
@@ -4556,24 +4666,35 @@ private fun LinearMiniLoading(modifier: Modifier = Modifier) {
     }
 }
 
+private data class AlbumTrackRowPresentation(
+    val isCurrent: Boolean,
+    val isPlaying: Boolean,
+    val isFavorite: Boolean,
+    val isDownloading: Boolean,
+    val isDownloaded: Boolean,
+    val downloadProgress: Int?,
+    val showDivider: Boolean,
+    val selected: Boolean,
+    val selectionActive: Boolean
+)
+
+private data class AlbumTrackRowActions(
+    val onLongClick: () -> Unit,
+    val onPlay: () -> Unit,
+    val onFavorite: () -> Unit,
+    val onDownload: () -> Unit,
+    val onAddToPlaylist: () -> Unit,
+    val onArtist: () -> Unit
+)
+
 @Composable
 private fun AlbumTrackRow(
     index: Int,
     track: Track,
     albumArtist: String,
     stage: AlbumStageColors,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    isFavorite: Boolean,
-    isDownloading: Boolean,
-    isDownloaded: Boolean,
-    downloadProgress: Int?,
-    showDivider: Boolean,
-    onPlay: () -> Unit,
-    onFavorite: () -> Unit,
-    onDownload: () -> Unit,
-    onAddToPlaylist: () -> Unit,
-    onArtist: () -> Unit,
+    presentation: AlbumTrackRowPresentation,
+    actions: AlbumTrackRowActions,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -4581,8 +4702,8 @@ private fun AlbumTrackRow(
         track.artist.isNotBlank() && !track.artist.trim().equals(albumArtist.trim(), ignoreCase = true)
     }
     val status = when {
-        isDownloaded -> strings.offline
-        isDownloading -> strings.formatDownloadProgress(downloadProgress ?: 1)
+        presentation.isDownloaded -> strings.offline
+        presentation.isDownloading -> strings.formatDownloadProgress(presentation.downloadProgress ?: 1)
         else -> ""
     }
     val subtitle = listOf(if (showArtist) track.artist else "", status)
@@ -4595,17 +4716,29 @@ private fun AlbumTrackRow(
                 .fillMaxWidth()
                 .heightIn(min = ALBUM_TRACK_ROW_HEIGHT)
                 .clip(RoundedCornerShape(LevyraPlayerDesign.CornerXs))
-                .background(if (isCurrent) stage.accent.copy(alpha = 0.12f) else Color.Transparent)
-                .clickable(onClick = onPlay)
+                .background(
+                    when {
+                        presentation.selected -> stage.accent.copy(alpha = 0.18f)
+                        presentation.isCurrent -> stage.accent.copy(alpha = 0.12f)
+                        else -> Color.Transparent
+                    }
+                )
+                .semantics { this.selected = presentation.selected }
+                .combinedClickable(onClick = actions.onPlay, onLongClick = actions.onLongClick)
                 .padding(start = LevyraPlayerDesign.SpaceXs, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
         ) {
-            AlbumTrackIndex(index = index, isCurrent = isCurrent, isPlaying = isPlaying, stage = stage)
+            AlbumTrackIndex(
+                index = index,
+                isCurrent = presentation.isCurrent,
+                isPlaying = presentation.isPlaying,
+                stage = stage
+            )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = track.title,
-                    color = if (isCurrent) stage.accent else stage.content,
+                    color = if (presentation.isCurrent) stage.accent else stage.content,
                     fontSize = 15.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
                     fontWeight = FontWeight.SemiBold,
@@ -4635,19 +4768,14 @@ private fun AlbumTrackRow(
                     maxLines = 1
                 )
             }
-            AlbumTrackMenu(
+            AlbumTrackTrailing(
                 track = track,
-                isFavorite = isFavorite,
-                isDownloaded = isDownloaded,
-                isDownloading = isDownloading,
-                tint = stage.contentMuted,
-                onFavorite = onFavorite,
-                onDownload = onDownload,
-                onAddToPlaylist = onAddToPlaylist,
-                onArtist = onArtist
+                stage = stage,
+                presentation = presentation,
+                actions = actions
             )
         }
-        if (showDivider) {
+        if (presentation.showDivider) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -4656,6 +4784,39 @@ private fun AlbumTrackRow(
                     .background(stage.hairline)
             )
         }
+    }
+}
+
+@Composable
+private fun AlbumTrackTrailing(
+    track: Track,
+    stage: AlbumStageColors,
+    presentation: AlbumTrackRowPresentation,
+    actions: AlbumTrackRowActions
+) {
+    if (presentation.selectionActive) {
+        Icon(
+            imageVector = if (presentation.selected) {
+                Icons.Rounded.CheckCircle
+            } else {
+                Icons.Rounded.RadioButtonUnchecked
+            },
+            contentDescription = null,
+            tint = if (presentation.selected) stage.accent else stage.contentMuted,
+            modifier = Modifier.size(28.dp)
+        )
+    } else {
+        AlbumTrackMenu(
+            track = track,
+            isFavorite = presentation.isFavorite,
+            isDownloaded = presentation.isDownloaded,
+            isDownloading = presentation.isDownloading,
+            tint = stage.contentMuted,
+            onFavorite = actions.onFavorite,
+            onDownload = actions.onDownload,
+            onAddToPlaylist = actions.onAddToPlaylist,
+            onArtist = actions.onArtist
+        )
     }
 }
 
@@ -4754,7 +4915,15 @@ private val ALBUM_TRACK_INDEX_WIDTH = 30.dp
 private fun ArtistOverlay(
     state: LevyraUiState,
     onPlay: (Track) -> Unit,
+    onPlayFrom: (List<Track>, Track) -> Unit,
     onPlayAll: (List<Track>) -> Unit,
+    onToggleFavorite: (Track) -> Unit,
+    onPlayTracksNext: (List<Track>) -> Unit,
+    onAddTracksToQueue: (List<Track>) -> Unit,
+    onToggleFavorites: (List<Track>) -> Unit,
+    onExportTracks: (List<Track>) -> Unit,
+    onAddTracksToPlaylist: (String, List<Track>) -> Unit,
+    onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
     onToggleFollow: () -> Unit,
     onToggleExclude: (String, String) -> Unit,
     onTogglePinToHome: (ArtistProfile) -> Unit,
@@ -4763,6 +4932,47 @@ private fun ArtistOverlay(
     onClose: () -> Unit
 ) {
     val profile = state.artistProfile
+    val likedTracks = remember(state.favorites, profile) {
+        profile?.let { com.luc4n3x.levyra.domain.likedTracksByArtist(state.favorites, it) }.orEmpty()
+    }
+    val selection = rememberTrackSelectionState()
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val artistSelectionScopeKey = profile?.browseId?.ifBlank { profile.name }.orEmpty()
+    var favoritesExpanded by rememberSaveable(artistSelectionScopeKey, "favorites", likedTracks.size) {
+        mutableStateOf(false)
+    }
+    val rankedPopularTracks = remember(profile?.topSongs) {
+        profile?.topSongs.orEmpty()
+            .distinctBy { track -> track.id.ifBlank { track.artist + "|" + track.title } }
+            .take(ARTIST_POPULAR_MAX_COUNT)
+    }
+    var popularExpanded by rememberSaveable(artistSelectionScopeKey, "popular", rankedPopularTracks.size) {
+        mutableStateOf(false)
+    }
+    val selectableTracks = remember(
+        likedTracks,
+        rankedPopularTracks,
+        favoritesExpanded,
+        popularExpanded
+    ) {
+        val visibleFavorites = likedTracks
+            .distinctBy(::trackSelectionKey)
+            .let { tracks ->
+                if (favoritesExpanded) tracks else tracks.take(ARTIST_FAVORITES_COLLAPSED_COUNT)
+            }
+        val visiblePopular = if (popularExpanded) {
+            rankedPopularTracks
+        } else {
+            rankedPopularTracks.take(ARTIST_POPULAR_COLLAPSED_COUNT)
+        }
+        (visibleFavorites + visiblePopular).distinctBy(::trackSelectionKey)
+    }
+    val selectableIds = remember(selectableTracks) { selectableTracks.map(::trackSelectionKey) }
+    val selectedTracks = remember(selectableTracks, selection.selectedIds) {
+        selection.resolveSelected(selectableTracks, ::trackSelectionKey)
+    }
+    LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+    BackHandler(enabled = selection.isActive) { selection.exit() }
     val pinnedToHome = profile != null && SpeedDial.artistKey(profile.name, profile.browseId)
         ?.let { key -> state.speedDialPins.any { it.key == key } } == true
     val homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS
@@ -4936,6 +5146,23 @@ private fun ArtistOverlay(
                             }
                         }
                     }
+                    if (likedTracks.isNotEmpty()) {
+                        item(
+                            key = "artist-liked-tracks",
+                            contentType = "artist-liked-tracks"
+                        ) {
+                            ArtistFavoriteTracksShelf(
+                                tracks = likedTracks,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                expanded = favoritesExpanded,
+                                onExpandedChange = { favoritesExpanded = it },
+                                selection = selection,
+                                onPlay = { track -> onPlayFrom(likedTracks, track) }
+                            )
+                        }
+                    }
                     if (artist.topSongs.isNotEmpty()) {
                         item(
                             key = "artist-popular-tracks",
@@ -4946,6 +5173,9 @@ private fun ArtistOverlay(
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
                                 isResolving = state.isResolving,
+                                expanded = popularExpanded,
+                                onExpandedChange = { popularExpanded = it },
+                                selection = selection,
                                 onPlay = onPlay,
                                 onPlayAll = onPlayAll
                             )
@@ -4997,6 +5227,66 @@ private fun ArtistOverlay(
             }
         }
 
+        TrackSelectionBar(
+            state = selection,
+            allVisibleIds = selectableIds,
+            actions = TrackSelectionActions(
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onPlayTracksNext(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onAddTracksToQueue(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToPlaylist = selectedTracks
+                    .filter { it.id.isNotBlank() }
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
+                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onToggleFavorites(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onExportTracks(selectedTracks)
+                        selection.exit()
+                    }
+                }
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    start = 12.dp,
+                    end = 12.dp,
+                    bottom = if (state.currentTrack != null) 88.dp else 12.dp
+                )
+        )
+
+        if (batchAddTargets.isNotEmpty()) {
+            com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+                tracks = batchAddTargets,
+                playlists = state.playlists,
+                onDismiss = { batchAddTargets = emptyList() },
+                onAdd = { playlistId ->
+                    onAddTracksToPlaylist(playlistId, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                },
+                onCreate = { name ->
+                    onCreatePlaylistWithTracks(name, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                }
+            )
+        }
+
         ArtistTopBar(
             title = profile?.name,
             atmosphere = atmosphere,
@@ -5008,8 +5298,86 @@ private fun ArtistOverlay(
     }
 }
 
+private const val ARTIST_FAVORITES_COLLAPSED_COUNT = 4
 private const val ARTIST_POPULAR_COLLAPSED_COUNT = 5
 private const val ARTIST_POPULAR_MAX_COUNT = 10
+
+@Composable
+private fun ArtistFavoriteTracksShelf(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    selection: TrackSelectionState,
+    onPlay: (Track) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val distinctTracks = remember(tracks) { tracks.distinctBy(::trackSelectionKey) }
+    if (distinctTracks.isEmpty()) return
+    val visibleTracks = remember(distinctTracks, expanded) {
+        if (expanded) distinctTracks else distinctTracks.take(ARTIST_FAVORITES_COLLAPSED_COUNT)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = strings.favoritesPlain,
+                    color = LevyraText,
+                    fontSize = 22.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.45).sp
+                )
+                Text(
+                    text = strings.formatTrackCount(distinctTracks.size),
+                    color = LevyraMuted,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            if (distinctTracks.size > ARTIST_FAVORITES_COLLAPSED_COUNT) {
+                TextButton(onClick = { onExpandedChange(!expanded) }) {
+                    Text(
+                        text = if (expanded) strings.showLess else strings.showAll,
+                        color = LevyraCyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        visibleTracks.forEachIndexed { index, track ->
+            val key = trackSelectionKey(track)
+            val current = track.id == currentId
+            ArtistPopularTrackRow(
+                rank = index + 1,
+                track = track,
+                isCurrent = current,
+                isPlaying = isPlaying && current,
+                isResolving = isResolving && current,
+                selected = selection.isSelected(key),
+                selectionActive = selection.isActive,
+                onLongClick = { selection.start(key) },
+                onPlay = {
+                    if (selection.isActive) selection.toggle(key) else onPlay(track)
+                }
+            )
+        }
+    }
+}
 
 @Composable
 private fun ArtistPopularTracksShelf(
@@ -5017,6 +5385,9 @@ private fun ArtistPopularTracksShelf(
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    selection: TrackSelectionState,
     onPlay: (Track) -> Unit,
     onPlayAll: (List<Track>) -> Unit
 ) {
@@ -5027,10 +5398,6 @@ private fun ArtistPopularTracksShelf(
     if (distinctTracks.isEmpty()) return
     val rankedTracks = remember(distinctTracks) { distinctTracks.take(ARTIST_POPULAR_MAX_COUNT) }
 
-    val listKey = remember(rankedTracks) {
-        rankedTracks.firstOrNull()?.id.orEmpty() + "|" + rankedTracks.size
-    }
-    var expanded by rememberSaveable(listKey) { mutableStateOf(false) }
     val visibleTracks = remember(rankedTracks, expanded) {
         if (expanded) rankedTracks else rankedTracks.take(ARTIST_POPULAR_COLLAPSED_COUNT)
     }
@@ -5085,13 +5452,19 @@ private fun ArtistPopularTracksShelf(
         ) {
             visibleTracks.forEachIndexed { index, track ->
                 val isCurrent = track.id == currentId
+                val selectionKey = trackSelectionKey(track)
                 ArtistPopularTrackRow(
                     rank = index + 1,
                     track = track,
                     isCurrent = isCurrent,
                     isPlaying = isPlaying && isCurrent,
                     isResolving = isResolving && isCurrent,
-                    onPlay = { onPlay(track) }
+                    selected = selection.isSelected(selectionKey),
+                    selectionActive = selection.isActive,
+                    onLongClick = { selection.start(selectionKey) },
+                    onPlay = {
+                        if (selection.isActive) selection.toggle(selectionKey) else onPlay(track)
+                    }
                 )
             }
         }
@@ -5105,7 +5478,7 @@ private fun ArtistPopularTracksShelf(
                     shape = CircleShape,
                     modifier = Modifier
                         .height(40.dp)
-                        .pressable { expanded = !expanded }
+                        .pressable { onExpandedChange(!expanded) }
                 ) {
                     Box(
                         modifier = Modifier.padding(horizontal = 20.dp),
@@ -5132,6 +5505,9 @@ private fun ArtistPopularTrackRow(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
+    selected: Boolean,
+    selectionActive: Boolean,
+    onLongClick: () -> Unit,
     onPlay: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -5144,11 +5520,15 @@ private fun ArtistPopularTrackRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .then(
-                if (isCurrent) Modifier.background(LevyraCyan.copy(alpha = 0.08f))
-                else Modifier
+                when {
+                    selected -> Modifier.background(LevyraCyan.copy(alpha = 0.16f))
+                    isCurrent -> Modifier.background(LevyraCyan.copy(alpha = 0.08f))
+                    else -> Modifier
+                }
             )
+            .semantics { this.selected = selected }
             .heightIn(min = 62.dp)
-            .pressable(onClick = onPlay)
+            .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
             .padding(start = 6.dp, top = 4.dp, end = 6.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -5204,10 +5584,16 @@ private fun ArtistPopularTrackRow(
         }
 
         Box(
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(40.dp),
             contentAlignment = Alignment.Center
         ) {
             when {
+                selectionActive -> Icon(
+                    imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (selected) LevyraCyan else LevyraMuted,
+                    modifier = Modifier.size(26.dp)
+                )
                 isResolving -> CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
@@ -12189,6 +12575,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selection = rememberTrackSelectionState()
     val personalized = remember(
         state.favorites,
         state.recentListens,
@@ -12259,7 +12647,25 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         val visibleSongs = remember(data.songs, topResultTracks, filter) {
             if (filter == SearchFilter.All) filterSearchSongsExcludingTopResult(data.songs, topResultTracks) else data.songs
         }
+        val selectableTracks = remember(topResultTracks, visibleSongs, data.videos, filter) {
+            buildList {
+                if (filter == SearchFilter.All) addAll(topResultTracks.take(3))
+                if (filter == SearchFilter.All || filter == SearchFilter.Songs) addAll(visibleSongs)
+                if (filter == SearchFilter.All || filter == SearchFilter.Videos) addAll(data.videos)
+            }.distinctBy(::trackSelectionKey)
+        }
+        val selectableIds = remember(selectableTracks) { selectableTracks.map(::trackSelectionKey) }
+        val selectedTracks = remember(selectableTracks, selection.selectedIds) {
+            selection.resolveSelected(selectableTracks, ::trackSelectionKey)
+        }
+        LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+        BackHandler(enabled = selection.isActive) { selection.exit() }
 
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 188.dp else 100.dp),
@@ -12373,6 +12779,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     isPlaying = state.isPlaying,
                                     isResolving = state.isResolving,
                                     favoriteIds = state.favoriteIds,
+                                    selection = selection,
                                     onPlay = { track ->
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
@@ -12494,10 +12901,17 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     isDownloading = track.id in state.downloadingTrackIds,
                                     isDownloaded = track.id in state.downloadedTrackIds,
                                     downloadProgress = state.downloadProgressByTrackId[track.id],
+                                    selected = selection.isSelected(trackSelectionKey(track)),
+                                    selectionActive = selection.isActive,
+                                    onLongClick = { selection.start(trackSelectionKey(track)) },
                                     onClick = {
-                                        focusManager.clearFocus()
-                                        keyboardController?.hide()
-                                        viewModel.playFrom(data.videos, track)
+                                        if (selection.isActive) {
+                                            selection.toggle(trackSelectionKey(track))
+                                        } else {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                            viewModel.playFrom(data.videos, track)
+                                        }
                                     },
                                     onFavorite = { viewModel.toggleFavorite(track) },
                                     onAddToPlaylist = { addTarget = track },
@@ -12526,10 +12940,17 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         isDownloading = track.id in state.downloadingTrackIds,
                                         isDownloaded = track.id in state.downloadedTrackIds,
                                         downloadProgress = state.downloadProgressByTrackId[track.id],
+                                        selected = selection.isSelected(trackSelectionKey(track)),
+                                        selectionActive = selection.isActive,
+                                        onLongClick = { selection.start(trackSelectionKey(track)) },
                                         onClick = {
-                                            focusManager.clearFocus()
-                                            keyboardController?.hide()
-                                            viewModel.playFrom(data.songs, track)
+                                            if (selection.isActive) {
+                                                selection.toggle(trackSelectionKey(track))
+                                            } else {
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                                viewModel.playFrom(data.songs, track)
+                                            }
                                         },
                                         onFavorite = { viewModel.toggleFavorite(track) },
                                         onAddToPlaylist = { addTarget = track },
@@ -12570,6 +12991,49 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                 }
             }
         }
+
+            TrackSelectionBar(
+                state = selection,
+                allVisibleIds = selectableIds,
+                actions = TrackSelectionActions(
+                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.playTracksNext(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.addTracksToQueue(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onAddToPlaylist = selectedTracks
+                        .filter { it.id.isNotBlank() }
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
+                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.toggleFavorites(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            viewModel.exportTracks(selectedTracks, strings.offline)
+                            selection.exit()
+                        }
+                    }
+                ),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(
+                        start = 12.dp,
+                        end = 12.dp,
+                        bottom = if (state.currentTrack != null) 88.dp else 12.dp
+                    )
+            )
+        }
     }
 
     addTarget?.let { track ->
@@ -12584,6 +13048,23 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             onCreateWith = { name ->
                 viewModel.createPlaylist(name, track)
                 addTarget = null
+            }
+        )
+    }
+    if (batchAddTargets.isNotEmpty()) {
+        com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+            tracks = batchAddTargets,
+            playlists = state.playlists,
+            onDismiss = { batchAddTargets = emptyList() },
+            onAdd = { playlistId ->
+                viewModel.addTracksToPlaylist(playlistId, batchAddTargets)
+                batchAddTargets = emptyList()
+                selection.exit()
+            },
+            onCreate = { name ->
+                viewModel.createPlaylistWithTracks(name, batchAddTargets)
+                batchAddTargets = emptyList()
+                selection.exit()
             }
         )
     }
@@ -21520,6 +22001,7 @@ private fun TopResultCard(
     isPlaying: Boolean,
     isResolving: Boolean,
     favoriteIds: Set<String>,
+    selection: TrackSelectionState,
     onPlay: (Track) -> Unit,
     onFavorite: (Track) -> Unit,
     onAddToPlaylist: (Track) -> Unit,
@@ -21530,7 +22012,6 @@ private fun TopResultCard(
     onMix: () -> Unit
 ) {
     val hero = tracks.firstOrNull() ?: return
-    val strings = LocalLevyraStrings.current
 
     val cardBg = if (LevyraIsLight) LevyraPanel else if (LevyraIsPureBlack) Color(0xFF101114) else LevyraPanel
     val cardBorder = if (LevyraIsLight) LevyraAdaptiveHairline else Color.White.copy(alpha = 0.06f)
@@ -21544,155 +22025,191 @@ private fun TopResultCard(
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
         Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onArtist)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val avatarUrl = artist?.thumbnailUrl?.ifBlank { null } ?: hero.thumbnailUrl
-                val artistDisplayName = artist?.name?.ifBlank { null } ?: hero.artist
-                val artistSubtitle = remember(artist?.subscribers, strings.artistLabel) {
-                    artist?.subscribers?.trim()?.takeIf(String::isNotBlank) ?: strings.artistLabel
-                }
+            TopResultArtistHeader(
+                hero = hero,
+                artist = artist,
+                enabled = !selection.isActive,
+                onArtist = onArtist
+            )
 
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(avatarUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = artistDisplayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(LevyraPanelSoft)
-                )
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = artistDisplayName,
-                        color = LevyraText,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = artistSubtitle,
-                        color = LevyraMuted,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = strings.openArtist,
-                    tint = LevyraMuted,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                val shuffleBg = if (LevyraIsLight) LevyraText else Color.White
-                val shuffleFg = if (LevyraIsLight) LevyraPanel else LevyraBlack
-
-                Surface(
-                    color = shuffleBg,
-                    shape = RoundedCornerShape(99.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 38.dp)
-                        .clickable(onClick = onShuffle)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Shuffle,
-                            contentDescription = null,
-                            tint = shuffleFg,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = strings.shuffle,
-                            color = shuffleFg,
-                            fontSize = 14.sp,
-                            lineHeight = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                val mixBg = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f)
-                val mixFg = LevyraText
-                val mixBorder = if (LevyraIsLight) BorderStroke(1.dp, LevyraAdaptiveHairline) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
-
-                Surface(
-                    color = mixBg,
-                    border = mixBorder,
-                    shape = RoundedCornerShape(99.dp),
-                    modifier = Modifier
-                        .heightIn(min = 38.dp)
-                        .clickable(onClick = onMix)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Radio,
-                            contentDescription = null,
-                            tint = mixFg,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = strings.mix,
-                            color = mixFg,
-                            fontSize = 14.sp,
-                            lineHeight = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
+            TopResultActions(
+                enabled = !selection.isActive,
+                onShuffle = onShuffle,
+                onMix = onMix
+            )
 
             tracks.take(3).forEach { track ->
+                val selectionKey = trackSelectionKey(track)
                 TopResultTrackRow(
                     track = track,
                     isCurrent = track.id == currentTrackId,
                     isPlaying = isPlaying && track.id == currentTrackId,
                     isResolving = isResolving && track.id == currentTrackId,
                     isFavorite = track.id in favoriteIds,
-                    onPlay = { onPlay(track) },
+                    selected = selection.isSelected(selectionKey),
+                    selectionActive = selection.isActive,
+                    onLongClick = { selection.start(selectionKey) },
+                    onPlay = {
+                        if (selection.isActive) selection.toggle(selectionKey) else onPlay(track)
+                    },
                     onFavorite = { onFavorite(track) },
                     onAddToPlaylist = { onAddToPlaylist(track) },
                     onPlayNext = { onPlayNext(track) },
                     onAddToQueue = { onAddToQueue(track) },
                     onArtist = onArtist
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopResultArtistHeader(
+    hero: Track,
+    artist: ArtistHit?,
+    enabled: Boolean,
+    onArtist: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onArtist)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val avatarUrl = artist?.thumbnailUrl?.ifBlank { null } ?: hero.thumbnailUrl
+        val artistDisplayName = artist?.name?.ifBlank { null } ?: hero.artist
+        val artistSubtitle = remember(artist?.subscribers, strings.artistLabel) {
+            artist?.subscribers?.trim()?.takeIf(String::isNotBlank) ?: strings.artistLabel
+        }
+
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(avatarUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = artistDisplayName,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(LevyraPanelSoft)
+        )
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = artistDisplayName,
+                color = LevyraText,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = artistSubtitle,
+                color = LevyraMuted,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = strings.openArtist,
+            tint = LevyraMuted,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun TopResultActions(
+    enabled: Boolean,
+    onShuffle: () -> Unit,
+    onMix: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        val shuffleBg = if (LevyraIsLight) LevyraText else Color.White
+        val shuffleFg = if (LevyraIsLight) LevyraPanel else LevyraBlack
+
+        Surface(
+            color = shuffleBg,
+            shape = RoundedCornerShape(99.dp),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 38.dp)
+                .clickable(enabled = enabled, onClick = onShuffle)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Shuffle,
+                    contentDescription = null,
+                    tint = shuffleFg,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = strings.shuffle,
+                    color = shuffleFg,
+                    fontSize = 14.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        val mixBg = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f)
+        val mixFg = LevyraText
+        val mixBorder = if (LevyraIsLight) BorderStroke(1.dp, LevyraAdaptiveHairline) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+
+        Surface(
+            color = mixBg,
+            border = mixBorder,
+            shape = RoundedCornerShape(99.dp),
+            modifier = Modifier
+                .heightIn(min = 38.dp)
+                .clickable(enabled = enabled, onClick = onMix)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Radio,
+                    contentDescription = null,
+                    tint = mixFg,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = strings.mix,
+                    color = mixFg,
+                    fontSize = 14.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
                 )
             }
         }
@@ -21706,6 +22223,9 @@ private fun TopResultTrackRow(
     isPlaying: Boolean,
     isResolving: Boolean,
     isFavorite: Boolean,
+    selected: Boolean,
+    selectionActive: Boolean,
+    onLongClick: () -> Unit,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onAddToPlaylist: () -> Unit,
@@ -21718,7 +22238,9 @@ private fun TopResultTrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onPlay)
+            .background(if (selected) LevyraCyan.copy(alpha = 0.10f) else Color.Transparent)
+            .semantics { this.selected = selected }
+            .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -21810,72 +22332,81 @@ private fun TopResultTrackRow(
             }
         }
 
-        var menuExpanded by remember(track.id) { mutableStateOf(false) }
-        Box {
-            IconButton(
-                onClick = { menuExpanded = true },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = strings.more,
-                    tint = LevyraMuted,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-                modifier = Modifier
-                    .background(LevyraPanel)
-                    .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(8.dp))
-            ) {
-                DropdownMenuItem(
-                    text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites, color = LevyraText) },
-                    leadingIcon = {
-                        Icon(
-                            if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                            null,
-                            tint = if (isFavorite) LevyraPink else LevyraText
-                        )
-                    },
-                    onClick = {
-                        menuExpanded = false
-                        onFavorite()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(strings.playNext, color = LevyraText) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraText) },
-                    onClick = {
-                        menuExpanded = false
-                        onPlayNext()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(strings.addToQueue, color = LevyraText) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraText) },
-                    onClick = {
-                        menuExpanded = false
-                        onAddToQueue()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(strings.addToPlaylist, color = LevyraText) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = LevyraText) },
-                    onClick = {
-                        menuExpanded = false
-                        onAddToPlaylist()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(strings.openArtist, color = LevyraText) },
-                    leadingIcon = { Icon(Icons.Rounded.Person, null, tint = LevyraText) },
-                    onClick = {
-                        menuExpanded = false
-                        onArtist()
-                    }
-                )
+        if (selectionActive) {
+            Icon(
+                imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (selected) LevyraCyan else LevyraMuted,
+                modifier = Modifier.size(28.dp)
+            )
+        } else {
+            var menuExpanded by remember(track.id) { mutableStateOf(false) }
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.MoreVert,
+                        contentDescription = strings.more,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier
+                        .background(LevyraPanel)
+                        .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(8.dp))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites, color = LevyraText) },
+                        leadingIcon = {
+                            Icon(
+                                if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                null,
+                                tint = if (isFavorite) LevyraPink else LevyraText
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onFavorite()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(strings.playNext, color = LevyraText) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraText) },
+                        onClick = {
+                            menuExpanded = false
+                            onPlayNext()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(strings.addToQueue, color = LevyraText) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraText) },
+                        onClick = {
+                            menuExpanded = false
+                            onAddToQueue()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(strings.addToPlaylist, color = LevyraText) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = LevyraText) },
+                        onClick = {
+                            menuExpanded = false
+                            onAddToPlaylist()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(strings.openArtist, color = LevyraText) },
+                        leadingIcon = { Icon(Icons.Rounded.Person, null, tint = LevyraText) },
+                        onClick = {
+                            menuExpanded = false
+                            onArtist()
+                        }
+                    )
+                }
             }
         }
     }
@@ -21920,6 +22451,9 @@ private fun SearchTrackCard(
     isPlaying: Boolean,
     isResolving: Boolean,
     isFavorite: Boolean,
+    selected: Boolean = false,
+    selectionActive: Boolean = false,
+    onLongClick: () -> Unit = {},
     isDownloading: Boolean,
     isDownloaded: Boolean,
     downloadProgress: Int?,
@@ -21942,11 +22476,16 @@ private fun SearchTrackCard(
             )
             .border(
                 1.dp,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.30f) else Color.Transparent,
+                when {
+                    selected -> LevyraCyan.copy(alpha = 0.58f)
+                    isCurrent -> LevyraCyan.copy(alpha = 0.30f)
+                    else -> Color.Transparent
+                },
                 RoundedCornerShape(18.dp)
             )
-            .pressable(onClick = onClick)
-            .padding(horizontal = if (isCurrent) 9.dp else 0.dp, vertical = 7.dp),
+            .semantics { this.selected = selected }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = if (isCurrent || selected) 9.dp else 0.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
@@ -21970,21 +22509,40 @@ private fun SearchTrackCard(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable { onArtist() }
+                modifier = Modifier.clickable(enabled = !selectionActive) { onArtist() }
             )
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
-            IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
-            }
-            IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = LocalLevyraStrings.current.favorite,
-                    tint = if (isFavorite) LevyraPink else LevyraMuted,
-                    modifier = Modifier.size(24.dp)
+        if (selectionActive) {
+            Icon(
+                imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (selected) LevyraCyan else LevyraMuted,
+                modifier = Modifier.size(28.dp)
+            )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                DownloadButton(
+                    isDownloading = isDownloading,
+                    isDownloaded = isDownloaded,
+                    progress = downloadProgress,
+                    onDownload = onDownload
                 )
+                IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        contentDescription = LocalLevyraStrings.current.addToPlaylist,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = LocalLevyraStrings.current.favorite,
+                        tint = if (isFavorite) LevyraPink else LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
@@ -22259,11 +22817,21 @@ private fun TrackRow(
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             if (onDownload != null) {
-                DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+                DownloadButton(
+                    isDownloading = isDownloading,
+                    isDownloaded = isDownloaded,
+                    progress = downloadProgress,
+                    onDownload = onDownload
+                )
             }
             if (onAddToPlaylist != null) {
                 IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                    Icon(
+                        Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        contentDescription = LocalLevyraStrings.current.addToPlaylist,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
             IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
