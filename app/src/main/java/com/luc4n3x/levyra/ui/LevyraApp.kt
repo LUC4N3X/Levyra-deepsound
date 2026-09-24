@@ -32,6 +32,7 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
 import com.luc4n3x.levyra.ui.selection.trackSelectionKey
@@ -2652,6 +2653,7 @@ fun LevyraApp(
                 ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
+                    onPlayFrom = { tracks, track -> viewModel.playFrom(tracks, track) },
                     onPlayAll = { tracks -> viewModel.playAll(tracks) },
                     onToggleFavorite = viewModel::toggleFavorite,
                     onPlayTracksNext = viewModel::playTracksNext,
@@ -4869,7 +4871,15 @@ private val ALBUM_TRACK_INDEX_WIDTH = 30.dp
 private fun ArtistOverlay(
     state: LevyraUiState,
     onPlay: (Track) -> Unit,
+    onPlayFrom: (List<Track>, Track) -> Unit,
     onPlayAll: (List<Track>) -> Unit,
+    onToggleFavorite: (Track) -> Unit,
+    onPlayTracksNext: (List<Track>) -> Unit,
+    onAddTracksToQueue: (List<Track>) -> Unit,
+    onToggleFavorites: (List<Track>) -> Unit,
+    onExportTracks: (List<Track>) -> Unit,
+    onAddTracksToPlaylist: (String, List<Track>) -> Unit,
+    onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
     onToggleFollow: () -> Unit,
     onToggleExclude: (String, String) -> Unit,
     onTogglePinToHome: (ArtistProfile) -> Unit,
@@ -4878,6 +4888,20 @@ private fun ArtistOverlay(
     onClose: () -> Unit
 ) {
     val profile = state.artistProfile
+    val likedTracks = remember(state.favorites, profile) {
+        profile?.let { com.luc4n3x.levyra.domain.likedTracksByArtist(state.favorites, it) }.orEmpty()
+    }
+    val selection = rememberTrackSelectionState()
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selectableTracks = remember(likedTracks, profile?.topSongs) {
+        (likedTracks + profile?.topSongs.orEmpty()).distinctBy(::trackSelectionKey)
+    }
+    val selectableIds = remember(selectableTracks) { selectableTracks.map(::trackSelectionKey) }
+    val selectedTracks = remember(selectableTracks, selection.selectedIds) {
+        selection.resolveSelected(selectableTracks, ::trackSelectionKey)
+    }
+    LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+    BackHandler(enabled = selection.isActive) { selection.exit() }
     val pinnedToHome = profile != null && SpeedDial.artistKey(profile.name, profile.browseId)
         ?.let { key -> state.speedDialPins.any { it.key == key } } == true
     val homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS
@@ -5051,6 +5075,21 @@ private fun ArtistOverlay(
                             }
                         }
                     }
+                    if (likedTracks.isNotEmpty()) {
+                        item(
+                            key = "artist-liked-tracks",
+                            contentType = "artist-liked-tracks"
+                        ) {
+                            ArtistFavoriteTracksShelf(
+                                tracks = likedTracks,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                selection = selection,
+                                onPlay = { track -> onPlayFrom(likedTracks, track) }
+                            )
+                        }
+                    }
                     if (artist.topSongs.isNotEmpty()) {
                         item(
                             key = "artist-popular-tracks",
@@ -5061,6 +5100,7 @@ private fun ArtistOverlay(
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
                                 isResolving = state.isResolving,
+                                selection = selection,
                                 onPlay = onPlay,
                                 onPlayAll = onPlayAll
                             )
@@ -5110,6 +5150,59 @@ private fun ArtistOverlay(
                     }
                 }
             }
+        }
+
+        TrackSelectionBar(
+            state = selection,
+            allVisibleIds = selectableIds,
+            onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onPlayTracksNext(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onAddTracksToQueue(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                { batchAddTargets = selectedTracks }
+            },
+            onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onToggleFavorites(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onExportTracks(selectedTracks)
+                    selection.exit()
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 88.dp else 12.dp)
+        )
+
+        if (batchAddTargets.isNotEmpty()) {
+            com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+                tracks = batchAddTargets,
+                playlists = state.playlists,
+                onDismiss = { batchAddTargets = emptyList() },
+                onAdd = { playlistId ->
+                    onAddTracksToPlaylist(playlistId, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                },
+                onCreate = { name ->
+                    onCreatePlaylistWithTracks(name, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                }
+            )
         }
 
         ArtistTopBar(
