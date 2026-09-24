@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.feature.radio
 
 import android.content.Context
 import android.net.Uri
+import android.os.SystemClock
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -23,6 +24,7 @@ internal object LiveRadioArtworkResolver {
     private const val MAX_HTML_BYTES = 256 * 1024
     private const val MAX_IMAGE_CANDIDATES = 4
     private const val MAX_CACHE_ENTRIES = 256
+    private const val FAILED_LOOKUP_RETRY_MS = 5 * 60 * 1_000L
     private const val USER_AGENT = "Mozilla/5.0 (Linux; Android) Levyra Live Radio"
     private const val MAX_ARTWORK_BYTES = 1024 * 1024
     private const val MAX_STORED_ARTWORKS = 48
@@ -39,12 +41,17 @@ internal object LiveRadioArtworkResolver {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean =
             size > MAX_CACHE_ENTRIES
     }
+    private val failedAt = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean =
+            size > MAX_CACHE_ENTRIES
+    }
     private val inFlight = HashMap<String, Deferred<String?>>()
 
     suspend fun resolve(homepageUrl: String): String? {
         val key = homepageKey(homepageUrl) ?: return null
         val pending = synchronized(lock) {
             cache[key]?.let { return it.ifBlank { null } }
+            failedAt[key]?.let { if (SystemClock.elapsedRealtime() - it < FAILED_LOOKUP_RETRY_MS) return null }
             inFlight.getOrPut(key) {
                 scope.async {
                     try {
@@ -55,7 +62,14 @@ internal object LiveRadioArtworkResolver {
                         } catch (_: Exception) {
                             null
                         }
-                        synchronized(lock) { discovered?.let { cache[key] = it } }
+                        synchronized(lock) {
+                            if (discovered == null) {
+                                failedAt[key] = SystemClock.elapsedRealtime()
+                            } else {
+                                cache[key] = discovered
+                                failedAt.remove(key)
+                            }
+                        }
                         discovered
                     } finally {
                         synchronized(lock) { inFlight.remove(key) }
