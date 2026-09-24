@@ -99,17 +99,21 @@ Levyra uses external services for some music, lyrics, artwork and metadata, but 
 
 </div>
 
-## ✦ JioSaavn · High-bitrate audio
+## ✦ JioSaavn · Verified high-quality audio
 
-When enabled, Levyra can search JioSaavn for a matching track and stream the higher-bitrate source (up to 320 kbps) when there is an exact match.
+When high-quality audio is enabled, Levyra can use JioSaavn as an alternative source without changing the track in your library.
 
-The resolver checks the artist, album, duration, explicit tag, ISRC when available, and signs of alternate versions. If a candidate looks like a remix, live recording, acoustic take, or sped-up edit, Levyra ignores it and plays the default stream instead.
+Levyra does not trust the advertised quality flag on its own. For an accepted, unrestricted match it tries the available 320, 160 and 96 kbps variants and validates the stream before using it. The bitrate shown in the player comes from the measured result, so a file advertised as 320 kbps is not presented as 320 when it falls below that range.
 
-Your library track remains untouched. Artwork, lyrics, queue placement, listening history, and recommendations stay linked to the original track. JioSaavn is only used as an alternative audio stream.
+Matching goes beyond the title. Levyra checks performers and artist roles, album and release information, duration, explicit status, language, featured artists and version markers. Accepted search results can also be checked against JioSaavn's track details before playback, which helps distinguish original recordings from compilations, reissues and alternate versions.
+
+When possible, Levyra resolves audio directly from JioSaavn's CDN. Retry handling, separate circuit breakers and persistent mappings keep temporary provider failures from disrupting the rest of playback. If the recording cannot be matched or validated safely, Levyra stays on the normal source.
+
+Your library metadata, artwork, lyrics, queue position, listening history and recommendations remain tied to the original Levyra track.
 
 <div align="center">
   <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
-  <sub>If the alternative source drops or fails validation, playback falls back to the default stream.</sub>
+  <sub>Quality is measured before selection, and playback falls back automatically when JioSaavn is not a safe upgrade.</sub>
 </div>
 
 ---
