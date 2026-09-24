@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -63,6 +64,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -85,6 +89,10 @@ import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
+import com.luc4n3x.levyra.ui.selection.resolveSelected
+import com.luc4n3x.levyra.ui.selection.trackSelectionKey
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
@@ -452,37 +460,117 @@ internal fun SmartCollectionDetail(
 ) {
     val strings = LocalLevyraStrings.current
     val style = smartCollectionStyle(collectionId)
+    val selection = rememberTrackSelectionState()
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selectableIds = remember(tracks) { tracks.map(::trackSelectionKey) }
+    val selectedTracks = remember(tracks, selection.selectedIds) {
+        selection.resolveSelected(tracks, ::trackSelectionKey)
+    }
+    LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+    BackHandler(enabled = selection.isActive) { selection.exit() }
+
     Surface(color = com.luc4n3x.levyra.ui.theme.LevyraInk, modifier = Modifier.fillMaxSize()) {
-        androidx.compose.foundation.lazy.LazyColumn(
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 12.dp,
-                bottom = if (state.currentTrack != null) 230.dp else 116.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item(key = "smart-hero") {
-                SmartCollectionHero(style, strings.formatTrackCount(tracks.size), onClose)
+        Box(modifier = Modifier.fillMaxSize()) {
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = Modifier.fillMaxSize().statusBarsPadding(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 12.dp,
+                    bottom = if (state.currentTrack != null || selection.isActive) 230.dp else 116.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item(key = "smart-hero") {
+                    SmartCollectionHero(style, strings.formatTrackCount(tracks.size), onClose)
+                }
+                item(key = "smart-actions") {
+                    SmartCollectionActions(
+                        accent = style.accent,
+                        enabled = tracks.isNotEmpty() && !selection.isActive,
+                        onPlay = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+                        onShuffle = {
+                            val shuffled = tracks.shuffled()
+                            shuffled.firstOrNull()?.let { viewModel.playFrom(shuffled, it) }
+                        }
+                    )
+                }
+                if (tracks.isEmpty()) {
+                    item(key = "smart-empty") { LibraryEmpty(style.icon, strings.emptySearchPrompt) }
+                } else {
+                    items(
+                        count = tracks.size,
+                        key = { index -> "smart-" + collectionId + "-" + trackSelectionKey(tracks[index]) }
+                    ) { index ->
+                        val track = tracks[index]
+                        val key = trackSelectionKey(track)
+                        SmartCollectionTrackRow(
+                            state = state,
+                            tracks = tracks,
+                            track = track,
+                            viewModel = viewModel,
+                            selected = selection.isSelected(key),
+                            selectionActive = selection.isActive,
+                            onClick = {
+                                if (selection.isActive) selection.toggle(key) else viewModel.playFrom(tracks, track)
+                            },
+                            onLongClick = { selection.start(key) }
+                        )
+                    }
+                }
             }
-            item(key = "smart-actions") {
-                SmartCollectionActions(
-                    accent = style.accent,
-                    enabled = tracks.isNotEmpty(),
-                    onPlay = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
-                    onShuffle = {
-                        val shuffled = tracks.shuffled()
-                        shuffled.firstOrNull()?.let { viewModel.playFrom(shuffled, it) }
+
+            TrackSelectionBar(
+                state = selection,
+                allVisibleIds = selectableIds,
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.playTracksNext(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.addTracksToQueue(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    { batchAddTargets = selectedTracks }
+                },
+                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.toggleFavorites(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.exportTracks(selectedTracks, strings.offline)
+                        selection.exit()
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 84.dp else 12.dp)
+            )
+
+            if (batchAddTargets.isNotEmpty()) {
+                AddTracksToPlaylistDialog(
+                    tracks = batchAddTargets,
+                    playlists = state.playlists,
+                    onDismiss = { batchAddTargets = emptyList() },
+                    onAdd = { playlistId ->
+                        viewModel.addTracksToPlaylist(playlistId, batchAddTargets)
+                        batchAddTargets = emptyList()
+                        selection.exit()
+                    },
+                    onCreate = { name ->
+                        viewModel.createPlaylistWithTracks(name, batchAddTargets)
+                        batchAddTargets = emptyList()
+                        selection.exit()
                     }
                 )
-            }
-            if (tracks.isEmpty()) {
-                item(key = "smart-empty") { LibraryEmpty(style.icon, strings.emptySearchPrompt) }
-            } else {
-                items(tracks.size, key = { index -> "smart-$collectionId-${libraryTrackKey(tracks[index])}" }) { index ->
-                    SmartCollectionTrackRow(state, tracks, tracks[index], viewModel)
-                }
             }
         }
     }
@@ -561,19 +649,23 @@ private fun SmartCollectionTrackRow(
     state: LevyraUiState,
     tracks: List<Track>,
     track: Track,
-    viewModel: LibraryViewModel
+    viewModel: LibraryViewModel,
+    selected: Boolean,
+    selectionActive: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     LibraryTrackRow(
         track = track,
-        selected = false,
-        selectionActive = false,
+        selected = selected,
+        selectionActive = selectionActive,
         isCurrent = track.id == state.currentTrack?.id,
         isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
         isFavorite = track.id in state.favoriteIds,
         isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
         downloadProgress = downloadProgressFor(track, state),
-        onClick = { viewModel.playFrom(tracks, track) },
-        onLongClick = {},
+        onClick = onClick,
+        onLongClick = onLongClick,
         onFavorite = { viewModel.toggleFavorite(track) },
         onDownload = { viewModel.exportTrack(track) }
     )
