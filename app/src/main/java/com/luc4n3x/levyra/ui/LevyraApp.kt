@@ -31,6 +31,12 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
+import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionState
+import com.luc4n3x.levyra.ui.selection.resolveSelected
+import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
+import com.luc4n3x.levyra.ui.selection.trackSelectionKey
 import com.luc4n3x.levyra.ui.components.SpringIconButton
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.playerGlass
@@ -95,6 +101,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -2629,6 +2637,12 @@ fun LevyraApp(
 
                     onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
                     onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
+                    onPlayTracksNext = viewModel::playTracksNext,
+                    onAddTracksToQueue = viewModel::addTracksToQueue,
+                    onToggleFavorites = viewModel::toggleFavorites,
+                    onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
+                    onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
+                    onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                     onOpenAlbumArtist = viewModel::openArtistFromAlbum,
                     onOpenTrackArtist = viewModel::openArtist,
                     onOpenPlayer = viewModel::openPlayerScreen,
@@ -2640,7 +2654,15 @@ fun LevyraApp(
                 ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
+                    onPlayFrom = { tracks, track -> viewModel.playFrom(tracks, track) },
                     onPlayAll = { tracks -> viewModel.playAll(tracks) },
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onPlayTracksNext = viewModel::playTracksNext,
+                    onAddTracksToQueue = viewModel::addTracksToQueue,
+                    onToggleFavorites = viewModel::toggleFavorites,
+                    onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
+                    onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
+                    onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                     onToggleFollow = viewModel::toggleFollowArtist,
                     onToggleExclude = { browseId, name -> viewModel.toggleExcludeArtist(browseId, name) },
                     onTogglePinToHome = { artist -> viewModel.toggleSpeedDialArtist(artist.name, artist.browseId, artist.thumbnailUrl) },
@@ -3573,6 +3595,12 @@ private fun AlbumOverlay(
     onTogglePinToHome: (AlbumHit) -> Unit,
     onAddToPlaylist: (String, Track) -> Unit,
     onCreatePlaylistWithTrack: (String, Track) -> Unit,
+    onPlayTracksNext: (List<Track>) -> Unit,
+    onAddTracksToQueue: (List<Track>) -> Unit,
+    onToggleFavorites: (List<Track>) -> Unit,
+    onExportTracks: (List<Track>) -> Unit,
+    onAddTracksToPlaylist: (String, List<Track>) -> Unit,
+    onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
     onOpenAlbumArtist: () -> Unit,
     onOpenTrackArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
@@ -3590,6 +3618,14 @@ private fun AlbumOverlay(
         LazyListState()
     }
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selection = rememberTrackSelectionState()
+    val selectableIds = remember(tracks) { tracks.map(::trackSelectionKey) }
+    val selectedTracks = remember(tracks, selection.selectedIds) {
+        selection.resolveSelected(tracks, ::trackSelectionKey)
+    }
+    LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+    BackHandler(enabled = selection.isActive) { selection.exit() }
     val albumCurrentTrack = remember(tracks, state.currentTrack) {
         tracks.firstOrNull { candidate -> uiTrackMatches(state.currentTrack, candidate) }
     }
@@ -3680,6 +3716,7 @@ private fun AlbumOverlay(
                 key = { index, track -> "album-track-$index-${track.id}" },
                 contentType = { _, _ -> "album-track" }
             ) { index, track ->
+                val selectionKey = trackSelectionKey(track)
                 AlbumTrackRow(
                     index = index,
                     track = track,
@@ -3692,8 +3729,17 @@ private fun AlbumOverlay(
                     isDownloaded = track.id in state.downloadedTrackIds,
                     downloadProgress = state.downloadProgressByTrackId[track.id],
                     showDivider = index < tracks.lastIndex,
+                    selected = selection.isSelected(selectionKey),
+                    selectionActive = selection.isActive,
+                    onLongClick = { selection.start(selectionKey) },
                     onPlay = {
-                        if (uiTrackMatches(state.currentTrack, track)) onOpenPlayer() else onPlay(track)
+                        if (selection.isActive) {
+                            selection.toggle(selectionKey)
+                        } else if (uiTrackMatches(state.currentTrack, track)) {
+                            onOpenPlayer()
+                        } else {
+                            onPlay(track)
+                        }
                     },
                     onFavorite = { onFavorite(track) },
                     onDownload = { onDownload(track) },
@@ -3879,6 +3925,43 @@ private fun AlbumOverlay(
             )
         }
 
+        TrackSelectionBar(
+            state = selection,
+            allVisibleIds = selectableIds,
+            actions = TrackSelectionActions(
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onPlayTracksNext(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onAddTracksToQueue(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                { batchAddTargets = selectedTracks }
+            },
+            onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onToggleFavorites(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onExportTracks(selectedTracks)
+                    selection.exit()
+                }
+            }
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 92.dp else 12.dp)
+        )
+
         addTarget?.let { track ->
             AddToPlaylistDialog(
                 track = track,
@@ -3891,6 +3974,24 @@ private fun AlbumOverlay(
                 onCreateWith = { name ->
                     onCreatePlaylistWithTrack(name, track)
                     addTarget = null
+                }
+            )
+        }
+
+        if (batchAddTargets.isNotEmpty()) {
+            com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+                tracks = batchAddTargets,
+                playlists = state.playlists,
+                onDismiss = { batchAddTargets = emptyList() },
+                onAdd = { playlistId ->
+                    onAddTracksToPlaylist(playlistId, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                },
+                onCreate = { name ->
+                    onCreatePlaylistWithTracks(name, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
                 }
             )
         }
@@ -4569,6 +4670,9 @@ private fun AlbumTrackRow(
     isDownloaded: Boolean,
     downloadProgress: Int?,
     showDivider: Boolean,
+    selected: Boolean,
+    selectionActive: Boolean,
+    onLongClick: () -> Unit,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
@@ -4595,8 +4699,15 @@ private fun AlbumTrackRow(
                 .fillMaxWidth()
                 .heightIn(min = ALBUM_TRACK_ROW_HEIGHT)
                 .clip(RoundedCornerShape(LevyraPlayerDesign.CornerXs))
-                .background(if (isCurrent) stage.accent.copy(alpha = 0.12f) else Color.Transparent)
-                .clickable(onClick = onPlay)
+                .background(
+                    when {
+                        selected -> stage.accent.copy(alpha = 0.18f)
+                        isCurrent -> stage.accent.copy(alpha = 0.12f)
+                        else -> Color.Transparent
+                    }
+                )
+                .semantics { this.selected = selected }
+                .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
                 .padding(start = LevyraPlayerDesign.SpaceXs, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
@@ -4635,17 +4746,26 @@ private fun AlbumTrackRow(
                     maxLines = 1
                 )
             }
-            AlbumTrackMenu(
-                track = track,
-                isFavorite = isFavorite,
-                isDownloaded = isDownloaded,
-                isDownloading = isDownloading,
-                tint = stage.contentMuted,
-                onFavorite = onFavorite,
-                onDownload = onDownload,
-                onAddToPlaylist = onAddToPlaylist,
-                onArtist = onArtist
-            )
+            if (selectionActive) {
+                Icon(
+                    imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (selected) stage.accent else stage.contentMuted,
+                    modifier = Modifier.size(28.dp)
+                )
+            } else {
+                AlbumTrackMenu(
+                    track = track,
+                    isFavorite = isFavorite,
+                    isDownloaded = isDownloaded,
+                    isDownloading = isDownloading,
+                    tint = stage.contentMuted,
+                    onFavorite = onFavorite,
+                    onDownload = onDownload,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onArtist = onArtist
+                )
+            }
         }
         if (showDivider) {
             Box(
@@ -4754,7 +4874,15 @@ private val ALBUM_TRACK_INDEX_WIDTH = 30.dp
 private fun ArtistOverlay(
     state: LevyraUiState,
     onPlay: (Track) -> Unit,
+    onPlayFrom: (List<Track>, Track) -> Unit,
     onPlayAll: (List<Track>) -> Unit,
+    onToggleFavorite: (Track) -> Unit,
+    onPlayTracksNext: (List<Track>) -> Unit,
+    onAddTracksToQueue: (List<Track>) -> Unit,
+    onToggleFavorites: (List<Track>) -> Unit,
+    onExportTracks: (List<Track>) -> Unit,
+    onAddTracksToPlaylist: (String, List<Track>) -> Unit,
+    onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
     onToggleFollow: () -> Unit,
     onToggleExclude: (String, String) -> Unit,
     onTogglePinToHome: (ArtistProfile) -> Unit,
@@ -4763,6 +4891,20 @@ private fun ArtistOverlay(
     onClose: () -> Unit
 ) {
     val profile = state.artistProfile
+    val likedTracks = remember(state.favorites, profile) {
+        profile?.let { com.luc4n3x.levyra.domain.likedTracksByArtist(state.favorites, it) }.orEmpty()
+    }
+    val selection = rememberTrackSelectionState()
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selectableTracks = remember(likedTracks, profile?.topSongs) {
+        (likedTracks + profile?.topSongs.orEmpty()).distinctBy(::trackSelectionKey)
+    }
+    val selectableIds = remember(selectableTracks) { selectableTracks.map(::trackSelectionKey) }
+    val selectedTracks = remember(selectableTracks, selection.selectedIds) {
+        selection.resolveSelected(selectableTracks, ::trackSelectionKey)
+    }
+    LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+    BackHandler(enabled = selection.isActive) { selection.exit() }
     val pinnedToHome = profile != null && SpeedDial.artistKey(profile.name, profile.browseId)
         ?.let { key -> state.speedDialPins.any { it.key == key } } == true
     val homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS
@@ -4936,6 +5078,21 @@ private fun ArtistOverlay(
                             }
                         }
                     }
+                    if (likedTracks.isNotEmpty()) {
+                        item(
+                            key = "artist-liked-tracks",
+                            contentType = "artist-liked-tracks"
+                        ) {
+                            ArtistFavoriteTracksShelf(
+                                tracks = likedTracks,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                selection = selection,
+                                onPlay = { track -> onPlayFrom(likedTracks, track) }
+                            )
+                        }
+                    }
                     if (artist.topSongs.isNotEmpty()) {
                         item(
                             key = "artist-popular-tracks",
@@ -4946,6 +5103,7 @@ private fun ArtistOverlay(
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
                                 isResolving = state.isResolving,
+                                selection = selection,
                                 onPlay = onPlay,
                                 onPlayAll = onPlayAll
                             )
@@ -4997,6 +5155,61 @@ private fun ArtistOverlay(
             }
         }
 
+        TrackSelectionBar(
+            state = selection,
+            allVisibleIds = selectableIds,
+            actions = TrackSelectionActions(
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onPlayTracksNext(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onAddTracksToQueue(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                { batchAddTargets = selectedTracks }
+            },
+            onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onToggleFavorites(selectedTracks)
+                    selection.exit()
+                }
+            },
+            onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                {
+                    onExportTracks(selectedTracks)
+                    selection.exit()
+                }
+            }
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 12.dp, bottom = if (state.currentTrack != null) 88.dp else 12.dp)
+        )
+
+        if (batchAddTargets.isNotEmpty()) {
+            com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+                tracks = batchAddTargets,
+                playlists = state.playlists,
+                onDismiss = { batchAddTargets = emptyList() },
+                onAdd = { playlistId ->
+                    onAddTracksToPlaylist(playlistId, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                },
+                onCreate = { name ->
+                    onCreatePlaylistWithTracks(name, batchAddTargets)
+                    batchAddTargets = emptyList()
+                    selection.exit()
+                }
+            )
+        }
+
         ArtistTopBar(
             title = profile?.name,
             atmosphere = atmosphere,
@@ -5008,8 +5221,87 @@ private fun ArtistOverlay(
     }
 }
 
+private const val ARTIST_FAVORITES_COLLAPSED_COUNT = 4
 private const val ARTIST_POPULAR_COLLAPSED_COUNT = 5
 private const val ARTIST_POPULAR_MAX_COUNT = 10
+
+@Composable
+private fun ArtistFavoriteTracksShelf(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    selection: TrackSelectionState,
+    onPlay: (Track) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val distinctTracks = remember(tracks) { tracks.distinctBy(::trackSelectionKey) }
+    if (distinctTracks.isEmpty()) return
+    var expanded by rememberSaveable(distinctTracks.firstOrNull()?.let(::trackSelectionKey), distinctTracks.size) {
+        mutableStateOf(false)
+    }
+    val visibleTracks = remember(distinctTracks, expanded) {
+        if (expanded) distinctTracks else distinctTracks.take(ARTIST_FAVORITES_COLLAPSED_COUNT)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = strings.favoritesPlain,
+                    color = LevyraText,
+                    fontSize = 22.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.45).sp
+                )
+                Text(
+                    text = strings.formatTrackCount(distinctTracks.size),
+                    color = LevyraMuted,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            if (distinctTracks.size > ARTIST_FAVORITES_COLLAPSED_COUNT) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(
+                        text = if (expanded) strings.showLess else strings.showAll,
+                        color = LevyraCyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        visibleTracks.forEachIndexed { index, track ->
+            val key = trackSelectionKey(track)
+            val current = track.id == currentId
+            ArtistPopularTrackRow(
+                rank = index + 1,
+                track = track,
+                isCurrent = current,
+                isPlaying = isPlaying && current,
+                isResolving = isResolving && current,
+                selected = selection.isSelected(key),
+                selectionActive = selection.isActive,
+                onLongClick = { selection.start(key) },
+                onPlay = {
+                    if (selection.isActive) selection.toggle(key) else onPlay(track)
+                }
+            )
+        }
+    }
+}
 
 @Composable
 private fun ArtistPopularTracksShelf(
@@ -5017,6 +5309,7 @@ private fun ArtistPopularTracksShelf(
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
+    selection: TrackSelectionState,
     onPlay: (Track) -> Unit,
     onPlayAll: (List<Track>) -> Unit
 ) {
@@ -5085,13 +5378,19 @@ private fun ArtistPopularTracksShelf(
         ) {
             visibleTracks.forEachIndexed { index, track ->
                 val isCurrent = track.id == currentId
+                val selectionKey = trackSelectionKey(track)
                 ArtistPopularTrackRow(
                     rank = index + 1,
                     track = track,
                     isCurrent = isCurrent,
                     isPlaying = isPlaying && isCurrent,
                     isResolving = isResolving && isCurrent,
-                    onPlay = { onPlay(track) }
+                    selected = selection.isSelected(selectionKey),
+                    selectionActive = selection.isActive,
+                    onLongClick = { selection.start(selectionKey) },
+                    onPlay = {
+                        if (selection.isActive) selection.toggle(selectionKey) else onPlay(track)
+                    }
                 )
             }
         }
@@ -5132,6 +5431,9 @@ private fun ArtistPopularTrackRow(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
+    selected: Boolean,
+    selectionActive: Boolean,
+    onLongClick: () -> Unit,
     onPlay: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -5144,11 +5446,15 @@ private fun ArtistPopularTrackRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .then(
-                if (isCurrent) Modifier.background(LevyraCyan.copy(alpha = 0.08f))
-                else Modifier
+                when {
+                    selected -> Modifier.background(LevyraCyan.copy(alpha = 0.16f))
+                    isCurrent -> Modifier.background(LevyraCyan.copy(alpha = 0.08f))
+                    else -> Modifier
+                }
             )
+            .semantics { this.selected = selected }
             .heightIn(min = 62.dp)
-            .pressable(onClick = onPlay)
+            .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
             .padding(start = 6.dp, top = 4.dp, end = 6.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -5204,10 +5510,16 @@ private fun ArtistPopularTrackRow(
         }
 
         Box(
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(40.dp),
             contentAlignment = Alignment.Center
         ) {
             when {
+                selectionActive -> Icon(
+                    imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (selected) LevyraCyan else LevyraMuted,
+                    modifier = Modifier.size(26.dp)
+                )
                 isResolving -> CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
@@ -12189,6 +12501,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    var batchAddTargets by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val selection = rememberTrackSelectionState()
     val personalized = remember(
         state.favorites,
         state.recentListens,
@@ -12258,6 +12572,53 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         }
         val visibleSongs = remember(data.songs, topResultTracks, filter) {
             if (filter == SearchFilter.All) filterSearchSongsExcludingTopResult(data.songs, topResultTracks) else data.songs
+        }
+        val selectableTracks = remember(visibleSongs, data.videos, filter) {
+            buildList {
+                if (filter == SearchFilter.All || filter == SearchFilter.Songs) addAll(visibleSongs)
+                if (filter == SearchFilter.All || filter == SearchFilter.Videos) addAll(data.videos)
+            }.distinctBy(::trackSelectionKey)
+        }
+        val selectableIds = remember(selectableTracks) { selectableTracks.map(::trackSelectionKey) }
+        val selectedTracks = remember(selectableTracks, selection.selectedIds) {
+            selection.resolveSelected(selectableTracks, ::trackSelectionKey)
+        }
+        LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+        BackHandler(enabled = selection.isActive) { selection.exit() }
+
+        if (selection.isActive) {
+            TrackSelectionBar(
+                state = selection,
+                allVisibleIds = selectableIds,
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.playTracksNext(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.addTracksToQueue(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToPlaylist = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    { batchAddTargets = selectedTracks }
+                },
+                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.toggleFavorites(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        viewModel.exportTracks(selectedTracks, strings.offline)
+                        selection.exit()
+                    }
+                }
+            )
+            )
         }
 
         LazyColumn(
@@ -12494,10 +12855,17 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                     isDownloading = track.id in state.downloadingTrackIds,
                                     isDownloaded = track.id in state.downloadedTrackIds,
                                     downloadProgress = state.downloadProgressByTrackId[track.id],
+                                    selected = selection.isSelected(trackSelectionKey(track)),
+                                    selectionActive = selection.isActive,
+                                    onLongClick = { selection.start(trackSelectionKey(track)) },
                                     onClick = {
-                                        focusManager.clearFocus()
-                                        keyboardController?.hide()
-                                        viewModel.playFrom(data.videos, track)
+                                        if (selection.isActive) {
+                                            selection.toggle(trackSelectionKey(track))
+                                        } else {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                            viewModel.playFrom(data.videos, track)
+                                        }
                                     },
                                     onFavorite = { viewModel.toggleFavorite(track) },
                                     onAddToPlaylist = { addTarget = track },
@@ -12526,10 +12894,17 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         isDownloading = track.id in state.downloadingTrackIds,
                                         isDownloaded = track.id in state.downloadedTrackIds,
                                         downloadProgress = state.downloadProgressByTrackId[track.id],
+                                        selected = selection.isSelected(trackSelectionKey(track)),
+                                        selectionActive = selection.isActive,
+                                        onLongClick = { selection.start(trackSelectionKey(track)) },
                                         onClick = {
-                                            focusManager.clearFocus()
-                                            keyboardController?.hide()
-                                            viewModel.playFrom(data.songs, track)
+                                            if (selection.isActive) {
+                                                selection.toggle(trackSelectionKey(track))
+                                            } else {
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                                viewModel.playFrom(data.songs, track)
+                                            }
                                         },
                                         onFavorite = { viewModel.toggleFavorite(track) },
                                         onAddToPlaylist = { addTarget = track },
@@ -12584,6 +12959,23 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             onCreateWith = { name ->
                 viewModel.createPlaylist(name, track)
                 addTarget = null
+            }
+        )
+    }
+    if (batchAddTargets.isNotEmpty()) {
+        com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+            tracks = batchAddTargets,
+            playlists = state.playlists,
+            onDismiss = { batchAddTargets = emptyList() },
+            onAdd = { playlistId ->
+                viewModel.addTracksToPlaylist(playlistId, batchAddTargets)
+                batchAddTargets = emptyList()
+                selection.exit()
+            },
+            onCreate = { name ->
+                viewModel.createPlaylistWithTracks(name, batchAddTargets)
+                batchAddTargets = emptyList()
+                selection.exit()
             }
         )
     }
@@ -21920,6 +22312,9 @@ private fun SearchTrackCard(
     isPlaying: Boolean,
     isResolving: Boolean,
     isFavorite: Boolean,
+    selected: Boolean = false,
+    selectionActive: Boolean = false,
+    onLongClick: () -> Unit = {},
     isDownloading: Boolean,
     isDownloaded: Boolean,
     downloadProgress: Int?,
@@ -21942,11 +22337,16 @@ private fun SearchTrackCard(
             )
             .border(
                 1.dp,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.30f) else Color.Transparent,
+                when {
+                    selected -> LevyraCyan.copy(alpha = 0.58f)
+                    isCurrent -> LevyraCyan.copy(alpha = 0.30f)
+                    else -> Color.Transparent
+                },
                 RoundedCornerShape(18.dp)
             )
-            .pressable(onClick = onClick)
-            .padding(horizontal = if (isCurrent) 9.dp else 0.dp, vertical = 7.dp),
+            .semantics { this.selected = selected }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = if (isCurrent || selected) 9.dp else 0.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
@@ -21973,18 +22373,37 @@ private fun SearchTrackCard(
                 modifier = Modifier.clickable { onArtist() }
             )
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
-            IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
-            }
-            IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = LocalLevyraStrings.current.favorite,
-                    tint = if (isFavorite) LevyraPink else LevyraMuted,
-                    modifier = Modifier.size(24.dp)
+        if (selectionActive) {
+            Icon(
+                imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (selected) LevyraCyan else LevyraMuted,
+                modifier = Modifier.size(28.dp)
+            )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                DownloadButton(
+                    isDownloading = isDownloading,
+                    isDownloaded = isDownloaded,
+                    progress = downloadProgress,
+                    onDownload = onDownload
                 )
+                IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        contentDescription = LocalLevyraStrings.current.addToPlaylist,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = LocalLevyraStrings.current.favorite,
+                        tint = if (isFavorite) LevyraPink else LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
@@ -22259,11 +22678,21 @@ private fun TrackRow(
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             if (onDownload != null) {
-                DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+                DownloadButton(
+                    isDownloading = isDownloading,
+                    isDownloaded = isDownloaded,
+                    progress = downloadProgress,
+                    onDownload = onDownload
+                )
             }
             if (onAddToPlaylist != null) {
                 IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                    Icon(
+                        Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        contentDescription = LocalLevyraStrings.current.addToPlaylist,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
             IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
