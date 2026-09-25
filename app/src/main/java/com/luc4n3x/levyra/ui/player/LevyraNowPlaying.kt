@@ -411,6 +411,7 @@ fun LevyraNowPlaying(
             !state.isVideoMode && !liveRadio,
             state.isVideoMode,
             state.isVideoMode && track?.videoSubtitleTracks?.isNotEmpty() == true,
+            state.isVideoMode && state.videoQuality.available,
             track != null
         ).count { it }
         val headerSlotWidth = maxOf(headerButtonSize, HeaderButtonMinimumWidth)
