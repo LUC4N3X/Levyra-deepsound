@@ -54,6 +54,7 @@ data class ListeningSignalProfile(
     val artists: Map<String, ArtistListeningSignal> = emptyMap(),
     val favoriteKeys: Set<String> = emptySet(),
     val playlistKeys: Set<String> = emptySet(),
+    val knownRecordingKeys: Set<String> = emptySet(),
     val followedArtistKeys: Set<String> = emptySet(),
     val referenceNowMs: Long = 0L,
     val weights: ListeningSignalWeights = ListeningSignalWeights.Default,
@@ -62,7 +63,7 @@ data class ListeningSignalProfile(
     val hasSignal: Boolean
         get() = tracks.isNotEmpty() || artists.isNotEmpty() ||
             favoriteKeys.isNotEmpty() || playlistKeys.isNotEmpty() ||
-            followedArtistKeys.isNotEmpty() || !feedback.isEmpty
+            knownRecordingKeys.isNotEmpty() || followedArtistKeys.isNotEmpty() || !feedback.isEmpty
 
     fun trackScore(track: Track): Int {
         val key = ListenIdentity.trackKey(track.id, track.title, track.artist)
@@ -166,8 +167,12 @@ object ListeningSignalEngine {
     ): ListeningSignalProfile {
         val trackAccumulators = LinkedHashMap<String, TrackAccumulator>()
         val artistAccumulators = LinkedHashMap<String, ArtistAccumulator>()
+        val knownRecordingKeys = LinkedHashSet<String>()
 
         events.forEach { event ->
+            LevyraPersonalOrbit.recordingIdentityKey(event.title, event.artist)
+                .takeIf(String::isNotBlank)
+                ?.let(knownRecordingKeys::add)
             val ratio = completionRatio(event)
             val counted = ListenPlayPolicy.isCountedPlay(event)
             val skipped = !event.completed && !counted && ratio <= SKIP_RATIO
@@ -185,11 +190,23 @@ object ListeningSignalEngine {
             }
         }
 
+        favorites.forEach { track ->
+            LevyraPersonalOrbit.recordingIdentityKey(track.title, track.artist)
+                .takeIf(String::isNotBlank)
+                ?.let(knownRecordingKeys::add)
+        }
+        playlistTracks.forEach { track ->
+            LevyraPersonalOrbit.recordingIdentityKey(track.title, track.artist)
+                .takeIf(String::isNotBlank)
+                ?.let(knownRecordingKeys::add)
+        }
+
         return ListeningSignalProfile(
             tracks = trackAccumulators.mapValues { it.value.toSignal() },
             artists = artistAccumulators.mapValues { it.value.toSignal() },
             favoriteKeys = favorites.mapTo(LinkedHashSet()) { ListenIdentity.trackKey(it.id, it.title, it.artist) },
             playlistKeys = playlistTracks.mapTo(LinkedHashSet()) { ListenIdentity.trackKey(it.id, it.title, it.artist) },
+            knownRecordingKeys = knownRecordingKeys,
             followedArtistKeys = followedArtists
                 .flatMap(::splitArtists)
                 .mapTo(LinkedHashSet(), ListenIdentity::artistKey)
