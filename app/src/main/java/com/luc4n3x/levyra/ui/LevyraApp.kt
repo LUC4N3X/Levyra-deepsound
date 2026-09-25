@@ -432,6 +432,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.LineBreak
@@ -13729,7 +13730,7 @@ private fun ListeningPickTile(
                 fontSize = 13.sp,
                 lineHeight = 16.sp,
                 fontWeight = FontWeight.Bold,
-                style = TextStyle(lineBreak = LineBreak.Simple, hyphens = Hyphens.Auto),
+                style = LocalTextStyle.current.merge(TextStyle(lineBreak = LineBreak.Simple, hyphens = Hyphens.Auto)),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier

@@ -10,16 +10,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.resume
 
 class SharedMediaResolver(
     private val providerRouter: LevyraProviderRouter,
@@ -99,16 +104,24 @@ class SharedMediaResolver(
 
     private suspend fun resolveBulkLinks(request: SharedMediaRequest, languageCode: String): SharedMediaPreview {
         val limiter = Semaphore(BulkLinkCapture.RESOLUTION_CONCURRENCY)
+        val collectedTracks = AtomicInteger(0)
         val resolved = coroutineScope {
             request.bulkUrls.map { url ->
-                async { limiter.withPermit { resolveBulkLink(url, languageCode) } }
+                async {
+                    limiter.withPermit {
+                        if (collectedTracks.get() >= BulkLinkCapture.MAX_TRACKS) return@withPermit emptyList()
+                        resolveBulkLink(url, languageCode)
+                            ?.take(BulkLinkCapture.MAX_TRACKS)
+                            ?.also { collectedTracks.addAndGet(it.size) }
+                    }
+                }
             }.awaitAll()
         }
         val tracks = LinkedHashMap<String, Track>()
         var trackDuplicates = 0
         var failedLinks = 0
         resolved.forEach { linkTracks ->
-            if (linkTracks.isNullOrEmpty()) {
+            if (linkTracks == null) {
                 failedLinks += 1
                 return@forEach
             }
@@ -142,7 +155,7 @@ class SharedMediaResolver(
                 SharedMediaKind.Playlist -> resolvePlaylist(link, languageCode).tracks
                 SharedMediaKind.Album -> resolveAlbum(link, languageCode).tracks
                 else -> null
-            }
+            }?.takeIf { it.isNotEmpty() }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -152,10 +165,11 @@ class SharedMediaResolver(
     }
 
     private suspend fun resolveVideo(request: SharedMediaRequest, requireMetadata: Boolean = false): SharedMediaPreview {
-        val metadata = runInterruptible { fetchOEmbed(request.url) }
-        if (metadata == null && requireMetadata) {
+        val oEmbed = fetchOEmbed(request.url)
+        if (oEmbed is OEmbedResult.Missing && requireMetadata) {
             return SharedMediaPreview(request = request, title = "", subtitle = "", thumbnailUrl = "", tracks = emptyList())
         }
+        val metadata = (oEmbed as? OEmbedResult.Found)?.json
         val title = metadata?.optString("title").orEmpty().trim().ifBlank { "Video YouTube" }
         val artist = metadata?.optString("author_name").orEmpty().trim()
             .removeSuffix(TOPIC_CHANNEL_SUFFIX)
@@ -240,7 +254,7 @@ class SharedMediaResolver(
         )
     }
 
-    private fun fetchOEmbed(videoUrl: String): JSONObject? {
+    private suspend fun fetchOEmbed(videoUrl: String): OEmbedResult {
         val endpoint = "https://www.youtube.com/oembed".toHttpUrl().newBuilder()
             .addQueryParameter("url", videoUrl)
             .addQueryParameter("format", "json")
@@ -250,16 +264,38 @@ class SharedMediaResolver(
             .header("User-Agent", USER_AGENT)
             .get()
             .build()
-        return runCatching {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                JSONObject(response.body.string())
-            }
-        }.getOrNull()
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (continuation.isActive) continuation.resume(OEmbedResult.Failed)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val result = response.use {
+                        when {
+                            it.code in OEMBED_MISSING_CODES -> OEmbedResult.Missing
+                            !it.isSuccessful -> OEmbedResult.Failed
+                            else -> runCatching { OEmbedResult.Found(JSONObject(it.body.string())) }
+                                .getOrDefault(OEmbedResult.Failed)
+                        }
+                    }
+                    if (continuation.isActive) continuation.resume(result)
+                }
+            })
+        }
+    }
+
+    private sealed interface OEmbedResult {
+        data class Found(val json: JSONObject) : OEmbedResult
+        data object Missing : OEmbedResult
+        data object Failed : OEmbedResult
     }
 
     private companion object {
         const val TOPIC_CHANNEL_SUFFIX = " - Topic"
+        val OEMBED_MISSING_CODES = setOf(400, 401, 403, 404)
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
     }
 }

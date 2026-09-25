@@ -18,6 +18,10 @@ object SharedMediaIntentParser {
                 }
             }
         }
+        val sharedUrls = candidates.flatMap(BulkLinkCapture::extractUrls).distinct()
+        if (sharedUrls.size > 1 && candidates.none { LevyraPlaylistShareCodec.extractPayload(it) != null }) {
+            return BulkLinkCapture.request(sharedUrls, ::parseText)
+        }
         return candidates.asSequence().mapNotNull(::parseText).firstOrNull()
     }
 

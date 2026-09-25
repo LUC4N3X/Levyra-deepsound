@@ -9,7 +9,7 @@ object BulkLinkCapture {
     private val supportedKinds = setOf(SharedMediaKind.Video, SharedMediaKind.Playlist, SharedMediaKind.Album)
 
     fun extractUrls(text: String): List<String> = urlPattern.findAll(text)
-        .map { it.value.trimEnd('.', ',', ';', ')', ']', '}') }
+        .map { it.value.trimEnd('.', ',', ';', ':', '!', ')', ']', '}') }
         .filter { it.length > "https://".length }
         .toList()
 

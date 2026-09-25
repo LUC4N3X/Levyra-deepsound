@@ -432,12 +432,14 @@ class QueueSpaceEngineTest {
         val tombstones = AutoQueueTombstones(maxKeysPerSpace = 4, maxSpaces = 2)
         val tracks = (1..10).map { track("t$it") }
         tombstones.markAutomatic("a", tracks)
-        tombstones.recordRemoval("a", tracks)
-
+        assertFalse(tombstones.isAutomatic("a", tracks.first()))
+        assertTrue(tombstones.isAutomatic("a", tracks.last()))
+        tombstones.recordRemoval("a", tracks.takeLast(2))
         assertTrue(tombstones.rejectedKeys("a").size <= 4)
+
         tombstones.markAutomatic("b", tracks.take(1))
         tombstones.markAutomatic("c", tracks.take(1))
-        assertFalse(tombstones.isAutomatic("a", tracks.last()))
+        assertFalse(tombstones.isAutomatic("a", tracks[7]))
     }
 
     private suspend fun restoredEngine(spaceId: String, tracks: List<Track>): PersistentQueueEngine {

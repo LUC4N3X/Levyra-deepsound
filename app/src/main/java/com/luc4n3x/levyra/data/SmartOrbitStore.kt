@@ -16,7 +16,7 @@ class SmartOrbitStore(context: Context) {
     private var cached: SmartOrbitPool? = null
 
     fun load(nowMs: Long = System.currentTimeMillis()): SmartOrbitPool = synchronized(lock) {
-        cached ?: SmartOrbitEngine.prune(read(), nowMs).also { cached = it }
+        SmartOrbitEngine.prune(cached ?: read(), nowMs).also { cached = it }
     }
 
     fun recordRelated(

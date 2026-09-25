@@ -178,7 +178,11 @@ object LevyraPersonalOrbit {
         addTracks(playbackHistory)
         addTracks(favoritesPool)
         cap = max
-        addTracks(discoveryPool.take(discoveryReserve))
+        addTracks(
+            discoveryPool
+                .filterNot { discovery -> selected.any { sameRecording(it, discovery) } }
+                .take(discoveryReserve)
+        )
         addTracks(restoredOrbit)
         addTracks(orderedFallback) {
             isLanguagePreferred(it, normalizedLanguage) && hasSquareAlbumArtwork(it)

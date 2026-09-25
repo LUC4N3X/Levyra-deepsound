@@ -29,6 +29,7 @@ class BulkLinkCaptureTest {
             Ascolta questa: https://youtu.be/aaaaaaaaaaa, e poi
             (https://music.youtube.com/watch?v=bbbbbbbbbbb). Grazie!
             https://www.youtube.com/watch?v=ccccccccccc https://example.com/x
+            Sentitela! https://youtu.be/ddddddddddd!
         """.trimIndent()
 
         assertEquals(
@@ -36,7 +37,8 @@ class BulkLinkCaptureTest {
                 "https://youtu.be/aaaaaaaaaaa",
                 "https://music.youtube.com/watch?v=bbbbbbbbbbb",
                 "https://www.youtube.com/watch?v=ccccccccccc",
-                "https://example.com/x"
+                "https://example.com/x",
+                "https://youtu.be/ddddddddddd"
             ),
             BulkLinkCapture.extractUrls(text)
         )

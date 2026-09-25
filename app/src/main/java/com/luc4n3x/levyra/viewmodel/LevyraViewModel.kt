@@ -10278,19 +10278,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val cached = cachedRelatedCandidates(track)
         val languageCode = _state.value.languageCode
         viewModelScope.launch(Dispatchers.IO) {
-            val recorded = smartOrbitMutex.withLock {
-                val related = cached ?: if (lyricsNetworkProfile().connected) {
-                    runCatchingPreservingCancellation {
-                        repository.radio(track, languageCode, SmartOrbitEngine.RELATED_PER_SEED)
-                    }.getOrNull().orEmpty()
-                } else {
-                    emptyList()
-                }
-                if (related.isEmpty()) return@withLock false
-                smartOrbitPool = smartOrbitStore.recordRelated(track, related)
-                true
+            val related = cached ?: if (lyricsNetworkProfile().connected) {
+                runCatchingPreservingCancellation {
+                    repository.radio(track, languageCode, SmartOrbitEngine.RELATED_PER_SEED)
+                }.getOrNull().orEmpty()
+            } else {
+                emptyList()
             }
-            if (recorded) withContext(Dispatchers.Main) { refreshSmartOrbit() }
+            if (related.isEmpty()) return@launch
+            smartOrbitMutex.withLock { smartOrbitPool = smartOrbitStore.recordRelated(track, related) }
+            withContext(Dispatchers.Main) { refreshSmartOrbit() }
         }
     }
 
@@ -10316,13 +10313,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = _state.value
         val rejected = queueEngine.rejectedAutomaticKeys()
         val profile = listeningSignals?.copy(feedback = snapshot.recommendationFeedback)
+        val heardArtistsByTitle = HashMap<String, MutableSet<String>>()
+        (snapshot.recentSearches + snapshot.recentListens + snapshot.favorites).forEach { track ->
+            val title = LevyraPersonalOrbit.musicTitleKey(track)
+            if (title.isNotBlank()) heardArtistsByTitle.getOrPut(title) { HashSet() } += LevyraPersonalOrbit.artistKeys(track)
+        }
         return SmartOrbitEngine.discoveries(
             pool = pool,
             profile = profile,
             isBlocked = { track ->
-                snapshot.artistExclusions.excludesTrack(track) || isRejectedAutomatic(track, rejected)
+                snapshot.artistExclusions.excludesTrack(track) ||
+                    isRejectedAutomatic(track, rejected) ||
+                    isHeardRecording(track, heardArtistsByTitle)
             }
         )
+    }
+
+    private fun isHeardRecording(track: Track, heardArtistsByTitle: Map<String, Set<String>>): Boolean {
+        if (heardArtistsByTitle.isEmpty()) return false
+        val artists = heardArtistsByTitle[LevyraPersonalOrbit.musicTitleKey(track)] ?: return false
+        val candidateArtists = LevyraPersonalOrbit.artistKeys(track)
+        return artists.isEmpty() || candidateArtists.isEmpty() || candidateArtists.any(artists::contains)
     }
 
     private fun isRejectedAutomatic(track: Track, rejected: Set<String>): Boolean =
@@ -11190,7 +11201,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 followedArtists = signalSnapshot.followedArtists.map { it.name }
             )
             listeningSignals = signals
-            smartOrbitPool = smartOrbitStore.load()
+            smartOrbitMutex.withLock { smartOrbitPool = smartOrbitStore.load() }
             withContext(Dispatchers.Main) { refreshSmartOrbit() }
             _state.update { current ->
                 val updated = current.copy(
