@@ -91,11 +91,13 @@ internal fun lyricsFlipSettleTarget(
 ): PlayerLyricsFace {
     val towardLyricsDistance = if (rightToLeft) dragPx.finiteOrZero() else -dragPx.finiteOrZero()
     val towardLyricsVelocity = if (rightToLeft) velocityPx.finiteOrZero() else -velocityPx.finiteOrZero()
+    val flingTowardLyrics = towardLyricsVelocity > 0f
+    val travelTowardLyrics = towardLyricsDistance > 0f
     val fling = abs(towardLyricsVelocity) >= flingVelocityPx &&
         abs(towardLyricsDistance) >= minFlingDistancePx &&
-        (towardLyricsVelocity > 0f) == (towardLyricsDistance > 0f)
+        flingTowardLyrics == travelTowardLyrics
     if (fling) {
-        return if (towardLyricsVelocity > 0f) PlayerLyricsFace.Lyrics else PlayerLyricsFace.Player
+        return if (flingTowardLyrics) PlayerLyricsFace.Lyrics else PlayerLyricsFace.Player
     }
     val threshold = if (startFace == PlayerLyricsFace.Player) {
         LyricsFlipCommitFraction
@@ -118,11 +120,12 @@ internal fun lyricsFlipFaceAlpha(
     frontVisible: Boolean = true
 ): Float {
     val p = progress.finiteOrZero().coerceIn(0f, 1f)
+    val backFaceShown = p >= 0.5f
     return when {
         !frontVisible && !back -> 0f
         !frontVisible && depth -> if (p > 0f) 1f else 0f
         !frontVisible -> p
-        depth -> if (back == (p >= 0.5f)) 1f else 0f
+        depth -> if (back == backFaceShown) 1f else 0f
         back -> (p * 2f - 1f).coerceIn(0f, 1f)
         else -> (1f - p * 2f).coerceIn(0f, 1f)
     }
