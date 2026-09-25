@@ -75,40 +75,6 @@ Synced lyrics, normal audio-file downloads, Queue Spaces, Android Auto, AutoEQ, 
 **Open source and actively developed.**  
 Levyra is built in public for Android and Windows, with releases, issues, code, and engineering decisions visible on GitHub.
 
-## ✦ Project recognition
-
-<div align="center">
-
-<p>
-  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
-    <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="52">
-  </a>
-</p>
-
-<p>
-  <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
-  <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
-  <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
-</p>
-
-<p>
-  <sub><b>Tech &amp; developer media coverage</b></sub>
-  <br>
-  <sub>
-    <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php"><b>SecurityLab.ru</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://www.geekparadize.fr/articles/levyra-lecteur-musical-open-source-android-windows"><b>GeekParadize</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
-  </sub>
-</p>
-
-</div>
-
 ## ✦ Interface & screenshots
 
 <div align="center">
@@ -170,6 +136,40 @@ Levyra is built in public for Android and Windows, with releases, issues, code, 
 </details>
 
 ---
+
+## ✦ Project recognition
+
+<div align="center">
+
+<p>
+  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
+    <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="52">
+  </a>
+</p>
+
+<p>
+  <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
+  <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
+  <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
+</p>
+
+<p>
+  <sub><b>Tech &amp; developer media coverage</b></sub>
+  <br>
+  <sub>
+    <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php"><b>SecurityLab.ru</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://www.geekparadize.fr/articles/levyra-lecteur-musical-open-source-android-windows"><b>GeekParadize</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
+  </sub>
+</p>
+
+</div>
 
 ## ✦ What Levyra can do
 
