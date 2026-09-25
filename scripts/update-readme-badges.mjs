@@ -110,7 +110,7 @@ const makePill = ({ label, value, icon, isDark, accentColor, mobile = false }) =
     </linearGradient>
   </defs>
   <rect x=".7" y=".7" width="128.6" height="30.6" rx="9.2" fill="url(#surface)" stroke="${border}" stroke-width="1.4"/>
-  <rect x="4" y="4" width="24" height="24" rx="7.2" fill="${accentColor}" fill-opacity="${isDark ? '.12' : '.085'}" stroke="${accentColor}" stroke-opacity="${isDark ? '.42' : '.30'}" stroke-width=".9"/>
+  <rect x="4" y="4" width="24" height="24" rx="7.2" fill="${accentColor}" fill-opacity="${isDark ? '.10' : '.07'}" stroke="${accentColor}" stroke-opacity="${isDark ? '.34' : '.24'}" stroke-width=".9"/>
   <rect x="5" y="5" width="22" height="22" rx="6.3" fill="none" stroke="#FFFFFF" stroke-opacity="${innerOpacity}" stroke-width=".55"/>
   <g transform="translate(16 16)" style="color:${accentColor};">
     ${icon}
