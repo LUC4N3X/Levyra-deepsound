@@ -432,10 +432,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.Hyphens
-import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -539,7 +536,6 @@ import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.search.buildPersonalizedSearchSnapshot
 import com.luc4n3x.levyra.feature.search.buildSearchPlaceholderCycle
-import com.luc4n3x.levyra.feature.search.buildSearchTasteHintExclusions
 import com.luc4n3x.levyra.feature.search.buildSearchTasteHints
 import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
@@ -12656,10 +12652,6 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         )
     }
     val personalizedCopy = personalizedSearchCopy(state.languageCode)
-    val personalizedTracks = remember(personalized.tracks, state.recentSearches) {
-        val recentIdentities = state.recentSearches.mapTo(HashSet(), LevyraPersonalOrbit::identityKey)
-        personalized.tracks.filterNot { LevyraPersonalOrbit.identityKey(it) in recentIdentities }
-    }
     val personalizedArtists = remember(state.homeArtists, personalized.artistNames) {
         rankPersonalizedSearchArtists(state.homeArtists, personalized.artistNames)
     }
@@ -12677,18 +12669,10 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             fallbacks = listOf(strings.searchPlaceholder, strings.searchSongsArtists, strings.emptySearchPrompt)
         )
     }
-    val listeningPickTasteExclusions = remember(personalizedTracks) {
-        buildSearchTasteHintExclusions(personalizedTracks.take(LISTENING_PICKS_LIMIT))
-    }
-    val tasteHintQueries = remember(
-        personalized.prompts,
-        state.languageCode,
-        listeningPickTasteExclusions
-    ) {
+    val tasteHintQueries = remember(personalized.prompts, state.languageCode) {
         buildSearchTasteHints(
             prompts = personalized.prompts,
-            fallbacks = LevyraContentLocales.quickSearches(state.languageCode),
-            excludedValues = listeningPickTasteExclusions
+            fallbacks = LevyraContentLocales.quickSearches(state.languageCode)
         )
     }
     var placeholderIndex by remember(personalizedPlaceholders) { mutableIntStateOf(0) }
@@ -12797,28 +12781,6 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 viewModel.play(track)
                             },
                             onRemove = viewModel::removeRecentSearch,
-                            onFavorite = viewModel::toggleFavorite,
-                            onAddToPlaylist = { addTarget = it },
-                            onPlayNext = viewModel::playNext,
-                            onAddToQueue = viewModel::addToQueue,
-                            onDownload = viewModel::exportTrack,
-                            onArtist = viewModel::openArtist
-                        )
-                    }
-                }
-
-                if (personalizedTracks.isNotEmpty()) {
-                    item(key = "search-personalized", contentType = "search-personalized") {
-                        ListeningPicksGrid(
-                            title = personalizedCopy.basedOnListening,
-                            tracks = personalizedTracks,
-                            favoriteIds = state.favoriteIds,
-                            downloadedTrackIds = state.downloadedTrackIds,
-                            onTrackClick = { track ->
-                                focusManager.clearFocus()
-                                keyboardController?.hide()
-                                viewModel.playFrom(personalizedTracks, track)
-                            },
                             onFavorite = viewModel::toggleFavorite,
                             onAddToPlaylist = { addTarget = it },
                             onPlayNext = viewModel::playNext,
@@ -13615,149 +13577,6 @@ private fun SearchTrackActionsMenu(
         }
     }
 }
-
-@Composable
-private fun ListeningPicksGrid(
-    title: String,
-    tracks: List<Track>,
-    favoriteIds: Set<String>,
-    downloadedTrackIds: Set<String>,
-    onTrackClick: (Track) -> Unit,
-    onFavorite: (Track) -> Unit,
-    onAddToPlaylist: (Track) -> Unit,
-    onPlayNext: (Track) -> Unit,
-    onAddToQueue: (Track) -> Unit,
-    onDownload: (Track) -> Unit,
-    onArtist: (Track) -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val panelShape = RoundedCornerShape(22.dp)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(panelShape)
-            .background(Brush.linearGradient(listOf(LevyraBlue.copy(alpha = 0.16f), Color.White.copy(alpha = 0.03f))))
-            .border(Dp.Hairline, LevyraBlue.copy(alpha = 0.22f), panelShape)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.AutoAwesome,
-                contentDescription = null,
-                tint = LevyraBlue,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                text = title,
-                color = LevyraText,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        tracks.take(LISTENING_PICKS_LIMIT).chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                pair.forEach { track ->
-                    ListeningPickTile(
-                        track = track,
-                        isFavorite = track.id in favoriteIds,
-                        isDownloaded = track.id in downloadedTrackIds,
-                        actionsLabel = strings.actions,
-                        onClick = { onTrackClick(track) },
-                        onFavorite = onFavorite,
-                        onAddToPlaylist = onAddToPlaylist,
-                        onPlayNext = onPlayNext,
-                        onAddToQueue = onAddToQueue,
-                        onDownload = onDownload,
-                        onArtist = onArtist,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (pair.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ListeningPickTile(
-    track: Track,
-    isFavorite: Boolean,
-    isDownloaded: Boolean,
-    actionsLabel: String,
-    onClick: () -> Unit,
-    onFavorite: (Track) -> Unit,
-    onAddToPlaylist: (Track) -> Unit,
-    onPlayNext: (Track) -> Unit,
-    onAddToQueue: (Track) -> Unit,
-    onDownload: (Track) -> Unit,
-    onArtist: (Track) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var menuExpanded by remember(track.id) { mutableStateOf(false) }
-    Box(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(LISTENING_PICK_TILE_HEIGHT)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(alpha = 0.08f))
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = { menuExpanded = true },
-                    onLongClickLabel = actionsLabel
-                )
-                .semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CoverImage(
-                track = track,
-                modifier = Modifier
-                    .size(LISTENING_PICK_TILE_HEIGHT)
-                    .clip(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))
-            )
-            Text(
-                text = track.title,
-                color = LevyraText,
-                fontSize = 13.sp,
-                lineHeight = 16.sp,
-                fontWeight = FontWeight.Bold,
-                style = LocalTextStyle.current.merge(TextStyle(lineBreak = LineBreak.Simple, hyphens = Hyphens.Auto)),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 10.dp)
-            )
-        }
-        SearchTrackActionsMenu(
-            track = track,
-            expanded = menuExpanded,
-            isFavorite = isFavorite,
-            isDownloaded = isDownloaded,
-            allowRemove = false,
-            onDismiss = { menuExpanded = false },
-            onRemove = {},
-            onFavorite = onFavorite,
-            onAddToPlaylist = onAddToPlaylist,
-            onPlayNext = onPlayNext,
-            onAddToQueue = onAddToQueue,
-            onDownload = onDownload,
-            onArtist = onArtist
-        )
-    }
-}
-
-private const val LISTENING_PICKS_LIMIT = 6
-private val LISTENING_PICK_TILE_HEIGHT = 56.dp
 
 @Composable
 private fun SearchQueryChips(
