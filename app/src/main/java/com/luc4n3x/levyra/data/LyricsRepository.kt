@@ -1017,7 +1017,8 @@ class LyricsRepository(context: Context? = null) {
             val titleKey = LyricsMatcher.normalize(query.requestedTitle)
             val artistKey = LyricsMatcher.normalize(query.requestedArtist)
             val durationBucket = query.durationSec.coerceAtLeast(0L) / 5L
-            if (titleKey.isNotBlank() && artistKey.isNotBlank()) {
+            val allowAliasFallback = preferences?.lyricsProviderOrdering()?.isDefault != false
+            if (allowAliasFallback && titleKey.isNotBlank() && artistKey.isNotBlank()) {
                 val alias = runCatching {
                     dao.findBestPositive(
                         titleKey = titleKey,
