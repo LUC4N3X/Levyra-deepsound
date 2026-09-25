@@ -15,14 +15,13 @@ class AudioSettingsLocalizationTest {
         LevyraStrings.all().forEach { strings ->
             val copy = personalizedSearchCopy(strings.code)
             val values = listOf(
-                copy.basedOnListening,
                 copy.artistsForYou,
                 copy.searchArtist,
                 copy.findMoreLike,
                 copy.backToAlbum
             )
             assertTrue(strings.code, values.all(String::isNotBlank))
-            assertTrue(strings.code, values.drop(2).all { "%s" in it })
+            assertTrue(strings.code, values.drop(1).all { "%s" in it })
         }
     }
 

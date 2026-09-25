@@ -108,25 +108,19 @@ internal fun buildSearchPlaceholderCycle(
 internal fun buildSearchTasteHints(
     prompts: List<PersonalizedSearchPrompt>,
     fallbacks: List<String>,
-    excludedValues: Set<String> = emptySet(),
     limit: Int = 3
 ): List<String> {
     if (limit <= 0) return emptyList()
 
     val result = ArrayList<String>(limit)
     val identities = HashSet<String>()
-    val excludedIdentities = excludedValues
-        .asSequence()
-        .map { it.trim().lowercase(Locale.ROOT) }
-        .filter(String::isNotEmpty)
-        .toHashSet()
     val usedKinds = HashSet<PersonalizedSearchPromptKind>()
 
     fun add(value: String): Boolean {
         val trimmed = value.trim()
         if (trimmed.isEmpty()) return false
         val identity = trimmed.lowercase(Locale.ROOT)
-        if (identity in excludedIdentities || !identities.add(identity)) return false
+        if (!identities.add(identity)) return false
         result += trimmed
         return true
     }
@@ -148,19 +142,6 @@ internal fun buildSearchTasteHints(
     }
 
     return result
-}
-
-internal fun buildSearchTasteHintExclusions(tracks: List<Track>): Set<String> = buildSet {
-    tracks.forEach { track ->
-        sequenceOf(
-            track.title,
-            primaryArtistSegment(track.artist),
-            track.album
-        )
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .forEach { add(it.lowercase(Locale.ROOT)) }
-    }
 }
 
 private fun interleaveDiverseTracks(sources: List<List<Track>>, limit: Int): List<Track> {
