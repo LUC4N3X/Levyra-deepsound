@@ -91,25 +91,32 @@ const icons = {
 }
 
 const makePill = ({ label, value, icon, isDark, accentColor, mobile = false }) => {
-  const bg = isDark ? '#0D1117' : '#FFFFFF'
-  const border = isDark ? '#30363D' : '#D0D7DE'
-  const tileBg = isDark ? '#161B22' : '#F6F8FA'
-  const tileBorder = isDark ? '#30363D' : '#D0D7DE'
-  const textSub = '#8B949E'
-  const textMain = isDark ? '#F0F6FC' : '#1F2328'
+  const bgTop = isDark ? '#111820' : '#FFFFFF'
+  const bgBottom = isDark ? '#0B1118' : '#F7F9FC'
+  const border = isDark ? '#3A4655' : '#C9D2DE'
+  const textSub = isDark ? '#98A6B7' : '#667085'
+  const textMain = isDark ? '#F8FAFC' : '#172033'
+  const innerOpacity = isDark ? '.045' : '.7'
   const title = `${label} ${value}`
   const width = mobile ? 126 : 130
   const height = mobile ? 31.0154 : 32
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 130 32" role="img" aria-label="${escapeXml(title)}">
   <title>${escapeXml(title)}</title>
-  <rect x=".75" y=".75" width="128.5" height="30.5" rx="8" fill="${bg}" stroke="${border}" stroke-width="1.5"/>
-  <rect x="4" y="4" width="24" height="24" rx="6" fill="${tileBg}" stroke="${tileBorder}" stroke-width="1"/>
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${bgTop}"/>
+      <stop offset="1" stop-color="${bgBottom}"/>
+    </linearGradient>
+  </defs>
+  <rect x=".7" y=".7" width="128.6" height="30.6" rx="9.2" fill="url(#surface)" stroke="${border}" stroke-width="1.4"/>
+  <rect x="4" y="4" width="24" height="24" rx="7.2" fill="${accentColor}" fill-opacity="${isDark ? '.12' : '.085'}" stroke="${accentColor}" stroke-opacity="${isDark ? '.42' : '.30'}" stroke-width=".9"/>
+  <rect x="5" y="5" width="22" height="22" rx="6.3" fill="none" stroke="#FFFFFF" stroke-opacity="${innerOpacity}" stroke-width=".55"/>
   <g transform="translate(16 16)" style="color:${accentColor};">
     ${icon}
   </g>
-  <text x="35" y="12.5" fill="${textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.2" font-weight="700" letter-spacing=".75">${escapeXml(label)}</text>
-  <text x="35" y="24.5" fill="${textMain}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700">${escapeXml(value)}</text>
+  <text x="35" y="11.9" fill="${textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="6.7" font-weight="700" letter-spacing=".9">${escapeXml(label)}</text>
+  <text x="35" y="24.2" fill="${textMain}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11.7" font-weight="700">${escapeXml(value)}</text>
 </svg>`
 }
 
@@ -135,18 +142,18 @@ const starsValue = new Intl.NumberFormat('en-US').format(repositoryData.stargaze
 
 await mkdir('docs/assets', { recursive: true })
 await Promise.all([
-  writeFile('docs/assets/levyra-release.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: true, accentColor: '#A855F7' }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: true, accentColor: '#10B981' }), 'utf8'),
-  writeFile('docs/assets/levyra-license.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: true, accentColor: '#38BDF8' }), 'utf8'),
-  writeFile('docs/assets/levyra-stars.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: true, accentColor: '#FBBF24' }), 'utf8'),
+  writeFile('docs/assets/levyra-release.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: true, accentColor: '#B865FF' }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: true, accentColor: '#2DD4A3' }), 'utf8'),
+  writeFile('docs/assets/levyra-license.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: true, accentColor: '#4CC9F0' }), 'utf8'),
+  writeFile('docs/assets/levyra-stars.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: true, accentColor: '#F7C948' }), 'utf8'),
   writeFile('docs/assets/levyra-release-light.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: false, accentColor: '#7C3AED' }), 'utf8'),
   writeFile('docs/assets/levyra-downloads-light.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: false, accentColor: '#059669' }), 'utf8'),
   writeFile('docs/assets/levyra-license-light.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: false, accentColor: '#0284C7' }), 'utf8'),
   writeFile('docs/assets/levyra-stars-light.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: false, accentColor: '#D97706' }), 'utf8'),
-  writeFile('docs/assets/levyra-release-mobile.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: true, accentColor: '#A855F7', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads-mobile.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: true, accentColor: '#10B981', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-license-mobile.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: true, accentColor: '#38BDF8', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-stars-mobile.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: true, accentColor: '#FBBF24', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-release-mobile.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: true, accentColor: '#B865FF', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads-mobile.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: true, accentColor: '#2DD4A3', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-license-mobile.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: true, accentColor: '#4CC9F0', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-stars-mobile.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: true, accentColor: '#F7C948', mobile: true }), 'utf8'),
   writeFile('docs/assets/levyra-release-mobile-light.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: false, accentColor: '#7C3AED', mobile: true }), 'utf8'),
   writeFile('docs/assets/levyra-downloads-mobile-light.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: false, accentColor: '#059669', mobile: true }), 'utf8'),
   writeFile('docs/assets/levyra-license-mobile-light.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: false, accentColor: '#0284C7', mobile: true }), 'utf8'),
