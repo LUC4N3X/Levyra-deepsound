@@ -23,10 +23,10 @@ Play streamed music and your own files in the same app, save tracks for offline 
 <p align="center"><b>Download Levyra</b></p>
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" width="200" alt="Download Levyra from GitHub Releases"></a>
-  <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="docs/assets/levyra-fdroid.svg" width="200" alt="Get Levyra on F-Droid"></a>
-  <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="docs/assets/levyra-openapk.svg" width="200" alt="Get Levyra on OpenAPK"></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2"><img src="docs/assets/levyra-windows-download.svg" width="200" alt="Download Levyra for Windows"></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" width="190" alt="Download Levyra from GitHub Releases"></a>
+  <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="docs/assets/levyra-fdroid.svg" width="190" alt="Get Levyra on F-Droid"></a>
+  <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="docs/assets/levyra-openapk.svg" width="190" alt="Get Levyra on OpenAPK"></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2"><img src="docs/assets/levyra-windows-download.svg" width="190" alt="Download Levyra for Windows"></a>
 </p>
 
 <details>
@@ -34,13 +34,13 @@ Play streamed music and your own files in the same app, save tracks for offline 
 <br>
 
 <div align="center">
-  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" width="200" alt="Get Levyra on IzzyOnDroid"></a>
-  <a href="https://sourceforge.net/projects/levyra.mirror/"><img src="docs/assets/levyra-sourceforge.svg" width="200" alt="Download Levyra from SourceForge"></a>
-  <a href="https://apkpure.com/p/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkpure.svg" width="200" alt="Get Levyra on APKPure"></a>
+  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" width="190" alt="Get Levyra on IzzyOnDroid"></a>
+  <a href="https://sourceforge.net/projects/levyra.mirror/"><img src="docs/assets/levyra-sourceforge.svg" width="190" alt="Download Levyra from SourceForge"></a>
+  <a href="https://apkpure.com/p/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkpure.svg" width="190" alt="Get Levyra on APKPure"></a>
   <br>
-  <a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/levyra-androidfreeware-download.svg" width="200" alt="Get Levyra on AndroidFreeware"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" width="200" alt="Install Levyra with Obtainium"></a>
-  <a href="https://appteka.store/apps/b5br313609"><img src="docs/assets/levyra-appteka.svg" width="200" alt="Get Levyra on Appteka"></a>
+  <a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/levyra-androidfreeware-download.svg" width="190" alt="Get Levyra on AndroidFreeware"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" width="190" alt="Install Levyra with Obtainium"></a>
+  <a href="https://appteka.store/apps/b5br313609"><img src="docs/assets/levyra-appteka.svg" width="190" alt="Get Levyra on Appteka"></a>
 </div>
 
 </details>
