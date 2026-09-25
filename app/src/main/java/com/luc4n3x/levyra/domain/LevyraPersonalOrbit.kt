@@ -254,15 +254,18 @@ object LevyraPersonalOrbit {
     fun stableKey(track: Track): String = track.id.takeIf(String::isNotBlank)
         ?: "${track.title.trim().lowercase(Locale.ROOT)}|${track.artist.trim().lowercase(Locale.ROOT)}"
 
-    fun identityKey(track: Track): String {
-        val fingerprint = recordingFingerprint(track)
-        val artist = fingerprint.artists.sorted().joinToString("|")
-        return if (fingerprint.title.isNotBlank() && artist.isNotBlank()) {
-            "$artist|${fingerprint.title}"
+    internal fun recordingIdentityKey(title: String, artist: String): String {
+        val normalizedTitle = normalizedMusicTitle(title)
+        val normalizedArtists = normalizedArtists(artist).sorted().joinToString("|")
+        return if (normalizedTitle.isNotBlank() && normalizedArtists.isNotBlank()) {
+            "$normalizedArtists|$normalizedTitle"
         } else {
-            stableKey(track)
+            ""
         }
     }
+
+    fun identityKey(track: Track): String =
+        recordingIdentityKey(track.title, track.artist).ifBlank { stableKey(track) }
 
     internal fun musicTitleKey(track: Track): String = normalizedMusicTitle(track.title)
 
