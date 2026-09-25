@@ -23,7 +23,6 @@ import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 
 class SharedMediaResolver(
@@ -104,30 +103,32 @@ class SharedMediaResolver(
 
     private suspend fun resolveBulkLinks(request: SharedMediaRequest, languageCode: String): SharedMediaPreview {
         val limiter = Semaphore(BulkLinkCapture.RESOLUTION_CONCURRENCY)
-        val collectedTracks = AtomicInteger(0)
-        val resolved = coroutineScope {
-            request.bulkUrls.map { url ->
-                async {
-                    limiter.withPermit {
-                        if (collectedTracks.get() >= BulkLinkCapture.MAX_TRACKS) return@withPermit emptyList()
-                        resolveBulkLink(url, languageCode)
-                            ?.take(BulkLinkCapture.MAX_TRACKS)
-                            ?.also { collectedTracks.addAndGet(it.size) }
-                    }
-                }
-            }.awaitAll()
-        }
         val tracks = LinkedHashMap<String, Track>()
         var trackDuplicates = 0
         var failedLinks = 0
-        resolved.forEach { linkTracks ->
-            if (linkTracks == null) {
-                failedLinks += 1
-                return@forEach
+
+        for (batch in request.bulkUrls.chunked(BulkLinkCapture.RESOLUTION_CONCURRENCY)) {
+            if (tracks.size >= BulkLinkCapture.MAX_TRACKS) break
+            val remaining = BulkLinkCapture.MAX_TRACKS - tracks.size
+            val resolved = coroutineScope {
+                batch.map { url ->
+                    async {
+                        limiter.withPermit {
+                            resolveBulkLink(url, languageCode)?.take(remaining)
+                        }
+                    }
+                }.awaitAll()
             }
-            linkTracks.forEach { track ->
-                if (tracks.size >= BulkLinkCapture.MAX_TRACKS) return@forEach
-                if (tracks.putIfAbsent(playbackQueueIdentity(track), track) != null) trackDuplicates += 1
+            for (linkTracks in resolved) {
+                if (linkTracks == null) {
+                    failedLinks += 1
+                    continue
+                }
+                for (track in linkTracks) {
+                    if (tracks.size >= BulkLinkCapture.MAX_TRACKS) break
+                    if (tracks.putIfAbsent(playbackQueueIdentity(track), track) != null) trackDuplicates += 1
+                }
+                if (tracks.size >= BulkLinkCapture.MAX_TRACKS) break
             }
         }
         val summary = BulkLinkCaptureSummary(
