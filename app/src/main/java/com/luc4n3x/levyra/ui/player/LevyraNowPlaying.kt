@@ -139,6 +139,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraPlayerShapes
 import com.luc4n3x.levyra.ui.theme.LevyraSegment
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
@@ -266,6 +267,18 @@ fun LevyraNowPlaying(
         trackId = track?.id,
         queue = state.queue,
         queueIndex = state.queueCurrentIndex
+    )
+    val lyricsFlip = rememberPlayerLyricsFlipState()
+    val lyricsFlipDepth = LocalLevyraVisualCapabilities.current.depthTransitions
+    val lyricsFlipAvailable = track != null && !liveRadio && !state.isVideoMode
+    LaunchedEffect(lyricsFlipAvailable, morphActive) {
+        if (!lyricsFlipAvailable || morphActive) lyricsFlip.snapTo(PlayerLyricsFace.Player)
+    }
+    val lyricsFlipSwipeModifier = Modifier.playerLyricsFlipDrag(
+        state = lyricsFlip,
+        enabled = lyricsFlipAvailable,
+        rightToLeft = rightToLeft,
+        depth = lyricsFlipDepth
     )
 
     LaunchedEffect(mediaSeekFeedbackEvent) {
@@ -608,7 +621,7 @@ fun LevyraNowPlaying(
                         motionArtwork = state.motionArtwork,
                         livingArtwork = livingArtwork,
                         animationsEnabled = animated && !state.isVideoMode,
-                        motionEnabled = motionEnabled,
+                        motionEnabled = motionEnabled && !(lyricsFlip.lyricsSettled && !deckMode.showsCinematicStage()),
                         isPlaying = state.isPlaying,
                         cornerRadius = artworkCorner,
                         canvasQuality = state.interfaceSettings.canvasQuality,
@@ -618,16 +631,53 @@ fun LevyraNowPlaying(
                         artScale = artScale,
                         artOffset = artOffset,
                         glowColor = if (deckLayout == PlayerDeckLayout.Editorial) Color.Transparent else primary,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .playerLyricsFlipFace(lyricsFlip, back = false, depth = lyricsFlipDepth, rightToLeft = rightToLeft)
                     )
+                    if (lyricsFlipAvailable && lyricsFlip.lyricsComposed) {
+                        PlayerLyricsCard(
+                            trackId = activeTrack.id,
+                            lines = state.lyrics,
+                            synced = state.lyricsSynced,
+                            loading = state.lyricsLoading,
+                            positionMs = state.positionMs,
+                            isPlaying = state.isPlaying,
+                            playbackSpeed = state.playbackSpeed,
+                            latencyProfiles = state.lyricsLatencyProfiles,
+                            interactive = lyricsFlip.lyricsSettled,
+                            animated = animated,
+                            cornerRadius = artworkCorner,
+                            surfaces = surfaces,
+                            accent = primaryTarget,
+                            onSeekToMs = { positionMs ->
+                                if (state.durationMs > 0L) {
+                                    viewModel.seekTo((positionMs.toFloat() / state.durationMs.toFloat()).coerceIn(0f, 1f))
+                                }
+                            },
+                            onShowArtwork = { lyricsFlip.show(PlayerLyricsFace.Player, lyricsFlipDepth) },
+                            onOpenFullLyrics = viewModel::openLyrics,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .zIndex(19f)
+                                .then(lyricsFlipSwipeModifier)
+                                .playerLyricsFlipFace(
+                                    state = lyricsFlip,
+                                    back = true,
+                                    depth = lyricsFlipDepth,
+                                    rightToLeft = rightToLeft,
+                                    frontVisible = !deckMode.showsCinematicStage()
+                                )
+                        )
+                    }
                 }
 
                 val videoGesturesEnabled = state.isVideoMode && activeTrack.videoUrl.isNotBlank()
-                if (!liveRadio &&
+                val gesturesAllowed = !liveRadio &&
                     (state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
-                    gestureLayerContent != null &&
-                    !videoFullscreen
-                ) {
+                    !videoFullscreen &&
+                    lyricsFlip.playerSettled
+                if (gesturesAllowed && gestureLayerContent != null) {
                     gestureLayerContent(
                         activeTrack,
                         PlayerGestureConfig(
@@ -782,7 +832,8 @@ fun LevyraNowPlaying(
                     openArtistLabel = strings.openArtist,
                     favoritesLabel = strings.favoritesPlain,
                     onArtistClick = { viewModel.openArtist(activeTrack) },
-                    onToggleFavorite = { viewModel.toggleFavorite(activeTrack) }
+                    onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
+                    modifier = lyricsFlipSwipeModifier
                 )
             }
         }
@@ -810,6 +861,7 @@ fun LevyraNowPlaying(
                     isPlaying = state.isPlaying,
                     playbackSpeed = state.playbackSpeed.coerceIn(0.5f, 2f),
                     animationsEnabled = animated,
+                    motionActive = !motionSuspended,
                     compact = compactPlayer,
                     onSeek = viewModel::seekTo
                 )
@@ -933,6 +985,7 @@ fun LevyraNowPlaying(
                 gutter = gutter,
                 onArtistClick = { viewModel.openArtist(track) },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
+                headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
         } else if (deckLayout == PlayerDeckLayout.Pulse && track != null) {

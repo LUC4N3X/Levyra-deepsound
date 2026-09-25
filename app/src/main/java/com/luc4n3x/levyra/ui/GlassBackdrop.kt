@@ -1,17 +1,11 @@
 package com.luc4n3x.levyra.ui
 
 import android.app.ActivityManager
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
 import android.os.Build
-import android.os.PowerManager
 import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -38,7 +32,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toIntSize
-import androidx.core.content.ContextCompat
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
+import com.luc4n3x.levyra.ui.theme.rememberPowerSaveMode
 
 /**
  * Lightweight, dependency-free backdrop-blur system for Levyra "real glass" panels.
@@ -83,28 +78,12 @@ fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
 
 @Composable
 fun rememberGlassBlurAllowed(): Boolean {
-    if (!blurSupported) return false
+    if (!blurSupported || !LocalLevyraVisualCapabilities.current.heavyBlur) return false
     val context = LocalContext.current.applicationContext
     val lowRam = remember(context) {
         context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
     }
-    val powerManager = remember(context) { context.getSystemService(PowerManager::class.java) }
-    var powerSave by remember(powerManager) { mutableStateOf(powerManager?.isPowerSaveMode == true) }
-    DisposableEffect(context, powerManager) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(receiverContext: Context?, intent: Intent?) {
-                powerSave = powerManager?.isPowerSaveMode == true
-            }
-        }
-        ContextCompat.registerReceiver(
-            context,
-            receiver,
-            IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
-        powerSave = powerManager?.isPowerSaveMode == true
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
-    }
+    val powerSave = rememberPowerSaveMode()
     return !lowRam && !powerSave
 }
 

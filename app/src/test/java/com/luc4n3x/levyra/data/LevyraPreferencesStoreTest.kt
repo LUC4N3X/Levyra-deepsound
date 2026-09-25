@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
@@ -104,6 +105,7 @@ class LevyraPreferencesStoreTest {
         assertEquals("High", snapshot.audioQuality)
         assertEquals(LevyraAudioSettings().normalized(), preferences.audioSettings())
         assertEquals(PlayerVisualMode.CanvasImmersive, preferences.interfaceSettings().playerVisualMode)
+        assertEquals(LevyraVisualPerformance.Full, preferences.interfaceSettings().visualPerformance)
         assertNull(snapshot.lastTrack)
         assertEquals(LevyraAutomationSettings().normalized(), runBlocking { preferences.automationSettingsFlow.first() })
     }
@@ -172,6 +174,39 @@ class LevyraPreferencesStoreTest {
         assertFalse(reopened.dynamicColor())
         assertTrue(reopened.skipSilence())
         assertEquals("DJ Luca", reopened.jamDisplayName())
+    }
+
+    @Test
+    fun upgradedStoreWithoutVisualPerformanceKeyResolvesToFull() {
+        runBlocking {
+            disk.edit {
+                it[booleanPreferencesKey("onboarded")] = true
+                it[stringPreferencesKey("ui_canvas_quality")] = "High"
+                it[booleanPreferencesKey("ui_player_gestures")] = false
+            }
+        }
+        val (_, preferences) = open()
+
+        assertEquals(LevyraVisualPerformance.Full, preferences.interfaceSettings().visualPerformance)
+    }
+
+    @Test
+    fun unknownStoredVisualPerformanceFallsBackToFull() {
+        runBlocking {
+            disk.edit { it[stringPreferencesKey("ui_visual_performance")] = "Turbo" }
+        }
+        val (_, preferences) = open()
+
+        assertEquals(LevyraVisualPerformance.Full, preferences.interfaceSettings().visualPerformance)
+    }
+
+    @Test
+    fun visualPerformanceChoiceSurvivesRecreation() {
+        val (store, preferences) = open()
+        preferences.setInterfaceSettings(LevyraInterfaceSettings(visualPerformance = LevyraVisualPerformance.Smooth))
+        flush(store)
+
+        assertEquals(LevyraVisualPerformance.Smooth, reopen().interfaceSettings().visualPerformance)
     }
 
     @Test

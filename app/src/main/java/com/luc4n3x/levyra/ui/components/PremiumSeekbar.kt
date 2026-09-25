@@ -30,10 +30,12 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -51,12 +53,18 @@ import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+
+private const val WaveCrestLift = 0.18f
+private val WaveCrestHeight = 9.5.dp
+private const val ThumbHaloAlpha = 0.42f
+private val ThumbHaloWidth = 1.5.dp
 
 @Suppress("CognitiveComplexMethod")
 @Composable
@@ -73,12 +81,14 @@ fun PremiumSeekbar(
     isPlaying: Boolean = true,
     playbackSpeed: Float = 1f,
     animated: Boolean = true,
+    motionActive: Boolean = true,
     contentDescription: String? = null,
     waveform: FloatArray? = null,
     interactionKey: Any? = null
 ) {
     val density = LocalDensity.current
     val haptics = LocalLevyraHaptics.current
+    val decorativeMotion = LocalLevyraVisualCapabilities.current.decorativeMotion
     val measuredWaveform = waveform?.takeIf { values ->
         values.isNotEmpty() && values.all { it.isFinite() }
     }
@@ -172,8 +182,14 @@ fun PremiumSeekbar(
     }
 
     val wavePhase = remember { Animatable(0f) }
-    LaunchedEffect(animated, isPlaying, isDragging, measuredWaveform, interactionKey) {
-        if (measuredWaveform != null || !animated || !isPlaying || isDragging) return@LaunchedEffect
+    val waveMotion = measuredWaveform == null &&
+        animated &&
+        decorativeMotion &&
+        motionActive &&
+        isPlaying &&
+        !isDragging
+    LaunchedEffect(waveMotion, interactionKey) {
+        if (!waveMotion) return@LaunchedEffect
         val fullPhase = 2f * PI.toFloat()
         while (true) {
             val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
@@ -188,6 +204,9 @@ fun PremiumSeekbar(
             wavePhase.snapTo(0f)
         }
     }
+
+    val waveCrestColor = remember(activeColor) { lerp(activeColor, Color.White, WaveCrestLift).copy(alpha = 1f) }
+    val waveBrushCache = remember { WaveBrushCache() }
 
     val scrubMillis by remember(durationMs) {
         derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
@@ -340,6 +359,12 @@ fun PremiumSeekbar(
                     wavePhase = wavePhase.value,
                     trailingColor = trailingColor,
                     activeColor = activeColor,
+                    waveBrush = waveBrushCache.brush(
+                        crest = waveCrestColor,
+                        base = activeColor.copy(alpha = 1f),
+                        top = centerY - trackHeight / 2f - WaveCrestHeight.toPx(),
+                        bottom = centerY + trackHeight / 2f
+                    ),
                     waveIntensity = waveIntensity.value
                 )
             }
@@ -359,11 +384,39 @@ fun PremiumSeekbar(
                 center = Offset(handleX, centerY + 1f)
             )
             drawCircle(
+                color = activeColor.copy(alpha = activeColor.alpha * ThumbHaloAlpha),
+                radius = thumbRadius + ThumbHaloWidth.toPx(),
+                center = Offset(handleX, centerY)
+            )
+            drawCircle(
                 color = thumbColor,
                 radius = thumbRadius,
                 center = Offset(handleX, centerY)
             )
         }
+    }
+}
+
+private class WaveBrushCache {
+    private var crest = Color.Unspecified
+    private var base = Color.Unspecified
+    private var top = Float.NaN
+    private var bottom = Float.NaN
+    private var cached: Brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+
+    fun brush(crest: Color, base: Color, top: Float, bottom: Float): Brush {
+        if (crest != this.crest || base != this.base || top != this.top || bottom != this.bottom) {
+            this.crest = crest
+            this.base = base
+            this.top = top
+            this.bottom = bottom
+            cached = Brush.verticalGradient(
+                colors = listOf(crest, base),
+                startY = top,
+                endY = bottom
+            )
+        }
+        return cached
     }
 }
 
@@ -424,6 +477,7 @@ private fun DrawScope.drawAnimatedWaveform(
     wavePhase: Float,
     trailingColor: Color,
     activeColor: Color,
+    waveBrush: Brush,
     waveIntensity: Float
 ) {
     val centerY = size.height / 2f
@@ -456,11 +510,7 @@ private fun DrawScope.drawAnimatedWaveform(
         val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
         if (waveAlpha <= 0.001f) return@clipRect
 
-        val targetWaveLength = 92.dp.toPx()
-        val waveCount = (activeSpan / targetWaveLength)
-            .roundToInt()
-            .coerceAtLeast(1)
-        val waveLength = activeSpan / waveCount
+        val waveLength = 92.dp.toPx()
         val minimumWaveSpan = 56.dp.toPx()
         val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
         val waveHeight = 9.5.dp.toPx() * waveReveal * amplitudeScale * waveIntensity.coerceIn(0f, 1f)
@@ -506,7 +556,8 @@ private fun DrawScope.drawAnimatedWaveform(
         )
         drawPath(
             path = waveFill,
-            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha)
+            brush = waveBrush,
+            alpha = activeColor.alpha * waveAlpha
         )
     }
 }
