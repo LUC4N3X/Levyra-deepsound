@@ -131,6 +131,8 @@ object SmartOrbitEngine {
         if (profile == null) return false
         val key = candidate.key
         if (key in profile.tracks || key in profile.favoriteKeys || key in profile.playlistKeys) return true
+        val recordingKey = LevyraPersonalOrbit.recordingIdentityKey(candidate.track.title, candidate.track.artist)
+        if (recordingKey.isNotBlank() && recordingKey in profile.knownRecordingKeys) return true
         if (profile.feedback.isExplicitlyAvoided(candidate.track)) return true
         return profile.isArtistSuppressed(candidate.track.artist)
     }
