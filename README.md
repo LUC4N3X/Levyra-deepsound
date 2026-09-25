@@ -8,9 +8,11 @@
 
 # Levyra
 
-**Open-source music player for Android and Windows.**
+**Your music. One library.**
 
-Streaming, local tracks, downloads, synced lyrics, and an offline library with no Levyra account or tracking.
+Stream music, play the collection already on your devices, keep tracks offline, and manage everything from the same library.
+
+**No Levyra account · No tracking · Native Android & Windows**
 
 <p>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-mobile-light.svg 126w, docs/assets/levyra-release-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release-mobile.svg 126w, docs/assets/levyra-release.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-release.svg" srcset="docs/assets/levyra-release-mobile.svg 126w, docs/assets/levyra-release.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Latest release"></picture></a>
@@ -20,23 +22,31 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
   <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg 126w, docs/assets/levyra-wiki-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
 </p>
 
-<p align="center"><b>Download Levyra</b></p>
+<p align="center"><b>Get Levyra</b></p>
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" width="200" alt="Download Levyra from GitHub Releases"></a>
   <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><img src="docs/assets/levyra-fdroid.svg" width="200" alt="Get Levyra on F-Droid"></a>
-  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" width="200" alt="Get Levyra on IzzyOnDroid"></a>
-  <br>
-  <a href="https://sourceforge.net/projects/levyra.mirror/"><img src="docs/assets/levyra-sourceforge.svg" width="200" alt="Download Levyra from SourceForge"></a>
-  <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="docs/assets/levyra-openapk.svg" width="200" alt="Get Levyra on OpenAPK"></a>
-  <a href="https://apkpure.com/p/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkpure.svg" width="200" alt="Get Levyra on APKPure"></a>
-  <br>
-  <a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/levyra-androidfreeware-download.svg" width="200" alt="Get Levyra on AndroidFreeware"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" width="200" alt="Install Levyra with Obtainium"></a>
-  <a href="https://appteka.store/apps/b5br313609"><img src="docs/assets/levyra-appteka.svg" width="200" alt="Get Levyra on Appteka"></a>
-  <br>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2"><img src="docs/assets/levyra-windows-download.svg" width="200" alt="Download Levyra for Windows"></a>
 </p>
+
+<details>
+<summary><b>More download options</b></summary>
+<br>
+
+<div align="center">
+  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" width="200" alt="Get Levyra on IzzyOnDroid"></a>
+  <a href="https://sourceforge.net/projects/levyra.mirror/"><img src="docs/assets/levyra-sourceforge.svg" width="200" alt="Download Levyra from SourceForge"></a>
+  <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><img src="docs/assets/levyra-openapk.svg" width="200" alt="Get Levyra on OpenAPK"></a>
+  <br>
+  <a href="https://apkpure.com/p/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkpure.svg" width="200" alt="Get Levyra on APKPure"></a>
+  <a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/levyra-androidfreeware-download.svg" width="200" alt="Get Levyra on AndroidFreeware"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" width="200" alt="Install Levyra with Obtainium"></a>
+  <br>
+  <a href="https://appteka.store/apps/b5br313609"><img src="docs/assets/levyra-appteka.svg" width="200" alt="Get Levyra on Appteka"></a>
+</div>
+
+</details>
 
 <p align="center"><b>Levyra speaks 37 languages</b> &nbsp;·&nbsp; <b>100% Android translation coverage</b></p>
 
@@ -48,22 +58,22 @@ Streaming, local tracks, downloads, synced lyrics, and an offline library with n
 
 ---
 
-> [!IMPORTANT]
-> **Legal & responsible use · No piracy.** Levyra is independent open-source client software and does not host or distribute third-party music. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Use Levyra only with media you are allowed to access or save, and follow the terms of any third-party service you use.
->
-> For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
->
-> Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
+> [!NOTE]
+> **Independent and open source.** Levyra does not host third-party music or grant rights to third-party content. Use it only with media you are allowed to access or save, and follow the terms of the services you use. [Read the Legal Notice](docs/legal/LEGAL.md).
 
 ## ✦ Why Levyra
 
-I started Levyra because I wanted one music player for streaming and the music already on my devices. Local tracks should sit naturally beside streamed ones, and playlists, history and downloads should keep working without a Levyra account.
+**Streaming and local music belong together.**  
+Your own files and online music can live in the same library, playlists, queues, history, and offline workflow.
 
-Downloads are normal audio files in your storage, local and streamed tracks can live in the same library, and listening data stays on the device.
+**Private by default.**  
+There is no Levyra account, telemetry, analytics, or tracking. Listening data stays on your device.
 
-Over time I added the things I personally missed elsewhere: synced lyrics, timing offsets, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, backups and a Windows version. I try to keep those features connected through the same library and playback flow.
+**Made for daily listening.**  
+Synced lyrics, normal audio-file downloads, Queue Spaces, Android Auto, AutoEQ, live radio, music recognition, listening stats, backups, and more all sit around the same playback flow.
 
-Levyra uses external services for some music, lyrics, artwork and metadata, but the app itself stays open source and the library remains under your control.
+**Open source and actively developed.**  
+Levyra is built in public for Android and Windows, with releases, issues, code, and engineering decisions visible on GitHub.
 
 ## ✦ Project recognition
 
@@ -98,25 +108,6 @@ Levyra uses external services for some music, lyrics, artwork and metadata, but 
 </p>
 
 </div>
-
-## ✦ JioSaavn · Verified high-quality audio
-
-When high-quality audio is enabled, Levyra can use JioSaavn as an alternative source without changing the track in your library.
-
-Levyra does not trust the advertised quality flag on its own. For an accepted, unrestricted match it tries the available 320, 160 and 96 kbps variants and validates the stream before using it. The bitrate shown in the player comes from the measured result, so a file advertised as 320 kbps is not presented as 320 when it falls below that range.
-
-Matching goes beyond the title. Levyra checks performers and artist roles, album and release information, duration, explicit status, language, featured artists and version markers. Accepted search results can also be checked against JioSaavn's track details before playback, which helps distinguish original recordings from compilations, reissues and alternate versions.
-
-When possible, Levyra resolves audio directly from JioSaavn's CDN. Retry handling, separate circuit breakers and persistent mappings keep temporary provider failures from disrupting the rest of playback. If the recording cannot be matched or validated safely, Levyra stays on the normal source.
-
-Your library metadata, artwork, lyrics, queue position, listening history and recommendations remain tied to the original Levyra track.
-
-<div align="center">
-  <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
-  <sub>Quality is measured before selection, and playback falls back automatically when JioSaavn is not a safe upgrade.</sub>
-</div>
-
----
 
 ## ✦ Interface & screenshots
 
@@ -228,6 +219,32 @@ Android and Windows share the same Kotlin extraction and networking code, but ea
 Windows uses Compose Multiplatform for the interface and libVLC for playback. Android uses Media3 for audio focus, Bluetooth controls, lockscreen playback, media sessions and Android Auto.
 
 Levyra does not bundle Chromium, Electron or a WebView runtime.
+
+## ✦ Technical highlight · verified high-quality audio
+
+When high-quality audio is enabled, Levyra can use JioSaavn as an alternative source without changing the track in your library.
+
+Levyra does not trust the advertised quality flag on its own. For an accepted, unrestricted match it tries the available 320, 160 and 96 kbps variants and validates the stream before using it. The bitrate shown in the player comes from the measured result, so a file advertised as 320 kbps is not presented as 320 when it falls below that range.
+
+Matching goes beyond the title. Levyra checks performers and artist roles, album and release information, duration, explicit status, language, featured artists and version markers. Accepted search results can also be checked against JioSaavn's track details before playback, which helps distinguish original recordings from compilations, reissues and alternate versions.
+
+When possible, Levyra resolves audio directly from JioSaavn's CDN. Retry handling, separate circuit breakers and persistent mappings keep temporary provider failures from disrupting the rest of playback. If the recording cannot be matched or validated safely, Levyra stays on the normal source.
+
+Your library metadata, artwork, lyrics, queue position, listening history and recommendations remain tied to the original Levyra track.
+
+<div align="center">
+  <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
+  <sub>Quality is measured before selection, and playback falls back automatically when JioSaavn is not a safe upgrade.</sub>
+</div>
+
+---
+
+
+## ✦ Feedback & contributing
+
+Levyra is developed in public. If something breaks, feels off, or you have an idea that would make the app better, open an [issue](https://github.com/LUC4N3X/Levyra-deepsound/issues). Bug reports and thoughtful feature requests are welcome.
+
+If you want to contribute code or translations, start with the repository documentation and the [Weblate project](https://hosted.weblate.org/engage/levyra/).
 
 ## ✦ Development
 
