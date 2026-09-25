@@ -91,7 +91,9 @@ object LevyraPersonalOrbit {
         charts: List<Track>,
         cachedOrbit: List<Track> = emptyList(),
         limit: Int = DISPLAY_LIMIT,
-        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        discoveries: List<Track> = emptyList(),
+        excluded: (Track) -> Boolean = { false }
     ): List<Track> {
         val max = limit.coerceAtLeast(1)
         val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
@@ -126,9 +128,10 @@ object LevyraPersonalOrbit {
             currentTrack?.let { add(it) }
             addAll(recentSearches)
         })
-        val restoredOrbit = viable(cachedOrbit)
+        val restoredOrbit = viable(cachedOrbit).filterNot(excluded)
         val favoritesPool = viable(favorites)
-        val fallbackTracks = viable(donorPool)
+        val fallbackTracks = viable(donorPool).filterNot(excluded)
+        val discoveryPool = viable(discoveries).filterNot(excluded)
         val tasteSeeds = distinctRecordings(playbackHistory + favoritesPool + restoredOrbit)
         val normalizedTasteSeeds = tasteSeeds.map { seed ->
             NormalizedTasteSeed(
@@ -155,11 +158,13 @@ object LevyraPersonalOrbit {
             .map(RankedTrack::track)
 
         val selected = ArrayList<Track>(max)
+        val discoveryReserve = minOf(discoveryPool.size, SmartOrbitEngine.DISCOVERY_SLOTS, max / 4)
+        var cap = max - discoveryReserve
 
         fun addTracks(source: List<Track>, predicate: (Track) -> Boolean = { true }) {
-            if (selected.size >= max) return
+            if (selected.size >= cap) return
             source.forEach { candidate ->
-                if (selected.size >= max) return
+                if (selected.size >= cap) return
                 if (!predicate(candidate)) return@forEach
                 val duplicateIndex = selected.indexOfFirst { sameRecording(it, candidate) }
                 if (duplicateIndex < 0) {
@@ -172,6 +177,8 @@ object LevyraPersonalOrbit {
 
         addTracks(playbackHistory)
         addTracks(favoritesPool)
+        cap = max
+        addTracks(discoveryPool.take(discoveryReserve))
         addTracks(restoredOrbit)
         addTracks(orderedFallback) {
             isLanguagePreferred(it, normalizedLanguage) && hasSquareAlbumArtwork(it)

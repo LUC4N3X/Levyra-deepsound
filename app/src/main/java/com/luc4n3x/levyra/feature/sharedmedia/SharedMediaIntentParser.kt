@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 
 object SharedMediaIntentParser {
-    private val urlRegex = Regex("https?://[^\\s<>\"']+", RegexOption.IGNORE_CASE)
     private val videoIdRegex = Regex("^[A-Za-z0-9_-]{6,20}$")
 
     fun parse(intent: Intent?): SharedMediaRequest? {
@@ -34,7 +33,9 @@ object SharedMediaIntentParser {
                 sharedPlaylistPayload = sharedPlaylistPayload
             )
         }
-        val rawUrl = urlRegex.find(cleanText)?.value?.trimEnd('.', ',', ';', ')', ']', '}')
+        val urls = BulkLinkCapture.extractUrls(cleanText)
+        if (urls.size > 1) return BulkLinkCapture.request(urls, ::parseText)
+        val rawUrl = urls.firstOrNull()
         if (rawUrl == null) {
             return SharedMediaRequest(
                 rawText = cleanText,

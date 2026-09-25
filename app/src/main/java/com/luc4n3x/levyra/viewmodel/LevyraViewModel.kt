@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.data.HomeStartupWorkPlan
 import com.luc4n3x.levyra.data.HomeStartupWorkPolicy
 import com.luc4n3x.levyra.data.StartupPlaybackWarmPolicy
 import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
+import com.luc4n3x.levyra.data.SmartOrbitStore
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
@@ -107,6 +108,7 @@ import com.luc4n3x.levyra.ui.i18n.playlistImportAlreadyRunningMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportStartedMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportSuccessMessage
+import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.ArtistExclusions
@@ -149,6 +151,11 @@ import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraLocalIntelligence
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
+import com.luc4n3x.levyra.domain.ListenPlayPolicy
+import com.luc4n3x.levyra.domain.ListeningSignalProfile
+import com.luc4n3x.levyra.domain.ListeningSignalRanker
+import com.luc4n3x.levyra.domain.SmartOrbitEngine
+import com.luc4n3x.levyra.domain.SmartOrbitPool
 import com.luc4n3x.levyra.domain.ListeningDna
 import com.luc4n3x.levyra.domain.ListeningDnaEngine
 import com.luc4n3x.levyra.domain.ListeningDnaPeriod
@@ -246,6 +253,7 @@ import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaResolver
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaIntentParser
 import com.luc4n3x.levyra.feature.radio.LiveRadioArtworkResolver
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
@@ -262,6 +270,7 @@ import com.luc4n3x.levyra.player.PlaybackSleepTimerState
 import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.SponsorBlockSkipOnceTracker
 import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
+import com.luc4n3x.levyra.player.queue.AutoQueueTombstones
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.data.locallibrary.LOCAL_MEDIA_TRACK_ID_PREFIX
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryRepository
@@ -325,6 +334,7 @@ private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
+private const val RELATED_CANDIDATE_CACHE_SEEDS = 6
 private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
@@ -776,6 +786,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val audioSettingsPersistence = AudioSettingsPersistenceCoordinator(preferences::setAudioSettings)
     private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
     private val smartMusicProfileStore = LevyraSmartMusicProfileStore(application.applicationContext)
+    private val smartOrbitStore = SmartOrbitStore(application.applicationContext)
     private val listeningPulseStore = ListeningPulseStore(application.applicationContext)
     private val externalCredentialStore = com.luc4n3x.levyra.data.security.AndroidKeystoreCredentialStore(application.applicationContext)
     private val lastFmScrobbling = com.luc4n3x.levyra.feature.scrobbling.LastFmScrobbleProvider(externalCredentialStore)
@@ -999,6 +1010,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var deferredPlaybackStartSideEffectsKey: String? = null
     @Volatile
     private var listeningSignals: com.luc4n3x.levyra.domain.ListeningSignalProfile? = null
+    @Volatile private var smartOrbitPool: SmartOrbitPool = SmartOrbitPool.Empty
+    @Volatile private var smartOrbitDiscoveries: List<Track> = emptyList()
+    private val smartOrbitMutex = Mutex()
+    private var smartOrbitRefreshJob: Job? = null
+    private val relatedCandidateCache = LinkedHashMap<String, List<Track>>(RELATED_CANDIDATE_CACHE_SEEDS * 2, 0.75f, true)
+    private var listenSessionSignificant = false
     private var listenSessionTrack: Track? = null
     private var listenSessionStartedAt = 0L
     private var listenSessionAccumulatedMs = 0L
@@ -2638,6 +2655,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun importPlaylist(input: String) {
+        val trimmedInput = input.trim()
+        if (!trimmedInput.startsWith("{") && !trimmedInput.startsWith("[")) {
+            val bulkRequest = SharedMediaIntentParser.parseText(trimmedInput)
+                ?.takeIf { it.kind == SharedMediaKind.BulkLinks }
+            if (bulkRequest != null) {
+                handleSharedMedia(bulkRequest)
+                return
+            }
+        }
         if (playlistImportJob?.isActive == true) {
             _state.update { current ->
                 current.copy(offlineExportMessage = playlistImportAlreadyRunningMessage(current.languageCode))
@@ -5353,7 +5379,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             charts = chartTracks,
             cachedOrbit = cachedOrbit,
             limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
-            languageCode = languageCode
+            languageCode = languageCode,
+            discoveries = smartOrbitDiscoveries,
+            excluded = smartOrbitExclusion()
         )
         val allTracks = mergeTracks(orbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
         val recommendationState = _state.value.copy(
@@ -5888,6 +5916,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         val updated = queueEngine.removeIndices(targets)
         if (updated.tracks.isEmpty()) closePlayer() else refreshQueuePrefetch()
+        refreshSmartOrbit()
     }
 
     private fun removeFromQueueLocal(index: Int) {
@@ -5897,6 +5926,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         } else {
             refreshQueuePrefetch()
         }
+        refreshSmartOrbit()
     }
 
     fun undoQueueRemoval() {
@@ -6005,17 +6035,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     emptyList()
                 }
                 if (generation != similarSongsGeneration.get()) return@launch
+                rememberRelatedCandidates(track, pool)
                 val exclusions = _state.value.artistExclusions
                 val queuedTracks = queueEngine.state.value.tracks
-                val rankingProfile = rankingSignalProfile()
+                val bonusScores = smartOrbitPool.bonusScores
+                val rankingProfile = smartRankingProfile(bonusScores)
                 val selected = withContext(Dispatchers.Default) {
                     val allowed = exclusions.filterTracks(pool)
                     val ordered = rankingProfile?.let { profile ->
-                        com.luc4n3x.levyra.domain.ListeningSignalRanker.rank(
+                        ListeningSignalRanker.rank(
                             candidates = allowed,
                             profile = profile,
                             limit = allowed.size,
-                            contextArtist = track.artist
+                            contextArtist = track.artist,
+                            bonusScores = bonusScores
                         )
                     } ?: allowed
                     SimilarSongsSelector.select(
@@ -7377,12 +7410,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 sharedMediaPreview = SharedMediaPreview(
                     request = request,
                     title = when (request.kind) {
+                        SharedMediaKind.BulkLinks -> bulkLinkCaptureCopy(_state.value.languageCode).title
                         SharedMediaKind.Playlist -> strings.loadingSharedPlaylist
                         SharedMediaKind.Album -> strings.loadingSharedAlbum
                         SharedMediaKind.Artist, SharedMediaKind.Channel -> strings.loadingSharedArtist
                         else -> strings.openingSharedContent
                     },
-                    subtitle = request.url.ifBlank { request.query },
+                    subtitle = if (request.kind == SharedMediaKind.BulkLinks) {
+                        bulkLinkCaptureCopy(_state.value.languageCode).resolving(request.bulkDetected)
+                    } else {
+                        request.url.ifBlank { request.query }
+                    },
                     thumbnailUrl = "",
                     tracks = emptyList(),
                     loading = true
@@ -7411,6 +7449,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
             }
+        }
+    }
+
+    fun saveSharedMediaAsPlaylist() {
+        val preview = _state.value.sharedMediaPreview ?: return
+        if (preview.request.kind != SharedMediaKind.BulkLinks) return
+        val tracks = preview.tracks
+            .filter { it.id.isNotBlank() && it.title.isNotBlank() }
+            .map { it.copy(streamUrl = "", videoStreamUrl = "") }
+        if (tracks.isEmpty()) return
+        dismissSharedMedia()
+        viewModelScope.launch {
+            val languageCode = _state.value.languageCode
+            val locale = runCatching { java.util.Locale.forLanguageTag(languageCode) }.getOrDefault(java.util.Locale.ROOT)
+            val date = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, locale).format(java.util.Date())
+            val name = "${bulkLinkCaptureCopy(languageCode).playlistName} · $date"
+            val message = try {
+                val playlist = playlistStore.createWithTracks(name, tracks)
+                loadPlaylists()
+                playlistImportSuccessMessage(languageCode, tracks.size, tracks.size, playlist.name)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Bulk link playlist save failed")
+                playlistImportFailureMessage(languageCode, PlaylistImportFailureKind.STORAGE, null)
+            }
+            _state.update { it.copy(offlineExportMessage = message) }
         }
     }
 
@@ -7687,7 +7752,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             charts = snapshot.charts,
             cachedOrbit = snapshot.personalOrbitTracks,
             limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
-            languageCode = snapshot.languageCode
+            languageCode = snapshot.languageCode,
+            discoveries = smartOrbitDiscoveries,
+            excluded = smartOrbitExclusion()
         )
         _state.update { it.copy(recentSearches = updated, personalOrbitTracks = orbit) }
         val appContext = getApplication<Application>().applicationContext
@@ -7881,6 +7948,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .distinctBy { LevyraPersonalOrbit.identityKey(it) }
             .associateBy { LevyraPersonalOrbit.identityKey(it) }
         if (enrichedByKey.isEmpty()) return
+        val orbitExclusion = smartOrbitExclusion()
         var persistedHistory: List<Track> = emptyList()
         var persistedOrbit: List<Track> = emptyList()
         var persistedHomeAlbums: List<AlbumHit> = emptyList()
@@ -8033,7 +8101,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 charts = charts,
                 cachedOrbit = cachedOrbit,
                 limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
-                languageCode = current.languageCode
+                languageCode = current.languageCode,
+                discoveries = smartOrbitDiscoveries,
+                excluded = orbitExclusion
             )
             persistedHistory = recentSearches
             persistedOrbit = orbit
@@ -10138,18 +10208,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         } catch (_: Exception) {
             emptyList()
         }
+        rememberRelatedCandidates(request.seed, fetchedRadioTracks)
         val radioTracks = _state.value.artistExclusions.filterTracks(fetchedRadioTracks)
         if (radioTracks.isEmpty()) return
         val current = queueEngine.state.value
         if (!current.radioEnabled) return
         if (!isSameRadioSeed(current.currentTrack, request.seed)) return
         if (current.generation != request.generation) return
-        val orderedRadioTracks = rankingSignalProfile()?.let { signals ->
-            com.luc4n3x.levyra.domain.ListeningSignalRanker.rank(
+        val bonusScores = smartOrbitPool.bonusScores
+        val orderedRadioTracks = smartRankingProfile(bonusScores)?.let { signals ->
+            ListeningSignalRanker.rank(
                 candidates = radioTracks,
                 profile = signals,
                 limit = radioTracks.size,
-                contextArtist = request.seed.artist
+                contextArtist = request.seed.artist,
+                bonusScores = bonusScores
             )
         } ?: radioTracks
         if (insertAfterCurrent) {
@@ -10173,6 +10246,119 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             else -> signals.copy(feedback = feedback)
         }
         return profile.takeIf { it.hasSignal }
+    }
+
+    private fun smartRankingProfile(bonusScores: Map<String, Int>): ListeningSignalProfile? =
+        rankingSignalProfile() ?: ListeningSignalProfile().takeIf { bonusScores.isNotEmpty() }
+
+    private fun rememberRelatedCandidates(seed: Track, related: List<Track>) {
+        if (related.isEmpty()) return
+        val key = playbackIdentity(seed)
+        val bounded = related.take(SmartOrbitEngine.RELATED_PER_SEED * 2)
+        synchronized(relatedCandidateCache) {
+            relatedCandidateCache[key] = bounded
+            while (relatedCandidateCache.size > RELATED_CANDIDATE_CACHE_SEEDS) {
+                relatedCandidateCache.remove(relatedCandidateCache.keys.first())
+            }
+        }
+    }
+
+    private fun cachedRelatedCandidates(seed: Track): List<Track>? =
+        synchronized(relatedCandidateCache) { relatedCandidateCache[playbackIdentity(seed)] }
+
+    private fun maybeRecordSignificantListen(durationMs: Long) {
+        if (listenSessionSignificant) return
+        val track = listenSessionTrack ?: return
+        if (!ListenPlayPolicy.isSignificantProgress(listenSessionAccumulatedMs, durationMs)) return
+        listenSessionSignificant = true
+        if (track.isLiveRadio() || isLocalPlaybackTrack(track)) return
+        val cached = cachedRelatedCandidates(track)
+        val languageCode = _state.value.languageCode
+        viewModelScope.launch(Dispatchers.IO) {
+            val recorded = smartOrbitMutex.withLock {
+                val related = cached ?: if (lyricsNetworkProfile().connected) {
+                    runCatchingPreservingCancellation {
+                        repository.radio(track, languageCode, SmartOrbitEngine.RELATED_PER_SEED)
+                    }.getOrNull().orEmpty()
+                } else {
+                    emptyList()
+                }
+                if (related.isEmpty()) return@withLock false
+                smartOrbitPool = smartOrbitStore.recordRelated(track, related)
+                true
+            }
+            if (recorded) withContext(Dispatchers.Main) { refreshSmartOrbit() }
+        }
+    }
+
+    private fun refreshSmartOrbit() {
+        smartOrbitRefreshJob?.cancel()
+        smartOrbitRefreshJob = viewModelScope.launch(Dispatchers.Default) {
+            if (smartOrbitPool.isEmpty && smartOrbitDiscoveries.isEmpty()) return@launch
+            val discoveries = computeSmartOrbitDiscoveries()
+            if (discoveries == smartOrbitDiscoveries) return@launch
+            smartOrbitDiscoveries = discoveries
+            _state.update { current ->
+                current.copy(personalOrbitTracks = rankSmartOrbit(buildSmartOrbit(current), current.recommendationFeedback))
+            }
+        }
+    }
+
+    private fun computeSmartOrbitDiscoveries(): List<Track> {
+        val pool = smartOrbitPool
+        if (pool.isEmpty) return emptyList()
+        val snapshot = _state.value
+        val rejected = queueEngine.rejectedAutomaticKeys()
+        val profile = listeningSignals?.copy(feedback = snapshot.recommendationFeedback)
+        return SmartOrbitEngine.discoveries(
+            pool = pool,
+            profile = profile,
+            isBlocked = { track ->
+                snapshot.artistExclusions.excludesTrack(track) || isRejectedAutomatic(track, rejected)
+            }
+        )
+    }
+
+    private fun isRejectedAutomatic(track: Track, rejected: Set<String>): Boolean =
+        rejected.isNotEmpty() && AutoQueueTombstones.rejectionKeys(track).any(rejected::contains)
+
+    private fun smartOrbitExclusion(): (Track) -> Boolean {
+        val pool = smartOrbitPool
+        val discoveries = smartOrbitDiscoveries
+        val rejected = queueEngine.rejectedAutomaticKeys()
+        if (pool.isEmpty && rejected.isEmpty()) return { false }
+        return { track ->
+            isRejectedAutomatic(track, rejected) ||
+                (pool.contains(track) && discoveries.none { LevyraPersonalOrbit.sameRecording(it, track) })
+        }
+    }
+
+    private fun buildSmartOrbit(current: LevyraUiState): List<Track> = LevyraPersonalOrbit.build(
+        currentTrack = current.currentTrack,
+        recentSearches = current.recentSearches,
+        favorites = current.favorites,
+        tracks = current.tracks,
+        homeSections = current.homeSections,
+        charts = current.charts,
+        cachedOrbit = current.personalOrbitTracks,
+        limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+        languageCode = current.languageCode,
+        discoveries = smartOrbitDiscoveries,
+        excluded = smartOrbitExclusion()
+    )
+
+    private fun rankSmartOrbit(
+        tracks: List<Track>,
+        feedback: com.luc4n3x.levyra.domain.RecommendationFeedback
+    ): List<Track> {
+        val signals = listeningSignals ?: return tracks
+        return ListeningSignalRanker.rank(
+            candidates = tracks,
+            profile = signals.copy(feedback = feedback),
+            limit = tracks.size,
+            dropSuppressed = false,
+            bonusScores = smartOrbitPool.bonusScores
+        )
     }
 
     private fun isSameRadioSeed(current: Track?, seed: Track): Boolean =
@@ -10565,6 +10751,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (listenSessionTrack != null && player.isPlaying && listenTickElapsedMs > 0L) {
                     val delta = nowElapsed - listenTickElapsedMs
                     if (delta in 1..2_000L) listenSessionAccumulatedMs += delta
+                    maybeRecordSignificantListen(duration)
                     maybePersistListenSession()
                 }
                 listenTickElapsedMs = nowElapsed
@@ -10851,6 +11038,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listenSessionStartedAt = System.currentTimeMillis()
         listenSessionAccumulatedMs = 0L
         listenSessionCompleted = false
+        listenSessionSignificant = false
         listenTickElapsedMs = android.os.SystemClock.elapsedRealtime()
         listenSessionPersistedMs = 0L
         val startedAt = listenSessionStartedAt
@@ -10937,6 +11125,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listenSessionTrack = null
         listenSessionAccumulatedMs = 0L
         listenSessionCompleted = false
+        listenSessionSignificant = false
         listenSessionPersistedMs = 0L
         return session.takeIf { it.listenedMs >= ListeningPulseEngine.MIN_LISTEN_MS }
     }
@@ -10995,18 +11184,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 followedArtists = signalSnapshot.followedArtists.map { it.name }
             )
             listeningSignals = signals
+            smartOrbitPool = smartOrbitStore.load()
+            val discoveries = computeSmartOrbitDiscoveries()
+            val discoveriesChanged = discoveries != smartOrbitDiscoveries
+            smartOrbitDiscoveries = discoveries
             _state.update { current ->
-                val rankingProfile = signals.copy(feedback = current.recommendationFeedback)
+                val orbit = if (discoveriesChanged) buildSmartOrbit(current) else current.personalOrbitTracks
                 val updated = current.copy(
                     listeningPulse = pulse,
                     recentListens = recent,
                     mostPlayedTracks = mostPlayed,
-                    personalOrbitTracks = com.luc4n3x.levyra.domain.ListeningSignalRanker.rank(
-                        candidates = current.personalOrbitTracks,
-                        profile = rankingProfile,
-                        limit = current.personalOrbitTracks.size,
-                        dropSuppressed = false
-                    )
+                    personalOrbitTracks = rankSmartOrbit(orbit, current.recommendationFeedback)
                 )
                 val localAlbums = instantAlbumRecommendations(updated, HOME_ALBUM_RECOMMENDATION_LIMIT)
                 val rankedAlbums = rankAlbumRecommendations(

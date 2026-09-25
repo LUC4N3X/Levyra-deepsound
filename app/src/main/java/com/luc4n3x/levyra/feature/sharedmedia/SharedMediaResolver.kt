@@ -4,8 +4,17 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.providers.LevyraProviderRouter
+import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -23,6 +32,7 @@ class SharedMediaResolver(
             SharedMediaKind.Playlist -> resolvePlaylist(request, languageCode)
             SharedMediaKind.Album -> resolveAlbum(request, languageCode)
             SharedMediaKind.LevyraPlaylist -> resolveLevyraPlaylist(request, languageCode)
+            SharedMediaKind.BulkLinks -> resolveBulkLinks(request, languageCode)
             SharedMediaKind.Artist, SharedMediaKind.Channel, SharedMediaKind.Search -> resolveSearch(request, languageCode)
             SharedMediaKind.Unsupported -> SharedMediaPreview(
                 request = request,
@@ -87,10 +97,70 @@ class SharedMediaResolver(
             if (italian) "Link Levyra non leggibile" else "Unreadable Levyra link"
     }
 
-    private suspend fun resolveVideo(request: SharedMediaRequest): SharedMediaPreview {
-        val metadata = fetchOEmbed(request.url)
+    private suspend fun resolveBulkLinks(request: SharedMediaRequest, languageCode: String): SharedMediaPreview {
+        val limiter = Semaphore(BulkLinkCapture.RESOLUTION_CONCURRENCY)
+        val resolved = coroutineScope {
+            request.bulkUrls.map { url ->
+                async { limiter.withPermit { resolveBulkLink(url, languageCode) } }
+            }.awaitAll()
+        }
+        val tracks = LinkedHashMap<String, Track>()
+        var trackDuplicates = 0
+        var failedLinks = 0
+        resolved.forEach { linkTracks ->
+            if (linkTracks.isNullOrEmpty()) {
+                failedLinks += 1
+                return@forEach
+            }
+            linkTracks.forEach { track ->
+                if (tracks.size >= BulkLinkCapture.MAX_TRACKS) return@forEach
+                if (tracks.putIfAbsent(playbackQueueIdentity(track), track) != null) trackDuplicates += 1
+            }
+        }
+        val summary = BulkLinkCaptureSummary(
+            detectedLinks = request.bulkDetected,
+            resolvedTracks = tracks.size,
+            duplicates = request.bulkDuplicates + trackDuplicates,
+            unrecognized = request.bulkUnrecognized + failedLinks
+        )
+        val first = tracks.values.firstOrNull()
+        return SharedMediaPreview(
+            request = request,
+            title = "",
+            subtitle = "",
+            thumbnailUrl = first?.largeThumbnailUrl?.ifBlank { first.thumbnailUrl }.orEmpty(),
+            tracks = tracks.values.toList(),
+            bulkSummary = summary
+        )
+    }
+
+    private suspend fun resolveBulkLink(url: String, languageCode: String): List<Track>? {
+        val link = SharedMediaIntentParser.parseText(url) ?: return null
+        return try {
+            when (link.kind) {
+                SharedMediaKind.Video -> resolveVideo(link, requireMetadata = true).tracks
+                SharedMediaKind.Playlist -> resolvePlaylist(link, languageCode).tracks
+                SharedMediaKind.Album -> resolveAlbum(link, languageCode).tracks
+                else -> null
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.d(error, "Bulk link resolution failed")
+            null
+        }
+    }
+
+    private suspend fun resolveVideo(request: SharedMediaRequest, requireMetadata: Boolean = false): SharedMediaPreview {
+        val metadata = runInterruptible { fetchOEmbed(request.url) }
+        if (metadata == null && requireMetadata) {
+            return SharedMediaPreview(request = request, title = "", subtitle = "", thumbnailUrl = "", tracks = emptyList())
+        }
         val title = metadata?.optString("title").orEmpty().trim().ifBlank { "Video YouTube" }
-        val artist = metadata?.optString("author_name").orEmpty().trim().ifBlank { "YouTube" }
+        val artist = metadata?.optString("author_name").orEmpty().trim()
+            .removeSuffix(TOPIC_CHANNEL_SUFFIX)
+            .trim()
+            .ifBlank { "YouTube" }
         val thumbnail = "https://i.ytimg.com/vi/${request.videoId}/hqdefault.jpg"
         val track = Track(
             id = request.videoId,
@@ -189,6 +259,7 @@ class SharedMediaResolver(
     }
 
     private companion object {
+        const val TOPIC_CHANNEL_SUFFIX = " - Topic"
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
     }
 }

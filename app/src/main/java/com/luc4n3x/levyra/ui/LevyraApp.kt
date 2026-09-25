@@ -433,6 +433,8 @@ import androidx.media3.common.VideoSize
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -542,6 +544,7 @@ import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
 import com.luc4n3x.levyra.ui.settings.NetworkSettingsPanel
+import com.luc4n3x.levyra.feature.sharedmedia.BulkLinkCaptureSummary
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.components.LevyraArtistAvatarSize
@@ -589,6 +592,8 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.BulkLinkCaptureCopy
+import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.personalizedSearchCopy
@@ -2367,6 +2372,7 @@ fun LevyraApp(
                     onQueue = viewModel::queueSharedMedia,
                     onDownload = viewModel::downloadSharedMedia,
                     onImport = viewModel::importSharedPlaylist,
+                    onSavePlaylist = viewModel::saveSharedMediaAsPlaylist,
                     onDismiss = viewModel::dismissSharedMedia
                 )
             }
@@ -2935,9 +2941,12 @@ private fun SharedMediaPreviewDialog(
     onQueue: () -> Unit,
     onDownload: () -> Unit,
     onImport: () -> Unit,
+    onSavePlaylist: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val italian = languageCode.equals("it", ignoreCase = true)
+    val bulkCopy = remember(languageCode) { bulkLinkCaptureCopy(languageCode) }
+    val bulkSummary = preview.bulkSummary
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -2983,14 +2992,14 @@ private fun SharedMediaPreviewDialog(
                             fontWeight = FontWeight.Black
                         )
                         Text(
-                            text = preview.title,
+                            text = preview.title.ifBlank { bulkCopy.title.takeIf { bulkSummary != null }.orEmpty() },
                             color = LevyraText,
                             fontSize = 19.sp,
                             fontWeight = FontWeight.Black,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
+                        if (preview.subtitle.isNotBlank()) Text(
                             text = preview.subtitle,
                             color = LevyraMuted,
                             fontSize = 12.sp,
@@ -3024,8 +3033,18 @@ private fun SharedMediaPreviewDialog(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    preview.playable -> {
+                    bulkSummary != null && !preview.playable -> {
+                        BulkLinkCaptureSummaryText(bulkSummary, bulkCopy)
                         Text(
+                            text = bulkCopy.noTracks,
+                            color = LevyraOrange,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    preview.playable -> {
+                        bulkSummary?.let { BulkLinkCaptureSummaryText(it, bulkCopy) }
+                        if (bulkSummary == null) Text(
                             text = if (italian) "${preview.tracks.size} ${if (preview.tracks.size == 1) "brano pronto" else "brani pronti"}" else "${preview.tracks.size} ${if (preview.tracks.size == 1) "track ready" else "tracks ready"}",
                             color = LevyraMuted,
                             fontSize = 12.sp,
@@ -3074,9 +3093,43 @@ private fun SharedMediaPreviewDialog(
                                 )
                             }
                         }
+                        if (preview.request.kind == SharedMediaKind.BulkLinks) {
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                SharedMediaAction(
+                                    modifier = Modifier.weight(1f),
+                                    icon = Icons.Rounded.LibraryAdd,
+                                    title = bulkCopy.savePlaylist,
+                                    primary = false,
+                                    onClick = onSavePlaylist
+                                )
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BulkLinkCaptureSummaryText(summary: BulkLinkCaptureSummary, copy: BulkLinkCaptureCopy) {
+    val lines = buildList {
+        add(copy.detected(summary.detectedLinks))
+        add(copy.found(summary.resolvedTracks))
+        if (summary.duplicates > 0) add(copy.duplicates(summary.duplicates))
+        if (summary.unrecognized > 0) add(copy.unrecognized(summary.unrecognized))
+    }
+    Column(
+        modifier = Modifier.semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        lines.forEach { line ->
+            Text(
+                text = line,
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -13649,83 +13702,61 @@ private fun ListeningPickTile(
     modifier: Modifier = Modifier
 ) {
     var menuExpanded by remember(track.id) { mutableStateOf(false) }
-    Row(
-        modifier = modifier
-            .height(58.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .clickable(onClick = onClick)
-            .padding(start = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CoverImage(
-            track = track,
+    Box(modifier = modifier) {
+        Row(
             modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(10.dp))
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+                .fillMaxWidth()
+                .height(LISTENING_PICK_TILE_HEIGHT)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White.copy(alpha = 0.08f))
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { menuExpanded = true },
+                    onLongClickLabel = actionsLabel
+                )
+                .semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            CoverImage(
+                track = track,
+                modifier = Modifier
+                    .size(LISTENING_PICK_TILE_HEIGHT)
+                    .clip(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))
+            )
             Text(
                 text = track.title,
                 color = LevyraText,
                 fontSize = 13.sp,
+                lineHeight = 16.sp,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                style = TextStyle(lineBreak = LineBreak.Simple, hyphens = Hyphens.Auto),
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee(
-                    iterations = Int.MAX_VALUE,
-                    repeatDelayMillis = LISTENING_PICK_MARQUEE_DELAY_MS
-                )
-            )
-            Text(
-                text = track.artist,
-                color = LevyraMuted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Box {
-            Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clickable { menuExpanded = true },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = actionsLabel,
-                    tint = LevyraMuted,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            SearchTrackActionsMenu(
-                track = track,
-                expanded = menuExpanded,
-                isFavorite = isFavorite,
-                isDownloaded = isDownloaded,
-                allowRemove = false,
-                onDismiss = { menuExpanded = false },
-                onRemove = {},
-                onFavorite = onFavorite,
-                onAddToPlaylist = onAddToPlaylist,
-                onPlayNext = onPlayNext,
-                onAddToQueue = onAddToQueue,
-                onDownload = onDownload,
-                onArtist = onArtist
+                    .weight(1f)
+                    .padding(horizontal = 10.dp)
             )
         }
+        SearchTrackActionsMenu(
+            track = track,
+            expanded = menuExpanded,
+            isFavorite = isFavorite,
+            isDownloaded = isDownloaded,
+            allowRemove = false,
+            onDismiss = { menuExpanded = false },
+            onRemove = {},
+            onFavorite = onFavorite,
+            onAddToPlaylist = onAddToPlaylist,
+            onPlayNext = onPlayNext,
+            onAddToQueue = onAddToQueue,
+            onDownload = onDownload,
+            onArtist = onArtist
+        )
     }
 }
 
 private const val LISTENING_PICKS_LIMIT = 6
-private const val LISTENING_PICK_MARQUEE_DELAY_MS = 3_200
+private val LISTENING_PICK_TILE_HEIGHT = 56.dp
 
 @Composable
 private fun SearchQueryChips(

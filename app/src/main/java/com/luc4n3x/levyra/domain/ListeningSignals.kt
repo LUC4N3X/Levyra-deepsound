@@ -272,7 +272,8 @@ object ListeningSignalRanker {
         limit: Int = candidates.size,
         contextArtist: String = "",
         artistRunLimit: Int = DEFAULT_ARTIST_RUN_LIMIT,
-        dropSuppressed: Boolean = true
+        dropSuppressed: Boolean = true,
+        bonusScores: Map<String, Int> = emptyMap()
     ): List<Track> {
         if (candidates.isEmpty()) return emptyList()
         val max = limit.coerceAtLeast(1)
@@ -284,7 +285,7 @@ object ListeningSignalRanker {
             .filterTo(LinkedHashSet(), String::isNotBlank)
         val smartOrbitDiversity = !dropSuppressed && contextKeys.isEmpty()
 
-        if (!profile.hasSignal) {
+        if (!profile.hasSignal && bonusScores.isEmpty()) {
             if (!smartOrbitDiversity) return eligibleCandidates.take(max)
             val unscored = eligibleCandidates.mapIndexed { index, candidate ->
                 ScoredCandidate(track = candidate, score = 0, originalIndex = index)
@@ -304,7 +305,9 @@ object ListeningSignalRanker {
         val scored = pool.mapIndexed { index, candidate ->
             ScoredCandidate(
                 track = candidate,
-                score = profile.trackScore(candidate) + if (matchesContext(candidate, contextKeys)) CONTEXT_BONUS else 0,
+                score = profile.trackScore(candidate) +
+                    (if (matchesContext(candidate, contextKeys)) CONTEXT_BONUS else 0) +
+                    bonusScore(candidate, bonusScores),
                 originalIndex = index
             )
         }.sortedWith(compareByDescending<ScoredCandidate> { it.score }.thenBy { it.originalIndex })
@@ -476,6 +479,11 @@ object ListeningSignalRanker {
             return false
         }
         return true
+    }
+
+    private fun bonusScore(track: Track, bonusScores: Map<String, Int>): Int {
+        if (bonusScores.isEmpty()) return 0
+        return bonusScores[ListenIdentity.trackKey(track.id, track.title, track.artist)] ?: 0
     }
 
     private fun matchesContext(track: Track, contextKeys: Set<String>): Boolean {
