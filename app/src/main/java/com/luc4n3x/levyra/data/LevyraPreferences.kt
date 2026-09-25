@@ -24,6 +24,7 @@ import com.luc4n3x.levyra.domain.LevyraBedtimeSchedule
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
@@ -200,6 +201,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_VERTICAL_SWIPE_ACTION] = normalizedInterface.verticalSwipeAction.name
             mutable[KEY_UI_CANVAS_QUALITY] = normalizedInterface.canvasQuality.name
             mutable[KEY_UI_CANVAS_SOURCE] = normalizedInterface.canvasSource.name
+            mutable[KEY_UI_VISUAL_PERFORMANCE] = normalizedInterface.visualPerformance.name
             mutable[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalizedInterface.motionArtworkWifiOnly
             mutable[KEY_UI_ENHANCE_VIDEO_METADATA] = normalizedInterface.enhanceVideoMetadata
             mutable[KEY_UI_PURE_BLACK] = normalizedInterface.pureBlack
@@ -349,6 +351,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_VERTICAL_SWIPE_ACTION] = normalized.verticalSwipeAction.name
             it[KEY_UI_CANVAS_QUALITY] = normalized.canvasQuality.name
             it[KEY_UI_CANVAS_SOURCE] = normalized.canvasSource.name
+            it[KEY_UI_VISUAL_PERFORMANCE] = normalized.visualPerformance.name
             it[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalized.motionArtworkWifiOnly
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
             it[KEY_UI_PURE_BLACK] = normalized.pureBlack
@@ -719,6 +722,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             verticalSwipeAction = PlayerVerticalSwipeAction.from(preferences[KEY_UI_VERTICAL_SWIPE_ACTION].orEmpty()),
             canvasQuality = LevyraCanvasQuality.from(preferences[KEY_UI_CANVAS_QUALITY].orEmpty()),
             canvasSource = LevyraCanvasSource.from(preferences[KEY_UI_CANVAS_SOURCE].orEmpty()),
+            visualPerformance = LevyraVisualPerformance.from(preferences[KEY_UI_VISUAL_PERFORMANCE].orEmpty()),
             motionArtworkWifiOnly = preferences[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] ?: false,
             enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
             pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
@@ -1040,6 +1044,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_VERTICAL_SWIPE_ACTION = stringPreferencesKey("ui_vertical_swipe_action")
         val KEY_UI_CANVAS_QUALITY = stringPreferencesKey("ui_canvas_quality")
         val KEY_UI_CANVAS_SOURCE = stringPreferencesKey("ui_canvas_source")
+        val KEY_UI_VISUAL_PERFORMANCE = stringPreferencesKey("ui_visual_performance")
         val KEY_UI_MOTION_ARTWORK_WIFI_ONLY = booleanPreferencesKey("ui_motion_artwork_wifi_only")
         val KEY_UI_ENHANCE_VIDEO_METADATA = booleanPreferencesKey("ui_enhance_video_metadata")
         val KEY_UI_PLAYER_VISUAL_MODE = stringPreferencesKey("ui_player_visual_mode")

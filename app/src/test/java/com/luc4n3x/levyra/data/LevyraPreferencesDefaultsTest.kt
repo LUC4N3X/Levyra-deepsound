@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
@@ -41,6 +42,26 @@ class LevyraPreferencesDefaultsTest {
 
         assertEquals(0f, restored.preampDb, 0f)
         assertTrue(restored.limiterEnabled)
+    }
+
+    @Test
+    fun visualPerformanceDefaultsToFullEverywhere() {
+        assertEquals(LevyraVisualPerformance.Full, LevyraInterfaceSettings().visualPerformance)
+        assertEquals(LevyraVisualPerformance.Full, LevyraUiState().interfaceSettings.visualPerformance)
+        assertEquals(LevyraVisualPerformance.Full, LevyraVisualPerformance.from(""))
+        assertEquals(LevyraVisualPerformance.Full, LevyraVisualPerformance.from("unknown"))
+        assertEquals(LevyraVisualPerformance.Full, backupInterfaceSettingsFromJson(JSONObject()).visualPerformance)
+        assertEquals(LevyraVisualPerformance.Full, backupInterfaceSettingsFromJson(null).visualPerformance)
+    }
+
+    @Test
+    fun backupRoundTripPreservesVisualPerformance() {
+        LevyraVisualPerformance.entries.forEach { mode ->
+            val restored = backupInterfaceSettingsFromJson(
+                backupInterfaceSettingsToJson(LevyraInterfaceSettings(visualPerformance = mode))
+            )
+            assertEquals(mode, restored.visualPerformance)
+        }
     }
 
     @Test

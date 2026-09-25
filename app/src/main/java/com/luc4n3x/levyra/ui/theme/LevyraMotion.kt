@@ -42,6 +42,8 @@ data class LevyraSpring(
 private const val PanelRestScale = 0.98f
 private const val PageEnterScale = 0.965f
 private const val PageExitScale = 0.985f
+private const val MiniArtworkEnterScale = 0.96f
+private const val MiniMetadataEnterDivisor = 24
 
 object LevyraMotion {
 
@@ -225,6 +227,36 @@ object LevyraMotion {
             sizeTransform = SizeTransform(clip = false)
         )
     }
+
+    fun miniTrackSwap(enabled: Boolean): ContentTransform {
+        if (!enabled) return EnterTransition.None togetherWith ExitTransition.None
+        return ContentTransform(
+            targetContentEnter = fadeIn(
+                tween(Durations.Short + 20, delayMillis = Durations.Instant, easing = Easings.Decelerate)
+            ),
+            initialContentExit = fadeOut(tween(Durations.Instant, easing = Easings.Standard)),
+            sizeTransform = SizeTransform(clip = false)
+        )
+    }
+
+    fun miniArtworkEnter(micro: Boolean): EnterTransition =
+        if (micro) {
+            scaleIn(
+                tween(Durations.Short + 40, delayMillis = Durations.Instant, easing = Easings.Decelerate),
+                initialScale = MiniArtworkEnterScale
+            )
+        } else {
+            EnterTransition.None
+        }
+
+    fun miniMetadataEnter(micro: Boolean, direction: Int): EnterTransition =
+        if (micro && direction != 0) {
+            slideInHorizontally(
+                tween(Durations.Short + 40, delayMillis = Durations.Instant, easing = Easings.Decelerate)
+            ) { fullWidth -> direction * fullWidth / MiniMetadataEnterDivisor }
+        } else {
+            EnterTransition.None
+        }
 
     fun contentSwap(enabled: Boolean): ContentTransform =
         if (enabled) {

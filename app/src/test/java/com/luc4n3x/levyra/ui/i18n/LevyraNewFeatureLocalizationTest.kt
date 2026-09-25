@@ -45,6 +45,28 @@ class LevyraNewFeatureLocalizationTest {
     }
 
     @Test
+    fun visualPerformanceCoversEveryCatalogLanguageWithoutEnglishFallback() {
+        val codes = LevyraLanguageCatalog.languages.map { it.code }
+        assertEquals(codes.toSet(), visualPerformanceLocalizationCodes())
+        val english = visualPerformanceLocalizationEntries("en")
+        codes.forEach { code ->
+            val entries = visualPerformanceLocalizationEntries(code)
+            assertEquals(visualPerformanceKeys, entries.keys)
+            entries.forEach { (key, value) -> assertTrue("$code/$key is blank", value.isNotBlank()) }
+            if (code != "en") {
+                assertNotEquals("Visual performance strings fall back to English for $code", english, entries)
+            }
+            assertTrue(LevyraStrings.forCode(code).visualPerformanceFullSubtitle.isNotBlank())
+            if (code != "en") {
+                listOf("playerLyricsSearching", "playerLyricsUnavailable", "playerLyricsShowArtwork", "playerLyricsOpenFull")
+                    .forEach { key ->
+                        assertNotEquals("$code/$key falls back to English", english.getValue(key), entries.getValue(key))
+                    }
+            }
+        }
+    }
+
+    @Test
     fun placeholdersStaySafeAcrossLanguages() {
         LevyraLanguageCatalog.languages.map { it.code }.forEach { code ->
             val strings = LevyraStrings.forCode(code)
