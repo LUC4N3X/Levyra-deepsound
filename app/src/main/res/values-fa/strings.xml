@@ -31,4 +31,5 @@
     <string name="shortcut_search">جستجو</string>
     <string name="shortcut_library">کتابخانه</string>
     <string name="shortcut_recognition">تشخیص موسیقی</string>
+    <string name="shortcut_resume">ادامه پخش</string>
 </resources>

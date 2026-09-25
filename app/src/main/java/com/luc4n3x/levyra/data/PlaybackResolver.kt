@@ -324,6 +324,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val MAX_FAILED_PLAYBACK_URLS = 256
         private const val MAX_STRATEGY_ORIGINS = 256
         private const val MAX_SABR_CANDIDATES = 2
+        private const val AUDIO_MANIFEST_MAX_STREAMS = 10
+        private const val VIDEO_MANIFEST_MAX_STREAMS = 16
         private const val ALTERNATIVE_STREAM_QUARANTINE_MS = 30L * 60L * 1000L
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
@@ -446,6 +448,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             selectedPreferredAudioLanguage = normalized
             audioLanguageRevision.incrementAndGet()
             resolverGeneration.incrementAndGet()
+        }
+    }
+
+    fun invalidateVideoQualitySelection() {
+        synchronized(streamCacheMutationLock) {
+            resolverGeneration.incrementAndGet()
+            streamCache.keys.removeAll { it.contains("_video_") }
         }
     }
 
@@ -573,6 +582,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (normal != null && awaitsHighQualityUpgrade(track, isVideoMode, normal)) return null
         return normal
     }
+
+    fun supportsVideoDescriptor(descriptor: PlaybackStreamDescriptor): Boolean =
+        videoSelector.supportsDescriptor(descriptor)
+
+    fun videoAutoTargetHeight(): Int = videoSelector.autoTargetHeight()
 
     fun awaitsHighQualityUpgrade(track: Track, isVideoMode: Boolean = false, normalCached: Track? = null): Boolean =
         highQualityPlayback.awaitsUpgrade(track, normalCached, isVideoMode, selectedAudioQuality) &&
@@ -2860,7 +2874,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         val quality = normalizeAudioQuality(audioQuality).lowercase()
         val lang = selectedPreferredAudioLanguage.ifBlank { "default" }
         return if (isVideoMode) {
-            "${base}_video_${quality}_lang_$lang"
+            val videoQuality = userPreferences.videoQualityTarget().storageValue
+            "${base}_video_${quality}_lang_${lang}_quality_$videoQuality"
         } else {
             "${base}_audio_${quality}_lang_$lang"
         }
@@ -3160,7 +3175,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                             durationMs = duration,
                             selectedAudioUrl = selection.candidate.url,
                             selectedVideoUrl = "",
-                            streams = listOf(videoDescriptor(selection.candidate, true)),
+                            streams = videoLadderDescriptors(
+                                muxedCandidates = muxedCandidates,
+                                videoOnlyCandidates = videoOnlyCandidates,
+                                bestAudioFormat = bestAudioFormat,
+                                bestAudioUrl = bestAudioUrl,
+                                selectedVideoCandidate = selection.candidate,
+                                sabrAudioStreams = emptyList(),
+                                sabrVideoStreams = emptyList()
+                            ),
                             loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb),
                             provenance = currentProvenance()
                         )
@@ -3183,10 +3206,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                             durationMs = duration,
                             selectedAudioUrl = bestAudioUrl,
                             selectedVideoUrl = selection.candidate.url,
-                            streams = listOf(
-                                innerTubeAudioDescriptor(bestAudioFormat, bestAudioUrl, true),
-                                videoDescriptor(selection.candidate, true)
-                            ) + sabrAudioStreams + sabrVideoStreams,
+                            streams = videoLadderDescriptors(
+                                muxedCandidates = muxedCandidates,
+                                videoOnlyCandidates = videoOnlyCandidates,
+                                bestAudioFormat = bestAudioFormat,
+                                bestAudioUrl = bestAudioUrl,
+                                selectedVideoCandidate = selection.candidate,
+                                sabrAudioStreams = sabrAudioStreams,
+                                sabrVideoStreams = sabrVideoStreams
+                            ),
                             loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb),
                             provenance = currentProvenance()
                         )
@@ -3828,6 +3856,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             .filter { it > 0L }
             .minOrNull()
             ?: selectedExpiry
+        val videoManifest = selectedVideoUrl.isNotBlank() ||
+            normalizedStreams.any { it.selected && (it.kind == PlaybackStreamKind.MUXED || it.kind == PlaybackStreamKind.VIDEO) }
         return ResolvedPlaybackManifest(
             sourceVideoId = sourceVideoId,
             provider = provider,
@@ -3843,7 +3873,10 @@ class PlaybackResolver private constructor(private val context: Context) {
                 resolvedAtMs = resolvedAtMs,
                 expiresAtMs = provenanceExpiry
             )
-        ).compact()
+        ).compact(
+            maxStreams = if (videoManifest) VIDEO_MANIFEST_MAX_STREAMS else AUDIO_MANIFEST_MAX_STREAMS,
+            preferVideoRungs = videoManifest
+        )
     }
 
     private fun audioDescriptor(stream: AudioStream, selected: Boolean = false): PlaybackStreamDescriptor {
@@ -3881,6 +3914,24 @@ class PlaybackResolver private constructor(private val context: Context) {
             expiresAtMs = expiresAtFor(candidate.url),
             selected = selected
         )
+    }
+
+    private fun videoLadderDescriptors(
+        muxedCandidates: List<LevyraVideoCandidate>,
+        videoOnlyCandidates: List<LevyraVideoCandidate>,
+        bestAudioFormat: JSONObject?,
+        bestAudioUrl: String,
+        selectedVideoCandidate: LevyraVideoCandidate,
+        sabrAudioStreams: List<PlaybackStreamDescriptor>,
+        sabrVideoStreams: List<PlaybackStreamDescriptor>
+    ): List<PlaybackStreamDescriptor> = buildList {
+        if (bestAudioUrl.isNotBlank()) {
+            add(innerTubeAudioDescriptor(bestAudioFormat, bestAudioUrl, !selectedVideoCandidate.muxed))
+        }
+        muxedCandidates.mapTo(this) { videoDescriptor(it, it.url == selectedVideoCandidate.url) }
+        videoOnlyCandidates.mapTo(this) { videoDescriptor(it, it.url == selectedVideoCandidate.url) }
+        addAll(sabrAudioStreams)
+        addAll(sabrVideoStreams)
     }
 
     private fun hlsDescriptor(url: String, selected: Boolean = true): PlaybackStreamDescriptor {

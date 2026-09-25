@@ -65,6 +65,7 @@ import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.DropdownMenu
@@ -499,6 +500,48 @@ fun LevyraNowPlaying(
                                     onClick = {
                                         subtitleMenuExpanded = false
                                         viewModel.selectVideoSubtitle(subtitle.id)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                if (state.videoQuality.available) {
+                    var qualityMenuExpanded by remember(track?.id) { mutableStateOf(false) }
+                    Box {
+                        PlayerGlassIconButton(
+                            icon = Icons.Rounded.HighQuality,
+                            contentDescription = strings.videoQuality,
+                            size = headerButtonSize,
+                            iconSize = 19.dp,
+                            tint = surfaces.contentMuted,
+                            fill = headerButtonFill,
+                            borderTop = headerButtonBorder,
+                            borderBottom = headerButtonBorder,
+                            onClick = { if (!state.videoQuality.switching) qualityMenuExpanded = true }
+                        )
+                        DropdownMenu(
+                            expanded = qualityMenuExpanded,
+                            onDismissRequest = { qualityMenuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(strings.videoQualityAuto) },
+                                onClick = {
+                                    qualityMenuExpanded = false
+                                    viewModel.selectVideoQuality(null)
+                                }
+                            )
+                            state.videoQuality.ladder.forEach { rung ->
+                                DropdownMenuItem(
+                                    text = { Text(rung.label) },
+                                    leadingIcon = {
+                                        if (state.videoQuality.activeLabel == rung.label) {
+                                            Icon(Icons.Rounded.Check, contentDescription = null)
+                                        }
+                                    },
+                                    onClick = {
+                                        qualityMenuExpanded = false
+                                        viewModel.selectVideoQuality(rung.label)
                                     }
                                 )
                             }

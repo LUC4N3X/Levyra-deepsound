@@ -40,6 +40,9 @@ import com.luc4n3x.levyra.domain.recap.ListeningRecapPeriod
 import com.luc4n3x.levyra.domain.recap.ListeningRecapSummary
 import com.luc4n3x.levyra.domain.LevyraMixDefaults
 import com.luc4n3x.levyra.domain.LevyraMixSummary
+import com.luc4n3x.levyra.domain.VideoQualityRung
+import com.luc4n3x.levyra.domain.VideoQualityTarget
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
@@ -82,6 +85,16 @@ data class LocalLibraryUiState(
     val catalog: LocalLibraryCatalog = LocalLibraryCatalog()
 )
 
+@Immutable
+data class VideoQualityUiState(
+    val ladder: List<VideoQualityRung> = emptyList(),
+    val activeLabel: String? = null,
+    val switching: Boolean = false
+) {
+    val available: Boolean
+        get() = ladder.isNotEmpty()
+}
+
 data class LevyraUiState(
     val selectedTab: LevyraTab = LevyraTab.Home,
     val moods: List<Mood> = emptyList(),
@@ -91,6 +104,8 @@ data class LevyraUiState(
     val isVideoMode: Boolean = false,
     val pendingVideoMode: Boolean? = null,
     val selectedVideoSubtitleId: String? = null,
+    val videoQuality: VideoQualityUiState = VideoQualityUiState(),
+    val videoQualityTarget: VideoQualityTarget = VideoQualityTarget.AUTO,
     val isSamplesOpen: Boolean = false,
     val showSettings: Boolean = false,
     val animationsEnabled: Boolean = true,
@@ -186,6 +201,7 @@ data class LevyraUiState(
     val lyricsManualSelection: Boolean = false,
     val lyricsTranslationEnabled: Boolean = false,
     val lyricsTranslationState: LyricsTranslationState = LyricsTranslationState.DISABLED,
+    val lyricsProviderOrdering: LyricsProviderOrdering = LyricsProviderOrdering(),
     val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
     val smartProfile: SmartMusicProfile = SmartMusicProfile(),
     val cacheReport: CacheReport = CacheReport(0, 0, 0, 0),

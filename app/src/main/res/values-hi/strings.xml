@@ -31,4 +31,5 @@
     <string name="shortcut_search">खोजें</string>
     <string name="shortcut_library">लाइब्रेरी</string>
     <string name="shortcut_recognition">संगीत पहचानें</string>
+    <string name="shortcut_resume">प्लेबैक फिर से शुरू करें</string>
 </resources>

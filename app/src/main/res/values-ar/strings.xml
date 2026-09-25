@@ -31,4 +31,5 @@
     <string name="shortcut_search">بحث</string>
     <string name="shortcut_library">المكتبة</string>
     <string name="shortcut_recognition">التعرّف على الموسيقى</string>
+    <string name="shortcut_resume">استئناف التشغيل</string>
 </resources>

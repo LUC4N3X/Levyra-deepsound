@@ -31,4 +31,5 @@
     <string name="shortcut_search">Otsi</string>
     <string name="shortcut_library">Muusikakogu</string>
     <string name="shortcut_recognition">Tuvasta muusika</string>
+    <string name="shortcut_resume">Jätka esitust</string>
 </resources>

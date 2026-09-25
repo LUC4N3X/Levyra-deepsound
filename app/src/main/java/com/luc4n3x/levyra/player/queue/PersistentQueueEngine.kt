@@ -568,6 +568,12 @@ class PersistentQueueEngine internal constructor(
         current.copy(tracks = nextTracks, generation = current.generation + 1L)
     }
 
+    fun updateActiveTrackAt(index: Int, track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        if (index !in current.tracks.indices) return@mutate current
+        val nextTracks = current.tracks.toMutableList().apply { set(index, track) }
+        current.copy(tracks = nextTracks, generation = current.generation + 1L)
+    }
+
     fun updateTrackMetadata(track: Track): PlaybackQueueSnapshot = mutate(immediatePersist = true) { current ->
         val identity = playbackQueueIdentity(track)
         var changed = false

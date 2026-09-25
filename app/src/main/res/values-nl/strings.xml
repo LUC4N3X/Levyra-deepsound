@@ -31,4 +31,5 @@
     <string name="shortcut_search">Zoeken</string>
     <string name="shortcut_library">Bibliotheek</string>
     <string name="shortcut_recognition">Muziek herkennen</string>
+    <string name="shortcut_resume">Afspelen hervatten</string>
 </resources>

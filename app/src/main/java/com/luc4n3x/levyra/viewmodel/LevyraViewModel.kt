@@ -185,6 +185,15 @@ import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
+import com.luc4n3x.levyra.domain.VideoQualityLadder
+import com.luc4n3x.levyra.domain.VideoQualityTarget
+import com.luc4n3x.levyra.domain.VideoRebufferPolicy
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
+import com.luc4n3x.levyra.domain.ResumePlaybackPolicy
+import com.luc4n3x.levyra.domain.audioPartnerForAdaptiveRung
+import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.withSelectedVideoQuality
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
@@ -1008,6 +1017,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var liveRadioArtworkJob: Job? = null
     private var liveRadioArtwork = ""
     private var deferredPlaybackStartSideEffectsKey: String? = null
+    private val videoRebufferPolicy = VideoRebufferPolicy()
+    private var videoQualityTrackId: String? = null
+    private var resumeShortcutJob: Job? = null
+    private val queueRestored = CompletableDeferred<Unit>()
     @Volatile
     private var listeningSignals: com.luc4n3x.levyra.domain.ListeningSignalProfile? = null
     @Volatile private var smartOrbitPool: SmartOrbitPool = SmartOrbitPool.Empty
@@ -1190,6 +1203,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             preferences.lyricsLatencyProfilesFlow.collect { profiles ->
                 _state.update { state -> state.copy(lyricsLatencyProfiles = profiles) }
+            }
+        }
+        viewModelScope.launch {
+            preferences.lyricsProviderOrderingFlow.collect { ordering ->
+                _state.update { state -> state.copy(lyricsProviderOrdering = ordering) }
+            }
+        }
+        viewModelScope.launch {
+            preferences.videoQualityTargetFlow.collect { target ->
+                _state.update { state -> state.copy(videoQualityTarget = target) }
             }
         }
         com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
@@ -1380,6 +1403,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     fallbackRadioEnabled = true
                 )
             }
+            queueRestored.complete(Unit)
             launch {
                 queueEngine.state
                     .map { it.tracks }
@@ -1453,6 +1477,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 recoverPlaybackStream(track, positionMs, videoMode, playWhenReady, errorMessage)
             }
         }
+        player.onVideoStall = { onVideoMidPlayStall() }
         player.onError = { errorMsg ->
             val current = _state.value.currentTrack
             if (current?.isLiveRadio() != true) {
@@ -3652,6 +3677,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     refreshMotionArtworkAround(resolved)
                 }
+                refreshVideoQualityState(resolved)
                 prefetchAlternateMode(resolved, targetMode)
                 refreshQueuePrefetch()
                 if (_state.value.selectedTab == LevyraTab.Player) {
@@ -3690,6 +3716,150 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             ?.firstOrNull { it.id == trackId }
         player.selectVideoSubtitle(subtitle?.id)
         _state.update { it.copy(selectedVideoSubtitleId = subtitle?.id) }
+    }
+
+    fun setDefaultVideoQuality(target: VideoQualityTarget) {
+        preferences.setVideoQualityTarget(target)
+        resolver.invalidateVideoQualitySelection()
+    }
+
+    fun selectVideoQuality(targetLabel: String?) {
+        val snapshot = _state.value
+        val track = snapshot.currentTrack ?: return
+        if (!snapshot.isVideoMode) return
+        if (track.isLiveRadio() || isLocalPlaybackTrack(track)) return
+        if (snapshot.isResolving || snapshot.videoQuality.switching) return
+        val manifest = track.playbackManifest ?: return
+        val ladder = snapshot.videoQuality.ladder
+        if (ladder.isEmpty()) return
+        val rung = if (targetLabel == null) {
+            VideoQualityLadder.selectRung(ladder, VideoQualityTarget.AUTO, resolver.videoAutoTargetHeight())
+        } else {
+            ladder.firstOrNull { it.label == targetLabel }
+        } ?: return
+        if (rung.expiresAtMs in 1L..System.currentTimeMillis()) return
+        if (!rung.progressive && manifest.isMuxed &&
+            manifest.streams.none { it.kind == PlaybackStreamKind.AUDIO && it.url.isNotBlank() }
+        ) {
+            return
+        }
+        val activeRungUrl = when {
+            track.videoStreamUrl.isNotBlank() -> track.videoStreamUrl
+            manifest.isMuxed -> track.streamUrl
+            else -> ""
+        }
+        if (activeRungUrl.isNotBlank() && rung.url == activeRungUrl) return
+
+        val positionMs = player.positionMs.coerceAtLeast(0L)
+        val shouldPlay = player.isPlaying || snapshot.isPlaying
+        val audioPartner = if (rung.progressive) {
+            ""
+        } else {
+            audioPartnerForAdaptiveRung(manifest, track.streamUrl)
+        }
+        val switchTrack = track.withSelectedVideoQuality(rung, audioPartner)
+        _state.update {
+            it.copy(videoQuality = it.videoQuality.copy(switching = true))
+        }
+        try {
+            repository.replace(switchTrack)
+            player.replaceSource(
+                track = switchTrack,
+                positionMs = positionMs,
+                videoMode = true,
+                playWhenReady = shouldPlay
+            )
+            videoRebufferPolicy.reset()
+            val currentIndex = queueEngine.state.value.currentIndex
+            if (currentIndex >= 0) queueEngine.updateActiveTrackAt(currentIndex, switchTrack)
+            queueEngine.updatePosition(positionMs)
+            _state.update {
+                it.copy(
+                    currentTrack = switchTrack,
+                    isPlaying = shouldPlay,
+                    positionMs = positionMs,
+                    bufferedPositionMs = positionMs,
+                    videoQuality = it.videoQuality.copy(
+                        activeLabel = rung.label,
+                        switching = false
+                    )
+                )
+            }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            _state.update {
+                it.copy(videoQuality = it.videoQuality.copy(switching = false))
+            }
+        }
+    }
+
+    private fun onVideoMidPlayStall() {
+        val snapshot = _state.value
+        if (!snapshot.isVideoMode) return
+        val track = snapshot.currentTrack ?: return
+        if (track.isLiveRadio() || isLocalPlaybackTrack(track)) return
+        if (snapshot.isResolving || snapshot.videoQuality.switching) return
+        val ladder = snapshot.videoQuality.ladder
+        if (ladder.isEmpty()) return
+        val nowMs = System.currentTimeMillis()
+        videoRebufferPolicy.onMidPlayStall(nowMs)
+        if (!videoRebufferPolicy.shouldDowngrade(nowMs)) return
+        videoRebufferPolicy.reset()
+        val activeLabel = snapshot.videoQuality.activeLabel
+            ?: VideoQualityLadder.activeLabelFor(track, ladder)
+        VideoQualityLadder.rungBelow(ladder, activeLabel)?.let { below ->
+            selectVideoQuality(below.label)
+        }
+    }
+
+    private fun refreshVideoQualityState(track: Track) {
+        val videoMode = _state.value.isVideoMode
+        val trackChanged = videoQualityTrackId != track.id
+        if (trackChanged) {
+            videoQualityTrackId = track.id
+            videoRebufferPolicy.reset()
+        }
+        val ladder = if (videoMode && !track.isLiveRadio() && !isLocalPlaybackTrack(track)) {
+            track.playbackManifest?.takeIf { track.hasVideoPlaybackPayload() }?.let { manifest ->
+                VideoQualityLadder.build(manifest.streams) { descriptor ->
+                    resolver.supportsVideoDescriptor(descriptor)
+                }
+            }.orEmpty()
+        } else {
+            emptyList()
+        }
+        val activeLabel = if (ladder.isNotEmpty()) VideoQualityLadder.activeLabelFor(track, ladder) else null
+        _state.update {
+            it.copy(
+                videoQuality = VideoQualityUiState(
+                    ladder = ladder,
+                    activeLabel = activeLabel,
+                    switching = false
+                )
+            )
+        }
+    }
+
+    fun resumePlaybackFromShortcut() {
+        resumeShortcutJob?.cancel()
+        resumeShortcutJob = viewModelScope.launch {
+            if (queueRestored.isActive) {
+                val restored = withTimeoutOrNull(RESUME_SHORTCUT_RESTORE_TIMEOUT_MS) {
+                    queueRestored.await()
+                    true
+                } == true
+                if (!restored) return@launch
+            }
+            val snapshot = _state.value
+            val current = snapshot.currentTrack
+            val decision = ResumePlaybackPolicy.decide(
+                playing = player.isPlaying || snapshot.isPlaying,
+                hasRemotePlayback = PlaybackService.remotePlaybackStateFlow.value.connected || snapshot.jam.isActive,
+                currentTrackIsLiveRadio = current?.isLiveRadio() == true,
+                restoredTrackAvailable = current != null
+            )
+            if (decision == ResumePlaybackPolicy.Decision.RESUME) togglePlay()
+        }
     }
 
     private fun recoverPlaybackStream(
@@ -3748,6 +3918,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     refreshMotionArtworkAround(resolved)
                 }
+                refreshVideoQualityState(resolved)
                 prefetchAlternateMode(resolved, videoMode)
                 updateWidget()
             } catch (error: Throwable) {
@@ -6081,6 +6252,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.value.currentTrack?.let { track ->
             fetchLyrics(track)
             prefetchLyricsAround(track)
+        }
+    }
+
+    fun setLyricsProviderOrdering(ordering: LyricsProviderOrdering) {
+        val stable = LyricsProviderOrdering.decode(ordering.encode())
+        _state.update { it.copy(lyricsProviderOrdering = stable) }
+        viewModelScope.launch {
+            preferences.setLyricsProviderOrdering(stable)
+            _state.value.currentTrack?.let { track ->
+                fetchLyrics(track)
+                prefetchLyricsAround(track)
+            }
         }
     }
 
@@ -9158,6 +9341,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         handlePlaybackStartSideEffects(playable, startPaused)
+        refreshVideoQualityState(playable)
         prefetchAlternateMode(playable, _state.value.isVideoMode)
         if (_state.value.selectedTab == LevyraTab.Player) {
             refreshYoutubeEngagement(playable)
@@ -11293,6 +11477,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
+        private const val RESUME_SHORTCUT_RESTORE_TIMEOUT_MS = 3_000L
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28
         private const val HOME_ARTIST_SHELF_SIZE = 20
