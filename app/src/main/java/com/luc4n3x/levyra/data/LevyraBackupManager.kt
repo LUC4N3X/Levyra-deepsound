@@ -42,6 +42,7 @@ import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraBedtimeSchedule
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
@@ -1703,6 +1704,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("verticalSwipeAction", value.verticalSwipeAction.name)
     .put("canvasQuality", value.canvasQuality.name)
     .put("canvasSource", value.canvasSource.name)
+    .put("visualPerformance", value.visualPerformance.name)
     .put("motionArtworkWifiOnly", value.motionArtworkWifiOnly)
     .put("enhanceVideoMetadata", value.enhanceVideoMetadata)
     .put("pureBlack", value.pureBlack)
@@ -1746,6 +1748,7 @@ internal fun backupInterfaceSettingsFromJson(
         verticalSwipeAction = PlayerVerticalSwipeAction.from(json.optString("verticalSwipeAction")),
         canvasQuality = LevyraCanvasQuality.from(json.optString("canvasQuality")),
         canvasSource = LevyraCanvasSource.from(json.optString("canvasSource")),
+        visualPerformance = LevyraVisualPerformance.from(json.optString("visualPerformance")),
         motionArtworkWifiOnly = json.optBoolean("motionArtworkWifiOnly", false),
         enhanceVideoMetadata = json.optBoolean("enhanceVideoMetadata", false),
         pureBlack = json.optBoolean("pureBlack", false),

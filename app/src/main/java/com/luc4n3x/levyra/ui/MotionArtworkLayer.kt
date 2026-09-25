@@ -55,6 +55,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkLayer
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
@@ -97,6 +98,7 @@ internal fun MotionArtworkLayer(
     staticArtwork: @Composable () -> Unit
 ) {
     val lifecycleActive = rememberMotionArtworkLifecycleActive()
+    val decorativeMotion = LocalLevyraVisualCapabilities.current.decorativeMotion
     val environment = rememberMotionArtworkEnvironment(enabled && lifecycleActive)
     val surface = when (presentation) {
         MotionArtworkPresentation.Card -> MotionCanvasSurface.Card
@@ -217,6 +219,7 @@ internal fun MotionArtworkLayer(
         }
     }
     val animateStatic = enabled &&
+        decorativeMotion &&
         lifecycleActive &&
         environment.localAllowed &&
         layerActive &&
@@ -248,7 +251,7 @@ internal fun MotionArtworkLayer(
             LivingArtworkLayer(
                 colors = livingArtwork,
                 active = livingArtworkActive(
-                    enabled = enabled,
+                    enabled = enabled && decorativeMotion,
                     lifecycleActive = lifecycleActive,
                     localAllowed = environment.localAllowed,
                     isPlaying = layerActive,
