@@ -29,9 +29,14 @@ class SmartOrbitTest {
         accentEnd = 0
     )
 
-    private fun event(id: String, artist: String, listenedMs: Long): ListenEvent = ListenEvent(
+    private fun event(
+        id: String,
+        artist: String,
+        listenedMs: Long,
+        title: String = "Title $id"
+    ): ListenEvent = ListenEvent(
         trackId = id,
-        title = "Title $id",
+        title = title,
         artist = artist,
         listenedMs = listenedMs,
         trackDurationMs = 200_000L,
@@ -85,6 +90,27 @@ class SmartOrbitTest {
         val discoveries = SmartOrbitEngine.discoveries(pool, profile, isBlocked = { it.id == "blocked" })
 
         assertEquals(listOf("fresh"), discoveries.map { it.id })
+    }
+
+    @Test
+    fun alternateUploadOfKnownRecordingIsExcluded() {
+        var pool = SmartOrbitPool.Empty
+        listOf("a", "b").forEach { seed ->
+            pool = SmartOrbitEngine.accumulate(
+                pool,
+                track(seed),
+                listOf(track("alternate", artist = "Known Artist", title = "Known Song")),
+                now
+            )
+        }
+        val profile = ListeningSignalEngine.build(
+            events = listOf(event("original", "Known Artist", 60_000L, title = "Known Song")),
+            nowMs = now
+        )
+
+        val discoveries = SmartOrbitEngine.discoveries(pool, profile, isBlocked = { false })
+
+        assertTrue(discoveries.isEmpty())
     }
 
     @Test
