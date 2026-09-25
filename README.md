@@ -100,6 +100,8 @@ Some features rely on outside services for music, lyrics, artwork and metadata. 
     &nbsp;·&nbsp;
     <a href="https://www.geekparadize.fr/articles/levyra-lecteur-musical-open-source-android-windows"><b>GeekParadize</b></a>
     &nbsp;·&nbsp;
+    <a href="https://techolay.net/levyra-android-ve-windows-icin-acik-kaynak-muzik-oynaticisi/"><b>Techolay</b></a>
+    &nbsp;·&nbsp;
     <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
   </sub>
 </p>
