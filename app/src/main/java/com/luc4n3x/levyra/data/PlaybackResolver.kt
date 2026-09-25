@@ -2875,7 +2875,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val lang = selectedPreferredAudioLanguage.ifBlank { "default" }
         return if (isVideoMode) {
             val videoQuality = userPreferences.videoQualityTarget().storageValue
-            "${base}_video_${quality}_lang_$lang_quality_$videoQuality"
+            "${base}_video_${quality}_lang_${lang}_quality_$videoQuality"
         } else {
             "${base}_audio_${quality}_lang_$lang"
         }
