@@ -1405,7 +1405,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     fallbackRadioEnabled = true
                 )
             }
-            queueRestored.complete(Unit)
             launch {
                 queueEngine.state
                     .map { it.tracks }
@@ -1436,6 +1435,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         durationMs = if (synchronizeCurrent) currentPersisted?.durationMs ?: current.durationMs else current.durationMs
                     )
                 }
+                queueRestored.complete(Unit)
             }
         }
         sleepTimerCollectorJob?.cancel()
