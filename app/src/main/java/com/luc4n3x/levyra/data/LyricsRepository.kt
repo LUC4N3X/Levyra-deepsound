@@ -372,6 +372,72 @@ class LyricsRepository(context: Context? = null) {
             hadTransientFailure = hadTransientFailure,
             candidates = LyricsResultRanker.rankedCandidates(candidates, request, ordering)
         )
+
+        suspend fun notifyBestIfUpgraded(best: LyricsResult?) {
+            if (best != null && shouldUpgrade(emitted, best)) {
+                emitted = best
+                onCandidate(best)
+            }
+        }
+    }
+
+    private data class PrimaryOutcome(
+        val consumed: Boolean,
+        val earlyResult: NetworkOutcome?
+    )
+
+    private suspend fun runPrimaryAttempt(
+        primaryTask: Deferred<ProviderAttempt>?,
+        collector: ProgressiveLyricsCollector,
+        query: QuerySpec,
+        applyFinalTranslation: Boolean
+    ): PrimaryOutcome {
+        if (primaryTask == null) return PrimaryOutcome(consumed = false, earlyResult = null)
+        val primaryAttempt = withTimeoutOrNull(PRIMARY_RAPID_TIMEOUT_MS) { primaryTask.await() }
+            ?: return PrimaryOutcome(consumed = false, earlyResult = null)
+        collector.consume(primaryAttempt)
+        val best = collector.currentBest()
+        if (best != null && isOptimalLyricsResult(best.synced, best.confidence)) {
+            val final = if (applyFinalTranslation) applyTranslation(best, query) else best
+            return PrimaryOutcome(consumed = true, earlyResult = collector.toOutcome(final))
+        }
+        return PrimaryOutcome(consumed = true, earlyResult = null)
+    }
+
+    private suspend fun CoroutineScope.collectTrustedBatch(
+        collector: ProgressiveLyricsCollector,
+        trustedIds: List<LyricsProviderId>,
+        primaryTask: Deferred<ProviderAttempt>?,
+        primaryConsumed: Boolean,
+        query: QuerySpec
+    ) {
+        val tasks = buildList {
+            trustedIds.mapNotNullTo(this) { createLyricsProviderTask(it, query) }
+            if (!primaryConsumed && primaryTask != null) add(primaryTask)
+        }
+        collector.drain(tasks)
+    }
+
+    private suspend fun CoroutineScope.collectLastResortIfNeeded(
+        collector: ProgressiveLyricsCollector,
+        lastResortIds: List<LyricsProviderId>,
+        query: QuerySpec
+    ) {
+        val best = collector.currentBest()
+        if (best != null && best.confidence >= INSTANT_MIN_CONFIDENCE) return
+        val tasks = lastResortIds.mapNotNull { createLyricsProviderTask(it, query) }
+        collector.drain(tasks)
+    }
+
+    private suspend fun finalizeBestResult(
+        collector: ProgressiveLyricsCollector,
+        query: QuerySpec,
+        applyFinalTranslation: Boolean
+    ): LyricsResult? {
+        val rankedBest = collector.currentBest() ?: return null
+        val best = if (applyFinalTranslation) applyTranslation(rankedBest, query) else rankedBest
+        collector.notifyBestIfUpgraded(best)
+        return best
     }
 
     private fun CoroutineScope.createLyricsProviderTask(
@@ -450,42 +516,14 @@ class LyricsRepository(context: Context? = null) {
         val ordering = providerOrdering.takeUnless { it.isDefault }
         val collector = ProgressiveLyricsCollector(query, request, ordering, onCandidate)
 
-        val primaryTask = plan.primary?.let { id -> createLyricsProviderTask(id, query) }
-        var primaryConsumed = false
-        if (primaryTask != null) {
-            val primaryAttempt = withTimeoutOrNull(PRIMARY_RAPID_TIMEOUT_MS) { primaryTask.await() }
-            if (primaryAttempt != null) {
-                primaryConsumed = true
-                collector.consume(primaryAttempt)
-                val best = collector.currentBest()
-                if (best != null && isOptimalLyricsResult(best.synced, best.confidence)) {
-                    val final = if (applyFinalTranslation) applyTranslation(best, query) else best
-                    return@supervisorScope collector.toOutcome(final)
-                }
-            }
-        }
+        val primaryTask = plan.primary?.let { createLyricsProviderTask(it, query) }
+        val primaryOutcome = runPrimaryAttempt(primaryTask, collector, query, applyFinalTranslation)
+        if (primaryOutcome.earlyResult != null) return@supervisorScope primaryOutcome.earlyResult
 
-        val batchTasks = buildList {
-            plan.trusted.forEach { id -> createLyricsProviderTask(id, query)?.let { add(it) } }
-            if (!primaryConsumed && primaryTask != null) add(primaryTask)
-        }
-        collector.drain(batchTasks)
+        collectTrustedBatch(collector, plan.trusted, primaryTask, primaryOutcome.consumed, query)
+        collectLastResortIfNeeded(collector, plan.lastResort, query)
 
-        val bestAfterTrusted = collector.currentBest()
-        if (bestAfterTrusted == null || bestAfterTrusted.confidence < INSTANT_MIN_CONFIDENCE) {
-            val lastResortTasks = buildList {
-                plan.lastResort.forEach { id -> createLyricsProviderTask(id, query)?.let { add(it) } }
-            }
-            collector.drain(lastResortTasks)
-        }
-
-        val rankedBest = collector.currentBest()
-        val best = if (rankedBest != null && applyFinalTranslation) {
-            applyTranslation(rankedBest, query)
-        } else {
-            rankedBest
-        }
-        if (best != null && shouldUpgrade(collector.emitted, best)) onCandidate(best)
+        val best = finalizeBestResult(collector, query, applyFinalTranslation)
         collector.toOutcome(best)
     }
 
