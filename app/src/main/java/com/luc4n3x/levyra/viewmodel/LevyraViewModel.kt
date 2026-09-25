@@ -186,7 +186,9 @@ import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
 import com.luc4n3x.levyra.domain.VideoQualityLadder
+import com.luc4n3x.levyra.domain.VideoQualityRung
 import com.luc4n3x.levyra.domain.VideoQualityTarget
+import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.VideoRebufferPolicy
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.ResumePlaybackPolicy
@@ -3743,7 +3745,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun resolveVideoRung(
         ladder: List<VideoQualityRung>,
         targetLabel: String?,
-        manifest: PlaybackManifest
+        manifest: ResolvedPlaybackManifest
     ): VideoQualityRung? {
         if (ladder.isEmpty()) return null
         val rung = if (targetLabel == null) {
@@ -3763,7 +3765,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun isVideoRungActive(
         rung: VideoQualityRung,
         track: Track,
-        manifest: PlaybackManifest
+        manifest: ResolvedPlaybackManifest
     ): Boolean {
         val activeRungUrl = when {
             track.videoStreamUrl.isNotBlank() -> track.videoStreamUrl
