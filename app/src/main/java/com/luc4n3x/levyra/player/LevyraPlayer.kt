@@ -364,6 +364,16 @@ class LevyraPlayer(context: Context) {
         )
     }
 
+    private fun qualitySwitchTimestamp(
+        sameTrack: Boolean,
+        previousVideoMode: Boolean,
+        videoMode: Boolean,
+        recoveryReplacement: Boolean
+    ): Long? {
+        if (!sameTrack || !previousVideoMode || !videoMode || recoveryReplacement) return null
+        return System.currentTimeMillis()
+    }
+
     fun replaceSource(
         track: Track,
         positionMs: Long,
@@ -387,12 +397,12 @@ class LevyraPlayer(context: Context) {
         recoveryInFlight = false
         if (!recoveryReplacement) recoveryAttempts = 0
         val sameTrack = loadedTrack?.id == track.id
-        lastQualitySwitchAtMs =
-            if (sameTrack && loadedVideoMode && videoMode && !recoveryReplacement) {
-                System.currentTimeMillis()
-            } else {
-                null
-            }
+        lastQualitySwitchAtMs = qualitySwitchTimestamp(
+            sameTrack = sameTrack,
+            previousVideoMode = loadedVideoMode,
+            videoMode = videoMode,
+            recoveryReplacement = recoveryReplacement
+        )
         val startPositionMs = if (track.isLiveRadio()) {
             0L
         } else {
