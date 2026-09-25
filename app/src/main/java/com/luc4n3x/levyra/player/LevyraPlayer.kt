@@ -370,7 +370,10 @@ class LevyraPlayer(context: Context) {
         videoMode: Boolean,
         recoveryReplacement: Boolean
     ): Long? {
-        if (!sameTrack || !previousVideoMode || !videoMode || recoveryReplacement) return null
+        if (!sameTrack) return null
+        if (!previousVideoMode) return null
+        if (!videoMode) return null
+        if (recoveryReplacement) return null
         return System.currentTimeMillis()
     }
 
