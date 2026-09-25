@@ -386,8 +386,13 @@ class LevyraPlayer(context: Context) {
         val recoveryReplacement = recoveryInFlight
         recoveryInFlight = false
         if (!recoveryReplacement) recoveryAttempts = 0
-        lastQualitySwitchAtMs = System.currentTimeMillis()
         val sameTrack = loadedTrack?.id == track.id
+        lastQualitySwitchAtMs =
+            if (sameTrack && loadedVideoMode && videoMode && !recoveryReplacement) {
+                System.currentTimeMillis()
+            } else {
+                null
+            }
         val startPositionMs = if (track.isLiveRadio()) {
             0L
         } else {
