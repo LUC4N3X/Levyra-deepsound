@@ -78,8 +78,7 @@ fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
 
 @Composable
 fun rememberGlassBlurAllowed(): Boolean {
-    if (!blurSupported) return false
-    if (!LocalLevyraVisualCapabilities.current.heavyBlur) return false
+    if (!blurSupported || !LocalLevyraVisualCapabilities.current.heavyBlur) return false
     val context = LocalContext.current.applicationContext
     val lowRam = remember(context) {
         context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true

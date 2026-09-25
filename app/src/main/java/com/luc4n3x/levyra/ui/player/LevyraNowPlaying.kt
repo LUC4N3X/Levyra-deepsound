@@ -673,12 +673,11 @@ fun LevyraNowPlaying(
                 }
 
                 val videoGesturesEnabled = state.isVideoMode && activeTrack.videoUrl.isNotBlank()
-                if (!liveRadio &&
+                val gesturesAllowed = !liveRadio &&
                     (state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) &&
-                    gestureLayerContent != null &&
                     !videoFullscreen &&
                     lyricsFlip.playerSettled
-                ) {
+                if (gesturesAllowed && gestureLayerContent != null) {
                     gestureLayerContent(
                         activeTrack,
                         PlayerGestureConfig(

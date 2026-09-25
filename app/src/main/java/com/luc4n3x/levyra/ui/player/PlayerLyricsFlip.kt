@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -117,15 +118,14 @@ internal fun lyricsFlipFaceAlpha(
     frontVisible: Boolean = true
 ): Float {
     val p = progress.finiteOrZero().coerceIn(0f, 1f)
-    if (!frontVisible) {
-        if (!back) return 0f
-        return if (depth) (if (p > 0f) 1f else 0f) else p
+    return when {
+        !frontVisible && !back -> 0f
+        !frontVisible && depth -> if (p > 0f) 1f else 0f
+        !frontVisible -> p
+        depth -> if (back == (p >= 0.5f)) 1f else 0f
+        back -> (p * 2f - 1f).coerceIn(0f, 1f)
+        else -> (1f - p * 2f).coerceIn(0f, 1f)
     }
-    if (depth) {
-        val backVisible = p >= 0.5f
-        return if (back == backVisible) 1f else 0f
-    }
-    return if (back) (p * 2f - 1f).coerceIn(0f, 1f) else (1f - p * 2f).coerceIn(0f, 1f)
 }
 
 internal fun lyricsFlipFaceRotation(
@@ -269,67 +269,97 @@ internal fun Modifier.playerLyricsFlipDrag(
         val minFlingDistance = LyricsFlipMinFlingDistance.toPx()
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
-            val pointerId = down.id
-            val velocityTracker = VelocityTracker()
-            velocityTracker.addPointerInputChange(down)
-            var totalX = 0f
-            var totalY = 0f
-            var axis = LyricsFlipAxis.Undecided
-            var settled = false
-            var lockUptimeMs = 0L
-            var lockedTravelPx = 0f
+            val gesture = LyricsFlipGesture(
+                state = state,
+                slopPx = slop,
+                flingVelocityPx = flingVelocity,
+                minFlingDistancePx = minFlingDistance,
+                widthPx = size.width.toFloat(),
+                rightToLeft = rightToLeft,
+                depth = depth
+            )
+            gesture.start(down)
             try {
                 while (true) {
-                    val event = awaitPointerEvent()
-                    val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
                     if (change.changedToUpIgnoreConsumed()) {
-                        if (axis == LyricsFlipAxis.Horizontal) {
-                            velocityTracker.addPointerInputChange(change)
-                            val finalDelta = change.positionChangeIgnoreConsumed().x
-                            lockedTravelPx += finalDelta
-                            state.dragBy(finalDelta, size.width.toFloat(), rightToLeft)
-                            state.endDrag(
-                                velocityPx = lyricsFlipReleaseVelocity(
-                                    trackedVelocityPx = velocityTracker.calculateVelocity().x,
-                                    travelPx = lockedTravelPx,
-                                    elapsedMs = change.uptimeMillis - lockUptimeMs
-                                ),
-                                flingVelocityPx = flingVelocity,
-                                minFlingDistancePx = minFlingDistance,
-                                rightToLeft = rightToLeft,
-                                depth = depth
-                            )
-                            settled = true
-                            change.consume()
-                        }
+                        gesture.release(change)
                         break
                     }
-                    if (axis == LyricsFlipAxis.Undecided && change.isConsumed) break
-                    val delta = change.positionChange()
-                    velocityTracker.addPointerInputChange(change)
-                    if (axis == LyricsFlipAxis.Undecided) {
-                        totalX += delta.x
-                        totalY += delta.y
-                        axis = resolveLyricsFlipAxis(totalX, totalY, slop)
-                        when (axis) {
-                            LyricsFlipAxis.Vertical -> break
-                            LyricsFlipAxis.Horizontal -> {
-                                state.beginDrag()
-                                lockUptimeMs = change.uptimeMillis
-                                change.consume()
-                            }
-                            LyricsFlipAxis.Undecided -> Unit
-                        }
-                    } else {
-                        change.consume()
-                        lockedTravelPx += delta.x
-                        state.dragBy(delta.x, size.width.toFloat(), rightToLeft)
-                    }
+                    if (!gesture.move(change)) break
                 }
             } finally {
-                if (axis == LyricsFlipAxis.Horizontal && !settled) state.cancelDrag(depth)
+                gesture.cancelIfUnsettled()
             }
         }
+    }
+}
+
+private class LyricsFlipGesture(
+    private val state: PlayerLyricsFlipState,
+    private val slopPx: Float,
+    private val flingVelocityPx: Float,
+    private val minFlingDistancePx: Float,
+    private val widthPx: Float,
+    private val rightToLeft: Boolean,
+    private val depth: Boolean
+) {
+    private val velocityTracker = VelocityTracker()
+    private var totalX = 0f
+    private var totalY = 0f
+    private var axis = LyricsFlipAxis.Undecided
+    private var settled = false
+    private var lockUptimeMs = 0L
+    private var lockedTravelPx = 0f
+
+    fun start(down: PointerInputChange) {
+        velocityTracker.addPointerInputChange(down)
+    }
+
+    fun move(change: PointerInputChange): Boolean {
+        if (axis == LyricsFlipAxis.Undecided && change.isConsumed) return false
+        val delta = change.positionChange()
+        velocityTracker.addPointerInputChange(change)
+        if (axis != LyricsFlipAxis.Undecided) {
+            change.consume()
+            lockedTravelPx += delta.x
+            state.dragBy(delta.x, widthPx, rightToLeft)
+            return true
+        }
+        totalX += delta.x
+        totalY += delta.y
+        axis = resolveLyricsFlipAxis(totalX, totalY, slopPx)
+        if (axis == LyricsFlipAxis.Horizontal) {
+            state.beginDrag()
+            lockUptimeMs = change.uptimeMillis
+            change.consume()
+        }
+        return axis != LyricsFlipAxis.Vertical
+    }
+
+    fun release(change: PointerInputChange) {
+        if (axis != LyricsFlipAxis.Horizontal) return
+        velocityTracker.addPointerInputChange(change)
+        val finalDelta = change.positionChangeIgnoreConsumed().x
+        lockedTravelPx += finalDelta
+        state.dragBy(finalDelta, widthPx, rightToLeft)
+        state.endDrag(
+            velocityPx = lyricsFlipReleaseVelocity(
+                trackedVelocityPx = velocityTracker.calculateVelocity().x,
+                travelPx = lockedTravelPx,
+                elapsedMs = change.uptimeMillis - lockUptimeMs
+            ),
+            flingVelocityPx = flingVelocityPx,
+            minFlingDistancePx = minFlingDistancePx,
+            rightToLeft = rightToLeft,
+            depth = depth
+        )
+        settled = true
+        change.consume()
+    }
+
+    fun cancelIfUnsettled() {
+        if (axis == LyricsFlipAxis.Horizontal && !settled) state.cancelDrag(depth)
     }
 }
 
