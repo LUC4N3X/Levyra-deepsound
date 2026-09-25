@@ -1014,6 +1014,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     @Volatile private var smartOrbitDiscoveries: List<Track> = emptyList()
     private val smartOrbitMutex = Mutex()
     private var smartOrbitRefreshJob: Job? = null
+    private val smartOrbitRefreshMutex = Mutex()
+    private var smartOrbitApplied = false
     private val relatedCandidateCache = LinkedHashMap<String, List<Track>>(RELATED_CANDIDATE_CACHE_SEEDS * 2, 0.75f, true)
     private var listenSessionSignificant = false
     private var listenSessionTrack: Track? = null
@@ -7457,6 +7459,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (preview.request.kind != SharedMediaKind.BulkLinks) return
         val tracks = preview.tracks
             .filter { it.id.isNotBlank() && it.title.isNotBlank() }
+            .distinctBy { it.id }
             .map { it.copy(streamUrl = "", videoStreamUrl = "") }
         if (tracks.isEmpty()) return
         dismissSharedMedia()
@@ -10294,12 +10297,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun refreshSmartOrbit() {
         smartOrbitRefreshJob?.cancel()
         smartOrbitRefreshJob = viewModelScope.launch(Dispatchers.Default) {
-            if (smartOrbitPool.isEmpty && smartOrbitDiscoveries.isEmpty()) return@launch
-            val discoveries = computeSmartOrbitDiscoveries()
-            if (discoveries == smartOrbitDiscoveries) return@launch
-            smartOrbitDiscoveries = discoveries
-            _state.update { current ->
-                current.copy(personalOrbitTracks = rankSmartOrbit(buildSmartOrbit(current), current.recommendationFeedback))
+            smartOrbitRefreshMutex.withLock {
+                val discoveries = computeSmartOrbitDiscoveries()
+                val retireRestored = !smartOrbitApplied && !smartOrbitPool.isEmpty
+                smartOrbitApplied = true
+                if (discoveries == smartOrbitDiscoveries && !retireRestored) return@withLock
+                smartOrbitDiscoveries = discoveries
+                _state.update { current ->
+                    current.copy(personalOrbitTracks = rankSmartOrbit(buildSmartOrbit(current), current.recommendationFeedback))
+                }
             }
         }
     }
@@ -11185,16 +11191,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
             listeningSignals = signals
             smartOrbitPool = smartOrbitStore.load()
-            val discoveries = computeSmartOrbitDiscoveries()
-            val discoveriesChanged = discoveries != smartOrbitDiscoveries
-            smartOrbitDiscoveries = discoveries
+            withContext(Dispatchers.Main) { refreshSmartOrbit() }
             _state.update { current ->
-                val orbit = if (discoveriesChanged) buildSmartOrbit(current) else current.personalOrbitTracks
                 val updated = current.copy(
                     listeningPulse = pulse,
                     recentListens = recent,
                     mostPlayedTracks = mostPlayed,
-                    personalOrbitTracks = rankSmartOrbit(orbit, current.recommendationFeedback)
+                    personalOrbitTracks = rankSmartOrbit(current.personalOrbitTracks, current.recommendationFeedback)
                 )
                 val localAlbums = instantAlbumRecommendations(updated, HOME_ALBUM_RECOMMENDATION_LIMIT)
                 val rankedAlbums = rankAlbumRecommendations(

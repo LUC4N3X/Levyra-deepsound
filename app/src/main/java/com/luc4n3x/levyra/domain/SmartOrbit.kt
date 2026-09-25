@@ -68,7 +68,7 @@ object SmartOrbitEngine {
                 val key = trackKey(track)
                 if (key == seedKey) return@forEach
                 val existing = byKey[key]
-                val seeds = (existing?.seedKeys.orEmpty() - seedKey) + seedKey
+                val seeds = existing?.seedKeys.orEmpty() - seedKey + seedKey
                 byKey[key] = SmartOrbitCandidate(
                     track = track.copy(streamUrl = "", videoStreamUrl = ""),
                     seedKeys = seeds.takeLast(MAX_SEEDS_PER_CANDIDATE),
