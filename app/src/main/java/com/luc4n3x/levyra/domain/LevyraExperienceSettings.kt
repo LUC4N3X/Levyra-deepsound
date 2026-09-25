@@ -23,6 +23,17 @@ enum class LevyraCanvasSource {
     }
 }
 
+enum class LevyraVisualPerformance {
+    Full,
+    Auto,
+    Smooth;
+
+    companion object {
+        fun from(value: String): LevyraVisualPerformance =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Full
+    }
+}
+
 enum class LibrarySort {
     Recent,
     Title,
@@ -149,6 +160,7 @@ data class LevyraInterfaceSettings(
     val verticalSwipeAction: PlayerVerticalSwipeAction = PlayerVerticalSwipeAction.BrightnessAndVolume,
     val canvasQuality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
+    val visualPerformance: LevyraVisualPerformance = LevyraVisualPerformance.Full,
     val motionArtworkWifiOnly: Boolean = false,
     val enhanceVideoMetadata: Boolean = false,
     val pureBlack: Boolean = false,
