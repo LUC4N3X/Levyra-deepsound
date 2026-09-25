@@ -275,7 +275,7 @@ class SharedMediaResolver(
                 override fun onResponse(call: Call, response: Response) {
                     val result = response.use {
                         when {
-                            it.code in OEMBED_MISSING_CODES -> OEmbedResult.Missing
+                            it.code in 400..499 -> OEmbedResult.Missing
                             !it.isSuccessful -> OEmbedResult.Failed
                             else -> runCatching { OEmbedResult.Found(JSONObject(it.body.string())) }
                                 .getOrDefault(OEmbedResult.Failed)
@@ -295,7 +295,6 @@ class SharedMediaResolver(
 
     private companion object {
         const val TOPIC_CHANNEL_SUFFIX = " - Topic"
-        val OEMBED_MISSING_CODES = setOf(400, 401, 403, 404)
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36"
     }
 }
