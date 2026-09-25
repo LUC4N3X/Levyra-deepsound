@@ -58,7 +58,8 @@ internal fun PlayerEditorialDeck(
     gutter: Dp,
     onArtistClick: () -> Unit,
     onToggleFavorite: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    headlineModifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
@@ -111,7 +112,8 @@ internal fun PlayerEditorialDeck(
             animated = animated,
             compact = compact,
             onArtistClick = onArtistClick,
-            onToggleFavorite = onToggleFavorite
+            onToggleFavorite = onToggleFavorite,
+            modifier = headlineModifier
         )
         Box(
             modifier = Modifier
@@ -176,11 +178,13 @@ private fun EditorialHeadline(
     animated: Boolean,
     compact: Boolean,
     onArtistClick: () -> Unit,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     AnimatedContent(
         targetState = track,
+        modifier = modifier,
         transitionSpec = { LevyraMotion.contentSwap(animated) },
         contentKey = { it.id },
         label = "player-editorial-headline"

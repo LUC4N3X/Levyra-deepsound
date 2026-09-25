@@ -488,6 +488,7 @@ import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -582,6 +583,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraThemeStudioOverlay
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.rememberLevyraHaptics
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
+import com.luc4n3x.levyra.ui.theme.rememberLevyraVisualCapabilities
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.window.Dialog
@@ -1981,8 +1984,13 @@ fun LevyraApp(
             activity?.finish()
         }
     }
+    val visualCapabilities = rememberLevyraVisualCapabilities(
+        selected = state.interfaceSettings.visualPerformance,
+        animationsEnabled = state.animationsEnabled
+    )
     CompositionLocalProvider(
         LocalAnimationsEnabled provides state.animationsEnabled,
+        LocalLevyraVisualCapabilities provides visualCapabilities,
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
         LocalLayoutDirection provides layoutDirection
@@ -18626,6 +18634,7 @@ private fun SettingsOverlay(
             entries = listOf(
                 SettingsSearchEntry(strings.themeStudio, strings.themeStudioSubtitle, "${strings.theme} ${strings.themeAccent}", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.animations, strings.animationsSubtitle, strings.motionArtwork, "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.visualPerformance, strings.visualPerformanceFullSubtitle, "${strings.visualPerformanceAuto} ${strings.visualPerformanceSmooth} performance", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.dynamicColor, strings.dynamicColorSubtitle, strings.design, "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.appFont, strings.appFontSubtitle, "font typography text", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.pureBlack, strings.pureBlackSubtitle, "amoled black", "home", categoryTitle(strings.homeInterfaceSection)),
@@ -18866,6 +18875,22 @@ private fun SettingsOverlay(
                                     subtitle = strings.animationsSubtitle,
                                     checked = animationsEnabled,
                                     onCheckedChange = onAnimations
+                                )
+                            }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Speed,
+                                    title = strings.visualPerformance,
+                                    subtitle = visualPerformanceSubtitle(interfaceSettings.visualPerformance, strings),
+                                    options = LevyraVisualPerformance.entries.map { mode ->
+                                        mode.name to visualPerformanceLabel(mode, strings)
+                                    },
+                                    selected = interfaceSettings.visualPerformance.name,
+                                    onSelect = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(visualPerformance = LevyraVisualPerformance.from(value))
+                                        )
+                                    }
                                 )
                             }
                             item {
@@ -20101,6 +20126,18 @@ private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+private fun visualPerformanceLabel(mode: LevyraVisualPerformance, strings: LevyraStrings): String = when (mode) {
+    LevyraVisualPerformance.Full -> strings.visualPerformanceFull
+    LevyraVisualPerformance.Auto -> strings.visualPerformanceAuto
+    LevyraVisualPerformance.Smooth -> strings.visualPerformanceSmooth
+}
+
+private fun visualPerformanceSubtitle(mode: LevyraVisualPerformance, strings: LevyraStrings): String = when (mode) {
+    LevyraVisualPerformance.Full -> strings.visualPerformanceFullSubtitle
+    LevyraVisualPerformance.Auto -> strings.visualPerformanceAutoSubtitle
+    LevyraVisualPerformance.Smooth -> strings.visualPerformanceSmoothSubtitle
+}
+
 @Composable
 private fun SettingsChoiceRow(
     icon: ImageVector,
@@ -22996,6 +23033,7 @@ private fun MiniPlayer(
     val isResolving = model.isResolving
     val liveRadio = track.isLiveRadio()
     val animated = model.animated
+    val microMotion = LocalLevyraVisualCapabilities.current.microMotion
     val gesturesEnabled = model.gesturesEnabled
     val strings = LocalLevyraStrings.current
     val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(strings.code)
@@ -23154,7 +23192,7 @@ private fun MiniPlayer(
                         .weight(1f)
                         .clipToBounds()
                         .onSizeChanged { size -> swipe.carryLimitPx = size.width * MiniPlayerCarryFraction },
-                    transitionSpec = { LevyraMotion.trackChange(animated, model.stepDirection) },
+                    transitionSpec = { LevyraMotion.miniTrackSwap(animated) },
                     contentKey = { it.id },
                     label = "mini-track"
                 ) { shownTrack ->
@@ -23172,13 +23210,22 @@ private fun MiniPlayer(
                             modifier = Modifier
                                 .then(if (current) Modifier.playerMorphAnchor(morphAnchors, PlayerMorphSlot.Mini) else Modifier)
                                 .dockLerpSize(compaction, LevyraPlayerDesign.MiniArtwork, LevyraPlayerDesign.MiniArtworkCompact)
+                                .animateEnterExit(
+                                    enter = LevyraMotion.miniArtworkEnter(microMotion),
+                                    exit = ExitTransition.None
+                                )
                                 .graphicsLayer { alpha = if (current && artworkHidden()) 0f else 1f }
                                 .clip(artworkShape)
                         ) {
                             CoverImage(shownTrack, Modifier.fillMaxSize())
                         }
                         Column(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .animateEnterExit(
+                                    enter = LevyraMotion.miniMetadataEnter(microMotion, model.stepDirection),
+                                    exit = ExitTransition.None
+                                ),
                             verticalArrangement = Arrangement.Center
                         ) {
                             Text(
