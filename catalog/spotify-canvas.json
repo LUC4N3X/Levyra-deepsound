@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-25T05:02:02Z",
+  "generatedAt": "2026-09-25T11:55:30Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -334,7 +334,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -525,6 +525,13 @@
       "artist": "SIENNA SPIRO",
       "album": "Visitor",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/03877583cb194e8aaa8cb60f90e239ee.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2418,13 +2425,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Dancing On My Own",
       "artist": "Robyn",
       "album": "Body Talk",
@@ -3202,6 +3202,20 @@
       "scope": "track"
     },
     {
+      "song": "花束",
+      "artist": "back number",
+      "album": "スーパースター",
+      "url": "https://canvaz.scdn.co/upload/artist/6rs1KAoQnFalSqSU4LTh8g/video/c4b3b895e2874389af82e195692717f9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "高嶺の花子さん",
+      "artist": "back number",
+      "album": "ラブストーリー",
+      "url": "https://canvaz.scdn.co/upload/artist/6rs1KAoQnFalSqSU4LTh8g/video/4cdda929a19643b48e62d1de23567ab7.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Sukisugite METSU!",
       "artist": "M!LK",
       "album": "Sukisugite METSU!",
@@ -3212,7 +3226,7 @@
       "song": "水平線",
       "artist": "back number",
       "album": "ユーモア",
-      "url": "https://canvaz.scdn.co/upload/artist/6rs1KAoQnFalSqSU4LTh8g/video/7520ba76c5044797a26f1aebf7ceacfe.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/6rs1KAoQnFalSqSU4LTh8g/video/f75425f7043940b18748b279b30b162e.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4581,13 +4595,6 @@
       "scope": "track"
     },
     {
-      "song": "Vulnerability",
-      "artist": "Shenseea",
-      "album": "Vulnerability",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/643d6798cb9d4a42b0d5b38c1543541e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "PLAYA FRÍA",
       "artist": "Kapo",
       "album": "PLAYA FRÍA",
@@ -4634,6 +4641,13 @@
       "artist": "Nothing But Thieves",
       "album": "Stray Dogs",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/5052f95a66fd42099cf040ca2bae0c4c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "TOP OF THE POPS (Red Bull 64 Bars)",
+      "artist": "Sayf, Dibla, Jiz",
+      "album": "TOP OF THE POPS (Red Bull 64 Bars)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/888089f58f224e1dbafbb74e8545ee58.cnvs.mp4",
       "scope": "track"
     },
     {
