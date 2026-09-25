@@ -1,10 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="140" height="34" viewBox="0 0 130 32" role="img" aria-label="DOCS Open →">
+<svg xmlns="http://www.w3.org/2000/svg" width="130" height="32" viewBox="0 0 130 32" role="img" aria-label="DOCS Open →">
   <title>DOCS Open →</title>
-  <rect x=".75" y=".75" width="128.5" height="30.5" rx="8" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
-  <rect x="4" y="4" width="24" height="24" rx="6" fill="#F6F8FA" stroke="#D0D7DE" stroke-width="1"/>
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F7F9FC"/>
+    </linearGradient>
+  </defs>
+  <rect x=".7" y=".7" width="128.6" height="30.6" rx="9.2" fill="url(#surface)" stroke="#C9D2DE" stroke-width="1.4"/>
+  <rect x="4" y="4" width="24" height="24" rx="7.2" fill="#E11D48" fill-opacity=".085" stroke="#E11D48" stroke-opacity=".30" stroke-width=".9"/>
+  <rect x="5" y="5" width="22" height="22" rx="6.3" fill="none" stroke="#FFFFFF" stroke-opacity=".7" stroke-width=".55"/>
   <g transform="translate(16 16)" style="color:#E11D48;">
     <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="35" y="12.5" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.2" font-weight="700" letter-spacing=".75">DOCS</text>
-  <text x="35" y="24.5" fill="#1F2328" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700">Open →</text>
+  <text x="35" y="11.9" fill="#667085" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="6.7" font-weight="700" letter-spacing=".9">DOCS</text>
+  <text x="35" y="24.2" fill="#172033" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11.7" font-weight="700">Open →</text>
 </svg>
