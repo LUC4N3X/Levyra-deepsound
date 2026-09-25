@@ -36,6 +36,7 @@ internal fun PlayerProgress(
     isPlaying: Boolean,
     playbackSpeed: Float,
     animationsEnabled: Boolean,
+    motionActive: Boolean,
     compact: Boolean,
     onSeek: (Float) -> Unit,
     modifier: Modifier = Modifier
@@ -65,6 +66,7 @@ internal fun PlayerProgress(
             trailingColor = secondaryColor,
             inactiveColor = LevyraPlayerDesign.TrackInactive,
             animated = animationsEnabled,
+            motionActive = motionActive,
             waveform = waveform,
             interactionKey = mediaId
         )
