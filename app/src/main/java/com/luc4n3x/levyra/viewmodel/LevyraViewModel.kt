@@ -3730,34 +3730,55 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (track.isLiveRadio() || isLocalPlaybackTrack(track)) return
         if (snapshot.isResolving || snapshot.videoQuality.switching) return
         val manifest = track.playbackManifest ?: return
-        val ladder = snapshot.videoQuality.ladder
-        if (ladder.isEmpty()) return
+        val rung = resolveVideoRung(snapshot.videoQuality.ladder, targetLabel, manifest) ?: return
+        if (isVideoRungActive(rung, track, manifest)) return
+
+        val positionMs = player.positionMs.coerceAtLeast(0L)
+        val shouldPlay = player.isPlaying || snapshot.isPlaying
+        val audioPartner = if (rung.progressive) "" else audioPartnerForAdaptiveRung(manifest, track.streamUrl)
+        val switchTrack = track.withSelectedVideoQuality(rung, audioPartner)
+        applyVideoQualitySwitch(switchTrack, positionMs, shouldPlay, rung.label)
+    }
+
+    private fun resolveVideoRung(
+        ladder: List<VideoQualityRung>,
+        targetLabel: String?,
+        manifest: PlaybackManifest
+    ): VideoQualityRung? {
+        if (ladder.isEmpty()) return null
         val rung = if (targetLabel == null) {
             VideoQualityLadder.selectRung(ladder, VideoQualityTarget.AUTO, resolver.videoAutoTargetHeight())
         } else {
             ladder.firstOrNull { it.label == targetLabel }
-        } ?: return
-        if (rung.expiresAtMs in 1L..System.currentTimeMillis()) return
+        } ?: return null
+        if (rung.expiresAtMs in 1L..System.currentTimeMillis()) return null
         if (!rung.progressive && manifest.isMuxed &&
             manifest.streams.none { it.kind == PlaybackStreamKind.AUDIO && it.url.isNotBlank() }
         ) {
-            return
+            return null
         }
+        return rung
+    }
+
+    private fun isVideoRungActive(
+        rung: VideoQualityRung,
+        track: Track,
+        manifest: PlaybackManifest
+    ): Boolean {
         val activeRungUrl = when {
             track.videoStreamUrl.isNotBlank() -> track.videoStreamUrl
             manifest.isMuxed -> track.streamUrl
             else -> ""
         }
-        if (activeRungUrl.isNotBlank() && rung.url == activeRungUrl) return
+        return activeRungUrl.isNotBlank() && rung.url == activeRungUrl
+    }
 
-        val positionMs = player.positionMs.coerceAtLeast(0L)
-        val shouldPlay = player.isPlaying || snapshot.isPlaying
-        val audioPartner = if (rung.progressive) {
-            ""
-        } else {
-            audioPartnerForAdaptiveRung(manifest, track.streamUrl)
-        }
-        val switchTrack = track.withSelectedVideoQuality(rung, audioPartner)
+    private fun applyVideoQualitySwitch(
+        switchTrack: Track,
+        positionMs: Long,
+        shouldPlay: Boolean,
+        activeLabel: String
+    ) {
         _state.update {
             it.copy(videoQuality = it.videoQuality.copy(switching = true))
         }
@@ -3780,7 +3801,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     positionMs = positionMs,
                     bufferedPositionMs = positionMs,
                     videoQuality = it.videoQuality.copy(
-                        activeLabel = rung.label,
+                        activeLabel = activeLabel,
                         switching = false
                     )
                 )
