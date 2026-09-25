@@ -345,6 +345,110 @@ class QueueSpaceEngineTest {
         assertEquals(48, normalizeQueueSpaceName("x".repeat(80)).length)
     }
 
+    @Test
+    fun removedAutomaticTrackIsNotReinsertedByRadioInTheSameSpace() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("seed")))
+        engine.appendRadioTracks(listOf(track("r1"), track("r2")))
+        val removedIndex = engine.state.value.tracks.indexOfFirst { it.id == "r1" }
+
+        engine.remove(removedIndex)
+        engine.appendRadioTracks(listOf(track("r1"), track("r3")))
+
+        assertEquals(listOf("seed", "r2", "r3"), engine.state.value.tracks.map { it.id })
+        assertTrue(engine.rejectedAutomaticKeys().isNotEmpty())
+    }
+
+    @Test
+    fun removingAManualTrackDoesNotCreateATombstone() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("seed")))
+        engine.addLast(track("m1"))
+
+        engine.remove(1)
+        engine.appendRadioTracks(listOf(track("m1")))
+
+        assertEquals(listOf("seed", "m1"), engine.state.value.tracks.map { it.id })
+        assertTrue(engine.rejectedAutomaticKeys().isEmpty())
+    }
+
+    @Test
+    fun explicitAddClearsTheTombstoneAndIsAccepted() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("seed")))
+        engine.appendRadioTracks(listOf(track("r1")))
+        engine.remove(1)
+
+        engine.playNext(track("r1"))
+
+        assertEquals(listOf("seed", "r1"), engine.state.value.tracks.map { it.id })
+        assertTrue(engine.rejectedAutomaticKeys().isEmpty())
+    }
+
+    @Test
+    fun undoRestoresAutomaticProvenanceWithoutTombstone() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("seed")))
+        engine.appendRadioTracks(listOf(track("r1")))
+        engine.remove(1)
+
+        engine.undoRemove()
+
+        assertTrue(engine.rejectedAutomaticKeys().isEmpty())
+        engine.remove(1)
+        assertTrue(engine.rejectedAutomaticKeys().isNotEmpty())
+    }
+
+    @Test
+    fun tombstoneMatchesAlternateUploadsOfTheSameSong() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("seed")))
+        engine.appendRadioTracks(listOf(track("r1")))
+        engine.remove(1)
+
+        engine.appendRadioTracks(listOf(track("r1-alt").copy(title = "Title r1")))
+
+        assertEquals(listOf("seed"), engine.state.value.tracks.map { it.id })
+    }
+
+    @Test
+    fun tombstonesAreScopedPerSpaceAndClearedWithTheSession() = runBlocking {
+        val storage = FakeQueueSpaceStorage()
+        storage.put(persisted("a", listOf(track("seed")), currentIndex = 0, positionMs = 0L))
+        storage.put(persisted("b", listOf(track("seed")), currentIndex = 0, positionMs = 0L))
+        storage.activeId = "a"
+        val engine = PersistentQueueEngine(storage, ManualDispatcher())
+        engine.restore(emptyList(), -1, 0L)
+        engine.appendRadioTracks(listOf(track("r1")))
+        engine.remove(1)
+
+        engine.switchSpace("b")
+        engine.appendRadioTracks(listOf(track("r1")))
+        assertEquals(listOf("seed", "r1"), engine.state.value.tracks.map { it.id })
+
+        engine.switchSpace("a")
+        assertTrue(engine.rejectedAutomaticKeys().isNotEmpty())
+        engine.clear()
+        assertTrue(engine.rejectedAutomaticKeys().isEmpty())
+    }
+
+    @Test
+    fun tombstoneMemoryIsBounded() {
+        val tombstones = AutoQueueTombstones(maxKeysPerSpace = 4, maxSpaces = 2)
+        val tracks = (1..10).map { track("t$it") }
+        tombstones.markAutomatic("a", tracks)
+        assertFalse(tombstones.isAutomatic("a", tracks.first()))
+        assertTrue(tombstones.isAutomatic("a", tracks.last()))
+        tombstones.recordRemoval("a", tracks.takeLast(2))
+        assertTrue(tombstones.rejectedKeys("a").size <= 4)
+
+        tombstones.markAutomatic("b", tracks.take(1))
+        tombstones.markAutomatic("c", tracks.take(1))
+        assertFalse(tombstones.isAutomatic("a", tracks[7]))
+    }
+
+    private suspend fun restoredEngine(spaceId: String, tracks: List<Track>): PersistentQueueEngine {
+        val storage = FakeQueueSpaceStorage()
+        storage.put(persisted(spaceId, tracks, currentIndex = 0, positionMs = 0L))
+        storage.activeId = spaceId
+        return PersistentQueueEngine(storage, ManualDispatcher()).also { it.restore(emptyList(), -1, 0L) }
+    }
+
     private fun persisted(id: String, tracks: List<Track>, currentIndex: Int, positionMs: Long) = PersistentQueueSnapshot(
         spaceId = id,
         tracks = tracks,

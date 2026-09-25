@@ -160,7 +160,7 @@ internal fun radioCandidateTracks(
 internal fun radioInsertionIndex(currentIndex: Int, queueSize: Int, afterCurrent: Boolean): Int =
     if (afterCurrent) (currentIndex + 1).coerceIn(0, queueSize) else queueSize
 
-private fun radioTitleKey(track: Track): String =
+internal fun radioTitleKey(track: Track): String =
     "${track.artist.trim().lowercase(Locale.ROOT)}|${track.title.trim().lowercase(Locale.ROOT)}"
 
 class PersistentQueueEngine internal constructor(
@@ -175,6 +175,7 @@ class PersistentQueueEngine internal constructor(
     private var persistJob: Job? = null
     private var positionPersistJob: Job? = null
     private var undoRemoval: QueueRemoval? = null
+    private val tombstones = AutoQueueTombstones()
     @Volatile private var transientPlaybackActive: Boolean = false
 
     val state: StateFlow<PlaybackQueueSnapshot> = _state.asStateFlow()
@@ -277,6 +278,7 @@ class PersistentQueueEngine internal constructor(
             persistJob?.cancel()
             saveDurable(_state.value)
         } else {
+            synchronized(lock) { tombstones.clear(spaceId) }
             runCatching { store.clear(spaceId) }
                 .onFailure { Timber.w(it, "Queue space clear failed") }
                 .isSuccess
@@ -286,6 +288,7 @@ class PersistentQueueEngine internal constructor(
     suspend fun deleteSpace(spaceId: String): Boolean = switchMutex.withLock {
         if (_state.value.spaceId == spaceId) return@withLock false
         runCatching { store.delete(spaceId) }.getOrDefault(false)
+            .also { deleted -> if (deleted) synchronized(lock) { tombstones.clear(spaceId) } }
     }
 
     suspend fun appendToSpace(spaceId: String, tracks: List<Track>): Boolean = switchMutex.withLock {
@@ -296,6 +299,7 @@ class PersistentQueueEngine internal constructor(
             return@withLock true
         }
         val existing = runCatching { store.load(spaceId) }.getOrNull() ?: return@withLock false
+        synchronized(lock) { tombstones.markManual(spaceId, tracks) }
         val nextTracks = queueTracksAfterAddLast(existing.tracks, tracks)
         if (nextTracks.size == existing.tracks.size) return@withLock true
         val updated = queueSpaceAfterAppend(existing, nextTracks, System.currentTimeMillis())
@@ -327,6 +331,7 @@ class PersistentQueueEngine internal constructor(
     }
 
     fun clear(): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.clear(current.spaceId)
         undoRemoval = null
         PlaybackQueueSnapshot(
             spaceId = current.spaceId,
@@ -352,6 +357,7 @@ class PersistentQueueEngine internal constructor(
         keepPlaybackModes: Boolean = true,
         radioEnabled: Boolean? = null
     ): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.resetAutomatic(current.spaceId)
         val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
         val safeIndex = if (normalized.isEmpty()) -1 else currentIndex.coerceIn(0, normalized.lastIndex)
         val previousIdentity = current.currentTrack?.let(::playbackQueueIdentity)
@@ -464,6 +470,7 @@ class PersistentQueueEngine internal constructor(
     }
 
     fun addLast(track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.markManual(current.spaceId, listOf(track))
         val identity = playbackQueueIdentity(track)
         if (current.tracks.any { playbackQueueIdentity(it) == identity }) return@mutate current
         val nextTracks = current.tracks + track.queueStoredCopy()
@@ -471,12 +478,14 @@ class PersistentQueueEngine internal constructor(
     }
 
     fun addLast(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.markManual(current.spaceId, tracks)
         val nextTracks = queueTracksAfterAddLast(current.tracks, tracks)
         if (nextTracks == current.tracks) return@mutate current
         rebuildAfterStructureChange(current, nextTracks, current.currentIndex)
     }
 
     fun playNext(track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.markManual(current.spaceId, listOf(track))
         val identity = playbackQueueIdentity(track)
         val withoutDuplicate = current.tracks.filterNot { playbackQueueIdentity(it) == identity }
         val currentTrackIdentity = current.currentTrack?.let(::playbackQueueIdentity)
@@ -491,6 +500,7 @@ class PersistentQueueEngine internal constructor(
     }
 
     fun playNext(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        tombstones.markManual(current.spaceId, tracks)
         val nextTracks = queueTracksAfterPlayNext(current.tracks, current.currentIndex, tracks)
         if (nextTracks == current.tracks) return@mutate current
         val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
@@ -504,7 +514,8 @@ class PersistentQueueEngine internal constructor(
     fun remove(index: Int): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         if (index !in current.tracks.indices) return@mutate current
         val removed = current.tracks[index]
-        undoRemoval = QueueRemoval(removed, index)
+        undoRemoval = QueueRemoval(removed, index, tombstones.isAutomatic(current.spaceId, removed))
+        tombstones.recordRemoval(current.spaceId, listOf(removed))
         val nextTracks = current.tracks.toMutableList().apply { removeAt(index) }
         val nextCurrentIndex = queueRemovalCurrentIndex(index, current.currentIndex, nextTracks.lastIndex)
         rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex).copy(undoAvailable = true)
@@ -513,7 +524,10 @@ class PersistentQueueEngine internal constructor(
     fun removeIndices(indices: Collection<Int>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         val targets = indices.filterTo(sortedSetOf<Int>()) { it in current.tracks.indices }
         if (targets.isEmpty()) return@mutate current
-        undoRemoval = targets.singleOrNull()?.let { QueueRemoval(current.tracks[it], it) }
+        undoRemoval = targets.singleOrNull()?.let {
+            QueueRemoval(current.tracks[it], it, tombstones.isAutomatic(current.spaceId, current.tracks[it]))
+        }
+        tombstones.recordRemoval(current.spaceId, targets.map(current.tracks::get))
         val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
         val nextTracks = current.tracks.filterIndexed { index, _ -> index !in targets }
         val nextCurrentIndex = currentIdentity
@@ -530,6 +544,7 @@ class PersistentQueueEngine internal constructor(
             undoRemoval = null
             return@mutate current.copy(undoAvailable = false)
         }
+        tombstones.undoRemoval(current.spaceId, removal.track, removal.automatic)
         val insertionIndex = queueUndoInsertionIndex(removal.index, current.tracks.size)
         val nextTracks = current.tracks.toMutableList().apply { add(insertionIndex, removal.track) }
         val nextCurrentIndex = queueUndoCurrentIndex(insertionIndex, current.currentIndex)
@@ -768,7 +783,7 @@ class PersistentQueueEngine internal constructor(
     ): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         val candidates = radioCandidateTracks(
             existingTracks = current.tracks,
-            candidates = tracks,
+            candidates = tracks.filterNot { tombstones.isRejected(current.spaceId, it) },
             limit = RADIO_BATCH_SIZE
         )
         if (candidates.isEmpty()) return@mutate current
@@ -785,7 +800,12 @@ class PersistentQueueEngine internal constructor(
             afterCurrent = afterCurrent
         )
         val nextTracks = prepared.tracks.toMutableList().apply { addAll(insertionIndex, additions) }
+        tombstones.markAutomatic(prepared.spaceId, additions)
         rebuildAfterStructureChange(prepared, nextTracks, prepared.currentIndex)
+    }
+
+    fun rejectedAutomaticKeys(): Set<String> = synchronized(lock) {
+        tombstones.rejectedKeys(_state.value.spaceId)
     }
 
     private fun trimPlayedRadioHistory(current: PlaybackQueueSnapshot, desiredSlots: Int): PlaybackQueueSnapshot {
@@ -1022,7 +1042,7 @@ class PersistentQueueEngine internal constructor(
         updatedAt = updatedAt
     )
 
-    private data class QueueRemoval(val track: Track, val index: Int)
+    private data class QueueRemoval(val track: Track, val index: Int, val automatic: Boolean)
 
     companion object {
         private const val RADIO_BATCH_SIZE = 5

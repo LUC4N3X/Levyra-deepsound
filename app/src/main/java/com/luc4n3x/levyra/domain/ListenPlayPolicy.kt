@@ -18,6 +18,14 @@ object ListenPlayPolicy {
             trackDurationMs * SHORT_TRACK_COMPLETION_NUMERATOR
     }
 
+    fun isSignificantProgress(listenedMs: Long, trackDurationMs: Long): Boolean =
+        isCountedPlay(
+            listenedMs = listenedMs,
+            trackDurationMs = trackDurationMs,
+            completed = trackDurationMs > 0L &&
+                listenedMs * SHORT_TRACK_COMPLETION_DENOMINATOR >= trackDurationMs * SHORT_TRACK_COMPLETION_NUMERATOR
+        )
+
     fun isCountedPlay(event: ListenEvent): Boolean =
         isCountedPlay(event.listenedMs, event.trackDurationMs, event.completed)
 }
