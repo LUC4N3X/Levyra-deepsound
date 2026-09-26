@@ -365,7 +365,7 @@ def generate_hero_panoramic_showcase():
         canvas.paste(shadow, (x - 42, y - 16), shadow)
         canvas.paste(phone, (x, y), phone)
 
-    out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_showcase.webp")
+    out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
     print(f"Generated Panoramic Hero Showcase: {out_path}")
 
