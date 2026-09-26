@@ -348,44 +348,36 @@ def generate_hero_panoramic_showcase():
 
 def generate_gallery_showcase():
     canvas_w, canvas_h = 2400, 1900
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (5, 7, 11, 255))
-    canvas = Image.alpha_composite(
-        canvas,
-        create_ambient_glow(canvas_w, canvas_h, (420, 430), 720, (205, 48, 115), max_alpha=65),
-    )
-    canvas = Image.alpha_composite(
-        canvas,
-        create_ambient_glow(canvas_w, canvas_h, (1200, 840), 980, (34, 111, 255), max_alpha=70),
-    )
-    canvas = Image.alpha_composite(
-        canvas,
-        create_ambient_glow(canvas_w, canvas_h, (2050, 1450), 760, (105, 61, 210), max_alpha=62),
-    )
-
-    line_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    line_draw = ImageDraw.Draw(line_layer)
-    line_draw.arc((-620, 150, 1040, 1810), 276, 84, fill=(255, 255, 255, 20), width=3)
-    line_draw.arc((1360, -260, 2820, 1200), 96, 264, fill=(255, 255, 255, 17), width=3)
-    canvas = Image.alpha_composite(canvas, line_layer)
+    rng = np.random.default_rng(27)
+    grain = rng.normal(0, 1.7, (canvas_h, canvas_w, 1))
+    base = np.full((canvas_h, canvas_w, 3), 12, dtype=np.float32)
+    canvas = Image.fromarray(np.clip(base + grain, 7, 18).astype(np.uint8), "RGB").convert("RGBA")
+    draw = ImageDraw.Draw(canvas)
+    label_font = get_font(23, bold=True)
+    number_font = get_font(18, bold=True)
 
     placements = [
-        ("home", 40, 150, -3, 820),
-        ("now_playing", 590, 45, 2, 900),
-        ("lyrics", 1190, 135, -2, 840),
-        ("charts", 1770, 75, 3, 820),
-        ("search_artist", 160, 1030, 2, 780),
-        ("artist_discography", 730, 900, -2, 840),
-        ("genres", 1320, 1020, 2, 780),
-        ("listening_pulse", 1870, 900, -3, 840),
+        ("home", "01", "HOME", 90, 190, 780),
+        ("now_playing", "02", "NOW PLAYING", 660, 125, 820),
+        ("lyrics", "03", "LYRICS", 1230, 205, 760),
+        ("charts", "04", "CHARTS", 1800, 145, 800),
+        ("search_artist", "05", "SEARCH", 250, 1085, 760),
+        ("artist_discography", "06", "ARTIST", 820, 1015, 800),
+        ("genres", "07", "GENRES", 1390, 1105, 740),
+        ("listening_pulse", "08", "PULSE", 1960, 1035, 780),
     ]
 
-    for key, x, y, angle, height in placements:
+    for key, number, label, x, y, height in placements:
         with Image.open(get_screen_path(SCREENS[key])) as source:
             screen = create_gallery_screen(source, target_height=height)
-        tilted = screen.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        shadow = create_studio_shadow(tilted, blur_radius=42, opacity=175, offset=(0, 25))
-        canvas.paste(shadow, (x - 42, y - 18), shadow)
-        canvas.paste(tilted, (x, y), tilted)
+        label_y = y - 48
+        draw.text((x, label_y), number, font=number_font, fill=(41, 137, 255, 255))
+        draw.text((x + 48, label_y - 3), label, font=label_font, fill=(238, 240, 245, 255))
+        line_start = x + 210
+        draw.line((line_start, label_y + 13, x + screen.width, label_y + 13), fill=(68, 72, 80, 255), width=2)
+        shadow = create_studio_shadow(screen, blur_radius=34, opacity=205, offset=(0, 24))
+        canvas.paste(shadow, (x - 34, y - 12), shadow)
+        canvas.paste(screen, (x, y), screen)
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "01_levyra_gallery.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=92, method=6)

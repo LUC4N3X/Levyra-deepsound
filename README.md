@@ -140,33 +140,9 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 <img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra interface across five phones" width="100%" />
 
-<br>
-
-<sub>A closer look at the player, synced lyrics, discovery, artists, and private listening stats.</sub>
-
 <br><br>
 
 <img src="docs/assets/showcase/01_levyra_gallery.webp" alt="Eight Levyra screens arranged in an editorial gallery" width="100%" />
-
-<br>
-
-<details>
-<summary><b>Open every screen at full size</b></summary>
-<br>
-
-<a href="docs/assets/screenshots/home.webp"><img src="docs/assets/screenshots/home.webp" width="200" alt="Levyra personalized home radio" /></a>
-<a href="docs/assets/screenshots/now_playing.webp"><img src="docs/assets/screenshots/now_playing.webp" width="200" alt="Levyra Now Playing screen" /></a>
-<a href="docs/assets/screenshots/lyrics.webp"><img src="docs/assets/screenshots/lyrics.webp" width="200" alt="Levyra synchronized lyrics" /></a>
-<a href="docs/assets/screenshots/charts.webp"><img src="docs/assets/screenshots/charts.webp" width="200" alt="Levyra international charts" /></a>
-
-<br>
-
-<a href="docs/assets/screenshots/search_artist.webp"><img src="docs/assets/screenshots/search_artist.webp" width="200" alt="Levyra artist search" /></a>
-<a href="docs/assets/screenshots/artist_discography.webp"><img src="docs/assets/screenshots/artist_discography.webp" width="200" alt="Levyra artist discography" /></a>
-<a href="docs/assets/screenshots/genres.webp"><img src="docs/assets/screenshots/genres.webp" width="200" alt="Levyra moods and genres" /></a>
-<a href="docs/assets/screenshots/listening_pulse.webp"><img src="docs/assets/screenshots/listening_pulse.webp" width="200" alt="Levyra private listening stats" /></a>
-
-</details>
 
 </div>
 
