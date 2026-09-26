@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.PlaylistHit
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -197,6 +198,36 @@ class YoutubeMusicSearchEntityKindTest {
     }
 
     @Test
+    fun `a playlist song count is kept as the track count label`() {
+        val playlist = playlistFromSubtitle("Playlist • YouTube Music • 77 songs")
+
+        assertEquals("YouTube Music", playlist.author)
+        assertEquals("77 songs", playlist.trackCountLabel)
+    }
+
+    @Test
+    fun `a playlist view count is not used as the track count label`() {
+        val playlist = playlistFromSubtitle("Playlist • Curator • 19 Mln di visualizzazioni")
+
+        assertEquals("Curator", playlist.author)
+        assertEquals("", playlist.trackCountLabel)
+    }
+
+    @Test
+    fun `a spanish playlist view count is not used as the track count label`() {
+        val playlist = playlistFromSubtitle("Playlist • Curator • 19 M de visualizaciones")
+
+        assertEquals("", playlist.trackCountLabel)
+    }
+
+    @Test
+    fun `a playlist keeps the song count when a view count is listed first`() {
+        val playlist = playlistFromSubtitle("Playlist • Curator • 2.1M views • 45 songs")
+
+        assertEquals("45 songs", playlist.trackCountLabel)
+    }
+
+    @Test
     fun `reload continuation data is accepted for search pagination`() {
         val root = JSONObject().put(
             "continuationContents",
@@ -242,6 +273,24 @@ class YoutubeMusicSearchEntityKindTest {
                     )
             )
         )
+
+    private fun playlistFromSubtitle(subtitle: String): PlaylistHit {
+        val root = JSONObject().put(
+            "contents",
+            JSONArray().put(
+                JSONObject().put(
+                    "musicResponsiveListItemRenderer",
+                    JSONObject().put(
+                        "flexColumns",
+                        JSONArray()
+                            .put(runLine(browseRun("Chill Hits", "VLPL777", "MUSIC_PAGE_TYPE_PLAYLIST")))
+                            .put(line(subtitle))
+                    )
+                )
+            )
+        )
+        return repository.parseSearchOverview(root, "chill").playlists.single()
+    }
 
     private fun line(text: String): JSONObject = flexColumn(JSONArray().put(JSONObject().put("text", text)))
 
