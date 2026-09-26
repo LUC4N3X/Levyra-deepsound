@@ -11,5 +11,5 @@ internal fun playerSwipeReleaseVelocity(
     ?.takeIf { it.isFinite() }
     ?.takeIf { minFlingDistancePx.isFinite() }
     ?.takeIf { abs(offsetPx) >= minFlingDistancePx.coerceAtLeast(0f) }
-    ?.takeIf { (it < 0f) == (offsetPx < 0f) }
+    ?.takeIf { it < 0f == offsetPx < 0f }
     ?: 0f
