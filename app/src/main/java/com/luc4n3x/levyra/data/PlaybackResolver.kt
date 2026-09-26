@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
 import com.luc4n3x.levyra.data.network.YoutubeClientIdentityInterceptor
+import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
@@ -20,7 +21,6 @@ import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
-import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
@@ -1645,7 +1645,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
             .takeIf(youtubeVideoIdRegex::matches)
             ?: throw YoutubePlayerRequestException(null, "Identità video YouTube assente o non valida")
-        val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
+        val locale = YoutubeRegionProfile.effectiveLocale(userPreferences.languageCode())
         val reelClientVersion = playbackPolicyStore.current().androidReelClientVersion
         val userAgent = androidReelUserAgent(locale.gl, reelClientVersion)
         val reelStreamIdentity = YoutubeStreamClientIdentity(
@@ -1762,7 +1762,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
             .takeIf(youtubeVideoIdRegex::matches)
             ?: throw YoutubePlayerRequestException(null, "Identità video YouTube assente o non valida")
-        val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
+        val locale = YoutubeRegionProfile.effectiveLocale(userPreferences.languageCode())
         val reelClientVersion = playbackPolicyStore.current().androidReelClientVersion
         val userAgent = androidReelUserAgent(locale.gl, reelClientVersion)
         val reelStreamIdentity = YoutubeStreamClientIdentity(
@@ -4117,7 +4117,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun playerUserAgent(profile: ClientProfile): String {
         if (profile.clientName != "VISIONOS") return profile.userAgent
-        val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
+        val locale = YoutubeRegionProfile.effectiveLocale(userPreferences.languageCode())
         return visionOsUserAgent(locale.gl)
     }
 
@@ -4129,7 +4129,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         signatureTimestamp: Int?,
         isVideoMode: Boolean
     ): JSONObject {
-        val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
+        val locale = YoutubeRegionProfile.effectiveLocale(userPreferences.languageCode())
         val client = JSONObject()
             .put("clientName", profile.clientName)
             .put("clientVersion", profile.clientVersion)

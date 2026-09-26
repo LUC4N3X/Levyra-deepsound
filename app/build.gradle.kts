@@ -160,6 +160,9 @@ android {
     sourceSets.getByName("main").kotlin.directories.add(
         if (isFdroidBuild) "src/fdroid/java" else "src/upstream/java"
     )
+    if (!isFdroidBuild) {
+        sourceSets.getByName("main").jniLibs.directories.add("src/upstream/jniLibs")
+    }
     sourceSets.getByName("debug").kotlin.directories.add("src/noDiagnostics/java")
     sourceSets.getByName("release").kotlin.directories.add("src/noDiagnostics/java")
     sourceSets.configureEach {
@@ -335,6 +338,7 @@ dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     testImplementation(libs.junit)
     testImplementation(libs.json)
+    testImplementation(libs.okhttp.tls)
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
