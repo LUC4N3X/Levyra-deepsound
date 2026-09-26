@@ -170,7 +170,7 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 ## ✦ Features
 
 - **Native playback**: Media3 and ExoPlayer on Android, libVLC through direct C bindings on Windows (no web wrappers).
-- **Gapless & audio tuning**: seamless album playback, crossfade, pitch shifting, custom playback speed, 10-band EQ, and AutoEQ headphone profiles.
+- **Gapless & audio tuning**: uninterrupted album transitions, crossfade, pitch shifting, custom playback speed, 10-band EQ, and AutoEQ headphone profiles.
 - **SponsorBlock**: automatically skips sponsored segments, intros, outros, and non-music chatter.
 - **Audio & video modes**: one-tap switch between audio-only streaming and full video with subtitle tracks.
 - **Clean offline downloads**: saved directly in device storage as standard M4A files with metadata, artwork, and lyrics.
@@ -192,7 +192,7 @@ I wanted Levyra to share as much logic as possible without forcing either platfo
 
 #### - Android
 
-The mobile client is pure native Kotlin. The interface is built with Jetpack Compose and Material 3, with database persistence on Room, preferences on DataStore, and local indexing through MediaStore. Audio runs directly on AndroidX Media3 and ExoPlayer, giving the app first-class system support for audio focus, Bluetooth playback controls, lockscreen media sessions, Quick Settings, and Android Auto. Release builds are optimized with R8, ProGuard, and Android Baseline Profiles.
+The mobile client is pure native Kotlin. The interface is built with Jetpack Compose and Material 3, with database persistence on Room, preferences on DataStore, and local indexing through MediaStore. Audio runs directly on AndroidX Media3 and ExoPlayer, which connects audio focus, Bluetooth playback controls, lockscreen media sessions, Quick Settings, and Android Auto straight to Android system services. Release builds are optimized with R8, ProGuard, and Android Baseline Profiles.
 
 #### - Windows
 
@@ -200,11 +200,11 @@ The desktop version runs Compose Multiplatform on modern JVM 21, but leaves audi
 
 #### - Shared core
 
-Everything related to stream resolution, YouTube extraction, and resilient network fallbacks lives in a shared Kotlin engine (`LevyraExtractor`). Using OkHttp with Brotli compression and DNS-over-HTTPS, network fixes and format updates apply to both Android and Windows from the same codebase.
+Stream resolution, YouTube extraction, and network retry fallbacks live in a shared Kotlin engine (`LevyraExtractor`). The engine runs OkHttp with Brotli compression and DNS-over-HTTPS, so network fixes and format updates apply to both Android and Windows from the same codebase.
 
 #### - Native performance over web wrappers
 
-Many cross-platform music players are essentially web browsers wrapped in an executable. They take seconds to spin up and eat memory just to sit idle in your system tray. Avoiding web runtimes keeps startup and resource usage lightweight, while making the player behave like real software built for the machine it is running on.
+Many cross-platform music players are essentially web browsers wrapped in an executable. They take seconds to spin up and eat memory just to sit idle in your system tray. Skipping web runtimes keeps startup quick and memory low, so the app behaves like real software built for the machine it runs on.
 
 ## ✦ Built in public · Zero tracking
 
