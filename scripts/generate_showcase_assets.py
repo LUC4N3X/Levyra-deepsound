@@ -119,6 +119,28 @@ def create_phone_frame(screen_img, target_height=1400, bezel_color=(20, 22, 28))
     framed = body_img.resize((frame_w + 60, frame_h + 60), Image.Resampling.LANCZOS)
     return framed
 
+def create_gallery_screen(screen_img, target_height=1600):
+    screen_img = enhance_screenshot(screen_img)
+    aspect = screen_img.width / screen_img.height
+    target_width = int(target_height * aspect)
+    screen = screen_img.resize((target_width, target_height), Image.Resampling.LANCZOS).convert("RGBA")
+    radius = int(target_width * 0.055)
+    mask = Image.new("L", screen.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        [0, 0, target_width - 1, target_height - 1],
+        radius=radius,
+        fill=255,
+    )
+    screen.putalpha(mask)
+    border = Image.new("RGBA", screen.size, (0, 0, 0, 0))
+    ImageDraw.Draw(border).rounded_rectangle(
+        [1, 1, target_width - 2, target_height - 2],
+        radius=radius,
+        outline=(70, 78, 96, 180),
+        width=3,
+    )
+    return Image.alpha_composite(screen, border)
+
 def create_ambient_glow(width, height, center, radius, color, max_alpha=120):
     glow = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(glow)
@@ -160,8 +182,8 @@ def draw_vector_sparkle(draw, center, radius, color):
     ]
     draw.polygon(points, fill=color)
 
-def generate_individual_framed_screenshots():
-    print("Generating individual framed screenshots...")
+def generate_individual_screenshots():
+    print("Generating individual screenshots...")
     for key, filename in SCREENS.items():
         src_path = get_screen_path(filename)
         if not os.path.exists(src_path):
@@ -169,11 +191,11 @@ def generate_individual_framed_screenshots():
             continue
 
         img = Image.open(src_path)
-        framed = create_phone_frame(img, target_height=1200)
+        gallery_screen = create_gallery_screen(img)
 
         out_name = f"{key}.webp"
         out_path = os.path.join(OUT_SCREENSHOTS_DIR, out_name)
-        framed.save(out_path, "WEBP", quality=92, method=6)
+        gallery_screen.save(out_path, "WEBP", quality=90, method=6)
         print(f"Saved individual: {out_path}")
 
 def generate_studio_dual_card(
@@ -304,7 +326,7 @@ def generate_hero_panoramic_showcase():
 
     keys = ["home", "charts", "now_playing", "lyrics", "artist_discography"]
     heights = [900, 1010, 1160, 1010, 900]
-    positions = [(-40, 245), (390, 135), (925, 25), (1480, 135), (2020, 245)]
+    positions = [(20, 245), (430, 135), (925, 25), (1450, 135), (1870, 245)]
     opacities = [135, 165, 220, 165, 135]
 
     for key, height, (x, y), opacity in zip(keys, heights, positions, opacities):
@@ -326,7 +348,7 @@ def generate_hero_panoramic_showcase():
 
 def main():
     print("Generating refined Levyra showcase assets...")
-    generate_individual_framed_screenshots()
+    generate_individual_screenshots()
     generate_hero_panoramic_showcase()
     print("Showcase generation completed successfully!")
 
