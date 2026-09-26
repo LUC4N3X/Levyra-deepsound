@@ -138,61 +138,27 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/00_levyra_hero_showcase-light.webp">
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/00_levyra_hero_showcase.webp">
-  <img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra interface preview" width="100%" />
-</picture>
+<img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra interface across five phones" width="100%" />
+
+<br>
+
+<sub>A closer look at the player, synced lyrics, discovery, artists, and private listening stats.</sub>
 
 <br><br>
 
-| | |
-| :---: | :---: |
-| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/01_playback_and_lyrics-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/01_playback_and_lyrics.webp"><img src="docs/assets/showcase/01_playback_and_lyrics.webp" alt="Playback and synced lyrics" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/02_home_and_charts-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/02_home_and_charts.webp"><img src="docs/assets/showcase/02_home_and_charts.webp" alt="Home feed and charts" width="100%" /></picture> |
-| **Playback & synced lyrics**<br><sub>Android uses ExoPlayer and Windows uses libVLC. Synced lyrics support millisecond timing offsets, romanization across multiple scripts, and shareable lyric cards.</sub> | **Home feed & top charts**<br><sub>Your Orbit rotates through personal picks, mood tags help you browse, and international Top 50 charts update in the background.</sub> |
-| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/03_search_and_artist-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/03_search_and_artist.webp"><img src="docs/assets/showcase/03_search_and_artist.webp" alt="Search and artist profiles" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/04_library_and_pulse-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/04_library_and_pulse.webp"><img src="docs/assets/showcase/04_library_and_pulse.webp" alt="Local library and stats" width="100%" /></picture> |
-| **Search & artist discographies**<br><sub>Search shows results right away, with Wikipedia summaries and complete artist discographies ordered by release date.</sub> | **M4A downloads & listening stats**<br><sub>Downloads are saved as tagged M4A files in normal device storage. Listening Pulse shows 7-day trends from stats stored locally in SQLite.</sub> |
-| <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/05_video_and_samples-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/05_video_and_samples.webp"><img src="docs/assets/showcase/05_video_and_samples.webp" alt="Short clips and video" width="100%" /></picture> | <picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/showcase/06_collections_and_genres-light.webp"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/showcase/06_collections_and_genres.webp"><img src="docs/assets/showcase/06_collections_and_genres.webp" alt="Playlists and genres" width="100%" /></picture> |
-| **Vertical clips & video feed**<br><sub>Browse short vertical previews, full music video feeds, and live comment activity.</sub> | **Editorial playlists & genres**<br><sub>Browse curated collections and genres such as Rap, Lo-Fi, Anime, Electronic, and more.</sub> |
-
-</div>
+<a href="docs/assets/screenshots/home.webp"><img src="docs/assets/screenshots/home.webp" width="190" alt="Levyra home and Your Orbit" /></a>
+<a href="docs/assets/screenshots/now_playing.webp"><img src="docs/assets/screenshots/now_playing.webp" width="190" alt="Levyra Now Playing screen" /></a>
+<a href="docs/assets/screenshots/lyrics.webp"><img src="docs/assets/screenshots/lyrics.webp" width="190" alt="Levyra synchronized lyrics" /></a>
+<a href="docs/assets/screenshots/charts.webp"><img src="docs/assets/screenshots/charts.webp" width="190" alt="Levyra international charts" /></a>
 
 <br>
 
-<details>
-<summary><b>✦ Browse full gallery (15 high-res views)</b></summary>
-<br>
-
-<div align="center">
-
-#### Playback & lyrics
-| Now Playing Canvas | Synchronized Lyrics |
-| :---: | :---: |
-| <img src="docs/assets/screenshots/player_nowplaying.webp" width="380" alt="Now Playing Canvas"> | <img src="docs/assets/screenshots/lyrics_synced.webp" width="380" alt="Synchronized Lyrics"> |
-
-#### Home & discovery
-| Home Selection & Orbit | Global Top 50 Charts | Editorial Collections |
-| :---: | :---: | :---: |
-| <img src="docs/assets/screenshots/home_orbit.webp" width="260" alt="Home Orbit"> | <img src="docs/assets/screenshots/home_top50.webp" width="260" alt="Global Top 50"> | <img src="docs/assets/screenshots/home_collections.webp" width="260" alt="Editorial Collections"> |
-
-#### Search & artists
-| Search Discovery & Recent | Live Artist Results | Artist Profile & Bio | Artist Discography |
-| :---: | :---: | :---: | :---: |
-| <img src="docs/assets/screenshots/search_recent.webp" width="200" alt="Search History"> | <img src="docs/assets/screenshots/search_artist_avatars.webp" width="200" alt="Artist Search"> | <img src="docs/assets/screenshots/artist_bio.webp" width="200" alt="Artist Bio"> | <img src="docs/assets/screenshots/artist_discography.webp" width="200" alt="Discography"> |
-
-#### Offline vault & listening stats
-| Library Quick Picks | Listening Pulse Analytics | Playlist Details |
-| :---: | :---: | :---: |
-| <img src="docs/assets/screenshots/library_quickpicks.webp" width="260" alt="Library Quick Picks"> | <img src="docs/assets/screenshots/library_pulse.webp" width="260" alt="Listening Pulse"> | <img src="docs/assets/screenshots/playlist_recent.webp" width="260" alt="Playlist Details"> |
-
-#### Explore & video
-| Vertical Samples Clips | Moods & Subgenre Matrix | Video Feed & Energy |
-| :---: | :---: | :---: |
-| <img src="docs/assets/screenshots/explore_samples.webp" width="260" alt="Samples Clips"> | <img src="docs/assets/screenshots/explore_genres.webp" width="260" alt="Genres Matrix"> | <img src="docs/assets/screenshots/video_energy.webp" width="260" alt="Video Feed"> |
+<a href="docs/assets/screenshots/search_artist.webp"><img src="docs/assets/screenshots/search_artist.webp" width="190" alt="Levyra artist search" /></a>
+<a href="docs/assets/screenshots/artist_discography.webp"><img src="docs/assets/screenshots/artist_discography.webp" width="190" alt="Levyra artist discography" /></a>
+<a href="docs/assets/screenshots/genres.webp"><img src="docs/assets/screenshots/genres.webp" width="190" alt="Levyra moods and genres" /></a>
+<a href="docs/assets/screenshots/listening_pulse.webp"><img src="docs/assets/screenshots/listening_pulse.webp" width="190" alt="Levyra private listening stats" /></a>
 
 </div>
-
-</details>
 
 ---
 

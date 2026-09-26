@@ -3,7 +3,7 @@ import math
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
-SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshot"
+SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshots"
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
 OUT_SCREENSHOTS_DIR = r"docs\assets\screenshots"
 
@@ -11,21 +11,14 @@ os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_SCREENSHOTS_DIR, exist_ok=True)
 
 SCREENS = {
-    "home_orbit": "Screenshot_20260816_234335_LEVYRA.jpg",
-    "home_top50": "Screenshot_20260816_234345_LEVYRA.jpg",
-    "explore_samples": "Screenshot_20260816_234411_LEVYRA.jpg",
-    "explore_genres": "Screenshot_20260816_234414_LEVYRA.jpg",
-    "library_quickpicks": "Screenshot_20260816_234419_LEVYRA.jpg",
-    "library_pulse": "Screenshot_20260816_234421_LEVYRA.jpg",
-    "player_nowplaying": "Screenshot_20260816_234503_LEVYRA.jpg",
-    "search_artist_avatars": "Screenshot_20260816_234530_LEVYRA.jpg",
-    "lyrics_synced": "Screenshot_20260816_234701_LEVYRA.jpg",
-    "artist_bio": "Screenshot_20260816_234724_LEVYRA.jpg",
-    "artist_discography": "Screenshot_20260816_234730_LEVYRA.jpg",
-    "video_energy": "Screenshot_20260817_145820_LEVYRA.jpg",
-    "search_recent": "Screenshot_20260817_131545_LEVYRA.jpg",
-    "playlist_recent": "Screenshot_20260817_131607_LEVYRA.jpg",
-    "home_collections": "Screenshot_20260817_131624_LEVYRA.jpg",
+    "home": "screen-home.jpg",
+    "charts": "screen-charts.jpg",
+    "genres": "screen-genres.jpg",
+    "listening_pulse": "screen-listening-pulse.jpg",
+    "lyrics": "screen-lyrics.jpg",
+    "now_playing": "screen-player-nowplaying.jpg",
+    "search_artist": "screen-search-artist.jpg",
+    "artist_discography": "screen-artist-discography.jpg",
 }
 
 def get_font(size, bold=False):
@@ -308,8 +301,8 @@ def generate_hero_panoramic_showcase():
     canvas = Image.alpha_composite(canvas, glow3)
     canvas = Image.alpha_composite(canvas, glow4)
 
-    # 5 Key Screens: Library Pulse, Home Orbit, Now Playing, Synced Lyrics, Artist Bio
-    keys = ["library_pulse", "home_orbit", "player_nowplaying", "lyrics_synced", "artist_bio"]
+    # 5 Key Screens: Listening Pulse, Home, Now Playing, Synced Lyrics, Artist Discography
+    keys = ["listening_pulse", "home", "now_playing", "lyrics", "artist_discography"]
     imgs = [Image.open(os.path.join(SCREENSHOT_DIR, SCREENS[k])) for k in keys]
 
     p1 = create_phone_frame(imgs[0], target_height=740) # Pulse
@@ -375,121 +368,6 @@ def main():
     print("Generating refined Levyra showcase assets...")
     generate_individual_framed_screenshots()
     generate_hero_panoramic_showcase()
-
-    # Showcase 1: Now Playing & Live Synced Lyrics
-    generate_studio_dual_card(
-        card_id="01_playback_and_lyrics",
-        title_category="Acoustic Engine & Lyrics",
-        title_main="Immersive Playback &\nLive Synced Lyrics",
-        subtitle="Full-bleed visual canvas with high-res art,\nwaveform scrubber, and real-time LRCLIB karaoke sync.",
-        screen1_key="player_nowplaying",
-        screen2_key="lyrics_synced",
-        primary_glow_color=(235, 75, 90),
-        secondary_glow_color=(160, 70, 255),
-        features_list=[
-            "ExoPlayer & Media3 low-latency audio engine",
-            "Real-time synchronized line-by-line lyrics",
-            "Interactive tap-to-seek lyric scrubbing",
-            "Song & Native Video seamless toggle",
-            "Automatic SponsorBlock & silence skipping"
-        ]
-    )
-
-    # Showcase 2: Home Discovery & Global Top 50
-    generate_studio_dual_card(
-        card_id="02_home_and_charts",
-        title_category="Discovery & Exploration",
-        title_main="Smart Orbit Feed &\nGlobal Top Charts",
-        subtitle="Dynamic discovery tailored to your rhythm,\nwith live Top 50 charts across Italy, USA, UK, and Spain.",
-        screen1_key="home_orbit",
-        screen2_key="home_top50",
-        primary_glow_color=(60, 120, 255),
-        secondary_glow_color=(120, 80, 240),
-        features_list=[
-            "Personalized 'Your Orbit' dynamic rotation",
-            "Live international Top 50 chart selectors",
-            "Curated mood & activity quick chips",
-            "Dual InnerTube & LevyraExtractor pipelines",
-            "Instant prefetching for zero-latency skips"
-        ]
-    )
-
-    # Showcase 3: Deep Search & Artist Immersion
-    generate_studio_dual_card(
-        card_id="03_search_and_artist",
-        title_category="Artist Universe",
-        title_main="Deep Search &\nArtist Discography",
-        subtitle="Instant search suggestions, live artist matching,\nWikipedia biography cards, and full discographies.",
-        screen1_key="search_artist_avatars",
-        screen2_key="artist_bio",
-        primary_glow_color=(240, 160, 50),
-        secondary_glow_color=(210, 60, 120),
-        features_list=[
-            "Real-time search with instant artist bubbles",
-            "Wikipedia biography & monthly audience stats",
-            "Complete chronological albums, singles & EPs",
-            "One-tap follow & artist radio queues",
-            "Voice search & live waveform visualizer"
-        ]
-    )
-
-    # Showcase 4: Offline Vault & Listening Pulse
-    generate_studio_dual_card(
-        card_id="04_library_and_pulse",
-        title_category="Private Vault & Analytics",
-        title_main="Offline M4A Vault &\nListening Pulse",
-        subtitle="Real tagged audio files saved to storage, plus\na private on-device dashboard of your listening habits.",
-        screen1_key="playlist_recent",
-        screen2_key="library_pulse",
-        primary_glow_color=(70, 180, 255),
-        secondary_glow_color=(80, 100, 240),
-        features_list=[
-            "Standard M4A files with embedded tags & art",
-            "Local-first playback: zero network data wasted",
-            "Private 7-day listening activity & streaks",
-            "Real minutes-played ranking (no accidental taps)",
-            "100% on-device SQLite: zero tracking & telemetry"
-        ]
-    )
-
-    # Showcase 5: Video Mode, Samples & Energy Pulse
-    generate_studio_dual_card(
-        card_id="05_video_and_samples",
-        title_category="Visuals & Resonance",
-        title_main="Samples Clips &\nComment Energy",
-        subtitle="Explore short vertical video clips, music videos,\nand real-time audience resonance metrics.",
-        screen1_key="explore_samples",
-        screen2_key="video_energy",
-        primary_glow_color=(40, 210, 150),
-        secondary_glow_color=(255, 100, 80),
-        features_list=[
-            "Vertical 'Samples' teaser clips for fast discovery",
-            "Live video feeds with inline preview",
-            "Voci che risuonano: 73% energy metric",
-            "One-tap full video playback mode",
-            "High-resolution video stream extraction"
-        ]
-    )
-
-    # Showcase 6: Editorial Collections & Genre Matrix
-    generate_studio_dual_card(
-        card_id="06_collections_and_genres",
-        title_category="Curation & Moods",
-        title_main="Editorial Playlists &\nGenre Matrix",
-        subtitle="Handcrafted 4-tile artwork collections and\nan expansive spectrum of musical moods & subgenres.",
-        screen1_key="home_collections",
-        screen2_key="explore_genres",
-        primary_glow_color=(180, 70, 240),
-        secondary_glow_color=(240, 90, 160),
-        features_list=[
-            "4-tile dynamic editorial collection cards",
-            "Mood matrix: Rap, Lo-Fi, Electronic, J-Pop & more",
-            "Curated 'After hours' & 'Quick picks' mixes",
-            "Artist ring avatars with neon glow accents",
-            "One-tap playlist generation & shuffle"
-        ]
-    )
-
     print("Showcase generation completed successfully!")
 
 if __name__ == "__main__":
