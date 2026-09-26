@@ -177,7 +177,7 @@ There is a built-in 10-band equalizer alongside AutoEQ headphone profiles so you
 
 ### Library and offline storage
 
-I never liked music apps that lock offline tracks inside an encrypted cache. When you download a song in Levyra, it writes a standard M4A file straight to your device storage, tagged with metadata, embedded artwork, and lyrics. Those files are yours; you can copy them anywhere or open them in another player.
+I never liked music apps that lock offline tracks inside an encrypted cache. When you download a song in Levyra, it writes a standard M4A file straight to your device storage, tagged with metadata, embedded artwork, and lyrics. They remain normal files you can move or open with another player.
 
 Local files and streamed music sit side by side in the same library, playlists, and queues. If you want to jump into an album without blowing away what you were already listening to, Queue Spaces keep multiple queues active side by side. Library management stays straightforward with tag filtering, custom playlist sorting, and artist exclusions. When moving devices, Levyra Vault exports your playlists, favorites, listening history, and settings into one local backup file.
 
@@ -191,22 +191,19 @@ For full technical notes, platform architecture, and build details, check the [d
 
 ## ✦ Under the hood
 
-Android and Windows share Kotlin code for stream extraction and networking, but I kept the interface and audio engines strictly native to each operating system.
+Instead of bundling a web browser to draw an interface, Levyra is built with shared Kotlin logic and platform-native runtimes. Stream extraction and network routines (LevyraExtractor, OkHttp, Brotli, and DoH) are shared, but playback and UI stay close to each operating system.
 
-| Layer | Android | Windows |
-| --- | --- | --- |
-| **Interface** | Jetpack Compose + Material 3 | Compose Multiplatform (Desktop JVM) |
-| **Audio engine** | AndroidX Media3 / ExoPlayer | libVLC via vlcj (native C bindings) |
-| **Extraction & network** | LevyraExtractor, OkHttp (Brotli, DoH) | LevyraExtractor, OkHttp (Brotli) |
-| **Persistence** | Room (SQLite), DataStore, MediaStore | Local file storage, JSON serialization |
-| **OS integration** | MediaSessionService, Android Auto, Quick Settings | Native desktop windowing, system audio |
-| **Optimization** | R8, ProGuard, Android Baseline Profiles | JVM 21 bytecode, zero Chromium runtime |
+### Android
 
-### Why native instead of a web wrapper
+The Android app is written in Jetpack Compose and Material 3, backed by Room for database storage, DataStore for preferences, and MediaStore for local indexing. Playback runs on AndroidX Media3 and ExoPlayer, tying straight into system audio focus, Bluetooth controls, lockscreen media sessions, Quick Settings, and Android Auto. Release builds are optimized with R8, ProGuard, and Android Baseline Profiles.
 
-I never wanted a music player that eats half a gigabyte of RAM just to sit idle in the background. A lot of modern cross-platform music apps are essentially web pages packaged inside Electron or WebView wrappers.
+### Windows
 
-Levyra does not bundle Chromium or a web runtime anywhere. On Windows, Compose Multiplatform renders directly to the desktop window while libVLC handles playback through native C bindings straight to system audio. On Android, Media3 ties directly into the operating system for audio focus, Bluetooth media buttons, lockscreen controls, and Android Auto. The app opens instantly, stays light on system resources, and feels like software built for the device it is running on.
+The desktop client pairs Compose Multiplatform on JVM 21 with libVLC through direct C bindings (vlcj), outputting straight to desktop system audio. Local persistence uses lightweight JSON files instead of an embedded database, keeping the installation small and avoiding background browser processes.
+
+### Native performance
+
+Many cross-platform music players bundle a full browser engine to render their interface, which often leads to heavy memory footprints and sluggish startup times. Avoiding web runtimes, Chromium, and Electron keeps startup and resource usage lightweight, while making the player behave like real software built for the machine it is running on.
 
 ## ✦ Development
 
