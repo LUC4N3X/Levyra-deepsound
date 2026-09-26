@@ -218,42 +218,6 @@ App logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#5
 
 Contributions and bug reports are welcome. Technical documentation and architecture notes are in the [project documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
-## ✦ Project recognition
-
-<div align="center">
-
-<p>
-  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
-    <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="52">
-  </a>
-</p>
-
-<p>
-  <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
-  <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
-  <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
-</p>
-
-<p>
-  <sub><b>Tech &amp; developer media coverage</b></sub>
-  <br>
-  <sub>
-    <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php"><b>SecurityLab.ru</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://www.geekparadize.fr/articles/levyra-lecteur-musical-open-source-android-windows"><b>GeekParadize</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://techolay.net/levyra-android-ve-windows-icin-acik-kaynak-muzik-oynaticisi/"><b>Techolay</b></a>
-    &nbsp;·&nbsp;
-    <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
-  </sub>
-</p>
-
-</div>
-
 ---
 
 ## ✦ Author & credits
@@ -270,9 +234,41 @@ Contributions and bug reports are welcome. Technical documentation and architect
 
 Levyra is a personal project. I maintain the Android and Windows apps, review changes and decide what goes into each release.
 
-<a href="https://github.com/LUC4N3X"><b>GitHub</b></a>
-&nbsp;&nbsp;·&nbsp;&nbsp;
-<a href="https://luc4n3x.pages.dev/"><b>Website</b></a>
+<p>
+  <a href="https://github.com/LUC4N3X"><b>GitHub</b></a>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="https://luc4n3x.pages.dev/"><b>Website</b></a>
+</p>
+
+<p>
+  <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved">
+    <img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="42">
+  </a>
+</p>
+
+<p>
+  <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
+  <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
+  <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
+</p>
+
+<p>
+  <sub><b>Articles &amp; media mentions</b></sub>
+  <br>
+  <sub>
+    <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://www.securitylab.ru/blog/personal/SimlpeHacker/362601.php"><b>SecurityLab.ru</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://www.geekparadize.fr/articles/levyra-lecteur-musical-open-source-android-windows"><b>GeekParadize</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://techolay.net/levyra-android-ve-windows-icin-acik-kaynak-muzik-oynaticisi/"><b>Techolay</b></a>
+    &nbsp;·&nbsp;
+    <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
+  </sub>
+</p>
 
 </div>
 
