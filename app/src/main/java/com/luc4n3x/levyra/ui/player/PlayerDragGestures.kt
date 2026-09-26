@@ -36,7 +36,8 @@ sealed interface PlayerDragEvent {
     data object Cancelled : PlayerDragEvent
 }
 
-private val playerSwipeMinFlingDistance = 24.dp
+private const val PLAYER_SWIPE_MIN_FLING_DISTANCE_DP = 24
+private val playerSwipeMinFlingDistance = PLAYER_SWIPE_MIN_FLING_DISTANCE_DP.dp
 
 fun Modifier.playerAxisDragGestures(
     key: Any?,
@@ -206,9 +207,12 @@ internal fun playerSwipeReleaseVelocity(
     velocityPx: Float,
     minFlingDistancePx: Float
 ): Float {
-    if (!offsetPx.isFinite() || !velocityPx.isFinite() || !minFlingDistancePx.isFinite()) return 0f
+    if (!offsetPx.isFinite()) return 0f
+    if (!velocityPx.isFinite()) return 0f
+    if (!minFlingDistancePx.isFinite()) return 0f
     if (abs(offsetPx) < minFlingDistancePx.coerceAtLeast(0f)) return 0f
-    if ((velocityPx < 0f) != (offsetPx < 0f)) return 0f
+    val sameDirection = (velocityPx < 0f) == (offsetPx < 0f)
+    if (!sameDirection) return 0f
     return velocityPx
 }
 
