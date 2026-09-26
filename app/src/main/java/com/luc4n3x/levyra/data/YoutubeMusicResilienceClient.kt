@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import okhttp3.MediaType.Companion.toMediaType
@@ -349,7 +350,7 @@ internal class YoutubeMusicResilienceClient(
         continuation: String,
         query: String
     ): JSONObject {
-        val locale = LevyraContentLocales.forLanguage(languageCode)
+        val locale = YoutubeRegionProfile.effectiveLocale(languageCode)
         val client = JSONObject()
             .put("clientName", profile.clientName)
             .put("clientVersion", profile.clientVersion)
@@ -735,7 +736,7 @@ private class OkHttpYoutubeMusicTransport(context: Context?) : YoutubeMusicTrans
             .post(request.payload.toRequestBody(mediaType))
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .header("Accept-Language", "*")
+            .header("Accept-Language", YoutubeRegionProfile.effectiveAcceptLanguage("*"))
             .header("Referer", request.referer)
             .header("User-Agent", request.profile.userAgent)
             .header("X-Youtube-Client-Name", request.profile.clientHeaderName)

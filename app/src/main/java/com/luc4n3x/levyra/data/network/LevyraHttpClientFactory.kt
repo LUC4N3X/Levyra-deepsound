@@ -90,6 +90,7 @@ object LevyraHttpClientFactory {
             clientGeneration = LevyraNetworkConfiguration.generation
         }
         sharedConnectionPools.forEach { pool -> runCatching { pool.evictAll() } }
+        com.luc4n3x.levyra.data.NewPipeRuntime.onConfigurationChanged()
     }
 
     private fun invalidateIfStale() {
@@ -144,7 +145,7 @@ object LevyraHttpClientFactory {
         invalidateIfStale()
         return mediaClient ?: synchronized(lock) {
             mediaClient ?: mediaBuilder()
-                .let { applyNetworkIntelligence(it, context) }
+                .let { applyYoutubeNetworkIntelligence(it, context) }
                 .let { applyDebugInterceptors(it, context) }
                 .build()
                 .also { mediaClient = it }
@@ -152,15 +153,7 @@ object LevyraHttpClientFactory {
     }
 
     fun streaming(context: Context? = null): OkHttpClient {
-        invalidateIfStale()
-        if (!bypassesProxyForStreams()) return media(context)
-        return streamingClient ?: synchronized(lock) {
-            streamingClient ?: mediaBuilder()
-                .let { applyNetworkIntelligence(it, context, allowProxy = false) }
-                .let { applyDebugInterceptors(it, context) }
-                .build()
-                .also { streamingClient = it }
-        }
+        return media(context)
     }
 
     private fun mediaBuilder(): OkHttpClient.Builder = OkHttpClient.Builder()
@@ -187,7 +180,7 @@ object LevyraHttpClientFactory {
                 .addInterceptor(YoutubeClientIdentityInterceptor)
                 .addInterceptor(BrotliInterceptor)
                 .retryOnConnectionFailure(true)
-                .let { applyNetworkIntelligence(it, context) }
+                .let { applyYoutubeNetworkIntelligence(it, context) }
                 .build()
                 .also { youtubePlayerClient = it }
         }
@@ -222,7 +215,7 @@ object LevyraHttpClientFactory {
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .retryOnConnectionFailure(true)
-                .let { applyNetworkIntelligence(it, null) }
+                .let { applyYoutubeNetworkIntelligence(it, null) }
                 .build()
                 .also { downloadClient = it }
         }
@@ -245,9 +238,18 @@ object LevyraHttpClientFactory {
         }
     }
 
-    private fun bypassesProxyForStreams(): Boolean {
+    private fun applyYoutubeNetworkIntelligence(
+        builder: OkHttpClient.Builder,
+        context: Context?
+    ): OkHttpClient.Builder {
+        context?.let(LevyraNetworkIntelligence::initialize)
         val settings = LevyraNetworkConfiguration.current()
-        return settings.usesProxy && settings.bypassProxyForStreams
+        builder
+            .dns(LevyraNetworkConfiguration.dns())
+            .eventListenerFactory(LevyraNetworkIntelligence.eventListenerFactory)
+            .proxySelector(YoutubeNetworkPolicy.createProxySelector(settings))
+        LevyraNetworkConfiguration.proxyAuthenticator()?.let(builder::proxyAuthenticator)
+        return builder
     }
 
     private fun applyNetworkIntelligence(

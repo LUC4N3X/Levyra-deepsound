@@ -182,6 +182,27 @@ internal object LevyraNetworkIntelligence {
                 outcome = RuntimeSignal.OUTCOME_SUCCESS,
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0)
             )
+            val proxyDesc = when {
+                proxy.type() == Proxy.Type.DIRECT -> "Direct"
+                proxy.type() == Proxy.Type.SOCKS -> "SOCKS(${proxy.address()})"
+                proxy.type() == Proxy.Type.HTTP -> "HTTP(${proxy.address()})"
+                else -> proxy.toString()
+            }
+            if (proxy.type() == Proxy.Type.SOCKS && com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.isRunning()) {
+                val byeDpi = com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.proxy()
+                if (byeDpi != null && proxy.address() == byeDpi.address()) {
+                    com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.recordConnectionSuccess()
+                }
+            }
+            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
+                timber.log.Timber.i(
+                    "[RouteAudit] connected: host=%s port=%d proxy=%s latency=%dms",
+                    call.request().url.host,
+                    call.request().url.port,
+                    proxyDesc,
+                    latencyMs
+                )
+            }
         }
 
         override fun connectFailed(
@@ -211,14 +232,30 @@ internal object LevyraNetworkIntelligence {
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0),
                 failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
             )
+            val proxyDesc = when {
+                proxy.type() == Proxy.Type.DIRECT -> "Direct"
+                proxy.type() == Proxy.Type.SOCKS -> "SOCKS(${proxy.address()})"
+                proxy.type() == Proxy.Type.HTTP -> "HTTP(${proxy.address()})"
+                else -> proxy.toString()
+            }
+            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
+                timber.log.Timber.w(
+                    "[RouteAudit] connectFailed: host=%s port=%d proxy=%s error=%s",
+                    call.request().url.host,
+                    call.request().url.port,
+                    proxyDesc,
+                    ioe.message
+                )
+            }
         }
 
         override fun responseHeadersEnd(call: Call, response: Response) {
             val count = responseCount.incrementAndGet()
+            val totalLatency = callElapsedMs()
             RuntimeHooks.network(
                 host = call.request().url.host,
                 category = RuntimeSignal.NETWORK_HTTP,
-                latencyMs = callElapsedMs(),
+                latencyMs = totalLatency,
                 outcome = if (response.isSuccessful || response.isRedirect) {
                     RuntimeSignal.OUTCOME_SUCCESS
                 } else {
@@ -228,6 +265,15 @@ internal object LevyraNetworkIntelligence {
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0),
                 redirects = (count - 1).coerceAtLeast(0)
             )
+            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
+                timber.log.Timber.i(
+                    "[RouteAudit] response: host=%s port=%d code=%d latency=%dms",
+                    call.request().url.host,
+                    call.request().url.port,
+                    response.code,
+                    totalLatency
+                )
+            }
         }
 
         override fun callEnd(call: Call) {

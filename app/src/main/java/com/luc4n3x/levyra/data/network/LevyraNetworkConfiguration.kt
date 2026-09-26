@@ -81,6 +81,7 @@ internal object LevyraNetworkConfiguration {
     @Synchronized
     fun apply(newSettings: LevyraNetworkSettings, newProxyPassword: String) {
         val normalized = newSettings.normalized()
+        val previous = settings
         if (normalized == settings && newProxyPassword == proxyPassword) return
         settings = normalized
         proxyPassword = newProxyPassword
@@ -88,6 +89,15 @@ internal object LevyraNetworkConfiguration {
         resolvedDnsHolder = ResolvedDnsHolder(LevyraNetworkIntelligence.dns, -1L)
         runCatching { dohConnectionPool.evictAll() }
         runCatching { dohDispatcher.cancelAll() }
+
+        val byeDpiToggledOn = normalized.byeDpiEnabled && (!previous.byeDpiEnabled || !com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.isRunning())
+        val byeDpiToggledOff = !normalized.byeDpiEnabled && (previous.byeDpiEnabled || com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.isRunning())
+        if (byeDpiToggledOn) {
+            com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.start()
+        } else if (byeDpiToggledOff) {
+            com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.stop()
+        }
+
         LevyraHttpClientFactory.onConfigurationChanged()
     }
 

@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -106,7 +107,7 @@ data class YoutubeMusicNativeLyrics(
 
 class YoutubeMusicWatchRepository(private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
-    private val client = LevyraHttpClientFactory.youtubePlayer()
+    private val client get() = LevyraHttpClientFactory.youtubePlayer(context)
 
     suspend fun getWatchPlaylist(
         videoId: String,
@@ -293,6 +294,7 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
             .post(body)
             .header("Accept", "application/json")
             .header("Accept-Encoding", "br,gzip")
+            .header("Accept-Language", YoutubeRegionProfile.effectiveAcceptLanguage("*"))
             .header("Origin", "https://music.youtube.com")
             .header("Referer", "https://music.youtube.com/")
             .header("User-Agent", if (mobile) MOBILE_USER_AGENT else WEB_USER_AGENT)
@@ -310,7 +312,7 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
     }
 
     private fun clientPayload(languageCode: String, mobile: Boolean): JSONObject {
-        val locale = LevyraContentLocales.forLanguage(languageCode)
+        val locale = YoutubeRegionProfile.effectiveLocale(languageCode)
         return if (mobile) {
             JSONObject()
                 .put("clientName", "ANDROID_MUSIC")

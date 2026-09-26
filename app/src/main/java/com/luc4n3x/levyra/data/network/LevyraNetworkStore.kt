@@ -19,7 +19,9 @@ class LevyraNetworkStore(context: Context) {
         proxyPort = preferences.getInt(KEY_PROXY_PORT, LevyraNetworkSettings.DEFAULT_PROXY_PORT),
         proxyUsername = preferences.getString(KEY_PROXY_USERNAME, null).orEmpty(),
         proxyAuthenticationEnabled = preferences.getBoolean(KEY_PROXY_AUTH, false),
-        bypassProxyForStreams = preferences.getBoolean(KEY_STREAM_BYPASS, true)
+        bypassProxyForStreams = preferences.getBoolean(KEY_STREAM_BYPASS, true),
+        byeDpiEnabled = preferences.getBoolean(KEY_BYEDPI_ENABLED, false),
+        youtubeRegionProfileEnabled = preferences.getBoolean(KEY_YOUTUBE_REGION_PROFILE_ENABLED, false)
     ).normalized()
 
     fun proxyPassword(): String =
@@ -42,6 +44,8 @@ class LevyraNetworkStore(context: Context) {
             .putString(KEY_PROXY_USERNAME, normalized.proxyUsername)
             .putBoolean(KEY_PROXY_AUTH, normalized.proxyAuthenticationEnabled)
             .putBoolean(KEY_STREAM_BYPASS, normalized.bypassProxyForStreams)
+            .putBoolean(KEY_BYEDPI_ENABLED, normalized.byeDpiEnabled)
+            .putBoolean(KEY_YOUTUBE_REGION_PROFILE_ENABLED, normalized.youtubeRegionProfileEnabled)
             .apply()
     }
 
@@ -64,6 +68,8 @@ class LevyraNetworkStore(context: Context) {
         const val KEY_PROXY_USERNAME = "proxy_username"
         const val KEY_PROXY_AUTH = "proxy_auth"
         const val KEY_STREAM_BYPASS = "stream_bypass"
+        const val KEY_BYEDPI_ENABLED = "byedpi_enabled"
+        const val KEY_YOUTUBE_REGION_PROFILE_ENABLED = "youtube_region_profile_enabled"
     }
 }
 

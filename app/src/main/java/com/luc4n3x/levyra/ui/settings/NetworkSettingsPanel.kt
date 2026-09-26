@@ -82,6 +82,12 @@ internal fun NetworkSettingsPanel(
     var bypassStreams by rememberSaveable(settings.bypassProxyForStreams) {
         mutableStateOf(settings.bypassProxyForStreams)
     }
+    var byeDpiEnabled by rememberSaveable(settings.byeDpiEnabled) {
+        mutableStateOf(settings.byeDpiEnabled)
+    }
+    var youtubeRegionProfileEnabled by rememberSaveable(settings.youtubeRegionProfileEnabled) {
+        mutableStateOf(settings.youtubeRegionProfileEnabled)
+    }
 
     val edited = LevyraNetworkSettings(
         dnsMode = LevyraDnsMode.fromId(dnsMode),
@@ -91,7 +97,9 @@ internal fun NetworkSettingsPanel(
         proxyPort = proxyPort.toIntOrNull() ?: 0,
         proxyUsername = proxyUsername,
         proxyAuthenticationEnabled = proxyAuth,
-        bypassProxyForStreams = bypassStreams
+        bypassProxyForStreams = bypassStreams,
+        byeDpiEnabled = byeDpiEnabled,
+        youtubeRegionProfileEnabled = youtubeRegionProfileEnabled
     )
     val passwordArgument: String? = when {
         proxyPassword.isNotEmpty() -> proxyPassword
@@ -185,6 +193,23 @@ internal fun NetworkSettingsPanel(
                     subtitle = strings.networkBypassStreamsSubtitle
                 )
             }
+        }
+
+        NetworkCard {
+            Text(strings.networkRestrictedCompatibility, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(strings.networkRestrictedCompatibilitySubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            NetworkToggleRow(
+                label = strings.networkByeDpi,
+                checked = byeDpiEnabled,
+                onCheckedChange = { byeDpiEnabled = it },
+                subtitle = strings.networkByeDpiSubtitle
+            )
+            NetworkToggleRow(
+                label = strings.networkYoutubeRegionProfile,
+                checked = youtubeRegionProfileEnabled,
+                onCheckedChange = { youtubeRegionProfileEnabled = it },
+                subtitle = strings.networkYoutubeRegionProfileSubtitle
+            )
         }
 
         if (errors.isNotEmpty()) {
