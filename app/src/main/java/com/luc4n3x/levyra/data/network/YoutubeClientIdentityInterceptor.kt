@@ -49,7 +49,15 @@ internal object YoutubeClientIdentityInterceptor : Interceptor {
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        return chain.proceed(normalize(chain.request()))
+        val request = normalize(chain.request())
+        val finalRequest = if (YoutubeRegionProfile.isEnabled() && YoutubeNetworkPolicy.isYoutubeHost(request.url.host)) {
+            request.newBuilder()
+                .header("Accept-Language", YoutubeRegionProfile.US_ACCEPT_LANGUAGE)
+                .build()
+        } else {
+            request
+        }
+        return chain.proceed(finalRequest)
     }
 
     internal fun normalize(request: Request): Request {

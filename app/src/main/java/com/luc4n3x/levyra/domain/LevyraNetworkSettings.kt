@@ -35,7 +35,9 @@ data class LevyraNetworkSettings(
     val proxyPort: Int = DEFAULT_PROXY_PORT,
     val proxyUsername: String = "",
     val proxyAuthenticationEnabled: Boolean = false,
-    val bypassProxyForStreams: Boolean = true
+    val bypassProxyForStreams: Boolean = true,
+    val byeDpiEnabled: Boolean = false,
+    val youtubeRegionProfileEnabled: Boolean = false
 ) {
     val usesProxy: Boolean get() = proxyMode != LevyraProxyMode.Disabled
 

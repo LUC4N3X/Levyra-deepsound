@@ -28,6 +28,8 @@ Builds:
     prebuild: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
     scanignore:
       - app/build.gradle.kts
+    scandelete:
+      - app/src/upstream/jniLibs
     gradleprops:
       - levyraFdroidBuild=true
 
