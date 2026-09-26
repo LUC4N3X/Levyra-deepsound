@@ -28,6 +28,7 @@ import com.luc4n3x.levyra.domain.PlaybackStreamProvenance
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.hasReusableVideoPlaybackPayload
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
 import com.luc4n3x.levyra.player.sabr.SabrStreamSpec
 import com.luc4n3x.levyra.runtime.RuntimeHooks
@@ -36,6 +37,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -49,6 +51,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.ServiceList
@@ -326,6 +329,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val MAX_SABR_CANDIDATES = 2
         private const val AUDIO_MANIFEST_MAX_STREAMS = 10
         private const val VIDEO_MANIFEST_MAX_STREAMS = 16
+        private const val VIDEO_LADDER_UPGRADE_BUDGET_MS = 6_000L
         private const val ALTERNATIVE_STREAM_QUARANTINE_MS = 30L * 60L * 1000L
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
@@ -598,7 +602,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 !isPlaybackUrlBlocked(track.streamUrl) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
-                (!isVideoMode || track.hasVideoPlaybackPayload()) &&
+                (!isVideoMode || track.hasReusableVideoPlaybackPayload()) &&
                 streamStillFresh(track.streamUrl)
             if (valid) {
                 RuntimeHooks.cache(RuntimeSignal.CACHE_HIT)
@@ -1159,7 +1163,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 !isPlaybackUrlBlocked(it) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 streamStillFresh(it) &&
-                (if (isVideoMode) track.hasVideoPlaybackPayload() else isPlayableAudioUrl(it)) &&
+                (if (isVideoMode) track.hasReusableVideoPlaybackPayload() else isPlayableAudioUrl(it)) &&
                 (
                     !preferMp4Audio ||
                         track.playbackManifest?.let(::supportsOfflineExport) == true ||
@@ -1216,7 +1220,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
-            if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
+            if (isVideoMode && !track.hasReusableVideoPlaybackPayload()) return null
             if (track.playbackManifest?.alternativeSource != null) {
                 val expiresAt = track.playbackManifest.expiresAtMs
                 if (expiresAt > 0L && System.currentTimeMillis() + 90_000L >= expiresAt) return null
@@ -1455,61 +1459,88 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         val policy = playbackPolicyStore.current()
+        suspend fun accept(attempt: VideoStrategyAttempt, remember: Boolean = true): Track {
+            val (attemptIndex, strategy, resolved, elapsedMs) = attempt
+            strategyHealth.recordSuccess(VIDEO_HEALTH_MODE, strategy.name, elapsedMs)
+            RuntimeHooks.resolver(
+                mode = RuntimeSignal.MODE_VIDEO,
+                strategy = strategy.ordinal,
+                client = -1,
+                attempt = attemptIndex + 1,
+                latencyMs = elapsedMs,
+                outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                failure = -1,
+                manifest = resolved.playbackManifest
+            )
+            rememberStrategyOrigin(resolved, VIDEO_HEALTH_MODE, strategy.name, expectedGeneration)
+            if (!remember) return resolved
+            store(track, resolved, true, audioQuality, expectedGeneration = expectedGeneration)
+            val confidence = when (strategy) {
+                PlaybackVideoStrategy.PERSISTED -> null
+                PlaybackVideoStrategy.STANDARD -> 92
+                PlaybackVideoStrategy.REEL -> 78
+            }
+            confidence?.let {
+                persistResolvedSource(
+                    original = track,
+                    resolved = resolved,
+                    isVideoMode = true,
+                    audioQuality = audioQuality,
+                    confidence = it,
+                    preferMp4Audio = false,
+                    expectedGeneration = expectedGeneration
+                )
+            }
+            return resolved
+        }
+        suspend fun attempt(strategy: PlaybackVideoStrategy, attemptErrors: MutableList<String>): Track? = when (strategy) {
+            PlaybackVideoStrategy.PERSISTED -> restorePersistentSource(
+                track = track,
+                isVideoMode = true,
+                preferMp4Audio = false,
+                audioQuality = audioQuality,
+                errors = attemptErrors,
+                expectedGeneration = expectedGeneration
+            )
+
+            PlaybackVideoStrategy.STANDARD -> resolveStandardVideo(track, audioQuality, attemptErrors)
+            PlaybackVideoStrategy.REEL -> runCatchingPreservingCancellation {
+                resolveVideoWithAndroidReel(track)
+            }.onFailure { error ->
+                attemptErrors += "Android Reel: ${error.playbackDiagnostic()}"
+            }.getOrNull()
+        }
+        var muxedOnlyFallback: VideoStrategyAttempt? = null
+        var upgradeTimedOut = false
         for ((attemptIndex, strategy) in strategyHealth.order(VIDEO_HEALTH_MODE, policy.videoStrategies).withIndex()) {
             currentCoroutineContext().ensureActive()
             RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
             if (attemptIndex > 0) RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
             val startedAt = System.currentTimeMillis()
             val errorsBefore = errors.size
-            val resolved = when (strategy) {
-                PlaybackVideoStrategy.PERSISTED -> restorePersistentSource(
-                    track = track,
-                    isVideoMode = true,
-                    preferMp4Audio = false,
-                    audioQuality = audioQuality,
-                    errors = errors,
-                    expectedGeneration = expectedGeneration
-                )
-
-                PlaybackVideoStrategy.STANDARD -> resolveStandardVideo(track, audioQuality, errors)
-                PlaybackVideoStrategy.REEL -> runCatchingPreservingCancellation {
-                    resolveVideoWithAndroidReel(track)
-                }.onFailure { error ->
-                    errors += "Android Reel: ${error.playbackDiagnostic()}"
-                }.getOrNull()
+            val resolved = if (muxedOnlyFallback == null) {
+                attempt(strategy, errors)
+            } else {
+                val upgradeErrors = Collections.synchronizedList(mutableListOf<String>())
+                val upgrade = resolveScope.async { attempt(strategy, upgradeErrors) }
+                val finished = try {
+                    withTimeoutOrNull(VIDEO_LADDER_UPGRADE_BUDGET_MS) { upgrade.join() } != null
+                } finally {
+                    if (!upgrade.isCompleted) upgrade.cancel()
+                }
+                if (!finished) {
+                    upgradeTimedOut = true
+                    continue
+                }
+                errors += synchronized(upgradeErrors) { upgradeErrors.toList() }
+                runCatchingPreservingCancellation { upgrade.await() }.getOrNull()
             }
             val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
-                strategyHealth.recordSuccess(VIDEO_HEALTH_MODE, strategy.name, elapsedMs)
-                RuntimeHooks.resolver(
-                    mode = RuntimeSignal.MODE_VIDEO,
-                    strategy = strategy.ordinal,
-                    client = -1,
-                    attempt = attemptIndex + 1,
-                    latencyMs = elapsedMs,
-                    outcome = RuntimeSignal.OUTCOME_SUCCESS,
-                    failure = -1,
-                    manifest = resolved.playbackManifest
-                )
-                rememberStrategyOrigin(resolved, VIDEO_HEALTH_MODE, strategy.name, expectedGeneration)
-                store(track, resolved, true, audioQuality, expectedGeneration = expectedGeneration)
-                val confidence = when (strategy) {
-                    PlaybackVideoStrategy.PERSISTED -> null
-                    PlaybackVideoStrategy.STANDARD -> 92
-                    PlaybackVideoStrategy.REEL -> 78
-                }
-                confidence?.let {
-                    persistResolvedSource(
-                        original = track,
-                        resolved = resolved,
-                        isVideoMode = true,
-                        audioQuality = audioQuality,
-                        confidence = it,
-                        preferMp4Audio = false,
-                        expectedGeneration = expectedGeneration
-                    )
-                }
-                return resolved
+                val result = VideoStrategyAttempt(attemptIndex, strategy, resolved, elapsedMs)
+                if (resolved.hasReusableVideoPlaybackPayload()) return accept(result)
+                if (muxedOnlyFallback == null) muxedOnlyFallback = result
+                continue
             }
             val failureReason = synchronized(errors) { errors.toList() }
         .drop(errorsBefore)
@@ -1531,8 +1562,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                 failure = failureKind.ordinal
             )
         }
-        return null
+        return muxedOnlyFallback?.let { accept(it, remember = !upgradeTimedOut) }
     }
+
+    private data class VideoStrategyAttempt(
+        val attemptIndex: Int,
+        val strategy: PlaybackVideoStrategy,
+        val resolved: Track,
+        val elapsedMs: Long
+    )
 
     private suspend fun resolveStandardVideo(
         track: Track,
@@ -1540,13 +1578,21 @@ class PlaybackResolver private constructor(private val context: Context) {
         errors: MutableList<String>
     ): Track? = coroutineScope {
         val winner = CompletableDeferred<Track?>()
+        val muxedOnlyFallback = AtomicReference<Track?>(null)
+        fun offer(candidate: Track) {
+            if (candidate.hasReusableVideoPlaybackPayload()) {
+                winner.complete(candidate)
+            } else {
+                muxedOnlyFallback.compareAndSet(null, candidate)
+            }
+        }
         val extractorJob = launch {
             delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
             if (winner.isCompleted) return@launch
             val result = runCatchingPreservingCancellation {
                 resolveVideoWithLevyraExtractor(track, audioQuality)
             }
-            result.onSuccess { winner.complete(it) }
+            result.onSuccess { offer(it) }
                 .onFailure { error ->
                     errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
                 }
@@ -1557,12 +1603,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             val stream = runCatchingPreservingCancellation {
                 hedgedInnerTube(track, errors, true, audioQuality)
             }.getOrNull()
-            if (stream != null) winner.complete(track.withDirectStream(stream))
+            if (stream != null) offer(track.withDirectStream(stream))
         }
         launch {
             extractorJob.join()
             innerTubeJob.join()
-            winner.complete(null)
+            winner.complete(muxedOnlyFallback.get())
         }
         val result = winner.await()
         coroutineContext.cancelChildren()
@@ -3063,7 +3109,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             profile = profile,
             visitorData = session.visitorData,
             playerPoToken = poTokens?.playerToken,
-            signatureTimestamp = signatureTimestamp
+            signatureTimestamp = signatureTimestamp,
+            isVideoMode = isVideoMode
         ).toString()
         val requestBuilder = Request.Builder()
             .url(endpoint)
@@ -4063,7 +4110,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         profile: ClientProfile,
         visitorData: String,
         playerPoToken: String?,
-        signatureTimestamp: Int?
+        signatureTimestamp: Int?,
+        isVideoMode: Boolean
     ): JSONObject {
         val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
         val client = JSONObject()
@@ -4107,7 +4155,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("contentCheckOk", true)
             .put("racyCheckOk", true)
             .put("playbackContext", JSONObject().put("contentPlaybackContext", contentPlaybackContext))
-            .put("params", "CgIQBg")
+            .apply { if (!isVideoMode) put("params", "CgIQBg") }
             .put("watchEndpointMusicSupportedConfigs", JSONObject().put("watchEndpointMusicConfig", JSONObject().put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")))
             .apply {
                 playerPoToken?.takeIf { it.isNotBlank() }?.let {

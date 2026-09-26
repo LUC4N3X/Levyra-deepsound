@@ -2961,7 +2961,7 @@ private class LevyraMediaSourceFactory(
             .build()
         val videoSource = mediaSourceFor(videoItem)
 
-        return MergingMediaSource(true, true, videoSource, audioSource)
+        return MergingMediaSource(true, true, audioSource, videoSource)
     }
 
     private fun mediaSourceFor(mediaItem: MediaItem): MediaSource {
