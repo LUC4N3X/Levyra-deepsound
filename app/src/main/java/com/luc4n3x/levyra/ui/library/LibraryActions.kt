@@ -1103,7 +1103,10 @@ internal fun LibraryNowPlayingDock(
     isPlaying: Boolean,
     onToggle: () -> Unit,
     onOpen: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNext: (() -> Unit)? = null,
+    nextEnabled: Boolean = true,
+    nextLabel: String = ""
 ) {
     val strings = LocalLevyraStrings.current
     Surface(
@@ -1139,6 +1142,15 @@ internal fun LibraryNowPlayingDock(
                     contentDescription = if (isPlaying) strings.pause else strings.play,
                     tint = LevyraCyan
                 )
+            }
+            if (onNext != null) {
+                IconButton(onClick = onNext, enabled = nextEnabled) {
+                    Icon(
+                        Icons.Rounded.SkipNext,
+                        contentDescription = nextLabel.ifBlank { strings.next },
+                        tint = if (nextEnabled) LevyraText else LevyraMuted.copy(alpha = 0.4f)
+                    )
+                }
             }
         }
     }

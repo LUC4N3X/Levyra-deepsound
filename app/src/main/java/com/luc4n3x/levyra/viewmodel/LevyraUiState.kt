@@ -12,6 +12,7 @@ import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.RecommendationFeedback
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
+import com.luc4n3x.levyra.domain.PlaylistHitPreview
 import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumDetail
@@ -287,6 +288,7 @@ data class LevyraUiState(
     val backupLocationUri: String? = null,
     val preUpdateBackupFailed: Boolean = false,
     val sharedMediaPreview: SharedMediaPreview? = null,
+    val playlistHitPreview: PlaylistHitPreview? = null,
     val intelligenceSummary: LevyraIntelligenceSummary = LevyraIntelligenceSummary(),
     val backupMessage: String? = null,
     val playbackDiagnostics: String = "",
