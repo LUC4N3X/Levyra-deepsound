@@ -171,35 +171,23 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 ### Playback
 
-Levyra runs on native playback engines rather than a bundled browser: Media3 and ExoPlayer on Android, and libVLC through native bindings on Windows.
+Levyra runs directly on native audio engines instead of wrapping a web browser: Media3 and ExoPlayer on Android, and libVLC through direct bindings on Windows. Live albums and concept records play without gaps, with optional crossfade, pitch shifting, and custom speed when you want them.
 
-- True gapless playback for albums, with optional crossfade and manual pitch and speed controls.
-- A built-in 10-band equalizer and AutoEQ profiles tuned for supported headphones.
-- SponsorBlock integration to automatically skip sponsored spots, dialogue, and non-music intros.
-- Clean switching between audio-only playback and full video with subtitle tracks.
-- Android system support: Android Auto, lockscreen controls, media notifications, and a Quick Settings tile.
+There is a built-in 10-band equalizer alongside AutoEQ headphone profiles so you do not have to mess with external DSP apps. When watching music videos, you can switch back and forth between video with subtitles and an audio-only stream. SponsorBlock skips intros, chatter, and promotional segments automatically. On Android, playback ties straight into the system through Android Auto, lockscreen controls, persistent notifications, and a Quick Settings tile.
 
 ### Library and offline storage
 
-I never liked players that trap downloads inside a proprietary sandbox. When you download a track in Levyra, it gets saved directly to device storage as a standard M4A file with embedded tags, artwork, and lyrics.
+I never liked music apps that lock offline tracks inside an encrypted cache. When you download a song in Levyra, it writes a standard M4A file straight to your device storage, tagged with metadata, embedded artwork, and lyrics. Those files are yours; you can copy them anywhere or open them in another player.
 
-- Local audio files and streamed songs share the same library, playlists, and queues.
-- Queue Spaces keep separate listening queues so you can start a new session without losing your current queue.
-- Levyra Vault exports your playlists, favorites, listening history, and settings into one local backup file.
-- Quick organization with tag filters, playlist sorting, and artist exclusions.
+Local files and streamed music sit side by side in the same library, playlists, and queues. If you want to jump into an album without blowing away what you were already listening to, Queue Spaces keep multiple queues active side by side. Library management stays straightforward with tag filtering, custom playlist sorting, and artist exclusions. When moving devices, Levyra Vault exports your playlists, favorites, listening history, and settings into one local backup file.
 
 ### Lyrics, discovery, and extras
 
-Synced lyrics were one of the features I spent the most time refining.
+Synced lyrics were one of the features I spent the most time getting right. Tapping any line jumps straight to that second in the track, and you can nudge the timing by hand or set a dedicated offset to fix Bluetooth latency. Non-Latin lyrics can be romanized on the fly, and you can export selected lines into lyric cards.
 
-- Tap any synced line to jump straight to that moment. You can fine-tune timing manually or save a separate offset to correct Bluetooth latency.
-- Romanization for lyrics in non-Latin alphabets, plus an option to export selected lines into lyric cards.
-- Motion artwork on the Now Playing screen, with animated cover art as a fallback.
-- Explore tab featuring live radio stations, global charts, and genre or mood browsing.
-- Song recognition that listens through the microphone or device audio, storing results locally on your device.
-- Private listening statistics (play counts and weekly listening time) calculated on-device, with optional Last.fm and ListenBrainz scrobbling.
+The Now Playing screen displays motion artwork when available, falling back to animated album covers. The Explore section brings together live radio stations, international charts, and mood or genre stations without needing an account. For music discovery on the go, built-in song recognition listens through the microphone or internal device audio and saves identified tracks directly into your local history. Listening stats like play counts and weekly listening hours are calculated entirely on your device, with optional scrobbling to Last.fm and ListenBrainz.
 
-Technical notes, platform details, and architecture documentation are available in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+For full technical notes, platform architecture, and build details, check the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ## ✦ Under the hood
 
