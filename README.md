@@ -280,33 +280,33 @@ Levyra is a personal project. I maintain the Android and Windows apps, review ch
 
 </div>
 
-#### Third-party services and content
+#### - Third-party services and content
 
 Levyra is client-side software that runs on your device. It does not own or host music catalogs, artwork, lyrics, or video files. When you stream or search, Levyra connects to the external services needed for that feature. Those services can change, rate-limit, or restrict access at any time.
 
 If there is a problem with media hosted by another service, contact that service or the relevant rights holder. If the issue is with something distributed as part of Levyra itself, use the GitHub issue tracker.
 
-#### Lawful use and user responsibility
+#### - Lawful use and user responsibility
 
 Levyra is built for lawful use, research, and interoperability, not for piracy or copyright infringement. Streaming, downloading, format conversion, and offline caching are software features. They do not transfer copyright or ownership of third-party media.
 
 Levyra may cache media temporarily for playback and can save user-requested downloads as standard media files. Neither feature gives you permission to redistribute third-party content. You are responsible for making sure your use of Levyra complies with applicable law and with the terms of any third-party service you choose to access.
 
-#### Support artists and creators
+#### - Support artists and creators
 
 Levyra does not unlock paid subscriptions or grant access rights offered by third-party providers. If you want an official subscription experience, subscribe directly through the provider, including [YouTube Premium](https://www.youtube.com/premium), [YouTube Music Premium](https://www.youtube.com/musicpremium), or [Spotify Premium](https://www.spotify.com/premium/).
 
 You can also support artists directly through licensed streaming services, music purchases, concerts, merchandise, and other official channels.
 
-#### Privacy
+#### - Privacy
 
 Levyra does not require a Levyra account and does not include telemetry, analytics, or ads. Network requests go directly to the services used by the features you enable, including optional integrations.
 
-#### Technical interoperability and access restrictions
+#### - Technical interoperability and access restrictions
 
 Levyra includes client-side code for compatibility with external services. It handles things like stream resolution, requests, and tokens so those integrations can work. These are interoperability features, not tools for bypassing access controls, geographic restrictions, or paid entitlements.
 
-#### Warranty and third-party availability
+#### - Warranty and third-party availability
 
 Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided "as is", without warranty of any kind, to the fullest extent permitted by applicable law.
 
