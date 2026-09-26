@@ -53,6 +53,16 @@ class PlaybackResourceLifecycleContractTest {
         assertFalse(viewModel.contains("PlaybackService.normalizationProcessor"))
     }
 
+    @Test
+    fun `service queue prefetch respects disabled preload setting`() {
+        val service = readSource("player/PlaybackService.kt")
+        val prepareStart = service.indexOf("private fun prepareQueueNextInternal")
+        val prepareEnd = service.indexOf("private fun queuePairStillCurrent", prepareStart)
+        val prepare = service.substring(prepareStart, prepareEnd)
+
+        assertTrue(prepare.contains("if (!currentAudioSettings.preloadNextTrack) return false"))
+    }
+
     private fun readSource(relativePath: String): String =
         Files.readString(sourceFile(relativePath)).replace("\r\n", "\n")
 

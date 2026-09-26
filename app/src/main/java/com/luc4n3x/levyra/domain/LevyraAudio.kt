@@ -69,6 +69,7 @@ data class LevyraAudioSettings(
     val playbackSpeed: Float = 1f,
     val pitch: Float = 1f,
     val gaplessEnabled: Boolean = true,
+    val preloadNextTrack: Boolean = true,
     val aaudioOutputEnabled: Boolean = false,
     val customPresets: List<LevyraAudioPreset> = emptyList(),
     val parametricEqualizerEnabled: Boolean = false,
@@ -213,3 +214,5 @@ object LevyraAudioPresets {
 
     fun labelFor(id: String): String = preset(id).fallbackLabel
 }
+
+fun queuePrefetchAllowed(settings: LevyraAudioSettings): Boolean = settings.preloadNextTrack

@@ -2580,6 +2580,7 @@ fun LevyraApp(
                     onTempo = viewModel::setPlaybackSpeed,
                     onPitch = viewModel::setPitch,
                     onGapless = viewModel::setGaplessEnabled,
+                    onPreloadNextTrack = viewModel::setPreloadNextTrack,
                     aaudioOutputAvailable = remember { NativeAudioIntegration.isAaudioOutputSupported() },
                     onAaudioOutput = viewModel::setAaudioOutputEnabled,
                     onResetEqualizer = viewModel::resetEqualizer,

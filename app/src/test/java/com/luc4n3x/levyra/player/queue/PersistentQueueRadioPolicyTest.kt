@@ -115,6 +115,79 @@ class PersistentQueueRadioPolicyTest {
         assertEquals(listOf("1", "3", "2"), updated.map(Track::id))
     }
 
+    @Test
+    fun candidatePoolRejectsUploadVariantsOfTheSameSong() {
+        val existing = listOf(track("seed", "Paradise", artist = "Coldplay"))
+
+        val selected = radioCandidateTracks(
+            existingTracks = existing,
+            candidates = listOf(
+                track("video", "Paradise (Official Video)", artist = "Coldplay"),
+                track("lyrics", "Coldplay - Paradise [Lyrics]", artist = "Coldplay - Topic"),
+                track("audio", "Paradise - Official Audio", artist = "Coldplay, Rihanna"),
+                track("remaster", "Paradise (Remastered 2011)", artist = "COLDPLAY"),
+                track("seed", "Paradise", artist = "Coldplay"),
+                track("fresh", "Fix You", artist = "Coldplay")
+            ),
+            limit = 5
+        )
+
+        assertEquals(listOf("fresh"), selected.map(Track::id))
+    }
+
+    @Test
+    fun candidatePoolKeepsDistinctRecordingsAndOtherArtists() {
+        val existing = listOf(track("seed", "Paradise", artist = "Coldplay"))
+
+        val selected = radioCandidateTracks(
+            existingTracks = existing,
+            candidates = listOf(
+                track("other-artist", "Paradise", artist = "Sade"),
+                track("remix", "Paradise (Tiesto Remix)", artist = "Coldplay"),
+                track("live", "Paradise (Live)", artist = "Coldplay"),
+                track("generic", "Intro", artist = "The xx"),
+                track("generic-other", "Intro", artist = "M83")
+            ),
+            limit = 5
+        )
+
+        assertEquals(
+            listOf("other-artist", "remix", "live", "generic", "generic-other"),
+            selected.map(Track::id)
+        )
+    }
+
+    @Test
+    fun candidatePoolDeduplicatesVariantsInsideOneBatch() {
+        val selected = radioCandidateTracks(
+            existingTracks = emptyList(),
+            candidates = listOf(
+                track("a", "Lose Yourself", artist = "Eminem"),
+                track("b", "Lose Yourself (Official Music Video)", artist = "EminemVEVO"),
+                track("c", "Stan", artist = "Eminem feat. Dido")
+            ),
+            limit = 5
+        )
+
+        assertEquals(listOf("a", "c"), selected.map(Track::id))
+    }
+
+    @Test
+    fun candidatePoolDoesNotTreatFeatOrFtPrefixesAsCredits() {
+        val existing = listOf(track("feature", "Same Song", artist = "Feature"))
+
+        val selected = radioCandidateTracks(
+            existingTracks = existing,
+            candidates = listOf(
+                track("ftisland", "Same Song", artist = "FTISLAND"),
+                track("feature-fresh", "Different Song", artist = "Feature")
+            ),
+            limit = 5
+        )
+
+        assertEquals(listOf("ftisland", "feature-fresh"), selected.map(Track::id))
+    }
+
     private fun track(id: String, title: String, artist: String = "Artist") = Track(
         id = id,
         title = title,
