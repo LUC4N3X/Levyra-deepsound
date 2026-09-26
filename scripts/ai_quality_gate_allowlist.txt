@@ -13,6 +13,10 @@ docs/assets/showcase/cards/05_search_artist.webp
 docs/assets/showcase/cards/06_artist_discography.webp
 docs/assets/showcase/cards/07_genres.webp
 docs/assets/showcase/cards/08_keep_it_personal.webp
+docs/assets/showcase/cards/09_artist_profile.webp
+docs/assets/showcase/cards/10_album.webp
+docs/assets/showcase/cards/11_search.webp
+docs/assets/showcase/cards/12_player_settings.webp
 docs/assets/showcase/01_playback_and_lyrics.webp
 docs/assets/showcase/02_home_and_charts.webp
 docs/assets/showcase/03_search_and_artist.webp
@@ -33,6 +37,10 @@ docs/assets/screenshots/explore_genres.webp
 docs/assets/screenshots/explore_samples.webp
 docs/assets/screenshots/genres.webp
 docs/assets/screenshots/home.webp
+docs/assets/screenshots/artist_profile.webp
+docs/assets/screenshots/album.webp
+docs/assets/screenshots/search.webp
+docs/assets/screenshots/player_settings.webp
 docs/assets/screenshots/home_collections.webp
 docs/assets/screenshots/home_orbit.webp
 docs/assets/screenshots/home_top50.webp

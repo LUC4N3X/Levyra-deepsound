@@ -156,6 +156,12 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
   <a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp" width="200" alt="Levyra moods and genres" /></a>
   <a href="docs/assets/showcase/cards/08_keep_it_personal.webp"><img src="docs/assets/showcase/cards/08_keep_it_personal.webp" width="200" alt="Levyra private listening stats" /></a>
 </p>
+<p align="center">
+  <a href="docs/assets/showcase/cards/09_artist_profile.webp"><img src="docs/assets/showcase/cards/09_artist_profile.webp" width="200" alt="Levyra artist profile and biography" /></a>
+  <a href="docs/assets/showcase/cards/10_album.webp"><img src="docs/assets/showcase/cards/10_album.webp" width="200" alt="Levyra album details and tracklist" /></a>
+  <a href="docs/assets/showcase/cards/11_search.webp"><img src="docs/assets/showcase/cards/11_search.webp" width="200" alt="Levyra search history and artists" /></a>
+  <a href="docs/assets/showcase/cards/12_player_settings.webp"><img src="docs/assets/showcase/cards/12_player_settings.webp" width="200" alt="Levyra player settings" /></a>
+</p>
 
 </div>
 

@@ -20,6 +20,10 @@ SCREENS = {
     "now_playing": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_193948_LEVYRA.jpg",
     "search_artist": "screen-search-artist.jpg",
     "artist_discography": "screen-artist-discography.jpg",
+    "artist_profile": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_194603_LEVYRA.jpg",
+    "album": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_194706_LEVYRA.jpg",
+    "search": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_194736_LEVYRA.jpg",
+    "player_settings": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_194845_LEVYRA.jpg",
 }
 
 def get_screen_path(filename):
@@ -380,6 +384,10 @@ def generate_feature_cards():
         ("artist_discography", "06", "Go deeper", "Popular tracks, albums,\nsingles, and EPs.", (235, 215, 208), (198, 139, 124)),
         ("genres", "07", "Pick a direction", "Move through moods\nand genres quickly.", (207, 227, 220), (128, 182, 168)),
         ("listening_pulse", "08", "Keep it personal", "Private listening stats,\ncomputed on this device.", (212, 216, 237), (139, 149, 200)),
+        ("artist_profile", "09", "Meet the artist", "Biography, audience,\nand popular tracks.", (228, 225, 204), (174, 163, 96)),
+        ("album", "10", "Open the whole album", "Artwork, context,\nand a complete tracklist.", (238, 221, 203), (199, 151, 106)),
+        ("search", "11", "Find it fast", "Recent music and artists,\nready when you return.", (205, 228, 231), (105, 177, 181)),
+        ("player_settings", "12", "Shape the playback", "Radio, sleep timer,\nquality, and more.", (232, 211, 226), (190, 127, 169)),
     ]
 
     label_font = get_font(19, bold=True)
