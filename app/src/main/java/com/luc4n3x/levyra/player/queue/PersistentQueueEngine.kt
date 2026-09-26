@@ -160,8 +160,48 @@ internal fun radioCandidateTracks(
 internal fun radioInsertionIndex(currentIndex: Int, queueSize: Int, afterCurrent: Boolean): Int =
     if (afterCurrent) (currentIndex + 1).coerceIn(0, queueSize) else queueSize
 
-internal fun radioTitleKey(track: Track): String =
-    "${track.artist.trim().lowercase(Locale.ROOT)}|${track.title.trim().lowercase(Locale.ROOT)}"
+internal fun radioTitleKey(track: Track): String {
+    val artist = radioPrimaryArtist(track.artist)
+    return "$artist|${radioSongTitle(track.title, artist)}"
+}
+
+private const val RADIO_ARTIST_TITLE_SEPARATOR = " - "
+
+private fun radioPrimaryArtist(artist: String): String =
+    artist.lowercase(Locale.ROOT)
+        .split(RADIO_ARTIST_SEPARATOR, limit = 2)
+        .first()
+        .replace(RADIO_ARTIST_CHANNEL_SUFFIX, "")
+        .trim()
+
+private fun radioSongTitle(title: String, primaryArtist: String): String {
+    val lowered = title.lowercase(Locale.ROOT)
+    val prefix = primaryArtist + RADIO_ARTIST_TITLE_SEPARATOR
+    val withoutArtistPrefix = if (primaryArtist.isNotEmpty() && lowered.startsWith(prefix)) {
+        lowered.substring(prefix.length)
+    } else {
+        lowered
+    }
+    return withoutArtistPrefix
+        .replace(RADIO_TITLE_NOISE_GROUP, "")
+        .replace(RADIO_TITLE_NOISE_SUFFIX, "")
+        .replace(RADIO_TITLE_SPACES, " ")
+        .trim()
+        .ifEmpty { lowered.trim() }
+}
+
+private val RADIO_ARTIST_SEPARATOR = Regex("\\s*(?:,|&|\\bfeat\\.?|\\bft\\.?)\\s*")
+private val RADIO_ARTIST_CHANNEL_SUFFIX = Regex("\\s*(?:-\\s*topic|vevo)$")
+private const val RADIO_TITLE_NOISE_WORDS =
+    "official|music|video|audio|lyrics?|visuali[sz]er|hd|hq|4k|mv|m/v|" +
+        "remaster(?:ed)?(?:\\s+\\d{4})?|\\d{4}\\s+remaster(?:ed)?"
+private val RADIO_TITLE_NOISE_GROUP = Regex(
+    "\\s*[(\\[](?:\\s*(?:$RADIO_TITLE_NOISE_WORDS)[\\s./-]*)+[)\\]]"
+)
+private val RADIO_TITLE_NOISE_SUFFIX = Regex(
+    "\\s+-\\s+(?:(?:$RADIO_TITLE_NOISE_WORDS)[\\s./-]*)+$"
+)
+private val RADIO_TITLE_SPACES = Regex("\\s+")
 
 class PersistentQueueEngine internal constructor(
     private val store: QueueSpaceStorage,
