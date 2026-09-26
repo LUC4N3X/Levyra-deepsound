@@ -62,3 +62,7 @@ docs/assets/levyra-windows-download.png
 docs/assets/AndroidFreeware.png
 docs/branding/openapk-icon.png
 docs/assets/levyra_ad.png
+app/src/main/jniLibs/arm64-v8a/libbyedpi.so
+app/src/main/jniLibs/armeabi-v7a/libbyedpi.so
+app/src/main/jniLibs/x86/libbyedpi.so
+app/src/main/jniLibs/x86_64/libbyedpi.so

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.nexus.network.LevyraAddressFamily
 import com.luc4n3x.levyra.nexus.network.LevyraRoute
 import com.luc4n3x.levyra.nexus.network.LevyraRouteEngine
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import timber.log.Timber
 import javax.net.ssl.SSLException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -182,6 +184,29 @@ internal object LevyraNetworkIntelligence {
                 outcome = RuntimeSignal.OUTCOME_SUCCESS,
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0)
             )
+            val proxyDesc = when {
+                proxy.type() == Proxy.Type.DIRECT -> "Direct"
+                proxy.type() == Proxy.Type.SOCKS -> "SOCKS(${proxy.address()})"
+                proxy.type() == Proxy.Type.HTTP -> "HTTP(${proxy.address()})"
+                else -> proxy.toString()
+            }
+            if (proxy.type() == Proxy.Type.SOCKS && ByeDpiSupervisor.isRunning()) {
+                val byeDpi = ByeDpiSupervisor.proxy()
+                val byeAddr = byeDpi?.address() as? InetSocketAddress
+                val proxyAddr = proxy.address() as? InetSocketAddress
+                if (byeAddr != null && proxyAddr != null && proxyAddr.port == byeAddr.port) {
+                    ByeDpiSupervisor.recordConnectionSuccess()
+                }
+            }
+            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
+                Timber.i(
+                    "[RouteAudit] connected: host=%s port=%d proxy=%s latency=%dms",
+                    call.request().url.host,
+                    call.request().url.port,
+                    proxyDesc,
+                    latencyMs
+                )
+            }
         }
 
         override fun connectFailed(
@@ -211,14 +236,30 @@ internal object LevyraNetworkIntelligence {
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0),
                 failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
             )
+            val proxyDesc = when {
+                proxy.type() == Proxy.Type.DIRECT -> "Direct"
+                proxy.type() == Proxy.Type.SOCKS -> "SOCKS(${proxy.address()})"
+                proxy.type() == Proxy.Type.HTTP -> "HTTP(${proxy.address()})"
+                else -> proxy.toString()
+            }
+            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
+                Timber.w(
+                    "[RouteAudit] connectFailed: host=%s port=%d proxy=%s error=%s",
+                    call.request().url.host,
+                    call.request().url.port,
+                    proxyDesc,
+                    ioe.message
+                )
+            }
         }
 
         override fun responseHeadersEnd(call: Call, response: Response) {
             val count = responseCount.incrementAndGet()
+            val totalLatency = callElapsedMs()
             RuntimeHooks.network(
                 host = call.request().url.host,
                 category = RuntimeSignal.NETWORK_HTTP,
-                latencyMs = callElapsedMs(),
+                latencyMs = totalLatency,
                 outcome = if (response.isSuccessful || response.isRedirect) {
                     RuntimeSignal.OUTCOME_SUCCESS
                 } else {
@@ -228,6 +269,15 @@ internal object LevyraNetworkIntelligence {
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0),
                 redirects = (count - 1).coerceAtLeast(0)
             )
+            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
+                Timber.i(
+                    "[RouteAudit] response: host=%s port=%d code=%d latency=%dms",
+                    call.request().url.host,
+                    call.request().url.port,
+                    response.code,
+                    totalLatency
+                )
+            }
         }
 
         override fun callEnd(call: Call) {

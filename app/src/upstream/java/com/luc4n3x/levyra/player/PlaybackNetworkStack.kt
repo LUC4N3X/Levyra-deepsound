@@ -12,6 +12,7 @@ import androidx.media3.datasource.cronet.CronetDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import java.io.EOFException
 import java.io.InterruptedIOException
 import java.net.ConnectException
@@ -127,7 +128,8 @@ object PlaybackNetworkStack {
 
     private fun shouldBypassCronetForProxy(): Boolean {
         val settings = LevyraNetworkConfiguration.current()
-        return settings.usesProxy && !settings.bypassProxyForStreams
+        return (settings.usesProxy && !settings.bypassProxyForStreams) ||
+            (settings.byeDpiEnabled && ByeDpiSupervisor.isRunning())
     }
 
     private fun createOkHttpFactory(): HttpDataSource.Factory {

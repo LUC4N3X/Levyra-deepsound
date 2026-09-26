@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.domain.LevyraDnsMode
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import com.luc4n3x.levyra.domain.LevyraNetworkSettingsError
@@ -82,6 +83,12 @@ internal fun NetworkSettingsPanel(
     var bypassStreams by rememberSaveable(settings.bypassProxyForStreams) {
         mutableStateOf(settings.bypassProxyForStreams)
     }
+    var byeDpiEnabled by rememberSaveable(settings.byeDpiEnabled) {
+        mutableStateOf(settings.byeDpiEnabled)
+    }
+    var youtubeRegionProfileEnabled by rememberSaveable(settings.youtubeRegionProfileEnabled) {
+        mutableStateOf(settings.youtubeRegionProfileEnabled)
+    }
 
     val edited = LevyraNetworkSettings(
         dnsMode = LevyraDnsMode.fromId(dnsMode),
@@ -91,7 +98,9 @@ internal fun NetworkSettingsPanel(
         proxyPort = proxyPort.toIntOrNull() ?: 0,
         proxyUsername = proxyUsername,
         proxyAuthenticationEnabled = proxyAuth,
-        bypassProxyForStreams = bypassStreams
+        bypassProxyForStreams = bypassStreams,
+        byeDpiEnabled = byeDpiEnabled,
+        youtubeRegionProfileEnabled = youtubeRegionProfileEnabled
     )
     val passwordArgument: String? = when {
         proxyPassword.isNotEmpty() -> proxyPassword
@@ -100,105 +109,44 @@ internal fun NetworkSettingsPanel(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        NetworkCard {
-            Text(strings.networkDns, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Text(strings.networkSubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            DnsModes.forEach { mode ->
-                NetworkOptionRow(
-                    label = dnsModeLabel(mode, strings),
-                    selected = mode.id == dnsMode,
-                    onClick = { dnsMode = mode.id }
-                )
-            }
-            if (LevyraDnsMode.fromId(dnsMode) == LevyraDnsMode.Custom) {
-                OutlinedTextField(
-                    value = customDohUrl,
-                    onValueChange = { customDohUrl = it.take(LevyraNetworkSettings.MAX_URL_LENGTH) },
-                    singleLine = true,
-                    label = { Text(strings.networkCustomDohUrl) },
-                    isError = errors.any { it.name.startsWith("CustomDohUrl") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
+        DnsSettingsCard(
+            dnsMode = dnsMode,
+            customDohUrl = customDohUrl,
+            errors = errors,
+            strings = strings,
+            onDnsModeChange = { dnsMode = it },
+            onCustomDohUrlChange = { customDohUrl = it }
+        )
 
-        NetworkCard {
-            Text(strings.networkProxy, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            ProxyModes.forEach { mode ->
-                NetworkOptionRow(
-                    label = proxyModeLabel(mode, strings),
-                    selected = mode.id == proxyMode,
-                    onClick = { proxyMode = mode.id }
-                )
-            }
-            if (LevyraProxyMode.fromId(proxyMode) != LevyraProxyMode.Disabled) {
-                OutlinedTextField(
-                    value = proxyHost,
-                    onValueChange = { proxyHost = it.take(LevyraNetworkSettings.MAX_HOST_LENGTH) },
-                    singleLine = true,
-                    label = { Text(strings.networkProxyHost) },
-                    isError = errors.contains(LevyraNetworkSettingsError.ProxyHostMissing) ||
-                        errors.contains(LevyraNetworkSettingsError.ProxyHostInvalid),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = proxyPort,
-                    onValueChange = { value -> proxyPort = value.filter(Char::isDigit).take(5) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    label = { Text(strings.networkProxyPort) },
-                    isError = errors.contains(LevyraNetworkSettingsError.ProxyPortOutOfRange),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                NetworkToggleRow(
-                    label = strings.networkProxyAuthentication,
-                    checked = proxyAuth,
-                    onCheckedChange = { proxyAuth = it }
-                )
-                if (proxyAuth) {
-                    OutlinedTextField(
-                        value = proxyUsername,
-                        onValueChange = { proxyUsername = it.take(LevyraNetworkSettings.MAX_CREDENTIAL_LENGTH) },
-                        singleLine = true,
-                        label = { Text(strings.networkProxyUsername) },
-                        isError = errors.contains(LevyraNetworkSettingsError.ProxyUsernameMissing),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = proxyPassword,
-                        onValueChange = { proxyPassword = it.take(LevyraNetworkSettings.MAX_CREDENTIAL_LENGTH) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        label = { Text(strings.networkProxyPassword) },
-                        isError = errors.contains(LevyraNetworkSettingsError.ProxyPasswordMissing),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (proxyPasswordSet && proxyPassword.isEmpty()) {
-                        Text(strings.saved, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-                NetworkToggleRow(
-                    label = strings.networkBypassStreams,
-                    checked = bypassStreams,
-                    onCheckedChange = { bypassStreams = it },
-                    subtitle = strings.networkBypassStreamsSubtitle
-                )
-            }
-        }
+        ProxySettingsCard(
+            proxyMode = proxyMode,
+            proxyHost = proxyHost,
+            proxyPort = proxyPort,
+            proxyAuth = proxyAuth,
+            proxyUsername = proxyUsername,
+            proxyPassword = proxyPassword,
+            proxyPasswordSet = proxyPasswordSet,
+            bypassStreams = bypassStreams,
+            errors = errors,
+            strings = strings,
+            onProxyModeChange = { proxyMode = it },
+            onProxyHostChange = { proxyHost = it },
+            onProxyPortChange = { proxyPort = it },
+            onProxyAuthChange = { proxyAuth = it },
+            onProxyUsernameChange = { proxyUsername = it },
+            onProxyPasswordChange = { proxyPassword = it },
+            onBypassStreamsChange = { bypassStreams = it }
+        )
 
-        if (errors.isNotEmpty()) {
-            NetworkCard {
-                errors.distinct().forEach { error ->
-                    Text(
-                        networkErrorText(error, strings),
-                        color = LevyraText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
+        RestrictedCompatibilityCard(
+            byeDpiEnabled = byeDpiEnabled,
+            onByeDpiChange = { byeDpiEnabled = it },
+            youtubeRegionProfileEnabled = youtubeRegionProfileEnabled,
+            onYoutubeRegionProfileChange = { youtubeRegionProfileEnabled = it },
+            strings = strings
+        )
+
+        ValidationErrorsCard(errors = errors, strings = strings)
 
         testOutcome?.let { outcome ->
             NetworkCard {
@@ -225,6 +173,167 @@ internal fun NetworkSettingsPanel(
             colors = ButtonDefaults.buttonColors(containerColor = LevyraPanel, contentColor = LevyraText)
         ) {
             Text(if (testing) strings.checking else strings.networkTest, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun DnsSettingsCard(
+    dnsMode: String,
+    customDohUrl: String,
+    errors: List<LevyraNetworkSettingsError>,
+    strings: LevyraStrings,
+    onDnsModeChange: (String) -> Unit,
+    onCustomDohUrlChange: (String) -> Unit
+) {
+    NetworkCard {
+        Text(strings.networkDns, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(strings.networkSubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        DnsModes.forEach { mode ->
+            NetworkOptionRow(
+                label = dnsModeLabel(mode, strings),
+                selected = mode.id == dnsMode,
+                onClick = { onDnsModeChange(mode.id) }
+            )
+        }
+        if (LevyraDnsMode.fromId(dnsMode) == LevyraDnsMode.Custom) {
+            OutlinedTextField(
+                value = customDohUrl,
+                onValueChange = { onCustomDohUrlChange(it.take(LevyraNetworkSettings.MAX_URL_LENGTH)) },
+                singleLine = true,
+                label = { Text(strings.networkCustomDohUrl) },
+                isError = errors.any { it.name.startsWith("CustomDohUrl") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProxySettingsCard(
+    proxyMode: String,
+    proxyHost: String,
+    proxyPort: String,
+    proxyAuth: Boolean,
+    proxyUsername: String,
+    proxyPassword: String,
+    proxyPasswordSet: Boolean,
+    bypassStreams: Boolean,
+    errors: List<LevyraNetworkSettingsError>,
+    strings: LevyraStrings,
+    onProxyModeChange: (String) -> Unit,
+    onProxyHostChange: (String) -> Unit,
+    onProxyPortChange: (String) -> Unit,
+    onProxyAuthChange: (Boolean) -> Unit,
+    onProxyUsernameChange: (String) -> Unit,
+    onProxyPasswordChange: (String) -> Unit,
+    onBypassStreamsChange: (Boolean) -> Unit
+) {
+    NetworkCard {
+        Text(strings.networkProxy, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        ProxyModes.forEach { mode ->
+            NetworkOptionRow(
+                label = proxyModeLabel(mode, strings),
+                selected = mode.id == proxyMode,
+                onClick = { onProxyModeChange(mode.id) }
+            )
+        }
+        if (LevyraProxyMode.fromId(proxyMode) != LevyraProxyMode.Disabled) {
+            OutlinedTextField(
+                value = proxyHost,
+                onValueChange = { onProxyHostChange(it.take(LevyraNetworkSettings.MAX_HOST_LENGTH)) },
+                singleLine = true,
+                label = { Text(strings.networkProxyHost) },
+                isError = errors.contains(LevyraNetworkSettingsError.ProxyHostMissing) ||
+                    errors.contains(LevyraNetworkSettingsError.ProxyHostInvalid),
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = proxyPort,
+                onValueChange = { value -> onProxyPortChange(value.filter(Char::isDigit).take(5)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                label = { Text(strings.networkProxyPort) },
+                isError = errors.contains(LevyraNetworkSettingsError.ProxyPortOutOfRange),
+                modifier = Modifier.fillMaxWidth()
+            )
+            NetworkToggleRow(
+                label = strings.networkProxyAuthentication,
+                checked = proxyAuth,
+                onCheckedChange = onProxyAuthChange
+            )
+            if (proxyAuth) {
+                OutlinedTextField(
+                    value = proxyUsername,
+                    onValueChange = { onProxyUsernameChange(it.take(LevyraNetworkSettings.MAX_CREDENTIAL_LENGTH)) },
+                    singleLine = true,
+                    label = { Text(strings.networkProxyUsername) },
+                    isError = errors.contains(LevyraNetworkSettingsError.ProxyUsernameMissing),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = proxyPassword,
+                    onValueChange = { onProxyPasswordChange(it.take(LevyraNetworkSettings.MAX_CREDENTIAL_LENGTH)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    label = { Text(strings.networkProxyPassword) },
+                    isError = errors.contains(LevyraNetworkSettingsError.ProxyPasswordMissing),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (proxyPasswordSet && proxyPassword.isEmpty()) {
+                    Text(strings.saved, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            NetworkToggleRow(
+                label = strings.networkBypassStreams,
+                checked = bypassStreams,
+                onCheckedChange = onBypassStreamsChange,
+                subtitle = strings.networkBypassStreamsSubtitle
+            )
+        }
+    }
+}
+
+@Composable
+private fun RestrictedCompatibilityCard(
+    byeDpiEnabled: Boolean,
+    onByeDpiChange: (Boolean) -> Unit,
+    youtubeRegionProfileEnabled: Boolean,
+    onYoutubeRegionProfileChange: (Boolean) -> Unit,
+    strings: LevyraStrings
+) {
+    NetworkCard {
+        Text(strings.networkRestrictedCompatibility, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(strings.networkRestrictedCompatibilitySubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        val byeDpiAvailable = remember { ByeDpiSupervisor.isAvailable() }
+        NetworkToggleRow(
+            label = strings.networkByeDpi,
+            checked = byeDpiEnabled && byeDpiAvailable,
+            onCheckedChange = { if (byeDpiAvailable) onByeDpiChange(it) },
+            subtitle = strings.networkByeDpiSubtitle,
+            enabled = byeDpiAvailable
+        )
+        NetworkToggleRow(
+            label = strings.networkYoutubeRegionProfile,
+            checked = youtubeRegionProfileEnabled,
+            onCheckedChange = onYoutubeRegionProfileChange,
+            subtitle = strings.networkYoutubeRegionProfileSubtitle
+        )
+    }
+}
+
+@Composable
+private fun ValidationErrorsCard(errors: List<LevyraNetworkSettingsError>, strings: LevyraStrings) {
+    if (errors.isEmpty()) return
+    NetworkCard {
+        errors.distinct().forEach { error ->
+            Text(
+                networkErrorText(error, strings),
+                color = LevyraText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -270,16 +379,17 @@ private fun NetworkToggleRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    subtitle: String? = null
+    subtitle: String? = null,
+    enabled: Boolean = true
 ) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = if (enabled) LevyraText else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             subtitle?.let {
                 Text(it, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }
 
