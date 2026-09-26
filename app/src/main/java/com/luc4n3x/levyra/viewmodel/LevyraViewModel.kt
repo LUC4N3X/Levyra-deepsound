@@ -138,6 +138,7 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.queuePrefetchAllowed
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
@@ -4300,6 +4301,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setGaplessEnabled(value: Boolean) {
         updateAudioSettings(_state.value.audioSettings.copy(gaplessEnabled = value))
+    }
+
+    fun setPreloadNextTrack(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(preloadNextTrack = value))
+        if (value) {
+            refreshQueuePrefetch()
+        } else {
+            prefetchJob?.cancel()
+            PlaybackService.clearPreparedQueueNext()
+        }
     }
 
     fun setAaudioOutputEnabled(value: Boolean) {
@@ -10380,6 +10391,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         prefetchJob?.cancel()
         PlaybackService.clearPreparedQueueNextIfStale()
         if (isLocalPlaybackTrack(playable) || !lyricsNetworkProfile().connected) return
+        if (!queuePrefetchAllowed(_state.value.audioSettings)) {
+            ensureRadioTail(force = false)
+            return
+        }
         val queueSnapshot = queueEngine.state.value
         val repeatsSingleTrack = queueSnapshot.repeatMode == RepeatMode.One
         val generation = queueSnapshot.generation
