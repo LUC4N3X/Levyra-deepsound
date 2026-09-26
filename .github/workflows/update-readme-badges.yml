@@ -43,6 +43,8 @@ jobs:
         with:
           node-version: "22"
       - run: node scripts/update-readme-badges.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - run: node scripts/update-translation-pulse.mjs
       - run: |
           badge_files=(
