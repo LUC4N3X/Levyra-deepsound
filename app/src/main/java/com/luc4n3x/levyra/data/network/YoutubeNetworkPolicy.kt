@@ -49,47 +49,48 @@ object YoutubeNetworkPolicy {
         if (uri == null) return listOf(Proxy.NO_PROXY)
         val host = uri.host.orEmpty().lowercase(Locale.ROOT).trimEnd('.')
 
-        // 1. Strict Isolation: JioSaavn is NEVER routed through ByeDPI.
-        if (isJioSaavnHost(host)) {
+        return when {
+            isJioSaavnHost(host) -> selectJioSaavnProxies(settings)
+            isYoutubeHost(host) -> selectYoutubeProxies(host, settings)
+            else -> selectDefaultProxies(settings)
+        }
+    }
+
+    private fun selectJioSaavnProxies(settings: LevyraNetworkSettings): List<Proxy> {
+        val externalProxy = LevyraNetworkConfiguration.proxy()
+        return if (settings.usesProxy && externalProxy != null && !settings.bypassProxyForStreams) {
+            listOf(externalProxy)
+        } else {
+            listOf(Proxy.NO_PROXY)
+        }
+    }
+
+    private fun selectYoutubeProxies(host: String, settings: LevyraNetworkSettings): List<Proxy> {
+        val isMedia = isYoutubeMediaHost(host)
+        if (settings.usesProxy) {
             val externalProxy = LevyraNetworkConfiguration.proxy()
-            return if (settings.usesProxy && externalProxy != null && !settings.bypassProxyForStreams) {
-                listOf(externalProxy)
-            } else {
-                listOf(Proxy.NO_PROXY)
+            if (isMedia && settings.bypassProxyForStreams) {
+                return resolveActiveByeDpiProxy(settings) ?: listOf(Proxy.NO_PROXY)
             }
+            return if (externalProxy != null) listOf(externalProxy) else listOf(Proxy.NO_PROXY)
         }
+        return resolveActiveByeDpiProxy(settings) ?: listOf(Proxy.NO_PROXY)
+    }
 
-        // 2. YouTube-specific traffic routing
-        if (isYoutubeHost(host)) {
-            val isMedia = isYoutubeMediaHost(host)
-
-            if (settings.usesProxy) {
-                val externalProxy = LevyraNetworkConfiguration.proxy()
-                if (isMedia && settings.bypassProxyForStreams) {
-                    if (settings.byeDpiEnabled && ByeDpiSupervisor.isRunning() && !ByeDpiSupervisor.isTemporarilyDegraded()) {
-                        val byeDpi = ByeDpiSupervisor.proxy()
-                        if (byeDpi != null) return listOf(byeDpi)
-                    }
-                    return listOf(Proxy.NO_PROXY)
-                }
-                return if (externalProxy != null) listOf(externalProxy) else listOf(Proxy.NO_PROXY)
-            }
-
-            if (settings.byeDpiEnabled && ByeDpiSupervisor.isRunning() && !ByeDpiSupervisor.isTemporarilyDegraded()) {
-                val byeDpi = ByeDpiSupervisor.proxy()
-                if (byeDpi != null) return listOf(byeDpi)
-            }
-
-            return listOf(Proxy.NO_PROXY)
-        }
-
-        // 3. Non-YouTube and non-JioSaavn external traffic
+    private fun selectDefaultProxies(settings: LevyraNetworkSettings): List<Proxy> {
         if (settings.usesProxy) {
             val externalProxy = LevyraNetworkConfiguration.proxy()
             if (externalProxy != null) return listOf(externalProxy)
         }
-
         return listOf(Proxy.NO_PROXY)
+    }
+
+    private fun resolveActiveByeDpiProxy(settings: LevyraNetworkSettings): List<Proxy>? {
+        if (settings.byeDpiEnabled && ByeDpiSupervisor.isRunning() && !ByeDpiSupervisor.isTemporarilyDegraded()) {
+            val byeDpi = ByeDpiSupervisor.proxy()
+            if (byeDpi != null) return listOf(byeDpi)
+        }
+        return null
     }
 
     fun createProxySelector(settings: LevyraNetworkSettings): ProxySelector {
