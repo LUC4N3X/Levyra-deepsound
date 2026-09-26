@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-26T16:27:19Z",
+  "generatedAt": "2026-09-26T21:13:59Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -341,7 +341,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -511,6 +511,13 @@
       "artist": "Sam Fender, Olivia Dean",
       "album": "People Watching (Deluxe Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/6zlR5ttMfMNmwf2lecU9Cc/video/c376916e9524470db551c735393b9866.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1484,6 +1491,13 @@
       "artist": "Gusttavo Lima",
       "album": "Bala Alojada (Ao Vivo)",
       "url": "https://canvaz.scdn.co/upload/artist/7MiDcPa6UiV3In7lIM71IN/video/4de1c7ce01c74f4cbcfcb5b1595c9c4f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "OLIVIA LA FLAKA",
+      "artist": "Natanael Cano, Tito Double P, Victor Mendivil, Ovi",
+      "album": "OLIVIA LA FLAKA",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/9fd6a197fc2c4ae48c10ab9e0bd5caad.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2464,13 +2478,6 @@
       "artist": "Keisha",
       "album": "Vem du än är",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/fe6cedef642a49cda29692947d0c9bdf.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
