@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricVocalRole
 import com.luc4n3x.levyra.domain.LyricWord
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import java.io.StringReader
 import java.text.Normalizer
 import java.util.Locale
@@ -663,19 +664,31 @@ object LyricRoleClassifier {
 }
 
 object LyricsResultRanker {
-    fun best(candidates: List<LyricsCandidate>, request: LyricsRequest): LyricsRepository.LyricsResult? {
-        val ranked = scoreAndSort(candidates, request)
+    fun best(
+        candidates: List<LyricsCandidate>,
+        request: LyricsRequest,
+        ordering: LyricsProviderOrdering? = null
+    ): LyricsRepository.LyricsResult? {
+        val ranked = scoreAndSort(candidates, request, ordering)
         val primary = ranked.firstOrNull() ?: return null
         return LyricsCandidateFusion.enrich(primary, ranked.drop(1), request).result
     }
 
-    fun rankedCandidates(candidates: List<LyricsCandidate>, request: LyricsRequest): List<LyricsCandidate> {
-        return scoreAndSort(candidates, request).distinctBy(::duplicateKey)
+    fun rankedCandidates(
+        candidates: List<LyricsCandidate>,
+        request: LyricsRequest,
+        ordering: LyricsProviderOrdering? = null
+    ): List<LyricsCandidate> {
+        return scoreAndSort(candidates, request, ordering).distinctBy(::duplicateKey)
     }
 
-    private fun scoreAndSort(candidates: List<LyricsCandidate>, request: LyricsRequest): List<LyricsCandidate> {
+    private fun scoreAndSort(
+        candidates: List<LyricsCandidate>,
+        request: LyricsRequest,
+        ordering: LyricsProviderOrdering?
+    ): List<LyricsCandidate> {
         return candidates
-            .map { candidate -> candidate.copy(result = candidate.result.copy(confidence = score(candidate, request))) }
+            .map { candidate -> candidate.copy(result = candidate.result.copy(confidence = score(candidate, request, ordering))) }
             .filter { it.result.lines.isNotEmpty() && it.result.confidence >= 42 }
             .sortedWith(
                 compareByDescending<LyricsCandidate> { it.result.confidence }
@@ -685,7 +698,11 @@ object LyricsResultRanker {
             )
     }
 
-    fun score(candidate: LyricsCandidate, request: LyricsRequest): Int {
+    fun score(
+        candidate: LyricsCandidate,
+        request: LyricsRequest,
+        ordering: LyricsProviderOrdering? = null
+    ): Int {
         val result = candidate.result
         val titleScore = LyricsMatcher.similarity(candidate.title, request.title)
         val artistScore = LyricsMatcher.similarity(candidate.artist, request.artist)
@@ -736,19 +753,20 @@ object LyricsResultRanker {
             lastEndMs in expectedDurationMs * 35L / 100L..expectedDurationMs * 120L / 100L -> 2
             else -> -6
         }
-        val providerScore = when {
-            result.provider.startsWith("Binimum · Word", ignoreCase = true) -> 8
-            result.provider.startsWith("LyricsPlus", ignoreCase = true) && result.lines.any { it.words.isNotEmpty() } -> 7
-            result.provider.startsWith("YouTube Music", ignoreCase = true) -> 6
-            result.provider.startsWith("Binimum", ignoreCase = true) -> 6
-            result.provider.startsWith("LyricsPlus", ignoreCase = true) -> 5
-            result.provider.startsWith("LRCLIB Exact", ignoreCase = true) -> 5
-            result.provider.startsWith("LRCLIB Search", ignoreCase = true) -> 4
-            result.provider.startsWith("YouTube Transcript Auto", ignoreCase = true) -> 0
-            result.provider.startsWith("YouTube Transcript", ignoreCase = true) -> 3
-            result.provider.startsWith("Lyrics.ovh", ignoreCase = true) -> -3
-            else -> 0
-        }
+        val providerScore = ordering?.providerScoreFor(result.provider)
+            ?: when {
+                result.provider.startsWith("Binimum · Word", ignoreCase = true) -> 8
+                result.provider.startsWith("LyricsPlus", ignoreCase = true) && result.lines.any { it.words.isNotEmpty() } -> 7
+                result.provider.startsWith("YouTube Music", ignoreCase = true) -> 6
+                result.provider.startsWith("Binimum", ignoreCase = true) -> 6
+                result.provider.startsWith("LyricsPlus", ignoreCase = true) -> 5
+                result.provider.startsWith("LRCLIB Exact", ignoreCase = true) -> 5
+                result.provider.startsWith("LRCLIB Search", ignoreCase = true) -> 4
+                result.provider.startsWith("YouTube Transcript Auto", ignoreCase = true) -> 0
+                result.provider.startsWith("YouTube Transcript", ignoreCase = true) -> 3
+                result.provider.startsWith("Lyrics.ovh", ignoreCase = true) -> -3
+                else -> 0
+            }
         val syncScore = when {
             !result.synced -> 0
             syncCoverage >= 95 -> 8
@@ -988,7 +1006,6 @@ object LyricsMatcher {
     }
 }
 
-// Precompiled: lyrics parsing and cleaning run these per line and per word.
 private val LYRICS_WHITESPACE = Regex("""\s+""")
 private val LYRICS_PUNCTUATION_SPACING = Regex("""\s+([,.;:!?])""")
 private val LYRICS_YRC_MARKER = Regex("""(?m)^\[\d+,\d+]\(\d+,\d+,\d+\)""")

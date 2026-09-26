@@ -31,4 +31,5 @@
     <string name="shortcut_search">Pretraži</string>
     <string name="shortcut_library">Medijateka</string>
     <string name="shortcut_recognition">Prepoznaj glazbu</string>
+    <string name="shortcut_resume">Nastavi reprodukciju</string>
 </resources>

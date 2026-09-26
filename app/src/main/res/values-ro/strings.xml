@@ -31,4 +31,5 @@
     <string name="shortcut_search">Căutare</string>
     <string name="shortcut_library">Bibliotecă</string>
     <string name="shortcut_recognition">Recunoaște muzica</string>
+    <string name="shortcut_resume">Reia redarea</string>
 </resources>

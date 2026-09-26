@@ -17,6 +17,8 @@ import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
 import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.VideoStallKind
+import com.luc4n3x.levyra.domain.classifyVideoStall
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
@@ -50,22 +52,12 @@ internal fun replacementStartPosition(
     return if (durationMs > 0L) position.coerceAtMost((durationMs - 250L).coerceAtLeast(0L)) else position
 }
 
-/**
- * Media3 contract: the session resolves media items asynchronously, so a seek issued after
- * `setMediaItem` is overwritten by the resolved `startPositionMs`. A restored position must
- * therefore travel with the item; an already loaded track keeps its live player position.
- */
 internal fun playbackStartPositionRequest(
     sameTrack: Boolean,
     resumePositionMs: Long,
     activePositionMs: Long
 ): Long = if (sameTrack) activePositionMs.coerceAtLeast(0L) else resumePositionMs.coerceAtLeast(0L)
 
-/**
- * Media3 contract: the controller reports position 0 for a short window after
- * `setMediaItem(item, startPositionMs)`, until the session resolves and applies the item.
- * Publishing that 0 would zero the visible timeline and persist it back into the queue.
- */
 internal fun reportedPlaybackPositionMs(
     currentPositionMs: Long,
     awaitedStartPositionMs: Long?,
@@ -111,6 +103,7 @@ class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
     var onError: ((String) -> Unit)? = null
     var onRecoverableStreamError: ((Track, Long, Boolean, Boolean, String) -> Unit)? = null
+    var onVideoStall: (() -> Unit)? = null
 
     var controller: MediaController? = null
     private val controllerFuture = MediaController.Builder(
@@ -138,6 +131,10 @@ class LevyraPlayer(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var sponsorJob: Job? = null
     private val sponsorSkipTracker = SponsorBlockSkipOnceTracker()
+    private var lastSeekAtMs: Long? = null
+    private var lastQualitySwitchAtMs: Long? = null
+    private var itemReachedReady = false
+    private var lastPlaybackState = Player.STATE_IDLE
 
     private val videoRenderListener = object : Player.Listener {
         override fun onRenderedFirstFrame() {
@@ -193,6 +190,7 @@ class LevyraPlayer(context: Context) {
                     }
                     loadedStreamIdentity = streamIdentity(mediaItem, loadedVideoMode)
                     renderedVideoFrame = false
+                    itemReachedReady = false
                     refreshVideoSurfaceState()
                     videoFrameWatchdogJob?.cancel()
                     videoFrameWatchdogJob = null
@@ -200,8 +198,24 @@ class LevyraPlayer(context: Context) {
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
+                    val previousState = lastPlaybackState
+                    lastPlaybackState = playbackState
                     if (playbackState == Player.STATE_READY) {
+                        itemReachedReady = true
                         scheduleVideoFrameWatchdog()
+                    }
+                    if (
+                        loadedVideoMode &&
+                        playbackState == Player.STATE_BUFFERING &&
+                        previousState != Player.STATE_BUFFERING
+                    ) {
+                        val stallKind = classifyVideoStall(
+                            nowMs = System.currentTimeMillis(),
+                            reachedReady = itemReachedReady,
+                            lastSeekAtMs = lastSeekAtMs,
+                            lastQualitySwitchAtMs = lastQualitySwitchAtMs
+                        )
+                        if (stallKind == VideoStallKind.MID_PLAY) onVideoStall?.invoke()
                     }
                     if (playbackState != Player.STATE_ENDED) return
                     sponsorJob?.cancel()
@@ -350,6 +364,19 @@ class LevyraPlayer(context: Context) {
         )
     }
 
+    private fun qualitySwitchTimestamp(
+        sameTrack: Boolean,
+        previousVideoMode: Boolean,
+        videoMode: Boolean,
+        recoveryReplacement: Boolean
+    ): Long? {
+        if (!sameTrack) return null
+        if (!previousVideoMode) return null
+        if (!videoMode) return null
+        if (recoveryReplacement) return null
+        return System.currentTimeMillis()
+    }
+
     fun replaceSource(
         track: Track,
         positionMs: Long,
@@ -373,6 +400,12 @@ class LevyraPlayer(context: Context) {
         recoveryInFlight = false
         if (!recoveryReplacement) recoveryAttempts = 0
         val sameTrack = loadedTrack?.id == track.id
+        lastQualitySwitchAtMs = qualitySwitchTimestamp(
+            sameTrack = sameTrack,
+            previousVideoMode = loadedVideoMode,
+            videoMode = videoMode,
+            recoveryReplacement = recoveryReplacement
+        )
         val startPositionMs = if (track.isLiveRadio()) {
             0L
         } else {
@@ -393,6 +426,7 @@ class LevyraPlayer(context: Context) {
         loadedStreamIdentity = streamIdentity(track, videoMode)
         loadedVideoMode = videoMode
         renderedVideoFrame = false
+        itemReachedReady = false
         refreshVideoSurfaceState()
         videoFrameWatchdogJob?.cancel()
         videoFrameWatchdogJob = null
@@ -448,6 +482,7 @@ class LevyraPlayer(context: Context) {
         if (loadedTrack?.isLiveRadio() == true) return
         val safePositionMs = positionMs.coerceAtLeast(0L)
         pendingStartPositionMs = null
+        lastSeekAtMs = System.currentTimeMillis()
         val active = controller
         if (active != null) {
             active.seekTo(safePositionMs)

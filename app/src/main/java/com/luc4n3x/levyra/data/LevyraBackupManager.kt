@@ -47,12 +47,14 @@ import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.VideoQualityTarget
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -1012,6 +1014,8 @@ class LevyraBackupManager(private val context: Context) {
             .put("audioNormalization", snapshot.audioNormalization)
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
             .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
+            .put("videoQualityTarget", snapshot.videoQualityTarget.storageValue)
+            .put("lyricsProviderOrdering", JSONArray(snapshot.lyricsProviderOrdering.encode()))
             .put("themePreset", snapshot.themePreset)
             .putBackupThemeAccent(snapshot.themeAccent)
             .put("ambientSettings", backupAmbientSettingsToJson(snapshot.ambientSettings))
@@ -1071,7 +1075,12 @@ class LevyraBackupManager(private val context: Context) {
             backupSettings = parseBackupSettings(json.optJSONObject("backupSettings")),
             automationSettings = parseAutomationSettings(json.optJSONObject("automationSettings")),
             jamDisplayName = json.optString("jamDisplayName"),
-            preferredAudioLanguage = AudioLanguageIntelligence.normalizeLanguage(json.optString("preferredAudioLanguage"))
+            preferredAudioLanguage = AudioLanguageIntelligence.normalizeLanguage(json.optString("preferredAudioLanguage")),
+            videoQualityTarget = VideoQualityTarget.fromStorage(json.optString("videoQualityTarget")),
+            lyricsProviderOrdering = json.optJSONArray("lyricsProviderOrdering")
+                ?.toString()
+                ?.let(LyricsProviderOrdering::decode)
+                ?: LyricsProviderOrdering()
         )
     }
 

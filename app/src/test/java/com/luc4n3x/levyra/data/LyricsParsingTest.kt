@@ -4,6 +4,9 @@ import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSectionType
 import com.luc4n3x.levyra.domain.LyricVocalRole
 import com.luc4n3x.levyra.domain.LyricWord
+import com.luc4n3x.levyra.domain.LyricsProviderEntry
+import com.luc4n3x.levyra.domain.LyricsProviderId
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -287,6 +290,58 @@ class LyricsParsingTest {
         val selected = LyricsProviderSelector.select(native, listOf(lrc), request)
 
         assertEquals("YouTube Music", selected?.provider)
+    }
+
+    @Test
+    fun userOrderingBreaksTiesBetweenEquivalentProviders() {
+        val request = LyricsRequest("Song", "Artist", 180)
+        val youtubeMusic = candidate("YouTube Music", synced = true)
+        val lrclib = candidate("LRCLIB Exact", synced = true)
+        val ordering = LyricsProviderOrdering(
+            listOf(
+                LyricsProviderEntry(LyricsProviderId.LRCLIB_EXACT),
+                LyricsProviderEntry(LyricsProviderId.YOUTUBE_MUSIC),
+                LyricsProviderEntry(LyricsProviderId.LRCLIB_SEARCH),
+                LyricsProviderEntry(LyricsProviderId.LYRICS_PLUS),
+                LyricsProviderEntry(LyricsProviderId.BINIMUM),
+                LyricsProviderEntry(LyricsProviderId.YOUTUBE_TRANSCRIPT),
+                LyricsProviderEntry(LyricsProviderId.LYRICS_OVH)
+            )
+        )
+
+        val best = LyricsResultRanker.best(listOf(youtubeMusic, lrclib), request, ordering)
+
+        assertEquals("LRCLIB Exact", best?.provider)
+    }
+
+    @Test
+    fun disabledProviderFallsBehindEnabledOnesRegardlessOfQuality() {
+        val request = LyricsRequest("Song", "Artist", 180)
+        val disabledSynced = candidate("LyricsPlus", synced = true)
+        val enabledPlain = candidate("LRCLIB Exact", synced = false)
+        val ordering = LyricsProviderOrdering(
+            LyricsProviderId.DEFAULT_ORDER.map { id ->
+                LyricsProviderEntry(
+                    id,
+                    enabled = id != LyricsProviderId.LYRICS_PLUS
+                )
+            }
+        )
+
+        val best = LyricsResultRanker.best(listOf(disabledSynced, enabledPlain), request, ordering)
+
+        assertEquals("LRCLIB Exact", best?.provider)
+    }
+
+    @Test
+    fun rankingWithoutOrderingKeepsTheLegacyProviderScoreTable() {
+        val request = LyricsRequest("Song", "Artist", 180)
+        val youtubeMusic = candidate("YouTube Music", synced = true)
+        val lrclib = candidate("LRCLIB Exact", synced = true)
+
+        val best = LyricsResultRanker.best(listOf(youtubeMusic, lrclib), request)
+
+        assertEquals("YouTube Music", best?.provider)
     }
 
     @Test

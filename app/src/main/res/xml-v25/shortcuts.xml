@@ -2,6 +2,21 @@
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:enabled="true"
+        android:icon="@drawable/ic_shortcut_resume"
+        android:shortcutId="resume"
+        android:shortcutLongLabel="@string/shortcut_resume"
+        android:shortcutShortLabel="@string/shortcut_resume">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.luc4n3x.levyra.MainActivity"
+            android:targetPackage="com.luc4n3x.levyra">
+            <extra
+                android:name="levyra.shortcut"
+                android:value="resume" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
         android:icon="@drawable/ic_shortcut_search"
         android:shortcutId="search"
         android:shortcutLongLabel="@string/shortcut_search"

@@ -8,6 +8,10 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
+import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
+import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.VideoQualityLadder
+import com.luc4n3x.levyra.domain.VideoQualityTarget
 import kotlin.math.abs
 import java.util.concurrent.ConcurrentHashMap
 
@@ -63,6 +67,17 @@ internal fun reliableVideoCandidate(
     videoOnly: LevyraVideoCandidate?
 ): LevyraVideoCandidate? = muxed ?: videoOnly
 
+internal fun targetedVideoCandidate(
+    muxed: LevyraVideoCandidate?,
+    videoOnly: LevyraVideoCandidate?,
+    targetHeight: Int
+): LevyraVideoCandidate? = listOfNotNull(muxed, videoOnly)
+    .minWithOrNull(
+        compareBy<LevyraVideoCandidate> { candidate ->
+            candidate.height.takeIf { it > 0 }?.let { abs(targetHeight - it) } ?: Int.MAX_VALUE
+        }.thenBy { candidate -> if (candidate.muxed) 0 else 1 }
+    )
+
 internal class LevyraVideoStreamSelector(context: Context) {
     private companion object {
         const val MAX_REJECTED_URLS = 128
@@ -72,6 +87,7 @@ internal class LevyraVideoStreamSelector(context: Context) {
     private val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     private val connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+    private val preferences = LevyraPreferences(appContext)
     private val decoderCapabilities by lazy { readDecoderCapabilities() }
     private val rejectedUrls = ConcurrentHashMap<String, Long>()
     private val rejectedUrlsMutationLock = Any()
@@ -98,7 +114,8 @@ internal class LevyraVideoStreamSelector(context: Context) {
         hasSeparateAudio: Boolean,
         blocked: (String) -> Boolean
     ): LevyraVideoSelection? {
-        val targetHeight = targetHeight()
+        val qualityTarget = preferences.videoQualityTarget()
+        val targetHeight = VideoQualityTarget.resolveHeight(qualityTarget, autoTargetHeight())
         val rawMuxed = muxedCandidates.filter { it.url.isNotBlank() && !blocked(it.url) && !isRejected(it.url) }
         val rawVideoOnly = if (hasSeparateAudio) {
             videoOnlyCandidates.filter { it.url.isNotBlank() && !blocked(it.url) && !isRejected(it.url) }
@@ -111,7 +128,11 @@ internal class LevyraVideoStreamSelector(context: Context) {
         val usableVideoOnly = stableAndroidVideoCandidates(compatibleVideoOnly, targetHeight)
         val bestMuxed = usableMuxed.maxByOrNull { score(it, targetHeight) }
         val bestVideoOnly = usableVideoOnly.maxByOrNull { score(it, targetHeight) }
-        val chosen = reliableVideoCandidate(bestMuxed, bestVideoOnly) ?: return null
+        val chosen = if (qualityTarget == VideoQualityTarget.AUTO) {
+            reliableVideoCandidate(bestMuxed, bestVideoOnly)
+        } else {
+            targetedVideoCandidate(bestMuxed, bestVideoOnly, targetHeight)
+        } ?: return null
         val hardware = decoderSupport(chosen).hardware
         val reason = buildString {
             append(chosen.height.takeIf { it > 0 }?.let { "${it}p" } ?: "auto")
@@ -131,6 +152,10 @@ internal class LevyraVideoStreamSelector(context: Context) {
     }
 
     fun targetHeight(): Int {
+        return VideoQualityTarget.resolveHeight(preferences.videoQualityTarget(), autoTargetHeight())
+    }
+
+    fun autoTargetHeight(): Int {
         val lowRam = activityManager.isLowRamDevice
         val powerSave = powerManager.isPowerSaveMode
         val network = connectivityManager.activeNetwork
@@ -140,14 +165,31 @@ internal class LevyraVideoStreamSelector(context: Context) {
             capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
         val metrics = appContext.resources.displayMetrics
         val displayShortSide = minOf(metrics.widthPixels, metrics.heightPixels)
-        return when {
-            lowRam || powerSave -> 720
-            !unmetered || !fastTransport -> 720
-            displayShortSide >= 1800 && decoderCapabilities.any { it.hardware && it.family == CodecFamily.AV1 } -> 2160
-            displayShortSide >= 1200 -> 1440
-            displayShortSide >= 900 -> 1080
-            else -> 720
-        }
+        return VideoQualityLadder.autoTargetHeight(
+            lowRam = lowRam,
+            powerSave = powerSave,
+            unmetered = unmetered,
+            fastTransport = fastTransport,
+            displayShortSidePx = displayShortSide,
+            hasHardwareAv1 = decoderCapabilities.any { it.hardware && it.family == CodecFamily.AV1 }
+        )
+    }
+
+    fun supportsDescriptor(descriptor: PlaybackStreamDescriptor): Boolean {
+        if (descriptor.url.isBlank()) return false
+        val candidate = LevyraVideoCandidate(
+            url = descriptor.url,
+            mimeType = descriptor.mimeType,
+            codec = descriptor.codec,
+            width = descriptor.width,
+            height = descriptor.height,
+            fps = descriptor.fps,
+            bitrate = descriptor.bitrate,
+            itag = descriptor.itag,
+            muxed = descriptor.kind == PlaybackStreamKind.MUXED,
+            label = descriptor.qualityLabel
+        )
+        return decoderSupport(candidate).supported
     }
 
     private fun compatibleCandidates(candidates: List<LevyraVideoCandidate>): List<LevyraVideoCandidate> {

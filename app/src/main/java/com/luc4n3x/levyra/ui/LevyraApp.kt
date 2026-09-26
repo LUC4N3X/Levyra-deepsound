@@ -300,6 +300,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
@@ -514,7 +515,9 @@ import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
 import com.luc4n3x.levyra.domain.LyricSectionType
 import com.luc4n3x.levyra.domain.LyricVocalRole
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.LyricsTranslationState
+import com.luc4n3x.levyra.domain.VideoQualityTarget
 import com.luc4n3x.levyra.domain.PulseArtist
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
@@ -1897,6 +1900,7 @@ fun LevyraApp(
                 viewModel.startMusicRecognition()
             }
             LevyraLaunchActions.SHORTCUT_AMBIENT -> viewModel.openAmbient()
+            LevyraLaunchActions.SHORTCUT_RESUME -> viewModel.resumePlaybackFromShortcut()
         }
         if (pendingShortcut != null) LevyraLaunchActions.pendingShortcut.value = null
     }
@@ -2413,6 +2417,10 @@ fun LevyraApp(
                     networkTesting = state.networkTesting,
                     networkTestOutcome = state.networkTestOutcome,
                     networkErrors = state.networkErrors,
+                    videoQualityTarget = state.videoQualityTarget,
+                    lyricsProviderOrdering = state.lyricsProviderOrdering,
+                    onVideoQualityTarget = viewModel::setDefaultVideoQuality,
+                    onLyricsProviderOrdering = viewModel::setLyricsProviderOrdering,
                     onNetworkSettings = viewModel::updateNetworkSettings,
                     onTestNetwork = viewModel::testNetworkConfiguration,
                     onOpenJam = {
@@ -18535,8 +18543,12 @@ private fun SettingsOverlay(
     networkTesting: Boolean,
     networkTestOutcome: LevyraNetworkTestOutcome?,
     networkErrors: List<LevyraNetworkSettingsError>,
+    videoQualityTarget: VideoQualityTarget,
+    lyricsProviderOrdering: LyricsProviderOrdering,
     onNetworkSettings: (LevyraNetworkSettings, String?) -> Unit,
     onTestNetwork: (LevyraNetworkSettings, String?) -> Unit,
+    onVideoQualityTarget: (VideoQualityTarget) -> Unit,
+    onLyricsProviderOrdering: (LyricsProviderOrdering) -> Unit,
     onOpenJam: () -> Unit,
     onOpenThemeStudio: () -> Unit,
     onOpenAudioSettings: () -> Unit,
@@ -19051,6 +19063,26 @@ private fun SettingsOverlay(
                         }
                         "player" -> {
                             item { SettingsSectionLabel(strings.mobilePlayerSection) }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.HighQuality,
+                                    title = strings.videoQuality,
+                                    subtitle = if (videoQualityTarget == VideoQualityTarget.AUTO) {
+                                        strings.videoQualityAutoSubtitle
+                                    } else {
+                                        strings.videoQualitySubtitle
+                                    },
+                                    options = VideoQualityTarget.entries.map { target ->
+                                        target.storageValue to if (target == VideoQualityTarget.AUTO) {
+                                            strings.videoQualityAuto
+                                        } else {
+                                            target.storageValue
+                                        }
+                                    },
+                                    selected = videoQualityTarget.storageValue,
+                                    onSelect = { value -> onVideoQualityTarget(VideoQualityTarget.fromStorage(value)) }
+                                )
+                            }
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.AutoAwesome,
@@ -19588,6 +19620,12 @@ private fun SettingsOverlay(
                                     icon = Icons.Rounded.Insights,
                                     title = strings.lyricsAnalysisCompact,
                                     subtitle = strings.lyricsAnalysisCompactSubtitle
+                                )
+                            }
+                            item {
+                                LyricsProviderPriorityCard(
+                                    ordering = lyricsProviderOrdering,
+                                    onOrdering = onLyricsProviderOrdering
                                 )
                             }
                         }
@@ -20136,6 +20174,68 @@ private fun visualPerformanceSubtitle(mode: LevyraVisualPerformance, strings: Le
     LevyraVisualPerformance.Full -> strings.visualPerformanceFullSubtitle
     LevyraVisualPerformance.Auto -> strings.visualPerformanceAutoSubtitle
     LevyraVisualPerformance.Smooth -> strings.visualPerformanceSmoothSubtitle
+}
+
+@Composable
+private fun LyricsProviderPriorityCard(
+    ordering: LyricsProviderOrdering,
+    onOrdering: (LyricsProviderOrdering) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = LevyraAdaptiveCard,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(strings.lyricsProviderPriority, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(strings.lyricsProviderPrioritySubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(strings.lyricsProviderOrderHint, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            }
+            ordering.entries.forEachIndexed { index, entry ->
+                LyricsProviderPriorityRow(
+                    name = strings.lyricsProviderName(entry.id),
+                    enabled = entry.enabled,
+                    canMoveUp = index > 0,
+                    canMoveDown = index < ordering.entries.lastIndex,
+                    onMove = { offset -> onOrdering(ordering.moved(index, index + offset)) },
+                    onEnabled = { enabled -> onOrdering(ordering.withEnabled(entry.id, enabled)) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LyricsProviderPriorityRow(
+    name: String,
+    enabled: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMove: (Int) -> Unit,
+    onEnabled: (Boolean) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(name, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(
+                if (enabled) strings.lyricsProviderEnabled else strings.lyricsProviderDisabled,
+                color = LevyraMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) {
+            Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = strings.lyricsProviderMoveUp)
+        }
+        IconButton(onClick = { onMove(1) }, enabled = canMoveDown) {
+            Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = strings.lyricsProviderMoveDown)
+        }
+        Switch(checked = enabled, onCheckedChange = onEnabled)
+    }
 }
 
 @Composable
