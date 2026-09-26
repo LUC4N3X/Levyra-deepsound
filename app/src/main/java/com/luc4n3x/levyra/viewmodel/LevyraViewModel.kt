@@ -91,6 +91,8 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.BatchDownloadKind
 import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.PlaylistHitPreview
+import com.luc4n3x.levyra.domain.resolvedWith
 import com.luc4n3x.levyra.domain.batchDownloadKey
 import com.luc4n3x.levyra.domain.batchDownloadKindOf
 import com.luc4n3x.levyra.domain.batchDownloadProgress
@@ -349,6 +351,7 @@ private const val RELATED_CANDIDATE_CACHE_SEEDS = 6
 private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
+private const val REMOTE_PLAYLIST_PREVIEW_TRACK_LIMIT = 300
 private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
 
 private const val LOCAL_SEARCH_CACHE_CANDIDATE_LIMIT = 600
@@ -913,6 +916,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     @Volatile private var artistPlaceholder: ArtistProfile? = null
     private var artistLoreJob: Job? = null
     private var albumJob: Job? = null
+    private var playlistHitJob: Job? = null
     private var albumFavoriteJob: Job? = null
     private var artistMotionJob: Job? = null
     private var albumMotionJob: Job? = null
@@ -7140,6 +7144,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openPlayerScreen() {
         albumJob?.cancel()
+        playlistHitJob?.cancel()
         artistJob?.cancel()
         artistLoreJob?.cancel()
         cancelPageMotion()
@@ -7149,6 +7154,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 showAlbum = false,
                 showArtist = false,
                 openPlaylist = null,
+                playlistHitPreview = null,
                 albumLoading = false,
                 artistLoading = false,
                 albumMotionArtwork = null,
@@ -7255,6 +7261,53 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(tracks = mergeTracks(it.tracks, tracks)) }
             playFrom(tracks, tracks.first())
         }
+    }
+
+    fun openPlaylistHit(playlist: PlaylistHit) {
+        val playlistId = playlist.playlistId.ifBlank { return }
+        playlistHitJob?.cancel()
+        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist)) }
+        playlistHitJob = viewModelScope.launch {
+            val detail = runCatchingPreservingCancellation {
+                providerRouter.playlist(playlistId, _state.value.languageCode, REMOTE_PLAYLIST_PREVIEW_TRACK_LIMIT)
+            }.onFailure { Timber.w(it, "playlist preview lookup failed") }.getOrNull()
+            val tracks = detail?.tracks.orEmpty()
+            _state.update { current ->
+                val resolved = current.playlistHitPreview?.resolvedWith(
+                    playlistId = playlistId,
+                    author = detail?.author.orEmpty(),
+                    thumbnailUrl = detail?.thumbnailUrl.orEmpty(),
+                    tracks = tracks
+                )
+                if (resolved == null) current else current.copy(playlistHitPreview = resolved)
+            }
+        }
+    }
+
+    fun closePlaylistHit() {
+        playlistHitJob?.cancel()
+        playlistHitJob = null
+        _state.update { it.copy(playlistHitPreview = null) }
+    }
+
+    fun playOpenPlaylistHit(from: Track? = null, shuffled: Boolean = false) {
+        val tracks = _state.value.playlistHitPreview?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        _state.update { it.copy(tracks = mergeTracks(it.tracks, tracks)) }
+        val queue = if (shuffled) tracks.shuffled() else tracks
+        playFrom(queue, from ?: queue.first())
+    }
+
+    fun exportOpenPlaylistHit() {
+        val preview = _state.value.playlistHitPreview ?: return
+        if (preview.tracks.isEmpty()) return
+        startBatchDownload(
+            kind = BatchDownloadKind.Playlist,
+            canonicalId = preview.hit.playlistId,
+            title = preview.hit.title,
+            artworkUrl = preview.hit.thumbnailUrl,
+            tracks = preview.tracks
+        )
     }
 
     fun retryBatchDownload(batchKey: String) {

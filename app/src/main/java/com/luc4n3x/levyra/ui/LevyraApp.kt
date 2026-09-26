@@ -628,6 +628,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -1960,7 +1961,7 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    val rootOverlayOpen = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
+    val rootOverlayOpen = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showThemeStudio || state.showYourSound || state.showListeningInsights || state.showListeningRecap || state.sharedMediaPreview != null || showDownloadsFolder || state.playlistHitPreview != null || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel
     BackHandler(enabled = rootOverlayOpen || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
@@ -1982,6 +1983,8 @@ fun LevyraApp(
             showDownloadsFolder = false
         } else if (state.showAudioQualityPanel) {
             viewModel.closeAudioQualityPanel()
+        } else if (state.playlistHitPreview != null) {
+            viewModel.closePlaylistHit()
         } else if (state.openPlaylist != null) {
             viewModel.closePlaylist()
         } else if (!viewModel.navigateBack()) {
@@ -2702,6 +2705,31 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.openPlaylist != null, enter = pageEnter, exit = pageExit) {
                 LevyraPlaylistDetailScreen(viewModel = viewModel, state = state)
+            }
+
+            val lastPlaylistHitPreview = rememberLastNonNull(state.playlistHitPreview)
+            AnimatedVisibility(visible = state.playlistHitPreview != null, enter = pageEnter, exit = pageExit) {
+                lastPlaylistHitPreview?.let { preview ->
+                    PlaylistHitOverlay(
+                        preview = preview,
+                        currentTrack = state.currentTrack,
+                        isPlaying = state.isPlaying,
+                        favoriteIds = state.favoriteIds,
+                        downloadedTrackIds = state.downloadedTrackIds,
+                        downloadProgressByTrackId = state.downloadProgressByTrackId,
+                        onClose = viewModel::closePlaylistHit,
+                        onPlay = { viewModel.playOpenPlaylistHit() },
+                        onShuffle = { viewModel.playOpenPlaylistHit(shuffled = true) },
+                        onDownload = viewModel::exportOpenPlaylistHit,
+                        onPlayTrack = { track -> viewModel.playOpenPlaylistHit(from = track) },
+                        onFavorite = viewModel::toggleFavorite,
+                        onDownloadTrack = viewModel::exportTrack,
+                        onQueueTrack = viewModel::addToQueue,
+                        onTogglePlayback = viewModel::togglePlay,
+                        onSkipNext = viewModel::next,
+                        onOpenPlayer = viewModel::openPlayerScreen
+                    )
+                }
             }
 
             val studioSession by viewModel.playlistStudio.session.collectAsStateWithLifecycle()
@@ -12963,12 +12991,27 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             item(key = "search-playlists", contentType = "search-playlists") {
                                 PlaylistHitRow(
                                     playlists = data.playlists,
-                                    onClick = { playlist ->
+                                    onOpen = { playlist ->
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.openPlaylistHit(playlist)
+                                    },
+                                    onPlay = { playlist ->
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
                                         viewModel.playPlaylistHit(playlist)
                                     },
-                                    onDownload = { playlist -> viewModel.exportPlaylistHit(playlist) }
+                                    onDownload = { playlist -> viewModel.exportPlaylistHit(playlist) },
+                                    loadingMore = filter in state.searchSectionLoading,
+                                    onEndReached = if (
+                                        filter == SearchFilter.Playlists &&
+                                        state.searchSectionContinuations[filter].orEmpty().isNotBlank() &&
+                                        filter !in data.failedSections
+                                    ) {
+                                        { viewModel.loadMoreSearchSection(SearchFilter.Playlists) }
+                                    } else {
+                                        null
+                                    }
                                 )
                             }
                         }
@@ -13054,7 +13097,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 SearchSectionFooter(
                                     loading = filter in state.searchSectionLoading,
                                     failed = filter in data.failedSections,
-                                    canLoadMore = state.searchSectionContinuations[filter].orEmpty().isNotBlank(),
+                                    canLoadMore = filter != SearchFilter.Playlists &&
+                                        state.searchSectionContinuations[filter].orEmpty().isNotBlank(),
                                     onLoadMore = { viewModel.loadMoreSearchSection(filter) }
                                 )
                             }
@@ -22650,10 +22694,24 @@ private fun ArtistHitRow(
 @Composable
 private fun PlaylistHitRow(
     playlists: List<PlaylistHit>,
-    onClick: (PlaylistHit) -> Unit,
-    onDownload: (PlaylistHit) -> Unit
+    onOpen: (PlaylistHit) -> Unit,
+    onPlay: (PlaylistHit) -> Unit,
+    onDownload: (PlaylistHit) -> Unit,
+    loadingMore: Boolean = false,
+    onEndReached: (() -> Unit)? = null
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
+    val listState = rememberLazyListState()
+    val currentOnEndReached by rememberUpdatedState(onEndReached)
+    val loadsMore = onEndReached != null
+    LaunchedEffect(listState, playlists.size, loadsMore, loadingMore) {
+        if (!loadsMore || loadingMore) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+            .first { lastVisible -> lastVisible >= playlists.lastIndex - 1 }
+        currentOnEndReached?.invoke()
+    }
+    LazyRow(state = listState, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(
             items = playlists,
             key = { index, playlist ->
@@ -22661,48 +22719,89 @@ private fun PlaylistHitRow(
             },
             contentType = { _, _ -> "playlist-hit" }
         ) { _, playlist ->
+            val trackCount = playlist.trackCountLabel.trim()
             Column(
-                modifier = Modifier.width(150.dp).clickable { onClick(playlist) },
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.width(150.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
-                        .size(150.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(LevyraPanelSoft),
-                    contentAlignment = Alignment.Center
+                        .levyraPressable(
+                            onClick = { onOpen(playlist) },
+                            pressedScale = LevyraPressScale.Tile,
+                            role = Role.Button,
+                            onClickLabel = strings.open
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (playlist.thumbnailUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(playlist.thumbnailUrl).crossfade(true).build(),
-                            contentDescription = playlist.title,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.matchParentSize()
-                        )
-                    } else {
-                        Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null, tint = LevyraMuted, modifier = Modifier.size(40.dp))
-                    }
-                    IconButton(
-                        onClick = { onDownload(playlist) },
-                        modifier = Modifier.align(Alignment.BottomEnd)
+                    Box(
+                        modifier = Modifier
+                            .size(150.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(LevyraPanelSoft),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Rounded.Download,
-                            contentDescription = LocalLevyraStrings.current.downloadPlaylist,
-                            tint = LevyraViolet,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        if (playlist.thumbnailUrl.isNotBlank()) {
+                            val request = remember(playlist.thumbnailUrl) {
+                                ImageRequest.Builder(context).data(playlist.thumbnailUrl).crossfade(true).build()
+                            }
+                            AsyncImage(
+                                model = request,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.matchParentSize()
+                            )
+                        } else {
+                            Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null, tint = LevyraMuted, modifier = Modifier.size(40.dp))
+                        }
+                    }
+                    Text(playlist.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (playlist.author.isNotBlank()) {
+                            Text(
+                                playlist.author,
+                                color = LevyraMuted,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                        }
+                        if (trackCount.isNotEmpty()) {
+                            Text(
+                                if (playlist.author.isNotBlank()) " · $trackCount" else trackCount,
+                                color = LevyraMuted,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
                     }
                 }
-                Text(playlist.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    listOf(playlist.author, playlist.trackCountLabel).filter { it.isNotBlank() }.joinToString(" · "),
-                    color = LevyraMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PlaylistHitActionButton(
+                        icon = Icons.Rounded.PlayArrow,
+                        text = strings.play,
+                        showText = false,
+                        primary = true,
+                        onClick = { onPlay(playlist) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    PlaylistHitActionButton(
+                        icon = Icons.Rounded.Download,
+                        text = strings.downloadPlaylist,
+                        showText = false,
+                        primary = false,
+                        onClick = { onDownload(playlist) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
