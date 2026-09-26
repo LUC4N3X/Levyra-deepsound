@@ -88,7 +88,7 @@ internal fun LibraryTrackRow(
     downloadProgress: Int?,
     metadata: String? = null,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
     onQueue: (() -> Unit)? = null,
