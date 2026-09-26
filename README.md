@@ -143,6 +143,13 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 <br>
 
 <p align="center">
+  <strong>One app, plenty of ways into the music.</strong><br>
+  <sub>Start with radio or charts, open an artist, switch between song and video, then follow the lyrics. Your listening stats stay on your device.</sub>
+</p>
+
+<br>
+
+<p align="center">
   <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp" width="200" alt="Levyra home and personalized radio" /></a>
   <a href="docs/assets/showcase/cards/02_now_playing.webp"><img src="docs/assets/showcase/cards/02_now_playing.webp" width="200" alt="Levyra song and video player" /></a>
   <a href="docs/assets/showcase/cards/03_lyrics.webp"><img src="docs/assets/showcase/cards/03_lyrics.webp" width="200" alt="Levyra synchronized lyrics" /></a>

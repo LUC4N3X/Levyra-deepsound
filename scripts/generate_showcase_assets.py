@@ -5,6 +5,7 @@ SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshots"
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
 OUT_SCREENSHOTS_DIR = r"docs\assets\screenshots"
 OUT_CARDS_DIR = os.path.join(OUT_SHOWCASE_DIR, "cards")
+LOGO_PATH = r"app\src\main\res\drawable\levyra_logo.png"
 
 os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_SCREENSHOTS_DIR, exist_ok=True)
@@ -308,77 +309,63 @@ def generate_studio_dual_card(
     print(f"Generated Showcase Card: {out_path}")
 
 def generate_hero_panoramic_showcase():
-    canvas_w, canvas_h = 2400, 1080
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (239, 224, 226, 255))
+    canvas_w, canvas_h = 2400, 1160
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (7, 8, 13, 255))
     draw = ImageDraw.Draw(canvas)
 
     draw.polygon(
-        [(845, 0), (2400, 0), (2400, 1080), (545, 1080)],
-        fill=(205, 224, 239, 255),
+        [(720, 0), (2400, 0), (2400, 370), (980, 610)],
+        fill=(21, 35, 72, 255),
     )
     draw.polygon(
-        [(0, 845), (1260, 565), (2400, 755), (2400, 1080), (0, 1080)],
-        fill=(181, 164, 207, 255),
+        [(1080, 1160), (2400, 820), (2400, 1160)],
+        fill=(126, 29, 143, 255),
     )
-    draw.ellipse((1760, -385, 2520, 375), fill=(238, 212, 177, 255))
-
-    orbit = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    orbit_draw = ImageDraw.Draw(orbit)
-    orbit_draw.arc((660, 75, 2230, 1335), 192, 351, fill=(30, 34, 42, 40), width=4)
-    orbit_draw.arc((760, -20, 2370, 1190), 175, 332, fill=(255, 255, 255, 110), width=3)
-    canvas = Image.alpha_composite(canvas, orbit)
+    draw.polygon(
+        [(1730, 0), (1960, 0), (1420, 1160), (1190, 1160)],
+        fill=(216, 31, 174, 80),
+    )
+    for line_y in range(70, canvas_h, 90):
+        draw.line((710, line_y, 2360, line_y), fill=(255, 255, 255, 12), width=2)
     draw = ImageDraw.Draw(canvas)
 
-    label_font = get_font(25, bold=True)
-    title_font = get_font(122, bold=True)
-    statement_font = get_font(48, bold=True)
-    body_font = get_font(29, bold=False)
-    chip_font = get_font(21, bold=True)
+    with Image.open(LOGO_PATH) as logo_source:
+        logo = logo_source.convert("RGBA")
+        logo.thumbnail((410, 410), Image.Resampling.LANCZOS)
+    canvas.paste(logo, (118, 72), logo)
 
-    draw.rounded_rectangle((110, 105, 540, 166), radius=30, fill=(20, 23, 29, 255))
-    draw.text((325, 136), "OPEN SOURCE · NO ADS", font=label_font, fill=(255, 255, 255, 255), anchor="mm")
-    draw.text((105, 228), "LEVYRA", font=title_font, fill=(20, 23, 29, 255))
+    draw.text((110, 470), "LEVYRA", font=get_font(112, bold=True), fill=(255, 255, 255, 255))
+    draw.text((118, 605), "MUSIC, KEPT PERSONAL.", font=get_font(32, bold=True), fill=(98, 208, 255, 255))
     draw.multiline_text(
-        (112, 390),
-        "Your music.\nYour way.",
-        font=statement_font,
-        fill=(20, 23, 29, 255),
-        spacing=7,
+        (118, 675),
+        "Native playback on Android and Windows.\nNo ads. No telemetry. Your library stays yours.",
+        font=get_font(25),
+        fill=(205, 209, 221, 255),
+        spacing=12,
     )
-    draw.multiline_text(
-        (112, 535),
-        "A native player for Android and Windows,\nbuilt for listening—not tracking.",
-        font=body_font,
-        fill=(65, 70, 79, 255),
-        spacing=10,
-    )
+    draw.line((118, 815, 560, 815), fill=(255, 255, 255, 85), width=3)
+    draw.text((118, 845), "PLAY  /  EXPLORE  /  KEEP", font=get_font(20, bold=True), fill=(255, 255, 255, 185))
+    draw.text((118, 1035), "ANDROID + WINDOWS", font=get_font(18, bold=True), fill=(255, 255, 255, 130))
 
-    chips = ["OFFLINE M4A", "SYNCED LYRICS", "PRIVATE STATS"]
-    chip_x = 112
-    for chip in chips:
-        bbox = draw.textbbox((0, 0), chip, font=chip_font)
-        chip_w = bbox[2] - bbox[0] + 48
-        draw.rounded_rectangle((chip_x, 710, chip_x + chip_w, 766), radius=28, outline=(20, 23, 29, 210), width=3)
-        draw.text((chip_x + chip_w / 2, 738), chip, font=chip_font, fill=(20, 23, 29, 255), anchor="mm")
-        chip_x += chip_w + 18
-
-    phone_specs = [
-        ("home", 790, 930, 195, -4),
-        ("now_playing", 940, 1390, 50, 2),
-        ("lyrics", 765, 1815, 155, 5),
+    back_row = [
+        ("search_artist", 590, 690, 265, -9),
+        ("artist_discography", 610, 970, 95, -5),
+        ("charts", 610, 1940, 85, 7),
+        ("genres", 580, 2160, 280, 10),
     ]
-    for key, height, x, y, angle in phone_specs:
+    front_row = [
+        ("home", 760, 900, 340, -5),
+        ("now_playing", 925, 1330, 150, 0),
+        ("lyrics", 755, 1770, 350, 5),
+    ]
+    for key, height, x, y, angle in back_row + front_row:
         with Image.open(get_screen_path(SCREENS[key])) as source:
             phone = create_phone_frame(source, target_height=height)
         if angle:
             phone = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        shadow = create_studio_shadow(phone, blur_radius=45, opacity=155, offset=(0, 28))
-        canvas.paste(shadow, (x - 45, y - 17), shadow)
+        shadow = create_studio_shadow(phone, blur_radius=42, opacity=190, offset=(0, 26))
+        canvas.paste(shadow, (x - 42, y - 16), shadow)
         canvas.paste(phone, (x, y), phone)
-
-    draw = ImageDraw.Draw(canvas)
-    draw.text((112, 983), "LISTEN DEEPER", font=get_font(19, bold=True), fill=(20, 23, 29, 190))
-    draw.line((295, 994, 750, 994), fill=(20, 23, 29, 105), width=3)
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_showcase.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
