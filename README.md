@@ -167,70 +167,52 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 ---
 
-## ✦ What Levyra can do
+## ✦ Features
 
-### Playback
+- **Native playback**: Media3 and ExoPlayer on Android, libVLC through direct C bindings on Windows (no web wrappers).
+- **Gapless & audio tuning**: uninterrupted album transitions, crossfade, pitch shifting, custom playback speed, 10-band EQ, and AutoEQ headphone profiles.
+- **SponsorBlock**: automatically skips sponsored segments, intros, outros, and non-music chatter.
+- **Audio & video modes**: one-tap switch between audio-only streaming and full video with subtitle tracks.
+- **Clean offline downloads**: saved directly in device storage as standard M4A files with metadata, artwork, and lyrics.
+- **Unified library**: local files and streamed tracks share the same playlists, favorites, and queues.
+- **Queue Spaces**: keep multiple active listening sessions side by side without losing your current queue.
+- **Synced lyrics**: tap-to-seek, manual timing adjustments, dedicated Bluetooth latency offset, and non-Latin romanization.
+- **Visuals**: motion artwork on the Now Playing screen, falling back to animated album covers.
+- **System integration**: Android Auto, lockscreen media controls, persistent notifications, and Quick Settings tile.
+- **Song recognition**: on-device music identification through the microphone or internal audio, saved in local history.
+- **Explore**: live radio stations, international charts, and genre or mood browsing.
+- **Levyra Vault**: backup and restore playlists, favorites, history, and preferences in a single local file.
+- **Private stats**: on-device play counts and listening hours, with optional Last.fm and ListenBrainz scrobbling.
 
-- Playback is native on both platforms: Media3 and ExoPlayer on Android, and libVLC on Windows.
-- Albums can play without gaps. You can also enable crossfade or change pitch and playback speed manually.
-- A 10-band equalizer is built in, and AutoEQ can load profiles for supported headphones.
-- SponsorBlock can automatically skip intros, sponsored sections and other non-music segments.
-- You can switch between audio-only playback and full video, with subtitle support.
-- On Android, Levyra works with Android Auto, media notifications, system playback controls and a Quick Settings tile.
-
-### Library and offline storage
-
-- Downloaded songs are saved in normal device storage as M4A files with tags, artwork and lyrics.
-- Your own files can sit beside streamed tracks in the same library, playlists and queues.
-- Queue Spaces let you keep separate listening sessions without losing the tracks you already lined up.
-- Levyra Vault can save your playlists, favorites, history and settings in a single local backup file.
-- You can filter the library by tags, sort playlists and exclude artists.
-
-### Lyrics, discovery, and extras
-
-- Tap a synced lyric line to jump to that point in the song. You can adjust the timing by hand and keep a separate offset for Bluetooth delay.
-- Lyrics written in non-Latin scripts can be romanized, and selected lines can be turned into shareable lyric cards.
-- The Now Playing screen can show motion artwork, with animated album art used as a fallback.
-- Explore brings together live radio, international charts, genres and mood-based browsing.
-- Song recognition can listen through the microphone or internal audio, and Levyra keeps recognized tracks locally.
-- Levyra calculates play counts and weekly listening time on your device. Last.fm and ListenBrainz scrobbling are optional.
-
-More technical notes and platform details are available in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+For full technical notes, platform architecture, and build details, check the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ## ✦ Under the hood
 
-Android and Windows share Kotlin code for extraction and networking. Each platform keeps its own native interface and playback engine.
+I wanted Levyra to share as much logic as possible without forcing either platform into a web view or a sluggish cross-platform container. The architecture is split into a shared Kotlin core and two native runtimes.
 
-| Layer | Android | Windows |
-| --- | --- | --- |
-| **Interface** | Jetpack Compose + Material 3 | Compose Multiplatform (Desktop JVM) |
-| **Audio engine** | AndroidX Media3 / ExoPlayer | libVLC via vlcj (native C bindings) |
-| **Extraction & network** | LevyraExtractor, OkHttp (Brotli, DoH) | LevyraExtractor, OkHttp (Brotli) |
-| **Persistence** | Room (SQLite), DataStore, MediaStore | Local file storage, JSON serialization |
-| **OS integration** | MediaSessionService, Android Auto, Quick Settings | Native desktop windowing, system audio |
-| **Optimization** | R8, ProGuard, Android Baseline Profiles | JVM 21 bytecode, zero Chromium runtime |
+#### - Android
 
-### Why native instead of a web wrapper
+The mobile client is pure native Kotlin. The interface is built with Jetpack Compose and Material 3, with database persistence on Room, preferences on DataStore, and local indexing through MediaStore. Audio runs directly on AndroidX Media3 and ExoPlayer, which connects audio focus, Bluetooth playback controls, lockscreen media sessions, Quick Settings, and Android Auto straight to Android system services. Release builds are optimized with R8, ProGuard, and Android Baseline Profiles.
 
-On Windows, Compose Multiplatform draws the interface and libVLC handles playback. Android uses Media3 for audio focus, Bluetooth controls, lockscreen playback, media sessions and Android Auto.
+#### - Windows
 
-Levyra does not bundle Chromium, Electron or a WebView runtime.
+The desktop version runs Compose Multiplatform on modern JVM 21, but leaves audio decoding to libVLC through direct native C bindings (`vlcj`). That routes playback straight into system audio without bundling Chromium, Electron, or WebView runtimes. Preferences and library data are kept in lightweight local JSON files, so the app starts cleanly and stays light on system memory.
 
-## ✦ Development
+#### - Shared core
 
-Levyra is developed in public. I use AI-assisted tools when they are useful for research, debugging or review. I treat generated code like any other draft: I read it, adapt it to the project, test the parts it can affect and decide whether it should ship.
+Stream resolution, YouTube extraction, and network retry fallbacks live in a shared Kotlin engine (`LevyraExtractor`). The engine runs OkHttp with Brotli compression and DNS-over-HTTPS, so network fixes and format updates apply to both Android and Windows from the same codebase.
 
-Commits, pull requests, issues and releases are public. The repository also includes the engineering rules I follow while working on the project. [Read more about how I work on Levyra](docs/site/development-notes.md).
+#### - Native performance over web wrappers
 
-## ✦ Privacy
+Many cross-platform music players are essentially web browsers wrapped in an executable. They take seconds to spin up and eat memory just to sit idle in your system tray. Skipping web runtimes keeps startup quick and memory low, so the app behaves like real software built for the machine it runs on.
 
-Levyra has no telemetry, analytics or ads, and you do not need an account to use it.
+## ✦ Built in public · Zero tracking
 
-Your play history, stats, playlists and cached metadata stay on your device. When an online feature needs another service, Levyra connects to that service directly. Streaming, lyrics and optional scrobbling work this way.
+Levyra is developed in public. Commits, pull requests, issues, and releases are all open, alongside the engineering rules I follow while maintaining the project. I use AI-assisted tools when they help with research, debugging, or review, but I treat generated code like any unverified draft: I review it, adapt it to the architecture, and test the affected parts before anything ships. [Read more about how I work on Levyra](docs/site/development-notes.md).
 
-Levyra asks for microphone access only when you start song identification. You can also configure a custom proxy or DNS provider in the app.
+There is no telemetry, analytics, or advertising, and you do not need an account to use the app. Your playback history, listening statistics, playlists, and cached metadata stay on your device. When an online feature needs an external service (for streaming, lyrics, or optional scrobbling), Levyra connects to that provider directly. Microphone access is requested only when you actively trigger song identification, and you can route traffic through a custom proxy or DNS in settings.
 
-Apptizo scanned a Levyra build from F-Droid and reported no known third-party tracker SDKs. [See the Apptizo scan](https://apptizo.com/app/levyra/). The Levyra 2.5.10 APK also returned **0/68 detections** on [VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1).
+For independent verification, an Apptizo scan of the F-Droid build confirmed zero third-party tracker SDKs ([view the Apptizo report](https://apptizo.com/app/levyra/)), and the Levyra 2.5.10 APK returned **0/68 detections** on [VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1).
 
 ## ✦ Translations
 
@@ -300,7 +282,7 @@ Levyra is a personal project. I maintain the Android and Windows apps, review ch
 
 <div align="center">
 
-### Open source. Independent. Built for lawful use.
+#### Open source. Independent. Built for lawful use.
 
 <code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
 
@@ -308,43 +290,33 @@ Levyra is a personal project. I maintain the Android and Windows apps, review ch
 
 </div>
 
-<br>
+#### - Third-party services and content
 
-### Third-party services and content
-
-Levyra is client-side software that runs on your device. It does not own or host music catalogs, artwork, lyrics, or video files.
-
-When you stream or search, Levyra connects to the external services needed for that feature. Those services can change, rate-limit, or restrict access at any time.
+Levyra is client-side software that runs on your device. It does not own or host music catalogs, artwork, lyrics, or video files. When you stream or search, Levyra connects to the external services needed for that feature. Those services can change, rate-limit, or restrict access at any time.
 
 If there is a problem with media hosted by another service, contact that service or the relevant rights holder. If the issue is with something distributed as part of Levyra itself, use the GitHub issue tracker.
 
-### Lawful use and user responsibility
+#### - Lawful use and user responsibility
 
-Levyra is built for lawful use, research, and interoperability, not for piracy or copyright infringement.
+Levyra is built for lawful use, research, and interoperability, not for piracy or copyright infringement. Streaming, downloading, format conversion, and offline caching are software features. They do not transfer copyright or ownership of third-party media.
 
-Streaming, downloading, format conversion, and offline caching are software features. They do not transfer copyright or ownership of third-party media.
+Levyra may cache media temporarily for playback and can save user-requested downloads as standard media files. Neither feature gives you permission to redistribute third-party content. You are responsible for making sure your use of Levyra complies with applicable law and with the terms of any third-party service you choose to access.
 
-Levyra may cache media temporarily for playback and can save user-requested downloads as standard media files. Neither feature gives you permission to redistribute third-party content.
-
-You are responsible for making sure your use of Levyra complies with applicable law and with the terms of any third-party service you choose to access.
-
-### Support artists and creators
+#### - Support artists and creators
 
 Levyra does not unlock paid subscriptions or grant access rights offered by third-party providers. If you want an official subscription experience, subscribe directly through the provider, including [YouTube Premium](https://www.youtube.com/premium), [YouTube Music Premium](https://www.youtube.com/musicpremium), or [Spotify Premium](https://www.spotify.com/premium/).
 
 You can also support artists directly through licensed streaming services, music purchases, concerts, merchandise, and other official channels.
 
-### Privacy
+#### - Privacy
 
 Levyra does not require a Levyra account and does not include telemetry, analytics, or ads. Network requests go directly to the services used by the features you enable, including optional integrations.
 
-### Technical interoperability and access restrictions
+#### - Technical interoperability and access restrictions
 
-Levyra includes client-side code for compatibility with external services. It handles things like stream resolution, requests, and tokens so those integrations can work.
+Levyra includes client-side code for compatibility with external services. It handles things like stream resolution, requests, and tokens so those integrations can work. These are interoperability features, not tools for bypassing access controls, geographic restrictions, or paid entitlements.
 
-These are interoperability features, not tools for bypassing access controls, geographic restrictions, or paid entitlements.
-
-### Warranty and third-party availability
+#### - Warranty and third-party availability
 
 Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided "as is", without warranty of any kind, to the fullest extent permitted by applicable law.
 
@@ -352,7 +324,7 @@ The GNU GPL v3.0 covers Levyra's source code. It does not grant rights to third-
 
 <div align="center">
 
-### Use Levyra responsibly
+#### Use Levyra responsibly
 
 For the complete legal terms covering technical interoperability, user responsibilities, and third-party integrations, see the **[Legal Notice](docs/legal/LEGAL.md)**.
 
