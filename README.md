@@ -188,13 +188,23 @@ For full technical notes, platform architecture, and build details, check the [d
 
 ## ✦ Under the hood
 
-Levyra shares extraction and networking across Android and Windows in Kotlin, but leaves the interface and audio engine strictly native to each operating system. No Chromium, Electron, or WebView runtimes.
+I wanted Levyra to share as much logic as possible without forcing either platform into a web view or a sluggish cross-platform container. The architecture is split into a shared Kotlin core and two native runtimes.
 
-- **Android**: Jetpack Compose, Material 3, AndroidX Media3 / ExoPlayer, Room, DataStore, MediaStore, Android Auto, R8 & Baseline Profiles.
-- **Windows**: Compose Multiplatform on JVM 21, libVLC via native C bindings (`vlcj`), lightweight JSON storage, direct desktop audio.
-- **Shared core**: `LevyraExtractor` stream resolution, OkHttp with Brotli compression, and DNS-over-HTTPS.
+#### - Android
 
-Avoiding browser runtimes keeps startup and resource usage lightweight, while making the player behave like real software built for the machine it is running on.
+The mobile client is pure native Kotlin. The interface is built with Jetpack Compose and Material 3, with database persistence on Room, preferences on DataStore, and local indexing through MediaStore. Audio runs directly on AndroidX Media3 and ExoPlayer, giving the app first-class system support for audio focus, Bluetooth playback controls, lockscreen media sessions, Quick Settings, and Android Auto. Release builds are optimized with R8, ProGuard, and Android Baseline Profiles.
+
+#### - Windows
+
+The desktop version runs Compose Multiplatform on modern JVM 21, but leaves audio decoding to libVLC through direct native C bindings (`vlcj`). That routes playback straight into system audio without bundling Chromium, Electron, or WebView runtimes. Preferences and library data are kept in lightweight local JSON files, so the app starts cleanly and stays light on system memory.
+
+#### - Shared core
+
+Everything related to stream resolution, YouTube extraction, and resilient network fallbacks lives in a shared Kotlin engine (`LevyraExtractor`). Using OkHttp with Brotli compression and DNS-over-HTTPS, network fixes and format updates apply to both Android and Windows from the same codebase.
+
+#### - Native performance over web wrappers
+
+Many cross-platform music players are essentially web browsers wrapped in an executable. They take seconds to spin up and eat memory just to sit idle in your system tray. Avoiding web runtimes keeps startup and resource usage lightweight, while making the player behave like real software built for the machine it is running on.
 
 ## ✦ Built in public · Zero tracking
 
