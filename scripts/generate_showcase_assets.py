@@ -308,39 +308,77 @@ def generate_studio_dual_card(
     print(f"Generated Showcase Card: {out_path}")
 
 def generate_hero_panoramic_showcase():
-    canvas_w, canvas_h = 2400, 1240
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (5, 7, 11, 255))
+    canvas_w, canvas_h = 2400, 1080
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (239, 224, 226, 255))
+    draw = ImageDraw.Draw(canvas)
 
-    canvas = Image.alpha_composite(
-        canvas,
-        create_ambient_glow(canvas_w, canvas_h, (520, 500), 780, (196, 54, 118), max_alpha=72),
+    draw.polygon(
+        [(845, 0), (2400, 0), (2400, 1080), (545, 1080)],
+        fill=(205, 224, 239, 255),
     )
-    canvas = Image.alpha_composite(
-        canvas,
-        create_ambient_glow(canvas_w, canvas_h, (1200, 550), 900, (37, 116, 255), max_alpha=90),
+    draw.polygon(
+        [(0, 845), (1260, 565), (2400, 755), (2400, 1080), (0, 1080)],
+        fill=(181, 164, 207, 255),
     )
-    canvas = Image.alpha_composite(
-        canvas,
-        create_ambient_glow(canvas_w, canvas_h, (1980, 520), 760, (105, 52, 210), max_alpha=75),
+    draw.ellipse((1760, -385, 2520, 375), fill=(238, 212, 177, 255))
+
+    orbit = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    orbit_draw = ImageDraw.Draw(orbit)
+    orbit_draw.arc((660, 75, 2230, 1335), 192, 351, fill=(30, 34, 42, 40), width=4)
+    orbit_draw.arc((760, -20, 2370, 1190), 175, 332, fill=(255, 255, 255, 110), width=3)
+    canvas = Image.alpha_composite(canvas, orbit)
+    draw = ImageDraw.Draw(canvas)
+
+    label_font = get_font(25, bold=True)
+    title_font = get_font(122, bold=True)
+    statement_font = get_font(48, bold=True)
+    body_font = get_font(29, bold=False)
+    chip_font = get_font(21, bold=True)
+
+    draw.rounded_rectangle((110, 105, 540, 166), radius=30, fill=(20, 23, 29, 255))
+    draw.text((325, 136), "OPEN SOURCE · NO ADS", font=label_font, fill=(255, 255, 255, 255), anchor="mm")
+    draw.text((105, 228), "LEVYRA", font=title_font, fill=(20, 23, 29, 255))
+    draw.multiline_text(
+        (112, 390),
+        "Your music.\nYour way.",
+        font=statement_font,
+        fill=(20, 23, 29, 255),
+        spacing=7,
+    )
+    draw.multiline_text(
+        (112, 535),
+        "A native player for Android and Windows,\nbuilt for listening—not tracking.",
+        font=body_font,
+        fill=(65, 70, 79, 255),
+        spacing=10,
     )
 
-    keys = ["home", "charts", "now_playing", "lyrics", "artist_discography"]
-    heights = [900, 1010, 1160, 1010, 900]
-    positions = [(20, 245), (430, 135), (925, 25), (1450, 135), (1870, 245)]
-    opacities = [135, 165, 220, 165, 135]
+    chips = ["OFFLINE M4A", "SYNCED LYRICS", "PRIVATE STATS"]
+    chip_x = 112
+    for chip in chips:
+        bbox = draw.textbbox((0, 0), chip, font=chip_font)
+        chip_w = bbox[2] - bbox[0] + 48
+        draw.rounded_rectangle((chip_x, 710, chip_x + chip_w, 766), radius=28, outline=(20, 23, 29, 210), width=3)
+        draw.text((chip_x + chip_w / 2, 738), chip, font=chip_font, fill=(20, 23, 29, 255), anchor="mm")
+        chip_x += chip_w + 18
 
-    for key, height, (x, y), opacity in zip(keys, heights, positions, opacities):
+    phone_specs = [
+        ("home", 790, 930, 195, -4),
+        ("now_playing", 940, 1390, 50, 2),
+        ("lyrics", 765, 1815, 155, 5),
+    ]
+    for key, height, x, y, angle in phone_specs:
         with Image.open(get_screen_path(SCREENS[key])) as source:
             phone = create_phone_frame(source, target_height=height)
-        shadow = create_studio_shadow(phone, blur_radius=55, opacity=opacity, offset=(0, 30))
-        canvas.paste(shadow, (x - 55, y - 25), shadow)
+        if angle:
+            phone = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+        shadow = create_studio_shadow(phone, blur_radius=45, opacity=155, offset=(0, 28))
+        canvas.paste(shadow, (x - 45, y - 17), shadow)
         canvas.paste(phone, (x, y), phone)
 
-    fade = Image.new("RGBA", (canvas_w, 260), (0, 0, 0, 0))
-    fade_alpha = Image.new("L", (1, 260))
-    fade_alpha.putdata([int(190 * (y / 259) ** 1.8) for y in range(260)])
-    fade.putalpha(fade_alpha.resize((canvas_w, 260)))
-    canvas.alpha_composite(fade, (0, canvas_h - 260))
+    draw = ImageDraw.Draw(canvas)
+    draw.text((112, 983), "LISTEN DEEPER", font=get_font(19, bold=True), fill=(20, 23, 29, 190))
+    draw.line((295, 994, 750, 994), fill=(20, 23, 29, 105), width=3)
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_showcase.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
@@ -370,8 +408,8 @@ def generate_feature_cards():
             [(0, 950), (card_w, 650), (card_w, card_h), (0, card_h)],
             fill=(*accent, 255),
         )
-        draw.rounded_rectangle((64, 58, 180, 96), radius=19, fill=(20, 23, 29, 235))
-        draw.text((83, 69), f"LEVYRA / {number}", font=label_font, fill=(255, 255, 255, 255))
+        draw.rounded_rectangle((64, 58, 254, 104), radius=23, fill=(20, 23, 29, 235))
+        draw.text((159, 81), f"LEVYRA / {number}", font=label_font, fill=(255, 255, 255, 255), anchor="mm")
         draw.text((64, 132), title, font=title_font, fill=(20, 23, 29, 255))
         draw.multiline_text(
             (64, 205),

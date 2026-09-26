@@ -138,6 +138,10 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 <div align="center">
 
+<a href="docs/assets/showcase/00_levyra_hero_showcase.webp"><img src="docs/assets/showcase/00_levyra_hero_showcase.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
+
+<br>
+
 <p align="center">
   <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp" width="200" alt="Levyra home and personalized radio" /></a>
   <a href="docs/assets/showcase/cards/02_now_playing.webp"><img src="docs/assets/showcase/cards/02_now_playing.webp" width="200" alt="Levyra song and video player" /></a>
