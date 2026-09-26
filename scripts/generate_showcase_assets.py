@@ -3,12 +3,10 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
 SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshots"
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
-OUT_SCREENSHOTS_DIR = r"docs\assets\screenshots"
 OUT_CARDS_DIR = os.path.join(OUT_SHOWCASE_DIR, "cards")
 LOGO_PATH = r"app\src\main\res\drawable\levyra_logo.png"
 
 os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
-os.makedirs(OUT_SCREENSHOTS_DIR, exist_ok=True)
 os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 
 SCREENS = {
@@ -186,22 +184,6 @@ def draw_vector_sparkle(draw, center, radius, color):
         (cx - r_inner, cy - r_inner)
     ]
     draw.polygon(points, fill=color)
-
-def generate_individual_screenshots():
-    print("Generating individual screenshots...")
-    for key, filename in SCREENS.items():
-        src_path = get_screen_path(filename)
-        if not os.path.exists(src_path):
-            print(f"Skipping missing: {filename}")
-            continue
-
-        img = Image.open(src_path)
-        gallery_screen = create_gallery_screen(img)
-
-        out_name = f"{key}.webp"
-        out_path = os.path.join(OUT_SCREENSHOTS_DIR, out_name)
-        gallery_screen.save(out_path, "WEBP", quality=90, method=6)
-        print(f"Saved individual: {out_path}")
 
 def generate_studio_dual_card(
     card_id,
@@ -430,7 +412,6 @@ def generate_feature_cards():
 
 def main():
     print("Generating refined Levyra showcase assets...")
-    generate_individual_screenshots()
     generate_hero_panoramic_showcase()
     generate_feature_cards()
     print("Showcase generation completed successfully!")
