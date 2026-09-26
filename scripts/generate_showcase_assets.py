@@ -346,10 +346,56 @@ def generate_hero_panoramic_showcase():
     canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
     print(f"Generated Panoramic Hero Showcase: {out_path}")
 
+def generate_gallery_showcase():
+    canvas_w, canvas_h = 2400, 1900
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (5, 7, 11, 255))
+    canvas = Image.alpha_composite(
+        canvas,
+        create_ambient_glow(canvas_w, canvas_h, (420, 430), 720, (205, 48, 115), max_alpha=65),
+    )
+    canvas = Image.alpha_composite(
+        canvas,
+        create_ambient_glow(canvas_w, canvas_h, (1200, 840), 980, (34, 111, 255), max_alpha=70),
+    )
+    canvas = Image.alpha_composite(
+        canvas,
+        create_ambient_glow(canvas_w, canvas_h, (2050, 1450), 760, (105, 61, 210), max_alpha=62),
+    )
+
+    line_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    line_draw = ImageDraw.Draw(line_layer)
+    line_draw.arc((-620, 150, 1040, 1810), 276, 84, fill=(255, 255, 255, 20), width=3)
+    line_draw.arc((1360, -260, 2820, 1200), 96, 264, fill=(255, 255, 255, 17), width=3)
+    canvas = Image.alpha_composite(canvas, line_layer)
+
+    placements = [
+        ("home", 40, 150, -3, 820),
+        ("now_playing", 590, 45, 2, 900),
+        ("lyrics", 1190, 135, -2, 840),
+        ("charts", 1770, 75, 3, 820),
+        ("search_artist", 160, 1030, 2, 780),
+        ("artist_discography", 730, 900, -2, 840),
+        ("genres", 1320, 1020, 2, 780),
+        ("listening_pulse", 1870, 900, -3, 840),
+    ]
+
+    for key, x, y, angle, height in placements:
+        with Image.open(get_screen_path(SCREENS[key])) as source:
+            screen = create_gallery_screen(source, target_height=height)
+        tilted = screen.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+        shadow = create_studio_shadow(tilted, blur_radius=42, opacity=175, offset=(0, 25))
+        canvas.paste(shadow, (x - 42, y - 18), shadow)
+        canvas.paste(tilted, (x, y), tilted)
+
+    out_path = os.path.join(OUT_SHOWCASE_DIR, "01_levyra_gallery.webp")
+    canvas.convert("RGB").save(out_path, "WEBP", quality=92, method=6)
+    print(f"Generated Gallery Showcase: {out_path}")
+
 def main():
     print("Generating refined Levyra showcase assets...")
     generate_individual_screenshots()
     generate_hero_panoramic_showcase()
+    generate_gallery_showcase()
     print("Showcase generation completed successfully!")
 
 if __name__ == "__main__":
