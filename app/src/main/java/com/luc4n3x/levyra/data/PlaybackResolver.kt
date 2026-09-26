@@ -1530,6 +1530,22 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
                 if (!finished) {
                     upgradeTimedOut = true
+                    val elapsedMs = System.currentTimeMillis() - startedAt
+                    strategyHealth.recordFailure(
+                        VIDEO_HEALTH_MODE,
+                        strategy.name,
+                        elapsedMs,
+                        PlaybackFailureKind.Timeout
+                    )
+                    RuntimeHooks.resolver(
+                        mode = RuntimeSignal.MODE_VIDEO,
+                        strategy = strategy.ordinal,
+                        client = -1,
+                        attempt = attemptIndex + 1,
+                        latencyMs = elapsedMs,
+                        outcome = RuntimeSignal.OUTCOME_TIMEOUT,
+                        failure = PlaybackFailureKind.Timeout.ordinal
+                    )
                     continue
                 }
                 errors += synchronized(upgradeErrors) { upgradeErrors.toList() }
