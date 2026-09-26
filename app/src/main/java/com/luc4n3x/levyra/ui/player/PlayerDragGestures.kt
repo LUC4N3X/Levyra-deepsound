@@ -7,7 +7,6 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.dp
-import kotlin.math.abs
 
 sealed interface PlayerDragEvent {
 
@@ -91,11 +90,7 @@ private class PlayerDragSession(
     fun start(offset: Offset, widthPx: Float) {
         resetMotion()
         velocityTracker.resetTracking()
-        val resolvedZone = playerGestureZone(
-            offset.x / widthPx.coerceAtLeast(1f),
-            rightToLeft
-        )
-        zone = resolvedZone.takeIf { edgeZonesEnabled } ?: PlayerGestureZone.Center
+        zone = resolveZone(offset.x, widthPx)
     }
 
     fun drag(
@@ -125,6 +120,11 @@ private class PlayerDragSession(
     fun cancel() {
         onEvent(PlayerDragEvent.Cancelled)
         resetMotion()
+    }
+
+    private fun resolveZone(offsetX: Float, widthPx: Float): PlayerGestureZone {
+        if (!edgeZonesEnabled) return PlayerGestureZone.Center
+        return playerGestureZone(offsetX / widthPx.coerceAtLeast(1f), rightToLeft)
     }
 
     private fun resolveAxisIfNeeded() {
@@ -200,18 +200,6 @@ private class PlayerDragSession(
         peeked = false
     }
 }
-
-internal fun playerSwipeReleaseVelocity(
-    offsetPx: Float,
-    velocityPx: Float,
-    minFlingDistancePx: Float
-): Float = velocityPx
-    .takeIf { offsetPx.isFinite() }
-    ?.takeIf { it.isFinite() }
-    ?.takeIf { minFlingDistancePx.isFinite() }
-    ?.takeIf { abs(offsetPx) >= minFlingDistancePx.coerceAtLeast(0f) }
-    ?.takeIf { (it < 0f) == (offsetPx < 0f) }
-    ?: 0f
 
 private fun mirrored(result: PlayerSwipeResult, rightToLeft: Boolean): PlayerSwipeResult {
     if (!rightToLeft) return result
