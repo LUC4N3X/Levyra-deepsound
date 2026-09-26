@@ -12,7 +12,7 @@ import android.webkit.WebViewClient
 import androidx.annotation.Keep
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
-import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -269,7 +269,7 @@ internal class YoutubePlaybackSecurity private constructor(
     }
 
     private suspend fun fetchVisitorData(): String {
-        val locale = LevyraContentLocales.forLanguage(preferences.languageCode())
+        val locale = YoutubeRegionProfile.effectiveLocale(preferences.languageCode())
         val client = JSONObject()
             .put("clientName", YoutubeWebClientIdentity.CLIENT_NAME)
             .put("clientVersion", YoutubeWebClientIdentity.CLIENT_VERSION)

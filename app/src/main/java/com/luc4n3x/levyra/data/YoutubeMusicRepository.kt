@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
@@ -32,17 +34,17 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.text.Normalizer
 import java.util.Calendar
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 
 data class YoutubeMusicMoodCategory(
@@ -1123,7 +1125,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private fun clientPayload(languageCode: String): JSONObject {
-        val locale = LevyraContentLocales.forLanguage(languageCode)
+        val locale = YoutubeRegionProfile.effectiveLocale(languageCode)
         return JSONObject()
             .put("clientName", "WEB_REMIX")
             .put("clientVersion", clientVersion)
@@ -2722,13 +2724,14 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private fun fallbackSuggestionQueries(cleanQuery: String, hl: String, gl: String): List<String> {
         val url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&hl=$hl&gl=$gl&q=${java.net.URLEncoder.encode(cleanQuery, "UTF-8")}"
         return runCatching {
-            val connection = URL(url).openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            val response = connection.inputStream.bufferedReader().use { reader ->
+            val client = LevyraHttpClientFactory.media(context).newBuilder()
+                .connectTimeout(5, TimeUnit.SECONDS)
+                .readTimeout(5, TimeUnit.SECONDS)
+                .build()
+            val response = client.newCall(Request.Builder().url(url).get().build()).execute().use { reply ->
+                if (!reply.isSuccessful) return@runCatching emptyList()
                 val buffer = CharArray(SUGGESTION_RESPONSE_LIMIT_CHARS)
-                val read = reader.read(buffer)
+                val read = reply.body.charStream().read(buffer)
                 if (read <= 0) "" else String(buffer, 0, read)
             }
             val root = JSONArray(response)
