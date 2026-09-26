@@ -91,7 +91,7 @@ internal class ByeDpiSecureResolver(
             val second = raw[1].toInt() and 0xff
             return when (raw.size) {
                 4 -> !(first == 100 && second in 64..127) && first != 0
-                else -> (first and 0xfe) != 0xfc
+                else -> first and 0xfe != 0xfc
             }
         }
     }

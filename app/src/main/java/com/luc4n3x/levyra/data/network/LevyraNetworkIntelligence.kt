@@ -124,7 +124,7 @@ internal object LevyraNetworkIntelligence {
     private fun isGlobalIpv6(address: InetAddress): Boolean {
         if (address !is Inet6Address) return false
         if (address.isLinkLocalAddress || address.isSiteLocalAddress || address.isLoopbackAddress) return false
-        return (address.address[0].toInt() and 0xfe) != 0xfc
+        return address.address[0].toInt() and 0xfe != 0xfc
     }
 
     private fun NetworkCapabilities.hasInternet(): Boolean =
