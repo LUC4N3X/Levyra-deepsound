@@ -71,6 +71,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 private val PlaylistHitActionShape = RoundedCornerShape(16.dp)
 private val PlaylistHitCoverShape = RoundedCornerShape(20.dp)
 
+@Suppress("LongMethod", "LongParameterList")
 @Composable
 internal fun PlaylistHitOverlay(
     preview: PlaylistHitPreview,
@@ -184,6 +185,7 @@ internal fun PlaylistHitOverlay(
     }
 }
 
+@Suppress("LongMethod", "LongParameterList")
 @Composable
 private fun PlaylistHitHeader(
     hit: PlaylistHit,
