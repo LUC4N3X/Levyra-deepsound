@@ -206,13 +206,11 @@ internal fun playerSwipeReleaseVelocity(
     velocityPx: Float,
     minFlingDistancePx: Float
 ): Float {
-    if (!offsetPx.isFinite()) return 0f
-    if (!velocityPx.isFinite()) return 0f
-    if (!minFlingDistancePx.isFinite()) return 0f
-    if (abs(offsetPx) < minFlingDistancePx.coerceAtLeast(0f)) return 0f
+    val invalidSample = !offsetPx.isFinite() || !velocityPx.isFinite() || !minFlingDistancePx.isFinite()
+    if (invalidSample) return 0f
+    val farEnough = abs(offsetPx) >= minFlingDistancePx.coerceAtLeast(0f)
     val sameDirection = (velocityPx < 0f) == (offsetPx < 0f)
-    if (!sameDirection) return 0f
-    return velocityPx
+    return if (farEnough && sameDirection) velocityPx else 0f
 }
 
 private fun mirrored(result: PlayerSwipeResult, rightToLeft: Boolean): PlayerSwipeResult {
