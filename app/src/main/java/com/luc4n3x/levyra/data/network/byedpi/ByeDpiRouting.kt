@@ -57,21 +57,26 @@ internal class ByeDpiSecureResolver(
         val key = hostname.lowercase(Locale.ROOT)
         val now = clockMs()
         cache[key]?.takeIf { it.expiresAtMs > now }?.let { return it.addresses }
-        for ((name, resolver) in resolvers) {
-            val addresses = try {
-                resolver.lookup(hostname).filter(::isPublicUnicast)
-            } catch (failure: IOException) {
-                Timber.w("[RouteAudit] dns: host=%s resolver=%s error=%s", hostname, name, failure.javaClass.simpleName)
-                continue
-            }
-            if (addresses.isEmpty()) continue
-            if (cache.size >= MAX_CACHED_HOSTS) cache.clear()
-            cache[key] = Answer(addresses, now + ttlMs)
-            Timber.i("[RouteAudit] dns: host=%s resolver=%s answers=%d", hostname, name, addresses.size)
-            return addresses
+        val addresses = resolvers.firstNotNullOfOrNull { (name, resolver) -> query(name, resolver, hostname) }
+        if (addresses == null) {
+            Timber.w("[RouteAudit] dns: host=%s resolver=system-fallback", hostname)
+            return fallback.lookup(hostname)
         }
-        Timber.w("[RouteAudit] dns: host=%s resolver=system-fallback", hostname)
-        return fallback.lookup(hostname)
+        if (cache.size >= MAX_CACHED_HOSTS) cache.clear()
+        cache[key] = Answer(addresses, now + ttlMs)
+        return addresses
+    }
+
+    private fun query(name: String, resolver: Dns, hostname: String): List<InetAddress>? {
+        val addresses = try {
+            resolver.lookup(hostname).filter(::isPublicUnicast)
+        } catch (failure: IOException) {
+            Timber.w("[RouteAudit] dns: host=%s resolver=%s error=%s", hostname, name, failure.javaClass.simpleName)
+            return null
+        }
+        if (addresses.isEmpty()) return null
+        Timber.i("[RouteAudit] dns: host=%s resolver=%s answers=%d", hostname, name, addresses.size)
+        return addresses
     }
 
     private companion object {

@@ -19,6 +19,11 @@ object YoutubeRegionProfile {
         return LevyraContentLocales.forLanguage(preferredLanguageCode)
     }
 
+    fun cacheScope(languageCode: String): String {
+        val locale = effectiveLocale(languageCode)
+        return "${locale.hl}-${locale.gl}".lowercase()
+    }
+
     fun effectiveAcceptLanguage(defaultAcceptLanguage: String): String {
         if (isEnabled()) {
             return US_ACCEPT_LANGUAGE

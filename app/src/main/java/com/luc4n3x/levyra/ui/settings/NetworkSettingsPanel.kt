@@ -309,10 +309,10 @@ private fun RestrictedCompatibilityCard(
         val byeDpiAvailable = remember { ByeDpiSupervisor.isAvailable() }
         NetworkToggleRow(
             label = strings.networkByeDpi,
-            checked = byeDpiEnabled && byeDpiAvailable,
-            onCheckedChange = { if (byeDpiAvailable) onByeDpiChange(it) },
+            checked = byeDpiEnabled,
+            onCheckedChange = { enabled -> if (byeDpiAvailable || !enabled) onByeDpiChange(enabled) },
             subtitle = strings.networkByeDpiSubtitle,
-            enabled = byeDpiAvailable
+            enabled = byeDpiAvailable || byeDpiEnabled
         )
         NetworkToggleRow(
             label = strings.networkYoutubeRegionProfile,

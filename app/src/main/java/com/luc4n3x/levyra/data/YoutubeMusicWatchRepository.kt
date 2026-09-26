@@ -160,7 +160,7 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
         val cacheKey = listOf(
             cleanVideoId,
             effectivePlaylistId,
-            languageCode.lowercase(Locale.ROOT),
+            YoutubeRegionProfile.cacheScope(languageCode),
             radio.toString(),
             shuffle.toString()
         ).joinToString("|")
@@ -230,7 +230,7 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
     ): List<YoutubeMusicRelatedSection> = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim()
         require(cleanBrowseId.isNotBlank())
-        val cacheKey = "$cleanBrowseId|${languageCode.lowercase(Locale.ROOT)}"
+        val cacheKey = "$cleanBrowseId|${YoutubeRegionProfile.cacheScope(languageCode)}"
         cached(relatedCache, cacheKey, RELATED_CACHE_TTL_MS)?.let { return@withContext it }
         val response = post("browse", JSONObject().put("browseId", cleanBrowseId), languageCode, mobile = false)
         val result = YoutubeMusicWatchParser.parseRelated(response)
@@ -253,7 +253,7 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
     ): YoutubeMusicNativeLyrics? = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim()
         if (cleanBrowseId.isBlank()) return@withContext null
-        val cacheKey = "$cleanBrowseId|${languageCode.lowercase(Locale.ROOT)}"
+        val cacheKey = "$cleanBrowseId|${YoutubeRegionProfile.cacheScope(languageCode)}"
         cached(lyricsCache, cacheKey, LYRICS_CACHE_TTL_MS)?.let { return@withContext it }
 
         val body = JSONObject().put("browseId", cleanBrowseId)

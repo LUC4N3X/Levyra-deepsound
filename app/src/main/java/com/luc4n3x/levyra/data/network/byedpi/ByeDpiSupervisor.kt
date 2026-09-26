@@ -95,6 +95,12 @@ object ByeDpiSupervisor {
     fun start(preferredPort: Int = DEFAULT_PORT) {
         lock.withLock {
             if (isEngaged()) return
+            val previous = proxyInstance
+            if (previous != null && previous.stopProxy() != 0) {
+                failLocked("Previous ByeDPI instance did not stop")
+                return
+            }
+            proxyInstance = null
             if (!isAvailable()) {
                 failLocked("Native byedpi library is not available on this platform")
                 return

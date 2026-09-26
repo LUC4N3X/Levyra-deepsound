@@ -90,7 +90,10 @@ internal object LevyraNetworkConfiguration {
     fun apply(newSettings: LevyraNetworkSettings, newProxyPassword: String) {
         val normalized = newSettings.normalized()
         val previous = settings
-        if (normalized == settings && newProxyPassword == proxyPassword) return
+        if (normalized == settings && newProxyPassword == proxyPassword) {
+            if (normalized.byeDpiEnabled && !ByeDpiSupervisor.isEngaged()) ByeDpiSupervisor.start()
+            return
+        }
         settings = normalized
         proxyPassword = newProxyPassword
         generationCounter.incrementAndGet()

@@ -172,7 +172,8 @@ internal class YoutubeMusicResilienceClient(
         continuation: String,
         query: String
     ): JSONObject? {
-        val requestKey = listOf(kind.name, languageCode, browseId, params, continuation, query).joinToString("\u001f")
+        val requestKey = listOf(kind.name, YoutubeRegionProfile.cacheScope(languageCode), browseId, params, continuation, query)
+            .joinToString("\u001f")
         cached(requestKey)?.let { return it }
 
         val leader = AtomicBoolean(false)

@@ -116,16 +116,15 @@ internal object LevyraNetworkIntelligence {
         return runCatching {
             val network = connectivity.activeNetwork ?: return@runCatching false
             val link = connectivity.getLinkProperties(network) ?: return@runCatching null
-            val hasGlobalAddress = link.linkAddresses.any { linkAddress ->
-                val address = linkAddress.address
-                address is Inet6Address &&
-                    !address.isLinkLocalAddress &&
-                    !address.isSiteLocalAddress &&
-                    !address.isLoopbackAddress &&
-                    (address.address[0].toInt() and 0xfe) != 0xfc
-            }
+            val hasGlobalAddress = link.linkAddresses.any { linkAddress -> isGlobalIpv6(linkAddress.address) }
             hasGlobalAddress && link.routes.any { route -> route.isDefaultRoute && route.destination.address is Inet6Address }
         }.getOrNull()
+    }
+
+    private fun isGlobalIpv6(address: InetAddress): Boolean {
+        if (address !is Inet6Address) return false
+        if (address.isLinkLocalAddress || address.isSiteLocalAddress || address.isLoopbackAddress) return false
+        return (address.address[0].toInt() and 0xfe) != 0xfc
     }
 
     private fun NetworkCapabilities.hasInternet(): Boolean =
