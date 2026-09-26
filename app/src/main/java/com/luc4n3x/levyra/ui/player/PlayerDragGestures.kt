@@ -7,6 +7,7 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 
 sealed interface PlayerDragEvent {
 
@@ -76,20 +77,16 @@ fun Modifier.playerAxisDragGestures(
 private class PlayerDragSession(
     private val rightToLeft: Boolean,
     private val edgeZonesEnabled: Boolean,
-    minFlingDistancePx: Float,
+    private val minFlingDistancePx: Float,
     private val onEvent: (PlayerDragEvent) -> Unit
 ) {
     private var axis = PlayerDragAxis.Undecided
     private var zone = PlayerGestureZone.Center
     private var totalX = 0f
     private var totalY = 0f
+    private var horizontalOffset = 0f
     private var peeked = false
     private val velocityTracker = VelocityTracker()
-    private val horizontal = PlayerHorizontalDragSession(
-        rightToLeft = rightToLeft,
-        minFlingDistancePx = minFlingDistancePx,
-        onEvent = onEvent
-    )
 
     fun start(offset: Offset, widthPx: Float) {
         resetMotion()
@@ -118,7 +115,7 @@ private class PlayerDragSession(
     fun end(widthPx: Float, heightPx: Float) {
         val velocity = velocityTracker.calculateVelocity()
         when (axis) {
-            PlayerDragAxis.Horizontal -> horizontal.settle(velocity.x, widthPx)
+            PlayerDragAxis.Horizontal -> settleHorizontal(velocity.x, widthPx)
             PlayerDragAxis.Vertical -> settleVertical(velocity.y, heightPx)
             PlayerDragAxis.Undecided -> Unit
         }
@@ -140,10 +137,19 @@ private class PlayerDragSession(
 
     private fun dispatchDrag(dragAmount: Offset, widthPx: Float, heightPx: Float) {
         when (axis) {
-            PlayerDragAxis.Horizontal -> horizontal.drag(dragAmount.x, widthPx)
+            PlayerDragAxis.Horizontal -> dispatchHorizontalDrag(dragAmount.x, widthPx)
             PlayerDragAxis.Vertical -> dispatchVerticalDrag(dragAmount.y, heightPx)
             PlayerDragAxis.Undecided -> Unit
         }
+    }
+
+    private fun dispatchHorizontalDrag(deltaX: Float, widthPx: Float) {
+        horizontalOffset += deltaX
+        onEvent(
+            PlayerDragEvent.HorizontalOffset(
+                playerSwipeContentOffset(horizontalOffset, widthPx.coerceAtLeast(1f))
+            )
+        )
     }
 
     private fun dispatchVerticalDrag(deltaY: Float, heightPx: Float) {
@@ -157,6 +163,20 @@ private class PlayerDragSession(
                 peeked = peeked
             )
         )
+    }
+
+    private fun settleHorizontal(velocityX: Float, widthPx: Float) {
+        val releaseVelocity = playerSwipeReleaseVelocity(
+            offsetPx = horizontalOffset,
+            velocityPx = velocityX,
+            minFlingDistancePx = minFlingDistancePx
+        )
+        val result = resolvePlayerSwipe(
+            horizontalOffset,
+            releaseVelocity,
+            widthPx.coerceAtLeast(1f)
+        )
+        onEvent(PlayerDragEvent.HorizontalSettled(mirrored(result, rightToLeft)))
     }
 
     private fun settleVertical(velocityY: Float, heightPx: Float) {
@@ -176,7 +196,28 @@ private class PlayerDragSession(
         zone = PlayerGestureZone.Center
         totalX = 0f
         totalY = 0f
+        horizontalOffset = 0f
         peeked = false
-        horizontal.reset()
+    }
+}
+
+internal fun playerSwipeReleaseVelocity(
+    offsetPx: Float,
+    velocityPx: Float,
+    minFlingDistancePx: Float
+): Float = velocityPx
+    .takeIf { offsetPx.isFinite() }
+    ?.takeIf { it.isFinite() }
+    ?.takeIf { minFlingDistancePx.isFinite() }
+    ?.takeIf { abs(offsetPx) >= minFlingDistancePx.coerceAtLeast(0f) }
+    ?.takeIf { (it < 0f) == (offsetPx < 0f) }
+    ?: 0f
+
+private fun mirrored(result: PlayerSwipeResult, rightToLeft: Boolean): PlayerSwipeResult {
+    if (!rightToLeft) return result
+    return when (result) {
+        PlayerSwipeResult.Next -> PlayerSwipeResult.Previous
+        PlayerSwipeResult.Previous -> PlayerSwipeResult.Next
+        PlayerSwipeResult.Settle -> PlayerSwipeResult.Settle
     }
 }
