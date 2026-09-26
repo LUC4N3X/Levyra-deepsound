@@ -31,4 +31,5 @@
     <string name="shortcut_search">Søg</string>
     <string name="shortcut_library">Bibliotek</string>
     <string name="shortcut_recognition">Genkend musik</string>
+    <string name="shortcut_resume">Genoptag afspilning</string>
 </resources>

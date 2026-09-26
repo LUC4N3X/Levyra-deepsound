@@ -12,7 +12,11 @@ import com.luc4n3x.levyra.domain.LyricSection
 import com.luc4n3x.levyra.domain.LyricSectionType
 import com.luc4n3x.levyra.domain.LyricVocalRole
 import com.luc4n3x.levyra.domain.LyricWord
+import com.luc4n3x.levyra.domain.LyricsFetchPlan
+import com.luc4n3x.levyra.domain.LyricsProviderId
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.LyricsTranslationState
+import com.luc4n3x.levyra.domain.isOptimalLyricsResult
 import java.io.File
 import java.io.IOException
 import java.net.URLEncoder
@@ -22,6 +26,7 @@ import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -46,6 +51,7 @@ import timber.log.Timber
 
 class LyricsRepository(context: Context? = null) {
     private val appContext = context?.applicationContext
+    private val preferences = appContext?.let(::LevyraPreferences)
     private val lyricsCacheDao: LyricsCacheDao? = appContext?.let { LevyraDatabase.get(it).lyricsCacheDao() }
     private val lyricsSelectionDao: LyricsSelectionDao? = appContext?.let { LevyraDatabase.get(it).lyricsSelectionDao() }
     private val legacyCacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
@@ -322,21 +328,125 @@ class LyricsRepository(context: Context? = null) {
         observe(title, artist, durationSec, album, videoId, languageCode, translate).collect { }
     }
 
-    private suspend fun fetchNetworkProgressive(
-        query: QuerySpec,
-        applyFinalTranslation: Boolean = true,
-        onCandidate: suspend (LyricsResult) -> Unit
-    ): NetworkOutcome = supervisorScope {
-        val request = LyricsRequest(
-            title = query.requestedTitle,
-            artist = query.requestedArtist,
-            durationSec = query.durationSec,
-            album = query.album,
-            recordingId = query.videoId
+    private inner class ProgressiveLyricsCollector(
+        private val query: QuerySpec,
+        private val request: LyricsRequest,
+        private val ordering: LyricsProviderOrdering?,
+        private val onCandidate: suspend (LyricsResult) -> Unit
+    ) {
+        val candidates = ArrayList<LyricsCandidate>()
+        var attempted = false
+        var hadTransientFailure = false
+        var emitted: LyricsResult? = null
+
+        suspend fun consume(attempt: ProviderAttempt) {
+            attempted = attempted || attempt.attempted
+            hadTransientFailure = hadTransientFailure || attempt.hadTransientFailure
+            attempt.candidates.mapNotNullTo(candidates) { prepareCandidate(it, query.durationSec) }
+            val best = currentBest()?.let { result ->
+                markTranslationPending(result, query)
+            }
+            if (best != null && best.confidence >= INSTANT_MIN_CONFIDENCE && shouldUpgrade(emitted, best)) {
+                emitted = best
+                onCandidate(best)
+            }
+        }
+
+        fun currentBest(): LyricsResult? = LyricsResultRanker.best(candidates, request, ordering)
+
+        suspend fun drain(tasks: List<Deferred<ProviderAttempt>>) {
+            val pending = tasks.toMutableList()
+            while (pending.isNotEmpty()) {
+                val completed = select<Pair<Deferred<ProviderAttempt>, ProviderAttempt>> {
+                    pending.forEach { task ->
+                        task.onAwait { result -> task to result }
+                    }
+                }
+                pending.remove(completed.first)
+                consume(completed.second)
+            }
+        }
+
+        fun toOutcome(finalBest: LyricsResult?): NetworkOutcome = NetworkOutcome(
+            best = finalBest,
+            attempted = attempted,
+            hadTransientFailure = hadTransientFailure,
+            candidates = LyricsResultRanker.rankedCandidates(candidates, request, ordering)
         )
-        val tasks = ArrayList<Deferred<ProviderAttempt>>()
-        if (query.videoId.isNotBlank()) {
-            tasks += async {
+
+        suspend fun notifyBestIfUpgraded(best: LyricsResult?) {
+            if (best != null && shouldUpgrade(emitted, best)) {
+                emitted = best
+                onCandidate(best)
+            }
+        }
+    }
+
+    private data class PrimaryOutcome(
+        val consumed: Boolean,
+        val earlyResult: NetworkOutcome?
+    )
+
+    private suspend fun runPrimaryAttempt(
+        primaryTask: Deferred<ProviderAttempt>?,
+        collector: ProgressiveLyricsCollector,
+        query: QuerySpec,
+        applyFinalTranslation: Boolean
+    ): PrimaryOutcome {
+        if (primaryTask == null) return PrimaryOutcome(consumed = false, earlyResult = null)
+        val primaryAttempt = withTimeoutOrNull(PRIMARY_RAPID_TIMEOUT_MS) { primaryTask.await() }
+            ?: return PrimaryOutcome(consumed = false, earlyResult = null)
+        collector.consume(primaryAttempt)
+        val best = collector.currentBest()
+        if (best != null && isOptimalLyricsResult(best.synced, best.confidence)) {
+            val final = if (applyFinalTranslation) applyTranslation(best, query) else best
+            return PrimaryOutcome(consumed = true, earlyResult = collector.toOutcome(final))
+        }
+        return PrimaryOutcome(consumed = true, earlyResult = null)
+    }
+
+    private suspend fun CoroutineScope.collectTrustedBatch(
+        collector: ProgressiveLyricsCollector,
+        trustedIds: List<LyricsProviderId>,
+        primaryTask: Deferred<ProviderAttempt>?,
+        primaryConsumed: Boolean,
+        query: QuerySpec
+    ) {
+        val tasks = buildList {
+            trustedIds.mapNotNullTo(this) { createLyricsProviderTask(it, query) }
+            if (!primaryConsumed && primaryTask != null) add(primaryTask)
+        }
+        collector.drain(tasks)
+    }
+
+    private suspend fun CoroutineScope.collectLastResortIfNeeded(
+        collector: ProgressiveLyricsCollector,
+        lastResortIds: List<LyricsProviderId>,
+        query: QuerySpec
+    ) {
+        val best = collector.currentBest()
+        if (best != null && best.confidence >= INSTANT_MIN_CONFIDENCE) return
+        val tasks = lastResortIds.mapNotNull { createLyricsProviderTask(it, query) }
+        collector.drain(tasks)
+    }
+
+    private suspend fun finalizeBestResult(
+        collector: ProgressiveLyricsCollector,
+        query: QuerySpec,
+        applyFinalTranslation: Boolean
+    ): LyricsResult? {
+        val rankedBest = collector.currentBest() ?: return null
+        val best = if (applyFinalTranslation) applyTranslation(rankedBest, query) else rankedBest
+        collector.notifyBestIfUpgraded(best)
+        return best
+    }
+
+    private fun CoroutineScope.createLyricsProviderTask(
+        id: LyricsProviderId,
+        query: QuerySpec
+    ): Deferred<ProviderAttempt>? {
+        if (id == LyricsProviderId.YOUTUBE_MUSIC) {
+            return if (query.videoId.isBlank()) null else async {
                 providerWithin(YOUTUBE_MUSIC_TIMEOUT_MS) {
                     youtubeMusicAttempt(
                         query.videoId,
@@ -348,7 +458,9 @@ class LyricsRepository(context: Context? = null) {
                     )
                 }
             }
-            tasks += async {
+        }
+        if (id == LyricsProviderId.YOUTUBE_TRANSCRIPT) {
+            return if (query.videoId.isBlank()) null else async {
                 providerWithin(TRANSCRIPT_TIMEOUT_MS) {
                     transcriptAttempt(
                         query.videoId,
@@ -362,52 +474,58 @@ class LyricsRepository(context: Context? = null) {
                 }
             }
         }
-        if (query.queryArtist.length >= 2) {
-            tasks += async { providerWithin(FAST_PROVIDER_TIMEOUT_MS) { getLrcLibExact(query.queryTitle, query.queryArtist, query.durationSec) } }
-            tasks += async { providerWithin(FAST_PROVIDER_TIMEOUT_MS) { searchLrcLib(query.queryTitle, query.queryArtist) } }
-            tasks += async { providerWithin(LYRICS_PLUS_TIMEOUT_MS) { lyricsPlusMirrorAttempt(query) } }
-            tasks += async { providerWithin(LYRICS_PLUS_TIMEOUT_MS) { binimumAttempt(query) } }
-            tasks += async { providerWithin(FAST_PROVIDER_TIMEOUT_MS) { lyricsOvh(query.queryTitle, query.queryArtist) } }
-        }
-        if (tasks.isEmpty()) return@supervisorScope NetworkOutcome(null, attempted = false, hadTransientFailure = false)
+        if (query.queryArtist.length < 2) return null
+        return createArtistBasedProviderTask(id, query)
+    }
 
-        val candidates = ArrayList<LyricsCandidate>()
-        var attempted = false
-        var hadTransientFailure = false
-        var emitted: LyricsResult? = null
-        while (tasks.isNotEmpty()) {
-            val completed = select<Pair<Deferred<ProviderAttempt>, ProviderAttempt>> {
-                tasks.forEach { task ->
-                    task.onAwait { result -> task to result }
-                }
-            }
-            tasks.remove(completed.first)
-            val attempt = completed.second
-            attempted = attempted || attempt.attempted
-            hadTransientFailure = hadTransientFailure || attempt.hadTransientFailure
-            attempt.candidates.mapNotNullTo(candidates) { prepareCandidate(it, query.durationSec) }
-            val best = LyricsResultRanker.best(candidates, request)?.let { result ->
-                markTranslationPending(result, query)
-            }
-            if (best != null && best.confidence >= INSTANT_MIN_CONFIDENCE && shouldUpgrade(emitted, best)) {
-                emitted = best
-                onCandidate(best)
-            }
+    private fun CoroutineScope.createArtistBasedProviderTask(
+        id: LyricsProviderId,
+        query: QuerySpec
+    ): Deferred<ProviderAttempt>? = when (id) {
+        LyricsProviderId.LRCLIB_EXACT -> async {
+            providerWithin(FAST_PROVIDER_TIMEOUT_MS) { getLrcLibExact(query.queryTitle, query.queryArtist, query.durationSec) }
         }
+        LyricsProviderId.LRCLIB_SEARCH -> async {
+            providerWithin(FAST_PROVIDER_TIMEOUT_MS) { searchLrcLib(query.queryTitle, query.queryArtist) }
+        }
+        LyricsProviderId.LYRICS_PLUS -> async {
+            providerWithin(LYRICS_PLUS_TIMEOUT_MS) { lyricsPlusMirrorAttempt(query) }
+        }
+        LyricsProviderId.BINIMUM -> async {
+            providerWithin(LYRICS_PLUS_TIMEOUT_MS) { binimumAttempt(query) }
+        }
+        LyricsProviderId.LYRICS_OVH -> async {
+            providerWithin(FAST_PROVIDER_TIMEOUT_MS) { lyricsOvh(query.queryTitle, query.queryArtist) }
+        }
+        else -> null
+    }
 
-        val rankedBest = LyricsResultRanker.best(candidates, request)
-        val best = if (rankedBest != null && applyFinalTranslation) {
-            applyTranslation(rankedBest, query)
-        } else {
-            rankedBest
-        }
-        if (best != null && shouldUpgrade(emitted, best)) onCandidate(best)
-        NetworkOutcome(
-            best = best,
-            attempted = attempted,
-            hadTransientFailure = hadTransientFailure,
-            candidates = LyricsResultRanker.rankedCandidates(candidates, request)
+    private suspend fun fetchNetworkProgressive(
+        query: QuerySpec,
+        applyFinalTranslation: Boolean = true,
+        onCandidate: suspend (LyricsResult) -> Unit
+    ): NetworkOutcome = supervisorScope {
+        val request = LyricsRequest(
+            title = query.requestedTitle,
+            artist = query.requestedArtist,
+            durationSec = query.durationSec,
+            album = query.album,
+            recordingId = query.videoId
         )
+        val providerOrdering = preferences?.lyricsProviderOrdering() ?: LyricsProviderOrdering()
+        val plan = LyricsFetchPlan.build(providerOrdering)
+        val ordering = providerOrdering.takeUnless { it.isDefault }
+        val collector = ProgressiveLyricsCollector(query, request, ordering, onCandidate)
+
+        val primaryTask = plan.primary?.let { createLyricsProviderTask(it, query) }
+        val primaryOutcome = runPrimaryAttempt(primaryTask, collector, query, applyFinalTranslation)
+        if (primaryOutcome.earlyResult != null) return@supervisorScope primaryOutcome.earlyResult
+
+        collectTrustedBatch(collector, plan.trusted, primaryTask, primaryOutcome.consumed, query)
+        collectLastResortIfNeeded(collector, plan.lastResort, query)
+
+        val best = finalizeBestResult(collector, query, applyFinalTranslation)
+        collector.toOutcome(best)
     }
 
     private data class SelectedVersion(
@@ -899,7 +1017,8 @@ class LyricsRepository(context: Context? = null) {
             val titleKey = LyricsMatcher.normalize(query.requestedTitle)
             val artistKey = LyricsMatcher.normalize(query.requestedArtist)
             val durationBucket = query.durationSec.coerceAtLeast(0L) / 5L
-            if (titleKey.isNotBlank() && artistKey.isNotBlank()) {
+            val allowAliasFallback = preferences?.lyricsProviderOrdering()?.isDefault != false
+            if (allowAliasFallback && titleKey.isNotBlank() && artistKey.isNotBlank()) {
                 val alias = runCatching {
                     dao.findBestPositive(
                         titleKey = titleKey,
@@ -1240,7 +1359,19 @@ class LyricsRepository(context: Context? = null) {
         val requestedTitle = title.trim().ifBlank { queryTitle }
         val requestedArtist = artist.trim().ifBlank { queryArtist }
         if (queryTitle.length < 2) return null
-        val key = cacheKey(requestedTitle, requestedArtist, durationSec, videoId, languageCode, translate)
+        val providerOrdering = preferences?.lyricsProviderOrdering()
+            ?.takeUnless { it.isDefault }
+            ?.encode()
+            .orEmpty()
+        val key = cacheKey(
+            requestedTitle,
+            requestedArtist,
+            durationSec,
+            videoId,
+            languageCode,
+            translate,
+            providerOrdering
+        )
         return QuerySpec(
             requestedTitle = requestedTitle,
             requestedArtist = requestedArtist,
@@ -1261,9 +1392,10 @@ class LyricsRepository(context: Context? = null) {
         durationSec: Long,
         videoId: String,
         languageCode: String,
-        translate: Boolean
+        translate: Boolean,
+        providerOrdering: String
     ): String {
-        val seed = "${LyricsMatcher.normalize(title)}|${LyricsMatcher.normalize(artist)}|${durationSec.coerceAtLeast(0L) / 5L}|${videoId.trim()}|${languageCode.lowercase(Locale.ROOT)}|$translate|$CACHE_VERSION"
+        val seed = "${LyricsMatcher.normalize(title)}|${LyricsMatcher.normalize(artist)}|${durationSec.coerceAtLeast(0L) / 5L}|${videoId.trim()}|${languageCode.lowercase(Locale.ROOT)}|$translate|$providerOrdering|$CACHE_VERSION"
         return sha256(seed)
     }
 
@@ -1373,6 +1505,7 @@ class LyricsRepository(context: Context? = null) {
         private const val LYRICS_PLUS_TIMEOUT_MS = 5_500L
         private const val YOUTUBE_MUSIC_TIMEOUT_MS = 5_500L
         private const val TRANSCRIPT_TIMEOUT_MS = 6_000L
+        private const val PRIMARY_RAPID_TIMEOUT_MS = 2_500L
         private const val QUALITY_REFRESH_THRESHOLD = 84
         private const val MIN_QUALITY_UPGRADE = 4
         private const val MIN_WORD_DURATION_MS = 45L

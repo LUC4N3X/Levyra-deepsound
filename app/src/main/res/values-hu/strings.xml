@@ -31,4 +31,5 @@
     <string name="shortcut_search">Keresés</string>
     <string name="shortcut_library">Könyvtár</string>
     <string name="shortcut_recognition">Zene felismerése</string>
+    <string name="shortcut_resume">Lejátszás folytatása</string>
 </resources>

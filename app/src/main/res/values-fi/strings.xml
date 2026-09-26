@@ -31,4 +31,5 @@
     <string name="shortcut_search">Haku</string>
     <string name="shortcut_library">Kirjasto</string>
     <string name="shortcut_recognition">Tunnista musiikki</string>
+    <string name="shortcut_resume">Jatka toistoa</string>
 </resources>

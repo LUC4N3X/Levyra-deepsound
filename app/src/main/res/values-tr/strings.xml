@@ -31,4 +31,5 @@
     <string name="shortcut_search">Ara</string>
     <string name="shortcut_library">Kitaplık</string>
     <string name="shortcut_recognition">Müziği tanı</string>
+    <string name="shortcut_resume">Çalmaya devam et</string>
 </resources>

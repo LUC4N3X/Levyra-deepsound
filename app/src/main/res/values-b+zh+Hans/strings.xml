@@ -31,4 +31,5 @@
     <string name="shortcut_search">搜索</string>
     <string name="shortcut_library">媒体库</string>
     <string name="shortcut_recognition">识别音乐</string>
+    <string name="shortcut_resume">继续播放</string>
 </resources>

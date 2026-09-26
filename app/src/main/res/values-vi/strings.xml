@@ -31,4 +31,5 @@
     <string name="shortcut_search">Tìm kiếm</string>
     <string name="shortcut_library">Thư viện</string>
     <string name="shortcut_recognition">Nhận diện nhạc</string>
+    <string name="shortcut_resume">Tiếp tục phát</string>
 </resources>
