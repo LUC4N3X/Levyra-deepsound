@@ -28,11 +28,17 @@ class ByeDpiProxy {
     private val lock = Any()
     @Volatile
     private var fd = -1
+    @Volatile
+    private var stopRequested = false
 
     fun startProxy(preferences: ByeDpiProxyPreferences): Int {
-        if (!isAvailable()) return -1
+        if (!isAvailable() || stopRequested) return -1
         val socketFd = createSocket(preferences)
         if (socketFd < 0) {
+            return -1
+        }
+        if (stopRequested) {
+            stopProxy()
             return -1
         }
         return try {
@@ -43,6 +49,7 @@ class ByeDpiProxy {
     }
 
     fun stopProxy(): Int {
+        stopRequested = true
         if (!isAvailable()) return 0
         return synchronized(lock) {
             val currentFd = fd

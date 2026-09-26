@@ -3,6 +3,9 @@ package com.luc4n3x.levyra.data.network
 import android.content.Context
 import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.NewPipeRuntime
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiDns
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSocketFactory
 import java.io.File
 import java.net.Proxy
 import java.util.concurrent.TimeUnit
@@ -89,8 +92,12 @@ object LevyraHttpClientFactory {
             generalClient = null
             clientGeneration = LevyraNetworkConfiguration.generation
         }
+        evictIdleConnections()
+        NewPipeRuntime.onConfigurationChanged()
+    }
+
+    internal fun evictIdleConnections() {
         sharedConnectionPools.forEach { pool -> runCatching { pool.evictAll() } }
-        com.luc4n3x.levyra.data.NewPipeRuntime.onConfigurationChanged()
     }
 
     private fun invalidateIfStale() {
@@ -153,7 +160,15 @@ object LevyraHttpClientFactory {
     }
 
     fun streaming(context: Context? = null): OkHttpClient {
-        return media(context)
+        invalidateIfStale()
+        if (!bypassesProxyForStreams()) return media(context)
+        return streamingClient ?: synchronized(lock) {
+            streamingClient ?: mediaBuilder()
+                .let { applyYoutubeNetworkIntelligence(it, context, streamBypass = true) }
+                .let { applyDebugInterceptors(it, context) }
+                .build()
+                .also { streamingClient = it }
+        }
     }
 
     private fun mediaBuilder(): OkHttpClient.Builder = OkHttpClient.Builder()
@@ -238,35 +253,46 @@ object LevyraHttpClientFactory {
         }
     }
 
+    private fun bypassesProxyForStreams(): Boolean {
+        val settings = LevyraNetworkConfiguration.current()
+        return settings.usesProxy && settings.bypassProxyForStreams
+    }
+
     private fun applyYoutubeNetworkIntelligence(
         builder: OkHttpClient.Builder,
-        context: Context?
+        context: Context?,
+        streamBypass: Boolean = false
     ): OkHttpClient.Builder {
         context?.let(LevyraNetworkIntelligence::initialize)
         val settings = LevyraNetworkConfiguration.current()
-        builder
-            .dns(LevyraNetworkConfiguration.dns())
-            .eventListenerFactory(LevyraNetworkIntelligence.eventListenerFactory)
-            .proxySelector(YoutubeNetworkPolicy.createProxySelector(settings))
-        LevyraNetworkConfiguration.proxyAuthenticator()?.let(builder::proxyAuthenticator)
+        val dns = LevyraNetworkConfiguration.dns()
+        builder.eventListenerFactory(LevyraNetworkIntelligence.eventListenerFactory)
+        if (settings.byeDpiEnabled) {
+            builder
+                .dns(ByeDpiDns(settings, streamBypass, dns, LevyraNetworkConfiguration.byeDpiResolver()))
+                .socketFactory(ByeDpiSocketFactory(settings, streamBypass))
+        } else {
+            builder.dns(dns)
+        }
+        if (streamBypass) {
+            builder.proxy(Proxy.NO_PROXY)
+        } else {
+            builder.proxySelector(YoutubeNetworkPolicy.createProxySelector(settings))
+            LevyraNetworkConfiguration.proxyAuthenticator()?.let(builder::proxyAuthenticator)
+        }
         return builder
     }
 
     private fun applyNetworkIntelligence(
         builder: OkHttpClient.Builder,
-        context: Context?,
-        allowProxy: Boolean = true
+        context: Context?
     ): OkHttpClient.Builder {
         context?.let(LevyraNetworkIntelligence::initialize)
         builder
             .dns(LevyraNetworkConfiguration.dns())
             .eventListenerFactory(LevyraNetworkIntelligence.eventListenerFactory)
-        if (allowProxy) {
-            LevyraNetworkConfiguration.proxy()?.let(builder::proxy)
-            LevyraNetworkConfiguration.proxyAuthenticator()?.let(builder::proxyAuthenticator)
-        } else {
-            builder.proxy(Proxy.NO_PROXY)
-        }
+        LevyraNetworkConfiguration.proxy()?.let(builder::proxy)
+        LevyraNetworkConfiguration.proxyAuthenticator()?.let(builder::proxyAuthenticator)
         return builder
     }
 

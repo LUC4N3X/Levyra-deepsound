@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiRouteTrace
 import com.luc4n3x.levyra.nexus.network.LevyraAddressFamily
 import com.luc4n3x.levyra.nexus.network.LevyraRoute
 import com.luc4n3x.levyra.nexus.network.LevyraRouteEngine
@@ -111,6 +111,23 @@ internal object LevyraNetworkIntelligence {
         }.getOrDefault(true)
     }
 
+    fun activeNetworkHasIpv6Route(): Boolean? {
+        val connectivity = connectivityManager ?: return null
+        return runCatching {
+            val network = connectivity.activeNetwork ?: return@runCatching false
+            val link = connectivity.getLinkProperties(network) ?: return@runCatching null
+            val hasGlobalAddress = link.linkAddresses.any { linkAddress ->
+                val address = linkAddress.address
+                address is Inet6Address &&
+                    !address.isLinkLocalAddress &&
+                    !address.isSiteLocalAddress &&
+                    !address.isLoopbackAddress &&
+                    (address.address[0].toInt() and 0xfe) != 0xfc
+            }
+            hasGlobalAddress && link.routes.any { route -> route.isDefaultRoute && route.destination.address is Inet6Address }
+        }.getOrNull()
+    }
+
     private fun NetworkCapabilities.hasInternet(): Boolean =
         hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 
@@ -171,8 +188,9 @@ internal object LevyraNetworkIntelligence {
             proxy: Proxy,
             protocol: Protocol?
         ) {
-            val address = inetSocketAddress.address ?: return
             val latencyMs = elapsedMs(inetSocketAddress)
+            auditConnected(call, inetSocketAddress, proxy, latencyMs)
+            val address = inetSocketAddress.address ?: return
             routeEngine.recordSuccess(
                 route = route(call.request().url.host, address),
                 latencyMs = latencyMs
@@ -184,29 +202,6 @@ internal object LevyraNetworkIntelligence {
                 outcome = RuntimeSignal.OUTCOME_SUCCESS,
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0)
             )
-            val proxyDesc = when {
-                proxy.type() == Proxy.Type.DIRECT -> "Direct"
-                proxy.type() == Proxy.Type.SOCKS -> "SOCKS(${proxy.address()})"
-                proxy.type() == Proxy.Type.HTTP -> "HTTP(${proxy.address()})"
-                else -> proxy.toString()
-            }
-            if (proxy.type() == Proxy.Type.SOCKS && ByeDpiSupervisor.isRunning()) {
-                val byeDpi = ByeDpiSupervisor.proxy()
-                val byeAddr = byeDpi?.address() as? InetSocketAddress
-                val proxyAddr = proxy.address() as? InetSocketAddress
-                if (byeAddr != null && proxyAddr != null && proxyAddr.port == byeAddr.port) {
-                    ByeDpiSupervisor.recordConnectionSuccess()
-                }
-            }
-            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
-                Timber.i(
-                    "[RouteAudit] connected: host=%s port=%d proxy=%s latency=%dms",
-                    call.request().url.host,
-                    call.request().url.port,
-                    proxyDesc,
-                    latencyMs
-                )
-            }
         }
 
         override fun connectFailed(
@@ -216,8 +211,9 @@ internal object LevyraNetworkIntelligence {
             protocol: Protocol?,
             ioe: IOException
         ) {
-            val address = inetSocketAddress.address ?: return
             val latencyMs = elapsedMs(inetSocketAddress)
+            auditConnectFailed(call, inetSocketAddress, proxy, ioe)
+            val address = inetSocketAddress.address ?: return
             routeEngine.recordFailure(
                 route = route(call.request().url.host, address),
                 failure = when (ioe) {
@@ -236,21 +232,6 @@ internal object LevyraNetworkIntelligence {
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0),
                 failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
             )
-            val proxyDesc = when {
-                proxy.type() == Proxy.Type.DIRECT -> "Direct"
-                proxy.type() == Proxy.Type.SOCKS -> "SOCKS(${proxy.address()})"
-                proxy.type() == Proxy.Type.HTTP -> "HTTP(${proxy.address()})"
-                else -> proxy.toString()
-            }
-            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
-                Timber.w(
-                    "[RouteAudit] connectFailed: host=%s port=%d proxy=%s error=%s",
-                    call.request().url.host,
-                    call.request().url.port,
-                    proxyDesc,
-                    ioe.message
-                )
-            }
         }
 
         override fun responseHeadersEnd(call: Call, response: Response) {
@@ -295,6 +276,40 @@ internal object LevyraNetworkIntelligence {
                 failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
             )
             connectStartedAt.clear()
+        }
+
+        private fun auditConnected(call: Call, destination: InetSocketAddress, proxy: Proxy, latencyMs: Long) {
+            val tunnelPort = ByeDpiRouteTrace.consume(destination)
+            val url = call.request().url
+            if (YoutubeNetworkPolicy.isYoutubeHost(url.host)) {
+                Timber.i(
+                    "[RouteAudit] connected: host=%s port=%d proxy=%s latency=%dms",
+                    url.host,
+                    url.port,
+                    describeRoute(proxy, tunnelPort),
+                    latencyMs
+                )
+            }
+        }
+
+        private fun auditConnectFailed(call: Call, destination: InetSocketAddress, proxy: Proxy, ioe: IOException) {
+            val tunnelPort = ByeDpiRouteTrace.consume(destination)
+            val url = call.request().url
+            if (YoutubeNetworkPolicy.isYoutubeHost(url.host)) {
+                Timber.w(
+                    "[RouteAudit] connectFailed: host=%s port=%d proxy=%s error=%s",
+                    url.host,
+                    url.port,
+                    describeRoute(proxy, tunnelPort),
+                    ioe.javaClass.simpleName
+                )
+            }
+        }
+
+        private fun describeRoute(proxy: Proxy, byeDpiTunnelPort: Int?): String = when (proxy.type()) {
+            Proxy.Type.DIRECT -> byeDpiTunnelPort?.let { "SOCKS(ByeDPI 127.0.0.1:$it numeric)" } ?: "Direct"
+            Proxy.Type.SOCKS -> "SOCKS(external)"
+            Proxy.Type.HTTP -> "HTTP(external)"
         }
 
         private fun elapsedMs(address: InetSocketAddress): Long {

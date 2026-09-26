@@ -3,24 +3,60 @@ package com.luc4n3x.levyra.data.network
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import com.luc4n3x.levyra.domain.LevyraProxyMode
-import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URI
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 class YoutubeNetworkPolicyTest {
+    private var nowMs = 0L
+
+    private val direct = listOf(Proxy.NO_PROXY)
+    private val mediaHost = "rr1---sn-4g5ednls.googlevideo.com"
+    private val apiHost = "music.youtube.com"
+    private val mediaUri = URI("https://$mediaHost/videoplayback")
+    private val apiUri = URI("https://$apiHost/youtubei/v1/browse")
+    private val jioApiUri = URI("https://www.jiosaavn.com/api.php?__call=song.getDetails")
+    private val jioCdnUri = URI("https://aac.saavncdn.com/123/sample_320.mp4")
+    private val generalUri = URI("https://api.github.com/repos")
 
     @Before
     @After
     fun resetState() {
-        ByeDpiSupervisor.resetForTesting()
+        nowMs = 1_000L
+        ByeDpiSupervisor.resetForTesting { nowMs }
         LevyraNetworkConfiguration.apply(LevyraNetworkSettings(), "")
+    }
+
+    private fun externalProxySettings(
+        bypassProxyForStreams: Boolean,
+        byeDpiEnabled: Boolean = true,
+        proxyHost: String = "192.168.1.100"
+    ) = LevyraNetworkSettings(
+        proxyMode = LevyraProxyMode.Http,
+        proxyHost = proxyHost,
+        proxyPort = 8080,
+        bypassProxyForStreams = bypassProxyForStreams,
+        byeDpiEnabled = byeDpiEnabled
+    )
+
+    private fun assertExternalHttp(proxies: List<Proxy>) {
+        assertEquals(1, proxies.size)
+        assertEquals(Proxy.Type.HTTP, proxies.first().type())
+        assertEquals("192.168.1.100", (proxies.first().address() as InetSocketAddress).hostString)
+    }
+
+    private fun assertTunnel(port: Int, tunnel: InetSocketAddress?) {
+        requireNotNull(tunnel)
+        assertEquals("127.0.0.1", tunnel.address.hostAddress)
+        assertFalse(tunnel.isUnresolved)
+        assertEquals(port, tunnel.port)
     }
 
     @Test
@@ -28,144 +64,186 @@ class YoutubeNetworkPolicyTest {
         assertTrue(YoutubeNetworkPolicy.isYoutubeHost("www.youtube.com"))
         assertTrue(YoutubeNetworkPolicy.isYoutubeHost("music.youtube.com"))
         assertTrue(YoutubeNetworkPolicy.isYoutubeHost("youtubei.googleapis.com"))
-        assertTrue(YoutubeNetworkPolicy.isYoutubeHost("rr1---sn-4g5ednls.googlevideo.com"))
+        assertTrue(YoutubeNetworkPolicy.isYoutubeHost(mediaHost))
         assertTrue(YoutubeNetworkPolicy.isYoutubeHost("i.ytimg.com"))
+        assertTrue(YoutubeNetworkPolicy.isYoutubeHost("RR1.GoogleVideo.com."))
         assertFalse(YoutubeNetworkPolicy.isYoutubeHost("jiosaavn.com"))
         assertFalse(YoutubeNetworkPolicy.isYoutubeHost("saavncdn.com"))
         assertFalse(YoutubeNetworkPolicy.isYoutubeHost("example.com"))
+        assertFalse(YoutubeNetworkPolicy.isYoutubeHost("notyoutube.com"))
+        assertFalse(YoutubeNetworkPolicy.isYoutubeHost("youtube.com.evil.example"))
+        assertFalse(YoutubeNetworkPolicy.isYoutubeHost("evilgooglevideo.com"))
+        assertFalse(YoutubeNetworkPolicy.isYoutubeHost("142.250.1.2"))
 
         assertTrue(YoutubeNetworkPolicy.isYoutubeMediaHost("googlevideo.com"))
         assertTrue(YoutubeNetworkPolicy.isYoutubeMediaHost("rr2---sn-oxun-xx.googlevideo.com"))
         assertFalse(YoutubeNetworkPolicy.isYoutubeMediaHost("music.youtube.com"))
         assertFalse(YoutubeNetworkPolicy.isYoutubeMediaHost("jiosaavn.com"))
-
-        assertTrue(YoutubeNetworkPolicy.isJioSaavnHost("www.jiosaavn.com"))
-        assertTrue(YoutubeNetworkPolicy.isJioSaavnHost("aac.saavncdn.com"))
-        assertFalse(YoutubeNetworkPolicy.isJioSaavnHost("googlevideo.com"))
-        assertFalse(YoutubeNetworkPolicy.isJioSaavnHost("youtube.com"))
+        assertFalse(YoutubeNetworkPolicy.isYoutubeMediaHost("evilgooglevideo.com"))
     }
 
     @Test
-    fun baselineRoutesDirectWhenBothMechanismsAreDisabled() {
-        val settings = LevyraNetworkSettings(
-            byeDpiEnabled = false,
-            youtubeRegionProfileEnabled = false
-        )
-        val youtubeMediaUri = URI("https://rr1---sn-4g5ednls.googlevideo.com/videoplayback?id=123")
-        val youtubeApiUri = URI("https://www.youtube.com/youtubei/v1/player")
-        val jioSaavnUri = URI("https://www.jiosaavn.com/api.php?__call=song.getDetails")
-        val generalUri = URI("https://api.github.com/repos")
-
-        assertEquals(listOf(Proxy.NO_PROXY), YoutubeNetworkPolicy.selectProxies(youtubeMediaUri, settings))
-        assertEquals(listOf(Proxy.NO_PROXY), YoutubeNetworkPolicy.selectProxies(youtubeApiUri, settings))
-        assertEquals(listOf(Proxy.NO_PROXY), YoutubeNetworkPolicy.selectProxies(jioSaavnUri, settings))
-        assertEquals(listOf(Proxy.NO_PROXY), YoutubeNetworkPolicy.selectProxies(generalUri, settings))
-    }
-
-    @Test
-    fun byeDpiRoutesOnlyYoutubeWhenRunning() {
-        val testPort = 1088
-        ByeDpiSupervisor.setRunningForTesting(testPort)
-        val settings = LevyraNetworkSettings(
-            byeDpiEnabled = true,
-            youtubeRegionProfileEnabled = false
-        )
-
-        val youtubeMediaUri = URI("https://rr1---sn-4g5ednls.googlevideo.com/videoplayback")
-        val youtubeApiUri = URI("https://music.youtube.com/youtubei/v1/browse")
-        val jioSaavnUri = URI("https://aac.saavncdn.com/123/sample.mp4")
-        val generalUri = URI("https://api.spotify.com/v1/artists")
-
-        val mediaProxies = YoutubeNetworkPolicy.selectProxies(youtubeMediaUri, settings)
-        assertEquals(1, mediaProxies.size)
-        val selectedProxy = mediaProxies.first()
-        assertEquals(Proxy.Type.SOCKS, selectedProxy.type())
-        val address = selectedProxy.address() as InetSocketAddress
-        assertEquals("127.0.0.1", address.hostString)
-        assertEquals(testPort, address.port)
-
-        val apiProxies = YoutubeNetworkPolicy.selectProxies(youtubeApiUri, settings)
-        assertEquals(1, apiProxies.size)
-        assertEquals(Proxy.Type.SOCKS, apiProxies.first().type())
-
-        val jioProxies = YoutubeNetworkPolicy.selectProxies(jioSaavnUri, settings)
-        assertEquals(listOf(Proxy.NO_PROXY), jioProxies)
-
-        val genProxies = YoutubeNetworkPolicy.selectProxies(generalUri, settings)
-        assertEquals(listOf(Proxy.NO_PROXY), genProxies)
-    }
-
-    @Test
-    fun byeDpiFailsOverGracefullyWhenStoppedOrDegraded() {
-        val settings = LevyraNetworkSettings(byeDpiEnabled = true)
-        val youtubeMediaUri = URI("https://rr1---sn-4g5ednls.googlevideo.com/videoplayback")
-
-        ByeDpiSupervisor.resetForTesting()
-        assertEquals(listOf(Proxy.NO_PROXY), YoutubeNetworkPolicy.selectProxies(youtubeMediaUri, settings))
-
+    fun byeDpiNeverAppearsAsAProxyThatWouldLeakTheHostnameToItsResolver() {
         ByeDpiSupervisor.setRunningForTesting(1088)
+        val settings = LevyraNetworkSettings(byeDpiEnabled = true)
+
+        for (uri in listOf(mediaUri, apiUri, jioApiUri, jioCdnUri, generalUri)) {
+            assertEquals(direct, YoutubeNetworkPolicy.selectProxies(uri, settings))
+        }
+    }
+
+    @Test
+    fun byeDpiRouteCoversOnlyYoutubeHostsWhenEnabled() {
+        val enabled = LevyraNetworkSettings(byeDpiEnabled = true)
+        val disabled = LevyraNetworkSettings(byeDpiEnabled = false)
+
+        assertTrue(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, enabled, streamBypass = false))
+        assertTrue(YoutubeNetworkPolicy.routesThroughByeDpi(apiHost, enabled, streamBypass = false))
+        assertTrue(YoutubeNetworkPolicy.routesThroughByeDpi("i.ytimg.com", enabled, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi("www.jiosaavn.com", enabled, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi("aac.saavncdn.com", enabled, streamBypass = true))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi("api.github.com", enabled, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(null, enabled, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, disabled, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, disabled, streamBypass = true))
+    }
+
+    @Test
+    fun explicitExternalProxyWinsOverByeDpiUnlessStreamBypassSendsMediaToByeDpi() {
+        val noBypass = externalProxySettings(bypassProxyForStreams = false)
+        assertExternalHttp(YoutubeNetworkPolicy.selectProxies(mediaUri, noBypass))
+        assertExternalHttp(YoutubeNetworkPolicy.selectProxies(apiUri, noBypass))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, noBypass, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(apiHost, noBypass, streamBypass = false))
+
+        val bypass = externalProxySettings(bypassProxyForStreams = true)
+        assertEquals(direct, YoutubeNetworkPolicy.selectProxies(mediaUri, bypass))
+        assertTrue(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, bypass, streamBypass = false))
+        assertExternalHttp(YoutubeNetworkPolicy.selectProxies(apiUri, bypass))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(apiHost, bypass, streamBypass = false))
+    }
+
+    @Test
+    fun externalProxyWithoutByeDpiKeepsLegacyRouting() {
+        val noBypass = externalProxySettings(bypassProxyForStreams = false, byeDpiEnabled = false)
+        assertExternalHttp(YoutubeNetworkPolicy.selectProxies(mediaUri, noBypass))
+
+        val bypass = externalProxySettings(bypassProxyForStreams = true, byeDpiEnabled = false)
+        assertEquals(direct, YoutubeNetworkPolicy.selectProxies(mediaUri, bypass))
+        assertExternalHttp(YoutubeNetworkPolicy.selectProxies(apiUri, bypass))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, bypass, streamBypass = true))
+    }
+
+    @Test
+    fun nonYoutubeRoutingMatchesLegacyExternalProxyBehaviour() {
+        for (bypass in listOf(true, false)) {
+            val settings = externalProxySettings(bypassProxyForStreams = bypass)
+            assertExternalHttp(YoutubeNetworkPolicy.selectProxies(generalUri, settings))
+            assertExternalHttp(YoutubeNetworkPolicy.selectProxies(jioApiUri, settings))
+            assertExternalHttp(YoutubeNetworkPolicy.selectProxies(jioCdnUri, settings))
+        }
+    }
+
+    @Test
+    fun blankExternalProxyHostDoesNotSuppressByeDpi() {
+        val settings = externalProxySettings(bypassProxyForStreams = false, proxyHost = "")
+
+        assertEquals(direct, YoutubeNetworkPolicy.selectProxies(mediaUri, settings))
+        assertTrue(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, settings, streamBypass = false))
+    }
+
+    @Test
+    fun nullUriRoutesDirect() {
+        assertEquals(direct, YoutubeNetworkPolicy.selectProxies(null, externalProxySettings(bypassProxyForStreams = false)))
+    }
+
+    @Test
+    fun tunnelIsNumericLoopbackWhenRunning() {
+        ByeDpiSupervisor.setRunningForTesting(1088)
+
+        assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
+    }
+
+    @Test
+    fun noTunnelWhenSupervisorIsStoppedOrFailed() {
+        assertNull(ByeDpiSupervisor.acquireTunnel())
+
+        ByeDpiSupervisor.setStartingForTesting(1088)
+        ByeDpiSupervisor.finishStartingForTesting(running = false)
+        assertNull(ByeDpiSupervisor.acquireTunnel())
+    }
+
+    @Test
+    fun circuitBreakerOpensAfterRepeatedFailuresAndRecoversAfterCooldownProbe() {
+        ByeDpiSupervisor.setRunningForTesting(1088)
+
         repeat(3) { ByeDpiSupervisor.recordConnectionFailure() }
         assertTrue(ByeDpiSupervisor.isTemporarilyDegraded())
-        assertEquals(listOf(Proxy.NO_PROXY), YoutubeNetworkPolicy.selectProxies(youtubeMediaUri, settings))
+        assertNull(ByeDpiSupervisor.acquireTunnel())
+
+        nowMs += 29_999L
+        assertNull(ByeDpiSupervisor.acquireTunnel())
+
+        nowMs += 1L
+        assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
+        assertNull(ByeDpiSupervisor.acquireTunnel())
 
         ByeDpiSupervisor.recordConnectionSuccess()
         assertFalse(ByeDpiSupervisor.isTemporarilyDegraded())
-        val recovered = YoutubeNetworkPolicy.selectProxies(youtubeMediaUri, settings)
-        assertEquals(Proxy.Type.SOCKS, recovered.first().type())
+        assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
+        assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
     }
 
     @Test
-    fun proxySelectorConnectFailedTriggersCircuitBreaker() {
-        val testPort = 1088
-        ByeDpiSupervisor.setRunningForTesting(testPort)
-        val settings = LevyraNetworkSettings(byeDpiEnabled = true)
-        val selector = YoutubeNetworkPolicy.createProxySelector(settings)
-        val uri = URI("https://rr1---sn-4g5ednls.googlevideo.com/videoplayback")
-        val byeDpiAddress = InetSocketAddress.createUnresolved("127.0.0.1", testPort)
-
-        assertFalse(ByeDpiSupervisor.isTemporarilyDegraded())
-        selector.connectFailed(uri, byeDpiAddress, IOException("Connection refused"))
-        selector.connectFailed(uri, byeDpiAddress, IOException("Connection refused"))
-        selector.connectFailed(uri, byeDpiAddress, IOException("Connection refused"))
-
-        assertTrue(ByeDpiSupervisor.isTemporarilyDegraded())
-        assertEquals(listOf(Proxy.NO_PROXY), selector.select(uri))
-    }
-
-    @Test
-    fun externalProxyPrecedenceAndStreamBypass() {
-        val externalHost = "192.168.1.100"
-        val externalPort = 8080
-        val externalSettings = LevyraNetworkSettings(
-            proxyMode = LevyraProxyMode.Http,
-            proxyHost = externalHost,
-            proxyPort = externalPort,
-            bypassProxyForStreams = false,
-            byeDpiEnabled = true
-        )
-        LevyraNetworkConfiguration.apply(externalSettings, "")
+    fun failedProbeKeepsByeDpiSuspendedForAnotherCooldown() {
         ByeDpiSupervisor.setRunningForTesting(1088)
+        repeat(3) { ByeDpiSupervisor.recordConnectionFailure() }
+        nowMs += 30_000L
+        assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
 
-        val youtubeMediaUri = URI("https://rr1---sn-4g5ednls.googlevideo.com/videoplayback")
-        val youtubeApiUri = URI("https://www.youtube.com/youtubei/v1/player")
-        val jioSaavnUri = URI("https://www.jiosaavn.com/api.php")
+        ByeDpiSupervisor.recordConnectionFailure()
 
-        val mediaProxiesNoBypass = YoutubeNetworkPolicy.selectProxies(youtubeMediaUri, externalSettings)
-        assertEquals(Proxy.Type.HTTP, mediaProxiesNoBypass.first().type())
-        assertEquals(externalHost, (mediaProxiesNoBypass.first().address() as InetSocketAddress).hostString)
+        assertNull(ByeDpiSupervisor.acquireTunnel())
+        nowMs += 29_999L
+        assertNull(ByeDpiSupervisor.acquireTunnel())
+        nowMs += 1L
+        assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
+    }
 
-        val bypassSettings = externalSettings.copy(bypassProxyForStreams = true)
-        LevyraNetworkConfiguration.apply(bypassSettings, "")
+    @Test
+    fun startupWindowWaitsForByeDpiInsteadOfLeakingDirect() {
+        ByeDpiSupervisor.setStartingForTesting(1088)
+        val finisher = Thread {
+            Thread.sleep(75)
+            ByeDpiSupervisor.finishStartingForTesting(running = true)
+        }.also { it.start() }
 
-        val mediaProxiesWithBypass = YoutubeNetworkPolicy.selectProxies(youtubeMediaUri, bypassSettings)
-        assertEquals(Proxy.Type.SOCKS, mediaProxiesWithBypass.first().type())
-        assertEquals(1088, (mediaProxiesWithBypass.first().address() as InetSocketAddress).port)
+        val tunnel = ByeDpiSupervisor.acquireTunnel()
+        finisher.join()
 
-        val apiProxiesWithBypass = YoutubeNetworkPolicy.selectProxies(youtubeApiUri, bypassSettings)
-        assertEquals(Proxy.Type.HTTP, apiProxiesWithBypass.first().type())
-        assertEquals(externalHost, (apiProxiesWithBypass.first().address() as InetSocketAddress).hostString)
+        assertTunnel(1088, tunnel)
+    }
 
-        val jioProxiesWithBypass = YoutubeNetworkPolicy.selectProxies(jioSaavnUri, bypassSettings)
-        assertEquals(listOf(Proxy.NO_PROXY), jioProxiesWithBypass)
+    @Test
+    fun startupFailureFallsBackToDirect() {
+        ByeDpiSupervisor.setStartingForTesting(1088)
+        val finisher = Thread {
+            Thread.sleep(75)
+            ByeDpiSupervisor.finishStartingForTesting(running = false)
+        }.also { it.start() }
+
+        val tunnel = ByeDpiSupervisor.acquireTunnel()
+        finisher.join()
+
+        assertNull(tunnel)
+    }
+
+    @Test
+    fun awaitRunningTimesOutWhenStartupNeverCompletes() {
+        ByeDpiSupervisor.setStartingForTesting(1088)
+
+        assertFalse(ByeDpiSupervisor.awaitRunning(50L))
+        assertTrue(ByeDpiSupervisor.isEngaged())
+        assertFalse(ByeDpiSupervisor.isRunning())
     }
 }

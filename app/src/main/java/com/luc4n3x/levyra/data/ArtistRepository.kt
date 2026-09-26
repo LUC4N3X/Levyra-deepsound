@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.lore.ArtistLoreRepository
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -15,7 +17,6 @@ import com.luc4n3x.levyra.domain.artistIdentityMatches
 import com.luc4n3x.levyra.domain.artistSearchMatchScore
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
-import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.ReleaseType
@@ -28,16 +29,16 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 
 internal data class ArtistHeaderArtwork(
@@ -267,6 +268,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private fun profileBrowseKey(browseId: String): String = "browse:${browseId.trim().lowercase(Locale.ROOT)}"
 
     private companion object {
+        val JSON_MEDIA_TYPE = "application/json".toMediaType()
         const val MAX_RELEASE_PAGES = 8
         const val MAX_RELEASES_PER_SECTION = 200
         const val MAX_RELEASES_PER_SHELF = 100
@@ -1276,7 +1278,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private fun contentLanguage(): String = preferences?.languageCode() ?: LevyraLanguageCatalog.deviceDefault()
 
     private fun clientContext(): JSONObject {
-        val locale = LevyraContentLocales.forLanguage(contentLanguage())
+        val locale = YoutubeRegionProfile.effectiveLocale(contentLanguage())
         return JSONObject().put(
             "client",
             JSONObject()
@@ -1295,28 +1297,24 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         connectTimeoutMs: Int = 15_000,
         readTimeoutMs: Int = 20_000
     ): JSONObject {
-        val bytes = body.toByteArray(StandardCharsets.UTF_8)
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = connectTimeoutMs
-            readTimeout = readTimeoutMs
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Origin", "https://music.youtube.com")
-            setRequestProperty("Referer", referer)
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-            setRequestProperty("X-Youtube-Client-Name", "67")
-            setRequestProperty("X-Youtube-Client-Version", clientVersion)
-            GoogleApiKeyHeaders.applyTo(this, context)
-            setRequestProperty("Content-Length", bytes.size.toString())
+        val request = Request.Builder()
+            .url(endpoint)
+            .post(body.toRequestBody(JSON_MEDIA_TYPE))
+            .header("Accept", "application/json")
+            .header("Origin", "https://music.youtube.com")
+            .header("Referer", referer)
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            .header("X-Youtube-Client-Name", "67")
+            .header("X-Youtube-Client-Version", clientVersion)
+            .let { GoogleApiKeyHeaders.applyTo(it, context) }
+            .build()
+        val client = LevyraHttpClientFactory.media(context).newBuilder()
+            .connectTimeout(connectTimeoutMs.toLong(), TimeUnit.MILLISECONDS)
+            .readTimeout(readTimeoutMs.toLong(), TimeUnit.MILLISECONDS)
+            .build()
+        return client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) JSONObject() else JSONObject(response.body.string())
         }
-        connection.outputStream.use { it.write(bytes) }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val response = BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { it.readText() }
-        if (code !in 200..299) return JSONObject()
-        return JSONObject(response)
     }
 
     private fun headerText(header: JSONObject?): String {

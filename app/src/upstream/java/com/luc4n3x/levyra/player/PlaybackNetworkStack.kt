@@ -129,7 +129,7 @@ object PlaybackNetworkStack {
     private fun shouldBypassCronetForProxy(): Boolean {
         val settings = LevyraNetworkConfiguration.current()
         return (settings.usesProxy && !settings.bypassProxyForStreams) ||
-            (settings.byeDpiEnabled && ByeDpiSupervisor.isRunning())
+            (settings.byeDpiEnabled && ByeDpiSupervisor.isEngaged())
     }
 
     private fun createOkHttpFactory(): HttpDataSource.Factory {

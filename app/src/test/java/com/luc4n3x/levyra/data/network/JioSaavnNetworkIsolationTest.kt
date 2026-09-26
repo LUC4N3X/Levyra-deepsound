@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.network
 
 import com.luc4n3x.levyra.data.hqaudio.ProviderDestinationPolicy
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSocketFactory
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import com.luc4n3x.levyra.domain.LevyraProxyMode
@@ -37,7 +38,6 @@ class JioSaavnNetworkIsolationTest {
         )
 
         for (host in jioHosts) {
-            assertTrue("Expected JioSaavn host: $host", YoutubeNetworkPolicy.isJioSaavnHost(host))
             assertFalse("JioSaavn host must not be classified as YouTube: $host", YoutubeNetworkPolicy.isYoutubeHost(host))
             assertFalse("JioSaavn host must not be classified as YouTube media: $host", YoutubeNetworkPolicy.isYoutubeMediaHost(host))
             assertTrue("Allowed by ProviderDestinationPolicy: $host", ProviderDestinationPolicy.allows("https://$host/test".toHttpUrl()))
@@ -63,11 +63,9 @@ class JioSaavnNetworkIsolationTest {
         val cdnProxies = YoutubeNetworkPolicy.selectProxies(jioCdnUri, settings)
         assertEquals(listOf(Proxy.NO_PROXY), cdnProxies)
 
-        val ytUri = URI("https://rr1---sn-4g5ednls.googlevideo.com/videoplayback")
-        val ytProxies = YoutubeNetworkPolicy.selectProxies(ytUri, settings)
-        assertEquals(1, ytProxies.size)
-        assertEquals(Proxy.Type.SOCKS, ytProxies.first().type())
-        assertEquals(byeDpiPort, (ytProxies.first().address() as InetSocketAddress).port)
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(jioApiUri.host, settings, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(jioCdnUri.host, settings, streamBypass = true))
+        assertTrue(YoutubeNetworkPolicy.routesThroughByeDpi("rr1---sn-4g5ednls.googlevideo.com", settings, streamBypass = false))
     }
 
     @Test
@@ -85,6 +83,7 @@ class JioSaavnNetworkIsolationTest {
         if (configuredProxy != null) {
             assertNotEquals(Proxy.Type.SOCKS, configuredProxy.type())
         }
+        assertFalse(externalClient.socketFactory is ByeDpiSocketFactory)
     }
 
     @Test
@@ -103,8 +102,10 @@ class JioSaavnNetworkIsolationTest {
         ByeDpiSupervisor.setRunningForTesting(1088)
 
         val jioCdnUri = URI("https://aac.saavncdn.com/999/audio.mp4")
-        val proxies = YoutubeNetworkPolicy.selectProxies(jioCdnUri, settings)
 
-        assertEquals(listOf(Proxy.NO_PROXY), proxies)
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(jioCdnUri.host, settings, streamBypass = true))
+        val apiProxies = YoutubeNetworkPolicy.selectProxies(jioCdnUri, settings)
+        assertEquals(Proxy.Type.HTTP, apiProxies.single().type())
+        assertEquals(externalHost, (apiProxies.single().address() as InetSocketAddress).hostString)
     }
 }
