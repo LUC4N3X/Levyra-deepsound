@@ -94,11 +94,11 @@ private class PlayerDragSession(
     fun start(offset: Offset, widthPx: Float) {
         resetMotion()
         velocityTracker.resetTracking()
-        zone = if (edgeZonesEnabled) {
-            playerGestureZone(offset.x / widthPx.coerceAtLeast(1f), rightToLeft)
-        } else {
-            PlayerGestureZone.Center
-        }
+        val resolvedZone = playerGestureZone(
+            offset.x / widthPx.coerceAtLeast(1f),
+            rightToLeft
+        )
+        zone = resolvedZone.takeIf { edgeZonesEnabled } ?: PlayerGestureZone.Center
     }
 
     fun drag(
