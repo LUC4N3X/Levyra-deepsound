@@ -12,10 +12,12 @@ private val preloadBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "it" to preloadStrings(
         "Precarica il brano successivo",
-        "Prepara in anticipo il brano successivo per passaggi più rapidi. Disattiva per ridurre l'attività di rete in background."
+        "Prepara in anticipo il brano successivo per passaggi più rapidi. " +
+            "Disattiva per ridurre l'attività di rete in background."
     )
 )
 
 internal val preloadKeys = setOf("preloadNextTrack", "preloadNextTrackSubtitle")
 
-internal fun preloadLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(preloadBundles, code)
+internal fun preloadLocalizationEntries(code: String): Map<String, String> =
+    localizedBundleOrEnglish(preloadBundles, code)
