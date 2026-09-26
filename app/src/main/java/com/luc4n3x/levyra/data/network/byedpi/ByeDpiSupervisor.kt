@@ -12,9 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -80,8 +78,6 @@ object ByeDpiSupervisor {
             currentState = ByeDpiState.STARTING
             failureMessage = null
 
-            runnerJob?.cancel()
-            runnerJob = null
             val instance = ByeDpiProxy()
             proxyInstance = instance
 
@@ -142,20 +138,16 @@ object ByeDpiSupervisor {
             currentState = ByeDpiState.STOPPED
             val instance = proxyInstance
             proxyInstance = null
-            proxyProcessJob?.cancel()
-            proxyProcessJob = null
-            runnerJob?.cancel()
-            runnerJob = null
             activePort = 0
             failureMessage = null
             consecutiveFailures.set(0)
 
-            scope.launch {
-                withContext(NonCancellable) {
-                    runCatching { instance?.stopProxy() }
-                    Timber.i("ByeDPI stopped")
-                }
-            }
+            runCatching { instance?.stopProxy() }
+            proxyProcessJob?.cancel()
+            proxyProcessJob = null
+            runnerJob?.cancel()
+            runnerJob = null
+            Timber.i("ByeDPI stopped")
         }
     }
 

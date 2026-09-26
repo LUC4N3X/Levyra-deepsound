@@ -1103,6 +1103,7 @@ class LevyraStrings private constructor(
     val networkRestrictedCompatibilitySubtitle: String get() = value("networkRestrictedCompatibilitySubtitle")
     val networkByeDpi: String get() = value("networkByeDpi")
     val networkByeDpiSubtitle: String get() = value("networkByeDpiSubtitle")
+    val networkByeDpiUnavailable: String get() = value("networkByeDpiUnavailable")
     val networkYoutubeRegionProfile: String get() = value("networkYoutubeRegionProfile")
     val networkYoutubeRegionProfileSubtitle: String get() = value("networkYoutubeRegionProfileSubtitle")
     val networkTest: String get() = value("networkTest")
@@ -1809,6 +1810,7 @@ class LevyraStrings private constructor(
             "networkRestrictedCompatibilitySubtitle",
             "networkByeDpi",
             "networkByeDpiSubtitle",
+            "networkByeDpiUnavailable",
             "networkYoutubeRegionProfile",
             "networkYoutubeRegionProfileSubtitle",
             "networkTest",

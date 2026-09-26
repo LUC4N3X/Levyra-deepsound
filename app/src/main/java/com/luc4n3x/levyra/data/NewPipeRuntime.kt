@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import kotlinx.coroutines.CancellationException
@@ -47,8 +48,7 @@ object NewPipeRuntime {
      * so extraction never blocks on the preferences DataStore during playback.
      */
     fun setLanguage(languageCode: String) {
-        val locale = com.luc4n3x.levyra.data.network.YoutubeRegionProfile.effectiveLocale(languageCode)
-        requestedLanguage = locale.languageCode
+        requestedLanguage = languageCode
         if (initialized.get()) applyRequestedLocalization()
     }
 
@@ -56,7 +56,7 @@ object NewPipeRuntime {
         context?.applicationContext?.let { applicationContext = it }
 
         if (initialized.compareAndSet(false, true)) {
-            val locale = com.luc4n3x.levyra.data.network.YoutubeRegionProfile.effectiveLocale(requestedLanguage)
+            val locale = YoutubeRegionProfile.effectiveLocale(requestedLanguage)
             try {
                 NewPipe.init(
                     OkHttpNewPipeDownloader(),
@@ -85,8 +85,8 @@ object NewPipeRuntime {
     }
 
     fun acceptLanguageHeader(): String {
-        if (com.luc4n3x.levyra.data.network.YoutubeRegionProfile.isEnabled()) {
-            return com.luc4n3x.levyra.data.network.YoutubeRegionProfile.US_ACCEPT_LANGUAGE
+        if (YoutubeRegionProfile.isEnabled()) {
+            return YoutubeRegionProfile.US_ACCEPT_LANGUAGE
         }
         val locale = LevyraContentLocales.forLanguage(appliedLanguage.ifBlank { requestedLanguage })
         val english = locale.hl.equals("en", ignoreCase = true)
@@ -97,7 +97,7 @@ object NewPipeRuntime {
     private fun applyRequestedLocalization() {
         synchronized(this) {
             val requested = requestedLanguage
-            val locale = com.luc4n3x.levyra.data.network.YoutubeRegionProfile.effectiveLocale(requested)
+            val locale = YoutubeRegionProfile.effectiveLocale(requested)
             if (locale.languageCode.isBlank() || locale.languageCode == appliedLanguage) return
             NewPipe.setupLocalization(Localization(locale.hl, locale.gl), ContentCountry(locale.gl))
             appliedLanguage = locale.languageCode
@@ -107,7 +107,7 @@ object NewPipeRuntime {
     fun onConfigurationChanged() {
         synchronized(this) {
             if (initialized.get()) {
-                val locale = com.luc4n3x.levyra.data.network.YoutubeRegionProfile.effectiveLocale(requestedLanguage)
+                val locale = YoutubeRegionProfile.effectiveLocale(requestedLanguage)
                 NewPipe.setupLocalization(Localization(locale.hl, locale.gl), ContentCountry(locale.gl))
                 appliedLanguage = locale.languageCode
             }

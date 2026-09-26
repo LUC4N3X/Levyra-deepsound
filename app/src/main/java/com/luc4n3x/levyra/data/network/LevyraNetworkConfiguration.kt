@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.network
 
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.domain.LevyraDnsMode
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import com.luc4n3x.levyra.domain.LevyraProxyMode
@@ -90,12 +91,12 @@ internal object LevyraNetworkConfiguration {
         runCatching { dohConnectionPool.evictAll() }
         runCatching { dohDispatcher.cancelAll() }
 
-        val byeDpiToggledOn = normalized.byeDpiEnabled && (!previous.byeDpiEnabled || !com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.isRunning())
-        val byeDpiToggledOff = !normalized.byeDpiEnabled && (previous.byeDpiEnabled || com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.isRunning())
+        val byeDpiToggledOn = normalized.byeDpiEnabled && (!previous.byeDpiEnabled || !ByeDpiSupervisor.isRunning())
+        val byeDpiToggledOff = !normalized.byeDpiEnabled && (previous.byeDpiEnabled || ByeDpiSupervisor.isRunning())
         if (byeDpiToggledOn) {
-            com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.start()
+            ByeDpiSupervisor.start()
         } else if (byeDpiToggledOff) {
-            com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor.stop()
+            ByeDpiSupervisor.stop()
         }
 
         LevyraHttpClientFactory.onConfigurationChanged()

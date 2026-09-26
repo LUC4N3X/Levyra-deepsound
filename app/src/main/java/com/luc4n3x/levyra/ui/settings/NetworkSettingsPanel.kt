@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.domain.LevyraDnsMode
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import com.luc4n3x.levyra.domain.LevyraNetworkSettingsError
@@ -198,11 +199,13 @@ internal fun NetworkSettingsPanel(
         NetworkCard {
             Text(strings.networkRestrictedCompatibility, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             Text(strings.networkRestrictedCompatibilitySubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            val byeDpiAvailable = remember { ByeDpiSupervisor.isAvailable() }
             NetworkToggleRow(
                 label = strings.networkByeDpi,
-                checked = byeDpiEnabled,
-                onCheckedChange = { byeDpiEnabled = it },
-                subtitle = strings.networkByeDpiSubtitle
+                checked = byeDpiEnabled && byeDpiAvailable,
+                onCheckedChange = { if (byeDpiAvailable) byeDpiEnabled = it },
+                subtitle = if (byeDpiAvailable) strings.networkByeDpiSubtitle else strings.networkByeDpiUnavailable,
+                enabled = byeDpiAvailable
             )
             NetworkToggleRow(
                 label = strings.networkYoutubeRegionProfile,
@@ -295,16 +298,17 @@ private fun NetworkToggleRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    subtitle: String? = null
+    subtitle: String? = null,
+    enabled: Boolean = true
 ) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = if (enabled) LevyraText else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             subtitle?.let {
                 Text(it, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }
 

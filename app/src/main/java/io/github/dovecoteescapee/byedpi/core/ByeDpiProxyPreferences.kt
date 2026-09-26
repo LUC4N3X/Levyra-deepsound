@@ -48,7 +48,7 @@ class ByeDpiProxyUIPreferences(
     val splitAtHost: Boolean = splitAtHost ?: false
     val fakeTtl: Int = fakeTtl ?: 8
     val fakeSni: String = fakeSni ?: "www.iana.org"
-    val oobChar: Byte = (oobChar ?: "a")[0].code.toByte()
+    val oobChar: Byte = (oobChar?.takeIf { it.isNotEmpty() } ?: "a")[0].code.toByte()
     val hostMixedCase: Boolean = hostMixedCase ?: false
     val domainMixedCase: Boolean = domainMixedCase ?: false
     val hostRemoveSpaces: Boolean = hostRemoveSpaces ?: false

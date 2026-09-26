@@ -1,8 +1,5 @@
 package io.github.dovecoteescapee.byedpi.core
 
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-
 class ByeDpiProxy {
     companion object {
         @Volatile
@@ -28,10 +25,11 @@ class ByeDpiProxy {
         }
     }
 
-    private val mutex = Mutex()
+    private val lock = Any()
+    @Volatile
     private var fd = -1
 
-    suspend fun startProxy(preferences: ByeDpiProxyPreferences): Int {
+    fun startProxy(preferences: ByeDpiProxyPreferences): Int {
         if (!isAvailable()) return -1
         val socketFd = createSocket(preferences)
         if (socketFd < 0) {
@@ -44,12 +42,12 @@ class ByeDpiProxy {
         }
     }
 
-    suspend fun stopProxy(): Int {
+    fun stopProxy(): Int {
         if (!isAvailable()) return 0
-        return mutex.withLock {
+        return synchronized(lock) {
             val currentFd = fd
             if (currentFd < 0) {
-                return@withLock 0
+                return@synchronized 0
             }
             val result = try {
                 jniStopProxy(currentFd)
@@ -63,10 +61,10 @@ class ByeDpiProxy {
         }
     }
 
-    private suspend fun createSocket(preferences: ByeDpiProxyPreferences): Int =
-        mutex.withLock {
+    private fun createSocket(preferences: ByeDpiProxyPreferences): Int =
+        synchronized(lock) {
             if (fd >= 0) {
-                return@withLock fd
+                return@synchronized fd
             }
             val created = try {
                 createSocketFromPreferences(preferences)
@@ -74,7 +72,7 @@ class ByeDpiProxy {
                 -1
             }
             if (created < 0) {
-                return@withLock -1
+                return@synchronized -1
             }
             fd = created
             created

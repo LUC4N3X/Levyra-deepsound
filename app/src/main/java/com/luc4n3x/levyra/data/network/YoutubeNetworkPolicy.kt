@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data.network
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import java.io.IOException
+import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.ProxySelector
 import java.net.SocketAddress
@@ -99,7 +100,9 @@ object YoutubeNetworkPolicy {
 
             override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) {
                 val byeDpi = ByeDpiSupervisor.proxy()
-                if (byeDpi != null && sa == byeDpi.address()) {
+                val byeAddr = byeDpi?.address() as? InetSocketAddress
+                val failedAddr = sa as? InetSocketAddress
+                if (byeAddr != null && failedAddr != null && failedAddr.port == byeAddr.port) {
                     Timber.w(ioe, "Failed connecting to ByeDPI SOCKS on %s for %s", sa, uri)
                     ByeDpiSupervisor.recordConnectionFailure()
                 }
