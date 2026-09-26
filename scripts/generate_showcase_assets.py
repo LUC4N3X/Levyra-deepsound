@@ -11,7 +11,7 @@ os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_SCREENSHOTS_DIR, exist_ok=True)
 
 SCREENS = {
-    "home": "screen-home.jpg",
+    "home": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_171253_LEVYRA.jpg",
     "charts": "screen-charts.jpg",
     "genres": "screen-genres.jpg",
     "listening_pulse": "screen-listening-pulse.jpg",
@@ -20,6 +20,9 @@ SCREENS = {
     "search_artist": "screen-search-artist.jpg",
     "artist_discography": "screen-artist-discography.jpg",
 }
+
+def get_screen_path(filename):
+    return filename if os.path.isabs(filename) else os.path.join(SCREENSHOT_DIR, filename)
 
 def get_font(size, bold=False):
     font_path = r"C:\Windows\Fonts\segoeuib.ttf" if bold else r"C:\Windows\Fonts\segoeui.ttf"
@@ -160,7 +163,7 @@ def draw_vector_sparkle(draw, center, radius, color):
 def generate_individual_framed_screenshots():
     print("Generating individual framed screenshots...")
     for key, filename in SCREENS.items():
-        src_path = os.path.join(SCREENSHOT_DIR, filename)
+        src_path = get_screen_path(filename)
         if not os.path.exists(src_path):
             print(f"Skipping missing: {filename}")
             continue
@@ -258,8 +261,8 @@ def generate_studio_dual_card(
     draw.text((75, card_h - 65), "LEVYRA · NATIVE MUSIC EXPERIENCE", font=brand_font, fill=(80, 92, 115, 200))
 
     # 3. Right Side: Dual Floating Phone Mockups
-    img1_src = Image.open(os.path.join(SCREENSHOT_DIR, SCREENS[screen1_key]))
-    img2_src = Image.open(os.path.join(SCREENSHOT_DIR, SCREENS[screen2_key]))
+    img1_src = Image.open(get_screen_path(SCREENS[screen1_key]))
+    img2_src = Image.open(get_screen_path(SCREENS[screen2_key]))
 
     phone1 = create_phone_frame(img1_src, target_height=780)
     phone2 = create_phone_frame(img2_src, target_height=840)
@@ -283,82 +286,39 @@ def generate_studio_dual_card(
     print(f"Generated Showcase Card: {out_path}")
 
 def generate_hero_panoramic_showcase():
-    """
-    Renders an expansive, ultra-wide 2400x1100 panoramic banner featuring 5 staggered
-    devices with deep studio lighting and atmospheric glow.
-    """
-    canvas_w, canvas_h = 2400, 1100
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (8, 10, 14, 255))
+    canvas_w, canvas_h = 2400, 1240
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (5, 7, 11, 255))
 
-    # Studio lighting
-    glow1 = create_ambient_glow(canvas_w, canvas_h, (1200, 500), 750, (130, 80, 255), max_alpha=85) # Purple center
-    glow2 = create_ambient_glow(canvas_w, canvas_h, (1800, 480), 650, (230, 60, 90), max_alpha=70) # Crimson right
-    glow3 = create_ambient_glow(canvas_w, canvas_h, (600, 520), 650, (40, 130, 255), max_alpha=75) # Blue left
-    glow4 = create_ambient_glow(canvas_w, canvas_h, (1200, 1000), 800, (30, 190, 210), max_alpha=40) # Cyan bottom
+    canvas = Image.alpha_composite(
+        canvas,
+        create_ambient_glow(canvas_w, canvas_h, (520, 500), 780, (196, 54, 118), max_alpha=72),
+    )
+    canvas = Image.alpha_composite(
+        canvas,
+        create_ambient_glow(canvas_w, canvas_h, (1200, 550), 900, (37, 116, 255), max_alpha=90),
+    )
+    canvas = Image.alpha_composite(
+        canvas,
+        create_ambient_glow(canvas_w, canvas_h, (1980, 520), 760, (105, 52, 210), max_alpha=75),
+    )
 
-    canvas = Image.alpha_composite(canvas, glow1)
-    canvas = Image.alpha_composite(canvas, glow2)
-    canvas = Image.alpha_composite(canvas, glow3)
-    canvas = Image.alpha_composite(canvas, glow4)
+    keys = ["home", "charts", "now_playing", "lyrics", "artist_discography"]
+    heights = [900, 1010, 1160, 1010, 900]
+    positions = [(-40, 245), (390, 135), (925, 25), (1480, 135), (2020, 245)]
+    opacities = [135, 165, 220, 165, 135]
 
-    # 5 Key Screens: Listening Pulse, Home, Now Playing, Synced Lyrics, Artist Discography
-    keys = ["listening_pulse", "home", "now_playing", "lyrics", "artist_discography"]
-    imgs = [Image.open(os.path.join(SCREENSHOT_DIR, SCREENS[k])) for k in keys]
+    for key, height, (x, y), opacity in zip(keys, heights, positions, opacities):
+        with Image.open(get_screen_path(SCREENS[key])) as source:
+            phone = create_phone_frame(source, target_height=height)
+        shadow = create_studio_shadow(phone, blur_radius=55, opacity=opacity, offset=(0, 30))
+        canvas.paste(shadow, (x - 55, y - 25), shadow)
+        canvas.paste(phone, (x, y), phone)
 
-    p1 = create_phone_frame(imgs[0], target_height=740) # Pulse
-    p2 = create_phone_frame(imgs[1], target_height=820) # Home
-    p3 = create_phone_frame(imgs[2], target_height=920) # Player (Centerpiece)
-    p4 = create_phone_frame(imgs[3], target_height=820) # Lyrics
-    p5 = create_phone_frame(imgs[4], target_height=740) # Artist
-
-    # Staggered 5-device layout
-    # 1. Far Left (Pulse)
-    x1, y1 = 120, 200
-    sh1 = create_studio_shadow(p1, blur_radius=35, opacity=130)
-    canvas.paste(sh1, (x1 - 35, y1 - 20), sh1)
-    canvas.paste(p1, (x1, y1), p1)
-
-    # 5. Far Right (Artist)
-    x5, y5 = 1860, 200
-    sh5 = create_studio_shadow(p5, blur_radius=35, opacity=130)
-    canvas.paste(sh5, (x5 - 35, y5 - 20), sh5)
-    canvas.paste(p5, (x5, y5), p5)
-
-    # 2. Mid Left (Home)
-    x2, y2 = 510, 130
-    sh2 = create_studio_shadow(p2, blur_radius=45, opacity=160)
-    canvas.paste(sh2, (x2 - 45, y2 - 20), sh2)
-    canvas.paste(p2, (x2, y2), p2)
-
-    # 4. Mid Right (Lyrics)
-    x4, y4 = 1470, 130
-    sh4 = create_studio_shadow(p4, blur_radius=45, opacity=160)
-    canvas.paste(sh4, (x4 - 45, y4 - 20), sh4)
-    canvas.paste(p4, (x4, y4), p4)
-
-    # 3. Center Hero (Player)
-    x3, y3 = 980, 65
-    sh3 = create_studio_shadow(p3, blur_radius=60, opacity=210)
-    canvas.paste(sh3, (x3 - 60, y3 - 20), sh3)
-    canvas.paste(p3, (x3, y3), p3)
-
-    # Top overlay header banner
-    draw = ImageDraw.Draw(canvas)
-    header_font = get_font(38, bold=True)
-    sub_font = get_font(18, bold=False)
-
-    # Center text with vector sparkle stars
-    title_text = "LEVYRA EXPERIENCE"
-    bbox = header_font.getbbox(title_text)
-    t_w = bbox[2] - bbox[0]
-
-    cx = canvas_w // 2
-    draw.text((cx, 40), title_text, font=header_font, fill=(255, 255, 255, 245), anchor="mt")
-    # Draw sparkles on left and right of title
-    draw_vector_sparkle(draw, (cx - t_w // 2 - 26, 62), 10, (210, 225, 255, 255))
-    draw_vector_sparkle(draw, (cx + t_w // 2 + 26, 62), 10, (210, 225, 255, 255))
-
-    draw.text((cx, 90), "Native Media3 Audio Engine · Live Synced Lyrics · Private Listening Pulse · Real M4A Offline Vault", font=sub_font, fill=(170, 185, 210, 220), anchor="mt")
+    fade = Image.new("RGBA", (canvas_w, 260), (0, 0, 0, 0))
+    fade_alpha = Image.new("L", (1, 260))
+    fade_alpha.putdata([int(190 * (y / 259) ** 1.8) for y in range(260)])
+    fade.putalpha(fade_alpha.resize((canvas_w, 260)))
+    canvas.alpha_composite(fade, (0, canvas_h - 260))
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_showcase.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)

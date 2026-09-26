@@ -146,17 +146,17 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 <br><br>
 
-<a href="docs/assets/screenshots/home.webp"><img src="docs/assets/screenshots/home.webp" width="190" alt="Levyra home and Your Orbit" /></a>
-<a href="docs/assets/screenshots/now_playing.webp"><img src="docs/assets/screenshots/now_playing.webp" width="190" alt="Levyra Now Playing screen" /></a>
-<a href="docs/assets/screenshots/lyrics.webp"><img src="docs/assets/screenshots/lyrics.webp" width="190" alt="Levyra synchronized lyrics" /></a>
-<a href="docs/assets/screenshots/charts.webp"><img src="docs/assets/screenshots/charts.webp" width="190" alt="Levyra international charts" /></a>
+<a href="docs/assets/screenshots/home.webp"><img src="docs/assets/screenshots/home.webp" width="200" alt="Levyra personalized home radio" /></a>
+<a href="docs/assets/screenshots/now_playing.webp"><img src="docs/assets/screenshots/now_playing.webp" width="200" alt="Levyra Now Playing screen" /></a>
+<a href="docs/assets/screenshots/lyrics.webp"><img src="docs/assets/screenshots/lyrics.webp" width="200" alt="Levyra synchronized lyrics" /></a>
+<a href="docs/assets/screenshots/charts.webp"><img src="docs/assets/screenshots/charts.webp" width="200" alt="Levyra international charts" /></a>
 
 <br>
 
-<a href="docs/assets/screenshots/search_artist.webp"><img src="docs/assets/screenshots/search_artist.webp" width="190" alt="Levyra artist search" /></a>
-<a href="docs/assets/screenshots/artist_discography.webp"><img src="docs/assets/screenshots/artist_discography.webp" width="190" alt="Levyra artist discography" /></a>
-<a href="docs/assets/screenshots/genres.webp"><img src="docs/assets/screenshots/genres.webp" width="190" alt="Levyra moods and genres" /></a>
-<a href="docs/assets/screenshots/listening_pulse.webp"><img src="docs/assets/screenshots/listening_pulse.webp" width="190" alt="Levyra private listening stats" /></a>
+<a href="docs/assets/screenshots/search_artist.webp"><img src="docs/assets/screenshots/search_artist.webp" width="200" alt="Levyra artist search" /></a>
+<a href="docs/assets/screenshots/artist_discography.webp"><img src="docs/assets/screenshots/artist_discography.webp" width="200" alt="Levyra artist discography" /></a>
+<a href="docs/assets/screenshots/genres.webp"><img src="docs/assets/screenshots/genres.webp" width="200" alt="Levyra moods and genres" /></a>
+<a href="docs/assets/screenshots/listening_pulse.webp"><img src="docs/assets/screenshots/listening_pulse.webp" width="200" alt="Levyra private listening stats" /></a>
 
 </div>
 
