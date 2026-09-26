@@ -31,4 +31,5 @@
     <string name="shortcut_search">검색</string>
     <string name="shortcut_library">보관함</string>
     <string name="shortcut_recognition">음악 인식</string>
+    <string name="shortcut_resume">재생 이어하기</string>
 </resources>

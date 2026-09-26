@@ -100,3 +100,10 @@ internal fun Track.hasVideoPlaybackPayload(): Boolean {
                 stream.kind == PlaybackStreamKind.HLS
         } == true
 }
+
+internal fun Track.hasReusableVideoPlaybackPayload(): Boolean {
+    if (!hasVideoPlaybackPayload()) return false
+    val manifest = playbackManifest ?: return true
+    if (videoStreamUrl.isNotBlank() || !manifest.isMuxed) return true
+    return manifest.streams.any { it.kind == PlaybackStreamKind.VIDEO }
+}

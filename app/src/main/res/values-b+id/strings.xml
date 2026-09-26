@@ -31,4 +31,5 @@
     <string name="shortcut_search">Cari</string>
     <string name="shortcut_library">Koleksi</string>
     <string name="shortcut_recognition">Kenali musik</string>
+    <string name="shortcut_resume">Lanjutkan pemutaran</string>
 </resources>

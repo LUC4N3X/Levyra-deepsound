@@ -116,18 +116,49 @@ data class ResolvedPlaybackManifest(
         }?.isMp4Audio() == true
     }
 
-    fun compact(maxStreams: Int = 10): ResolvedPlaybackManifest {
+    fun compact(maxStreams: Int = 10, preferVideoRungs: Boolean = false): ResolvedPlaybackManifest {
         val selected = streams.filter { it.selected }
-        val alternatives = streams
-            .asSequence()
-            .filterNot { it.selected }
-            .sortedWith(
-                compareByDescending<PlaybackStreamDescriptor> { it.kind == PlaybackStreamKind.AUDIO }
-                    .thenByDescending { it.averageBitrate.coerceAtLeast(it.bitrate) }
-                    .thenByDescending { it.height }
-            )
-            .take((maxStreams - selected.size).coerceAtLeast(0))
-            .toList()
+        val remaining = (maxStreams - selected.size).coerceAtLeast(0)
+        val alternatives = if (preferVideoRungs) {
+            val videoRungs = streams
+                .filterNot { it.selected }
+                .filter { it.kind == PlaybackStreamKind.VIDEO || it.kind == PlaybackStreamKind.MUXED }
+                .groupBy { it.height.coerceAtLeast(0) }
+                .toSortedMap(compareByDescending { it })
+                .values
+                .asSequence()
+                .mapNotNull { group ->
+                    group.minWithOrNull(
+                        compareByDescending<PlaybackStreamDescriptor> { it.kind == PlaybackStreamKind.MUXED }
+                            .thenBy { VideoQualityLadder.codecRank(it.codec, it.mimeType) }
+                            .thenByDescending { it.bitrate.coerceAtLeast(it.averageBitrate) }
+                    )
+                }
+                .toList()
+            val audioFallbacks = streams
+                .asSequence()
+                .filterNot { it.selected }
+                .filter { it.kind == PlaybackStreamKind.AUDIO }
+                .sortedWith(
+                    compareByDescending<PlaybackStreamDescriptor> { it.averageBitrate.coerceAtLeast(it.bitrate) }
+                )
+                .toList()
+            val extra = streams
+                .filterNot { it.selected }
+                .filter { it.kind != PlaybackStreamKind.VIDEO && it.kind != PlaybackStreamKind.MUXED && it.kind != PlaybackStreamKind.AUDIO }
+            (videoRungs + audioFallbacks + extra).take(remaining)
+        } else {
+            streams
+                .asSequence()
+                .filterNot { it.selected }
+                .sortedWith(
+                    compareByDescending<PlaybackStreamDescriptor> { it.kind == PlaybackStreamKind.AUDIO }
+                        .thenByDescending { it.averageBitrate.coerceAtLeast(it.bitrate) }
+                        .thenByDescending { it.height }
+                )
+                .take(remaining)
+                .toList()
+        }
         return copy(streams = (selected + alternatives).distinctBy { descriptor ->
             listOf(descriptor.kind.name, descriptor.itag.toString(), descriptor.url).joinToString("|")
         })

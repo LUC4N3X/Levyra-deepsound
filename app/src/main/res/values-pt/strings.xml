@@ -31,4 +31,5 @@
     <string name="shortcut_search">Pesquisar</string>
     <string name="shortcut_library">Biblioteca</string>
     <string name="shortcut_recognition">Reconhecer música</string>
+    <string name="shortcut_resume">Retomar reprodução</string>
 </resources>

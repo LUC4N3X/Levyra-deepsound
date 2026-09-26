@@ -24,6 +24,7 @@ object LevyraLaunchActions {
     const val SHORTCUT_LIBRARY = "library"
     const val SHORTCUT_RECOGNITION = "recognition"
     const val SHORTCUT_AMBIENT = "ambient"
+    const val SHORTCUT_RESUME = "resume"
 
     private val knownShortcuts = setOf(
         SHORTCUT_FAVORITES,
@@ -33,7 +34,8 @@ object LevyraLaunchActions {
         SHORTCUT_SEARCH,
         SHORTCUT_LIBRARY,
         SHORTCUT_RECOGNITION,
-        SHORTCUT_AMBIENT
+        SHORTCUT_AMBIENT,
+        SHORTCUT_RESUME
     )
 
     val pendingShortcut = mutableStateOf<String?>(null)

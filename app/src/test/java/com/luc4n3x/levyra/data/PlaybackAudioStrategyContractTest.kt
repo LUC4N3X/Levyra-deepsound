@@ -16,13 +16,16 @@ class PlaybackAudioStrategyContractTest {
         val reelAudio = resolver
             .substringAfter("private suspend fun resolveAudioWithAndroidReel")
             .substringBefore("private suspend fun resolveVideoWithAndroidReel")
+        val reelAudioCandidates = resolver
+            .substringAfter("private fun androidReelAudioCandidates")
+            .substringBefore("private suspend fun firstPlayableAndroidReelAudio")
 
         assertTrue(policyDispatch.contains("PlaybackAudioStrategy.REEL_AUDIO"))
         assertTrue(policyDispatch.contains("resolveAudioWithAndroidReel(track, audioQuality)"))
         assertTrue(policyDispatch.contains("PlaybackAudioStrategy.REEL_MUXED"))
         assertTrue(policyDispatch.contains("resolveVideoWithAndroidReel(track)"))
-        assertTrue(reelAudio.contains("mime.startsWith(\"audio/\", true)"))
-        assertFalse(reelAudio.contains("mime.startsWith(\"video/\", true)"))
+        assertTrue(reelAudioCandidates.contains("mime.startsWith(\"audio/\", true)"))
+        assertFalse(reelAudioCandidates.contains("mime.startsWith(\"video/\", true)"))
         assertTrue(reelAudio.contains("stream solo audio riproducibile"))
     }
 
