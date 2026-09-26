@@ -54,3 +54,15 @@ path = "levyra-native-audio/src/main/java/androidx/media3/decoder/ffmpeg/package
 precedence = "override"
 SPDX-FileCopyrightText = "2019 The Android Open Source Project"
 SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = [
+  "app/src/main/java/io/github/dovecoteescapee/byedpi/**",
+  "app/src/upstream/jniLibs/**",
+]
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "ByeDPIAndroid contributors",
+  "2024 hufrea",
+]
+SPDX-License-Identifier = "GPL-3.0-only AND MIT"

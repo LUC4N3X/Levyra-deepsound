@@ -1099,6 +1099,12 @@ class LevyraStrings private constructor(
     val networkProxyPassword: String get() = value("networkProxyPassword")
     val networkBypassStreams: String get() = value("networkBypassStreams")
     val networkBypassStreamsSubtitle: String get() = value("networkBypassStreamsSubtitle")
+    val networkRestrictedCompatibility: String get() = value("networkRestrictedCompatibility")
+    val networkRestrictedCompatibilitySubtitle: String get() = value("networkRestrictedCompatibilitySubtitle")
+    val networkByeDpi: String get() = value("networkByeDpi")
+    val networkByeDpiSubtitle: String get() = value("networkByeDpiSubtitle")
+    val networkYoutubeRegionProfile: String get() = value("networkYoutubeRegionProfile")
+    val networkYoutubeRegionProfileSubtitle: String get() = value("networkYoutubeRegionProfileSubtitle")
     val networkTest: String get() = value("networkTest")
     val networkTestSuccess: String get() = value("networkTestSuccess")
     val networkTestDnsFailed: String get() = value("networkTestDnsFailed")
@@ -1799,6 +1805,12 @@ class LevyraStrings private constructor(
             "networkProxyPassword",
             "networkBypassStreams",
             "networkBypassStreamsSubtitle",
+            "networkRestrictedCompatibility",
+            "networkRestrictedCompatibilitySubtitle",
+            "networkByeDpi",
+            "networkByeDpiSubtitle",
+            "networkYoutubeRegionProfile",
+            "networkYoutubeRegionProfileSubtitle",
             "networkTest",
             "networkTestSuccess",
             "networkTestDnsFailed",
