@@ -1639,48 +1639,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         val streamingData = playerResponse.optJSONObject("streamingData")
             ?: throw YoutubePlayerRequestException(null, "Android Reel non ha restituito streamingData")
         val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
-        val audioCandidates = buildList {
-            for (i in 0 until adaptiveFormats.length()) {
-                val format = adaptiveFormats.optJSONObject(i) ?: continue
-                val mime = format.optString("mimeType")
-                if (!mime.startsWith("audio/", true)) continue
-                val url = format.resolveFormatUrl(
-                    videoId = sourceVideoId,
-                    streamingPoToken = null,
-                    transformThrottling = true
-                ).takeIf { it.isNotBlank() }
-                    ?.withQueryParameterReplacing("cpn", cpn)
-                    .orEmpty()
-                if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
-                val meta = AudioLanguageIntelligence.parseFromFormat(format, url, selectedPreferredAudioLanguage)
-                add(
-                    Triple(
-                        format,
-                        url,
-                        strictAudioSelectionScore(
-                            meta.tier,
-                            scoreAudioFormat(
-                                mime = mime,
-                                itag = format.optInt("itag", 0),
-                                bitrate = format.optInt("bitrate", 0),
-                                formatAudioQuality = format.optString("audioQuality"),
-                                preferMp4Audio = false,
-                                requestedAudioQuality = audioQuality
-                            ),
-                            meta.tieBreakerBonus
-                        )
-                    )
-                )
-            }
-        }.sortedByDescending { it.third }
-
-        var selectedAudio: Triple<JSONObject, String, Int>? = null
-        for (candidate in audioCandidates) {
-            if (verifyDirectAudioUrlFast(candidate.second, identity = reelStreamIdentity)) {
-                selectedAudio = candidate
-                break
-            }
-        }
+        val selectedAudio = firstPlayableAndroidReelAudio(
+            candidates = androidReelAudioCandidates(
+                adaptiveFormats = adaptiveFormats,
+                sourceVideoId = sourceVideoId,
+                cpn = cpn,
+                audioQuality = audioQuality
+            ),
+            identity = reelStreamIdentity
+        )
         if (selectedAudio != null) {
             val (format, url, _) = selectedAudio
             val details = playerResponse.optJSONObject("videoDetails")
@@ -1794,107 +1761,31 @@ class PlaybackResolver private constructor(private val context: Context) {
             throw YoutubePlayerRequestException(null, "Android Reel non ha restituito formati video")
         }
 
-        val muxedCandidates = buildList {
-            for (i in 0 until formats.length()) {
-                val format = formats.optJSONObject(i) ?: continue
-                val mime = format.optString("mimeType")
-                if (!mime.startsWith("video/", true)) continue
-                val url = format.resolveFormatUrl(
-                    videoId = sourceVideoId,
-                    streamingPoToken = null,
-                    transformThrottling = true
-                ).takeIf { it.isNotBlank() }
-                    ?.withQueryParameterReplacing("cpn", cpn)
-                    .orEmpty()
-                if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
-                add(
-                    LevyraVideoCandidate(
-                        url = url,
-                        mimeType = mime.substringBefore(';'),
-                        codec = codecFromMimeType(mime),
-                        width = format.optInt("width", 0),
-                        height = format.optInt("height", 0),
-                        fps = format.optInt("fps", 0),
-                        bitrate = format.optInt("bitrate", 0),
-                        itag = format.optInt("itag", 0),
-                        muxed = true,
-                        label = format.optString("qualityLabel").ifBlank { "android-reel" }
-                    )
-                )
-            }
-        }
-        val videoOnlyCandidates = buildList {
-            for (i in 0 until adaptiveFormats.length()) {
-                val format = adaptiveFormats.optJSONObject(i) ?: continue
-                val mime = format.optString("mimeType")
-                if (!mime.startsWith("video/", true)) continue
-                val url = format.resolveFormatUrl(
-                    videoId = sourceVideoId,
-                    streamingPoToken = null,
-                    transformThrottling = true
-                ).takeIf { it.isNotBlank() }
-                    ?.withQueryParameterReplacing("cpn", cpn)
-                    .orEmpty()
-                if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
-                add(
-                    LevyraVideoCandidate(
-                        url = url,
-                        mimeType = mime.substringBefore(';'),
-                        codec = codecFromMimeType(mime),
-                        width = format.optInt("width", 0),
-                        height = format.optInt("height", 0),
-                        fps = format.optInt("fps", 0),
-                        bitrate = format.optInt("bitrate", 0),
-                        itag = format.optInt("itag", 0),
-                        muxed = false,
-                        label = format.optString("qualityLabel").ifBlank { "adaptive" }
-                    )
-                )
-            }
-        }
-        val audioCandidates = buildList {
-            for (i in 0 until adaptiveFormats.length()) {
-                val format = adaptiveFormats.optJSONObject(i) ?: continue
-                val mime = format.optString("mimeType")
-                if (!mime.startsWith("audio/", true)) continue
-                val url = format.resolveFormatUrl(
-                    videoId = sourceVideoId,
-                    streamingPoToken = null,
-                    transformThrottling = true
-                ).takeIf { it.isNotBlank() }
-                    ?.withQueryParameterReplacing("cpn", cpn)
-                    .orEmpty()
-                if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
-                val meta = AudioLanguageIntelligence.parseFromFormat(format, url, selectedPreferredAudioLanguage)
-                add(
-                    Triple(
-                        format,
-                        url,
-                        strictAudioSelectionScore(
-                            meta.tier,
-                            scoreAudioFormat(
-                                mime = mime,
-                                itag = format.optInt("itag", 0),
-                                bitrate = format.optInt("bitrate", 0),
-                                formatAudioQuality = format.optString("audioQuality"),
-                                preferMp4Audio = false,
-                                requestedAudioQuality = selectedAudioQuality
-                            ),
-                            meta.tieBreakerBonus
-                        )
-                    )
-                )
-            }
-        }.sortedByDescending { it.third }
-
-        var bestAudioFormat: JSONObject? = null
-        var bestAudioUrl = ""
-        for ((format, url, _) in audioCandidates) {
-            if (!verifyDirectAudioUrlFast(url, identity = reelStreamIdentity)) continue
-            bestAudioFormat = format
-            bestAudioUrl = url
-            break
-        }
+        val muxedCandidates = androidReelVideoCandidates(
+            formats = formats,
+            sourceVideoId = sourceVideoId,
+            cpn = cpn,
+            muxed = true,
+            fallbackLabel = "android-reel"
+        )
+        val videoOnlyCandidates = androidReelVideoCandidates(
+            formats = adaptiveFormats,
+            sourceVideoId = sourceVideoId,
+            cpn = cpn,
+            muxed = false,
+            fallbackLabel = "adaptive"
+        )
+        val bestAudio = firstPlayableAndroidReelAudio(
+            candidates = androidReelAudioCandidates(
+                adaptiveFormats = adaptiveFormats,
+                sourceVideoId = sourceVideoId,
+                cpn = cpn,
+                audioQuality = selectedAudioQuality
+            ),
+            identity = reelStreamIdentity
+        )
+        val bestAudioFormat = bestAudio?.first
+        val bestAudioUrl = bestAudio?.second.orEmpty()
 
         val selection = videoSelector.select(
             muxedCandidates = muxedCandidates,
@@ -1948,6 +1839,92 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
         rememberClientIdentity(reelStream.manifest)
         return track.withDirectStream(reelStream)
+    }
+
+    private fun androidReelAudioCandidates(
+        adaptiveFormats: JSONArray,
+        sourceVideoId: String,
+        cpn: String,
+        audioQuality: String
+    ): List<Triple<JSONObject, String, Int>> = buildList<Triple<JSONObject, String, Int>> {
+        for (i in 0 until adaptiveFormats.length()) {
+            val format = adaptiveFormats.optJSONObject(i) ?: continue
+            val mime = format.optString("mimeType")
+            if (!mime.startsWith("audio/", true)) continue
+            val url = format.resolveFormatUrl(
+                videoId = sourceVideoId,
+                streamingPoToken = null,
+                transformThrottling = true
+            ).takeIf { it.isNotBlank() }
+                ?.withQueryParameterReplacing("cpn", cpn)
+                .orEmpty()
+            if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
+            val meta = AudioLanguageIntelligence.parseFromFormat(format, url, selectedPreferredAudioLanguage)
+            add(
+                Triple(
+                    format,
+                    url,
+                    strictAudioSelectionScore(
+                        meta.tier,
+                        scoreAudioFormat(
+                            mime = mime,
+                            itag = format.optInt("itag", 0),
+                            bitrate = format.optInt("bitrate", 0),
+                            formatAudioQuality = format.optString("audioQuality"),
+                            preferMp4Audio = false,
+                            requestedAudioQuality = audioQuality
+                        ),
+                        meta.tieBreakerBonus
+                    )
+                )
+            )
+        }
+    }.sortedByDescending { it.third }
+
+    private suspend fun firstPlayableAndroidReelAudio(
+        candidates: List<Triple<JSONObject, String, Int>>,
+        identity: YoutubeStreamClientIdentity
+    ): Triple<JSONObject, String, Int>? {
+        for (candidate in candidates) {
+            if (verifyDirectAudioUrlFast(candidate.second, identity = identity)) return candidate
+        }
+        return null
+    }
+
+    private fun androidReelVideoCandidates(
+        formats: JSONArray,
+        sourceVideoId: String,
+        cpn: String,
+        muxed: Boolean,
+        fallbackLabel: String
+    ): List<LevyraVideoCandidate> = buildList<LevyraVideoCandidate> {
+        for (i in 0 until formats.length()) {
+            val format = formats.optJSONObject(i) ?: continue
+            val mime = format.optString("mimeType")
+            if (!mime.startsWith("video/", true)) continue
+            val url = format.resolveFormatUrl(
+                videoId = sourceVideoId,
+                streamingPoToken = null,
+                transformThrottling = true
+            ).takeIf { it.isNotBlank() }
+                ?.withQueryParameterReplacing("cpn", cpn)
+                .orEmpty()
+            if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
+            add(
+                LevyraVideoCandidate(
+                    url = url,
+                    mimeType = mime.substringBefore(';'),
+                    codec = codecFromMimeType(mime),
+                    width = format.optInt("width", 0),
+                    height = format.optInt("height", 0),
+                    fps = format.optInt("fps", 0),
+                    bitrate = format.optInt("bitrate", 0),
+                    itag = format.optInt("itag", 0),
+                    muxed = muxed,
+                    label = format.optString("qualityLabel").ifBlank { fallbackLabel }
+                )
+            )
+        }
     }
 
     private fun fetchAndroidReelVisitorData(
@@ -2047,8 +2024,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         launch {
-            extractorJob.join()
-            innerTubeJob.join()
+            workers@ run {
+                extractorJob.join()
+                innerTubeJob.join()
+            }
             winner.complete(null)
         }
         val result = winner.await()
