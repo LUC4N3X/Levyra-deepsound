@@ -6,6 +6,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.unit.dp
 
 sealed interface PlayerDragEvent {
 
@@ -34,6 +35,8 @@ sealed interface PlayerDragEvent {
     data object Cancelled : PlayerDragEvent
 }
 
+private val PlayerSwipeMinFlingDistance = 24.dp
+
 fun Modifier.playerAxisDragGestures(
     key: Any?,
     enabled: Boolean,
@@ -45,6 +48,7 @@ fun Modifier.playerAxisDragGestures(
     val session = PlayerDragSession(
         rightToLeft = rightToLeft,
         edgeZonesEnabled = edgeZonesEnabled,
+        minFlingDistancePx = PlayerSwipeMinFlingDistance.toPx(),
         onEvent = onEvent
     )
     detectDragGestures(
@@ -71,6 +75,7 @@ fun Modifier.playerAxisDragGestures(
 private class PlayerDragSession(
     private val rightToLeft: Boolean,
     private val edgeZonesEnabled: Boolean,
+    private val minFlingDistancePx: Float,
     private val onEvent: (PlayerDragEvent) -> Unit
 ) {
     private var axis = PlayerDragAxis.Undecided
@@ -163,7 +168,8 @@ private class PlayerDragSession(
         val result = resolvePlayerSwipe(
             horizontalOffset,
             velocityX,
-            widthPx.coerceAtLeast(1f)
+            widthPx.coerceAtLeast(1f),
+            minFlingDistancePx
         )
         onEvent(PlayerDragEvent.HorizontalSettled(mirrored(result, rightToLeft)))
     }

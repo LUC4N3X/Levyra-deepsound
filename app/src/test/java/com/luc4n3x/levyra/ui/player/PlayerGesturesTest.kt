@@ -62,9 +62,23 @@ class PlayerGesturesTest {
     }
 
     @Test
-    fun `a fling changes track when distance has not committed`() {
-        assertEquals(PlayerSwipeResult.Next, resolvePlayerSwipe(-10f, -1500f, 1000f))
-        assertEquals(PlayerSwipeResult.Previous, resolvePlayerSwipe(10f, 1500f, 1000f))
+    fun `a fling changes track once it travels past the fling distance`() {
+        assertEquals(PlayerSwipeResult.Next, resolvePlayerSwipe(-80f, -1500f, 1000f))
+        assertEquals(PlayerSwipeResult.Previous, resolvePlayerSwipe(80f, 1500f, 1000f))
+    }
+
+    @Test
+    fun `a fast micro movement never changes track`() {
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(-10f, -1500f, 1000f))
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(10f, 1500f, 1000f))
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(-30f, -4000f, 1000f, minFlingDistancePx = 63f))
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(0f, 5000f, 1000f))
+    }
+
+    @Test
+    fun `a fling against the travel direction settles`() {
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(-80f, 1500f, 1000f))
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(80f, -1500f, 1000f))
     }
 
     @Test
