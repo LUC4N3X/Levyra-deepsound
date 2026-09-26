@@ -171,31 +171,35 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 ### Playback
 
-- Playback is native on both platforms: Media3 and ExoPlayer on Android, and libVLC on Windows.
-- Albums can play without gaps. You can also enable crossfade or change pitch and playback speed manually.
-- A 10-band equalizer is built in, and AutoEQ can load profiles for supported headphones.
-- SponsorBlock can automatically skip intros, sponsored sections and other non-music segments.
-- You can switch between audio-only playback and full video, with subtitle support.
-- On Android, Levyra works with Android Auto, media notifications, system playback controls and a Quick Settings tile.
+Levyra runs on native playback engines rather than a bundled browser: Media3 and ExoPlayer on Android, and libVLC through native bindings on Windows.
+
+- True gapless playback for albums, with optional crossfade and manual pitch and speed controls.
+- A built-in 10-band equalizer and AutoEQ profiles tuned for supported headphones.
+- SponsorBlock integration to automatically skip sponsored spots, dialogue, and non-music intros.
+- Clean switching between audio-only playback and full video with subtitle tracks.
+- Android system support: Android Auto, lockscreen controls, media notifications, and a Quick Settings tile.
 
 ### Library and offline storage
 
-- Downloaded songs are saved in normal device storage as M4A files with tags, artwork and lyrics.
-- Your own files can sit beside streamed tracks in the same library, playlists and queues.
-- Queue Spaces let you keep separate listening sessions without losing the tracks you already lined up.
-- Levyra Vault can save your playlists, favorites, history and settings in a single local backup file.
-- You can filter the library by tags, sort playlists and exclude artists.
+I never liked players that trap downloads inside a proprietary sandbox. When you download a track in Levyra, it gets saved directly to device storage as a standard M4A file with embedded tags, artwork, and lyrics.
+
+- Local audio files and streamed songs share the same library, playlists, and queues.
+- Queue Spaces keep separate listening queues so you can start a new session without losing your current queue.
+- Levyra Vault exports your playlists, favorites, listening history, and settings into one local backup file.
+- Quick organization with tag filters, playlist sorting, and artist exclusions.
 
 ### Lyrics, discovery, and extras
 
-- Tap a synced lyric line to jump to that point in the song. You can adjust the timing by hand and keep a separate offset for Bluetooth delay.
-- Lyrics written in non-Latin scripts can be romanized, and selected lines can be turned into shareable lyric cards.
-- The Now Playing screen can show motion artwork, with animated album art used as a fallback.
-- Explore brings together live radio, international charts, genres and mood-based browsing.
-- Song recognition can listen through the microphone or internal audio, and Levyra keeps recognized tracks locally.
-- Levyra calculates play counts and weekly listening time on your device. Last.fm and ListenBrainz scrobbling are optional.
+Synced lyrics were one of the features I spent the most time refining.
 
-More technical notes and platform details are available in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+- Tap any synced line to jump straight to that moment. You can fine-tune timing manually or save a separate offset to correct Bluetooth latency.
+- Romanization for lyrics in non-Latin alphabets, plus an option to export selected lines into lyric cards.
+- Motion artwork on the Now Playing screen, with animated cover art as a fallback.
+- Explore tab featuring live radio stations, global charts, and genre or mood browsing.
+- Song recognition that listens through the microphone or device audio, storing results locally on your device.
+- Private listening statistics (play counts and weekly listening time) calculated on-device, with optional Last.fm and ListenBrainz scrobbling.
+
+Technical notes, platform details, and architecture documentation are available in the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ## ✦ Under the hood
 
