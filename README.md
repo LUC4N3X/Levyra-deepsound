@@ -62,6 +62,13 @@ Play streamed music and your own files in the same app, save tracks for offline 
 >
 > Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
 
+> [!WARNING]
+> **Regional availability**
+>
+> Some of Levyra's streaming features rely on YouTube Music. If YouTube Music is blocked or unavailable in your region, those parts of the app may not work unless you connect through a VPN or proxy in a supported region. Levyra does not bypass regional restrictions on its own.
+>
+> Local playback and features that do not depend on YouTube Music are not affected.
+
 ## ✦ Why Levyra
 
 I started Levyra because I wanted one player for the music I stream and the files I already have. I wanted local tracks to feel like part of the same library, with playlists, history and downloads that do not depend on a Levyra account.
@@ -170,7 +177,7 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 #### Search & artists
 | Search Discovery & Recent | Live Artist Results | Artist Profile & Bio | Artist Discography |
-| :---: | :---: | :---: |
+| :---: | :---: | :---: | :---: |
 | <img src="docs/assets/screenshots/search_recent.webp" width="200" alt="Search History"> | <img src="docs/assets/screenshots/search_artist_avatars.webp" width="200" alt="Artist Search"> | <img src="docs/assets/screenshots/artist_bio.webp" width="200" alt="Artist Bio"> | <img src="docs/assets/screenshots/artist_discography.webp" width="200" alt="Discography"> |
 
 #### Offline vault & listening stats
