@@ -226,21 +226,13 @@ All stream resolution, YouTube extraction, and resilient network fallbacks are w
 
 Many cross-platform music players bundle a full browser engine to render their interface, which often leads to heavy memory footprints and sluggish startup times. Avoiding web runtimes, Chromium, and Electron keeps startup and resource usage lightweight, while making the player behave like real software built for the machine it is running on.
 
-## ✦ Development
+## ✦ Built in public · Zero tracking
 
-Levyra is developed in public. I use AI-assisted tools when they are useful for research, debugging or review. I treat generated code like any other draft: I read it, adapt it to the project, test the parts it can affect and decide whether it should ship.
+Levyra is developed in public. Commits, pull requests, issues, and releases are all open, alongside the engineering rules I follow while maintaining the project. I use AI-assisted tools when they help with research, debugging, or review, but I treat generated code like any unverified draft: I review it, adapt it to the architecture, and test the affected parts before anything ships. [Read more about how I work on Levyra](docs/site/development-notes.md).
 
-Commits, pull requests, issues and releases are public. The repository also includes the engineering rules I follow while working on the project. [Read more about how I work on Levyra](docs/site/development-notes.md).
+There is no telemetry, analytics, or advertising, and you do not need an account to use the app. Your playback history, listening statistics, playlists, and cached metadata stay on your device. When an online feature needs an external service (for streaming, lyrics, or optional scrobbling), Levyra connects to that provider directly. Microphone access is requested only when you actively trigger song identification, and you can route traffic through a custom proxy or DNS in settings.
 
-## ✦ Privacy
-
-Levyra has no telemetry, analytics or ads, and you do not need an account to use it.
-
-Your play history, stats, playlists and cached metadata stay on your device. When an online feature needs another service, Levyra connects to that service directly. Streaming, lyrics and optional scrobbling work this way.
-
-Levyra asks for microphone access only when you start song identification. You can also configure a custom proxy or DNS provider in the app.
-
-Apptizo scanned a Levyra build from F-Droid and reported no known third-party tracker SDKs. [See the Apptizo scan](https://apptizo.com/app/levyra/). The Levyra 2.5.10 APK also returned **0/68 detections** on [VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1).
+For independent verification, an Apptizo scan of the F-Droid build confirmed zero third-party tracker SDKs ([view the Apptizo report](https://apptizo.com/app/levyra/)), and the Levyra 2.5.10 APK returned **0/68 detections** on [VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1).
 
 ## ✦ Translations
 
