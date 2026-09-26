@@ -185,6 +185,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_SPEED] = normalizedAudio.playbackSpeed
             mutable[KEY_AUDIO_PITCH] = normalizedAudio.pitch
             mutable[KEY_AUDIO_GAPLESS] = normalizedAudio.gaplessEnabled
+            mutable[KEY_AUDIO_PRELOAD_NEXT] = normalizedAudio.preloadNextTrack
             mutable[KEY_AUDIO_AAUDIO_OUTPUT] = normalizedAudio.aaudioOutputEnabled
             mutable[KEY_AUDIO_PARAMETRIC_ENABLED] = normalizedAudio.parametricEqualizerEnabled
             mutable[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalizedAudio.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
@@ -478,6 +479,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_SPEED] = normalized.playbackSpeed
             it[KEY_AUDIO_PITCH] = normalized.pitch
             it[KEY_AUDIO_GAPLESS] = normalized.gaplessEnabled
+            it[KEY_AUDIO_PRELOAD_NEXT] = normalized.preloadNextTrack
             it[KEY_AUDIO_AAUDIO_OUTPUT] = normalized.aaudioOutputEnabled
             it[KEY_AUDIO_PARAMETRIC_ENABLED] = normalized.parametricEqualizerEnabled
             it[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalized.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
@@ -882,6 +884,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             playbackSpeed = preferences[KEY_AUDIO_SPEED] ?: 1f,
             pitch = preferences[KEY_AUDIO_PITCH] ?: 1f,
             gaplessEnabled = preferences[KEY_AUDIO_GAPLESS] ?: true,
+            preloadNextTrack = preferences[KEY_AUDIO_PRELOAD_NEXT] ?: true,
             aaudioOutputEnabled = preferences[KEY_AUDIO_AAUDIO_OUTPUT] ?: false,
             customPresets = customPresets,
             parametricEqualizerEnabled = preferences[KEY_AUDIO_PARAMETRIC_ENABLED] ?: false,
@@ -1055,6 +1058,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_SPEED = floatPreferencesKey("audio_speed")
         val KEY_AUDIO_PITCH = floatPreferencesKey("audio_pitch")
         val KEY_AUDIO_GAPLESS = booleanPreferencesKey("audio_gapless")
+        val KEY_AUDIO_PRELOAD_NEXT = booleanPreferencesKey("audio_preload_next_track")
         val KEY_AUDIO_AAUDIO_OUTPUT = booleanPreferencesKey("audio_aaudio_output")
         val KEY_AUDIO_PARAMETRIC_ENABLED = booleanPreferencesKey("audio_parametric_equalizer_enabled")
         val KEY_AUDIO_PARAMETRIC_ACTIVE = stringPreferencesKey("audio_parametric_active_profile")
