@@ -35,7 +35,8 @@ sealed interface PlayerDragEvent {
     data object Cancelled : PlayerDragEvent
 }
 
-private val PlayerSwipeMinFlingDistance = 24.dp
+private const val PLAYER_SWIPE_MIN_FLING_DISTANCE_DP = 24
+private val PlayerSwipeMinFlingDistance = PLAYER_SWIPE_MIN_FLING_DISTANCE_DP.dp
 
 fun Modifier.playerAxisDragGestures(
     key: Any?,
