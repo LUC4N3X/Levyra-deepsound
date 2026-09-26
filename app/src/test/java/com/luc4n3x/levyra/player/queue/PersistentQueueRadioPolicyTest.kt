@@ -172,6 +172,22 @@ class PersistentQueueRadioPolicyTest {
         assertEquals(listOf("a", "c"), selected.map(Track::id))
     }
 
+    @Test
+    fun candidatePoolDoesNotTreatFeatOrFtPrefixesAsCredits() {
+        val existing = listOf(track("feature", "Same Song", artist = "Feature"))
+
+        val selected = radioCandidateTracks(
+            existingTracks = existing,
+            candidates = listOf(
+                track("ftisland", "Same Song", artist = "FTISLAND"),
+                track("feature-fresh", "Different Song", artist = "Feature")
+            ),
+            limit = 5
+        )
+
+        assertEquals(listOf("ftisland", "feature-fresh"), selected.map(Track::id))
+    }
+
     private fun track(id: String, title: String, artist: String = "Artist") = Track(
         id = id,
         title = title,
