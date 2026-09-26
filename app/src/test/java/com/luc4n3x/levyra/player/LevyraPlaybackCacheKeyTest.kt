@@ -143,4 +143,74 @@ class LevyraPlaybackCacheKeyTest {
         accentStart = 0,
         accentEnd = 0
     )
+
+    @Test
+    fun differentVideoItagsProduceDifferentVideoCacheKeys() {
+        val rung1080 = renditionTrack(
+            streamUrl = "https://cdn.test/audio?itag=251",
+            videoStreamUrl = "https://cdn.test/video?itag=137"
+        )
+        val rung720 = renditionTrack(
+            streamUrl = "https://cdn.test/audio?itag=251",
+            videoStreamUrl = "https://cdn.test/video?itag=136"
+        )
+        assertNotEquals(LevyraPlaybackCacheKey.video(rung1080), LevyraPlaybackCacheKey.video(rung720))
+    }
+
+    @Test
+    fun sameItagWithDifferentSignatureParamsSharesTheRenditionKey() {
+        val first = renditionTrack(
+            streamUrl = "https://cdn.test/audio?itag=251&sig=AAA",
+            videoStreamUrl = "https://cdn.test/video?itag=137&sig=BBB"
+        )
+        val second = renditionTrack(
+            streamUrl = "https://cdn.test/audio?itag=251&sig=ZZZ",
+            videoStreamUrl = "https://cdn.test/video?itag=137&sig=YYY"
+        )
+        assertEquals(LevyraPlaybackCacheKey.video(first), LevyraPlaybackCacheKey.video(second))
+    }
+
+    @Test
+    fun audioAndVideoRenditionsOfTheSameVideoNeverShareAKey() {
+        val item = renditionTrack(
+            streamUrl = "https://cdn.test/audio?itag=251",
+            videoStreamUrl = "https://cdn.test/video?itag=137"
+        )
+        assertNotEquals(LevyraPlaybackCacheKey.stream(item), LevyraPlaybackCacheKey.video(item))
+    }
+
+    @Test
+    fun progressiveMuxedRenditionKeyDerivesFromTheMuxedUrl() {
+        val muxed360 = renditionTrack(streamUrl = "https://cdn.test/muxed?itag=18")
+        val muxed720 = renditionTrack(streamUrl = "https://cdn.test/muxed?itag=22")
+        assertNotEquals(LevyraPlaybackCacheKey.video(muxed360), LevyraPlaybackCacheKey.video(muxed720))
+    }
+
+    @Test
+    fun videoKeyIsStableForTheSameRenditionAcrossTrackCopies() {
+        val original = renditionTrack(
+            streamUrl = "https://cdn.test/audio?itag=251&lang=en",
+            videoStreamUrl = "https://cdn.test/video?itag=137"
+        )
+        val copy = original.copy(title = "Renamed")
+        assertEquals(LevyraPlaybackCacheKey.video(original), LevyraPlaybackCacheKey.video(copy))
+    }
+
+    @Test
+    fun differentSourceVideosNeverShareKeys() {
+        val first = renditionTrack(streamUrl = "https://cdn.test/muxed?itag=18", audioVideoId = "AAAAAAAAAAA")
+        val second = renditionTrack(streamUrl = "https://cdn.test/muxed?itag=18", audioVideoId = "BBBBBBBBBBB")
+        assertNotEquals(LevyraPlaybackCacheKey.video(first), LevyraPlaybackCacheKey.video(second))
+    }
+
+    private fun renditionTrack(
+        streamUrl: String,
+        videoStreamUrl: String = "",
+        audioVideoId: String = "AbCdEfGhI12"
+    ): Track = track(streamUrl).copy(
+        id = "catalog-id",
+        videoUrl = "https://www.youtube.com/watch?v=$audioVideoId",
+        videoStreamUrl = videoStreamUrl,
+        audioVideoId = audioVideoId
+    )
 }

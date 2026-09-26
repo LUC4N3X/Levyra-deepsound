@@ -70,7 +70,7 @@ class PlaybackResolverGenerationContractTest {
             .substringAfter("private fun cacheKey(")
             .substringBefore("private suspend fun resolveWithInnerTube")
 
-        assertTrue(cacheKey.contains("_video_\${quality}_lang_\$lang"))
+        assertTrue(cacheKey.contains("_video_\${quality}_lang_\${lang}_quality_\$videoQuality"))
         assertTrue(cacheKey.contains("_audio_\${quality}_lang_\$lang"))
     }
 

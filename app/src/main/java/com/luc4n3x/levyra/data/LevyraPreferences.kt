@@ -35,6 +35,8 @@ import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.LevyraFontPreset
+import com.luc4n3x.levyra.domain.LyricsProviderOrdering
+import com.luc4n3x.levyra.domain.VideoQualityTarget
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerDoubleTapAction
 import com.luc4n3x.levyra.domain.PlayerLongPressAction
@@ -96,7 +98,9 @@ data class LevyraPreferencesSnapshot(
     val jamDisplayName: String = "",
     val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
     val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
-    val preferredAudioLanguage: String = ""
+    val preferredAudioLanguage: String = "",
+    val videoQualityTarget: VideoQualityTarget = VideoQualityTarget.AUTO,
+    val lyricsProviderOrdering: LyricsProviderOrdering = LyricsProviderOrdering()
 )
 
 @Volatile
@@ -146,6 +150,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
             mutable[KEY_LYRICS_LATENCY_PROFILES] = snapshot.lyricsLatencyProfiles.encode()
+            mutable[KEY_VIDEO_QUALITY] = snapshot.videoQualityTarget.storageValue
+            mutable[KEY_LYRICS_PROVIDER_ORDERING] = snapshot.lyricsProviderOrdering.encode()
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
             mutable[KEY_THEME_ACCENT] = snapshot.themeAccent
             mutable[KEY_AMBIENT_BRIGHTNESS] = normalizedAmbient.brightness
@@ -678,7 +684,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty(),
             highQualityAudioMode = HighQualityAudioMode.fromStorage(preferences[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO]),
             lyricsLatencyProfiles = LyricsLatencyProfiles.decode(preferences[KEY_LYRICS_LATENCY_PROFILES].orEmpty()),
-            preferredAudioLanguage = AudioLanguageIntelligence.normalizeLanguage(preferences[KEY_PREFERRED_AUDIO_LANGUAGE].orEmpty())
+            preferredAudioLanguage = AudioLanguageIntelligence.normalizeLanguage(preferences[KEY_PREFERRED_AUDIO_LANGUAGE].orEmpty()),
+            videoQualityTarget = VideoQualityTarget.fromStorage(preferences[KEY_VIDEO_QUALITY]),
+            lyricsProviderOrdering = LyricsProviderOrdering.decode(preferences[KEY_LYRICS_PROVIDER_ORDERING])
         )
     }
 
@@ -905,6 +913,33 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         }
     }
 
+    fun videoQualityTarget(): VideoQualityTarget = read { VideoQualityTarget.fromStorage(it[KEY_VIDEO_QUALITY]) }
+
+    val videoQualityTargetFlow: kotlinx.coroutines.flow.Flow<VideoQualityTarget> = store.preferences
+        .map { preferences -> VideoQualityTarget.fromStorage(preferences[KEY_VIDEO_QUALITY]) }
+        .distinctUntilChanged()
+
+    fun setVideoQualityTarget(target: VideoQualityTarget) {
+        write { it[KEY_VIDEO_QUALITY] = target.storageValue }
+    }
+
+    val lyricsProviderOrderingFlow: kotlinx.coroutines.flow.Flow<LyricsProviderOrdering> = store.preferences
+        .map { preferences -> LyricsProviderOrdering.decode(preferences[KEY_LYRICS_PROVIDER_ORDERING]) }
+        .distinctUntilChanged()
+
+    fun lyricsProviderOrdering(): LyricsProviderOrdering =
+        read { LyricsProviderOrdering.decode(it[KEY_LYRICS_PROVIDER_ORDERING]) }
+
+    suspend fun setLyricsProviderOrdering(value: LyricsProviderOrdering) {
+        try {
+            store.commit { it[KEY_LYRICS_PROVIDER_ORDERING] = value.encode() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore lyrics provider ordering write failed")
+        }
+    }
+
     suspend fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
         try {
@@ -999,6 +1034,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
         val KEY_LYRICS_TRANSLATION = booleanPreferencesKey("lyrics_translation_enabled")
         val KEY_LYRICS_LATENCY_PROFILES = stringPreferencesKey("lyrics_latency_profiles")
+        val KEY_VIDEO_QUALITY = stringPreferencesKey("video_quality")
+        val KEY_LYRICS_PROVIDER_ORDERING = stringPreferencesKey("lyrics_provider_ordering")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
         val KEY_THEME_ACCENT = intPreferencesKey("theme_accent")
         val KEY_AUDIO_EQ_ENABLED = booleanPreferencesKey("audio_equalizer_enabled")

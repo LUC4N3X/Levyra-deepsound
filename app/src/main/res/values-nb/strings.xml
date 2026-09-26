@@ -31,4 +31,5 @@
     <string name="shortcut_search">Søk</string>
     <string name="shortcut_library">Bibliotek</string>
     <string name="shortcut_recognition">Gjenkjenn musikk</string>
+    <string name="shortcut_resume">Fortsett avspilling</string>
 </resources>

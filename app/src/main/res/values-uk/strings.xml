@@ -31,4 +31,5 @@
     <string name="shortcut_search">Пошук</string>
     <string name="shortcut_library">Бібліотека</string>
     <string name="shortcut_recognition">Розпізнати музику</string>
+    <string name="shortcut_resume">Продовжити відтворення</string>
 </resources>

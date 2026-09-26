@@ -31,4 +31,5 @@
     <string name="shortcut_search">Sök</string>
     <string name="shortcut_library">Bibliotek</string>
     <string name="shortcut_recognition">Känn igen musik</string>
+    <string name="shortcut_resume">Återuppta uppspelning</string>
 </resources>
