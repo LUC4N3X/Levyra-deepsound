@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.domain
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -54,6 +55,55 @@ class VideoPlaybackContractTest {
         )
 
         assertTrue(track.hasVideoPlaybackPayload())
+        assertFalse(track.hasReusableVideoPlaybackPayload())
+    }
+
+    @Test
+    fun muxedManifestWithAdaptiveRungsIsReusableAndKeepsFullLadder() {
+        val muxedUrl = "https://media.example/muxed-360.mp4"
+        val track = track(muxedUrl).copy(
+            playbackManifest = manifest(
+                audioUrl = muxedUrl,
+                videoUrl = "",
+                streams = listOf(
+                    PlaybackStreamDescriptor(
+                        url = "https://media.example/audio.m4a",
+                        kind = PlaybackStreamKind.AUDIO,
+                        deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE
+                    ),
+                    PlaybackStreamDescriptor(
+                        url = muxedUrl,
+                        kind = PlaybackStreamKind.MUXED,
+                        deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+                        height = 360,
+                        qualityLabel = "360p",
+                        selected = true
+                    ),
+                    PlaybackStreamDescriptor(
+                        url = "https://media.example/video-720.mp4",
+                        kind = PlaybackStreamKind.VIDEO,
+                        deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+                        height = 720,
+                        qualityLabel = "720p"
+                    ),
+                    PlaybackStreamDescriptor(
+                        url = "https://media.example/video-1080.mp4",
+                        kind = PlaybackStreamKind.VIDEO,
+                        deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+                        height = 1080,
+                        qualityLabel = "1080p"
+                    )
+                )
+            )
+        )
+
+        assertTrue(track.hasReusableVideoPlaybackPayload())
+        val manifest = requireNotNull(track.playbackManifest)
+        assertEquals(
+            listOf("1080p", "720p", "360p"),
+            VideoQualityLadder.build(manifest.streams).map { it.label }
+        )
+        assertEquals("https://media.example/audio.m4a", audioPartnerForAdaptiveRung(manifest, track.streamUrl))
     }
 
     @Test

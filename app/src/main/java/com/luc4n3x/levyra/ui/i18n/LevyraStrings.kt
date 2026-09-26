@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 import androidx.compose.runtime.compositionLocalOf
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LyricsProviderId
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -728,6 +729,27 @@ class LevyraStrings private constructor(
     val lyricsAnalysisSection: String get() = value("lyricsAnalysisSection")
     val lyricsAnalysisCompact: String get() = value("lyricsAnalysisCompact")
     val lyricsAnalysisCompactSubtitle: String get() = value("lyricsAnalysisCompactSubtitle")
+    val videoQuality: String get() = value("videoQuality")
+    val videoQualitySubtitle: String get() = value("videoQualitySubtitle")
+    val videoQualityAuto: String get() = value("videoQualityAuto")
+    val videoQualityAutoSubtitle: String get() = value("videoQualityAutoSubtitle")
+    val lyricsProviderPriority: String get() = value("lyricsProviderPriority")
+    val lyricsProviderPrioritySubtitle: String get() = value("lyricsProviderPrioritySubtitle")
+    val lyricsProviderOrderHint: String get() = value("lyricsProviderOrderHint")
+    val lyricsProviderEnabled: String get() = value("lyricsProviderEnabled")
+    val lyricsProviderDisabled: String get() = value("lyricsProviderDisabled")
+    val lyricsProviderMoveUp: String get() = value("lyricsProviderMoveUp")
+    val lyricsProviderMoveDown: String get() = value("lyricsProviderMoveDown")
+
+    fun lyricsProviderName(id: LyricsProviderId): String = when (id) {
+        LyricsProviderId.YOUTUBE_MUSIC -> value("lyricsProviderYoutubeMusic")
+        LyricsProviderId.LRCLIB_EXACT -> value("lyricsProviderLrclibExact")
+        LyricsProviderId.LRCLIB_SEARCH -> value("lyricsProviderLrclibSearch")
+        LyricsProviderId.LYRICS_PLUS -> value("lyricsProviderLyricsPlus")
+        LyricsProviderId.BINIMUM -> value("lyricsProviderBinimum")
+        LyricsProviderId.YOUTUBE_TRANSCRIPT -> value("lyricsProviderYoutubeTranscript")
+        LyricsProviderId.LYRICS_OVH -> value("lyricsProviderLyricsOvh")
+    }
     val createDataBackup: String get() = value("createDataBackup")
     val createDataBackupSubtitle: String get() = value("createDataBackupSubtitle")
     val updateAvailable: String get() = value("updateAvailable")
@@ -1882,8 +1904,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + audioLanguageLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + audioLanguageKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + playbackTileKeys + visualPerformanceKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + audioLanguageLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + audioLanguageKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + playbackTileKeys + visualPerformanceKeys + videoQualityKeys + lyricsProviderPriorityKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

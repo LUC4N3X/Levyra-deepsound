@@ -31,4 +31,5 @@
     <string name="shortcut_search">חיפוש</string>
     <string name="shortcut_library">ספרייה</string>
     <string name="shortcut_recognition">זיהוי מוזיקה</string>
+    <string name="shortcut_resume">המשך השמעה</string>
 </resources>

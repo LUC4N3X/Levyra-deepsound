@@ -31,4 +31,5 @@
     <string name="shortcut_search">ค้นหา</string>
     <string name="shortcut_library">คลัง</string>
     <string name="shortcut_recognition">ระบุเพลง</string>
+    <string name="shortcut_resume">เล่นต่อ</string>
 </resources>

@@ -31,4 +31,5 @@
     <string name="shortcut_search">Αναζήτηση</string>
     <string name="shortcut_library">Βιβλιοθήκη</string>
     <string name="shortcut_recognition">Αναγνώριση μουσικής</string>
+    <string name="shortcut_resume">Συνέχιση αναπαραγωγής</string>
 </resources>

@@ -453,6 +453,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun toggleShuffle() = root.toggleShuffle()
     fun toggleVideoMode() = root.toggleVideoMode()
     fun selectVideoSubtitle(trackId: String?) = root.selectVideoSubtitle(trackId)
+    fun selectVideoQuality(targetLabel: String?) = root.selectVideoQuality(targetLabel)
     fun setTemporaryPlaybackSpeed(value: Float) = root.setTemporaryPlaybackSpeed(value)
     fun setPlayerVisualMode(mode: PlayerVisualMode) = root.setPlayerVisualMode(mode)
     fun setPlayerBackground(mode: PlayerBackgroundMode) = root.setPlayerBackground(mode)

@@ -31,4 +31,5 @@
     <string name="shortcut_search">Hľadať</string>
     <string name="shortcut_library">Knižnica</string>
     <string name="shortcut_recognition">Rozpoznať hudbu</string>
+    <string name="shortcut_resume">Pokračovať v prehrávaní</string>
 </resources>

@@ -84,6 +84,27 @@ class LevyraVideoStreamSelectorTest {
         assertEquals(split, reliableVideoCandidate(null, split))
     }
 
+    @Test
+    fun explicitTargetPrefersTheCloserSplitCandidateOverMuxedFallback() {
+        val muxed = candidate(
+            url = "https://media.example/muxed-720",
+            mime = "video/mp4",
+            codec = "avc1.64001f",
+            height = 720,
+            muxed = true
+        )
+        val split = candidate(
+            url = "https://media.example/video-only-1080",
+            mime = "video/mp4",
+            codec = "avc1.640028",
+            height = 1080,
+            muxed = false
+        )
+
+        assertEquals(split, targetedVideoCandidate(muxed, split, targetHeight = 1080))
+        assertEquals(muxed, targetedVideoCandidate(muxed, split, targetHeight = 720))
+    }
+
     private fun candidate(
         url: String,
         mime: String,
