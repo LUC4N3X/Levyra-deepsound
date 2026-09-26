@@ -536,7 +536,6 @@ private const val SEARCH_OVERVIEW_SONG_LIMIT = 20
 private const val SEARCH_OVERVIEW_VIDEO_LIMIT = 10
 private const val SEARCH_OVERVIEW_ARTIST_LIMIT = 8
 private const val SEARCH_OVERVIEW_ALBUM_LIMIT = 10
-private const val SEARCH_OVERVIEW_PLAYLIST_LIMIT = 10
 private val SUBSCRIBER_TOKEN_HINTS = listOf(
     "subscriber", "iscritt", "scritt", "abonn", "suscriptor", "inscrito", "abonnee",
     "subskry", "abonat", "συνδρομ", "подпис", "订阅", "訂閱", "チャンネル登録", "구독", "सदस्य", "ผู้ติดตาม", "מנוי", "مشترك"
@@ -830,8 +829,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 songs = parsed.songs.take(SEARCH_OVERVIEW_SONG_LIMIT),
                 videos = parsed.videos.take(SEARCH_OVERVIEW_VIDEO_LIMIT),
                 artists = parsed.artists.take(SEARCH_OVERVIEW_ARTIST_LIMIT),
-                albums = parsed.albums.take(SEARCH_OVERVIEW_ALBUM_LIMIT),
-                playlists = parsed.playlists.take(SEARCH_OVERVIEW_PLAYLIST_LIMIT)
+                albums = parsed.albums.take(SEARCH_OVERVIEW_ALBUM_LIMIT)
             )
         }
         rememberSearchTracks(results.songs)
@@ -1055,7 +1053,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             playlistId = playlistId,
             browseId = browseId,
             trackCountLabel = tokens
-                .firstOrNull { token -> token != author && token.any(Char::isDigit) }
+                .firstOrNull { token ->
+                    token != author &&
+                        token.any(Char::isDigit) &&
+                        !hasYoutubeMusicMetricWord(token.lowercase(Locale.ROOT))
+                }
                 .orEmpty()
         )
     }
@@ -3297,7 +3299,7 @@ private fun hasYoutubeMusicMetricWord(value: String): Boolean =
     value.any(Char::isDigit) && YOUTUBE_MUSIC_METRIC_WORDS.any(value::contains)
 
 private val YOUTUBE_MUSIC_METRIC_WORDS = listOf(
-    "view", "visualizz", "riproduzion", "ascolt", "play", "stream",
+    "view", "visualizz", "visualizaci", "riproduzion", "ascolt", "play", "stream",
     "reproduccion", "reproducción", "escucha", "vue", "écoute",
     "aufruf", "wiedergabe", "reprodução", "visualização",
     "просмотр", "прослушив", "再生", "조회수", "스트리밍", "צפיות", "השמעות"

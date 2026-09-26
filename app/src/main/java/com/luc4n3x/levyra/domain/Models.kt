@@ -480,6 +480,42 @@ data class PlaylistHit(
     val trackCountLabel: String = ""
 )
 
+data class PlaylistHitPreview(
+    val hit: PlaylistHit,
+    val tracks: List<Track> = emptyList(),
+    val loading: Boolean = true,
+    val failed: Boolean = false
+)
+
+fun PlaylistHitPreview.nextTrackAfter(currentTrackId: String?): Track? {
+    if (tracks.isEmpty()) return null
+    val index = tracks.indexOfFirst { it.id == currentTrackId }
+    return if (index < 0) tracks.first() else tracks.getOrNull(index + 1)
+}
+
+fun PlaylistHit.displayTrackCount(loadedTracks: Int, format: (Int) -> String): String =
+    trackCountLabel.trim().ifBlank { if (loadedTracks > 0) format(loadedTracks) else "" }
+
+fun PlaylistHitPreview.resolvedWith(
+    playlistId: String,
+    author: String,
+    thumbnailUrl: String,
+    tracks: List<Track>
+): PlaylistHitPreview? =
+    if (hit.playlistId != playlistId) {
+        null
+    } else {
+        copy(
+            hit = hit.copy(
+                author = hit.author.ifBlank { author },
+                thumbnailUrl = hit.thumbnailUrl.ifBlank { thumbnailUrl }
+            ),
+            tracks = tracks,
+            loading = false,
+            failed = tracks.isEmpty()
+        )
+    }
+
 data class SearchResults(
     val topTrack: Track? = null,
     val songs: List<Track> = emptyList(),
