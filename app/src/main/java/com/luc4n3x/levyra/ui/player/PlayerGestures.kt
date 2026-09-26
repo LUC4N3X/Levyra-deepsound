@@ -45,7 +45,6 @@ enum class PlayerGestureCommand {
 
 const val PlayerEdgeZoneFraction: Float = 0.18f
 const val PlayerDragSlopPx: Float = 12f
-const val PlayerSwipeMinFlingDistancePx: Float = 64f
 
 private const val SwipeDistanceFraction = 0.24f
 private const val SwipeVelocity = 620f
@@ -74,24 +73,17 @@ fun resolvePlayerDragAxis(
     return if (horizontal >= vertical) PlayerDragAxis.Horizontal else PlayerDragAxis.Vertical
 }
 
-fun resolvePlayerSwipe(
-    offsetPx: Float,
-    velocityPx: Float,
-    widthPx: Float,
-    minFlingDistancePx: Float = PlayerSwipeMinFlingDistancePx
-): PlayerSwipeResult {
+fun resolvePlayerSwipe(offsetPx: Float, velocityPx: Float, widthPx: Float): PlayerSwipeResult {
     val safeOffset = offsetPx.finiteOr(0f)
     val safeVelocity = velocityPx.finiteOr(0f)
     val safeWidth = widthPx.finiteOr(1f).coerceAtLeast(1f)
-    val safeMinFlingDistance = minFlingDistancePx.finiteOr(PlayerSwipeMinFlingDistancePx).coerceAtLeast(0f)
     val distanceThreshold = safeWidth * SwipeDistanceFraction
     val distanceCommitted = abs(safeOffset) >= distanceThreshold
-    val velocityCommitted = abs(safeVelocity) >= SwipeVelocity &&
-        abs(safeOffset) >= safeMinFlingDistance &&
-        (safeVelocity < 0f) == (safeOffset < 0f)
+    val velocityCommitted = abs(safeVelocity) >= SwipeVelocity
     if (!distanceCommitted && !velocityCommitted) return PlayerSwipeResult.Settle
 
-    return if (safeOffset < 0f) PlayerSwipeResult.Next else PlayerSwipeResult.Previous
+    val direction = if (distanceCommitted) safeOffset else safeVelocity
+    return if (direction < 0f) PlayerSwipeResult.Next else PlayerSwipeResult.Previous
 }
 
 fun resolveMiniPlayerDismiss(offsetPx: Float, velocityPx: Float, heightPx: Float): PlayerVerticalResult {
