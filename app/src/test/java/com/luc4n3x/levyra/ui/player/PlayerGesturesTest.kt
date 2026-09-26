@@ -57,19 +57,47 @@ class PlayerGesturesTest {
 
     @Test
     fun `a committed distance cannot be reversed by a release counter flick`() {
-        assertEquals(PlayerSwipeResult.Next, resolvePlayerSwipe(-300f, 900f, 1000f))
-        assertEquals(PlayerSwipeResult.Previous, resolvePlayerSwipe(300f, -900f, 1000f))
+        val leftVelocity = playerSwipeReleaseVelocity(-300f, 900f, 24f)
+        val rightVelocity = playerSwipeReleaseVelocity(300f, -900f, 24f)
+        assertEquals(PlayerSwipeResult.Next, resolvePlayerSwipe(-300f, leftVelocity, 1000f))
+        assertEquals(PlayerSwipeResult.Previous, resolvePlayerSwipe(300f, rightVelocity, 1000f))
     }
 
     @Test
-    fun `a fling changes track when distance has not committed`() {
-        assertEquals(PlayerSwipeResult.Next, resolvePlayerSwipe(-10f, -1500f, 1000f))
-        assertEquals(PlayerSwipeResult.Previous, resolvePlayerSwipe(10f, 1500f, 1000f))
+    fun `a fling changes track once it travels past the fling distance`() {
+        val leftVelocity = playerSwipeReleaseVelocity(-80f, -1500f, 24f)
+        val rightVelocity = playerSwipeReleaseVelocity(80f, 1500f, 24f)
+        assertEquals(-1500f, leftVelocity, 0f)
+        assertEquals(1500f, rightVelocity, 0f)
+        assertEquals(PlayerSwipeResult.Next, resolvePlayerSwipe(-80f, leftVelocity, 1000f))
+        assertEquals(PlayerSwipeResult.Previous, resolvePlayerSwipe(80f, rightVelocity, 1000f))
+    }
+
+    @Test
+    fun `a fast micro movement never changes track`() {
+        val leftVelocity = playerSwipeReleaseVelocity(-10f, -1500f, 24f)
+        val rightVelocity = playerSwipeReleaseVelocity(10f, 1500f, 24f)
+        assertEquals(0f, leftVelocity, 0f)
+        assertEquals(0f, rightVelocity, 0f)
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(-10f, leftVelocity, 1000f))
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(10f, rightVelocity, 1000f))
+    }
+
+    @Test
+    fun `a fling against the travel direction settles`() {
+        val leftVelocity = playerSwipeReleaseVelocity(-80f, 1500f, 24f)
+        val rightVelocity = playerSwipeReleaseVelocity(80f, -1500f, 24f)
+        assertEquals(0f, leftVelocity, 0f)
+        assertEquals(0f, rightVelocity, 0f)
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(-80f, leftVelocity, 1000f))
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(80f, rightVelocity, 1000f))
     }
 
     @Test
     fun `invalid swipe samples settle instead of selecting a track`() {
         assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(Float.NaN, Float.NaN, Float.NaN))
+        assertEquals(0f, playerSwipeReleaseVelocity(Float.NaN, 1500f, 24f), 0f)
+        assertEquals(0f, playerSwipeReleaseVelocity(80f, Float.NaN, 24f), 0f)
     }
 
     @Test
