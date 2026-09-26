@@ -171,35 +171,56 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 ### Playback
 
-Levyra runs directly on native audio engines instead of wrapping a web browser: Media3 and ExoPlayer on Android, and libVLC through direct bindings on Windows. Live albums and concept records play without gaps, with optional crossfade, pitch shifting, and custom speed when you want them.
+Levyra runs directly on native audio engines instead of wrapping a web browser: Media3 and ExoPlayer on Android, and libVLC through direct bindings on Windows.
 
-There is a built-in 10-band equalizer alongside AutoEQ headphone profiles so you do not have to mess with external DSP apps. When watching music videos, you can switch back and forth between video with subtitles and an audio-only stream. SponsorBlock skips intros, chatter, and promotional segments automatically. On Android, playback ties straight into the system through Android Auto, lockscreen controls, persistent notifications, and a Quick Settings tile.
+**Gapless & tuning** &nbsp;·&nbsp; Live albums and concept records play without gaps, with optional crossfade, pitch shifting, and custom speed. A built-in 10-band equalizer and AutoEQ profiles tune sound to your headphones without external DSP apps.
+
+**Video & SponsorBlock** &nbsp;·&nbsp; Toggle between audio-only streaming and full video with subtitles. SponsorBlock automatically skips sponsored spots, intros, and non-music segments.
+
+**System integration** &nbsp;·&nbsp; Full support for Android Auto, lockscreen playback controls, persistent media notifications, and a Quick Settings tile.
 
 ### Library and offline storage
 
-I never liked music apps that lock offline tracks inside an encrypted cache. When you download a song in Levyra, it writes a standard M4A file straight to your device storage, tagged with metadata, embedded artwork, and lyrics. They remain normal files you can move or open with another player.
+I never liked music apps that lock offline tracks inside an encrypted cache.
 
-Local files and streamed music sit side by side in the same library, playlists, and queues. If you want to jump into an album without blowing away what you were already listening to, Queue Spaces keep multiple queues active side by side. Library management stays straightforward with tag filtering, custom playlist sorting, and artist exclusions. When moving devices, Levyra Vault exports your playlists, favorites, listening history, and settings into one local backup file.
+**Clean downloads** &nbsp;·&nbsp; Saved tracks are written directly to device storage as standard M4A files with metadata, embedded artwork, and lyrics. They remain normal files you can move or open with another player.
+
+**Unified library** &nbsp;·&nbsp; Local files and streamed music sit side by side in the same library, playlists, and queues.
+
+**Queue Spaces** &nbsp;·&nbsp; Keep separate listening sessions side by side so you can start a new album without losing the queue you already had lined up.
+
+**Vault & organization** &nbsp;·&nbsp; Export your playlists, favorites, history, and settings into one local backup file. Library tools let you filter by tag, sort playlists, or exclude specific artists.
 
 ### Lyrics, discovery, and extras
 
-Synced lyrics were one of the features I spent the most time getting right. Tapping any line jumps straight to that second in the track, and you can nudge the timing by hand or set a dedicated offset to fix Bluetooth latency. Non-Latin lyrics can be romanized on the fly, and you can export selected lines into lyric cards.
+Synced lyrics were one of the features I spent the most time getting right.
 
-The Now Playing screen displays motion artwork when available, falling back to animated album covers. The Explore section brings together live radio stations, international charts, and mood or genre stations without needing an account. For music discovery on the go, built-in song recognition listens through the microphone or internal device audio and saves identified tracks directly into your local history. Listening stats like play counts and weekly listening hours are calculated entirely on your device, with optional scrobbling to Last.fm and ListenBrainz.
+**Interactive lyrics** &nbsp;·&nbsp; Tap any synced line to jump straight to that moment, with manual timing adjustments and a dedicated offset to correct Bluetooth delay. Non-Latin scripts can be romanized on the fly, and selected lines can be exported into lyric cards.
+
+**Visuals & Explore** &nbsp;·&nbsp; The player displays motion artwork when available, falling back to animated cover art. The Explore tab collects live radio stations, international charts, and genre or mood browsing.
+
+**Recognition & privacy** &nbsp;·&nbsp; On-device song recognition identifies tracks through the microphone or internal audio and logs them locally. Listening stats like play counts and weekly listening hours are calculated entirely on your device, with optional Last.fm and ListenBrainz scrobbling.
 
 For full technical notes, platform architecture, and build details, check the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
 
 ## ✦ Under the hood
 
-Instead of bundling a web browser to draw an interface, Levyra is built with shared Kotlin logic and platform-native runtimes. Stream extraction and network routines (LevyraExtractor, OkHttp, Brotli, and DoH) are shared, but playback and UI stay close to each operating system.
+Instead of bundling a web browser to draw an interface, Levyra is built with shared Kotlin logic and platform-native runtimes. Stream extraction and network routines are shared, but playback and UI stay close to each operating system.
 
 ### Android
+`Jetpack Compose` `Material 3` `AndroidX Media3 / ExoPlayer` `Room` `DataStore` `Android Auto` `R8 & Baseline Profiles`
 
-The Android app is written in Jetpack Compose and Material 3, backed by Room for database storage, DataStore for preferences, and MediaStore for local indexing. Playback runs on AndroidX Media3 and ExoPlayer, tying straight into system audio focus, Bluetooth controls, lockscreen media sessions, Quick Settings, and Android Auto. Release builds are optimized with R8, ProGuard, and Android Baseline Profiles.
+The Android app hooks directly into the operating system for audio focus, Bluetooth playback controls, lockscreen media sessions, Quick Settings, and Android Auto. Local media indexing uses MediaStore, database persistence runs on Room, and release builds are optimized with R8 and Baseline Profiles.
 
 ### Windows
+`Compose Multiplatform` `JVM 21` `libVLC (vlcj C bindings)` `Direct System Audio` `Zero Chromium`
 
-The desktop client pairs Compose Multiplatform on JVM 21 with libVLC through direct C bindings (vlcj), outputting straight to desktop system audio. Local persistence uses lightweight JSON files instead of an embedded database, keeping the installation small and avoiding background browser processes.
+The desktop client renders with Compose Multiplatform on modern JVM 21 and hands audio decoding to libVLC through direct C bindings. Settings and library data are saved in lightweight JSON files, completely avoiding background browser processes.
+
+### Shared core
+`Kotlin Multiplatform logic` `LevyraExtractor` `OkHttp` `Brotli compression` `DNS-over-HTTPS`
+
+All stream resolution, YouTube extraction, and resilient network fallbacks are written once in Kotlin and shared across mobile and desktop.
 
 ### Native performance
 
