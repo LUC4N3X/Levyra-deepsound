@@ -1,32 +1,32 @@
 {
   "conflicts": [],
-  "contentHash": "dd1bcd322d2323c66902e8082d531f89b59c6ad670e8f3b3cc0de878e2ce0bc3",
+  "contentHash": "5fbac037284201ea05380ffba1743a4109f0d63f9c02d770993d4c542097550d",
   "counts": {
     "CANDIDATE": 8,
-    "CONFIRMED": 399,
-    "SINGLE_SOURCE_PRIMARY": 13
+    "CONFIRMED": 401,
+    "SINGLE_SOURCE_PRIMARY": 12
   },
   "decision": "UPDATED",
-  "generatedAt": "2026-09-26T02:04:04Z",
-  "playerCount": 412,
+  "generatedAt": "2026-09-26T15:08:40Z",
+  "playerCount": 413,
   "schema": 1,
   "source": "DUAL_SOURCE_HEALTHY",
   "sources": {
     "faraday": {
-      "contentHash": "3012364149a874f251fc7892fcfe89aae2d238f73df29834f5abac1b85877db6",
+      "contentHash": "75bf35aef20b67d100d7d3210d9914b801af4791f72ca7c920907221463c5e5d",
       "detail": "",
-      "fetchedAt": "2026-09-26T02:04:04Z",
-      "playerCount": 407,
-      "registryUpdatedAt": "2026-09-25T20:47:23.089Z",
+      "fetchedAt": "2026-09-26T15:08:40Z",
+      "playerCount": 409,
+      "registryUpdatedAt": "2026-09-26T04:47:21.335Z",
       "role": "secondary",
       "source": "faraday",
       "status": "ok"
     },
     "zemer": {
-      "contentHash": "d7fcdf43a44a74f740cbd15d678a4cc61ab5b5fff863b48e837826e2da5f3b5b",
+      "contentHash": "936f459498fdd121cb162bb0e7045ea8dc0cdc0f2433d9ce223e8f4cf43164a8",
       "detail": "",
-      "fetchedAt": "2026-09-26T02:04:04Z",
-      "playerCount": 412,
+      "fetchedAt": "2026-09-26T15:08:40Z",
+      "playerCount": 413,
       "registryUpdatedAt": null,
       "role": "primary",
       "source": "zemer",
