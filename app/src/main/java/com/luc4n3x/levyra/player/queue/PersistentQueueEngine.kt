@@ -190,7 +190,7 @@ private fun radioSongTitle(title: String, primaryArtist: String): String {
         .ifEmpty { lowered.trim() }
 }
 
-private val RADIO_ARTIST_SEPARATOR = Regex("\\s*(?:,|&|\\bfeat\\.?|\\bft\\.?)\\s*")
+private val RADIO_ARTIST_SEPARATOR = Regex("\\s*(?:,|&|\\b(?:feat|ft)\\.?(?=\\s|$))\\s*")
 private val RADIO_ARTIST_CHANNEL_SUFFIX = Regex("\\s*(?:-\\s*topic|vevo)$")
 private const val RADIO_TITLE_NOISE_WORDS =
     "official|music|video|audio|lyrics?|visuali[sz]er|hd|hq|4k|mv|m/v|" +
