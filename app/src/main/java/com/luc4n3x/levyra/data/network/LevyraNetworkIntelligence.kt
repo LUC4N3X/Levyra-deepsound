@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiRouteTrace
 import com.luc4n3x.levyra.nexus.network.LevyraAddressFamily
 import com.luc4n3x.levyra.nexus.network.LevyraRoute
 import com.luc4n3x.levyra.nexus.network.LevyraRouteEngine
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import timber.log.Timber
 import javax.net.ssl.SSLException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -109,6 +111,22 @@ internal object LevyraNetworkIntelligence {
         }.getOrDefault(true)
     }
 
+    fun activeNetworkHasIpv6Route(): Boolean? {
+        val connectivity = connectivityManager ?: return null
+        return runCatching {
+            val network = connectivity.activeNetwork ?: return@runCatching false
+            val link = connectivity.getLinkProperties(network) ?: return@runCatching null
+            val hasGlobalAddress = link.linkAddresses.any { linkAddress -> isGlobalIpv6(linkAddress.address) }
+            hasGlobalAddress && link.routes.any { route -> route.isDefaultRoute && route.destination.address is Inet6Address }
+        }.getOrNull()
+    }
+
+    private fun isGlobalIpv6(address: InetAddress): Boolean {
+        if (address !is Inet6Address) return false
+        if (address.isLinkLocalAddress || address.isSiteLocalAddress || address.isLoopbackAddress) return false
+        return address.address[0].toInt() and 0xfe != 0xfc
+    }
+
     private fun NetworkCapabilities.hasInternet(): Boolean =
         hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 
@@ -169,8 +187,9 @@ internal object LevyraNetworkIntelligence {
             proxy: Proxy,
             protocol: Protocol?
         ) {
-            val address = inetSocketAddress.address ?: return
             val latencyMs = elapsedMs(inetSocketAddress)
+            auditConnected(call, inetSocketAddress, proxy, latencyMs)
+            val address = inetSocketAddress.address ?: return
             routeEngine.recordSuccess(
                 route = route(call.request().url.host, address),
                 latencyMs = latencyMs
@@ -191,8 +210,9 @@ internal object LevyraNetworkIntelligence {
             protocol: Protocol?,
             ioe: IOException
         ) {
-            val address = inetSocketAddress.address ?: return
             val latencyMs = elapsedMs(inetSocketAddress)
+            auditConnectFailed(call, inetSocketAddress, proxy, ioe)
+            val address = inetSocketAddress.address ?: return
             routeEngine.recordFailure(
                 route = route(call.request().url.host, address),
                 failure = when (ioe) {
@@ -215,10 +235,11 @@ internal object LevyraNetworkIntelligence {
 
         override fun responseHeadersEnd(call: Call, response: Response) {
             val count = responseCount.incrementAndGet()
+            val totalLatency = callElapsedMs()
             RuntimeHooks.network(
                 host = call.request().url.host,
                 category = RuntimeSignal.NETWORK_HTTP,
-                latencyMs = callElapsedMs(),
+                latencyMs = totalLatency,
                 outcome = if (response.isSuccessful || response.isRedirect) {
                     RuntimeSignal.OUTCOME_SUCCESS
                 } else {
@@ -228,6 +249,15 @@ internal object LevyraNetworkIntelligence {
                 retry = (connectAttempts.get() - 1).coerceAtLeast(0),
                 redirects = (count - 1).coerceAtLeast(0)
             )
+            if (YoutubeNetworkPolicy.isYoutubeHost(call.request().url.host)) {
+                Timber.i(
+                    "[RouteAudit] response: host=%s port=%d code=%d latency=%dms",
+                    call.request().url.host,
+                    call.request().url.port,
+                    response.code,
+                    totalLatency
+                )
+            }
         }
 
         override fun callEnd(call: Call) {
@@ -245,6 +275,40 @@ internal object LevyraNetworkIntelligence {
                 failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
             )
             connectStartedAt.clear()
+        }
+
+        private fun auditConnected(call: Call, destination: InetSocketAddress, proxy: Proxy, latencyMs: Long) {
+            val tunnelPort = ByeDpiRouteTrace.consume(destination)
+            val url = call.request().url
+            if (YoutubeNetworkPolicy.isYoutubeHost(url.host)) {
+                Timber.i(
+                    "[RouteAudit] connected: host=%s port=%d proxy=%s latency=%dms",
+                    url.host,
+                    url.port,
+                    describeRoute(proxy, tunnelPort),
+                    latencyMs
+                )
+            }
+        }
+
+        private fun auditConnectFailed(call: Call, destination: InetSocketAddress, proxy: Proxy, ioe: IOException) {
+            val tunnelPort = ByeDpiRouteTrace.consume(destination)
+            val url = call.request().url
+            if (YoutubeNetworkPolicy.isYoutubeHost(url.host)) {
+                Timber.w(
+                    "[RouteAudit] connectFailed: host=%s port=%d proxy=%s error=%s",
+                    url.host,
+                    url.port,
+                    describeRoute(proxy, tunnelPort),
+                    ioe.javaClass.simpleName
+                )
+            }
+        }
+
+        private fun describeRoute(proxy: Proxy, byeDpiTunnelPort: Int?): String = when (proxy.type()) {
+            Proxy.Type.DIRECT -> byeDpiTunnelPort?.let { "SOCKS(ByeDPI 127.0.0.1:$it numeric)" } ?: "Direct"
+            Proxy.Type.SOCKS -> "SOCKS(external)"
+            Proxy.Type.HTTP -> "HTTP(external)"
         }
 
         private fun elapsedMs(address: InetSocketAddress): Long {

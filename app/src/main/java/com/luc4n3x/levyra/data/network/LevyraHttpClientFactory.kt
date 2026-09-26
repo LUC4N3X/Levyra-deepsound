@@ -3,6 +3,9 @@ package com.luc4n3x.levyra.data.network
 import android.content.Context
 import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.NewPipeRuntime
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiDns
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSocketFactory
 import java.io.File
 import java.net.Proxy
 import java.util.concurrent.TimeUnit
@@ -89,6 +92,11 @@ object LevyraHttpClientFactory {
             generalClient = null
             clientGeneration = LevyraNetworkConfiguration.generation
         }
+        evictIdleConnections()
+        NewPipeRuntime.onConfigurationChanged()
+    }
+
+    internal fun evictIdleConnections() {
         sharedConnectionPools.forEach { pool -> runCatching { pool.evictAll() } }
     }
 
@@ -144,7 +152,7 @@ object LevyraHttpClientFactory {
         invalidateIfStale()
         return mediaClient ?: synchronized(lock) {
             mediaClient ?: mediaBuilder()
-                .let { applyNetworkIntelligence(it, context) }
+                .let { applyYoutubeNetworkIntelligence(it, context) }
                 .let { applyDebugInterceptors(it, context) }
                 .build()
                 .also { mediaClient = it }
@@ -156,7 +164,7 @@ object LevyraHttpClientFactory {
         if (!bypassesProxyForStreams()) return media(context)
         return streamingClient ?: synchronized(lock) {
             streamingClient ?: mediaBuilder()
-                .let { applyNetworkIntelligence(it, context, allowProxy = false) }
+                .let { applyYoutubeNetworkIntelligence(it, context, streamBypass = true) }
                 .let { applyDebugInterceptors(it, context) }
                 .build()
                 .also { streamingClient = it }
@@ -187,7 +195,7 @@ object LevyraHttpClientFactory {
                 .addInterceptor(YoutubeClientIdentityInterceptor)
                 .addInterceptor(BrotliInterceptor)
                 .retryOnConnectionFailure(true)
-                .let { applyNetworkIntelligence(it, context) }
+                .let { applyYoutubeNetworkIntelligence(it, context) }
                 .build()
                 .also { youtubePlayerClient = it }
         }
@@ -222,7 +230,7 @@ object LevyraHttpClientFactory {
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .retryOnConnectionFailure(true)
-                .let { applyNetworkIntelligence(it, null) }
+                .let { applyYoutubeNetworkIntelligence(it, null) }
                 .build()
                 .also { downloadClient = it }
         }
@@ -250,21 +258,41 @@ object LevyraHttpClientFactory {
         return settings.usesProxy && settings.bypassProxyForStreams
     }
 
-    private fun applyNetworkIntelligence(
+    private fun applyYoutubeNetworkIntelligence(
         builder: OkHttpClient.Builder,
         context: Context?,
-        allowProxy: Boolean = true
+        streamBypass: Boolean = false
+    ): OkHttpClient.Builder {
+        context?.let(LevyraNetworkIntelligence::initialize)
+        val settings = LevyraNetworkConfiguration.current()
+        val dns = LevyraNetworkConfiguration.dns()
+        builder.eventListenerFactory(LevyraNetworkIntelligence.eventListenerFactory)
+        if (settings.byeDpiEnabled) {
+            builder
+                .dns(ByeDpiDns(settings, streamBypass, dns, LevyraNetworkConfiguration.byeDpiResolver()))
+                .socketFactory(ByeDpiSocketFactory(settings, streamBypass))
+        } else {
+            builder.dns(dns)
+        }
+        if (streamBypass) {
+            builder.proxy(Proxy.NO_PROXY)
+        } else {
+            builder.proxySelector(YoutubeNetworkPolicy.createProxySelector(settings))
+            LevyraNetworkConfiguration.proxyAuthenticator()?.let(builder::proxyAuthenticator)
+        }
+        return builder
+    }
+
+    private fun applyNetworkIntelligence(
+        builder: OkHttpClient.Builder,
+        context: Context?
     ): OkHttpClient.Builder {
         context?.let(LevyraNetworkIntelligence::initialize)
         builder
             .dns(LevyraNetworkConfiguration.dns())
             .eventListenerFactory(LevyraNetworkIntelligence.eventListenerFactory)
-        if (allowProxy) {
-            LevyraNetworkConfiguration.proxy()?.let(builder::proxy)
-            LevyraNetworkConfiguration.proxyAuthenticator()?.let(builder::proxyAuthenticator)
-        } else {
-            builder.proxy(Proxy.NO_PROXY)
-        }
+        LevyraNetworkConfiguration.proxy()?.let(builder::proxy)
+        LevyraNetworkConfiguration.proxyAuthenticator()?.let(builder::proxyAuthenticator)
         return builder
     }
 

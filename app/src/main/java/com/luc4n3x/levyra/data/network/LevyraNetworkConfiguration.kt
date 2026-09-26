@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data.network
 
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSecureResolver
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.domain.LevyraDnsMode
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
 import com.luc4n3x.levyra.domain.LevyraProxyMode
@@ -72,6 +74,12 @@ internal object LevyraNetworkConfiguration {
         generation = -1L
     )
 
+    @Volatile
+    private var byeDpiResolverHolder: ResolvedDnsHolder = ResolvedDnsHolder(
+        dns = LevyraNetworkIntelligence.dns,
+        generation = -1L
+    )
+
     val generation: Long get() = generationCounter.get()
 
     fun current(): LevyraNetworkSettings = settings
@@ -81,13 +89,27 @@ internal object LevyraNetworkConfiguration {
     @Synchronized
     fun apply(newSettings: LevyraNetworkSettings, newProxyPassword: String) {
         val normalized = newSettings.normalized()
-        if (normalized == settings && newProxyPassword == proxyPassword) return
+        val previous = settings
+        if (normalized == settings && newProxyPassword == proxyPassword) {
+            if (normalized.byeDpiEnabled && !ByeDpiSupervisor.isEngaged()) ByeDpiSupervisor.start()
+            return
+        }
         settings = normalized
         proxyPassword = newProxyPassword
         generationCounter.incrementAndGet()
         resolvedDnsHolder = ResolvedDnsHolder(LevyraNetworkIntelligence.dns, -1L)
+        byeDpiResolverHolder = ResolvedDnsHolder(LevyraNetworkIntelligence.dns, -1L)
         runCatching { dohConnectionPool.evictAll() }
         runCatching { dohDispatcher.cancelAll() }
+
+        val byeDpiToggledOn = normalized.byeDpiEnabled && (!previous.byeDpiEnabled || !ByeDpiSupervisor.isRunning())
+        val byeDpiToggledOff = !normalized.byeDpiEnabled && (previous.byeDpiEnabled || ByeDpiSupervisor.isRunning())
+        if (byeDpiToggledOn) {
+            ByeDpiSupervisor.start()
+        } else if (byeDpiToggledOff) {
+            ByeDpiSupervisor.stop()
+        }
+
         LevyraHttpClientFactory.onConfigurationChanged()
     }
 
@@ -106,6 +128,33 @@ internal object LevyraNetworkConfiguration {
                 built
             }
         }
+    }
+
+    fun byeDpiResolver(): Dns {
+        val currentGeneration = generationCounter.get()
+        val holder = byeDpiResolverHolder
+        if (holder.generation == currentGeneration) return holder.dns
+        return synchronized(this) {
+            val targetGeneration = generationCounter.get()
+            val currentHolder = byeDpiResolverHolder
+            if (currentHolder.generation == targetGeneration) {
+                currentHolder.dns
+            } else {
+                val built = buildByeDpiResolver(settings, proxyPassword)
+                byeDpiResolverHolder = ResolvedDnsHolder(built, targetGeneration)
+                built
+            }
+        }
+    }
+
+    fun buildByeDpiResolver(target: LevyraNetworkSettings, targetProxyPassword: String = proxyPassword): Dns {
+        val modes = if (target.dnsMode == LevyraDnsMode.System) BYEDPI_DEFAULT_DOH_MODES else listOf(target.dnsMode)
+        val resolvers = modes.mapNotNull { mode ->
+            val endpoint = target.copy(dnsMode = mode)
+            val dns = buildDns(endpoint, targetProxyPassword)
+            if (dns === LevyraNetworkIntelligence.dns) null else mode.id to dns
+        }
+        return ByeDpiSecureResolver(resolvers, LevyraNetworkIntelligence.dns)
     }
 
     fun proxy(): Proxy? = proxyFor(settings)
@@ -179,6 +228,7 @@ internal object LevyraNetworkConfiguration {
         maxRequestsPerHost = 8
     }
 
+    private val BYEDPI_DEFAULT_DOH_MODES = listOf(LevyraDnsMode.Google, LevyraDnsMode.Cloudflare, LevyraDnsMode.AdGuard)
     private const val PROXY_AUTHORIZATION = "Proxy-Authorization"
     private const val MAX_PROXY_AUTH_ATTEMPTS = 2
     private const val DOH_TIMEOUT_SECONDS = 6L
