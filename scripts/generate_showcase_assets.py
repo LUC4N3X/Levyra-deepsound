@@ -15,9 +15,9 @@ SCREENS = {
     "home": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_171253_LEVYRA.jpg",
     "charts": "screen-charts.jpg",
     "genres": "screen-genres.jpg",
-    "listening_pulse": "screen-listening-pulse.jpg",
+    "listening_pulse": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_193717_LEVYRA.jpg",
     "lyrics": "screen-lyrics.jpg",
-    "now_playing": "screen-player-nowplaying.jpg",
+    "now_playing": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_193948_LEVYRA.jpg",
     "search_artist": "screen-search-artist.jpg",
     "artist_discography": "screen-artist-discography.jpg",
 }
@@ -365,7 +365,7 @@ def generate_hero_panoramic_showcase():
         canvas.paste(shadow, (x - 42, y - 16), shadow)
         canvas.paste(phone, (x, y), phone)
 
-    out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall.webp")
+    out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
     print(f"Generated Panoramic Hero Showcase: {out_path}")
 
@@ -412,7 +412,11 @@ def generate_feature_cards():
         card.paste(shadow, (phone_x - 42, phone_y - 16), shadow)
         card.paste(phone, (phone_x, phone_y), phone)
 
-        out_path = os.path.join(OUT_CARDS_DIR, f"{number}_{key}.webp")
+        output_name = {
+            "now_playing": "02_stay_with_the_song.webp",
+            "listening_pulse": "08_keep_it_personal.webp",
+        }.get(key, f"{number}_{key}.webp")
+        out_path = os.path.join(OUT_CARDS_DIR, output_name)
         card.convert("RGB").save(out_path, "WEBP", quality=91, method=6)
         print(f"Generated Feature Card: {out_path}")
 
