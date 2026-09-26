@@ -191,7 +191,7 @@ For full technical notes, platform architecture, and build details, check the [d
 
 ## ✦ Under the hood
 
-Android and Windows share Kotlin code for extraction and networking. Each platform keeps its own native interface and playback engine.
+Android and Windows share Kotlin code for stream extraction and networking, but I kept the interface and audio engines strictly native to each operating system.
 
 | Layer | Android | Windows |
 | --- | --- | --- |
@@ -204,9 +204,9 @@ Android and Windows share Kotlin code for extraction and networking. Each platfo
 
 ### Why native instead of a web wrapper
 
-On Windows, Compose Multiplatform draws the interface and libVLC handles playback. Android uses Media3 for audio focus, Bluetooth controls, lockscreen playback, media sessions and Android Auto.
+I never wanted a music player that eats half a gigabyte of RAM just to sit idle in the background. A lot of modern cross-platform music apps are essentially web pages packaged inside Electron or WebView wrappers.
 
-Levyra does not bundle Chromium, Electron or a WebView runtime.
+Levyra does not bundle Chromium or a web runtime anywhere. On Windows, Compose Multiplatform renders directly to the desktop window while libVLC handles playback through native C bindings straight to system audio. On Android, Media3 ties directly into the operating system for audio focus, Bluetooth media buttons, lockscreen controls, and Android Auto. The app opens instantly, stays light on system resources, and feels like software built for the device it is running on.
 
 ## ✦ Development
 
