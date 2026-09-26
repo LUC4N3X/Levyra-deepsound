@@ -165,6 +165,8 @@ internal fun radioTitleKey(track: Track): String {
     return "$artist|${radioSongTitle(track.title, artist)}"
 }
 
+private const val RADIO_ARTIST_TITLE_SEPARATOR = " - "
+
 private fun radioPrimaryArtist(artist: String): String =
     artist.lowercase(Locale.ROOT)
         .split(RADIO_ARTIST_SEPARATOR, limit = 2)
@@ -174,8 +176,9 @@ private fun radioPrimaryArtist(artist: String): String =
 
 private fun radioSongTitle(title: String, primaryArtist: String): String {
     val lowered = title.lowercase(Locale.ROOT)
-    val withoutArtistPrefix = if (primaryArtist.isNotEmpty() && lowered.startsWith("$primaryArtist - ")) {
-        lowered.substring(primaryArtist.length + 3)
+    val prefix = primaryArtist + RADIO_ARTIST_TITLE_SEPARATOR
+    val withoutArtistPrefix = if (primaryArtist.isNotEmpty() && lowered.startsWith(prefix)) {
+        lowered.substring(prefix.length)
     } else {
         lowered
     }
@@ -190,7 +193,8 @@ private fun radioSongTitle(title: String, primaryArtist: String): String {
 private val RADIO_ARTIST_SEPARATOR = Regex("\\s*(?:,|&|\\bfeat\\.?|\\bft\\.?)\\s*")
 private val RADIO_ARTIST_CHANNEL_SUFFIX = Regex("\\s*(?:-\\s*topic|vevo)$")
 private const val RADIO_TITLE_NOISE_WORDS =
-    "official|music|video|audio|lyrics?|visuali[sz]er|hd|hq|4k|mv|m/v|remaster(?:ed)?(?:\\s+\\d{4})?|\\d{4}\\s+remaster(?:ed)?"
+    "official|music|video|audio|lyrics?|visuali[sz]er|hd|hq|4k|mv|m/v|" +
+        "remaster(?:ed)?(?:\\s+\\d{4})?|\\d{4}\\s+remaster(?:ed)?"
 private val RADIO_TITLE_NOISE_GROUP = Regex(
     "\\s*[(\\[](?:\\s*(?:$RADIO_TITLE_NOISE_WORDS)[\\s./-]*)+[)\\]]"
 )
