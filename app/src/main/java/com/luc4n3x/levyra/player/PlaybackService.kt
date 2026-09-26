@@ -1380,6 +1380,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun prepareQueueNextInternal(target: Track): Boolean {
+        if (!currentAudioSettings.preloadNextTrack) return false
         val snapshot = queueEngine.state.value
         val current = snapshot.currentTrack ?: return false
         val expectedNext = queueEngine.upcoming(1).firstOrNull() ?: return false

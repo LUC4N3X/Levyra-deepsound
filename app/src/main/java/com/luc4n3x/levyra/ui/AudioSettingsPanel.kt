@@ -159,6 +159,7 @@ internal fun AudioSettingsPanel(
     onTempo: (Float) -> Unit,
     onPitch: (Float) -> Unit,
     onGapless: (Boolean) -> Unit,
+    onPreloadNextTrack: (Boolean) -> Unit,
     aaudioOutputAvailable: Boolean,
     onAaudioOutput: (Boolean) -> Unit,
     onResetEqualizer: () -> Unit,
@@ -519,6 +520,14 @@ internal fun AudioSettingsPanel(
                         subtitle = "",
                         checked = audioSettings.gaplessEnabled,
                         onCheckedChange = onGapless
+                    )
+                }
+                item {
+                    AudioToggleRow(
+                        title = strings.preloadNextTrack,
+                        subtitle = strings.preloadNextTrackSubtitle,
+                        checked = audioSettings.preloadNextTrack,
+                        onCheckedChange = onPreloadNextTrack
                     )
                 }
                 if (aaudioOutputAvailable) {
