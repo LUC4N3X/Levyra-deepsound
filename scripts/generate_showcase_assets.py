@@ -325,8 +325,6 @@ def generate_hero_panoramic_showcase():
         [(1730, 0), (1960, 0), (1420, 1160), (1190, 1160)],
         fill=(216, 31, 174, 80),
     )
-    for line_y in range(70, canvas_h, 90):
-        draw.line((710, line_y, 2360, line_y), fill=(255, 255, 255, 12), width=2)
     draw = ImageDraw.Draw(canvas)
 
     with Image.open(LOGO_PATH) as logo_source:
@@ -348,15 +346,15 @@ def generate_hero_panoramic_showcase():
     draw.text((118, 1035), "ANDROID + WINDOWS", font=get_font(18, bold=True), fill=(255, 255, 255, 130))
 
     back_row = [
-        ("search_artist", 590, 690, 265, -9),
-        ("artist_discography", 610, 970, 95, -5),
-        ("charts", 610, 1940, 85, 7),
-        ("genres", 580, 2160, 280, 10),
+        ("search_artist", 500, 660, 120, -6),
+        ("artist_discography", 520, 1020, 70, -3),
+        ("charts", 520, 1740, 70, 4),
+        ("genres", 500, 2010, 130, 6),
     ]
     front_row = [
-        ("home", 760, 900, 340, -5),
-        ("now_playing", 925, 1330, 150, 0),
-        ("lyrics", 755, 1770, 350, 5),
+        ("home", 700, 900, 330, -4),
+        ("now_playing", 850, 1320, 180, 0),
+        ("lyrics", 700, 1800, 330, 4),
     ]
     for key, height, x, y, angle in back_row + front_row:
         with Image.open(get_screen_path(SCREENS[key])) as source:
