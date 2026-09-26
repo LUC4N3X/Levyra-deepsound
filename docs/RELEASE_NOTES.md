@@ -1,89 +1,102 @@
-# Levyra 2.5.11
+# Levyra 2.5.12
 
 ## Highlights
 
-2.5.11 is a smaller release than 2.5.10, and most of it comes from using Levyra every day and fixing what still felt wrong.
+2.5.12 is a pretty big player update, but most of it shows up in simple ways when you actually use Levyra.
 
-Live Radio got the biggest pass. Stations with dots, dashes, accents or apostrophes in their names are much easier to find, the station you actually typed now shows up first, and most stations finally have a real logo instead of two initials. Now Playing is cleaner too, and when a broadcaster marks a spot as an ad, Levyra now says so instead of showing it as a song.
+You can flip the player into synced lyrics without leaving the artwork, choose the video quality instead of being stuck on the first stream YouTube gives back, open playlists from Search before deciding what to do with them, and swipe around the player without a tiny accidental flick skipping the track.
 
-Around that there is a new audio language preference for YouTube tracks, a player dock that gets out of the way while you scroll, favorites and multi-selection on artist pages, a steadier wavy seekbar and more accurate JioSaavn HQ matching.
+The queue and discovery side got some attention too. Smart Orbit has a better memory of what you listen to, radio is less likely to hand you another upload of the same recording, and removing an auto-added song now actually means “don’t give me this again” for the rest of that queue session. There is also a new multi-link flow for people who share or paste several YouTube links at once.
 
-## ✦ Live Radio you can actually search
+## ✦ Lyrics right on the player
 
-Searching for a station used to be hit and miss. `181.fm salsa` returned nothing because the catalog calls it `181.FM - Salsa`, and a ranking bug pushed exact name matches below more popular stations that only matched a tag.
+The artwork card can now turn into a compact synced-lyrics view. Swipe across the title and artist area to bring it in, swipe back to return to the cover, and the normal full Lyrics screen is still there when you want it.
 
-That is fixed. Search now ignores punctuation, accents and apostrophes, so `salsa clasica` finds `Salsa Clásica Éxitos` and `80s` finds `80's`. Exact names rank first, then names that start with what you typed, then names that contain every word. The same stream listed twice under slightly different names only appears once.
+The compact card follows the same playback clock and lyric timing Levyra already uses. Tap a line to seek to it, or scroll by hand and auto-follow gives you a moment before taking over again.
 
-Playback is more careful as well:
+It is a small interaction, but it makes checking a line of lyrics feel much less like leaving the player to open another screen.
 
-- the stream URL policy and the ICY metadata request now apply to every redirect, not just the first request;
-- a playlist file (`.pls`, `.m3u` and similar) is never picked as the fallback stream, because the player cannot open it;
-- a short pause keeps the same connection, while a pause longer than 20 seconds reconnects to the live edge instead of playing old buffered audio;
-- switching stations cancels any pending reconnect from the previous one.
+## ✦ Video quality is finally a real choice
 
-## ✦ Cleaner Now Playing and honest ads
+Video mode now exposes the quality ladder that YouTube actually makes available instead of collapsing to the 360p fallback in cases where adaptive streams exist.
 
-Some stations send messy metadata. Radio 105, for example, sends a whole record like `ARTIST~TITLE~~0~~131~date~date~Radio 105`. Levyra now turns that into `Artist - Title`, drops URL, UUID and hash fragments from titles, and stops showing the station's own name as if it were a song.
+Split audio and video streams are handled correctly, including the black-screen case that could happen when the merged source lost the active video identity. Quality changes also keep their own short grace period so switching resolution does not get mistaken for a playback failure.
 
-Stations that declare their ads in the stream metadata, like Virgin Radio Italia, now show "Advertisement" (localized in every supported language) while the spot is playing. Ads never end up as the current song title.
+If a video only has limited qualities, Levyra still shows only what is genuinely available. It does not invent a 1080p option where the source does not provide one.
 
-To be clear about the limit: some stations stitch the ad straight into the audio on the server and send no marker at all. 181.FM Salsa is one of them. Levyra cannot detect or skip those spots, and skipping a declared ad would not help either, because the server only sends the live audio once the ad time has passed. What Levyra does now is avoid opening extra sessions, so it does not trigger extra pre-rolls on its own.
+## ✦ A queue that takes the hint
 
-## ✦ Real station logos
+Continuous radio now does a better job of recognising alternate uploads of a song already in the queue. Official video, lyric, audio, remaster, Topic and VEVO-style variants no longer keep bouncing the same recording back at you, while real remixes, live versions and different artists stay separate.
 
-Radio Browser is missing a logo for a lot of stations, and many of the ones it has are broken links. Among the most voted Italian stations, most had no working logo at all.
+There is also a new anti-boomerang rule for radio-added tracks. Remove one and Levyra remembers that choice for the current queue space, so a later refill does not immediately put the same recording back. Adding it yourself or choosing Play next clears that temporary block.
 
-When the catalog logo is missing or fails, Levyra now looks at the station's own website for its app icon, large icon, share image or favicon. It rejects SVG and non-image responses, caches the result, and does not keep retrying sites that are down. In testing, most of the popular Italian stations went from initials to their real logo.
+Track swipes are less trigger-happy as well. A fast little movement that was really just a tap no longer counts as Next or Previous unless the gesture actually travelled in that direction.
 
-In the full player the logo is now shown whole and centered on a card instead of being stretched across the screen, so a small icon no longer turns into a blurry wall of pixels. The same image reaches the notification and the lock screen. It is downloaded once through the same guarded connection used for radio, so the player never fetches station-provided image URLs through the general image loader.
+And if you would rather keep background preparation to a minimum, **Preload next track** can now be turned off. It stays on by default.
 
-## ✦ Audio language for YouTube tracks
+## ✦ Several links in, one clean result
 
-Some YouTube videos carry several audio tracks: the original, dubbed versions and automatic AI dubs. Levyra now picks between them on purpose.
+Share or paste a block of text containing multiple YouTube or YouTube Music links and Levyra can now collect them as one request.
 
-A new Audio language option in the audio settings lets you keep the original audio or prefer a specific language. Original human audio always beats an automatic dub, whatever the bitrate or codec. Streams in different languages no longer share a cache entry, so switching languages cannot play the wrong one back to you. JioSaavn HQ playback is not affected.
+Links are normalised and deduplicated, resolution is bounded instead of firing everything at once, and the result sheet tells you what was found, duplicated or not recognised. From there the tracks can be played, queued, downloaded or saved as a playlist.
 
-## ✦ A player dock that makes room
+Single links still use the normal single-item flow. Bulk mode only steps in when there is actually more than one distinct supported link.
 
-The mini player and the bottom tabs now share one dock. When you scroll down, it compacts in place: the artist line, the next and close buttons and the tab labels fold away. Scroll back up and it expands again.
+## ✦ Smart Orbit 2.0
 
-On Android 12 and newer the dock uses a blurred glass surface over the page. Low-RAM devices, battery saver and older Android versions keep the solid background, and the dock does not compact while TalkBack touch exploration is on. Artist and album pages also get a soft color wash taken from their artwork, and the lyrics motion was refined.
+Smart Orbit now builds a small local discovery pool from tracks related to music you have genuinely listened to.
 
-## ✦ Artist pages, selection and the seekbar
+Candidates connected to several of your listened tracks gain more weight, while music you already heard, artists you tend to skip early, excluded artists, explicit dislikes and tracks you removed from radio are held back. The same local co-occurrence signal also helps radio and Similar Songs choose better candidates.
 
-Artist pages can now tell which of the artist's songs are already in your favorites, even when the same recording shows up with slightly different credits. Tracks can be multi-selected and added to or removed from your favorites in one go, and search results expose the same batch actions.
+The important part has not changed: this listening model stays on the device. It does not need a new account or a new tracking service.
 
-The wavy seekbar is steadier. It handles odd geometry edge cases without breaking, scrubbing state resets properly when the song changes, and the wave restarts with the new track instead of carrying over from the old one.
+## ✦ Playlists from Search behave like playlists
 
-## ✦ More accurate JioSaavn HQ
+Tapping a playlist in Search now opens its details instead of immediately starting the whole thing.
 
-JioSaavn HQ matching now uses the artist roles and release year that already come with search results, without extra requests. Composers, lyricists and actors listed as main artists no longer decide the lead-artist check, compilations of the same recording are no longer treated as a different song, and a solo version and a duet stay apart. Songs like Meri Aashiqui now get the HQ stream instead of falling back to YouTube.
+You can look through the tracks first, then choose Play, Shuffle or Download. Longer playlists continue loading as you reach the end, and the result shows the real track count rather than treating a view count as if it were the number of songs.
 
-Levyra also stopped fetching dislike estimates it does not need, and comments keep literal text like `<3` or `AT&T` intact.
+It sounds obvious when written down. It feels much better in use.
 
-## ✦ Smaller fixes
+## ✦ Visuals that can get out of the way
 
-- Pressing Back from the expanded player now returns to Live Radio instead of closing it.
-- Radio quality labels no longer show a literal `UNKNOWN` codec.
-- Filipino and Estonian translations are complete.
-- Some complex Home and listening-recap code was simplified without changing behavior.
+There is a new **Full / Auto / Smooth** visual performance setting under Design.
+
+Full keeps the complete motion treatment and remains the default. Auto scales the decorative work back when the device reports low memory or battery saver. Smooth removes heavier blur, depth transitions and decorative loops without touching playback, providers or the actual feature set.
+
+The mini player transitions were cleaned up, the seekbar wave keeps a steadier shape as progress moves, and the active crossfade curve is now visible instead of being an invisible audio setting.
+
+## ✦ Experimental network compatibility
+
+2.5.12 adds an experimental ByeDPI path for YouTube together with an optional US region profile.
+
+When enabled, Levyra can route YouTube traffic through the local desync tunnel while resolving destinations through its DoH chain. HTTPS still keeps the original hostname for certificate verification, and JioSaavn routing is left alone.
+
+This is deliberately marked experimental. It is there for restrictive networks where the normal YouTube path does not work reliably, not as something everyone should switch on. The native ByeDPI component ships in the upstream build and is excluded from the F-Droid variant.
+
+## ✦ A few other things worth mentioning
+
+- Lyrics provider priority is now respected more consistently, including cached fallbacks.
+- A resume-playback shortcut can restore the queue before playback continues.
+- Search gets rotating taste-based prompts built from local listening signals.
+- Radio duplicate detection was tightened without collapsing real live cuts or remixes.
+- Queue prefetch now respects the new preload setting all the way down to the playback service.
+- The player, video and network changes picked up a long list of smaller review fixes along the way.
 
 ## Validation
 
-This release covers `v2.5.10` through `ceb6774`, 37 commits before the version commit. 21 of them are README badge refreshes, and several more are documentation updates and player-config syncs, so they are left out of the feature story above.
+The 2.5.12 release range contains 90 commits before the version wiring changes. The product notes above are based on the complete GitHub comparison and the current `main` implementation, with badge refreshes, documentation-only changes, player-config syncs and other maintenance left out of the feature story.
 
-The commits in this range add focused unit tests for track multi-selection, liked-song artist matching, seekbar geometry, audio language ranking, caching and localization, and Live Radio search, metadata parsing, ad markers, artwork discovery and playlist handling.
+The code in this release adds focused regression coverage around Smart Orbit, bulk link capture, radio deduplication, queue prefetch, player gestures, video quality, lyrics provider ordering, visual performance behavior and the restricted-network path.
 
-The Live Radio changes were tested on a physical Android phone with a debug build during development: search, cold start, short and long pauses, station switching, declared ads, HLS and redirecting stations, station logos, the full player and the media notification. That was a development build, not the signed release APK.
+The GitHub release is published only from `main`. Before an APK can become the 2.5.12 release, the release workflow validates the version and these notes, runs `lintRelease`, builds the signed release APK, checks the APK version and signing certificate, writes a SHA-256 checksum, publishes the GitHub release and downloads the published assets again for verification.
 
-The Android release pipeline publishes only from `main`. It checks the version and these release notes, runs release lint, builds the signed release APK, verifies the APK version and signing certificate, generates a SHA-256 checksum, publishes the GitHub release and downloads the assets again to verify them. The F-Droid path then builds its own reproducible variant.
-
-This version commit does not claim a fresh manual pass on every device, Android Auto setup, Bluetooth route or background-restriction combination.
+This version bump does not claim a fresh manual pass across every Android device, Android Auto setup, Bluetooth route or OEM background restriction.
 
 ## Versioning
 
-- Version name: `2.5.11`
-- Version code: `2051100`
+- Version name: `2.5.12`
+- Version code: `2051200`
 
 This is an Android release. Levyra Desktop keeps its own independent version line.
 
@@ -91,12 +104,16 @@ This is an Android release. Levyra Desktop keeps its own independent version lin
 
 No manual migration is required.
 
-Favorites, playlists, queues, listening history, local library data, radio favorites and recents, audio settings and other preferences carry over unchanged. The new audio language option starts on original audio.
+The new player, discovery and network options pick up safe defaults automatically. Existing local library data, favorites, playlists, queues, listening history and settings do not need to be recreated for this update.
+
+The experimental ByeDPI path is opt-in. If normal playback already works on your network, there is no reason to enable it.
 
 GitHub users can update from the signed APK attached to this release. F-Droid and other repositories publish on their own schedule.
 
 ## Final note
 
-2.5.11 is mostly about trust. When you search for a station it should be there, when a logo exists it should show up, and when something is an ad Levyra should not pretend it is a song.
+2.5.12 makes Levyra feel less eager to get in your way.
 
-Small things, fixed properly.
+Fewer accidental skips. Fewer duplicate versions sneaking back into radio. Lyrics closer to the song. Video controls that behave like actual controls. Search playlists you can inspect before pressing play.
+
+That is the kind of polish this release is about.
