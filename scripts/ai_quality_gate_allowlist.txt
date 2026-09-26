@@ -5,7 +5,14 @@ docs/assets/levyra-github-banner-light.webp
 docs/assets/levyra-signature.png
 docs/assets/levyra-signature.webp
 docs/assets/showcase/00_levyra_hero_showcase.webp
-docs/assets/showcase/01_levyra_gallery.webp
+docs/assets/showcase/cards/01_home.webp
+docs/assets/showcase/cards/02_now_playing.webp
+docs/assets/showcase/cards/03_lyrics.webp
+docs/assets/showcase/cards/04_charts.webp
+docs/assets/showcase/cards/05_search_artist.webp
+docs/assets/showcase/cards/06_artist_discography.webp
+docs/assets/showcase/cards/07_genres.webp
+docs/assets/showcase/cards/08_listening_pulse.webp
 docs/assets/showcase/01_playback_and_lyrics.webp
 docs/assets/showcase/02_home_and_charts.webp
 docs/assets/showcase/03_search_and_artist.webp

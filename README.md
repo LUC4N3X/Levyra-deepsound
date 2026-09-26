@@ -138,11 +138,18 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 <div align="center">
 
-<img src="docs/assets/showcase/00_levyra_hero_showcase.webp" alt="Levyra interface across five phones" width="100%" />
-
-<br><br>
-
-<img src="docs/assets/showcase/01_levyra_gallery.webp" alt="Eight Levyra screens arranged in an editorial gallery" width="100%" />
+<p align="center">
+  <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp" width="200" alt="Levyra home and personalized radio" /></a>
+  <a href="docs/assets/showcase/cards/02_now_playing.webp"><img src="docs/assets/showcase/cards/02_now_playing.webp" width="200" alt="Levyra song and video player" /></a>
+  <a href="docs/assets/showcase/cards/03_lyrics.webp"><img src="docs/assets/showcase/cards/03_lyrics.webp" width="200" alt="Levyra synchronized lyrics" /></a>
+  <a href="docs/assets/showcase/cards/04_charts.webp"><img src="docs/assets/showcase/cards/04_charts.webp" width="200" alt="Levyra international charts" /></a>
+</p>
+<p align="center">
+  <a href="docs/assets/showcase/cards/05_search_artist.webp"><img src="docs/assets/showcase/cards/05_search_artist.webp" width="200" alt="Levyra artist search" /></a>
+  <a href="docs/assets/showcase/cards/06_artist_discography.webp"><img src="docs/assets/showcase/cards/06_artist_discography.webp" width="200" alt="Levyra artist discography" /></a>
+  <a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp" width="200" alt="Levyra moods and genres" /></a>
+  <a href="docs/assets/showcase/cards/08_listening_pulse.webp"><img src="docs/assets/showcase/cards/08_listening_pulse.webp" width="200" alt="Levyra private listening stats" /></a>
+</p>
 
 </div>
 

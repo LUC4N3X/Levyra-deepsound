@@ -1,14 +1,14 @@
 import os
-import math
-import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
 SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshots"
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
 OUT_SCREENSHOTS_DIR = r"docs\assets\screenshots"
+OUT_CARDS_DIR = os.path.join(OUT_SHOWCASE_DIR, "cards")
 
 os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_SCREENSHOTS_DIR, exist_ok=True)
+os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 
 SCREENS = {
     "home": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_171253_LEVYRA.jpg",
@@ -346,48 +346,58 @@ def generate_hero_panoramic_showcase():
     canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
     print(f"Generated Panoramic Hero Showcase: {out_path}")
 
-def generate_gallery_showcase():
-    canvas_w, canvas_h = 2400, 1900
-    rng = np.random.default_rng(27)
-    grain = rng.normal(0, 1.7, (canvas_h, canvas_w, 1))
-    base = np.full((canvas_h, canvas_w, 3), 12, dtype=np.float32)
-    canvas = Image.fromarray(np.clip(base + grain, 7, 18).astype(np.uint8), "RGB").convert("RGBA")
-    draw = ImageDraw.Draw(canvas)
-    label_font = get_font(23, bold=True)
-    number_font = get_font(18, bold=True)
-
-    placements = [
-        ("home", "01", "HOME", 90, 190, 780),
-        ("now_playing", "02", "NOW PLAYING", 660, 125, 820),
-        ("lyrics", "03", "LYRICS", 1230, 205, 760),
-        ("charts", "04", "CHARTS", 1800, 145, 800),
-        ("search_artist", "05", "SEARCH", 250, 1085, 760),
-        ("artist_discography", "06", "ARTIST", 820, 1015, 800),
-        ("genres", "07", "GENRES", 1390, 1105, 740),
-        ("listening_pulse", "08", "PULSE", 1960, 1035, 780),
+def generate_feature_cards():
+    card_w, card_h = 900, 1600
+    specs = [
+        ("home", "01", "Your music, up front", "Radio, mood shortcuts,\nand Your Orbit.", (235, 215, 220), (199, 143, 158)),
+        ("now_playing", "02", "Stay with the song", "Song and video share\none focused player.", (204, 222, 236), (139, 181, 211)),
+        ("lyrics", "03", "Follow every line", "Synced lyrics move\nwith the music.", (235, 220, 193), (195, 158, 104)),
+        ("charts", "04", "See what is playing", "Browse Top 50 charts\nacross countries.", (205, 220, 241), (121, 166, 217)),
+        ("search_artist", "05", "Find the artist", "Search songs, albums,\nplaylists, and artists.", (222, 213, 235), (164, 138, 199)),
+        ("artist_discography", "06", "Go deeper", "Popular tracks, albums,\nsingles, and EPs.", (235, 215, 208), (198, 139, 124)),
+        ("genres", "07", "Pick a direction", "Move through moods\nand genres quickly.", (207, 227, 220), (128, 182, 168)),
+        ("listening_pulse", "08", "Keep it personal", "Private listening stats,\ncomputed on this device.", (212, 216, 237), (139, 149, 200)),
     ]
 
-    for key, number, label, x, y, height in placements:
-        with Image.open(get_screen_path(SCREENS[key])) as source:
-            screen = create_gallery_screen(source, target_height=height)
-        label_y = y - 48
-        draw.text((x, label_y), number, font=number_font, fill=(41, 137, 255, 255))
-        draw.text((x + 48, label_y - 3), label, font=label_font, fill=(238, 240, 245, 255))
-        line_start = x + 210
-        draw.line((line_start, label_y + 13, x + screen.width, label_y + 13), fill=(68, 72, 80, 255), width=2)
-        shadow = create_studio_shadow(screen, blur_radius=34, opacity=205, offset=(0, 24))
-        canvas.paste(shadow, (x - 34, y - 12), shadow)
-        canvas.paste(screen, (x, y), screen)
+    label_font = get_font(19, bold=True)
+    title_font = get_font(52, bold=True)
+    subtitle_font = get_font(27, bold=False)
 
-    out_path = os.path.join(OUT_SHOWCASE_DIR, "01_levyra_gallery.webp")
-    canvas.convert("RGB").save(out_path, "WEBP", quality=92, method=6)
-    print(f"Generated Gallery Showcase: {out_path}")
+    for key, number, title, subtitle, background, accent in specs:
+        card = Image.new("RGBA", (card_w, card_h), (*background, 255))
+        draw = ImageDraw.Draw(card)
+        draw.polygon(
+            [(0, 950), (card_w, 650), (card_w, card_h), (0, card_h)],
+            fill=(*accent, 255),
+        )
+        draw.rounded_rectangle((64, 58, 180, 96), radius=19, fill=(20, 23, 29, 235))
+        draw.text((83, 69), f"LEVYRA / {number}", font=label_font, fill=(255, 255, 255, 255))
+        draw.text((64, 132), title, font=title_font, fill=(20, 23, 29, 255))
+        draw.multiline_text(
+            (64, 205),
+            subtitle,
+            font=subtitle_font,
+            fill=(66, 73, 83, 255),
+            spacing=8,
+        )
+
+        with Image.open(get_screen_path(SCREENS[key])) as source:
+            phone = create_phone_frame(source, target_height=1050)
+        phone_x = (card_w - phone.width) // 2
+        phone_y = 390
+        shadow = create_studio_shadow(phone, blur_radius=42, opacity=175, offset=(0, 28))
+        card.paste(shadow, (phone_x - 42, phone_y - 16), shadow)
+        card.paste(phone, (phone_x, phone_y), phone)
+
+        out_path = os.path.join(OUT_CARDS_DIR, f"{number}_{key}.webp")
+        card.convert("RGB").save(out_path, "WEBP", quality=91, method=6)
+        print(f"Generated Feature Card: {out_path}")
 
 def main():
     print("Generating refined Levyra showcase assets...")
     generate_individual_screenshots()
     generate_hero_panoramic_showcase()
-    generate_gallery_showcase()
+    generate_feature_cards()
     print("Showcase generation completed successfully!")
 
 if __name__ == "__main__":
