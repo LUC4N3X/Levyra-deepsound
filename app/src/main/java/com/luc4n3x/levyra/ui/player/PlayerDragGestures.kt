@@ -91,7 +91,11 @@ private class PlayerDragSession(
     fun start(offset: Offset, widthPx: Float) {
         resetMotion()
         velocityTracker.resetTracking()
-        zone = resolveZone(offset.x, widthPx)
+        zone = if (edgeZonesEnabled) {
+            playerGestureZone(offset.x / widthPx.coerceAtLeast(1f), rightToLeft)
+        } else {
+            PlayerGestureZone.Center
+        }
     }
 
     fun drag(
@@ -121,11 +125,6 @@ private class PlayerDragSession(
     fun cancel() {
         onEvent(PlayerDragEvent.Cancelled)
         resetMotion()
-    }
-
-    private fun resolveZone(offsetX: Float, widthPx: Float): PlayerGestureZone {
-        if (!edgeZonesEnabled) return PlayerGestureZone.Center
-        return playerGestureZone(offsetX / widthPx.coerceAtLeast(1f), rightToLeft)
     }
 
     private fun resolveAxisIfNeeded() {
