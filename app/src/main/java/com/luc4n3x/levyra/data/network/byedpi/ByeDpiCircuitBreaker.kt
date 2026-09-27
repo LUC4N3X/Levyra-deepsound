@@ -128,10 +128,10 @@ internal class ByeDpiCircuitBreaker(
             return@synchronized
         }
 
-        if (resolutionLatencyMs == null) return@synchronized
-
         consecutiveFailures = 0
         consecutiveSlowResponses = 0
+        if (resolutionLatencyMs == null) return@synchronized
+
         consecutiveSuccesses++
         state = when (state) {
             ByeDpiHealthState.HEALTHY -> ByeDpiHealthState.HEALTHY
