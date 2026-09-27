@@ -51,14 +51,32 @@ class PipedRescueClientTest {
     }
 
     @Test
-    fun video404IsCachedSeparatelyAndStopsCrossInstanceRetries() = runBlocking {
+    fun singleInstance404FallsThroughToAnotherInstance() = runBlocking {
+        val exchange = RecordingExchange { request ->
+            when {
+                request.url.startsWith(instanceA.apiBaseUrl) -> response(404)
+                request.kind == PipedRequestKind.API -> response(200, proxyBody("https://proxy-b.example"))
+                else -> response(206, contentType = "audio/mp4")
+            }
+        }
+        val client = PipedRescueClient(exchange, listOf(instanceA, instanceB))
+
+        val resolved = client.resolve(VIDEO_ID, "auto")
+
+        assertEquals("b", resolved?.instanceId)
+        assertEquals(0, client.instanceSnapshot("a").failures)
+        assertEquals(1, client.instanceSnapshot("b").successes)
+    }
+
+    @Test
+    fun allHealthyInstances404ThenCacheGlobalVideoMissing() = runBlocking {
         val exchange = RecordingExchange { response(404) }
         val client = PipedRescueClient(exchange, listOf(instanceA, instanceB))
 
         assertNull(client.resolve(VIDEO_ID, "auto"))
         assertNull(client.resolve(VIDEO_ID, "auto"))
 
-        assertEquals(1, exchange.calls.get())
+        assertEquals(2, exchange.calls.get())
         assertEquals(0, client.instanceSnapshot("a").failures)
         assertEquals(0, client.instanceSnapshot("b").failures)
     }
@@ -73,6 +91,25 @@ class PipedRescueClientTest {
 
         assertEquals(1, exchange.calls.get())
         assertEquals(1, client.instanceSnapshot("a").failures)
+    }
+
+    @Test
+    fun cooldownIsNotBypassedWhenEveryInstanceIsBlocked() = runBlocking {
+        var nowMs = 10_000L
+        val exchange = RecordingExchange { response(500) }
+        val client = PipedRescueClient(exchange, listOf(instanceA), clockMs = { nowMs })
+
+        assertNull(client.resolve(VIDEO_ID, "auto"))
+        assertNull(client.resolve(SECOND_VIDEO_ID, "auto"))
+        assertEquals(2, exchange.calls.get())
+        assertTrue(client.instanceSnapshot("a").blockedUntilMs > nowMs)
+
+        assertNull(client.resolve(THIRD_VIDEO_ID, "auto"))
+        assertEquals(2, exchange.calls.get())
+
+        nowMs += PipedRescuePolicy.INSTANCE_COOLDOWN_MS
+        assertNull(client.resolve(FOURTH_VIDEO_ID, "auto"))
+        assertEquals(3, exchange.calls.get())
     }
 
     @Test
@@ -254,5 +291,7 @@ class PipedRescueClientTest {
     private companion object {
         const val VIDEO_ID = "dQw4w9WgXcQ"
         const val SECOND_VIDEO_ID = "kJQP7kiw5Fk"
+        const val THIRD_VIDEO_ID = "M7lc1UVf-VE"
+        const val FOURTH_VIDEO_ID = "9bZkp7q19f0"
     }
 }
