@@ -9,6 +9,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketAddress
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -72,6 +73,12 @@ object ByeDpiSupervisor {
         return InetSocketAddress(LOOPBACK, runningPort)
     }
 
+    internal fun isTunnelAddress(address: SocketAddress?): Boolean {
+        val socketAddress = address as? InetSocketAddress ?: return false
+        val runningPort = activePort
+        return runningPort > 0 && socketAddress.port == runningPort && socketAddress.address?.isLoopbackAddress == true
+    }
+
     fun acquireTunnel(): InetSocketAddress? {
         if (!awaitRunning() || !breaker.tryAcquire()) return null
         return tunnelAddress()
@@ -116,7 +123,7 @@ object ByeDpiSupervisor {
             proxyInstance = instance
             activePort = selectedPort
             failureMessage = null
-            breaker.recordSuccess()
+            breaker.reset()
             currentState = ByeDpiState.STARTING
             runnerJob?.cancel()
             runnerJob = scope.launch { runProxy(instance, selectedPort, startGeneration) }
@@ -132,7 +139,7 @@ object ByeDpiSupervisor {
             proxyInstance = null
             activePort = 0
             failureMessage = null
-            breaker.recordSuccess()
+            breaker.reset()
             runCatching { instance?.stopProxy() }
             runnerJob?.cancel()
             runnerJob = null
@@ -141,21 +148,36 @@ object ByeDpiSupervisor {
         Timber.i("ByeDPI stopped")
     }
 
-    fun recordConnectionSuccess() = breaker.recordSuccess()
+    fun recordConnectionSuccess(latencyMs: Long? = null) {
+        updateHealth { recordSuccess(connectLatencyMs = latencyMs) }
+    }
 
-    fun recordConnectionFailure() {
-        breaker.recordFailure()
-        if (breaker.isOpen()) Timber.w("ByeDPI reached failure limit; routing suspended until the next probe")
+    fun recordResolutionSuccess(latencyMs: Long) {
+        updateHealth { recordSuccess(resolutionLatencyMs = latencyMs) }
+    }
+
+    fun recordConnectionFailure(kind: ByeDpiFailureKind = ByeDpiFailureKind.CONNECTION) {
+        updateHealth { recordFailure(kind) }
+    }
+
+    fun recordResolutionFailure(kind: ByeDpiFailureKind = ByeDpiFailureKind.RESOLUTION) {
+        updateHealth { recordFailure(kind) }
     }
 
     fun isTemporarilyDegraded(): Boolean = breaker.isOpen()
+
+    internal fun healthState(): ByeDpiHealthState = breaker.snapshot().state
+
+    internal fun healthSnapshot(): ByeDpiHealthSnapshot = breaker.snapshot()
+
+    internal fun isRecoveryProbeDue(): Boolean = breaker.isProbeDue()
 
     internal fun setRunningForTesting(testPort: Int = DEFAULT_PORT) {
         lock.withLock {
             generation++
             currentState = ByeDpiState.RUNNING
             activePort = testPort
-            breaker.recordSuccess()
+            breaker.reset()
             stateChanged.signalAll()
         }
     }
@@ -165,7 +187,7 @@ object ByeDpiSupervisor {
             generation++
             currentState = ByeDpiState.STARTING
             activePort = testPort
-            breaker.recordSuccess()
+            breaker.reset()
         }
     }
 
@@ -248,6 +270,33 @@ object ByeDpiSupervisor {
         activePort = 0
         Timber.w(message)
         stateChanged.signalAll()
+    }
+
+    private inline fun updateHealth(update: ByeDpiCircuitBreaker.() -> Unit) {
+        val before = breaker.snapshot()
+        breaker.update()
+        val after = breaker.snapshot()
+        if (before.state == after.state) return
+        when (after.state) {
+            ByeDpiHealthState.HEALTHY -> Timber.i("ByeDPI HEALTHY again")
+            ByeDpiHealthState.SUSPECT -> {
+                if (before.state == ByeDpiHealthState.PROBE) {
+                    Timber.i("ByeDPI recovery probe success; awaiting hysteresis")
+                } else {
+                    Timber.w(
+                        "ByeDPI SUSPECT connect=%sms resolution=%sms failures=%d",
+                        after.lastConnectLatencyMs,
+                        after.lastResolutionLatencyMs,
+                        after.consecutiveFailures
+                    )
+                }
+            }
+            ByeDpiHealthState.DEGRADED -> {
+                Timber.w("ByeDPI entered DEGRADED; Piped rescue has priority")
+                LevyraHttpClientFactory.evictIdleConnections()
+            }
+            ByeDpiHealthState.PROBE -> Timber.i("ByeDPI recovery probe started")
+        }
     }
 
     private fun findAvailablePort(preferred: Int): Int {

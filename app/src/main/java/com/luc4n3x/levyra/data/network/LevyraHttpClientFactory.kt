@@ -5,6 +5,7 @@ import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiDns
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiHealthPolicy
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSocketFactory
 import java.io.File
 import java.net.Proxy
@@ -40,11 +41,17 @@ object LevyraHttpClientFactory {
         maxRequests = 16
         maxRequestsPerHost = 8
     }
+    private val pipedConnectionPool = ConnectionPool(6, 2, TimeUnit.MINUTES)
+    private val pipedDispatcher = Dispatcher().apply {
+        maxRequests = 8
+        maxRequestsPerHost = 4
+    }
     private val sharedConnectionPools = listOf(
         mediaConnectionPool,
         youtubeConnectionPool,
         downloadConnectionPool,
         externalConnectionPool,
+        pipedConnectionPool,
         LevyraNetworkConfiguration.dohConnectionPool
     )
 
@@ -75,6 +82,12 @@ object LevyraHttpClientFactory {
     private var generalClient: OkHttpClient? = null
 
     @Volatile
+    private var pipedApiClient: OkHttpClient? = null
+
+    @Volatile
+    private var pipedStreamingClient: OkHttpClient? = null
+
+    @Volatile
     private var feedCache: Cache? = null
 
     @Volatile
@@ -90,6 +103,8 @@ object LevyraHttpClientFactory {
             feedClient = null
             externalIntegrationClient = null
             generalClient = null
+            pipedApiClient = null
+            pipedStreamingClient = null
             clientGeneration = LevyraNetworkConfiguration.generation
         }
         evictIdleConnections()
@@ -139,6 +154,49 @@ object LevyraHttpClientFactory {
         }
     }
 
+    fun pipedApi(): OkHttpClient {
+        invalidateIfStale()
+        return pipedApiClient ?: synchronized(lock) {
+            pipedApiClient ?: OkHttpClient.Builder()
+                .connectionPool(pipedConnectionPool)
+                .dispatcher(pipedDispatcher)
+                .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
+                .connectTimeout(1_500, TimeUnit.MILLISECONDS)
+                .readTimeout(2_500, TimeUnit.MILLISECONDS)
+                .writeTimeout(1_000, TimeUnit.MILLISECONDS)
+                .callTimeout(3_000, TimeUnit.MILLISECONDS)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .retryOnConnectionFailure(false)
+                .let { applyNetworkIntelligence(it, null) }
+                .dns(PipedPublicDns(LevyraNetworkConfiguration.dns()))
+                .build()
+                .also { pipedApiClient = it }
+        }
+    }
+
+    fun pipedStreaming(context: Context? = null): OkHttpClient {
+        invalidateIfStale()
+        return pipedStreamingClient ?: synchronized(lock) {
+            pipedStreamingClient ?: OkHttpClient.Builder()
+                .connectionPool(pipedConnectionPool)
+                .dispatcher(pipedDispatcher)
+                .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
+                .connectTimeout(4, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(8, TimeUnit.SECONDS)
+                .callTimeout(0, TimeUnit.MILLISECONDS)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .retryOnConnectionFailure(true)
+                .addInterceptor(PipedSafeRedirectInterceptor())
+                .let { applyNetworkIntelligence(it, context) }
+                .dns(PipedPublicDns(LevyraNetworkConfiguration.dns()))
+                .build()
+                .also { pipedStreamingClient = it }
+        }
+    }
+
     private fun feedCache(context: Context): Cache {
         return feedCache ?: synchronized(lock) {
             feedCache ?: Cache(
@@ -183,6 +241,11 @@ object LevyraHttpClientFactory {
 
     fun youtubePlayer(context: Context? = null): OkHttpClient {
         invalidateIfStale()
+        val callTimeoutMs = if (LevyraNetworkConfiguration.current().byeDpiEnabled) {
+            ByeDpiHealthPolicy.RESOLUTION_BUDGET_MS
+        } else {
+            15_000L
+        }
         return youtubePlayerClient ?: synchronized(lock) {
             youtubePlayerClient ?: OkHttpClient.Builder()
                 .connectionPool(youtubeConnectionPool)
@@ -191,7 +254,7 @@ object LevyraHttpClientFactory {
                 .connectTimeout(3, TimeUnit.SECONDS)
                 .readTimeout(12, TimeUnit.SECONDS)
                 .writeTimeout(5, TimeUnit.SECONDS)
-                .callTimeout(15, TimeUnit.SECONDS)
+                .callTimeout(callTimeoutMs, TimeUnit.MILLISECONDS)
                 .addInterceptor(YoutubeClientIdentityInterceptor)
                 .addInterceptor(BrotliInterceptor)
                 .retryOnConnectionFailure(true)
@@ -203,12 +266,17 @@ object LevyraHttpClientFactory {
 
     fun extractor(): OkHttpClient {
         invalidateIfStale()
+        val callTimeoutMs = if (LevyraNetworkConfiguration.current().byeDpiEnabled) {
+            ByeDpiHealthPolicy.RESOLUTION_BUDGET_MS
+        } else {
+            25_000L
+        }
         return extractorClient ?: synchronized(lock) {
             extractorClient ?: youtubePlayer().newBuilder()
                 .connectTimeout(6, TimeUnit.SECONDS)
                 .readTimeout(18, TimeUnit.SECONDS)
                 .writeTimeout(10, TimeUnit.SECONDS)
-                .callTimeout(25, TimeUnit.SECONDS)
+                .callTimeout(callTimeoutMs, TimeUnit.MILLISECONDS)
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .build()

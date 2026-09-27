@@ -25,6 +25,8 @@ class YoutubeNetworkPolicyTest {
     private val jioApiUri = URI("https://www.jiosaavn.com/api.php?__call=song.getDetails")
     private val jioCdnUri = URI("https://aac.saavncdn.com/123/sample_320.mp4")
     private val generalUri = URI("https://api.github.com/repos")
+    private val pipedApiUri = URI("https://pipedapi.kavin.rocks/streams/dQw4w9WgXcQ")
+    private val pipedProxyUri = URI("https://pipedproxy.kavin.rocks/videoplayback?n=signed")
 
     @Before
     @After
@@ -73,6 +75,8 @@ class YoutubeNetworkPolicyTest {
         assertFalse(YoutubeNetworkPolicy.isYoutubeHost("notyoutube.com"))
         assertFalse(YoutubeNetworkPolicy.isYoutubeHost("youtube.com.evil.example"))
         assertFalse(YoutubeNetworkPolicy.isYoutubeHost("evilgooglevideo.com"))
+        assertFalse(YoutubeNetworkPolicy.isYoutubeHost(pipedApiUri.host))
+        assertFalse(YoutubeNetworkPolicy.isYoutubeHost(pipedProxyUri.host))
         assertFalse(YoutubeNetworkPolicy.isYoutubeHost("142.250.1.2"))
 
         assertTrue(YoutubeNetworkPolicy.isYoutubeMediaHost("googlevideo.com"))
@@ -103,6 +107,8 @@ class YoutubeNetworkPolicyTest {
         assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi("www.jiosaavn.com", enabled, streamBypass = false))
         assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi("aac.saavncdn.com", enabled, streamBypass = true))
         assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi("api.github.com", enabled, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(pipedApiUri.host, enabled, streamBypass = false))
+        assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(pipedProxyUri.host, enabled, streamBypass = true))
         assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(null, enabled, streamBypass = false))
         assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, disabled, streamBypass = false))
         assertFalse(YoutubeNetworkPolicy.routesThroughByeDpi(mediaHost, disabled, streamBypass = true))
@@ -188,9 +194,10 @@ class YoutubeNetworkPolicyTest {
         assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
         assertNull(ByeDpiSupervisor.acquireTunnel())
 
-        ByeDpiSupervisor.recordConnectionSuccess()
+        ByeDpiSupervisor.recordResolutionSuccess(200L)
         assertFalse(ByeDpiSupervisor.isTemporarilyDegraded())
         assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
+        ByeDpiSupervisor.recordResolutionSuccess(200L)
         assertTunnel(1088, ByeDpiSupervisor.acquireTunnel())
     }
 

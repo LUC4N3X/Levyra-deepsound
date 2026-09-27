@@ -669,6 +669,14 @@ class PlaybackService : MediaLibraryService() {
                     "User-Agent" to "Levyra/${BuildConfig.VERSION_NAME} (Android; Live Radio)"
                 )
             )
+        val pipedDataSourceFactory = OkHttpDataSource.Factory(LevyraHttpClientFactory.pipedStreaming(this))
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Accept" to "*/*",
+                    "Accept-Encoding" to "identity",
+                    "User-Agent" to "Levyra/Android Piped Rescue"
+                )
+            )
         val cache = LevyraMediaCache.get(this)
         val cacheSinkFactory = CacheDataSink.Factory()
             .setCache(cache)
@@ -688,7 +696,8 @@ class PlaybackService : MediaLibraryService() {
             cacheDataSourceFactory,
             localDataSourceFactory,
             SabrDataSource.Factory(baseHttpFactory),
-            liveRadioDataSourceFactory
+            liveRadioDataSourceFactory,
+            pipedDataSourceFactory
         ).apply {
             setLoadErrorHandlingPolicy(LevyraPlaybackLoadErrorHandlingPolicy)
         }
@@ -2906,13 +2915,19 @@ private fun isLiveRadioMediaItem(mediaItem: MediaItem?): Boolean {
         extras?.getString("levyra.source") == LIVE_RADIO_SOURCE
 }
 
+private fun isPipedRescueMediaItem(mediaItem: MediaItem): Boolean {
+    val extras = mediaItem.mediaMetadata.extras ?: mediaItem.requestMetadata.extras
+    return extras?.getString("levyra.source").orEmpty().startsWith("Piped Rescue ·")
+}
+
 @UnstableApi
 private class LevyraMediaSourceFactory(
     private val delegate: DefaultMediaSourceFactory,
     private val dataSourceFactory: DataSource.Factory,
     private val localDataSourceFactory: DataSource.Factory,
     private val sabrDataSourceFactory: DataSource.Factory,
-    private val liveRadioDataSourceFactory: DataSource.Factory
+    private val liveRadioDataSourceFactory: DataSource.Factory,
+    private val pipedDataSourceFactory: DataSource.Factory
 ) : MediaSource.Factory {
     private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy = LevyraPlaybackLoadErrorHandlingPolicy
     private var drmSessionManagerProvider: androidx.media3.exoplayer.drm.DrmSessionManagerProvider? = null
@@ -2976,6 +2991,8 @@ private class LevyraMediaSourceFactory(
                 dataSourceFactory = dataSourceFactory,
                 localDataSourceFactory = localDataSourceFactory,
                 sabrDataSourceFactory = sabrDataSourceFactory,
+                pipedDataSourceFactory = pipedDataSourceFactory,
+                pipedRescue = isPipedRescueMediaItem(mediaItem),
                 subtitleDataSourceFactory = subtitleDataSourceFactory,
                 subtitleUris = subtitleUris
             )
@@ -3008,6 +3025,8 @@ private class LevyraRoutingDataSourceFactory(
     private val dataSourceFactory: DataSource.Factory,
     private val localDataSourceFactory: DataSource.Factory,
     private val sabrDataSourceFactory: DataSource.Factory,
+    private val pipedDataSourceFactory: DataSource.Factory,
+    private val pipedRescue: Boolean,
     private val subtitleDataSourceFactory: DataSource.Factory,
     private val subtitleUris: Set<Uri>
 ) : DataSource.Factory {
@@ -3015,6 +3034,8 @@ private class LevyraRoutingDataSourceFactory(
         dataSourceFactory = dataSourceFactory,
         localDataSourceFactory = localDataSourceFactory,
         sabrDataSourceFactory = sabrDataSourceFactory,
+        pipedDataSourceFactory = pipedDataSourceFactory,
+        pipedRescue = pipedRescue,
         subtitleDataSourceFactory = subtitleDataSourceFactory,
         subtitleUris = subtitleUris
     )
@@ -3025,6 +3046,8 @@ private class LevyraRoutingDataSource(
     private val dataSourceFactory: DataSource.Factory,
     private val localDataSourceFactory: DataSource.Factory,
     private val sabrDataSourceFactory: DataSource.Factory,
+    private val pipedDataSourceFactory: DataSource.Factory,
+    private val pipedRescue: Boolean,
     private val subtitleDataSourceFactory: DataSource.Factory,
     private val subtitleUris: Set<Uri>
 ) : DataSource {
@@ -3053,6 +3076,7 @@ private class LevyraRoutingDataSource(
             uri in subtitleUris -> subtitleDataSourceFactory
             SabrStreamSpec.isSabrUri(uri.toString()) -> sabrDataSourceFactory
             scheme == "content" || scheme == "file" -> localDataSourceFactory
+            pipedRescue -> pipedDataSourceFactory
             else -> dataSourceFactory
         }
         val source = factory.createDataSource()

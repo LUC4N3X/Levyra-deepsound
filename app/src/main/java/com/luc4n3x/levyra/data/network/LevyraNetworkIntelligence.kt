@@ -5,6 +5,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiRouteTrace
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiFailureKind
+import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import com.luc4n3x.levyra.nexus.network.LevyraAddressFamily
 import com.luc4n3x.levyra.nexus.network.LevyraRoute
 import com.luc4n3x.levyra.nexus.network.LevyraRouteEngine
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.Call
+import okhttp3.Connection
 import okhttp3.Dns
 import okhttp3.EventListener
 import okhttp3.Protocol
@@ -170,10 +173,18 @@ internal object LevyraNetworkIntelligence {
         private val connectStartedAt = ConcurrentHashMap<String, Long>()
         private val connectAttempts = AtomicInteger(0)
         private val responseCount = AtomicInteger(0)
+        private val usedByeDpi = AtomicBoolean(false)
         @Volatile private var callStartedAtNanos = 0L
 
         override fun callStart(call: Call) {
             callStartedAtNanos = System.nanoTime()
+            usedByeDpi.set(false)
+        }
+
+        override fun connectionAcquired(call: Call, connection: Connection) {
+            if (ByeDpiSupervisor.isTunnelAddress(connection.socket().remoteSocketAddress)) {
+                usedByeDpi.set(true)
+            }
         }
 
         override fun connectStart(call: Call, inetSocketAddress: InetSocketAddress, proxy: Proxy) {
@@ -188,7 +199,7 @@ internal object LevyraNetworkIntelligence {
             protocol: Protocol?
         ) {
             val latencyMs = elapsedMs(inetSocketAddress)
-            auditConnected(call, inetSocketAddress, proxy, latencyMs)
+            if (auditConnected(call, inetSocketAddress, proxy, latencyMs)) usedByeDpi.set(true)
             val address = inetSocketAddress.address ?: return
             routeEngine.recordSuccess(
                 route = route(call.request().url.host, address),
@@ -258,6 +269,13 @@ internal object LevyraNetworkIntelligence {
                     totalLatency
                 )
             }
+            if (usedByeDpi.get()) {
+                when (response.code) {
+                    403 -> ByeDpiSupervisor.recordConnectionFailure(ByeDpiFailureKind.HTTP_403)
+                    429 -> ByeDpiSupervisor.recordConnectionFailure(ByeDpiFailureKind.HTTP_429)
+                    in 500..599 -> ByeDpiSupervisor.recordConnectionFailure(ByeDpiFailureKind.HTTP_5XX)
+                }
+            }
         }
 
         override fun callEnd(call: Call) {
@@ -274,10 +292,18 @@ internal object LevyraNetworkIntelligence {
                 redirects = (responseCount.get() - 1).coerceAtLeast(0),
                 failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
             )
+            if (usedByeDpi.get()) {
+                val kind = when {
+                    ioe is SocketTimeoutException -> ByeDpiFailureKind.TIMEOUT
+                    ioe.message.orEmpty().contains("reset", ignoreCase = true) -> ByeDpiFailureKind.CONNECTION_RESET
+                    else -> ByeDpiFailureKind.CONNECTION
+                }
+                ByeDpiSupervisor.recordConnectionFailure(kind)
+            }
             connectStartedAt.clear()
         }
 
-        private fun auditConnected(call: Call, destination: InetSocketAddress, proxy: Proxy, latencyMs: Long) {
+        private fun auditConnected(call: Call, destination: InetSocketAddress, proxy: Proxy, latencyMs: Long): Boolean {
             val tunnelPort = ByeDpiRouteTrace.consume(destination)
             val url = call.request().url
             if (YoutubeNetworkPolicy.isYoutubeHost(url.host)) {
@@ -289,6 +315,7 @@ internal object LevyraNetworkIntelligence {
                     latencyMs
                 )
             }
+            return tunnelPort != null
         }
 
         private fun auditConnectFailed(call: Call, destination: InetSocketAddress, proxy: Proxy, ioe: IOException) {

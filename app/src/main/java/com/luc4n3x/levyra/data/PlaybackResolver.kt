@@ -370,6 +370,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         BuildConfig.VERSION_CODE
     )
     private val resilienceEngine = PlaybackResilienceEngine(context)
+    private val pipedRescueClient = PipedRescueClient()
+    private val adaptiveYoutubeRescue = AdaptiveYoutubeRescue()
     private val strategyHealth = PlaybackStrategyHealthStore(context)
     private val strategyOriginByUrl = ConcurrentHashMap<String, PlaybackStrategyOrigin>()
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
@@ -1252,8 +1254,17 @@ class PlaybackResolver private constructor(private val context: Context) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         if (!preferMp4Audio && !isVideoMode) {
-            val resolved = resolveAudioByCompatibilityPolicy(track, audioQuality, errors, expectedGeneration)
-            if (resolved != null) return@withContext resolved
+            val resolved = adaptiveYoutubeRescue.resolve(
+                byeDpiEnabled = LevyraNetworkConfiguration.current().byeDpiEnabled,
+                direct = { resolveAudioByCompatibilityPolicy(track, audioQuality, errors, expectedGeneration) },
+                piped = { resolveAudioWithPipedRescue(track, audioQuality) }
+            )
+            if (resolved != null) {
+                if (resolved.source.startsWith("Piped Rescue ·")) {
+                    store(track, resolved, false, audioQuality, false, expectedGeneration)
+                }
+                return@withContext resolved
+            }
 
             val reason = errors.firstOrNull { it.startsWith("LevyraExtractor:") }
                 ?: errors.firstOrNull {
@@ -1450,6 +1461,54 @@ class PlaybackResolver private constructor(private val context: Context) {
             )
         }
         return null
+    }
+
+    private suspend fun resolveAudioWithPipedRescue(track: Track, audioQuality: String): Track? {
+        val videoId = extractVideoId(track.videoUrl).ifBlank { extractVideoId(track.id) }
+        if (videoId.isBlank()) return null
+        val stream = pipedRescueClient.resolve(videoId, audioQuality) ?: return null
+        val resolvedAtMs = System.currentTimeMillis()
+        val descriptor = PlaybackStreamDescriptor(
+            url = stream.url,
+            kind = PlaybackStreamKind.AUDIO,
+            deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+            container = when (stream.mimeType) {
+                "audio/mp4" -> "m4a"
+                "audio/webm" -> "webm"
+                else -> stream.mimeType.substringAfter('/', "audio")
+            },
+            mimeType = stream.mimeType,
+            codec = stream.codec,
+            bitrate = stream.bitrate,
+            averageBitrate = stream.bitrate,
+            qualityLabel = "${stream.bitrate / 1_000} kbps",
+            expiresAtMs = stream.expiresAtMs,
+            selected = true
+        )
+        val manifest = ResolvedPlaybackManifest(
+            sourceVideoId = videoId,
+            provider = if (stream.proxied) "Piped Proxy" else "Piped Direct",
+            resolvedAtMs = resolvedAtMs,
+            expiresAtMs = stream.expiresAtMs,
+            durationMs = track.durationMs,
+            selectedAudioUrl = stream.url,
+            selectedVideoUrl = "",
+            streams = listOf(descriptor),
+            provenance = PlaybackStreamProvenance(
+                clientName = "PIPED",
+                resolverGeneration = resolverGeneration.get(),
+                networkGeneration = LevyraNetworkConfiguration.generation,
+                networkRoute = if (stream.proxied) "piped-proxy" else "piped-direct",
+                resolvedAtMs = resolvedAtMs,
+                expiresAtMs = stream.expiresAtMs
+            )
+        )
+        return track.copy(
+            streamUrl = stream.url,
+            videoStreamUrl = "",
+            source = "Piped Rescue · ${if (stream.proxied) "Proxy" else "Direct"} · ${stream.instanceId}",
+            playbackManifest = manifest
+        )
     }
 
     private suspend fun resolveVideoByCompatibilityPolicy(

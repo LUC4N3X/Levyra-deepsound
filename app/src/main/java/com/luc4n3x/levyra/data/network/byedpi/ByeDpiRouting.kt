@@ -15,6 +15,8 @@ import java.net.InetSocketAddress
 import java.net.ProtocolException
 import java.net.Socket
 import java.net.SocketAddress
+import java.net.SocketException
+import java.net.SocketTimeoutException
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -129,11 +131,12 @@ internal class ByeDpiRoutingSocket(
             super.connect(endpoint, timeout)
             return
         }
+        val startedAtNanos = System.nanoTime()
         ByeDpiRouteTrace.mark(target, tunnel.port)
         try {
             super.connect(tunnel, timeout)
         } catch (failure: IOException) {
-            recordFailureUnlessCanceled()
+            recordFailureUnlessCanceled(failure)
             throw failure
         }
         val previousTimeout = soTimeout
@@ -145,11 +148,12 @@ internal class ByeDpiRoutingSocket(
             closeQuietly()
             throw rejected
         } catch (failure: IOException) {
-            recordFailureUnlessCanceled()
+            recordFailureUnlessCanceled(failure)
             closeQuietly()
             throw failure
         }
-        ByeDpiSupervisor.recordConnectionSuccess()
+        val latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos).coerceAtLeast(1L)
+        ByeDpiSupervisor.recordConnectionSuccess(latencyMs)
         Timber.i(
             "[RouteAudit] byedpi: host=%s dest=%s:%d atyp=%s via=127.0.0.1:%d",
             target.hostString,
@@ -160,8 +164,8 @@ internal class ByeDpiRoutingSocket(
         )
     }
 
-    private fun recordFailureUnlessCanceled() {
-        if (!isClosed) ByeDpiSupervisor.recordConnectionFailure()
+    private fun recordFailureUnlessCanceled(error: IOException) {
+        if (!isClosed) ByeDpiSupervisor.recordConnectionFailure(error.byeDpiFailureKind())
     }
 
     private fun closeQuietly() {
@@ -175,6 +179,16 @@ internal class ByeDpiRoutingSocket(
         const val HANDSHAKE_TIMEOUT_MS = 10_000
         const val IPV4_LENGTH = 4
     }
+}
+
+private fun IOException.byeDpiFailureKind(): ByeDpiFailureKind = when (this) {
+    is SocketTimeoutException -> ByeDpiFailureKind.TIMEOUT
+    is SocketException -> if (message.orEmpty().contains("reset", ignoreCase = true)) {
+        ByeDpiFailureKind.CONNECTION_RESET
+    } else {
+        ByeDpiFailureKind.CONNECTION
+    }
+    else -> ByeDpiFailureKind.CONNECTION
 }
 
 internal class Socks5ReplyException(val replyCode: Int) :
