@@ -49,6 +49,7 @@ import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraUpdateReleaseCopy
 import com.luc4n3x.levyra.ui.i18n.updateReleaseCopy
+import com.luc4n3x.levyra.ui.i18n.updateReleaseHighlights
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
@@ -77,8 +78,8 @@ fun LevyraUpdateScreen(
     modifier: Modifier = Modifier
 ) {
     val copy = strings.updateReleaseCopy()
-    val notes = remember(update.releaseNotes, update.latestVersionName) {
-        levyraUpdateNoteLines(update.releaseNotes, update.latestVersionName).take(5)
+    val notes = remember(strings.code, update.latestVersionName) {
+        strings.updateReleaseHighlights(update.latestVersionName).take(5)
     }
     val meta = remember(update.publishedAtEpochMs, update.assetSizeBytes, languageCode) {
         updateMetaLine(update.publishedAtEpochMs, update.assetSizeBytes, languageCode)
