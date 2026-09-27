@@ -15,21 +15,15 @@ class AdaptiveStabilityLoadControl(
     private val signals: PlaybackStabilityProfileSource
 ) : LoadControl {
 
-    private val lock = Any()
-    private val periodProfiles = object : LinkedHashMap<Any, LoadControl>(5, 0.75f, false) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, LoadControl>): Boolean = size > 5
-    }
-
     @Volatile
-    private var lastRequestedProfile: LoadControl = normal
+    private var active: LoadControl = normal
 
-    private fun loadControlFor(periodUid: Any?): LoadControl = synchronized(lock) {
-        if (periodUid == null) return lastRequestedProfile
-        return periodProfiles[periodUid] ?: lastRequestedProfile
-    }
+    private val mapLock = Any()
+    private val profileByMediaItem = LinkedHashMap<Any, PlaybackStabilityProfile>()
+    private val window = Timeline.Window()
 
     val activeProfile: PlaybackStabilityProfile
-        get() = if (lastRequestedProfile === stable) PlaybackStabilityProfile.Stable else PlaybackStabilityProfile.Normal
+        get() = if (active === stable) PlaybackStabilityProfile.Stable else PlaybackStabilityProfile.Normal
 
     override fun onPrepared(playerId: PlayerId) {
         normal.onPrepared(playerId)
@@ -41,53 +35,71 @@ class AdaptiveStabilityLoadControl(
         trackGroups: TrackGroupArray,
         trackSelections: Array<ExoTrackSelection?>
     ) {
-        val uid = parameters.mediaPeriodId.periodUid
-        synchronized(lock) {
-            if (!periodProfiles.containsKey(uid)) {
-                val profile = if (signals.requestedProfile() == PlaybackStabilityProfile.Stable) stable else normal
-                periodProfiles[uid] = profile
-                lastRequestedProfile = profile
-            }
-        }
-
-        normal.onTracksSelected(parameters, trackGroups, trackSelections)
-        stable.onTracksSelected(parameters, trackGroups, trackSelections)
+        val key = mediaItemKeyOf(parameters)
+        val profile = profileFor(key)
+        val nextActive = if (profile == PlaybackStabilityProfile.Stable) stable else normal
+        val inactive = if (nextActive === stable) normal else stable
+        inactive.onTracksSelected(parameters, trackGroups, trackSelections)
+        nextActive.onTracksSelected(parameters, trackGroups, trackSelections)
+        active = nextActive
     }
 
     override fun onStopped(playerId: PlayerId) {
-        synchronized(lock) { periodProfiles.clear() }
         normal.onStopped(playerId)
         stable.onStopped(playerId)
+        clearProfiles()
     }
 
     override fun onReleased(playerId: PlayerId) {
-        synchronized(lock) { periodProfiles.clear() }
         normal.onReleased(playerId)
         stable.onReleased(playerId)
+        clearProfiles()
     }
 
     override fun getAllocator(playerId: PlayerId): Allocator = normal.getAllocator(playerId)
 
-    override fun getBackBufferDurationUs(playerId: PlayerId): Long = lastRequestedProfile.getBackBufferDurationUs(playerId)
+    override fun getBackBufferDurationUs(playerId: PlayerId): Long = active.getBackBufferDurationUs(playerId)
 
-    override fun retainBackBufferFromKeyframe(playerId: PlayerId): Boolean = lastRequestedProfile.retainBackBufferFromKeyframe(playerId)
+    override fun retainBackBufferFromKeyframe(playerId: PlayerId): Boolean = active.retainBackBufferFromKeyframe(playerId)
 
-    override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
-        return loadControlFor(parameters.mediaPeriodId.periodUid).shouldContinueLoading(parameters)
-    }
+    override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean = active.shouldContinueLoading(parameters)
 
-    override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean {
-        return loadControlFor(parameters.mediaPeriodId.periodUid).shouldStartPlayback(parameters)
-    }
+    override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean = active.shouldStartPlayback(parameters)
 
     override fun shouldContinuePreloading(
         playerId: PlayerId,
         timeline: Timeline,
         mediaPeriodId: MediaSource.MediaPeriodId,
         bufferedDurationUs: Long
-    ): Boolean {
-        return loadControlFor(mediaPeriodId.periodUid).shouldContinuePreloading(playerId, timeline, mediaPeriodId, bufferedDurationUs)
+    ): Boolean = active.shouldContinuePreloading(playerId, timeline, mediaPeriodId, bufferedDurationUs)
+
+    private fun mediaItemKeyOf(parameters: LoadControl.Parameters): Any {
+        val periodUid = parameters.mediaPeriodId.periodUid
+        val windowIndex = parameters.timeline.getIndexOfPeriod(periodUid)
+        if (windowIndex < 0) return periodUid
+        synchronized(mapLock) {
+            parameters.timeline.getWindow(windowIndex, window)
+            return window.mediaItem ?: periodUid
+        }
     }
+
+    private fun profileFor(key: Any): PlaybackStabilityProfile = synchronized(mapLock) {
+        profileByMediaItem[key] ?: run {
+            val resolved = signals.requestedProfile()
+            profileByMediaItem[key] = resolved
+            if (profileByMediaItem.size > MaxProfileEntries) {
+                val eldest = profileByMediaItem.entries.iterator().next().key
+                profileByMediaItem.remove(eldest)
+            }
+            resolved
+        }
+    }
+
+    private fun clearProfiles() {
+        synchronized(mapLock) { profileByMediaItem.clear() }
+    }
+
+    internal fun trackedMediaItemCount(): Int = synchronized(mapLock) { profileByMediaItem.size }
 
     companion object {
         fun stableProfileOf(normalProfile: PlaybackBufferProfile): PlaybackBufferProfile = PlaybackBufferProfile(
@@ -98,6 +110,7 @@ class AdaptiveStabilityLoadControl(
             backBufferMs = normalProfile.backBufferMs
         )
 
+        private const val MaxProfileEntries = 8
         private const val StableExtraMinBufferMs = 3_000
         private const val StableExtraMaxBufferMs = 16_000
         private const val StableExtraRebufferMs = 1_500

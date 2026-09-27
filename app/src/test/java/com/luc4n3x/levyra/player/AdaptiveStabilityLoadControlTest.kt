@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.player
 
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.analytics.PlayerId
@@ -20,6 +22,63 @@ class AdaptiveStabilityLoadControlTest {
         override fun requestedProfile(): PlaybackStabilityProfile = profile
     }
 
+    private class ScriptedSignals(
+        private val script: ArrayDeque<PlaybackStabilityProfile>
+    ) : PlaybackStabilityProfileSource {
+        var calls = 0
+        override fun requestedProfile(): PlaybackStabilityProfile {
+            calls += 1
+            return if (script.isNotEmpty()) script.removeFirst() else PlaybackStabilityProfile.Normal
+        }
+    }
+
+    private class FakeTimeline(
+        private val mediaItems: List<MediaItem>,
+        private val periodsPerWindow: Int
+    ) : Timeline() {
+        override fun getWindowCount(): Int = mediaItems.size
+        override fun getPeriodCount(): Int = mediaItems.size * periodsPerWindow
+
+        override fun getWindow(
+            windowIndex: Int,
+            window: Timeline.Window,
+            defaultPositionProjectionUs: Long
+        ): Timeline.Window {
+            val item = mediaItems[windowIndex]
+            window.set(
+                item,
+                item,
+                null,
+                0L,
+                0L,
+                0L,
+                true,
+                false,
+                item.liveConfiguration,
+                0L,
+                1_000_000L,
+                windowIndex * periodsPerWindow,
+                windowIndex * periodsPerWindow + periodsPerWindow - 1,
+                0L
+            )
+            return window
+        }
+
+        override fun getPeriod(periodIndex: Int, period: Timeline.Period, setIds: Boolean): Timeline.Period {
+            val windowIndex = periodIndex / periodsPerWindow
+            val uid = "p$periodIndex"
+            period.set(uid, uid, windowIndex, 1_000_000L, 0L)
+            return period
+        }
+
+        override fun getIndexOfPeriod(uid: Any): Int {
+            val index = uid.toString().removePrefix("p").toIntOrNull() ?: return C.INDEX_UNSET
+            return if (index in 0 until getPeriodCount()) index / periodsPerWindow else C.INDEX_UNSET
+        }
+
+        override fun getUidOfPeriod(periodIndex: Int): Any = "p$periodIndex"
+    }
+
     private class RecordingLoadControl(private val allocator: Allocator) : LoadControl {
         var tracksSelectedCalls = 0
         var onReleasedCalls = 0
@@ -27,6 +86,12 @@ class AdaptiveStabilityLoadControlTest {
         var shouldContinuePreloadingCalls = 0
 
         override fun getAllocator(playerId: PlayerId): Allocator = allocator
+
+        override fun onPrepared(playerId: PlayerId) {
+        }
+
+        override fun onStopped(playerId: PlayerId) {
+        }
 
         override fun shouldContinuePreloading(
             playerId: PlayerId,
@@ -68,6 +133,25 @@ class AdaptiveStabilityLoadControlTest {
         0L,
         0L
     )
+
+    private fun parameters(
+        timeline: Timeline,
+        periodUid: String,
+        playerId: PlayerId = PlayerId.UNSET
+    ) = LoadControl.Parameters(
+        playerId,
+        timeline,
+        MediaSource.MediaPeriodId(periodUid),
+        0L,
+        0L,
+        1f,
+        true,
+        false,
+        0L,
+        0L
+    )
+
+    private fun mediaItem(id: String): MediaItem = MediaItem.Builder().setMediaId(id).build()
 
     private fun emptyTrackSelections(): Array<ExoTrackSelection?> = arrayOfNulls(0)
 
@@ -167,49 +251,112 @@ class AdaptiveStabilityLoadControlTest {
     }
 
     @Test
-    fun maintainsSeparateProfilesForDifferentPeriods() {
+    fun sameMediaItemAcrossPeriodsDoesNotResampleProfile() {
         val normal = recordingControl()
         val stable = recordingControl()
-
-        // At start, signals requests NORMAL. But let's say the current track triggers STABLE.
-        val signals = object : PlaybackStabilityProfileSource {
-            var request = PlaybackStabilityProfile.Normal
-            override fun requestedProfile(): PlaybackStabilityProfile = request
-        }
+        val signals = ScriptedSignals(ArrayDeque(listOf(PlaybackStabilityProfile.Stable)))
         val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+        val timeline = FakeTimeline(listOf(mediaItem("m1")), periodsPerWindow = 2)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
+        control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(1, signals.calls)
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
+    }
 
-        // Track 1 becomes active while Normal is requested
-        signals.request = PlaybackStabilityProfile.Normal
-        val period1 = parametersWithPeriod(MediaSource.MediaPeriodId("p1"))
-        control.onTracksSelected(period1, TrackGroupArray.EMPTY, emptyTrackSelections())
+    @Test
+    fun reselectionOfSameItemDoesNotResampleProfile() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val signals = ScriptedSignals(ArrayDeque(listOf(PlaybackStabilityProfile.Stable)))
+        val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+        val timeline = FakeTimeline(listOf(mediaItem("m1")), periodsPerWindow = 1)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(1, signals.calls)
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
+    }
 
-        // Now it degrades and requests Stable.
-        signals.request = PlaybackStabilityProfile.Stable
+    @Test
+    fun newMediaItemResamplesRequestedProfile() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val signals = ScriptedSignals(ArrayDeque(listOf(PlaybackStabilityProfile.Stable, PlaybackStabilityProfile.Normal)))
+        val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+        val timeline = FakeTimeline(listOf(mediaItem("m1"), mediaItem("m2")), periodsPerWindow = 1)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
+        control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(2, signals.calls)
+        assertEquals(PlaybackStabilityProfile.Normal, control.activeProfile)
+    }
 
-        // Next track (preload) starts buffering while Stable is requested
-        val period2 = parametersWithPeriod(MediaSource.MediaPeriodId("p2"))
-        control.onTracksSelected(period2, TrackGroupArray.EMPTY, emptyTrackSelections())
+    @Test
+    fun normalToStableAppliesOnlyOnNextMediaItem() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val signals = ScriptedSignals(ArrayDeque(listOf(PlaybackStabilityProfile.Normal, PlaybackStabilityProfile.Stable)))
+        val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+        val timeline = FakeTimeline(listOf(mediaItem("m1"), mediaItem("m2")), periodsPerWindow = 1)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(PlaybackStabilityProfile.Normal, control.activeProfile)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(1, signals.calls)
+        assertEquals(PlaybackStabilityProfile.Normal, control.activeProfile)
+        control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(2, signals.calls)
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
+    }
 
-        // Verify shouldContinueLoading uses different load controls for each period
-        control.shouldContinueLoading(period1)
-        assertEquals(1, normal.shouldContinueLoadingCalls)
-        assertEquals(0, stable.shouldContinueLoadingCalls) // period1 is still Normal
+    @Test
+    fun stableToNormalAppliesOnlyOnNextMediaItem() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val signals = ScriptedSignals(ArrayDeque(listOf(PlaybackStabilityProfile.Stable, PlaybackStabilityProfile.Normal)))
+        val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+        val timeline = FakeTimeline(listOf(mediaItem("m1"), mediaItem("m2")), periodsPerWindow = 1)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
+        control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(PlaybackStabilityProfile.Normal, control.activeProfile)
+        assertEquals(2, signals.calls)
+    }
 
-        control.shouldContinueLoading(period2)
-        assertEquals(1, normal.shouldContinueLoadingCalls)
-        assertEquals(1, stable.shouldContinueLoadingCalls) // period2 is Stable
+    @Test
+    fun profileMappingIsBounded() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val control = AdaptiveStabilityLoadControl(normal, stable, FixedProfileSignals(PlaybackStabilityProfile.Normal))
+        val timeline = FakeTimeline((1..12).map { mediaItem("m$it") }, periodsPerWindow = 1)
+        (0..11).forEach { index ->
+            control.onTracksSelected(parameters(timeline, "p$index"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        }
+        assertTrue(control.trackedMediaItemCount() <= 8)
+    }
+
+    @Test
+    fun onStoppedClearsProfileMapping() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val control = AdaptiveStabilityLoadControl(normal, stable, FixedProfileSignals(PlaybackStabilityProfile.Normal))
+        val timeline = FakeTimeline(listOf(mediaItem("m1"), mediaItem("m2")), periodsPerWindow = 1)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(2, control.trackedMediaItemCount())
+        control.onStopped(PlayerId.UNSET)
+        assertEquals(0, control.trackedMediaItemCount())
+    }
+
+    @Test
+    fun onReleasedClearsProfileMapping() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val control = AdaptiveStabilityLoadControl(normal, stable, FixedProfileSignals(PlaybackStabilityProfile.Normal))
+        val timeline = FakeTimeline(listOf(mediaItem("m1"), mediaItem("m2")), periodsPerWindow = 1)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(2, control.trackedMediaItemCount())
+        control.onReleased(PlayerId.UNSET)
+        assertEquals(0, control.trackedMediaItemCount())
     }
 }
-
-private fun parametersWithPeriod(mediaPeriodId: MediaSource.MediaPeriodId) = LoadControl.Parameters(
-    PlayerId.UNSET,
-    Timeline.EMPTY,
-    mediaPeriodId,
-    0L,
-    0L,
-    1f,
-    true,
-    false,
-    0L,
-    0L
-)
