@@ -70,29 +70,35 @@ internal fun isPublicInternetAddress(address: InetAddress): Boolean {
         address.isMulticastAddress
     ) return false
     val raw = address.address
-    if (raw.size == 4) {
-        val first = raw[0].toInt() and 0xff
-        val second = raw[1].toInt() and 0xff
-        val third = raw[2].toInt() and 0xff
-        return when {
-            first == 0 || first == 10 || first == 127 || first >= 224 -> false
-            first == 100 && second in 64..127 -> false
-            first == 169 && second == 254 -> false
-            first == 172 && second in 16..31 -> false
-            first == 192 && second == 0 -> false
-            first == 192 && second == 168 -> false
-            first == 192 && second == 0 && third == 2 -> false
-            first == 198 && second in 18..19 -> false
-            first == 198 && second == 51 && third == 100 -> false
-            first == 203 && second == 0 && third == 113 -> false
-            else -> true
-        }
+    return when (raw.size) {
+        4 -> isPublicIpv4(raw)
+        16 -> isPublicIpv6(raw)
+        else -> false
     }
-    if (raw.size == 16) {
-        val first = raw[0].toInt() and 0xff
-        val second = raw[1].toInt() and 0xff
-        if (first and 0xfe == 0xfc) return false
-        if (first == 0x20 && second == 0x01 && raw[2] == 0x0d.toByte() && raw[3] == 0xb8.toByte()) return false
+}
+
+private fun isPublicIpv4(raw: ByteArray): Boolean {
+    val first = raw[0].toInt() and 0xff
+    val second = raw[1].toInt() and 0xff
+    val third = raw[2].toInt() and 0xff
+    return when {
+        first == 0 || first == 10 || first == 127 || first >= 224 -> false
+        first == 100 && second in 64..127 -> false
+        first == 169 && second == 254 -> false
+        first == 172 && second in 16..31 -> false
+        first == 192 && second == 0 -> false
+        first == 192 && second == 168 -> false
+        first == 198 && second in 18..19 -> false
+        first == 198 && second == 51 && third == 100 -> false
+        first == 203 && second == 0 && third == 113 -> false
+        else -> true
     }
-    return true
+}
+
+private fun isPublicIpv6(raw: ByteArray): Boolean {
+    val first = raw[0].toInt() and 0xff
+    val second = raw[1].toInt() and 0xff
+    if (raw.take(12).all { it == 0.toByte() }) return false
+    if (first and 0xfe == 0xfc) return false
+    return !(first == 0x20 && second == 0x01 && raw[2] == 0x0d.toByte() && raw[3] == 0xb8.toByte())
 }

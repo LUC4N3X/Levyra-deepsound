@@ -132,6 +132,12 @@ internal class PipedRescueClient(
 
     private data class ResolutionAttempt(val value: PipedResolvedStream?)
 
+    private sealed interface ApiLookup {
+        data class Success(val response: PipedHttpResponse) : ApiLookup
+        data object TryNext : ApiLookup
+        data object VideoMissing : ApiLookup
+    }
+
     private val lock = Any()
     private val instanceHealth = mutableMapOf<String, MutableHealth>()
     private val negativeCache = object : LinkedHashMap<NegativeKey, Long>(32, 0.75f, true) {
@@ -173,118 +179,134 @@ internal class PipedRescueClient(
         if (hasNegative(videoId, null, PipedFailureKind.VIDEO_NOT_FOUND)) return null
         Timber.i("Piped rescue activated")
         for (instance in orderedInstances(videoId)) {
-            val requestUrl = "${instance.apiBaseUrl}/streams/$videoId"
             Timber.i("Piped instance %s selected", instance.id)
-            val response = try {
-                exchange.execute(
-                    PipedHttpRequest(
-                        url = requestUrl,
-                        headers = API_HEADERS,
-                        kind = PipedRequestKind.API,
-                        maxBodyBytes = PipedRescuePolicy.MAX_RESPONSE_BYTES
-                    )
-                )
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Throwable) {
-                val kind = if (error.isTimeout()) PipedFailureKind.TIMEOUT else PipedFailureKind.TRANSPORT
-                recordFailure(videoId, instance, kind, null)
-                Timber.w("Piped instance %s %s", instance.id, kind.name.lowercase())
-                continue
+            val response = when (val lookup = fetchStreams(videoId, instance)) {
+                is ApiLookup.Success -> lookup.response
+                ApiLookup.TryNext -> continue
+                ApiLookup.VideoMissing -> return null
             }
-
-            when (response.statusCode) {
-                200 -> Unit
-                403 -> {
-                    recordFailure(videoId, instance, PipedFailureKind.HTTP_403, response.latencyMs)
-                    continue
-                }
-                404 -> {
-                    putNegative(videoId, null, PipedFailureKind.VIDEO_NOT_FOUND)
-                    return null
-                }
-                429 -> {
-                    recordFailure(videoId, instance, PipedFailureKind.RATE_LIMITED, response.latencyMs)
-                    continue
-                }
-                in 500..599 -> {
-                    recordFailure(videoId, instance, PipedFailureKind.SERVER, response.latencyMs)
-                    continue
-                }
-                else -> {
-                    recordFailure(videoId, instance, PipedFailureKind.TRANSPORT, response.latencyMs)
-                    continue
-                }
-            }
-
-            val candidates = try {
-                parseCandidates(response.body, audioQuality)
-            } catch (_: JSONException) {
-                recordFailure(videoId, instance, PipedFailureKind.INVALID_JSON, response.latencyMs)
-                continue
-            }
-            if (candidates.isEmpty()) {
-                recordFailure(videoId, instance, PipedFailureKind.EMPTY_AUDIO, response.latencyMs)
-                continue
-            }
-            for (candidate in candidates.take(MAX_STREAM_PROBES_PER_INSTANCE)) {
-                val resource = candidate.resourceKey()
-                if (hasNegative(videoId, instance.id, PipedFailureKind.STREAM_FORBIDDEN, resource) ||
-                    hasNegative(videoId, instance.id, PipedFailureKind.STREAM_UNREACHABLE, resource)
-                ) continue
-                val probe = try {
-                    exchange.execute(
-                        PipedHttpRequest(
-                            url = candidate.url,
-                            headers = STREAM_PROBE_HEADERS,
-                            kind = PipedRequestKind.STREAM_PROBE,
-                            maxBodyBytes = 0L
-                        )
-                    )
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (error: Throwable) {
-                    val kind = if (error.isTimeout()) PipedFailureKind.TIMEOUT else PipedFailureKind.STREAM_UNREACHABLE
-                    recordFailure(videoId, instance, kind, null, resource)
-                    continue
-                }
-                if (probe.statusCode == 403) {
-                    recordFailure(videoId, instance, PipedFailureKind.STREAM_FORBIDDEN, probe.latencyMs, resource)
-                    continue
-                }
-                if (probe.statusCode == 429) {
-                    recordFailure(videoId, instance, PipedFailureKind.RATE_LIMITED, probe.latencyMs, resource)
-                    continue
-                }
-                if (probe.statusCode !in 200..299 && probe.statusCode != 206) {
-                    recordFailure(videoId, instance, PipedFailureKind.STREAM_UNREACHABLE, probe.latencyMs, resource)
-                    continue
-                }
-                if (probe.contentType.isExplicitlyNonAudio()) {
-                    recordFailure(videoId, instance, PipedFailureKind.STREAM_UNREACHABLE, probe.latencyMs, resource)
-                    continue
-                }
-                recordSuccess(instance, response.latencyMs + probe.latencyMs)
-                Timber.i(
-                    "Piped %s audio selected: %s %dk via=%s",
-                    if (candidate.proxied) "proxy" else "direct",
-                    candidate.codec.ifBlank { candidate.mimeType },
-                    candidate.bitrate / 1_000,
-                    instance.id
-                )
-                return PipedResolvedStream(
-                    url = candidate.url,
-                    mimeType = candidate.mimeType,
-                    codec = candidate.codec,
-                    bitrate = candidate.bitrate,
-                    instanceId = instance.id,
-                    proxied = candidate.proxied,
-                    expiresAtMs = candidate.url.expirationMs()
-                )
-            }
+            val candidates = parseInstanceCandidates(videoId, audioQuality, instance, response) ?: continue
+            probeCandidates(videoId, instance, response, candidates)?.let { return it }
         }
         return null
     }
+
+    private suspend fun fetchStreams(videoId: String, instance: PipedInstance): ApiLookup {
+        val response = try {
+            exchange.execute(
+                PipedHttpRequest(
+                    url = "${instance.apiBaseUrl}/streams/$videoId",
+                    headers = API_HEADERS,
+                    kind = PipedRequestKind.API,
+                    maxBodyBytes = PipedRescuePolicy.MAX_RESPONSE_BYTES
+                )
+            )
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Throwable) {
+            val kind = if (error.isTimeout()) PipedFailureKind.TIMEOUT else PipedFailureKind.TRANSPORT
+            recordFailure(videoId, instance, kind, null)
+            Timber.w("Piped instance %s %s", instance.id, kind.name.lowercase())
+            return ApiLookup.TryNext
+        }
+        val failure = response.failureKind() ?: return ApiLookup.Success(response)
+        if (failure == PipedFailureKind.VIDEO_NOT_FOUND) {
+            putNegative(videoId, null, failure)
+            return ApiLookup.VideoMissing
+        }
+        recordFailure(videoId, instance, failure, response.latencyMs)
+        return ApiLookup.TryNext
+    }
+
+    private fun parseInstanceCandidates(
+        videoId: String,
+        audioQuality: String,
+        instance: PipedInstance,
+        response: PipedHttpResponse
+    ): List<Candidate>? {
+        val candidates = try {
+            parseCandidates(response.body, audioQuality)
+        } catch (_: JSONException) {
+            recordFailure(videoId, instance, PipedFailureKind.INVALID_JSON, response.latencyMs)
+            return null
+        }
+        if (candidates.isEmpty()) {
+            recordFailure(videoId, instance, PipedFailureKind.EMPTY_AUDIO, response.latencyMs)
+            return null
+        }
+        return candidates
+    }
+
+    private suspend fun probeCandidates(
+        videoId: String,
+        instance: PipedInstance,
+        apiResponse: PipedHttpResponse,
+        candidates: List<Candidate>
+    ): PipedResolvedStream? {
+        for (candidate in candidates.take(MAX_STREAM_PROBES_PER_INSTANCE)) {
+            val probe = probeCandidate(videoId, instance, candidate) ?: continue
+            recordSuccess(instance, apiResponse.latencyMs + probe.latencyMs)
+            Timber.i(
+                "Piped %s audio selected: %s %dk via=%s",
+                if (candidate.proxied) "proxy" else "direct",
+                candidate.codec.ifBlank { candidate.mimeType },
+                candidate.bitrate / 1_000,
+                instance.id
+            )
+            return candidate.toResolvedStream(instance)
+        }
+        return null
+    }
+
+    private suspend fun probeCandidate(
+        videoId: String,
+        instance: PipedInstance,
+        candidate: Candidate
+    ): PipedHttpResponse? {
+        val resource = candidate.resourceKey()
+        if (hasNegative(videoId, instance.id, PipedFailureKind.STREAM_FORBIDDEN, resource) ||
+            hasNegative(videoId, instance.id, PipedFailureKind.STREAM_UNREACHABLE, resource)
+        ) return null
+        val response = try {
+            exchange.execute(PipedHttpRequest(candidate.url, STREAM_PROBE_HEADERS, PipedRequestKind.STREAM_PROBE, 0L))
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Throwable) {
+            val kind = if (error.isTimeout()) PipedFailureKind.TIMEOUT else PipedFailureKind.STREAM_UNREACHABLE
+            recordFailure(videoId, instance, kind, null, resource)
+            return null
+        }
+        val failure = response.streamFailureKind() ?: return response
+        recordFailure(videoId, instance, failure, response.latencyMs, resource)
+        return null
+    }
+
+    private fun PipedHttpResponse.failureKind(): PipedFailureKind? = when (statusCode) {
+        200 -> null
+        403 -> PipedFailureKind.HTTP_403
+        404 -> PipedFailureKind.VIDEO_NOT_FOUND
+        429 -> PipedFailureKind.RATE_LIMITED
+        in 500..599 -> PipedFailureKind.SERVER
+        else -> PipedFailureKind.TRANSPORT
+    }
+
+    private fun PipedHttpResponse.streamFailureKind(): PipedFailureKind? = when {
+        statusCode == 403 -> PipedFailureKind.STREAM_FORBIDDEN
+        statusCode == 429 -> PipedFailureKind.RATE_LIMITED
+        statusCode !in 200..299 -> PipedFailureKind.STREAM_UNREACHABLE
+        contentType.isExplicitlyNonAudio() -> PipedFailureKind.STREAM_UNREACHABLE
+        else -> null
+    }
+
+    private fun Candidate.toResolvedStream(instance: PipedInstance) = PipedResolvedStream(
+        url = url,
+        mimeType = mimeType,
+        codec = codec,
+        bitrate = bitrate,
+        instanceId = instance.id,
+        proxied = proxied,
+        expiresAtMs = url.expirationMs()
+    )
 
     private fun parseCandidates(body: String, audioQuality: String): List<Candidate> {
         val root = JSONObject(body)
