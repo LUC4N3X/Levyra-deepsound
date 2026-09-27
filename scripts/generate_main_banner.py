@@ -86,11 +86,11 @@ def get_font(size, bold=False, light=False):
         if os.path.exists(font_path):
             try:
                 return ImageFont.truetype(font_path, size)
-            except Exception:
-                pass
+            except OSError:
+                continue
     try:
         return ImageFont.load_default(size)
-    except Exception:
+    except TypeError:
         return ImageFont.load_default()
 
 def draw_vector_diamond(draw, center, radius, color):
@@ -256,7 +256,11 @@ def draw_platform_icons(light_mode=False, ss=4):
     draw.rounded_rectangle([wx, wy + ph + gap, wx + pw, wy + wh], radius=int(1.5*ss), fill=color)
     draw.rounded_rectangle([wx + pw + gap, wy + ph + gap, wx + ww, wy + wh], radius=int(1.5*ss), fill=color)
 
-    return img.resize((260, 64), Image.Resampling.LANCZOS)
+    res = img.resize((260, 64), Image.Resampling.LANCZOS)
+    bbox = res.getbbox()
+    if bbox:
+        return res.crop((max(0, bbox[0] - 4), bbox[1], min(res.width, bbox[2] + 4), bbox[3]))
+    return res
 
 def generate_dark_unified_banner():
     """Generates the dark mode unified banner with concert stage backdrop."""
@@ -339,45 +343,25 @@ def generate_dark_unified_banner():
     add_floor_reflection(canvas, logo_resized, logo_x, logo_base, max_alpha=75, fade_height=200, blur_val=8)
     canvas.paste(logo_resized, (logo_x, logo_y), logo_resized)
 
-    # 6. Middle Typography & Badges
+    # 6. Middle Typography & Platform Icons (Centered underneath, no badges)
     mid_x = logo_x + target_w + 65
     draw = ImageDraw.Draw(canvas)
-    tagline_font = get_font(58, light=True)
-    tag_y = 295
+    tagline_font = get_font(68, light=True)
+    tag_y = 350
     draw.text((mid_x, tag_y), "Hear every layer.", font=tagline_font, fill=(240, 245, 255, 255))
 
-    sub_font = get_font(23, light=False)
-    sub_y = tag_y + 82
-    draw.text((mid_x, sub_y), "Open-source music player for Android and Windows.", font=sub_font, fill=(175, 195, 225, 235))
+    sub_font = get_font(28, light=False)
+    sub_y = tag_y + 92
+    sub_text = "Open-source music player for Android and Windows."
+    draw.text((mid_x, sub_y), sub_text, font=sub_font, fill=(175, 195, 225, 235))
+
+    sub_bbox = sub_font.getbbox(sub_text)
+    sub_w = sub_bbox[2] - sub_bbox[0]
 
     icons = draw_platform_icons(light_mode=False)
-    icons_y = sub_y + 65
-    canvas.paste(icons, (mid_x, icons_y), icons)
-
-    pills = [
-        ("Lossless Audio", (0, 210, 255)),
-        ("Synced Lyrics", (195, 55, 235)),
-        ("Zero Tracking", (55, 170, 250)),
-        ("100% Free & Open Source", (150, 180, 225))
-    ]
-    pill_font = get_font(18, bold=True)
-    row1, row2 = pills[:2], pills[2:]
-    p_base_y = icons_y + 90
-    for row, y_pos in [(row1, p_base_y), (row2, p_base_y + 50)]:
-        curr_x = mid_x
-        for label, glow_col in row:
-            bbox = pill_font.getbbox(label)
-            pw = bbox[2] - bbox[0] + 46
-            ph = 36
-            p_surf = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
-            p_draw = ImageDraw.Draw(p_surf)
-            p_draw.rounded_rectangle([0, 0, pw - 1, ph - 1], radius=ph // 2,
-                                     fill=(255, 255, 255, 16),
-                                     outline=(glow_col[0], glow_col[1], glow_col[2], 100), width=1)
-            draw_vector_diamond(p_draw, (16, ph // 2), 6, (glow_col[0], glow_col[1], glow_col[2], 240))
-            p_draw.text((28, (ph - (bbox[3] - bbox[1])) // 2 - bbox[1]), label, font=pill_font, fill=(230, 240, 255, 245))
-            canvas.paste(p_surf, (curr_x, y_pos), p_surf)
-            curr_x += pw + 14
+    icons_x = mid_x + (sub_w - icons.width) // 2
+    icons_y = sub_y + 68
+    canvas.paste(icons, (icons_x, icons_y), icons)
 
     # 7. Phones
     phone_hero = create_ultra_flagship_phone(SCREEN_HOME_PATH, target_height=855, light_mode=False)
@@ -485,45 +469,25 @@ def generate_light_unified_banner():
     add_floor_reflection(canvas, logo_resized, logo_x, logo_base, max_alpha=40, fade_height=190, blur_val=7)
     canvas.paste(logo_resized, (logo_x, logo_y), logo_resized)
 
-    # 6. Middle Typography & Badges (Dark Slate)
+    # 6. Middle Typography & Platform Icons (Centered underneath, no badges)
     mid_x = logo_x + target_w + 65
     draw = ImageDraw.Draw(canvas)
-    tagline_font = get_font(58, bold=True)
-    tag_y = 295
+    tagline_font = get_font(68, bold=True)
+    tag_y = 350
     draw.text((mid_x, tag_y), "Hear every layer.", font=tagline_font, fill=(15, 23, 42, 255))
 
-    sub_font = get_font(23, light=False)
-    sub_y = tag_y + 82
-    draw.text((mid_x, sub_y), "Open-source music player for Android and Windows.", font=sub_font, fill=(71, 85, 105, 240))
+    sub_font = get_font(28, light=False)
+    sub_y = tag_y + 92
+    sub_text = "Open-source music player for Android and Windows."
+    draw.text((mid_x, sub_y), sub_text, font=sub_font, fill=(71, 85, 105, 240))
+
+    sub_bbox = sub_font.getbbox(sub_text)
+    sub_w = sub_bbox[2] - sub_bbox[0]
 
     icons = draw_platform_icons(light_mode=True)
-    icons_y = sub_y + 65
-    canvas.paste(icons, (mid_x, icons_y), icons)
-
-    pills = [
-        ("Lossless Audio", (0, 160, 220)),
-        ("Synced Lyrics", (170, 45, 210)),
-        ("Zero Tracking", (30, 130, 215)),
-        ("100% Free & Open Source", (100, 120, 160))
-    ]
-    pill_font = get_font(18, bold=True)
-    row1, row2 = pills[:2], pills[2:]
-    p_base_y = icons_y + 90
-    for row, y_pos in [(row1, p_base_y), (row2, p_base_y + 50)]:
-        curr_x = mid_x
-        for label, glow_col in row:
-            bbox = pill_font.getbbox(label)
-            pw = bbox[2] - bbox[0] + 46
-            ph = 36
-            p_surf = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
-            p_draw = ImageDraw.Draw(p_surf)
-            p_draw.rounded_rectangle([0, 0, pw - 1, ph - 1], radius=ph // 2,
-                                     fill=(255, 255, 255, 220),
-                                     outline=(glow_col[0], glow_col[1], glow_col[2], 120), width=1)
-            draw_vector_diamond(p_draw, (16, ph // 2), 6, (glow_col[0], glow_col[1], glow_col[2], 255))
-            p_draw.text((28, (ph - (bbox[3] - bbox[1])) // 2 - bbox[1]), label, font=pill_font, fill=(15, 23, 42, 245))
-            canvas.paste(p_surf, (curr_x, y_pos), p_surf)
-            curr_x += pw + 14
+    icons_x = mid_x + (sub_w - icons.width) // 2
+    icons_y = sub_y + 68
+    canvas.paste(icons, (icons_x, icons_y), icons)
 
     # 7. Phones
     phone_hero = create_ultra_flagship_phone(SCREEN_HOME_PATH, target_height=855, light_mode=True)
