@@ -183,6 +183,7 @@ import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.LyricsTranslationState
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
+import com.luc4n3x.levyra.domain.MixLabCandidate
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
@@ -795,6 +796,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         gateway = PlaylistStudioStoreGateway(application.applicationContext, playlistStore) { playlistId ->
             loadPlaylists()
             viewModelScope.launch { refreshOpenPlaylist(playlistId) }
+        }
+    )
+    val mixLab = MixLabController(
+        scope = viewModelScope,
+        gateway = object : MixLabGateway {
+            override suspend fun candidatePool(): List<MixLabCandidate> {
+                val current = _state.value
+                return MixLabCandidateSource.assemble(
+                    favorites = current.favorites,
+                    homeSections = current.homeSections,
+                    charts = current.charts,
+                    followedArtistsStore = followedArtistsStore,
+                    listeningPulseStore = listeningPulseStore
+                )
+            }
+
+            override suspend fun exclusions(): ArtistExclusions = _state.value.artistExclusions
+
+            override suspend fun canonicalSources(): List<Track> = _state.value.favorites + _state.value.charts
+
+            override suspend fun saveAsPlaylist(name: String, tracks: List<Track>): String {
+                val playlist = playlistStore.createForStudio(name, tracks)
+                createPlaylistTag(MIX_LAB_PLAYLIST_TAG, assignToPlaylistId = playlist.id)
+                return playlist.id
+            }
+
+            override fun onSaved(playlistId: String) {
+                loadPlaylists()
+                viewModelScope.launch { refreshOpenPlaylist(playlistId) }
+            }
         }
     )
     private val preferences = LevyraPreferences(application.applicationContext)
@@ -3486,6 +3517,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun closePlaylistStudio() = playlistStudio.close()
+
+    fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) {
+        mixLab.open(initialParams)
+    }
+
+    fun closeMixLab() = mixLab.close()
+
+    fun playMixLabResult(shuffled: Boolean = false) {
+        val tracks = mixLab.session.value?.result?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        playAll(if (shuffled) tracks.shuffled() else tracks)
+    }
+
+    fun addMixLabResultToQueue() {
+        val tracks = mixLab.session.value?.result?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        queueEngine.addLast(tracks)
+    }
 
     fun playPlaylist(playlistId: String, startTrackId: String? = null) {
         viewModelScope.launch {
@@ -11603,6 +11652,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         const val MIX_RADIO_LIMIT = 25
         const val MIX_SEARCH_LIMIT = 40
         const val MIX_HISTORY_DAYS = 180
+        const val MIX_LAB_PLAYLIST_TAG = "Mix Lab"
         const val MIX_SURPRISE_ANCHORS = 3
         const val MIX_UNAVAILABLE_MARKER = "levyra_mix_unavailable"
         const val JAM_TRACK_SOURCE = "jam"
