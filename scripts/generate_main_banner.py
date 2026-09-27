@@ -13,6 +13,9 @@ LOGO_SRC_PATH = r"C:/Users/Luca Drogo/.gemini/antigravity/brain/56548c8c-b7bc-4d
 SCREEN_HOME_PATH = r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_171253_LEVYRA.jpg"
 SCREEN_PLAYER_PATH = r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193948_LEVYRA.jpg"
 
+BG_DARK_CONCERT = r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\minimal_concert_stage_1790508945319.jpg"
+BG_LIGHT_CONCERT = r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\light_concert_stage_1790508968511.jpg"
+
 OUTPUT_DARK_PATH = r"docs\assets\levyra-github-banner.webp"
 OUTPUT_LIGHT_PATH = r"docs\assets\levyra-github-banner-light.webp"
 
@@ -206,81 +209,69 @@ def draw_platform_icons(light_mode=False, ss=4):
     return img.resize((260, 64), Image.Resampling.LANCZOS)
 
 def generate_dark_unified_banner():
-    # 1. Base Gradient
-    base_arr = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
-    for y in range(HEIGHT):
-        ratio = y / float(HEIGHT)
-        r = int(5 * (1.0 - ratio * 0.3))
-        g = int(7 + 4 * (1.0 - ratio))
-        b = int(14 + 14 * (1.0 - ratio * 0.5))
-        base_arr[y, :, 0] = r
-        base_arr[y, :, 1] = g
-        base_arr[y, :, 2] = b
-        base_arr[y, :, 3] = 255
-    canvas = Image.fromarray(base_arr, "RGBA")
+    # 1. Concert Stage Base Background
+    if os.path.exists(BG_DARK_CONCERT):
+        bg_src = Image.open(BG_DARK_CONCERT).convert('RGBA')
+        new_w = WIDTH
+        new_h = int(bg_src.height * (WIDTH / float(bg_src.width)))
+        bg_resized = bg_src.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        canvas = bg_resized.crop((0, 60, WIDTH, 60 + HEIGHT))
+    else:
+        base_arr = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
+        for y in range(HEIGHT):
+            ratio = y / float(HEIGHT)
+            base_arr[y, :, 0] = int(5 * (1.0 - ratio * 0.3))
+            base_arr[y, :, 1] = int(7 + 4 * (1.0 - ratio))
+            base_arr[y, :, 2] = int(14 + 14 * (1.0 - ratio * 0.5))
+            base_arr[y, :, 3] = 255
+        canvas = Image.fromarray(base_arr, "RGBA")
 
-    # 2. Stage spotlights
-    beam_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-    bdraw = ImageDraw.Draw(beam_layer)
-    bdraw.polygon([(250, 0), (550, 0), (700, 850), (100, 850)], fill=(0, 200, 255, 18))
-    bdraw.polygon([(1100, 0), (1450, 0), (1600, 850), (950, 850)], fill=(40, 70, 220, 16))
-    bdraw.polygon([(1850, 0), (2250, 0), (2450, 850), (1650, 850)], fill=(180, 40, 220, 20))
-    bdraw.polygon([(2300, 0), (2650, 0), (2800, 850), (2150, 850)], fill=(0, 180, 255, 18))
-    beam_blur = beam_layer.filter(ImageFilter.GaussianBlur(90))
-    canvas = Image.alpha_composite(canvas, beam_blur)
-
-    # 3. Glows
+    # 2. Ambient Concert Glow Highlights
     glow_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     gdraw = ImageDraw.Draw(glow_layer)
-    for r in range(480, 0, -20):
-        gdraw.ellipse([460 - r, 380 - r, 460 + r, 380 + r], fill=(0, 210, 255, int(42 * (1.0 - (r / 480.0)**0.8))))
-    for r in range(420, 0, -20):
-        gdraw.ellipse([540 - r, 440 - r, 540 + r, 440 + r], fill=(190, 40, 230, int(35 * (1.0 - (r / 420.0)**0.8))))
-    for r in range(540, 0, -20):
-        gdraw.ellipse([2100 - r, 400 - r, 2100 + r, 400 + r], fill=(90, 50, 230, int(45 * (1.0 - (r / 540.0)**0.8))))
-    for r in range(460, 0, -20):
-        gdraw.ellipse([1850 - r, 340 - r, 1850 + r, 340 + r], fill=(0, 190, 255, int(38 * (1.0 - (r / 460.0)**0.8))))
-    for r in range(440, 0, -20):
-        gdraw.ellipse([2350 - r, 420 - r, 2350 + r, 420 + r], fill=(210, 35, 190, int(40 * (1.0 - (r / 440.0)**0.8))))
-    glow_blur = glow_layer.filter(ImageFilter.GaussianBlur(80))
-    canvas = Image.alpha_composite(canvas, glow_blur)
+    for r in range(450, 0, -25):
+        gdraw.ellipse([480 - r, 420 - r, 480 + r, 420 + r], fill=(0, 210, 255, int(28 * (1.0 - (r / 450.0)**0.8))))
+        gdraw.ellipse([540 - r, 460 - r, 540 + r, 460 + r], fill=(195, 40, 230, int(22 * (1.0 - (r / 420.0)**0.8))))
+    for r in range(500, 0, -25):
+        gdraw.ellipse([2100 - r, 420 - r, 2100 + r, 420 + r], fill=(100, 60, 240, int(30 * (1.0 - (r / 500.0)**0.8))))
+        gdraw.ellipse([1850 - r, 360 - r, 1850 + r, 360 + r], fill=(0, 190, 255, int(26 * (1.0 - (r / 460.0)**0.8))))
+        gdraw.ellipse([2350 - r, 440 - r, 2350 + r, 440 + r], fill=(210, 35, 190, int(28 * (1.0 - (r / 440.0)**0.8))))
+    canvas = Image.alpha_composite(canvas, glow_layer.filter(ImageFilter.GaussianBlur(70)))
 
-    # 4. Acoustic Waves
+    # 3. Acoustic Soundwave Ribbons (Music energy)
     ribbon_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     rdraw = ImageDraw.Draw(ribbon_layer)
     pts_cyan, pts_mag, pts_indigo = [], [], []
     for x in range(0, WIDTH + 40, 12):
-        yc = int(380 + 125 * math.sin(x * 0.0021 - 0.3) + 50 * math.sin(x * 0.0042))
-        ym = int(425 + 135 * math.sin(x * 0.0018 + 1.2) + 60 * math.cos(x * 0.0036))
-        yi = int(470 + 115 * math.cos(x * 0.0020 + 0.6) + 45 * math.sin(x * 0.0048))
+        yc = int(480 + 95 * math.sin(x * 0.0022 - 0.2) + 40 * math.sin(x * 0.0044))
+        ym = int(520 + 105 * math.sin(x * 0.0019 + 1.1) + 45 * math.cos(x * 0.0038))
+        yi = int(560 + 90 * math.cos(x * 0.0021 + 0.5) + 35 * math.sin(x * 0.0050))
         pts_cyan.append((x, yc))
         pts_mag.append((x, ym))
         pts_indigo.append((x, yi))
     for i in range(len(pts_cyan) - 1):
-        rdraw.line([pts_indigo[i], pts_indigo[i+1]], fill=(35, 85, 215, 65), width=10)
-        rdraw.line([pts_mag[i], pts_mag[i+1]], fill=(195, 40, 215, 70), width=7)
-        rdraw.line([pts_cyan[i], pts_cyan[i+1]], fill=(0, 225, 255, 75), width=5)
-    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(30)))
-    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(5)))
+        rdraw.line([pts_indigo[i], pts_indigo[i+1]], fill=(35, 85, 215, 45), width=8)
+        rdraw.line([pts_mag[i], pts_mag[i+1]], fill=(195, 40, 215, 50), width=6)
+        rdraw.line([pts_cyan[i], pts_cyan[i+1]], fill=(0, 225, 255, 55), width=4)
+    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(25)))
+    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(4)))
 
-    # 5. Mirror Ground
-    floor_y = 855
+    # 4. Stage Floor Plane
+    floor_y = 865
     floor_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     fdraw = ImageDraw.Draw(floor_layer)
-    fdraw.line([(0, floor_y), (WIDTH, floor_y)], fill=(70, 95, 140, 100), width=1)
-    fdraw.line([(0, floor_y + 1), (WIDTH, floor_y + 1)], fill=(45, 65, 100, 60), width=1)
-    fdraw.line([(0, floor_y + 2), (WIDTH, floor_y + 2)], fill=(25, 38, 65, 35), width=1)
-    for r in range(400, 0, -20):
-        fdraw.ellipse([480 - r, floor_y + 50 - int(r*0.22), 480 + r, floor_y + 50 + int(r*0.22)], fill=(0, 190, 255, int(32 * (1.0 - (r / 400.0)))))
-        fdraw.ellipse([580 - r, floor_y + 60 - int(r*0.20), 580 + r, floor_y + 60 + int(r*0.20)], fill=(190, 45, 220, int(32 * (1.0 - (r / 400.0)))))
-    for r in range(450, 0, -20):
-        fdraw.ellipse([2120 - r, floor_y + 50 - int(r*0.22), 2120 + r, floor_y + 50 + int(r*0.22)], fill=(80, 110, 235, int(36 * (1.0 - (r / 450.0)))))
-        fdraw.ellipse([1850 - r, floor_y + 55 - int(r*0.20), 1850 + r, floor_y + 55 + int(r*0.20)], fill=(0, 205, 255, int(36 * (1.0 - (r / 450.0)))))
-        fdraw.ellipse([2350 - r, floor_y + 55 - int(r*0.20), 2350 + r, floor_y + 55 + int(r*0.20)], fill=(200, 45, 200, int(36 * (1.0 - (r / 450.0)))))
-    floor_layer = floor_layer.filter(ImageFilter.GaussianBlur(38))
+    fdraw.line([(0, floor_y), (WIDTH, floor_y)], fill=(70, 95, 140, 80), width=1)
+    for r in range(400, 0, -25):
+        fdraw.ellipse([480 - r, floor_y + 45 - int(r*0.20), 480 + r, floor_y + 45 + int(r*0.20)], fill=(0, 190, 255, int(28 * (1.0 - (r / 400.0)))))
+        fdraw.ellipse([580 - r, floor_y + 55 - int(r*0.18), 580 + r, floor_y + 55 + int(r*0.18)], fill=(190, 45, 220, int(28 * (1.0 - (r / 400.0)))))
+    for r in range(450, 0, -25):
+        fdraw.ellipse([2120 - r, floor_y + 45 - int(r*0.20), 2120 + r, floor_y + 45 + int(r*0.20)], fill=(80, 110, 235, int(30 * (1.0 - (r / 450.0)))))
+        fdraw.ellipse([1850 - r, floor_y + 50 - int(r*0.18), 1850 + r, floor_y + 50 + int(r*0.18)], fill=(0, 205, 255, int(30 * (1.0 - (r / 450.0)))))
+        fdraw.ellipse([2350 - r, floor_y + 50 - int(r*0.18), 2350 + r, floor_y + 50 + int(r*0.18)], fill=(200, 45, 200, int(30 * (1.0 - (r / 450.0)))))
+    floor_layer = floor_layer.filter(ImageFilter.GaussianBlur(32))
     canvas = Image.alpha_composite(canvas, floor_layer)
 
-    # 6. Unified 3D Logo Lockup
+    # 5. Unified 3D Logo Lockup
     logo_img = Image.open(LOGO_SRC_PATH).convert('RGBA')
     full_logo = logo_img.crop((14, 32, 1006, 946))
     target_h = 780
@@ -290,11 +281,11 @@ def generate_dark_unified_banner():
     logo_y = 115
     logo_base = logo_y + target_h
 
-    add_studio_shadow(canvas, logo_resized, logo_x, logo_y, blur_radius=46, opacity=185, offset=(0, 26))
+    add_studio_shadow(canvas, logo_resized, logo_x, logo_y, blur_radius=46, opacity=195, offset=(0, 26))
     add_floor_reflection(canvas, logo_resized, logo_x, logo_base, max_alpha=75, fade_height=200, blur_val=8)
     canvas.paste(logo_resized, (logo_x, logo_y), logo_resized)
 
-    # 7. Middle Typography & Badges
+    # 6. Middle Typography & Badges
     mid_x = logo_x + target_w + 65
     draw = ImageDraw.Draw(canvas)
     tagline_font = get_font(58, light=True)
@@ -303,7 +294,7 @@ def generate_dark_unified_banner():
 
     sub_font = get_font(23, light=False)
     sub_y = tag_y + 82
-    draw.text((mid_x, sub_y), "Open-source music player for Android and Windows.", font=sub_font, fill=(165, 185, 215, 235))
+    draw.text((mid_x, sub_y), "Open-source music player for Android and Windows.", font=sub_font, fill=(175, 195, 225, 235))
 
     icons = draw_platform_icons(light_mode=False)
     icons_y = sub_y + 65
@@ -327,14 +318,14 @@ def generate_dark_unified_banner():
             p_surf = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
             p_draw = ImageDraw.Draw(p_surf)
             p_draw.rounded_rectangle([0, 0, pw - 1, ph - 1], radius=ph // 2,
-                                     fill=(255, 255, 255, 14),
-                                     outline=(glow_col[0], glow_col[1], glow_col[2], 90), width=1)
+                                     fill=(255, 255, 255, 16),
+                                     outline=(glow_col[0], glow_col[1], glow_col[2], 100), width=1)
             draw_vector_diamond(p_draw, (16, ph // 2), 6, (glow_col[0], glow_col[1], glow_col[2], 240))
-            p_draw.text((28, (ph - (bbox[3] - bbox[1])) // 2 - bbox[1]), label, font=pill_font, fill=(225, 238, 255, 235))
+            p_draw.text((28, (ph - (bbox[3] - bbox[1])) // 2 - bbox[1]), label, font=pill_font, fill=(230, 240, 255, 245))
             canvas.paste(p_surf, (curr_x, y_pos), p_surf)
             curr_x += pw + 14
 
-    # 8. Phones
+    # 7. Phones
     phone_hero = create_ultra_flagship_phone(SCREEN_HOME_PATH, target_height=855, light_mode=False)
     phone_player = create_ultra_flagship_phone(SCREEN_PLAYER_PATH, target_height=815, light_mode=False)
 
@@ -344,15 +335,15 @@ def generate_dark_unified_banner():
     p2_x, p2_y = 2210, 120
     p2_base = p2_y + phone_player.height
 
-    add_studio_shadow(canvas, phone_player, p2_x, p2_y, blur_radius=40, opacity=185, offset=(0, 25))
+    add_studio_shadow(canvas, phone_player, p2_x, p2_y, blur_radius=42, opacity=195, offset=(0, 25))
     add_floor_reflection(canvas, phone_player, p2_x, p2_base, max_alpha=72, fade_height=190, blur_val=6)
     canvas.paste(phone_player, (p2_x, p2_y), phone_player)
 
-    add_studio_shadow(canvas, phone_hero, p1_x, p1_y, blur_radius=44, opacity=195, offset=(0, 28))
+    add_studio_shadow(canvas, phone_hero, p1_x, p1_y, blur_radius=46, opacity=205, offset=(0, 28))
     add_floor_reflection(canvas, phone_hero, p1_x, p1_base, max_alpha=78, fade_height=200, blur_val=6)
     canvas.paste(phone_hero, (p1_x, p1_y), phone_hero)
 
-    # 9. Real Official GitHub Octocat Mark
+    # 8. Real Official GitHub Octocat Mark
     gh = get_official_github_mark(light_mode=False, target_size=60)
     canvas.paste(gh, (WIDTH - 110, 45), gh)
 
@@ -360,81 +351,69 @@ def generate_dark_unified_banner():
     print(f"Generated official dark banner: {OUTPUT_DARK_PATH}")
 
 def generate_light_unified_banner():
-    # 1. Base Ceramic Gradient
-    base_arr = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
-    for y in range(HEIGHT):
-        ratio = y / float(HEIGHT)
-        r = int(252 - ratio * 14)
-        g = int(253 - ratio * 12)
-        b = int(255 - ratio * 8)
-        base_arr[y, :, 0] = r
-        base_arr[y, :, 1] = g
-        base_arr[y, :, 2] = b
-        base_arr[y, :, 3] = 255
-    canvas = Image.fromarray(base_arr, "RGBA")
+    # 1. Concert Stage Base Background (Light Mode)
+    if os.path.exists(BG_LIGHT_CONCERT):
+        bg_src = Image.open(BG_LIGHT_CONCERT).convert('RGBA')
+        new_w = WIDTH
+        new_h = int(bg_src.height * (WIDTH / float(bg_src.width)))
+        bg_resized = bg_src.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        canvas = bg_resized.crop((0, 60, WIDTH, 60 + HEIGHT))
+    else:
+        base_arr = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
+        for y in range(HEIGHT):
+            ratio = y / float(HEIGHT)
+            base_arr[y, :, 0] = int(252 - ratio * 14)
+            base_arr[y, :, 1] = int(253 - ratio * 12)
+            base_arr[y, :, 2] = int(255 - ratio * 8)
+            base_arr[y, :, 3] = 255
+        canvas = Image.fromarray(base_arr, "RGBA")
 
-    # 2. Soft pastel volumetric ambient beams
-    beam_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-    bdraw = ImageDraw.Draw(beam_layer)
-    bdraw.polygon([(250, 0), (550, 0), (700, 850), (100, 850)], fill=(0, 190, 255, 12))
-    bdraw.polygon([(1100, 0), (1450, 0), (1600, 850), (950, 850)], fill=(120, 140, 245, 10))
-    bdraw.polygon([(1850, 0), (2250, 0), (2450, 850), (1650, 850)], fill=(225, 100, 235, 12))
-    bdraw.polygon([(2300, 0), (2650, 0), (2800, 850), (2150, 850)], fill=(0, 180, 255, 12))
-    beam_blur = beam_layer.filter(ImageFilter.GaussianBlur(95))
-    canvas = Image.alpha_composite(canvas, beam_blur)
-
-    # 3. Soft Ambient Glows
+    # 2. Soft Ambient Pastel Glows
     glow_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     gdraw = ImageDraw.Draw(glow_layer)
-    for r in range(480, 0, -20):
-        gdraw.ellipse([460 - r, 380 - r, 460 + r, 380 + r], fill=(0, 190, 255, int(26 * (1.0 - (r / 480.0)**0.8))))
-    for r in range(420, 0, -20):
-        gdraw.ellipse([540 - r, 440 - r, 540 + r, 440 + r], fill=(210, 80, 240, int(22 * (1.0 - (r / 420.0)**0.8))))
-    for r in range(540, 0, -20):
-        gdraw.ellipse([2100 - r, 400 - r, 2100 + r, 400 + r], fill=(130, 110, 245, int(28 * (1.0 - (r / 540.0)**0.8))))
-    for r in range(460, 0, -20):
-        gdraw.ellipse([1850 - r, 340 - r, 1850 + r, 340 + r], fill=(0, 185, 255, int(24 * (1.0 - (r / 460.0)**0.8))))
-    for r in range(440, 0, -20):
-        gdraw.ellipse([2350 - r, 420 - r, 2350 + r, 420 + r], fill=(230, 75, 210, int(25 * (1.0 - (r / 440.0)**0.8))))
-    glow_blur = glow_layer.filter(ImageFilter.GaussianBlur(85))
-    canvas = Image.alpha_composite(canvas, glow_blur)
+    for r in range(450, 0, -25):
+        gdraw.ellipse([480 - r, 420 - r, 480 + r, 420 + r], fill=(0, 190, 255, int(22 * (1.0 - (r / 450.0)**0.8))))
+        gdraw.ellipse([540 - r, 460 - r, 540 + r, 460 + r], fill=(210, 80, 240, int(18 * (1.0 - (r / 420.0)**0.8))))
+    for r in range(500, 0, -25):
+        gdraw.ellipse([2100 - r, 420 - r, 2100 + r, 420 + r], fill=(130, 110, 245, int(24 * (1.0 - (r / 500.0)**0.8))))
+        gdraw.ellipse([1850 - r, 360 - r, 1850 + r, 360 + r], fill=(0, 185, 255, int(20 * (1.0 - (r / 460.0)**0.8))))
+        gdraw.ellipse([2350 - r, 440 - r, 2350 + r, 440 + r], fill=(230, 75, 210, int(22 * (1.0 - (r / 440.0)**0.8))))
+    canvas = Image.alpha_composite(canvas, glow_layer.filter(ImageFilter.GaussianBlur(70)))
 
-    # 4. Pastel Acoustic Ribbons
+    # 3. Soft Pastel Acoustic Ribbons
     ribbon_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     rdraw = ImageDraw.Draw(ribbon_layer)
     pts_cyan, pts_mag, pts_indigo = [], [], []
     for x in range(0, WIDTH + 40, 12):
-        yc = int(380 + 125 * math.sin(x * 0.0021 - 0.3) + 50 * math.sin(x * 0.0042))
-        ym = int(425 + 135 * math.sin(x * 0.0018 + 1.2) + 60 * math.cos(x * 0.0036))
-        yi = int(470 + 115 * math.cos(x * 0.0020 + 0.6) + 45 * math.sin(x * 0.0048))
+        yc = int(480 + 95 * math.sin(x * 0.0022 - 0.2) + 40 * math.sin(x * 0.0044))
+        ym = int(520 + 105 * math.sin(x * 0.0019 + 1.1) + 45 * math.cos(x * 0.0038))
+        yi = int(560 + 90 * math.cos(x * 0.0021 + 0.5) + 35 * math.sin(x * 0.0050))
         pts_cyan.append((x, yc))
         pts_mag.append((x, ym))
         pts_indigo.append((x, yi))
     for i in range(len(pts_cyan) - 1):
-        rdraw.line([pts_indigo[i], pts_indigo[i+1]], fill=(100, 140, 240, 45), width=10)
-        rdraw.line([pts_mag[i], pts_mag[i+1]], fill=(220, 80, 230, 48), width=7)
-        rdraw.line([pts_cyan[i], pts_cyan[i+1]], fill=(0, 190, 245, 52), width=5)
-    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(30)))
-    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(5)))
+        rdraw.line([pts_indigo[i], pts_indigo[i+1]], fill=(100, 140, 240, 38), width=8)
+        rdraw.line([pts_mag[i], pts_mag[i+1]], fill=(220, 80, 230, 40), width=6)
+        rdraw.line([pts_cyan[i], pts_cyan[i+1]], fill=(0, 190, 245, 45), width=4)
+    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(25)))
+    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(4)))
 
-    # 5. Light Ceramic Floor Plane
-    floor_y = 855
+    # 4. Stage Floor Plane
+    floor_y = 865
     floor_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     fdraw = ImageDraw.Draw(floor_layer)
-    fdraw.line([(0, floor_y), (WIDTH, floor_y)], fill=(195, 208, 225, 120), width=1)
-    fdraw.line([(0, floor_y + 1), (WIDTH, floor_y + 1)], fill=(215, 224, 238, 80), width=1)
-    fdraw.line([(0, floor_y + 2), (WIDTH, floor_y + 2)], fill=(230, 236, 245, 50), width=1)
-    for r in range(400, 0, -20):
-        fdraw.ellipse([480 - r, floor_y + 50 - int(r*0.22), 480 + r, floor_y + 50 + int(r*0.22)], fill=(0, 180, 245, int(20 * (1.0 - (r / 400.0)))))
-        fdraw.ellipse([580 - r, floor_y + 60 - int(r*0.20), 580 + r, floor_y + 60 + int(r*0.20)], fill=(210, 85, 220, int(20 * (1.0 - (r / 400.0)))))
-    for r in range(450, 0, -20):
-        fdraw.ellipse([2120 - r, floor_y + 50 - int(r*0.22), 2120 + r, floor_y + 50 + int(r*0.22)], fill=(120, 140, 245, int(22 * (1.0 - (r / 450.0)))))
-        fdraw.ellipse([1850 - r, floor_y + 55 - int(r*0.20), 1850 + r, floor_y + 55 + int(r*0.20)], fill=(0, 195, 250, int(22 * (1.0 - (r / 450.0)))))
-        fdraw.ellipse([2350 - r, floor_y + 55 - int(r*0.20), 2350 + r, floor_y + 55 + int(r*0.20)], fill=(225, 80, 210, int(22 * (1.0 - (r / 450.0)))))
-    floor_layer = floor_layer.filter(ImageFilter.GaussianBlur(38))
+    fdraw.line([(0, floor_y), (WIDTH, floor_y)], fill=(195, 208, 225, 90), width=1)
+    for r in range(400, 0, -25):
+        fdraw.ellipse([480 - r, floor_y + 45 - int(r*0.20), 480 + r, floor_y + 45 + int(r*0.20)], fill=(0, 180, 245, int(18 * (1.0 - (r / 400.0)))))
+        fdraw.ellipse([580 - r, floor_y + 55 - int(r*0.18), 580 + r, floor_y + 55 + int(r*0.18)], fill=(210, 85, 220, int(18 * (1.0 - (r / 400.0)))))
+    for r in range(450, 0, -25):
+        fdraw.ellipse([2120 - r, floor_y + 45 - int(r*0.20), 2120 + r, floor_y + 45 + int(r*0.20)], fill=(120, 140, 245, int(20 * (1.0 - (r / 450.0)))))
+        fdraw.ellipse([1850 - r, floor_y + 50 - int(r*0.18), 1850 + r, floor_y + 50 + int(r*0.18)], fill=(0, 195, 250, int(20 * (1.0 - (r / 450.0)))))
+        fdraw.ellipse([2350 - r, floor_y + 50 - int(r*0.18), 2350 + r, floor_y + 50 + int(r*0.18)], fill=(225, 80, 210, int(20 * (1.0 - (r / 450.0)))))
+    floor_layer = floor_layer.filter(ImageFilter.GaussianBlur(32))
     canvas = Image.alpha_composite(canvas, floor_layer)
 
-    # 6. Unified 3D Logo Lockup
+    # 5. Unified 3D Logo Lockup
     logo_img = Image.open(LOGO_SRC_PATH).convert('RGBA')
     full_logo = logo_img.crop((14, 32, 1006, 946))
     target_h = 780
@@ -444,11 +423,11 @@ def generate_light_unified_banner():
     logo_y = 115
     logo_base = logo_y + target_h
 
-    add_studio_shadow(canvas, logo_resized, logo_x, logo_y, blur_radius=40, opacity=75, offset=(0, 22), shadow_color=(80, 100, 130))
+    add_studio_shadow(canvas, logo_resized, logo_x, logo_y, blur_radius=40, opacity=85, offset=(0, 22), shadow_color=(80, 100, 130))
     add_floor_reflection(canvas, logo_resized, logo_x, logo_base, max_alpha=40, fade_height=190, blur_val=7)
     canvas.paste(logo_resized, (logo_x, logo_y), logo_resized)
 
-    # 7. Middle Typography & Badges (Dark Slate)
+    # 6. Middle Typography & Badges (Dark Slate)
     mid_x = logo_x + target_w + 65
     draw = ImageDraw.Draw(canvas)
     tagline_font = get_font(58, bold=True)
@@ -481,14 +460,14 @@ def generate_light_unified_banner():
             p_surf = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
             p_draw = ImageDraw.Draw(p_surf)
             p_draw.rounded_rectangle([0, 0, pw - 1, ph - 1], radius=ph // 2,
-                                     fill=(255, 255, 255, 210),
+                                     fill=(255, 255, 255, 220),
                                      outline=(glow_col[0], glow_col[1], glow_col[2], 120), width=1)
             draw_vector_diamond(p_draw, (16, ph // 2), 6, (glow_col[0], glow_col[1], glow_col[2], 255))
             p_draw.text((28, (ph - (bbox[3] - bbox[1])) // 2 - bbox[1]), label, font=pill_font, fill=(15, 23, 42, 245))
             canvas.paste(p_surf, (curr_x, y_pos), p_surf)
             curr_x += pw + 14
 
-    # 8. Phones
+    # 7. Phones
     phone_hero = create_ultra_flagship_phone(SCREEN_HOME_PATH, target_height=855, light_mode=True)
     phone_player = create_ultra_flagship_phone(SCREEN_PLAYER_PATH, target_height=815, light_mode=True)
 
@@ -498,15 +477,15 @@ def generate_light_unified_banner():
     p2_x, p2_y = 2210, 120
     p2_base = p2_y + phone_player.height
 
-    add_studio_shadow(canvas, phone_player, p2_x, p2_y, blur_radius=38, opacity=90, offset=(0, 24), shadow_color=(70, 85, 115))
+    add_studio_shadow(canvas, phone_player, p2_x, p2_y, blur_radius=38, opacity=95, offset=(0, 24), shadow_color=(70, 85, 115))
     add_floor_reflection(canvas, phone_player, p2_x, p2_base, max_alpha=40, fade_height=180, blur_val=6)
     canvas.paste(phone_player, (p2_x, p2_y), phone_player)
 
-    add_studio_shadow(canvas, phone_hero, p1_x, p1_y, blur_radius=42, opacity=100, offset=(0, 26), shadow_color=(70, 85, 115))
+    add_studio_shadow(canvas, phone_hero, p1_x, p1_y, blur_radius=42, opacity=105, offset=(0, 26), shadow_color=(70, 85, 115))
     add_floor_reflection(canvas, phone_hero, p1_x, p1_base, max_alpha=45, fade_height=190, blur_val=6)
     canvas.paste(phone_hero, (p1_x, p1_y), phone_hero)
 
-    # 9. Real Official GitHub Octocat Mark
+    # 8. Real Official GitHub Octocat Mark
     gh = get_official_github_mark(light_mode=True, target_size=60)
     canvas.paste(gh, (WIDTH - 110, 45), gh)
 
@@ -514,7 +493,7 @@ def generate_light_unified_banner():
     print(f"Generated official light banner: {OUTPUT_LIGHT_PATH}")
 
 def main():
-    print("Generating official Levyra banners with exact official GitHub logo...")
+    print("Generating official Levyra banners with musical concert stage aesthetic...")
     generate_dark_unified_banner()
     generate_light_unified_banner()
 
