@@ -16,6 +16,7 @@ okhttp = "5.5.0"
 newpipe = "v1.0.0-levyra.10"
 desugar = "2.1.5"
 junit = "4.13.2"
+mockito = "5.15.2"
 annotation = "1.10.0"
 json = "20260814"
 room = "2.8.5"
@@ -76,6 +77,7 @@ okhttp-tls = { group = "com.squareup.okhttp3", name = "okhttp-tls", version.ref 
 newpipe-extractor = { group = "com.github.LUC4N3X", name = "LevyraExtractor", version.ref = "newpipe" }
 desugar-jdk-libs-nio = { group = "com.android.tools", name = "desugar_jdk_libs_nio", version.ref = "desugar" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
