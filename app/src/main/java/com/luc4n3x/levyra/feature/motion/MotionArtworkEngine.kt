@@ -104,6 +104,7 @@ class MotionArtworkEngine(context: Context) {
         val clean = artistName.trim()
         if (clean.length < 2) return null
         if (!networkPolicy.canResolveCurrent()) return null
+        if (!shouldWarmDedicatedArtistMotion(source)) return null
         val runtime = MotionArtworkRuntime.snapshot()
         val config = runtime.value
         val identityKey = motionArtworkCacheKey(
@@ -115,10 +116,14 @@ class MotionArtworkEngine(context: Context) {
             MotionArtworkCacheResult.Negative -> return null
             MotionArtworkCacheResult.Miss -> Unit
         }
-        Timber.d("Artist motion engine resolve start artist=%s source=%s", clean, source)
-        return sharedProgressive("${runtime.epoch}:$identityKey") { emit ->
+        Timber.d("Artist motion engine background warmup start artist=%s source=%s", clean, source)
+        val request = sharedProgressive("${runtime.epoch}:$identityKey") { emit ->
             resolveArtistFresh(clean, identityKey, runtime.epoch, config)?.let { emit(it) }
-        }.lastOrNull()
+        }
+        lookupScope.launch { request.lastOrNull() }
+        val foregroundWaitMs = artistMotionForegroundWaitMs(source)
+        if (foregroundWaitMs <= 0L) return null
+        return withTimeoutOrNull(foregroundWaitMs) { request.lastOrNull() }
     }
 
     private suspend fun resolveArtistFresh(
@@ -569,6 +574,20 @@ private const val ARTIST_MOTION_CONFIDENCE = 100
 private const val ARTIST_MOTION_REQUEST_TIMEOUT_MS = 45_000L
 private const val APPLE_MOTION_PLAYER_REQUEST_TIMEOUT_MS = 25_000L
 private const val DEFAULT_MOTION_METADATA_COUNTRY = "IT"
+
+internal fun artistMotionForegroundWaitMs(source: LevyraCanvasSource): Long = when (source) {
+    LevyraCanvasSource.Auto,
+    LevyraCanvasSource.Apple,
+    LevyraCanvasSource.Community,
+    LevyraCanvasSource.Tidal -> 0L
+}
+
+internal fun shouldWarmDedicatedArtistMotion(source: LevyraCanvasSource): Boolean = when (source) {
+    LevyraCanvasSource.Auto,
+    LevyraCanvasSource.Apple -> true
+    LevyraCanvasSource.Community,
+    LevyraCanvasSource.Tidal -> false
+}
 
 internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeoutMs: Long): Long =
     if (providerId == "apple-motion") {
