@@ -47,7 +47,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
+import com.luc4n3x.levyra.ui.i18n.LevyraUpdateReleaseCopy
+import com.luc4n3x.levyra.ui.i18n.updateReleaseCopy
+import com.luc4n3x.levyra.ui.i18n.updateReleaseHighlights
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
@@ -75,9 +77,9 @@ fun LevyraUpdateScreen(
     onLater: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val copy = strings.systemPlayerCopy()
-    val notes = remember(update.releaseNotes, update.latestVersionName) {
-        levyraUpdateNoteLines(update.releaseNotes, update.latestVersionName).take(5)
+    val copy = strings.updateReleaseCopy()
+    val notes = remember(strings.code, update.latestVersionName) {
+        strings.updateReleaseHighlights(update.latestVersionName).take(5)
     }
     val meta = remember(update.publishedAtEpochMs, update.assetSizeBytes, languageCode) {
         updateMetaLine(update.publishedAtEpochMs, update.assetSizeBytes, languageCode)
@@ -185,7 +187,7 @@ fun LevyraUpdateScreen(
 private fun UpdateHero(
     update: AppUpdateInfo,
     meta: String,
-    copy: com.luc4n3x.levyra.ui.i18n.LevyraSystemPlayerCopy
+    copy: LevyraUpdateReleaseCopy
 ) {
     Box(
         modifier = Modifier
@@ -207,7 +209,7 @@ private fun UpdateHero(
             UpdateOrbitGlyph()
             Spacer(Modifier.height(18.dp))
             Text(
-                text = update.releaseTitle.ifBlank { copy.releaseReady },
+                text = copy.releaseReady,
                 color = LevyraMuted,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
