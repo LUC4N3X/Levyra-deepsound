@@ -222,45 +222,51 @@ def add_studio_shadow(canvas, element_img, x, y, blur_radius=36, opacity=170, of
     shadow = shadow.filter(ImageFilter.GaussianBlur(blur_radius))
     canvas.paste(shadow, (x - blur_radius + offset[0], y - blur_radius + offset[1]), shadow)
 
-def draw_platform_icons(light_mode=False, ss=4):
-    """Renders official Android and Windows platform icons with text labels."""
-    w, h = 260 * ss, 64 * ss
-    img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    color = (25, 33, 48, 245) if light_mode else (235, 240, 252, 245)
-    eye_color = (240, 245, 255, 255) if light_mode else (15, 20, 30, 255)
-    div_color = (180, 195, 215, 220) if light_mode else (95, 115, 145, 200)
+def create_glass_platform_pill(light_mode=False):
+    """Renders a sleek frosted glass pill container with Android and Windows icons and labels."""
+    ss = 2
+    pw, ph = 270 * ss, 48 * ss
+    pill = Image.new('RGBA', (pw, ph), (0, 0, 0, 0))
+    pdraw = ImageDraw.Draw(pill)
 
-    ax, ay = 10 * ss, 6 * ss
-    draw.pieslice([ax + 6*ss, ay + 6*ss, ax + 42*ss, ay + 42*ss], 180, 360, fill=color)
-    draw.ellipse([ax + 14*ss, ay + 14*ss, ax + 18*ss, ay + 18*ss], fill=eye_color)
-    draw.ellipse([ax + 30*ss, ay + 14*ss, ax + 34*ss, ay + 18*ss], fill=eye_color)
-    draw.line([(ax + 12*ss, ay + 2*ss), (ax + 17*ss, ay + 9*ss)], fill=color, width=int(2.8*ss))
-    draw.line([(ax + 36*ss, ay + 2*ss), (ax + 31*ss, ay + 9*ss)], fill=color, width=int(2.8*ss))
-    draw.rounded_rectangle([ax + 6*ss, ay + 26*ss, ax + 42*ss, ay + 48*ss], radius=int(4*ss), fill=color)
-    draw.rounded_rectangle([ax, ay + 26*ss, ax + 4*ss, ay + 44*ss], radius=int(2*ss), fill=color)
-    draw.rounded_rectangle([ax + 44*ss, ay + 26*ss, ax + 48*ss, ay + 44*ss], radius=int(2*ss), fill=color)
-    draw.rounded_rectangle([ax + 12*ss, ay + 48*ss, ax + 17*ss, ay + 56*ss], radius=int(2*ss), fill=color)
-    draw.rounded_rectangle([ax + 31*ss, ay + 48*ss, ax + 36*ss, ay + 56*ss], radius=int(2*ss), fill=color)
+    fill_col = (255, 255, 255, 18) if not light_mode else (255, 255, 255, 200)
+    border_col = (255, 255, 255, 65) if not light_mode else (175, 190, 215, 200)
+    pdraw.rounded_rectangle([0, 0, pw - 1, ph - 1], radius=ph // 2, fill=fill_col, outline=border_col, width=int(1.5 * ss))
 
-    div_x = 88 * ss
-    draw.line([(div_x, 8*ss), (div_x, 56*ss)], fill=div_color, width=int(2*ss))
+    lbl_font = get_font(16 * ss, bold=True)
+    text_col = (240, 245, 255, 250) if not light_mode else (20, 28, 45, 250)
+    div_col = (255, 255, 255, 60) if not light_mode else (160, 175, 200, 180)
 
-    wx, wy = 115 * ss, 8 * ss
-    ww, wh = 48 * ss, 48 * ss
-    gap = int(3.5 * ss)
-    pw = (ww - gap) // 2
-    ph = (wh - gap) // 2
-    draw.rounded_rectangle([wx, wy, wx + pw, wy + ph], radius=int(1.5*ss), fill=color)
-    draw.rounded_rectangle([wx + pw + gap, wy, wx + ww, wy + ph], radius=int(1.5*ss), fill=color)
-    draw.rounded_rectangle([wx, wy + ph + gap, wx + pw, wy + wh], radius=int(1.5*ss), fill=color)
-    draw.rounded_rectangle([wx + pw + gap, wy + ph + gap, wx + ww, wy + wh], radius=int(1.5*ss), fill=color)
+    # Left side: Android icon + 'Android'
+    ax, ay = 28 * ss, 12 * ss
+    ico_col = text_col
+    eye_col = (10, 14, 22, 255) if not light_mode else (255, 255, 255, 255)
 
-    res = img.resize((260, 64), Image.Resampling.LANCZOS)
-    bbox = res.getbbox()
-    if bbox:
-        return res.crop((max(0, bbox[0] - 4), bbox[1], min(res.width, bbox[2] + 4), bbox[3]))
-    return res
+    pdraw.pieslice([ax, ay + 4 * ss, ax + 24 * ss, ay + 28 * ss], 180, 360, fill=ico_col)
+    pdraw.ellipse([ax + 5 * ss, ay + 9 * ss, ax + 8 * ss, ay + 12 * ss], fill=eye_col)
+    pdraw.ellipse([ax + 16 * ss, ay + 9 * ss, ax + 19 * ss, ay + 12 * ss], fill=eye_col)
+    pdraw.line([(ax + 4 * ss, ay), (ax + 7 * ss, ay + 5 * ss)], fill=ico_col, width=int(1.8 * ss))
+    pdraw.line([(ax + 20 * ss, ay), (ax + 17 * ss, ay + 5 * ss)], fill=ico_col, width=int(1.8 * ss))
+
+    pdraw.text((ax + 32 * ss, ay + 3 * ss), 'Android', font=lbl_font, fill=text_col)
+
+    # Divider
+    div_x = 135 * ss
+    pdraw.line([(div_x, 11 * ss), (div_x, 37 * ss)], fill=div_col, width=int(1.5 * ss))
+
+    # Right side: Windows icon + 'Windows'
+    wx, wy = 152 * ss, 14 * ss
+    ww = 20 * ss
+    gap = int(2.2 * ss)
+    pw_box = (ww - gap) // 2
+    pdraw.rounded_rectangle([wx, wy, wx + pw_box, wy + pw_box], radius=int(1 * ss), fill=ico_col)
+    pdraw.rounded_rectangle([wx + pw_box + gap, wy, wx + ww, wy + pw_box], radius=int(1 * ss), fill=ico_col)
+    pdraw.rounded_rectangle([wx, wy + pw_box + gap, wx + pw_box, wy + ww], radius=int(1 * ss), fill=ico_col)
+    pdraw.rounded_rectangle([wx + pw_box + gap, wy + pw_box + gap, wx + ww, wy + ww], radius=int(1 * ss), fill=ico_col)
+
+    pdraw.text((wx + 28 * ss, ay + 3 * ss), 'Windows', font=lbl_font, fill=text_col)
+
+    return pill.resize((270, 48), Image.Resampling.LANCZOS)
 
 def generate_dark_unified_banner():
     """Generates the dark mode unified banner with concert stage backdrop."""
@@ -343,25 +349,27 @@ def generate_dark_unified_banner():
     add_floor_reflection(canvas, logo_resized, logo_x, logo_base, max_alpha=75, fade_height=200, blur_val=8)
     canvas.paste(logo_resized, (logo_x, logo_y), logo_resized)
 
-    # 6. Middle Typography & Platform Icons (Centered underneath, no badges)
-    mid_x = logo_x + target_w + 65
+    # 6. Middle Typography & Platform Glass Pill (Centered editorial lockup)
+    col_center = 1355
     draw = ImageDraw.Draw(canvas)
-    tagline_font = get_font(68, light=True)
-    tag_y = 350
-    draw.text((mid_x, tag_y), "Hear every layer.", font=tagline_font, fill=(240, 245, 255, 255))
+    tagline_font = get_font(82, bold=True)
+    tag_y = 330
+    title_text = "Hear every layer."
+    t_bbox = tagline_font.getbbox(title_text)
+    tw = t_bbox[2] - t_bbox[0]
+    draw.text((col_center - tw // 2, tag_y), title_text, font=tagline_font, fill=(255, 255, 255, 255))
 
     sub_font = get_font(28, light=False)
-    sub_y = tag_y + 92
-    sub_text = "Open-source music player for Android and Windows."
-    draw.text((mid_x, sub_y), sub_text, font=sub_font, fill=(175, 195, 225, 235))
+    sub_y = tag_y + 104
+    sub_text = "Lossless sound. Zero tracking. Completely yours."
+    s_bbox = sub_font.getbbox(sub_text)
+    sw = s_bbox[2] - s_bbox[0]
+    draw.text((col_center - sw // 2, sub_y), sub_text, font=sub_font, fill=(185, 205, 235, 240))
 
-    sub_bbox = sub_font.getbbox(sub_text)
-    sub_w = sub_bbox[2] - sub_bbox[0]
-
-    icons = draw_platform_icons(light_mode=False)
-    icons_x = mid_x + (sub_w - icons.width) // 2
-    icons_y = sub_y + 68
-    canvas.paste(icons, (icons_x, icons_y), icons)
+    pill = create_glass_platform_pill(light_mode=False)
+    pill_x = col_center - pill.width // 2
+    pill_y = sub_y + 60
+    canvas.paste(pill, (pill_x, pill_y), pill)
 
     # 7. Phones
     phone_hero = create_ultra_flagship_phone(SCREEN_HOME_PATH, target_height=855, light_mode=False)
@@ -469,25 +477,27 @@ def generate_light_unified_banner():
     add_floor_reflection(canvas, logo_resized, logo_x, logo_base, max_alpha=40, fade_height=190, blur_val=7)
     canvas.paste(logo_resized, (logo_x, logo_y), logo_resized)
 
-    # 6. Middle Typography & Platform Icons (Centered underneath, no badges)
-    mid_x = logo_x + target_w + 65
+    # 6. Middle Typography & Platform Glass Pill (Centered editorial lockup)
+    col_center = 1355
     draw = ImageDraw.Draw(canvas)
-    tagline_font = get_font(68, bold=True)
-    tag_y = 350
-    draw.text((mid_x, tag_y), "Hear every layer.", font=tagline_font, fill=(15, 23, 42, 255))
+    tagline_font = get_font(82, bold=True)
+    tag_y = 330
+    title_text = "Hear every layer."
+    t_bbox = tagline_font.getbbox(title_text)
+    tw = t_bbox[2] - t_bbox[0]
+    draw.text((col_center - tw // 2, tag_y), title_text, font=tagline_font, fill=(15, 23, 42, 255))
 
     sub_font = get_font(28, light=False)
-    sub_y = tag_y + 92
-    sub_text = "Open-source music player for Android and Windows."
-    draw.text((mid_x, sub_y), sub_text, font=sub_font, fill=(71, 85, 105, 240))
+    sub_y = tag_y + 104
+    sub_text = "Lossless sound. Zero tracking. Completely yours."
+    s_bbox = sub_font.getbbox(sub_text)
+    sw = s_bbox[2] - s_bbox[0]
+    draw.text((col_center - sw // 2, sub_y), sub_text, font=sub_font, fill=(71, 85, 105, 240))
 
-    sub_bbox = sub_font.getbbox(sub_text)
-    sub_w = sub_bbox[2] - sub_bbox[0]
-
-    icons = draw_platform_icons(light_mode=True)
-    icons_x = mid_x + (sub_w - icons.width) // 2
-    icons_y = sub_y + 68
-    canvas.paste(icons, (icons_x, icons_y), icons)
+    pill = create_glass_platform_pill(light_mode=True)
+    pill_x = col_center - pill.width // 2
+    pill_y = sub_y + 60
+    canvas.paste(pill, (pill_x, pill_y), pill)
 
     # 7. Phones
     phone_hero = create_ultra_flagship_phone(SCREEN_HOME_PATH, target_height=855, light_mode=True)
