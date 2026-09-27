@@ -741,15 +741,15 @@ class JioSaavnAudioProviderTest {
         return Base64.getEncoder().encodeToString(cipher.doFinal(plain.toByteArray(Charsets.UTF_8)))
     }
 
-    private fun prefetchExchange(mediaToken: String) = ScriptedExchange { request ->
+    private fun prefetchExchange(mediaLocationToken: String) = ScriptedExchange { request ->
         when {
             request.url.contains("search.getResults") -> jsonResponse(
-                searchBody(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, token = mediaToken))
+                searchBody(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, emptyList(), "0", "true", mediaLocationToken))
             )
             request.url.contains("song.getDetails") -> jsonResponse(
                 JSONObject().put(
                     "songs",
-                    JSONArray().put(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, token = mediaToken))
+                    JSONArray().put(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, emptyList(), "0", "true", mediaLocationToken))
                 ).toString()
             )
             request.url.startsWith("https://aac.saavncdn.com/") -> validFor(320)
@@ -757,19 +757,19 @@ class JioSaavnAudioProviderTest {
         }
     }
 
-    private fun twoTrackExchange(idA: String, tokenA: String, idB: String, tokenB: String) = ScriptedExchange { request ->
+    private fun twoTrackExchange(idA: String, locationTokenA: String, idB: String, locationTokenB: String) = ScriptedExchange { request ->
         when {
             request.url.contains("search.getResults") && request.url.contains("TrackAlpha") -> jsonResponse(
-                searchBody(saavnSong(idA, "TrackAlpha", listOf("TestArtist"), "TestAlbum", 200, token = tokenA))
+                searchBody(saavnSong(idA, "TrackAlpha", listOf("TestArtist"), "TestAlbum", 200, emptyList(), "0", "true", locationTokenA))
             )
             request.url.contains("search.getResults") && request.url.contains("TrackBeta") -> jsonResponse(
-                searchBody(saavnSong(idB, "TrackBeta", listOf("TestArtist"), "TestAlbum", 200, token = tokenB))
+                searchBody(saavnSong(idB, "TrackBeta", listOf("TestArtist"), "TestAlbum", 200, emptyList(), "0", "true", locationTokenB))
             )
             request.url.contains("song.getDetails") && request.url.contains(idA) -> jsonResponse(
-                JSONObject().put("songs", JSONArray().put(saavnSong(idA, "TrackAlpha", listOf("TestArtist"), "TestAlbum", 200, token = tokenA))).toString()
+                JSONObject().put("songs", JSONArray().put(saavnSong(idA, "TrackAlpha", listOf("TestArtist"), "TestAlbum", 200, emptyList(), "0", "true", locationTokenA))).toString()
             )
             request.url.contains("song.getDetails") && request.url.contains(idB) -> jsonResponse(
-                JSONObject().put("songs", JSONArray().put(saavnSong(idB, "TrackBeta", listOf("TestArtist"), "TestAlbum", 200, token = tokenB))).toString()
+                JSONObject().put("songs", JSONArray().put(saavnSong(idB, "TrackBeta", listOf("TestArtist"), "TestAlbum", 200, emptyList(), "0", "true", locationTokenB))).toString()
             )
             request.url.startsWith("https://aac.saavncdn.com/") -> validFor(320)
             else -> htmlResponse(404)
@@ -791,8 +791,8 @@ class JioSaavnAudioProviderTest {
 
     @Test
     fun prefetchedStreamIsReusedForSameCanonicalIdentityWithoutANewNetworkRequest() {
-        val token = encrypt("https://aac.saavncdn.com/000/prefetchA_320.mp4")
-        val exchange = prefetchExchange(token)
+        val mediaToken = encrypt("https://aac.saavncdn.com/000/prefetchA_320.mp4")
+        val exchange = prefetchExchange(mediaToken)
         val resolver = highQualityResolver(provider(exchange))
         val identity = "identity-prefetch-a"
         val first = resolver.resolveNow(identity)
@@ -810,8 +810,8 @@ class JioSaavnAudioProviderTest {
 
     @Test
     fun staleCachedJioSaavnStreamIsRejectedAndReResolved() {
-        val token = encrypt("https://aac.saavncdn.com/000/staleB_320.mp4")
-        val exchange = prefetchExchange(token)
+        val mediaToken = encrypt("https://aac.saavncdn.com/000/staleB_320.mp4")
+        val exchange = prefetchExchange(mediaToken)
         val resolver = highQualityResolver(provider(exchange))
         val identity = "identity-stale-b"
         resolver.resolveNow(identity)
