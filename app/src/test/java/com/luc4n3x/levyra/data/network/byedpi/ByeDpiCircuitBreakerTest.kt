@@ -105,6 +105,26 @@ class ByeDpiCircuitBreakerTest {
     }
 
     @Test
+    fun fastConnectSuccessResetsFailureAndSlowStreaksWithoutAdvancingRecovery() {
+        breaker.recordFailure()
+        breaker.recordSuccess(connectLatencyMs = 1_800L)
+        assertEquals(1, breaker.snapshot().consecutiveSlowResponses)
+
+        breaker.recordSuccess(connectLatencyMs = 200L)
+
+        val afterFastConnect = breaker.snapshot()
+        assertEquals(0, afterFastConnect.consecutiveFailures)
+        assertEquals(0, afterFastConnect.consecutiveSlowResponses)
+        assertEquals(0, afterFastConnect.consecutiveSuccesses)
+
+        breaker.recordFailure()
+        breaker.recordFailure()
+        assertFalse(breaker.isOpen())
+        breaker.recordFailure()
+        assertTrue(breaker.isOpen())
+    }
+
+    @Test
     fun slowTechnicalSuccessBecomesSuspectThenDegraded() {
         breaker.recordSuccess(resolutionLatencyMs = 2_500L)
 
