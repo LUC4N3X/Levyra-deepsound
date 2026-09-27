@@ -94,7 +94,7 @@ internal object FamiliarityMixCriterion : MixCriterion {
 internal object RecencyMixCriterion : MixCriterion {
     override fun score(candidate: MixLabCandidate, familiarityValue: Float, params: MixLabParams, nowMs: Long): Float? {
         val releaseEpochMs = parseReleaseEpochMs(candidate.track) ?: return null
-        val ageYears = ((nowMs - releaseEpochMs).coerceAtLeast(0L) / MILLIS_PER_YEAR)
+        val ageYears = (nowMs - releaseEpochMs).coerceAtLeast(0L) / MILLIS_PER_YEAR
         val recencyValue = 1f - (ageYears / MixLabDefaults.ClassicsHorizonYears).toFloat().coerceIn(0f, 1f)
         return 1f - abs(recencyValue - params.recency)
     }
