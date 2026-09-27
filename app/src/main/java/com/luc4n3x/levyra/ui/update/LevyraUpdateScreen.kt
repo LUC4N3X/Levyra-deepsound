@@ -47,7 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
+import com.luc4n3x.levyra.ui.i18n.LevyraUpdateReleaseCopy
+import com.luc4n3x.levyra.ui.i18n.updateReleaseCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
@@ -75,7 +76,7 @@ fun LevyraUpdateScreen(
     onLater: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val copy = strings.systemPlayerCopy()
+    val copy = strings.updateReleaseCopy()
     val notes = remember(update.releaseNotes, update.latestVersionName) {
         levyraUpdateNoteLines(update.releaseNotes, update.latestVersionName).take(5)
     }
@@ -185,7 +186,7 @@ fun LevyraUpdateScreen(
 private fun UpdateHero(
     update: AppUpdateInfo,
     meta: String,
-    copy: com.luc4n3x.levyra.ui.i18n.LevyraSystemPlayerCopy
+    copy: LevyraUpdateReleaseCopy
 ) {
     Box(
         modifier = Modifier
