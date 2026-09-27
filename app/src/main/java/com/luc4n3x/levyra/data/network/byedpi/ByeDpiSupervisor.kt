@@ -156,11 +156,11 @@ object ByeDpiSupervisor {
         updateHealth { recordSuccess(resolutionLatencyMs = latencyMs) }
     }
 
-    fun recordConnectionFailure(kind: ByeDpiFailureKind = ByeDpiFailureKind.CONNECTION) {
+    internal fun recordConnectionFailure(kind: ByeDpiFailureKind = ByeDpiFailureKind.CONNECTION) {
         updateHealth { recordFailure(kind) }
     }
 
-    fun recordResolutionFailure(kind: ByeDpiFailureKind = ByeDpiFailureKind.RESOLUTION) {
+    internal fun recordResolutionFailure(kind: ByeDpiFailureKind = ByeDpiFailureKind.RESOLUTION) {
         updateHealth { recordFailure(kind) }
     }
 
