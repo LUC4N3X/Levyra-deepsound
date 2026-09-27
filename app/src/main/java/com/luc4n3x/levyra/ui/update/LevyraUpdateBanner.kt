@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
+import com.luc4n3x.levyra.ui.i18n.updateReleaseCopy
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -230,7 +230,7 @@ private fun BannerBody(
                     }
                 )
             }
-            val protection = strings.systemPlayerCopy()
+            val protection = strings.updateReleaseCopy()
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
