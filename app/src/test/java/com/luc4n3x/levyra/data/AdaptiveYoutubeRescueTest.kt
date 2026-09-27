@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.data.network.byedpi.ByeDpiFailureKind
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiHealthState
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -12,6 +13,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -68,6 +70,68 @@ class AdaptiveYoutubeRescueTest {
 
         assertEquals("direct", result)
         assertEquals(listOf("piped", "direct"), order)
+    }
+
+    @Test
+    fun degradedPipedFailureBoundsTheLastDirectAttempt() = runBlocking {
+        val health = FakeHealth(ByeDpiHealthState.DEGRADED)
+        val directCancelled = AtomicBoolean(false)
+        val rescue = AdaptiveYoutubeRescue(
+            health = health,
+            resolutionBudgetMs = 25L,
+            recoveryProbeBudgetMs = 25L
+        )
+
+        val result = rescue.resolve(
+            byeDpiEnabled = true,
+            direct = {
+                suspendCancellableCoroutine { continuation ->
+                    continuation.invokeOnCancellation { directCancelled.set(true) }
+                }
+            },
+            piped = { null }
+        )
+
+        assertNull(result)
+        assertTrue(directCancelled.get())
+        assertTrue(health.failures.contains(ByeDpiFailureKind.TIMEOUT))
+    }
+
+    @Test
+    fun timedOutPrimaryIsNotStartedAgainAfterPipedFailure() = runBlocking {
+        val health = FakeHealth(ByeDpiHealthState.HEALTHY)
+        val directCalls = AtomicInteger(0)
+        val rescue = AdaptiveYoutubeRescue(
+            health = health,
+            resolutionBudgetMs = 25L,
+            recoveryProbeBudgetMs = 25L
+        )
+
+        val result = rescue.resolve(
+            byeDpiEnabled = true,
+            direct = {
+                directCalls.incrementAndGet()
+                suspendCancellableCoroutine { }
+            },
+            piped = { null }
+        )
+
+        assertNull(result)
+        assertEquals(1, directCalls.get())
+    }
+
+    @Test
+    fun failedRecoveryRaceDoesNotStartAThirdDirectAttempt() = runBlocking {
+        val health = FakeHealth(ByeDpiHealthState.DEGRADED, probeDue = true)
+        var directCalls = 0
+        val result = AdaptiveYoutubeRescue(health).resolve(
+            byeDpiEnabled = true,
+            direct = { directCalls++; null },
+            piped = { null }
+        )
+
+        assertNull(result)
+        assertEquals(1, directCalls)
     }
 
     @Test
