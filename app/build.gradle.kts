@@ -337,6 +337,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
     testImplementation(libs.json)
     testImplementation(libs.okhttp.tls)
     androidTestImplementation(libs.junit)
