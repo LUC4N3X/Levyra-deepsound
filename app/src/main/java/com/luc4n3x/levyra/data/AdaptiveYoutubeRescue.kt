@@ -28,7 +28,9 @@ internal object SupervisorByeDpiHealthGateway : ByeDpiHealthGateway {
 }
 
 internal class AdaptiveYoutubeRescue(
-    private val health: ByeDpiHealthGateway = SupervisorByeDpiHealthGateway
+    private val health: ByeDpiHealthGateway = SupervisorByeDpiHealthGateway,
+    private val resolutionBudgetMs: Long = ByeDpiHealthPolicy.RESOLUTION_BUDGET_MS,
+    private val recoveryProbeBudgetMs: Long = ByeDpiHealthPolicy.RECOVERY_PROBE_BUDGET_MS
 ) {
     private data class DirectAttempt<T>(
         val value: T?,
@@ -44,17 +46,16 @@ internal class AdaptiveYoutubeRescue(
         val state = health.state()
         if (state == ByeDpiHealthState.DEGRADED || state == ByeDpiHealthState.PROBE) {
             if (state == ByeDpiHealthState.DEGRADED && health.isProbeDue()) {
-                raceRecoveryProbe(direct, piped)?.let { return it }
-            } else {
-                piped()?.let { return it }
+                return raceRecoveryProbe(direct, piped)
             }
-            return direct()
+            piped()?.let { return it }
+            return directWithinBudget(recoveryProbeBudgetMs, direct).value
         }
 
-        val primary = directWithinBudget(ByeDpiHealthPolicy.RESOLUTION_BUDGET_MS, direct)
+        val primary = directWithinBudget(resolutionBudgetMs, direct)
         primary.value?.let { return it }
         piped()?.let { return it }
-        return if (primary.timedOut || health.state() == ByeDpiHealthState.DEGRADED) direct() else null
+        return null
     }
 
     private suspend fun <T> directWithinBudget(
@@ -100,7 +101,7 @@ internal class AdaptiveYoutubeRescue(
             settle(value)
         }
         launch {
-            settle(directWithinBudget(ByeDpiHealthPolicy.RECOVERY_PROBE_BUDGET_MS, direct).value)
+            settle(directWithinBudget(recoveryProbeBudgetMs, direct).value)
         }
         val result = winner.await()
         coroutineContext.cancelChildren()
