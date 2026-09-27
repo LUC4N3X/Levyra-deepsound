@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player
 
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.LoadEventInfo
@@ -24,18 +25,32 @@ class PlaybackStabilitySignals(
     private var suppressNextBuffering = true
     private var consecutiveLoadFailures = 0
     private val rebufferTimestamps = ArrayDeque<Long>()
+    private var playingPeriodUid: Any? = null
 
     override fun requestedProfile(): PlaybackStabilityProfile = synchronized(lock) {
         pruneRebufferWindowLocked()
         if (profile == PlaybackStabilityProfile.Stable && canRecoverLocked()) {
             profile = PlaybackStabilityProfile.Normal
             stableSinceMs = null
+            consecutiveLoadFailures = 0
         }
         profile
     }
 
     override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
         synchronized(lock) { lastPlayWhenReady = playWhenReady }
+    }
+
+    override fun onPlaybackStateChanged(eventTime: AnalyticsListener.EventTime, state: Int) {
+        synchronized(lock) {
+            eventTime.mediaPeriodId?.periodUid?.let { playingPeriodUid = it }
+        }
+    }
+
+    override fun onMediaItemTransition(eventTime: AnalyticsListener.EventTime, mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+        synchronized(lock) {
+            eventTime.mediaPeriodId?.periodUid?.let { playingPeriodUid = it }
+        }
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -67,6 +82,7 @@ class PlaybackStabilitySignals(
         error: IOException,
         wasCanceled: Boolean
     ) {
+        if (!isRelevantLoad(eventTime, mediaLoadData)) return
         onLoadOutcome(failed = true, wasCanceled = wasCanceled)
     }
 
@@ -75,7 +91,23 @@ class PlaybackStabilitySignals(
         loadEventInfo: LoadEventInfo,
         mediaLoadData: MediaLoadData
     ) {
+        if (!isRelevantLoad(eventTime, mediaLoadData)) return
         onLoadOutcome(failed = false, wasCanceled = false)
+    }
+
+    private fun isRelevantLoad(eventTime: AnalyticsListener.EventTime, mediaLoadData: MediaLoadData): Boolean {
+        synchronized(lock) {
+            if (playingPeriodUid != null && eventTime.mediaPeriodId?.periodUid != playingPeriodUid) {
+                return false
+            }
+        }
+        val isMedia = mediaLoadData.dataType == C.DATA_TYPE_MEDIA ||
+                      mediaLoadData.dataType == C.DATA_TYPE_MEDIA_INITIALIZATION
+        val isMainTrack = mediaLoadData.trackType == C.TRACK_TYPE_AUDIO ||
+                          mediaLoadData.trackType == C.TRACK_TYPE_VIDEO ||
+                          mediaLoadData.trackType == C.TRACK_TYPE_DEFAULT ||
+                          mediaLoadData.trackType == C.TRACK_TYPE_UNKNOWN
+        return isMedia && isMainTrack
     }
 
     internal fun onDiscontinuity() {
@@ -116,7 +148,7 @@ class PlaybackStabilitySignals(
     private fun canRecoverLocked(): Boolean {
         val since = stableSinceMs ?: return true
         val dwellElapsed = nowMs() - since >= MinimumDwellMs
-        return dwellElapsed && rebufferTimestamps.isEmpty() && consecutiveLoadFailures == 0
+        return dwellElapsed && rebufferTimestamps.isEmpty()
     }
 
     private companion object {

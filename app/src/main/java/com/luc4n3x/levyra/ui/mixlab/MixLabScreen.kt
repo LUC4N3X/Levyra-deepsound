@@ -164,6 +164,7 @@ internal fun MixLabScreen(
                     }
                     MixLabStage.Error -> {
                         MixLabErrorContent(
+                            isEmptyArtistsError = session.params.artistKeys.isNotEmpty() && session.result?.tracks?.isEmpty() == true,
                             onRetry = controller::generate,
                             onTune = controller::tuneParameters
                         )
@@ -828,10 +829,10 @@ private fun MixLabPreviewContent(
             }
         }
 
-        items(
+        itemsIndexed(
             items = result.tracks,
-            key = { it.id }
-        ) { track ->
+            key = { index, track -> "${index}_${track.id}" }
+        ) { _, track ->
             MixLabTrackRow(track = track)
         }
 
@@ -895,6 +896,7 @@ private fun MixLabTrackRow(
 
 @Composable
 private fun MixLabErrorContent(
+    isEmptyArtistsError: Boolean,
     onRetry: () -> Unit,
     onTune: () -> Unit
 ) {
@@ -918,7 +920,7 @@ private fun MixLabErrorContent(
                 textAlign = TextAlign.Center
             )
             Text(
-                text = strings.mixLabErrorBody,
+                text = if (isEmptyArtistsError) strings.mixLabEmptyArtists else strings.mixLabErrorBody,
                 color = LevyraMuted,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center

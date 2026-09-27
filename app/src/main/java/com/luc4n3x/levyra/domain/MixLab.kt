@@ -49,6 +49,8 @@ data class MixLabParams(
 
     private val normalizedGenres: Set<String> = genres.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
     private val normalizedMoodTags: Set<String> = moodTags.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+    val normalizedMoodTagCount: Int
+        get() = normalizedMoodTags.size
 
     internal fun matchesGenre(candidateGenres: Set<String>): Boolean =
         normalizedGenres.isEmpty() || candidateGenres.any { it in normalizedGenres }
@@ -152,7 +154,7 @@ internal object MoodMixCriterion : MixCriterion {
         if (candidateTags.isEmpty()) return null
         val overlap = params.moodOverlap(candidateTags)
         if (overlap.isEmpty()) return 0f
-        return (overlap.size.toFloat() / params.moodTags.size.coerceAtLeast(1)).coerceIn(0f, 1f)
+        return (overlap.size.toFloat() / params.normalizedMoodTagCount.coerceAtLeast(1)).coerceIn(0f, 1f)
     }
 }
 

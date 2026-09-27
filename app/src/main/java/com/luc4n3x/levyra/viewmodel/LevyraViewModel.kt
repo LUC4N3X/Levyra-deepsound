@@ -3527,13 +3527,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun playMixLabResult(shuffled: Boolean = false) {
         val tracks = mixLab.session.value?.result?.tracks.orEmpty()
         if (tracks.isEmpty()) return
-        playAll(if (shuffled) tracks.shuffled() else tracks)
+        val ordered = if (shuffled) tracks.shuffled() else tracks
+        playFrom(ordered, ordered.first())
     }
 
     fun addMixLabResultToQueue() {
         val tracks = mixLab.session.value?.result?.tracks.orEmpty()
         if (tracks.isEmpty()) return
-        queueEngine.addLast(tracks)
+        addTracksToQueue(tracks)
     }
 
     fun playPlaylist(playlistId: String, startTrackId: String? = null) {

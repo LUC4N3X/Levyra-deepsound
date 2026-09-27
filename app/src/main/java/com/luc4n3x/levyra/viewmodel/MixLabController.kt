@@ -129,7 +129,7 @@ class MixLabController(
 
     private fun runGeneration(sessionGeneration: Long, params: MixLabParams) {
         generateJob?.cancel()
-        mutate(sessionGeneration) { it.copy(stage = MixLabStage.Generating, savedPlaylistId = null, saveFailed = false) }
+        mutate(sessionGeneration) { it.copy(stage = MixLabStage.Generating, result = null, savedPlaylistId = null, saveFailed = false) }
         generateJob = scope.launch {
             val result = try {
                 withContext(computeDispatcher) {

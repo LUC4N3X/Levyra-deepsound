@@ -165,4 +165,51 @@ class AdaptiveStabilityLoadControlTest {
         assertTrue(stable.maxBufferMs < 120_000)
         assertEquals(normal.backBufferMs, stable.backBufferMs)
     }
+
+    @Test
+    fun maintainsSeparateProfilesForDifferentPeriods() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+
+        // At start, signals requests NORMAL. But let's say the current track triggers STABLE.
+        val signals = object : PlaybackStabilityProfileSource {
+            var request = PlaybackStabilityProfile.Normal
+            override fun requestedProfile(): PlaybackStabilityProfile = request
+        }
+        val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+
+        // Track 1 becomes active while Normal is requested
+        signals.request = PlaybackStabilityProfile.Normal
+        val period1 = parametersWithPeriod(MediaSource.MediaPeriodId("p1"))
+        control.onTracksSelected(period1, TrackGroupArray.EMPTY, emptyTrackSelections())
+
+        // Now it degrades and requests Stable.
+        signals.request = PlaybackStabilityProfile.Stable
+
+        // Next track (preload) starts buffering while Stable is requested
+        val period2 = parametersWithPeriod(MediaSource.MediaPeriodId("p2"))
+        control.onTracksSelected(period2, TrackGroupArray.EMPTY, emptyTrackSelections())
+
+        // Verify shouldContinueLoading uses different load controls for each period
+        control.shouldContinueLoading(period1)
+        assertEquals(1, normal.shouldContinueLoadingCalls)
+        assertEquals(0, stable.shouldContinueLoadingCalls) // period1 is still Normal
+
+        control.shouldContinueLoading(period2)
+        assertEquals(1, normal.shouldContinueLoadingCalls)
+        assertEquals(1, stable.shouldContinueLoadingCalls) // period2 is Stable
+    }
 }
+
+private fun parametersWithPeriod(mediaPeriodId: MediaSource.MediaPeriodId) = LoadControl.Parameters(
+    PlayerId.UNSET,
+    Timeline.EMPTY,
+    mediaPeriodId,
+    0L,
+    0L,
+    1f,
+    true,
+    false,
+    0L,
+    0L
+)
