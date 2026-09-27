@@ -140,7 +140,10 @@ internal fun NetworkSettingsPanel(
 
         RestrictedCompatibilityCard(
             byeDpiEnabled = byeDpiEnabled,
-            onByeDpiChange = { byeDpiEnabled = it },
+            onByeDpiChange = { enabled ->
+                byeDpiEnabled = enabled
+                onApply(settings.copy(byeDpiEnabled = enabled), null)
+            },
             youtubeRegionProfileEnabled = youtubeRegionProfileEnabled,
             onYoutubeRegionProfileChange = { youtubeRegionProfileEnabled = it },
             strings = strings
