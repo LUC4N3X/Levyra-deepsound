@@ -741,7 +741,7 @@ class JioSaavnAudioProviderTest {
         return Base64.getEncoder().encodeToString(cipher.doFinal(plain.toByteArray(Charsets.UTF_8)))
     }
 
-    private fun prefetchExchange(mediaToken: String, streamAvailable: Boolean = true) = ScriptedExchange { request ->
+    private fun prefetchExchange(mediaToken: String) = ScriptedExchange { request ->
         when {
             request.url.contains("search.getResults") -> jsonResponse(
                 searchBody(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, token = mediaToken))
@@ -752,7 +752,26 @@ class JioSaavnAudioProviderTest {
                     JSONArray().put(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, token = mediaToken))
                 ).toString()
             )
-            request.url.startsWith("https://aac.saavncdn.com/") -> if (streamAvailable) validFor(320) else htmlResponse(404)
+            request.url.startsWith("https://aac.saavncdn.com/") -> validFor(320)
+            else -> htmlResponse(404)
+        }
+    }
+
+    private fun twoTrackExchange(idA: String, tokenA: String, idB: String, tokenB: String) = ScriptedExchange { request ->
+        when {
+            request.url.contains("search.getResults") && request.url.contains("TrackAlpha") -> jsonResponse(
+                searchBody(saavnSong(idA, "TrackAlpha", listOf("TestArtist"), "TestAlbum", 200, token = tokenA))
+            )
+            request.url.contains("search.getResults") && request.url.contains("TrackBeta") -> jsonResponse(
+                searchBody(saavnSong(idB, "TrackBeta", listOf("TestArtist"), "TestAlbum", 200, token = tokenB))
+            )
+            request.url.contains("song.getDetails") && request.url.contains(idA) -> jsonResponse(
+                JSONObject().put("songs", JSONArray().put(saavnSong(idA, "TrackAlpha", listOf("TestArtist"), "TestAlbum", 200, token = tokenA))).toString()
+            )
+            request.url.contains("song.getDetails") && request.url.contains(idB) -> jsonResponse(
+                JSONObject().put("songs", JSONArray().put(saavnSong(idB, "TrackBeta", listOf("TestArtist"), "TestAlbum", 200, token = tokenB))).toString()
+            )
+            request.url.startsWith("https://aac.saavncdn.com/") -> validFor(320)
             else -> htmlResponse(404)
         }
     }
@@ -779,34 +798,56 @@ class JioSaavnAudioProviderTest {
         val first = resolver.resolveNow(identity)
         assertTrue(first is HighQualityResolution.Selected)
         val requestsAfterFirst = exchange.requests.size
-        val cached = resolver.cachedSelection(identity)
-        assertEquals((first as HighQualityResolution.Selected).stream.url, cached?.stream?.url)
+        val second = resolver.resolveNow(identity)
+        assertTrue(second is HighQualityResolution.Selected)
+        assertEquals(
+            (first as HighQualityResolution.Selected).stream.url,
+            (second as HighQualityResolution.Selected).stream.url
+        )
         assertEquals(requestsAfterFirst, exchange.requests.size)
+        assertEquals(first.stream.url, resolver.cachedSelection(identity)?.stream?.url)
     }
 
     @Test
     fun staleCachedJioSaavnStreamIsRejectedAndReResolved() {
         val token = encrypt("https://aac.saavncdn.com/000/staleB_320.mp4")
         val exchange = prefetchExchange(token)
-        var nowMs = 1_800_000_000_000L
-        val resolver = highQualityResolver(provider(exchange), clock = { nowMs })
+        val resolver = highQualityResolver(provider(exchange))
         val identity = "identity-stale-b"
         resolver.resolveNow(identity)
         assertTrue(resolver.cachedSelection(identity) != null)
-        nowMs += 3L * 60L * 60L * 1_000L + 91_000L
+        clockMs += 3L * 60L * 60L * 1_000L + 91_000L
         assertNull(resolver.cachedSelection(identity))
         val requestsBeforeRetry = exchange.requests.size
         val second = resolver.resolveNow(identity)
         assertTrue(second is HighQualityResolution.Selected)
         assertTrue(exchange.requests.size > requestsBeforeRetry)
+        assertTrue(resolver.cachedSelection(identity) != null)
     }
 
     @Test
     fun differentTrackIdentityNeverReusesAnotherTracksCachedStream() {
-        val token = encrypt("https://aac.saavncdn.com/000/crossC_320.mp4")
-        val resolver = highQualityResolver(provider(prefetchExchange(token)))
-        resolver.resolveNow("identity-cross-a")
+        val tokenA = encrypt("https://aac.saavncdn.com/000/crossA_320.mp4")
+        val tokenB = encrypt("https://aac.saavncdn.com/000/crossB_320.mp4")
+        val exchange = twoTrackExchange("song-a", tokenA, "song-b", tokenB)
+        val resolver = highQualityResolver(provider(exchange))
+        val queryA = query(title = "TrackAlpha", artist = "TestArtist", album = "TestAlbum")
+        val queryB = query(title = "TrackBeta", artist = "TestArtist", album = "TestAlbum")
+
+        val first = resolver.resolveNow("identity-cross-a", queryA)
+        assertTrue(first is HighQualityResolution.Selected)
+
         assertNull(resolver.cachedSelection("identity-cross-b"))
+        val requestsBeforeB = exchange.requests.size
+        val second = resolver.resolveNow("identity-cross-b", queryB)
+        assertTrue(second is HighQualityResolution.Selected)
+        assertTrue(exchange.requests.size > requestsBeforeB)
+
+        val streamA = (first as HighQualityResolution.Selected).stream.url
+        val streamB = (second as HighQualityResolution.Selected).stream.url
+        assertNotEquals(streamA, streamB)
+        assertEquals(streamA, resolver.cachedSelection("identity-cross-a")?.stream?.url)
+        assertEquals(streamB, resolver.cachedSelection("identity-cross-b")?.stream?.url)
     }
 
     private companion object {

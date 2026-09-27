@@ -62,6 +62,7 @@ class LevyraMediaItemFactoryTest {
     @Test
     fun aacAndM4aStayAudioAlongsideJioSaavnMp4() {
         assertEquals("audio/mp4", LevyraMediaItemFactory.mimeTypeFor("https://example.com/track.m4a", false))
+        assertEquals("audio/mp4", LevyraMediaItemFactory.mimeTypeFor("https://example.com/track.aac", false))
         assertEquals(
             "audio/mp4",
             LevyraMediaItemFactory.mimeTypeFor("https://example.com/videoplayback?mime=audio%2Fmp4", false)
