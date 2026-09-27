@@ -117,28 +117,28 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 </p>
 
 <p align="center">
-  <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp" width="200" alt="Levyra home and personalized radio" /></a>
-  <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp" width="200" alt="Levyra song and video player" /></a>
-  <a href="docs/assets/showcase/cards/03_lyrics.webp"><img src="docs/assets/showcase/cards/03_lyrics.webp" width="200" alt="Levyra synchronized lyrics" /></a>
-  <a href="docs/assets/showcase/cards/04_charts.webp"><img src="docs/assets/showcase/cards/04_charts.webp" width="200" alt="Levyra international charts" /></a>
+  <a href="docs/assets/showcase/cards/01_home.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/01_home.webp" width="148"><img src="docs/assets/showcase/cards/01_home.webp" width="200" alt="Levyra home and personalized radio" /></picture></a>
+  <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/02_stay_with_the_song.webp" width="148"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp" width="200" alt="Levyra song and video player" /></picture></a>
+  <a href="docs/assets/showcase/cards/03_lyrics.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/03_lyrics.webp" width="148"><img src="docs/assets/showcase/cards/03_lyrics.webp" width="200" alt="Levyra synchronized lyrics" /></picture></a>
+  <a href="docs/assets/showcase/cards/04_charts.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/04_charts.webp" width="148"><img src="docs/assets/showcase/cards/04_charts.webp" width="200" alt="Levyra international charts" /></picture></a>
 </p>
 <p align="center">
-  <a href="docs/assets/showcase/cards/05_search_artist.webp"><img src="docs/assets/showcase/cards/05_search_artist.webp" width="200" alt="Levyra artist search" /></a>
-  <a href="docs/assets/showcase/cards/06_artist_discography.webp"><img src="docs/assets/showcase/cards/06_artist_discography.webp" width="200" alt="Levyra artist discography" /></a>
-  <a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp" width="200" alt="Levyra moods and genres" /></a>
-  <a href="docs/assets/showcase/cards/08_keep_it_personal.webp"><img src="docs/assets/showcase/cards/08_keep_it_personal.webp" width="200" alt="Levyra private listening stats" /></a>
+  <a href="docs/assets/showcase/cards/05_search_artist.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/05_search_artist.webp" width="148"><img src="docs/assets/showcase/cards/05_search_artist.webp" width="200" alt="Levyra artist search" /></picture></a>
+  <a href="docs/assets/showcase/cards/06_artist_discography.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/06_artist_discography.webp" width="148"><img src="docs/assets/showcase/cards/06_artist_discography.webp" width="200" alt="Levyra artist discography" /></picture></a>
+  <a href="docs/assets/showcase/cards/07_genres.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/07_genres.webp" width="148"><img src="docs/assets/showcase/cards/07_genres.webp" width="200" alt="Levyra moods and genres" /></picture></a>
+  <a href="docs/assets/showcase/cards/08_keep_it_personal.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/08_keep_it_personal.webp" width="148"><img src="docs/assets/showcase/cards/08_keep_it_personal.webp" width="200" alt="Levyra private listening stats" /></picture></a>
 </p>
 <p align="center">
-  <a href="docs/assets/showcase/cards/09_artist_profile.webp"><img src="docs/assets/showcase/cards/09_artist_profile.webp" width="200" alt="Levyra artist profile and biography" /></a>
-  <a href="docs/assets/showcase/cards/10_album.webp"><img src="docs/assets/showcase/cards/10_album.webp" width="200" alt="Levyra album details and tracklist" /></a>
-  <a href="docs/assets/showcase/cards/11_search.webp"><img src="docs/assets/showcase/cards/11_search.webp" width="200" alt="Levyra search history and artists" /></a>
-  <a href="docs/assets/showcase/cards/12_player_settings.webp"><img src="docs/assets/showcase/cards/12_player_settings.webp" width="200" alt="Levyra player settings" /></a>
+  <a href="docs/assets/showcase/cards/09_artist_profile.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/09_artist_profile.webp" width="148"><img src="docs/assets/showcase/cards/09_artist_profile.webp" width="200" alt="Levyra artist profile and biography" /></picture></a>
+  <a href="docs/assets/showcase/cards/10_album.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/10_album.webp" width="148"><img src="docs/assets/showcase/cards/10_album.webp" width="200" alt="Levyra album details and tracklist" /></picture></a>
+  <a href="docs/assets/showcase/cards/11_search.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/11_search.webp" width="148"><img src="docs/assets/showcase/cards/11_search.webp" width="200" alt="Levyra search history and artists" /></picture></a>
+  <a href="docs/assets/showcase/cards/12_player_settings.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/12_player_settings.webp" width="148"><img src="docs/assets/showcase/cards/12_player_settings.webp" width="200" alt="Levyra player settings" /></picture></a>
 </p>
 <p align="center">
-  <a href="docs/assets/showcase/cards/13_explore.webp"><img src="docs/assets/showcase/cards/13_explore.webp" width="200" alt="Levyra explore and mix hub" /></a>
-  <a href="docs/assets/showcase/cards/14_new_releases.webp"><img src="docs/assets/showcase/cards/14_new_releases.webp" width="200" alt="Levyra new releases" /></a>
-  <a href="docs/assets/showcase/cards/15_collections.webp"><img src="docs/assets/showcase/cards/15_collections.webp" width="200" alt="Levyra curated collections and playlists" /></a>
-  <a href="docs/assets/showcase/cards/16_listening_rhythm.webp"><img src="docs/assets/showcase/cards/16_listening_rhythm.webp" width="200" alt="Levyra listening rhythm and habits" /></a>
+  <a href="docs/assets/showcase/cards/13_explore.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/13_explore.webp" width="148"><img src="docs/assets/showcase/cards/13_explore.webp" width="200" alt="Levyra explore and mix hub" /></picture></a>
+  <a href="docs/assets/showcase/cards/14_new_releases.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/14_new_releases.webp" width="148"><img src="docs/assets/showcase/cards/14_new_releases.webp" width="200" alt="Levyra new releases" /></picture></a>
+  <a href="docs/assets/showcase/cards/15_collections.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/15_collections.webp" width="148"><img src="docs/assets/showcase/cards/15_collections.webp" width="200" alt="Levyra curated collections and playlists" /></picture></a>
+  <a href="docs/assets/showcase/cards/16_listening_rhythm.webp"><picture><source media="(max-width: 640px)" srcset="docs/assets/showcase/cards/16_listening_rhythm.webp" width="148"><img src="docs/assets/showcase/cards/16_listening_rhythm.webp" width="200" alt="Levyra listening rhythm and habits" /></picture></a>
 </p>
 
 </div>
@@ -257,7 +257,6 @@ Contributions and bug reports are welcome. Technical documentation and architect
   <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
   <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="20"></a>
 </p>
-
 <sub>
   <b>Featured:</b>
   <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
