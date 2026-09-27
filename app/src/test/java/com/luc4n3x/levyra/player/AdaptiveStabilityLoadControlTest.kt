@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player
 
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.analytics.PlayerId
@@ -375,5 +376,30 @@ class AdaptiveStabilityLoadControlTest {
         control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
         assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
         assertEquals(2, signals.calls)
+    }
+
+    @Test
+    fun preloadingNextItemDoesNotChangeActiveProfileOfCurrentItem() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val signals = ScriptedSignals(ArrayDeque(listOf(PlaybackStabilityProfile.Normal, PlaybackStabilityProfile.Stable)))
+        val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+        val itemA = mediaItem("mA")
+        val itemB = mediaItem("mB")
+        val timeline = FakeTimeline(listOf(itemA, itemB), periodsPerWindow = 1)
+
+        // Item A becomes current and activates Normal
+        control.onMediaItemTransition(itemA, Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED)
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(PlaybackStabilityProfile.Normal, control.activeProfile)
+
+        // Item B is preloaded in the background (tracks selected) while Item A is still playing
+        control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        // Active profile MUST remain Normal for Item A!
+        assertEquals(PlaybackStabilityProfile.Normal, control.activeProfile)
+
+        // When playback transitions to Item B, it activates its profile (Stable)
+        control.onMediaItemTransition(itemB, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
     }
 }

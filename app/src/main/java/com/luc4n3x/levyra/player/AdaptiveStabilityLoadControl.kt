@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.player
 
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.analytics.PlayerId
@@ -13,7 +15,7 @@ class AdaptiveStabilityLoadControl(
     private val normal: LoadControl,
     private val stable: LoadControl,
     private val signals: PlaybackStabilityProfileSource
-) : LoadControl {
+) : LoadControl, Player.Listener {
 
     @Volatile
     private var active: LoadControl = normal
@@ -22,6 +24,8 @@ class AdaptiveStabilityLoadControl(
     private val profileByMediaItem = LinkedHashMap<Any, PlaybackStabilityProfile>()
     private val window = Timeline.Window()
     private val period = Timeline.Period()
+    private var currentMediaItem: MediaItem? = null
+    private var currentProfile: PlaybackStabilityProfile? = null
 
     val activeProfile: PlaybackStabilityProfile
         get() = if (active === stable) PlaybackStabilityProfile.Stable else PlaybackStabilityProfile.Normal
@@ -36,13 +40,30 @@ class AdaptiveStabilityLoadControl(
         trackGroups: TrackGroupArray,
         trackSelections: Array<ExoTrackSelection?>
     ) {
+        normal.onTracksSelected(parameters, trackGroups, trackSelections)
+        stable.onTracksSelected(parameters, trackGroups, trackSelections)
+
         val key = mediaItemKeyOf(parameters)
-        val profile = profileFor(key)
-        val nextActive = if (profile == PlaybackStabilityProfile.Stable) stable else normal
-        val inactive = if (nextActive === stable) normal else stable
-        inactive.onTracksSelected(parameters, trackGroups, trackSelections)
-        nextActive.onTracksSelected(parameters, trackGroups, trackSelections)
-        active = nextActive
+        val item = mediaItemOf(parameters)
+        synchronized(mapLock) {
+            val isCurrent = currentMediaItem == null || (item != null && item == currentMediaItem)
+            if (isCurrent) {
+                val profile = currentProfile ?: profileFor(key)
+                profileByMediaItem[key] = profile
+                active = if (profile == PlaybackStabilityProfile.Stable) stable else normal
+            }
+        }
+    }
+
+    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        synchronized(mapLock) {
+            currentMediaItem = mediaItem
+            if (mediaItem != null) {
+                val profile = signals.requestedProfile()
+                currentProfile = profile
+                active = if (profile == PlaybackStabilityProfile.Stable) stable else normal
+            }
+        }
     }
 
     override fun onStopped(playerId: PlayerId) {
@@ -74,6 +95,19 @@ class AdaptiveStabilityLoadControl(
         bufferedDurationUs: Long
     ): Boolean = active.shouldContinuePreloading(playerId, timeline, mediaPeriodId, bufferedDurationUs)
 
+    private fun mediaItemOf(parameters: LoadControl.Parameters): MediaItem? {
+        val periodUid = parameters.mediaPeriodId.periodUid
+        val periodIndex = parameters.timeline.getIndexOfPeriod(periodUid)
+        if (periodIndex < 0) return null
+        synchronized(mapLock) {
+            parameters.timeline.getPeriod(periodIndex, period)
+            val windowIndex = period.windowIndex
+            if (windowIndex < 0 || windowIndex >= parameters.timeline.windowCount) return null
+            parameters.timeline.getWindow(windowIndex, window)
+            return window.mediaItem
+        }
+    }
+
     private fun mediaItemKeyOf(parameters: LoadControl.Parameters): Any {
         val periodUid = parameters.mediaPeriodId.periodUid
         val periodIndex = parameters.timeline.getIndexOfPeriod(periodUid)
@@ -81,6 +115,7 @@ class AdaptiveStabilityLoadControl(
         synchronized(mapLock) {
             parameters.timeline.getPeriod(periodIndex, period)
             val windowIndex = period.windowIndex
+            if (windowIndex < 0 || windowIndex >= parameters.timeline.windowCount) return periodUid
             parameters.timeline.getWindow(windowIndex, window)
             return window.uid
         }
@@ -99,7 +134,11 @@ class AdaptiveStabilityLoadControl(
     }
 
     private fun clearProfiles() {
-        synchronized(mapLock) { profileByMediaItem.clear() }
+        synchronized(mapLock) {
+            profileByMediaItem.clear()
+            currentMediaItem = null
+            currentProfile = null
+        }
     }
 
     internal fun trackedMediaItemCount(): Int = synchronized(mapLock) { profileByMediaItem.size }

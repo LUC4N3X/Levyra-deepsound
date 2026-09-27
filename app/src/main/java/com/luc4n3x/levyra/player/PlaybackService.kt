@@ -748,6 +748,7 @@ class PlaybackService : MediaLibraryService() {
             .setHandleAudioBecomingNoisy(true)
             .build()
         player.addListener(stabilitySignals)
+        player.addListener(loadControl)
         player.addAnalyticsListener(stabilitySignals)
         RuntimeHooks.attachPlayer(player)
         RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
