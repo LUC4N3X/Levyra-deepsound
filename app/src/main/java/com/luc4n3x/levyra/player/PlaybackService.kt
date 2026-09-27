@@ -129,6 +129,7 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var resolver: PlaybackResolver
     private lateinit var musicRepository: YoutubeMusicRepository
     private lateinit var sharedMediaSourceFactory: MediaSource.Factory
+    private lateinit var stabilitySignals: PlaybackStabilitySignals
     private val adaptivePlaybackPolicy by lazy { AdaptivePlaybackPolicy(this) }
     private val playbackWarmup by lazy { PlaybackWarmup(this) }
     private var queueSkipJob: Job? = null
@@ -632,16 +633,25 @@ class PlaybackService : MediaLibraryService() {
         musicRepository = YoutubeMusicRepository(this)
         autoLibrary = AndroidAutoLibrary(this)
         val bufferProfile = AdaptivePlaybackPolicy(this).serviceBuffers()
-        val loadControl = DefaultLoadControl.Builder()
+        val stableBufferProfile = AdaptiveStabilityLoadControl.stableProfileOf(bufferProfile)
+        val sharedAllocator = androidx.media3.exoplayer.upstream.DefaultAllocator(true, androidx.media3.common.C.DEFAULT_BUFFER_SEGMENT_SIZE)
+        fun buildLoadControl(profile: PlaybackBufferProfile) = DefaultLoadControl.Builder()
+            .setAllocator(sharedAllocator)
             .setBufferDurationsMs(
-                bufferProfile.minBufferMs,
-                bufferProfile.maxBufferMs,
-                bufferProfile.playbackBufferMs,
-                bufferProfile.rebufferMs
+                profile.minBufferMs,
+                profile.maxBufferMs,
+                profile.playbackBufferMs,
+                profile.rebufferMs
             )
-            .setBackBuffer(bufferProfile.backBufferMs, false)
+            .setBackBuffer(profile.backBufferMs, false)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
+        stabilitySignals = PlaybackStabilitySignals()
+        val loadControl = AdaptiveStabilityLoadControl(
+            normal = buildLoadControl(bufferProfile),
+            stable = buildLoadControl(stableBufferProfile),
+            signals = stabilitySignals
+        )
         val baseHttpFactory = PlaybackNetworkStack.playbackFactory(this)
             .setDefaultRequestProperties(
                 mapOf(
@@ -737,6 +747,9 @@ class PlaybackService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
+        player.addListener(stabilitySignals)
+        player.addListener(loadControl)
+        player.addAnalyticsListener(stabilitySignals)
         RuntimeHooks.attachPlayer(player)
         RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
         RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_CREATE)
