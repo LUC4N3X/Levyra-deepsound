@@ -178,15 +178,24 @@ internal class PipedRescueClient(
     private suspend fun resolveWithinBudget(videoId: String, audioQuality: String): PipedResolvedStream? {
         if (hasNegative(videoId, null, PipedFailureKind.VIDEO_NOT_FOUND)) return null
         Timber.i("Piped rescue activated")
-        for (instance in orderedInstances(videoId)) {
+        val candidates = orderedInstances(videoId)
+        if (candidates.isEmpty()) return null
+        var missingConfirmations = 0
+        for (instance in candidates) {
             Timber.i("Piped instance %s selected", instance.id)
             val response = when (val lookup = fetchStreams(videoId, instance)) {
                 is ApiLookup.Success -> lookup.response
                 ApiLookup.TryNext -> continue
-                ApiLookup.VideoMissing -> return null
+                ApiLookup.VideoMissing -> {
+                    missingConfirmations++
+                    continue
+                }
             }
-            val candidates = parseInstanceCandidates(videoId, audioQuality, instance, response) ?: continue
-            probeCandidates(videoId, instance, response, candidates)?.let { return it }
+            val streams = parseInstanceCandidates(videoId, audioQuality, instance, response) ?: continue
+            probeCandidates(videoId, instance, response, streams)?.let { return it }
+        }
+        if (candidates.size >= MIN_GLOBAL_MISSING_CONFIRMATIONS && missingConfirmations == candidates.size) {
+            putNegative(videoId, null, PipedFailureKind.VIDEO_NOT_FOUND)
         }
         return null
     }
@@ -211,7 +220,7 @@ internal class PipedRescueClient(
         }
         val failure = response.failureKind() ?: return ApiLookup.Success(response)
         if (failure == PipedFailureKind.VIDEO_NOT_FOUND) {
-            putNegative(videoId, null, failure)
+            putNegative(videoId, instance.id, failure)
             return ApiLookup.VideoMissing
         }
         recordFailure(videoId, instance, failure, response.latencyMs)
@@ -335,20 +344,12 @@ internal class PipedRescueClient(
     private fun orderedInstances(videoId: String): List<PipedInstance> = synchronized(lock) {
         val now = clockMs()
         pruneNegativeCacheLocked(now)
-        val eligible = instances.filter { instance ->
+        instances.filter { instance ->
             (instanceHealth[instance.id]?.blockedUntilMs ?: 0L) <= now &&
                 negativeCache.none { (key, expiresAt) ->
                     expiresAt > now && key.videoId == videoId && key.instanceId == instance.id
                 }
-        }
-        val pool = eligible.ifEmpty {
-            instances.filter { instance ->
-                negativeCache.none { (key, expiresAt) ->
-                    expiresAt > now && key.videoId == videoId && key.instanceId == instance.id
-                }
-            }
-        }
-        pool.sortedWith(
+        }.sortedWith(
             compareByDescending<PipedInstance> { healthScore(instanceHealth[it.id]) }
                 .thenBy { instanceHealth[it.id]?.averageLatencyMs ?: Long.MAX_VALUE }
                 .thenBy { instances.indexOf(it) }
@@ -492,10 +493,10 @@ internal class PipedRescueClient(
 
     companion object {
         internal val BOOTSTRAP_INSTANCES = listOf(
-            PipedInstance("kavin.rocks", "https://pipedapi.kavin.rocks"),
-            PipedInstance("leptons.xyz", "https://pipedapi.leptons.xyz"),
-            PipedInstance("nosebs.ru", "https://pipedapi.nosebs.ru"),
-            PipedInstance("ducks.party", "https://pipedapi.ducks.party")
+            PipedInstance("ducks.party", "https://pipedapi.ducks.party"),
+            PipedInstance("private.coffee", "https://api.piped.private.coffee"),
+            PipedInstance("minionflo.net", "https://api.piped.minionflo.net"),
+            PipedInstance("wireway.ch", "https://piped.wireway.ch")
         )
         private val VIDEO_ID_REGEX = Regex("[A-Za-z0-9_-]{11}")
         private val API_HEADERS = mapOf(
@@ -509,6 +510,7 @@ internal class PipedRescueClient(
             "User-Agent" to "Levyra/Android Piped Rescue"
         )
         private const val MAX_STREAM_PROBES_PER_INSTANCE = 2
+        private const val MIN_GLOBAL_MISSING_CONFIRMATIONS = 2
     }
 }
 
