@@ -13,6 +13,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -66,7 +67,7 @@ class MotionArtworkEngine(context: Context) {
     ): Flow<MotionArtwork> = flow {
         if (!networkPolicy.canResolveCurrent()) return@flow
         val runtime = MotionArtworkRuntime.snapshot()
-        val lookupTrack = prepareLookupTrack(track)
+        val lookupTrack = prepareLookupTrackWithinBudget(track)
         if (!networkPolicy.canResolveCurrent()) return@flow
         val identityKey = motionArtworkRequestKey(lookupTrack, source)
         val requestKey = "${runtime.epoch}:$identityKey"
@@ -78,6 +79,13 @@ class MotionArtworkEngine(context: Context) {
             }
         )
     }.flowOn(Dispatchers.IO)
+
+    private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
+        val budgetMs = motionMetadataForegroundBudgetMs(track)
+        if (budgetMs <= 0L) return track
+        val prepared = lookupScope.async { prepareLookupTrack(track) }
+        return withTimeoutOrNull(budgetMs) { prepared.await() } ?: track
+    }
 
     private suspend fun prepareLookupTrack(track: Track): Track {
         if (track.isrc.isNotBlank() && !isUnusableMotionAlbum(track.album)) return track
@@ -574,6 +582,7 @@ private const val ARTIST_MOTION_CONFIDENCE = 100
 private const val ARTIST_MOTION_REQUEST_TIMEOUT_MS = 45_000L
 private const val APPLE_MOTION_PLAYER_REQUEST_TIMEOUT_MS = 25_000L
 private const val DEFAULT_MOTION_METADATA_COUNTRY = "IT"
+private const val MOTION_METADATA_FOREGROUND_BUDGET_MS = 150L
 
 internal fun artistMotionForegroundWaitMs(source: LevyraCanvasSource): Long = when (source) {
     LevyraCanvasSource.Auto,
@@ -588,6 +597,9 @@ internal fun shouldWarmDedicatedArtistMotion(source: LevyraCanvasSource): Boolea
     LevyraCanvasSource.Community,
     LevyraCanvasSource.Tidal -> false
 }
+
+internal fun motionMetadataForegroundBudgetMs(track: Track): Long =
+    if (track.isrc.isNotBlank() && !isUnusableMotionAlbum(track.album)) 0L else MOTION_METADATA_FOREGROUND_BUDGET_MS
 
 internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeoutMs: Long): Long =
     if (providerId == "apple-motion") {
