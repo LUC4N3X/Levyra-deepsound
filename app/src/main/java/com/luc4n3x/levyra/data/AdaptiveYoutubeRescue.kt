@@ -32,10 +32,7 @@ internal class AdaptiveYoutubeRescue(
     private val resolutionBudgetMs: Long = ByeDpiHealthPolicy.RESOLUTION_BUDGET_MS,
     private val recoveryProbeBudgetMs: Long = ByeDpiHealthPolicy.RECOVERY_PROBE_BUDGET_MS
 ) {
-    private data class DirectAttempt<T>(
-        val value: T?,
-        val timedOut: Boolean
-    )
+    private data class DirectAttempt<T>(val value: T?)
 
     suspend fun <T> resolve(
         byeDpiEnabled: Boolean,
@@ -71,11 +68,11 @@ internal class AdaptiveYoutubeRescue(
             } else {
                 health.recordSuccess(latencyMs)
             }
-            DirectAttempt(value, timedOut = false)
+            DirectAttempt(value)
         }
         return if (attempt == null) {
             health.recordFailure(ByeDpiFailureKind.TIMEOUT)
-            DirectAttempt(null, timedOut = true)
+            DirectAttempt(null)
         } else attempt
     }
 
