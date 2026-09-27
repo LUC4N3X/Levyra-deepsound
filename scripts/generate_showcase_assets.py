@@ -10,28 +10,45 @@ os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 
 SCREENS = {
-    "home": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_171253_LEVYRA.jpg",
+    "home": os.environ.get("LEVYRA_SCREEN_HOME", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_171253_LEVYRA.jpg"),
     "charts": "screen-charts.jpg",
     "genres": "screen-genres.jpg",
-    "listening_pulse": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_193717_LEVYRA.jpg",
+    "listening_pulse": os.environ.get("LEVYRA_SCREEN_PULSE", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193717_LEVYRA.jpg"),
     "lyrics": "screen-lyrics.jpg",
-    "now_playing": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_193948_LEVYRA.jpg",
+    "now_playing": os.environ.get("LEVYRA_SCREEN_PLAYER", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193948_LEVYRA.jpg"),
     "search_artist": "screen-search-artist.jpg",
     "artist_discography": "screen-artist-discography.jpg",
-    "artist_profile": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_194603_LEVYRA.jpg",
-    "album": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_194706_LEVYRA.jpg",
-    "search": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_194736_LEVYRA.jpg",
-    "player_settings": r"C:\Users\Luca Drogo\Downloads\Screenshot_20260926_194845_LEVYRA.jpg",
+    "artist_profile": os.environ.get("LEVYRA_SCREEN_ARTIST", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194603_LEVYRA.jpg"),
+    "album": os.environ.get("LEVYRA_SCREEN_ALBUM", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194706_LEVYRA.jpg"),
+    "search": os.environ.get("LEVYRA_SCREEN_SEARCH", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194736_LEVYRA.jpg"),
+    "player_settings": os.environ.get("LEVYRA_SCREEN_SETTINGS", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194845_LEVYRA.jpg"),
+    "explore": os.environ.get("LEVYRA_SCREEN_EXPLORE", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_140841_LEVYRA.jpg"),
+    "new_releases": os.environ.get("LEVYRA_SCREEN_RELEASES", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_132248_LEVYRA.jpg"),
+    "collections": os.environ.get("LEVYRA_SCREEN_COLLECTIONS", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_132323_LEVYRA.jpg"),
+    "listening_rhythm": os.environ.get("LEVYRA_SCREEN_RHYTHM", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_131943_LEVYRA.jpg"),
 }
 
 def get_screen_path(filename):
     return filename if os.path.isabs(filename) else os.path.join(SCREENSHOT_DIR, filename)
 
 def get_font(size, bold=False):
-    font_path = r"C:\Windows\Fonts\segoeuib.ttf" if bold else r"C:\Windows\Fonts\segoeui.ttf"
-    if not os.path.exists(font_path):
-        font_path = r"C:\Windows\Fonts\arialbd.ttf" if bold else r"C:\Windows\Fonts\arial.ttf"
-    return ImageFont.truetype(font_path, size)
+    """Loads a TrueType font across Windows/Linux/macOS or falls back safely to default font."""
+    candidates = [
+        r"C:\Windows\Fonts\segoeuib.ttf" if bold else r"C:\Windows\Fonts\segoeui.ttf",
+        r"C:\Windows\Fonts\arialbd.ttf" if bold else r"C:\Windows\Fonts\arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/SFCompactText-Bold.ttf" if bold else "/System/Library/Fonts/SFCompactText.ttf"
+    ]
+    for font_path in candidates:
+        if os.path.exists(font_path):
+            try:
+                return ImageFont.truetype(font_path, size)
+            except OSError:
+                continue
+    try:
+        return ImageFont.load_default(size)
+    except TypeError:
+        return ImageFont.load_default()
 
 def enhance_screenshot(img):
     """Subtle polish: OLED contrast, slight vibrance, crisp sharpness."""
@@ -370,6 +387,10 @@ def generate_feature_cards():
         ("album", "10", "Open the whole album", "Artwork, context,\nand a complete tracklist.", (238, 221, 203), (199, 151, 106)),
         ("search", "11", "Find it fast", "Recent music and artists,\nready when you return.", (205, 228, 231), (105, 177, 181)),
         ("player_settings", "12", "Shape the playback", "Radio, sleep timer,\nquality, and more.", (232, 211, 226), (190, 127, 169)),
+        ("explore", "13", "Explore and mix", "Live stations, custom mixes,\nand fresh currents.", (205, 225, 245), (68, 138, 245)),
+        ("new_releases", "14", "Fresh off the stage", "New singles and albums\nupdated every week.", (245, 215, 210), (225, 115, 95)),
+        ("collections", "15", "Curated for you", "Playlists and gems\naround what you love.", (226, 212, 244), (152, 95, 215)),
+        ("listening_rhythm", "16", "Your listening rhythm", "Activity, peak hours,\nand listening habits.", (210, 238, 225), (72, 180, 135)),
     ]
 
     label_font = get_font(19, bold=True)
