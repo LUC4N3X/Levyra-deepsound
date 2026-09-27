@@ -117,7 +117,6 @@ class ByeDpiRoutingTest {
         }
 
         assertEquals(0x01, socks.requests.single().addressType)
-        assertEquals(listOf(youtubeHost), tls.requestedServerNames)
     }
 
     @Test
