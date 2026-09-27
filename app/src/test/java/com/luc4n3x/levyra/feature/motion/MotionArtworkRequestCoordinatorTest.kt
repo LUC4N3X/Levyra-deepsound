@@ -80,6 +80,20 @@ class MotionArtworkRequestCoordinatorTest {
     }
 
     @Test
+    fun incompleteMetadataGetsOnlyATinyForegroundBudget() {
+        val incomplete = track(
+            id = "raw",
+            title = "Song",
+            artist = "Artist",
+            album = "YouTube Music"
+        )
+        val prepared = incomplete.copy(album = "Real Album", isrc = "ITABC2600001")
+
+        assertTrue(motionMetadataForegroundBudgetMs(incomplete) in 1L..200L)
+        assertEquals(0L, motionMetadataForegroundBudgetMs(prepared))
+    }
+
+    @Test
     fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {
         val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
