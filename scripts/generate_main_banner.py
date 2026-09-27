@@ -9,17 +9,38 @@ import numpy as np
 WIDTH = 2880
 HEIGHT = 1080
 
-LOGO_SRC_PATH = r"C:/Users/Luca Drogo/.gemini/antigravity/brain/56548c8c-b7bc-4dce-809e-6e9d455ced20/.user_uploaded/media_1790506287135.png"
-SCREEN_HOME_PATH = r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_171253_LEVYRA.jpg"
-SCREEN_PLAYER_PATH = r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193948_LEVYRA.jpg"
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSETS_DIR = os.path.join(REPO_ROOT, "docs", "assets")
 
-BG_DARK_CONCERT = r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\minimal_concert_stage_1790508945319.jpg"
-BG_LIGHT_CONCERT = r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\light_concert_stage_1790508968511.jpg"
+def resolve_input(preferred_path, fallback_rel_path):
+    """Resolves preferred local input path with graceful fallback to tracked repository asset."""
+    if preferred_path and os.path.exists(preferred_path):
+        return preferred_path
+    repo_fallback = os.path.join(REPO_ROOT, fallback_rel_path)
+    if os.path.exists(repo_fallback):
+        return repo_fallback
+    return preferred_path
 
-OUTPUT_DARK_PATH = r"docs\assets\levyra-github-banner.webp"
-OUTPUT_LIGHT_PATH = r"docs\assets\levyra-github-banner-light.webp"
+LOGO_SRC_PATH = resolve_input(
+    os.environ.get("LEVYRA_LOGO_PATH", r"C:/Users/Luca Drogo/.gemini/antigravity/brain/56548c8c-b7bc-4dce-809e-6e9d455ced20/.user_uploaded/media_1790506287135.png"),
+    os.path.join("app", "src", "main", "res", "drawable", "levyra_logo.png")
+)
+SCREEN_HOME_PATH = resolve_input(
+    os.environ.get("LEVYRA_SCREEN_HOME", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_171253_LEVYRA.jpg"),
+    os.path.join("docs", "assets", "showcase", "cards", "01_home.webp")
+)
+SCREEN_PLAYER_PATH = resolve_input(
+    os.environ.get("LEVYRA_SCREEN_PLAYER", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193948_LEVYRA.jpg"),
+    os.path.join("docs", "assets", "showcase", "cards", "03_lyrics.webp")
+)
 
-DESKTOP_DIR = r"C:\Users\Luca Drogo\Desktop"
+BG_DARK_CONCERT = os.environ.get("LEVYRA_BG_DARK", r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\minimal_concert_stage_1790508945319.jpg")
+BG_LIGHT_CONCERT = os.environ.get("LEVYRA_BG_LIGHT", r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\light_concert_stage_1790508968511.jpg")
+
+OUTPUT_DARK_PATH = os.path.join(ASSETS_DIR, "levyra-github-banner.webp")
+OUTPUT_LIGHT_PATH = os.path.join(ASSETS_DIR, "levyra-github-banner-light.webp")
+
+DESKTOP_DIR = os.environ.get("LEVYRA_DESKTOP_DIR", os.path.join(os.path.expanduser("~"), "Desktop"))
 
 # Official GitHub Octocat vector assets (256x256 rendered directly from GitHub official SVG path)
 GITHUB_WHITE_B64 = (
@@ -31,24 +52,49 @@ GITHUB_DARK_B64 = (
 )
 
 def get_official_github_mark(light_mode=False, target_size=60):
+    """Returns the official GitHub Octocat brand mark as an RGBA image."""
     b64_str = GITHUB_DARK_B64 if light_mode else GITHUB_WHITE_B64
     raw = base64.b64decode(b64_str)
     img = Image.open(io.BytesIO(raw)).convert('RGBA')
     return img.resize((target_size, target_size), Image.Resampling.LANCZOS)
 
 def get_font(size, bold=False, light=False):
+    """Loads a TrueType font across Windows/Linux/macOS or falls back safely to default font."""
+    candidates = []
     if light:
-        font_path = r"C:\Windows\Fonts\segoeuil.ttf"
+        candidates = [
+            r"C:\Windows\Fonts\segoeuil.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/System/Library/Fonts/SFCompactText.ttf"
+        ]
     elif bold:
-        font_path = r"C:\Windows\Fonts\segoeuib.ttf"
+        candidates = [
+            r"C:\Windows\Fonts\segoeuib.ttf",
+            r"C:\Windows\Fonts\arialbd.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/System/Library/Fonts/SFCompactText-Bold.ttf"
+        ]
     else:
-        font_path = r"C:\Windows\Fonts\segoeui.ttf"
+        candidates = [
+            r"C:\Windows\Fonts\segoeui.ttf",
+            r"C:\Windows\Fonts\arial.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/System/Library/Fonts/SFCompactText.ttf"
+        ]
 
-    if not os.path.exists(font_path):
-        font_path = r"C:\Windows\Fonts\arialbd.ttf" if bold else r"C:\Windows\Fonts\arial.ttf"
-    return ImageFont.truetype(font_path, size)
+    for font_path in candidates:
+        if os.path.exists(font_path):
+            try:
+                return ImageFont.truetype(font_path, size)
+            except Exception:
+                pass
+    try:
+        return ImageFont.load_default(size)
+    except Exception:
+        return ImageFont.load_default()
 
 def draw_vector_diamond(draw, center, radius, color):
+    """Draws an 8-point vector diamond sparkle icon."""
     cx, cy = center
     r = radius
     r_inner = r * 0.28
@@ -65,6 +111,7 @@ def draw_vector_diamond(draw, center, radius, color):
     draw.polygon(points, fill=color)
 
 def create_ultra_flagship_phone(screenshot_path, target_height=840, light_mode=False):
+    """Renders a flagship phone mockup with speaker, camera notch, specular reflection and rounded glass."""
     screen_src = Image.open(screenshot_path).convert('RGBA')
     screen_src = ImageEnhance.Contrast(screen_src).enhance(1.04)
     screen_src = ImageEnhance.Color(screen_src).enhance(1.05)
@@ -141,6 +188,7 @@ def create_ultra_flagship_phone(screenshot_path, target_height=840, light_mode=F
     return phone.resize((phone_w // SS, phone_h // SS), Image.Resampling.LANCZOS)
 
 def add_floor_reflection(canvas, element_img, x, base_y, max_alpha=75, fade_height=210, blur_val=6):
+    """Adds a studio reflection of an element on the floor plane."""
     w, h = element_img.size
     flipped = element_img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 
@@ -164,6 +212,7 @@ def add_floor_reflection(canvas, element_img, x, base_y, max_alpha=75, fade_heig
     canvas.paste(blurred_refl, (x, base_y), blurred_refl)
 
 def add_studio_shadow(canvas, element_img, x, y, blur_radius=36, opacity=170, offset=(0, 25), shadow_color=(0, 0, 0)):
+    """Adds a soft blurred studio shadow behind an element."""
     w, h = element_img.size
     shadow = Image.new("RGBA", (w + blur_radius * 2, h + blur_radius * 2), (0, 0, 0, 0))
     alpha = element_img.split()[3]
@@ -174,6 +223,7 @@ def add_studio_shadow(canvas, element_img, x, y, blur_radius=36, opacity=170, of
     canvas.paste(shadow, (x - blur_radius + offset[0], y - blur_radius + offset[1]), shadow)
 
 def draw_platform_icons(light_mode=False, ss=4):
+    """Renders official Android and Windows platform icons with text labels."""
     w, h = 260 * ss, 64 * ss
     img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -209,6 +259,7 @@ def draw_platform_icons(light_mode=False, ss=4):
     return img.resize((260, 64), Image.Resampling.LANCZOS)
 
 def generate_dark_unified_banner():
+    """Generates the dark mode unified banner with concert stage backdrop."""
     # 1. Concert Stage Base Background
     if os.path.exists(BG_DARK_CONCERT):
         bg_src = Image.open(BG_DARK_CONCERT).convert('RGBA')
@@ -273,7 +324,10 @@ def generate_dark_unified_banner():
 
     # 5. Unified 3D Logo Lockup
     logo_img = Image.open(LOGO_SRC_PATH).convert('RGBA')
-    full_logo = logo_img.crop((14, 32, 1006, 946))
+    if logo_img.width > 900 and logo_img.height > 900:
+        full_logo = logo_img.crop((14, 32, 1006, 946))
+    else:
+        full_logo = logo_img
     target_h = 780
     target_w = int(full_logo.width * (target_h / float(full_logo.height)))
     logo_resized = full_logo.resize((target_w, target_h), Image.Resampling.LANCZOS)
@@ -351,6 +405,7 @@ def generate_dark_unified_banner():
     print(f"Generated official dark banner: {OUTPUT_DARK_PATH}")
 
 def generate_light_unified_banner():
+    """Generates the light mode unified banner with concert stage backdrop."""
     # 1. Concert Stage Base Background (Light Mode)
     if os.path.exists(BG_LIGHT_CONCERT):
         bg_src = Image.open(BG_LIGHT_CONCERT).convert('RGBA')
@@ -415,7 +470,10 @@ def generate_light_unified_banner():
 
     # 5. Unified 3D Logo Lockup
     logo_img = Image.open(LOGO_SRC_PATH).convert('RGBA')
-    full_logo = logo_img.crop((14, 32, 1006, 946))
+    if logo_img.width > 900 and logo_img.height > 900:
+        full_logo = logo_img.crop((14, 32, 1006, 946))
+    else:
+        full_logo = logo_img
     target_h = 780
     target_w = int(full_logo.width * (target_h / float(full_logo.height)))
     logo_resized = full_logo.resize((target_w, target_h), Image.Resampling.LANCZOS)
@@ -493,6 +551,7 @@ def generate_light_unified_banner():
     print(f"Generated official light banner: {OUTPUT_LIGHT_PATH}")
 
 def main():
+    """Main banner generator entry point."""
     print("Generating official Levyra banners with musical concert stage aesthetic...")
     generate_dark_unified_banner()
     generate_light_unified_banner()
