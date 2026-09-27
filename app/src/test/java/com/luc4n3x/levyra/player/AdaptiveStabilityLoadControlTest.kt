@@ -45,8 +45,9 @@ class AdaptiveStabilityLoadControlTest {
             defaultPositionProjectionUs: Long
         ): Timeline.Window {
             val item = mediaItems[windowIndex]
+            val uid = "w$windowIndex"
             window.set(
-                item,
+                uid,
                 item,
                 null,
                 0L,
@@ -358,5 +359,21 @@ class AdaptiveStabilityLoadControlTest {
         assertEquals(2, control.trackedMediaItemCount())
         control.onReleased(PlayerId.UNSET)
         assertEquals(0, control.trackedMediaItemCount())
+    }
+
+    @Test
+    fun twoWindowsWithSameMediaItemSampleProfileIndependently() {
+        val normal = recordingControl()
+        val stable = recordingControl()
+        val signals = ScriptedSignals(ArrayDeque(listOf(PlaybackStabilityProfile.Normal, PlaybackStabilityProfile.Stable)))
+        val control = AdaptiveStabilityLoadControl(normal, stable, signals)
+        val timeline = FakeTimeline(listOf(mediaItem("m1"), mediaItem("m1")), periodsPerWindow = 1)
+
+        control.onTracksSelected(parameters(timeline, "p0"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(PlaybackStabilityProfile.Normal, control.activeProfile)
+
+        control.onTracksSelected(parameters(timeline, "p1"), TrackGroupArray.EMPTY, emptyTrackSelections())
+        assertEquals(PlaybackStabilityProfile.Stable, control.activeProfile)
+        assertEquals(2, signals.calls)
     }
 }

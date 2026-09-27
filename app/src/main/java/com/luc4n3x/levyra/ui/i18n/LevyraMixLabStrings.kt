@@ -367,7 +367,7 @@ private val mixLabBundles: Map<String, Map<String, String>> = mapOf(
         "Избери по-малко изпълнители или никакви, за да има достатъчно песни"
     ),
     "hu" to mixlab(
-        "Mix Lab", "Készíts mixet abból, amit valóban hallgatsz", "Hangolja be a mixedet",
+        "Mix Lab", "Készíts mixet abból, amit valóban hallgatsz", "Hangold be a mixedet",
         "Ismerősség", "Kedvencek", "Felfedezés",
         "Újdonság", "Klasszikusok", "Új",
         "Hossz", "Rövidek", "Közepesek", "Hosszúak", "Bármilyen",

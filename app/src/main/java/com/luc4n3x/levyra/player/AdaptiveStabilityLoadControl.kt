@@ -82,7 +82,7 @@ class AdaptiveStabilityLoadControl(
             parameters.timeline.getPeriod(periodIndex, period)
             val windowIndex = period.windowIndex
             parameters.timeline.getWindow(windowIndex, window)
-            return window.mediaItem ?: periodUid
+            return window.uid
         }
     }
 
