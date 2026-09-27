@@ -73,7 +73,7 @@ class AdaptiveStabilityLoadControlTest {
 
         override fun getIndexOfPeriod(uid: Any): Int {
             val index = uid.toString().removePrefix("p").toIntOrNull() ?: return C.INDEX_UNSET
-            return if (index in 0 until getPeriodCount()) index / periodsPerWindow else C.INDEX_UNSET
+            return if (index in 0 until getPeriodCount()) index else C.INDEX_UNSET
         }
 
         override fun getUidOfPeriod(periodIndex: Int): Any = "p$periodIndex"

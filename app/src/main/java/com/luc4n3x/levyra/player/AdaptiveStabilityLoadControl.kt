@@ -21,6 +21,7 @@ class AdaptiveStabilityLoadControl(
     private val mapLock = Any()
     private val profileByMediaItem = LinkedHashMap<Any, PlaybackStabilityProfile>()
     private val window = Timeline.Window()
+    private val period = Timeline.Period()
 
     val activeProfile: PlaybackStabilityProfile
         get() = if (active === stable) PlaybackStabilityProfile.Stable else PlaybackStabilityProfile.Normal
@@ -75,9 +76,11 @@ class AdaptiveStabilityLoadControl(
 
     private fun mediaItemKeyOf(parameters: LoadControl.Parameters): Any {
         val periodUid = parameters.mediaPeriodId.periodUid
-        val windowIndex = parameters.timeline.getIndexOfPeriod(periodUid)
-        if (windowIndex < 0) return periodUid
+        val periodIndex = parameters.timeline.getIndexOfPeriod(periodUid)
+        if (periodIndex < 0) return periodUid
         synchronized(mapLock) {
+            parameters.timeline.getPeriod(periodIndex, period)
+            val windowIndex = period.windowIndex
             parameters.timeline.getWindow(windowIndex, window)
             return window.mediaItem ?: periodUid
         }

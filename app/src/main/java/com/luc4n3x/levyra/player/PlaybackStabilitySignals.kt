@@ -23,7 +23,7 @@ class PlaybackStabilitySignals(
     private var lastState = Player.STATE_IDLE
     private var lastPlayWhenReady = false
     private var suppressNextBuffering = true
-    private var consecutiveLoadFailures = 0
+    private val consecutiveFailuresByTrack = mutableMapOf<Int, Int>()
     private val rebufferTimestamps = ArrayDeque<Long>()
     private var playingPeriodUid: Any? = null
 
@@ -32,7 +32,7 @@ class PlaybackStabilitySignals(
         if (profile == PlaybackStabilityProfile.Stable && canRecoverLocked()) {
             profile = PlaybackStabilityProfile.Normal
             stableSinceMs = null
-            consecutiveLoadFailures = 0
+            consecutiveFailuresByTrack.clear()
         }
         profile
     }
@@ -50,6 +50,17 @@ class PlaybackStabilitySignals(
     override fun onMediaItemTransition(eventTime: AnalyticsListener.EventTime, mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
         synchronized(lock) {
             eventTime.mediaPeriodId?.periodUid?.let { playingPeriodUid = it }
+            if (lastState == Player.STATE_READY) {
+                suppressNextBuffering = false
+            }
+        }
+    }
+
+    override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+        synchronized(lock) {
+            if (lastState == Player.STATE_READY) {
+                suppressNextBuffering = false
+            }
         }
     }
 
@@ -72,7 +83,9 @@ class PlaybackStabilitySignals(
         newPosition: Player.PositionInfo,
         reason: Int
     ) {
-        onDiscontinuity()
+        if (reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION || lastState != Player.STATE_READY) {
+            onDiscontinuity()
+        }
     }
 
     override fun onLoadError(
@@ -83,7 +96,7 @@ class PlaybackStabilitySignals(
         wasCanceled: Boolean
     ) {
         if (!isRelevantLoad(eventTime, mediaLoadData)) return
-        onLoadOutcome(failed = true, wasCanceled = wasCanceled)
+        onLoadOutcome(failed = true, wasCanceled = wasCanceled, trackType = mediaLoadData.trackType)
     }
 
     override fun onLoadCompleted(
@@ -92,7 +105,7 @@ class PlaybackStabilitySignals(
         mediaLoadData: MediaLoadData
     ) {
         if (!isRelevantLoad(eventTime, mediaLoadData)) return
-        onLoadOutcome(failed = false, wasCanceled = false)
+        onLoadOutcome(failed = false, wasCanceled = false, trackType = mediaLoadData.trackType)
     }
 
     private fun isRelevantLoad(eventTime: AnalyticsListener.EventTime, mediaLoadData: MediaLoadData): Boolean {
@@ -114,15 +127,16 @@ class PlaybackStabilitySignals(
         synchronized(lock) { suppressNextBuffering = true }
     }
 
-    internal fun onLoadOutcome(failed: Boolean, wasCanceled: Boolean) {
+    internal fun onLoadOutcome(failed: Boolean, wasCanceled: Boolean, trackType: Int = C.TRACK_TYPE_DEFAULT) {
         synchronized(lock) {
             if (wasCanceled) return
             if (!failed) {
-                consecutiveLoadFailures = 0
+                consecutiveFailuresByTrack[trackType] = 0
                 return
             }
-            consecutiveLoadFailures += 1
-            if (consecutiveLoadFailures >= LoadFailureThreshold) escalateLocked()
+            val count = (consecutiveFailuresByTrack[trackType] ?: 0) + 1
+            consecutiveFailuresByTrack[trackType] = count
+            if (count >= LoadFailureThreshold) escalateLocked()
         }
     }
 

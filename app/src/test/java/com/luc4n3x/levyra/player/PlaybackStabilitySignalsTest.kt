@@ -221,4 +221,33 @@ class PlaybackStabilitySignalsTest {
         signals.onLoadError(preloadEventTime, dummyLoadEventInfo, audioLoad, IOException(), false)
         assertEquals(PlaybackStabilityProfile.Normal, signals.requestedProfile())
     }
+
+    @Test
+    fun differentTrackTypesKeepFailureStreaksSeparate() {
+        val signals = signals(FakeClock())
+        signals.onLoadOutcome(failed = true, wasCanceled = false, trackType = C.TRACK_TYPE_AUDIO)
+        signals.onLoadOutcome(failed = true, wasCanceled = false, trackType = C.TRACK_TYPE_AUDIO)
+        assertEquals(PlaybackStabilityProfile.Normal, signals.requestedProfile())
+
+        signals.onLoadOutcome(failed = false, wasCanceled = false, trackType = C.TRACK_TYPE_VIDEO)
+
+        signals.onLoadOutcome(failed = true, wasCanceled = false, trackType = C.TRACK_TYPE_AUDIO)
+        assertEquals(PlaybackStabilityProfile.Stable, signals.requestedProfile())
+    }
+
+    @Test
+    fun seamlessTransitionDoesNotSuppressSubsequentRealRebuffer() {
+        val clock = FakeClock()
+        val signals = signals(clock)
+        signals.startPlayback()
+
+        val dummyPosition = org.mockito.Mockito.mock(Player.PositionInfo::class.java)
+        signals.onPositionDiscontinuity(dummyPosition, dummyPosition, Player.DISCONTINUITY_REASON_AUTO_TRANSITION)
+        signals.onMediaItemTransition(null, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
+
+        signals.rebuffer()
+        clock.advance(1_000L)
+        signals.rebuffer()
+        assertEquals(PlaybackStabilityProfile.Stable, signals.requestedProfile())
+    }
 }
