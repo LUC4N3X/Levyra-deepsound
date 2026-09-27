@@ -7,6 +7,7 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.TrackGroupArray
 import androidx.media3.exoplayer.trackselection.ExoTrackSelection
 import androidx.media3.exoplayer.upstream.Allocator
+import java.util.LinkedHashMap
 
 class AdaptiveStabilityLoadControl(
     private val normal: LoadControl,
@@ -16,6 +17,10 @@ class AdaptiveStabilityLoadControl(
 
     @Volatile
     private var active: LoadControl = normal
+
+    private val mapLock = Any()
+    private val profileByMediaItem = LinkedHashMap<Any, PlaybackStabilityProfile>()
+    private val window = Timeline.Window()
 
     val activeProfile: PlaybackStabilityProfile
         get() = if (active === stable) PlaybackStabilityProfile.Stable else PlaybackStabilityProfile.Normal
@@ -30,7 +35,9 @@ class AdaptiveStabilityLoadControl(
         trackGroups: TrackGroupArray,
         trackSelections: Array<ExoTrackSelection?>
     ) {
-        val nextActive = if (signals.requestedProfile() == PlaybackStabilityProfile.Stable) stable else normal
+        val key = mediaItemKeyOf(parameters)
+        val profile = profileFor(key)
+        val nextActive = if (profile == PlaybackStabilityProfile.Stable) stable else normal
         val inactive = if (nextActive === stable) normal else stable
         inactive.onTracksSelected(parameters, trackGroups, trackSelections)
         nextActive.onTracksSelected(parameters, trackGroups, trackSelections)
@@ -40,11 +47,13 @@ class AdaptiveStabilityLoadControl(
     override fun onStopped(playerId: PlayerId) {
         normal.onStopped(playerId)
         stable.onStopped(playerId)
+        clearProfiles()
     }
 
     override fun onReleased(playerId: PlayerId) {
         normal.onReleased(playerId)
         stable.onReleased(playerId)
+        clearProfiles()
     }
 
     override fun getAllocator(playerId: PlayerId): Allocator = normal.getAllocator(playerId)
@@ -64,6 +73,34 @@ class AdaptiveStabilityLoadControl(
         bufferedDurationUs: Long
     ): Boolean = active.shouldContinuePreloading(playerId, timeline, mediaPeriodId, bufferedDurationUs)
 
+    private fun mediaItemKeyOf(parameters: LoadControl.Parameters): Any {
+        val periodUid = parameters.mediaPeriodId.periodUid
+        val windowIndex = parameters.timeline.getIndexOfPeriod(periodUid)
+        if (windowIndex < 0) return periodUid
+        synchronized(mapLock) {
+            parameters.timeline.getWindow(windowIndex, window)
+            return window.mediaItem ?: periodUid
+        }
+    }
+
+    private fun profileFor(key: Any): PlaybackStabilityProfile = synchronized(mapLock) {
+        profileByMediaItem[key] ?: run {
+            val resolved = signals.requestedProfile()
+            profileByMediaItem[key] = resolved
+            if (profileByMediaItem.size > MaxProfileEntries) {
+                val eldest = profileByMediaItem.entries.iterator().next().key
+                profileByMediaItem.remove(eldest)
+            }
+            resolved
+        }
+    }
+
+    private fun clearProfiles() {
+        synchronized(mapLock) { profileByMediaItem.clear() }
+    }
+
+    internal fun trackedMediaItemCount(): Int = synchronized(mapLock) { profileByMediaItem.size }
+
     companion object {
         fun stableProfileOf(normalProfile: PlaybackBufferProfile): PlaybackBufferProfile = PlaybackBufferProfile(
             minBufferMs = normalProfile.minBufferMs + StableExtraMinBufferMs,
@@ -73,6 +110,7 @@ class AdaptiveStabilityLoadControl(
             backBufferMs = normalProfile.backBufferMs
         )
 
+        private const val MaxProfileEntries = 8
         private const val StableExtraMinBufferMs = 3_000
         private const val StableExtraMaxBufferMs = 16_000
         private const val StableExtraRebufferMs = 1_500
