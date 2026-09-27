@@ -496,7 +496,7 @@ internal class PipedRescueClient(
             PipedInstance("ducks.party", "https://pipedapi.ducks.party"),
             PipedInstance("private.coffee", "https://api.piped.private.coffee"),
             PipedInstance("minionflo.net", "https://api.piped.minionflo.net"),
-            PipedInstance("wireway.ch", "https://piped.wireway.ch")
+            PipedInstance("wireway.ch", "https://pipedapi.wireway.ch")
         )
         private val VIDEO_ID_REGEX = Regex("[A-Za-z0-9_-]{11}")
         private val API_HEADERS = mapOf(
