@@ -20,6 +20,11 @@ Play streamed music and your own files in the same app, save tracks for offline 
   <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg 126w, docs/assets/levyra-wiki-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
 </p>
 
+<p align="center">
+  <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/daily?language=Kotlin" alt="Levyra Trendshift daily rank" width="250" height="55"></a>
+  <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/weekly?language=Kotlin" alt="Levyra Trendshift weekly rank" width="250" height="55"></a>
+</p>
+
 <p align="center"><b>Download Levyra</b></p>
 
 <p align="center">
