@@ -1,9 +1,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-studio-header-light.webp">
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-studio-header-dark.webp">
-  <img src="docs/assets/levyra-studio-header-dark.webp" alt="Levyra DeepSound" width="100%">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-readme-header-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-readme-header-dark.webp">
+  <img src="docs/assets/levyra-readme-header-dark.webp" alt="Levyra DeepSound" width="100%">
 </picture>
 
 # Levyra
