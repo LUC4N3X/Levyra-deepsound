@@ -86,11 +86,28 @@ internal class JioSaavnAudioProvider(
         if (candidate.mediaToken.isBlank()) return ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
         val rejections = mutableListOf<StreamRejection>()
         val probed = mutableSetOf<String>()
-        val direct = JioSaavnMediaLocation.fromMediaToken(candidate.mediaToken)
-        if (direct != null) {
-            HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_DIRECT, candidate.offers320, direct.openHost)
-            probeTiers(candidate, direct, QUALITY_ORDER.take(1), rejections, probed)?.let { return it }
-        }
+        val direct = resolveViaDirectDecryption(candidate, rejections, probed)
+        direct.resolved?.let { return it }
+        return resolveViaAuthToken(candidate, direct.location, rejections, probed)
+    }
+
+    private suspend fun resolveViaDirectDecryption(
+        candidate: AlternativeTrackCandidate,
+        rejections: MutableList<StreamRejection>,
+        probed: MutableSet<String>
+    ): DirectDecryptionAttempt {
+        val location = JioSaavnMediaLocation.fromMediaToken(candidate.mediaToken) ?: return DirectDecryptionAttempt(null, null)
+        HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_DIRECT, candidate.offers320, location.openHost)
+        val resolved = probeTiers(candidate, location, QUALITY_ORDER.take(1), rejections, probed)
+        return DirectDecryptionAttempt(location, resolved)
+    }
+
+    private suspend fun resolveViaAuthToken(
+        candidate: AlternativeTrackCandidate,
+        direct: JioSaavnMediaLocation?,
+        rejections: MutableList<StreamRejection>,
+        probed: MutableSet<String>
+    ): ProviderStreamOutcome {
         HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_AUTHORIZED, candidate.offers320, "-")
         val authorizeUrl = JioSaavnEndpoints.authorizeMedia(candidate.mediaToken, AudioQualityTier.KBPS_320)
         val authorization = when (val result = api(authorizeUrl, authorizationCircuitBreaker)) {
@@ -113,6 +130,11 @@ internal class JioSaavnAudioProvider(
             ?: directFallback(candidate, direct, rejections, probed)
             ?: ProviderStreamOutcome.Unavailable(rejections)
     }
+
+    private data class DirectDecryptionAttempt(
+        val location: JioSaavnMediaLocation?,
+        val resolved: ProviderStreamOutcome.Resolved?
+    )
 
     private suspend fun directFallback(
         candidate: AlternativeTrackCandidate,
