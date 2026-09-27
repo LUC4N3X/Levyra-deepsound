@@ -17,6 +17,10 @@ docs/assets/showcase/cards/09_artist_profile.webp
 docs/assets/showcase/cards/10_album.webp
 docs/assets/showcase/cards/11_search.webp
 docs/assets/showcase/cards/12_player_settings.webp
+docs/assets/showcase/cards/13_explore.webp
+docs/assets/showcase/cards/14_new_releases.webp
+docs/assets/showcase/cards/15_collections.webp
+docs/assets/showcase/cards/16_listening_rhythm.webp
 docs/assets/levyra-ui-preview-2026.webp
 docs/assets/screenshots/artist_bio.webp
 docs/assets/screenshots/artist_discography.webp
