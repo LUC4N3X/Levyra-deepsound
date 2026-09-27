@@ -34,7 +34,18 @@ SCREEN_PLAYER_PATH = resolve_input(
     os.path.join("docs", "assets", "showcase", "cards", "03_lyrics.webp")
 )
 
-BG_DARK_CONCERT = os.environ.get("LEVYRA_BG_DARK", r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\minimal_concert_stage_1790508945319.jpg")
+def find_preferred_dark_bg():
+    paths = [
+        os.environ.get("LEVYRA_BG_DARK", ""),
+        r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\musical_concert_stage_bg_1790508925612.jpg",
+        r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\minimal_concert_stage_1790508945319.jpg",
+    ]
+    for p in paths:
+        if p and os.path.exists(p):
+            return p
+    return ""
+
+BG_DARK_CONCERT = find_preferred_dark_bg()
 BG_LIGHT_CONCERT = os.environ.get("LEVYRA_BG_LIGHT", r"C:\Users\Luca Drogo\.gemini\antigravity\brain\56548c8c-b7bc-4dce-809e-6e9d455ced20\light_concert_stage_1790508968511.jpg")
 
 OUTPUT_DARK_PATH = os.path.join(ASSETS_DIR, "levyra-github-banner.webp")
@@ -269,14 +280,58 @@ def create_glass_platform_pill(light_mode=False):
     return pill.resize((270, 48), Image.Resampling.LANCZOS)
 
 def generate_dark_unified_banner():
-    """Generates the dark mode unified banner with concert stage backdrop."""
-    # 1. Concert Stage Base Background
+    """Generates the dark mode unified banner with Tidal-style concert stage backdrop."""
+    canvas = Image.new("RGBA", (WIDTH, HEIGHT), (7, 9, 14, 255))
+
+    # 1. Tidal-Graded Concert Stage & Crowd
     if os.path.exists(BG_DARK_CONCERT):
-        bg_src = Image.open(BG_DARK_CONCERT).convert('RGBA')
+        bg_src = Image.open(BG_DARK_CONCERT).convert("RGB")
+        arr = np.array(bg_src, dtype=np.float32)
+
+        r = arr[:, :, 0]
+        g = arr[:, :, 1]
+        b = arr[:, :, 2]
+        lum = 0.299 * r + 0.587 * g + 0.114 * b
+
+        # Tidal grading: deep blacks, electric cobalt/cyan midtones, moody indigo
+        tidal_arr = np.zeros_like(arr)
+        tidal_arr[:, :, 0] = lum * 0.16 + (r * 0.04)
+        tidal_arr[:, :, 1] = lum * 0.52
+        tidal_arr[:, :, 2] = lum * 0.92 + (b * 0.28)
+        tidal_arr = np.clip(tidal_arr, 0, 255).astype(np.uint8)
+
+        stage_img = Image.fromarray(tidal_arr).convert("RGBA")
         new_w = WIDTH
-        new_h = int(bg_src.height * (WIDTH / float(bg_src.width)))
-        bg_resized = bg_src.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        canvas = bg_resized.crop((0, 60, WIDTH, 60 + HEIGHT))
+        new_h = int(stage_img.height * (WIDTH / float(stage_img.width)))
+        stage_resized = stage_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        crop_y = 290 if new_h > 1200 else 60
+        stage_crop = stage_resized.crop((0, crop_y, WIDTH, crop_y + HEIGHT))
+
+        # Precision Opacity Mask:
+        # Left side (x < 950): 100% black so the 3D logo has pure contrast and focus
+        # Center & right: smooth emergence of concert crowd silhouettes
+        # Top (y < 480): atmospheric darkening for typography clarity
+        # Far right (x > 2650): clean fade to black
+        mask = np.ones((HEIGHT, WIDTH), dtype=np.float32)
+        for x in range(WIDTH):
+            if x < 950:
+                mask[:, x] = 0.0
+            elif x < 1350:
+                fade = (x - 950) / 400.0
+                mask[:, x] *= fade * fade * (3.0 - 2.0 * fade)
+            elif x > 2650:
+                fade = 1.0 - (x - 2650) / 230.0
+                mask[:, x] *= fade * fade * (3.0 - 2.0 * fade)
+
+        for y in range(HEIGHT):
+            if y < 480:
+                fy = y / 480.0
+                mask[y, :] *= (0.15 + 0.85 * fy * fy)
+
+        stage_arr = np.array(stage_crop)
+        stage_arr[:, :, 3] = np.clip(mask * 255 * 0.90, 0, 255).astype(np.uint8)
+        canvas = Image.alpha_composite(canvas, Image.fromarray(stage_arr, "RGBA"))
     else:
         base_arr = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
         for y in range(HEIGHT):
@@ -287,19 +342,7 @@ def generate_dark_unified_banner():
             base_arr[y, :, 3] = 255
         canvas = Image.fromarray(base_arr, "RGBA")
 
-    # 2. Ambient Concert Glow Highlights
-    glow_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-    gdraw = ImageDraw.Draw(glow_layer)
-    for r in range(450, 0, -25):
-        gdraw.ellipse([480 - r, 420 - r, 480 + r, 420 + r], fill=(0, 210, 255, int(28 * (1.0 - (r / 450.0)**0.8))))
-        gdraw.ellipse([540 - r, 460 - r, 540 + r, 460 + r], fill=(195, 40, 230, int(22 * (1.0 - (r / 420.0)**0.8))))
-    for r in range(500, 0, -25):
-        gdraw.ellipse([2100 - r, 420 - r, 2100 + r, 420 + r], fill=(100, 60, 240, int(30 * (1.0 - (r / 500.0)**0.8))))
-        gdraw.ellipse([1850 - r, 360 - r, 1850 + r, 360 + r], fill=(0, 190, 255, int(26 * (1.0 - (r / 460.0)**0.8))))
-        gdraw.ellipse([2350 - r, 440 - r, 2350 + r, 440 + r], fill=(210, 35, 190, int(28 * (1.0 - (r / 440.0)**0.8))))
-    canvas = Image.alpha_composite(canvas, glow_layer.filter(ImageFilter.GaussianBlur(70)))
-
-    # 3. Acoustic Soundwave Ribbons (Music energy)
+    # 2. Acoustic Soundwave Ribbons (Music energy)
     ribbon_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     rdraw = ImageDraw.Draw(ribbon_layer)
     pts_cyan, pts_mag, pts_indigo = [], [], []
@@ -311,24 +354,24 @@ def generate_dark_unified_banner():
         pts_mag.append((x, ym))
         pts_indigo.append((x, yi))
     for i in range(len(pts_cyan) - 1):
-        rdraw.line([pts_indigo[i], pts_indigo[i+1]], fill=(35, 85, 215, 45), width=8)
-        rdraw.line([pts_mag[i], pts_mag[i+1]], fill=(195, 40, 215, 50), width=6)
-        rdraw.line([pts_cyan[i], pts_cyan[i+1]], fill=(0, 225, 255, 55), width=4)
-    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(25)))
+        rdraw.line([pts_indigo[i], pts_indigo[i+1]], fill=(30, 80, 210, 35), width=7)
+        rdraw.line([pts_mag[i], pts_mag[i+1]], fill=(180, 35, 205, 38), width=5)
+        rdraw.line([pts_cyan[i], pts_cyan[i+1]], fill=(0, 220, 255, 45), width=3)
+    canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(26)))
     canvas = Image.alpha_composite(canvas, ribbon_layer.filter(ImageFilter.GaussianBlur(4)))
 
-    # 4. Stage Floor Plane
+    # 3. Stage Floor Plane
     floor_y = 865
     floor_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     fdraw = ImageDraw.Draw(floor_layer)
-    fdraw.line([(0, floor_y), (WIDTH, floor_y)], fill=(70, 95, 140, 80), width=1)
+    fdraw.line([(0, floor_y), (WIDTH, floor_y)], fill=(50, 80, 130, 50), width=1)
     for r in range(400, 0, -25):
-        fdraw.ellipse([480 - r, floor_y + 45 - int(r*0.20), 480 + r, floor_y + 45 + int(r*0.20)], fill=(0, 190, 255, int(28 * (1.0 - (r / 400.0)))))
-        fdraw.ellipse([580 - r, floor_y + 55 - int(r*0.18), 580 + r, floor_y + 55 + int(r*0.18)], fill=(190, 45, 220, int(28 * (1.0 - (r / 400.0)))))
+        fdraw.ellipse([480 - r, floor_y + 45 - int(r*0.20), 480 + r, floor_y + 45 + int(r*0.20)], fill=(0, 180, 255, int(22 * (1.0 - (r / 400.0)))))
+        fdraw.ellipse([580 - r, floor_y + 55 - int(r*0.18), 580 + r, floor_y + 55 + int(r*0.18)], fill=(180, 40, 210, int(22 * (1.0 - (r / 400.0)))))
     for r in range(450, 0, -25):
-        fdraw.ellipse([2120 - r, floor_y + 45 - int(r*0.20), 2120 + r, floor_y + 45 + int(r*0.20)], fill=(80, 110, 235, int(30 * (1.0 - (r / 450.0)))))
-        fdraw.ellipse([1850 - r, floor_y + 50 - int(r*0.18), 1850 + r, floor_y + 50 + int(r*0.18)], fill=(0, 205, 255, int(30 * (1.0 - (r / 450.0)))))
-        fdraw.ellipse([2350 - r, floor_y + 50 - int(r*0.18), 2350 + r, floor_y + 50 + int(r*0.18)], fill=(200, 45, 200, int(30 * (1.0 - (r / 450.0)))))
+        fdraw.ellipse([2120 - r, floor_y + 45 - int(r*0.20), 2120 + r, floor_y + 45 + int(r*0.20)], fill=(70, 100, 230, int(25 * (1.0 - (r / 450.0)))))
+        fdraw.ellipse([1850 - r, floor_y + 50 - int(r*0.18), 1850 + r, floor_y + 50 + int(r*0.18)], fill=(0, 195, 255, int(25 * (1.0 - (r / 450.0)))))
+        fdraw.ellipse([2350 - r, floor_y + 50 - int(r*0.18), 2350 + r, floor_y + 50 + int(r*0.18)], fill=(190, 40, 190, int(25 * (1.0 - (r / 450.0)))))
     floor_layer = floor_layer.filter(ImageFilter.GaussianBlur(32))
     canvas = Image.alpha_composite(canvas, floor_layer)
 
@@ -399,21 +442,44 @@ def generate_dark_unified_banner():
 def generate_light_unified_banner():
     """Generates the light mode unified banner with concert stage backdrop."""
     # 1. Concert Stage Base Background (Light Mode)
+    base_arr = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
+    for y in range(HEIGHT):
+        ratio = y / float(HEIGHT)
+        base_arr[y, :, 0] = int(252 - ratio * 14)
+        base_arr[y, :, 1] = int(253 - ratio * 12)
+        base_arr[y, :, 2] = int(255 - ratio * 8)
+        base_arr[y, :, 3] = 255
+    canvas = Image.fromarray(base_arr, "RGBA")
+
     if os.path.exists(BG_LIGHT_CONCERT):
-        bg_src = Image.open(BG_LIGHT_CONCERT).convert('RGBA')
+        bg_src = Image.open(BG_LIGHT_CONCERT).convert("RGBA")
         new_w = WIDTH
         new_h = int(bg_src.height * (WIDTH / float(bg_src.width)))
         bg_resized = bg_src.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        canvas = bg_resized.crop((0, 60, WIDTH, 60 + HEIGHT))
-    else:
-        base_arr = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
+        stage_crop = bg_resized.crop((0, 60, WIDTH, 60 + HEIGHT))
+
+        # Precision Opacity Mask for Light Mode:
+        # Left side (x < 950): clean isolated background for logo focus
+        # Center & right: graceful emergence of concert crowd silhouettes
+        mask = np.ones((HEIGHT, WIDTH), dtype=np.float32)
+        for x in range(WIDTH):
+            if x < 950:
+                mask[:, x] = 0.0
+            elif x < 1350:
+                fade = (x - 950) / 400.0
+                mask[:, x] *= fade * fade * (3.0 - 2.0 * fade)
+            elif x > 2650:
+                fade = 1.0 - (x - 2650) / 230.0
+                mask[:, x] *= fade * fade * (3.0 - 2.0 * fade)
+
         for y in range(HEIGHT):
-            ratio = y / float(HEIGHT)
-            base_arr[y, :, 0] = int(252 - ratio * 14)
-            base_arr[y, :, 1] = int(253 - ratio * 12)
-            base_arr[y, :, 2] = int(255 - ratio * 8)
-            base_arr[y, :, 3] = 255
-        canvas = Image.fromarray(base_arr, "RGBA")
+            if y < 450:
+                fy = y / 450.0
+                mask[y, :] *= (0.3 + 0.7 * fy * fy)
+
+        stage_arr = np.array(stage_crop)
+        stage_arr[:, :, 3] = np.clip(mask * stage_arr[:, :, 3].astype(np.float32), 0, 255).astype(np.uint8)
+        canvas = Image.alpha_composite(canvas, Image.fromarray(stage_arr, "RGBA"))
 
     # 2. Soft Ambient Pastel Glows
     glow_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
