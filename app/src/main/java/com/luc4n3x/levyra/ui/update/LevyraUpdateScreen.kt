@@ -209,7 +209,7 @@ private fun UpdateHero(
             UpdateOrbitGlyph()
             Spacer(Modifier.height(18.dp))
             Text(
-                text = update.releaseTitle.ifBlank { copy.releaseReady },
+                text = copy.releaseReady,
                 color = LevyraMuted,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
