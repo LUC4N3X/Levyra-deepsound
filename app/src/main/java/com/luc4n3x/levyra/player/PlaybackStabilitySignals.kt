@@ -14,7 +14,7 @@ interface PlaybackStabilityProfileSource {
 }
 
 class PlaybackStabilitySignals(
-    private val nowMs: () -> Long = System::currentTimeMillis
+    private val nowMs: () -> Long = android.os.SystemClock::elapsedRealtime
 ) : Player.Listener, AnalyticsListener, PlaybackStabilityProfileSource {
 
     private val lock = Any()
