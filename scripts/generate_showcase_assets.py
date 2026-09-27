@@ -43,11 +43,11 @@ def get_font(size, bold=False):
         if os.path.exists(font_path):
             try:
                 return ImageFont.truetype(font_path, size)
-            except Exception:
-                pass
+            except OSError:
+                continue
     try:
         return ImageFont.load_default(size)
-    except Exception:
+    except TypeError:
         return ImageFont.load_default()
 
 def enhance_screenshot(img):
