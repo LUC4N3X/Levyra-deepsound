@@ -1,6 +1,11 @@
 package com.luc4n3x.levyra.data.hqaudio.jiosaavn
 
+import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackQuery
 import com.luc4n3x.levyra.data.hqaudio.AudioQualityTier
+import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
+import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
+import com.luc4n3x.levyra.data.hqaudio.HighQualityResolution
+import com.luc4n3x.levyra.data.hqaudio.InMemoryMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.ProviderCircuitBreaker
 import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
@@ -15,8 +20,10 @@ import com.luc4n3x.levyra.data.hqaudio.candidate
 import com.luc4n3x.levyra.data.hqaudio.htmlResponse
 import com.luc4n3x.levyra.data.hqaudio.jsonResponse
 import com.luc4n3x.levyra.data.hqaudio.probeResponse
+import com.luc4n3x.levyra.data.hqaudio.query
 import com.luc4n3x.levyra.data.hqaudio.saavnSong
 import com.luc4n3x.levyra.data.hqaudio.searchBody
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.Base64
@@ -26,17 +33,22 @@ import javax.crypto.spec.SecretKeySpec
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -64,6 +76,12 @@ class JioSaavnAudioProviderTest {
 
     private val songBody = searchBody(saavnSong("pW-kkdqr", "Blinding Lights", listOf("The Weeknd"), "Blinding Lights", 204))
     private val localCandidate = candidate(duration = 200).copy(mediaToken = REAL_MEDIA_TOKEN)
+    private val hqScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @After
+    fun tearDownHighQualityScope() {
+        hqScope.cancel()
+    }
 
     private fun breaker(threshold: Int = ProviderCircuitBreaker.DEFAULT_FAILURE_THRESHOLD) =
         ProviderCircuitBreaker("jiosaavn", { clockMs }, failureThreshold = threshold)
@@ -721,6 +739,115 @@ class JioSaavnAudioProviderTest {
         val cipher = Cipher.getInstance("DES/ECB/PKCS5Padding")
         cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec("38346591".toByteArray(Charsets.US_ASCII), "DES"))
         return Base64.getEncoder().encodeToString(cipher.doFinal(plain.toByteArray(Charsets.UTF_8)))
+    }
+
+    private fun prefetchExchange(mediaLocationToken: String) = ScriptedExchange { request ->
+        when {
+            request.url.contains("search.getResults") -> jsonResponse(
+                searchBody(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, emptyList(), "0", "true", mediaLocationToken))
+            )
+            request.url.contains("song.getDetails") -> jsonResponse(
+                JSONObject().put(
+                    "songs",
+                    JSONArray().put(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, emptyList(), "0", "true", mediaLocationToken))
+                ).toString()
+            )
+            request.url.startsWith("https://aac.saavncdn.com/") -> validFor(320)
+            else -> htmlResponse(404)
+        }
+    }
+
+    private fun twoTrackExchange(idA: String, locationTokenA: String, idB: String, locationTokenB: String) = ScriptedExchange { request ->
+        when {
+            request.url.contains("search.getResults") && request.url.contains("TrackAlpha") -> jsonResponse(
+                searchBody(saavnSong(idA, "TrackAlpha", listOf("TestArtist"), "TestAlbum", 200, emptyList(), "0", "true", locationTokenA))
+            )
+            request.url.contains("search.getResults") && request.url.contains("TrackBeta") -> jsonResponse(
+                searchBody(saavnSong(idB, "TrackBeta", listOf("TestArtist"), "TestAlbum", 200, emptyList(), "0", "true", locationTokenB))
+            )
+            request.url.contains("song.getDetails") && request.url.contains(idA) -> jsonResponse(
+                JSONObject().put("songs", JSONArray().put(saavnSong(idA, "TrackAlpha", listOf("TestArtist"), "TestAlbum", 200, emptyList(), "0", "true", locationTokenA))).toString()
+            )
+            request.url.contains("song.getDetails") && request.url.contains(idB) -> jsonResponse(
+                JSONObject().put("songs", JSONArray().put(saavnSong(idB, "TrackBeta", listOf("TestArtist"), "TestAlbum", 200, emptyList(), "0", "true", locationTokenB))).toString()
+            )
+            request.url.startsWith("https://aac.saavncdn.com/") -> validFor(320)
+            else -> htmlResponse(404)
+        }
+    }
+
+    private fun highQualityResolver(jioSaavnProvider: JioSaavnAudioProvider, clock: () -> Long = { clockMs }) =
+        HighQualityAudioResolver(
+            provider = jioSaavnProvider,
+            mappingStore = HighQualityMappingStore(InMemoryMappingStorage()),
+            scope = hqScope,
+            clock = clock
+        ).apply { mode = HighQualityAudioMode.AUTOMATIC }
+
+    private fun HighQualityAudioResolver.resolveNow(
+        identityKey: String,
+        trackQuery: AlternativeTrackQuery = query()
+    ): HighQualityResolution = runBlocking { await(begin(identityKey, trackQuery), 5_000L) }
+
+    @Test
+    fun prefetchedStreamIsReusedForSameCanonicalIdentityWithoutANewNetworkRequest() {
+        val mediaToken = encrypt("https://aac.saavncdn.com/000/prefetchA_320.mp4")
+        val exchange = prefetchExchange(mediaToken)
+        val resolver = highQualityResolver(provider(exchange))
+        val identity = "identity-prefetch-a"
+        val first = resolver.resolveNow(identity)
+        assertTrue(first is HighQualityResolution.Selected)
+        val requestsAfterFirst = exchange.requests.size
+        val second = resolver.resolveNow(identity)
+        assertTrue(second is HighQualityResolution.Selected)
+        assertEquals(
+            (first as HighQualityResolution.Selected).stream.url,
+            (second as HighQualityResolution.Selected).stream.url
+        )
+        assertEquals(requestsAfterFirst, exchange.requests.size)
+        assertEquals(first.stream.url, resolver.cachedSelection(identity)?.stream?.url)
+    }
+
+    @Test
+    fun staleCachedJioSaavnStreamIsRejectedAndReResolved() {
+        val mediaToken = encrypt("https://aac.saavncdn.com/000/staleB_320.mp4")
+        val exchange = prefetchExchange(mediaToken)
+        val resolver = highQualityResolver(provider(exchange))
+        val identity = "identity-stale-b"
+        resolver.resolveNow(identity)
+        assertTrue(resolver.cachedSelection(identity) != null)
+        clockMs += 3L * 60L * 60L * 1_000L + 91_000L
+        assertNull(resolver.cachedSelection(identity))
+        val requestsBeforeRetry = exchange.requests.size
+        val second = resolver.resolveNow(identity)
+        assertTrue(second is HighQualityResolution.Selected)
+        assertTrue(exchange.requests.size > requestsBeforeRetry)
+        assertTrue(resolver.cachedSelection(identity) != null)
+    }
+
+    @Test
+    fun differentTrackIdentityNeverReusesAnotherTracksCachedStream() {
+        val tokenA = encrypt("https://aac.saavncdn.com/000/crossA_320.mp4")
+        val tokenB = encrypt("https://aac.saavncdn.com/000/crossB_320.mp4")
+        val exchange = twoTrackExchange("song-a", tokenA, "song-b", tokenB)
+        val resolver = highQualityResolver(provider(exchange))
+        val queryA = query(title = "TrackAlpha", artist = "TestArtist", album = "TestAlbum")
+        val queryB = query(title = "TrackBeta", artist = "TestArtist", album = "TestAlbum")
+
+        val first = resolver.resolveNow("identity-cross-a", queryA)
+        assertTrue(first is HighQualityResolution.Selected)
+
+        assertNull(resolver.cachedSelection("identity-cross-b"))
+        val requestsBeforeB = exchange.requests.size
+        val second = resolver.resolveNow("identity-cross-b", queryB)
+        assertTrue(second is HighQualityResolution.Selected)
+        assertTrue(exchange.requests.size > requestsBeforeB)
+
+        val streamA = (first as HighQualityResolution.Selected).stream.url
+        val streamB = (second as HighQualityResolution.Selected).stream.url
+        assertNotEquals(streamA, streamB)
+        assertEquals(streamA, resolver.cachedSelection("identity-cross-a")?.stream?.url)
+        assertEquals(streamB, resolver.cachedSelection("identity-cross-b")?.stream?.url)
     }
 
     private companion object {

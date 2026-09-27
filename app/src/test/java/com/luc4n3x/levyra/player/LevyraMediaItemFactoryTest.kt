@@ -34,4 +34,38 @@ class LevyraMediaItemFactoryTest {
             LevyraMediaItemFactory.liveRadioMimeTypeFor("https://radio.example/live.m3u8")
         )
     }
+
+    @Test
+    fun jioSaavnAudioOnlyMp4NeverBecomesVideoInNormalPlayback() {
+        assertEquals(
+            "audio/mp4",
+            LevyraMediaItemFactory.mimeTypeFor("https://aac.saavncdn.com/820/abcdef_320.mp4", false)
+        )
+        assertEquals(
+            "audio/mp4",
+            LevyraMediaItemFactory.mimeTypeFor(
+                "https://web.saavncdn.com/820/abcdef_320.mp4?Expires=4102444800&Signature=abc",
+                false
+            )
+        )
+    }
+
+    @Test
+    fun realVideoRemainsVideoRegardlessOfMp4Extension() {
+        assertEquals("video/mp4", LevyraMediaItemFactory.mimeTypeFor("https://example.com/clip_320.mp4", true))
+        assertEquals(
+            "video/mp4",
+            LevyraMediaItemFactory.mimeTypeFor("https://example.com/videoplayback?mime=video%2Fmp4", false)
+        )
+    }
+
+    @Test
+    fun aacAndM4aStayAudioAlongsideJioSaavnMp4() {
+        assertEquals("audio/mp4", LevyraMediaItemFactory.mimeTypeFor("https://example.com/track.m4a", false))
+        assertEquals("audio/mp4", LevyraMediaItemFactory.mimeTypeFor("https://example.com/track.aac", false))
+        assertEquals(
+            "audio/mp4",
+            LevyraMediaItemFactory.mimeTypeFor("https://example.com/videoplayback?mime=audio%2Fmp4", false)
+        )
+    }
 }
