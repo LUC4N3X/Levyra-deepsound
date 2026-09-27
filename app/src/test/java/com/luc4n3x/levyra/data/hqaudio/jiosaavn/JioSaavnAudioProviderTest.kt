@@ -1,6 +1,11 @@
 package com.luc4n3x.levyra.data.hqaudio.jiosaavn
 
+import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackQuery
 import com.luc4n3x.levyra.data.hqaudio.AudioQualityTier
+import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
+import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
+import com.luc4n3x.levyra.data.hqaudio.HighQualityResolution
+import com.luc4n3x.levyra.data.hqaudio.InMemoryMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.ProviderCircuitBreaker
 import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
@@ -15,8 +20,10 @@ import com.luc4n3x.levyra.data.hqaudio.candidate
 import com.luc4n3x.levyra.data.hqaudio.htmlResponse
 import com.luc4n3x.levyra.data.hqaudio.jsonResponse
 import com.luc4n3x.levyra.data.hqaudio.probeResponse
+import com.luc4n3x.levyra.data.hqaudio.query
 import com.luc4n3x.levyra.data.hqaudio.saavnSong
 import com.luc4n3x.levyra.data.hqaudio.searchBody
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.Base64
@@ -26,17 +33,22 @@ import javax.crypto.spec.SecretKeySpec
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -64,6 +76,12 @@ class JioSaavnAudioProviderTest {
 
     private val songBody = searchBody(saavnSong("pW-kkdqr", "Blinding Lights", listOf("The Weeknd"), "Blinding Lights", 204))
     private val localCandidate = candidate(duration = 200).copy(mediaToken = REAL_MEDIA_TOKEN)
+    private val hqScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @After
+    fun tearDownHighQualityScope() {
+        hqScope.cancel()
+    }
 
     private fun breaker(threshold: Int = ProviderCircuitBreaker.DEFAULT_FAILURE_THRESHOLD) =
         ProviderCircuitBreaker("jiosaavn", { clockMs }, failureThreshold = threshold)
@@ -721,6 +739,74 @@ class JioSaavnAudioProviderTest {
         val cipher = Cipher.getInstance("DES/ECB/PKCS5Padding")
         cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec("38346591".toByteArray(Charsets.US_ASCII), "DES"))
         return Base64.getEncoder().encodeToString(cipher.doFinal(plain.toByteArray(Charsets.UTF_8)))
+    }
+
+    private fun prefetchExchange(mediaToken: String, streamAvailable: Boolean = true) = ScriptedExchange { request ->
+        when {
+            request.url.contains("search.getResults") -> jsonResponse(
+                searchBody(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, token = mediaToken))
+            )
+            request.url.contains("song.getDetails") -> jsonResponse(
+                JSONObject().put(
+                    "songs",
+                    JSONArray().put(saavnSong("song-1", "Blinding Lights", listOf("The Weeknd"), "After Hours", 200, token = mediaToken))
+                ).toString()
+            )
+            request.url.startsWith("https://aac.saavncdn.com/") -> if (streamAvailable) validFor(320) else htmlResponse(404)
+            else -> htmlResponse(404)
+        }
+    }
+
+    private fun highQualityResolver(jioSaavnProvider: JioSaavnAudioProvider, clock: () -> Long = { clockMs }) =
+        HighQualityAudioResolver(
+            provider = jioSaavnProvider,
+            mappingStore = HighQualityMappingStore(InMemoryMappingStorage()),
+            scope = hqScope,
+            clock = clock
+        ).apply { mode = HighQualityAudioMode.AUTOMATIC }
+
+    private fun HighQualityAudioResolver.resolveNow(
+        identityKey: String,
+        trackQuery: AlternativeTrackQuery = query()
+    ): HighQualityResolution = runBlocking { await(begin(identityKey, trackQuery), 5_000L) }
+
+    @Test
+    fun prefetchedStreamIsReusedForSameCanonicalIdentityWithoutANewNetworkRequest() {
+        val token = encrypt("https://aac.saavncdn.com/000/prefetchA_320.mp4")
+        val exchange = prefetchExchange(token)
+        val resolver = highQualityResolver(provider(exchange))
+        val identity = "identity-prefetch-a"
+        val first = resolver.resolveNow(identity)
+        assertTrue(first is HighQualityResolution.Selected)
+        val requestsAfterFirst = exchange.requests.size
+        val cached = resolver.cachedSelection(identity)
+        assertEquals((first as HighQualityResolution.Selected).stream.url, cached?.stream?.url)
+        assertEquals(requestsAfterFirst, exchange.requests.size)
+    }
+
+    @Test
+    fun staleCachedJioSaavnStreamIsRejectedAndReResolved() {
+        val token = encrypt("https://aac.saavncdn.com/000/staleB_320.mp4")
+        val exchange = prefetchExchange(token)
+        var nowMs = 1_800_000_000_000L
+        val resolver = highQualityResolver(provider(exchange), clock = { nowMs })
+        val identity = "identity-stale-b"
+        resolver.resolveNow(identity)
+        assertTrue(resolver.cachedSelection(identity) != null)
+        nowMs += 3L * 60L * 60L * 1_000L + 91_000L
+        assertNull(resolver.cachedSelection(identity))
+        val requestsBeforeRetry = exchange.requests.size
+        val second = resolver.resolveNow(identity)
+        assertTrue(second is HighQualityResolution.Selected)
+        assertTrue(exchange.requests.size > requestsBeforeRetry)
+    }
+
+    @Test
+    fun differentTrackIdentityNeverReusesAnotherTracksCachedStream() {
+        val token = encrypt("https://aac.saavncdn.com/000/crossC_320.mp4")
+        val resolver = highQualityResolver(provider(prefetchExchange(token)))
+        resolver.resolveNow("identity-cross-a")
+        assertNull(resolver.cachedSelection("identity-cross-b"))
     }
 
     private companion object {
