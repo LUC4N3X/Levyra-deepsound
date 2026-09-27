@@ -257,6 +257,7 @@ Contributions and bug reports are welcome. Technical documentation and architect
   <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
   <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="20"></a>
 </p>
+
 <sub>
   <b>Featured:</b>
   <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
