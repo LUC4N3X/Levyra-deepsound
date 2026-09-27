@@ -19,7 +19,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MotionArtworkRequestCoordinatorTest {
@@ -60,6 +62,21 @@ class MotionArtworkRequestCoordinatorTest {
             motionArtworkRequestKey(first, LevyraCanvasSource.Auto),
             motionArtworkRequestKey(second, LevyraCanvasSource.Auto)
         )
+    }
+
+    @Test
+    fun artistPageNeverWaitsForDedicatedNetworkLookupOnCacheMiss() {
+        LevyraCanvasSource.entries.forEach { source ->
+            assertEquals(0L, artistMotionForegroundWaitMs(source))
+        }
+    }
+
+    @Test
+    fun dedicatedArtistWarmupOnlyRunsWhenAppleIsEligible() {
+        assertTrue(shouldWarmDedicatedArtistMotion(LevyraCanvasSource.Auto))
+        assertTrue(shouldWarmDedicatedArtistMotion(LevyraCanvasSource.Apple))
+        assertFalse(shouldWarmDedicatedArtistMotion(LevyraCanvasSource.Community))
+        assertFalse(shouldWarmDedicatedArtistMotion(LevyraCanvasSource.Tidal))
     }
 
     @Test
