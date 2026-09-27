@@ -611,6 +611,7 @@ import com.luc4n3x.levyra.ui.library.LibrarySelectionAction
 import com.luc4n3x.levyra.ui.library.LevyraLibraryScreen
 import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
 import com.luc4n3x.levyra.ui.library.PlaylistStudioScreen
+import com.luc4n3x.levyra.ui.mixlab.MixLabScreen
 import com.luc4n3x.levyra.ui.components.rememberLastNonNull
 import com.luc4n3x.levyra.ui.library.SavedAlbumBookmarkOverlay
 import com.luc4n3x.levyra.viewmodel.completedScanSongs
@@ -2747,6 +2748,25 @@ fun LevyraApp(
                         downloadedTrackIds = state.downloadedTrackIds,
                         animated = state.animationsEnabled,
                         onClose = viewModel::closePlaylistStudio
+                    )
+                }
+            }
+
+            val mixLabSession by viewModel.mixLab.session.collectAsStateWithLifecycle()
+            val lastMixLabSession = rememberLastNonNull(mixLabSession)
+            AnimatedVisibility(
+                visible = mixLabSession != null,
+                enter = LevyraMotion.sheetEnter(state.animationsEnabled),
+                exit = LevyraMotion.overlayExit(state.animationsEnabled)
+            ) {
+                lastMixLabSession?.let { session ->
+                    MixLabScreen(
+                        session = session,
+                        controller = viewModel.mixLab,
+                        animated = state.animationsEnabled,
+                        onClose = viewModel::closeMixLab,
+                        onPlayResult = { shuffled -> viewModel.playMixLabResult(shuffled) },
+                        onAddResultToQueue = viewModel::addMixLabResultToQueue
                     )
                 }
             }
@@ -23730,7 +23750,8 @@ private fun ExploreScreen(
                             modifier = Modifier.padding(horizontal = 24.dp),
                             onFamiliarityChange = viewModel::setMixFamiliarity,
                             onStartMix = { kind -> viewModel.startLevyraMix(kind) },
-                            onOpenYourSound = viewModel::openYourSound
+                            onOpenYourSound = viewModel::openYourSound,
+                            onOpenMixLab = { viewModel.openMixLab() }
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                     }

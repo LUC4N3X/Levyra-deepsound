@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -72,7 +73,8 @@ internal fun LevyraMixLauncherPanel(
     modifier: Modifier = Modifier,
     onFamiliarityChange: (Float) -> Unit,
     onStartMix: (LevyraMixKind) -> Unit,
-    onOpenYourSound: () -> Unit
+    onOpenYourSound: () -> Unit,
+    onOpenMixLab: () -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -89,7 +91,8 @@ internal fun LevyraMixLauncherPanel(
             loading = loading,
             accent = accent,
             onStartMix = onStartMix,
-            onOpenYourSound = onOpenYourSound
+            onOpenYourSound = onOpenYourSound,
+            onOpenMixLab = onOpenMixLab
         )
     }
 }
@@ -170,7 +173,8 @@ internal fun LevyraSecondaryToolsRow(
     accent: Color,
     modifier: Modifier = Modifier,
     onStartMix: (LevyraMixKind) -> Unit,
-    onOpenYourSound: () -> Unit
+    onOpenYourSound: () -> Unit,
+    onOpenMixLab: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     Row(
@@ -190,6 +194,13 @@ internal fun LevyraSecondaryToolsRow(
             accent = accent,
             enabled = true,
             onClick = onOpenYourSound
+        )
+        SecondaryToolCard(
+            icon = Icons.Rounded.Tune,
+            label = strings.mixLab,
+            accent = accent,
+            enabled = true,
+            onClick = onOpenMixLab
         )
     }
 }
@@ -217,14 +228,14 @@ private fun RowScope.SecondaryToolCard(
                 pressedScale = LevyraPressScale.Tile,
                 role = Role.Button
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .size(30.dp)
+                .clip(RoundedCornerShape(9.dp))
                 .background(accent.copy(alpha = if (enabled) 0.16f else 0.08f)),
             contentAlignment = Alignment.Center
         ) {
@@ -232,14 +243,14 @@ private fun RowScope.SecondaryToolCard(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (enabled) accent else LevyraMuted,
-                modifier = Modifier.size(17.dp)
+                modifier = Modifier.size(16.dp)
             )
         }
         Text(
             text = label,
             color = if (enabled) LevyraText else LevyraMuted,
-            fontSize = 13.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+            fontSize = 12.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
