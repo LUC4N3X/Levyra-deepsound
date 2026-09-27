@@ -387,10 +387,10 @@ def generate_feature_cards():
         ("album", "10", "Open the whole album", "Artwork, context,\nand a complete tracklist.", (238, 221, 203), (199, 151, 106)),
         ("search", "11", "Find it fast", "Recent music and artists,\nready when you return.", (205, 228, 231), (105, 177, 181)),
         ("player_settings", "12", "Shape the playback", "Radio, sleep timer,\nquality, and more.", (232, 211, 226), (190, 127, 169)),
-        ("explore", "13", "Explore and mix", "Live stations, custom mixes,\nand fresh currents.", (210, 222, 238), (122, 160, 228)),
-        ("new_releases", "14", "Fresh off the stage", "New singles and albums\nupdated every week.", (236, 218, 205), (204, 148, 112)),
-        ("collections", "15", "Curated for you", "Playlists and gems\naround what you love.", (218, 214, 236), (155, 142, 202)),
-        ("listening_rhythm", "16", "Your listening rhythm", "Activity, peak hours,\nand listening habits.", (210, 225, 235), (130, 172, 208)),
+        ("explore", "13", "Explore and mix", "Live stations, custom mixes,\nand fresh currents.", (205, 225, 245), (68, 138, 245)),
+        ("new_releases", "14", "Fresh off the stage", "New singles and albums\nupdated every week.", (245, 215, 210), (225, 115, 95)),
+        ("collections", "15", "Curated for you", "Playlists and gems\naround what you love.", (226, 212, 244), (152, 95, 215)),
+        ("listening_rhythm", "16", "Your listening rhythm", "Activity, peak hours,\nand listening habits.", (210, 238, 225), (72, 180, 135)),
     ]
 
     label_font = get_font(19, bold=True)
