@@ -62,6 +62,8 @@ class AdaptiveStabilityLoadControl(
                 val profile = signals.requestedProfile()
                 currentProfile = profile
                 active = if (profile == PlaybackStabilityProfile.Stable) stable else normal
+            } else {
+                currentProfile = null
             }
         }
     }
