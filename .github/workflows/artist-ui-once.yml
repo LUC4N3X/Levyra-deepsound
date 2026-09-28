@@ -1,0 +1,289 @@
+name: Apply artist UI refinement once
+
+on:
+  push:
+    branches:
+      - fix/instant-page-canvas
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/instant-page-canvas
+          fetch-depth: 0
+
+      - name: Apply Artist screen refinement
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str, label: str):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly 1 match, found {count}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '    val heroArtwork = profile?.let { it.thumbnailUrl.ifBlank { it.bannerUrl } }.orEmpty()',
+              '    val heroArtwork = profile?.let { it.bannerUrl.ifBlank { it.thumbnailUrl } }.orEmpty()',
+              'prefer artist banner for hero'
+          )
+
+          replace_once(
+              '''        if (profile != null) {
+              ArtworkBackdropWash(
+                  artworkUrl = heroArtwork,
+                  tint = atmosphere,
+                  base = LevyraBlack,
+                  modifier = Modifier
+                      .fillMaxWidth()
+                      .height(heroHeight + ArtistBackdropTail)
+                      .graphicsLayer { translationY = -heroScroll() }
+              )
+          }
+
+          ''',
+              '',
+              'remove artist color wash'
+          )
+
+          replace_once(
+              'private val ArtistBackdropTail = 420.dp\n',
+              '',
+              'remove obsolete artist backdrop tail'
+          )
+
+          replace_once(
+              '''            .drawBehind {
+                  drawRect(
+                      Brush.verticalGradient(
+                          0f to atmosphere.copy(alpha = 0.9f),
+                          1f to scrim
+                      )
+                  )
+              }
+          ''',
+              '''            .drawBehind {
+                  drawRect(
+                      Brush.verticalGradient(
+                          0f to Color(0xFF111214),
+                          0.58f to Color(0xFF08090B),
+                          1f to scrim
+                      )
+                  )
+              }
+          ''',
+              'neutralize artist hero base'
+          )
+
+          replace_once(
+              '''                                0f to statusProtection,
+                                  0.22f to Color.Transparent,
+                                  0.52f to atmosphere.copy(alpha = 0.10f),
+                                  0.74f to scrim.copy(alpha = 0.62f),
+                                  0.92f to scrim.copy(alpha = 0.96f),
+                                  1f to scrim
+          ''',
+              '''                                0f to statusProtection,
+                                  0.20f to Color.Transparent,
+                                  0.54f to Color.Black.copy(alpha = 0.08f),
+                                  0.74f to Color.Black.copy(alpha = 0.62f),
+                                  0.92f to Color.Black.copy(alpha = 0.96f),
+                                  1f to Color.Black
+          ''',
+              'neutralize artist hero scrim'
+          )
+
+          replace_once(
+              '                                highlight = highlight,\n',
+              '',
+              'remove colored play accent call argument'
+          )
+          replace_once(
+              '    highlight: Color,\n',
+              '',
+              'remove colored play accent parameter'
+          )
+          replace_once(
+              '    val onHighlight = remember(highlight) { Color.White.playerContentColor(listOf(highlight)) }\n',
+              '''    val playContainer = if (LevyraIsLight) Color(0xFF11131F) else Color.White
+              val playContent = if (LevyraIsLight) Color.White else Color.Black
+          ''',
+              'use neutral play colors'
+          )
+
+          replace_once(
+              '''                    .shadow(
+                          elevation = 14.dp,
+                          shape = CircleShape,
+                          ambientColor = highlight,
+                          spotColor = highlight
+                      )
+                      .background(highlight, CircleShape)
+          ''',
+              '''                    .shadow(
+                          elevation = 10.dp,
+                          shape = CircleShape,
+                          ambientColor = Color.Black.copy(alpha = 0.24f),
+                          spotColor = Color.Black.copy(alpha = 0.18f)
+                      )
+                      .background(playContainer, CircleShape)
+          ''',
+              'neutralize artist play button'
+          )
+          replace_once(
+              '                    color = onHighlight,\n',
+              '                    color = playContent,\n',
+              'neutralize artist play glyph'
+          )
+
+          replace_once(
+              '    val barColor = LevyraBlack.playerMix(atmosphere, 0.14f)\n',
+              '    val barColor = LevyraBlack.playerMix(atmosphere, 0.04f)\n',
+              'neutralize artist top bar'
+          )
+
+          start_marker = '@Composable\nprivate fun VideoGlassCard('
+          end_marker = '\n@Composable\nprivate fun BottomTabsScrim()'
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('video card markers not found')
+
+          video_card = '''@Composable
+          private fun VideoGlassCard(
+              track: Track,
+              isCurrent: Boolean,
+              isPlaying: Boolean,
+              onClick: () -> Unit
+          ) {
+              val strings = LocalLevyraStrings.current
+              val viewCount = remember(track.youtubeViewCount, strings.code) {
+                  formatSearchViewCount(track.youtubeViewCount, strings.code)
+              }
+              val metadata = remember(track.artist, viewCount) {
+                  listOf(track.artist.trim(), viewCount.trim())
+                      .filter(String::isNotBlank)
+                      .joinToString(" · ")
+              }
+              Column(
+                  modifier = Modifier
+                      .width(260.dp)
+                      .pressable(onClick = onClick),
+                  verticalArrangement = Arrangement.spacedBy(8.dp)
+              ) {
+                  val shape = RoundedCornerShape(11.dp)
+                  Box(
+                      modifier = Modifier
+                          .fillMaxWidth()
+                          .aspectRatio(16f / 9f)
+                          .clip(shape)
+                          .background(LevyraPanelSoft)
+                          .then(
+                              if (isCurrent) {
+                                  Modifier.border(1.5.dp, Color.White.copy(alpha = 0.72f), shape)
+                              } else {
+                                  Modifier
+                              }
+                          )
+                  ) {
+                      AsyncImage(
+                          model = ImageRequest.Builder(LocalContext.current)
+                              .data(track.largeThumbnailUrl.ifEmpty { track.thumbnailUrl })
+                              .crossfade(true)
+                              .build(),
+                          contentDescription = track.title,
+                          contentScale = ContentScale.Crop,
+                          modifier = Modifier.fillMaxSize()
+                      )
+                      Box(
+                          modifier = Modifier
+                              .matchParentSize()
+                              .background(
+                                  Brush.verticalGradient(
+                                      colorStops = arrayOf(
+                                          0f to Color.Transparent,
+                                          0.76f to Color.Transparent,
+                                          1f to Color.Black.copy(alpha = 0.24f)
+                                      )
+                                  )
+                              )
+                      )
+                      if (isCurrent) {
+                          Box(
+                              modifier = Modifier
+                                  .align(Alignment.BottomStart)
+                                  .padding(10.dp)
+                                  .size(32.dp)
+                                  .background(Color.Black.copy(alpha = 0.58f), CircleShape),
+                              contentAlignment = Alignment.Center
+                          ) {
+                              if (isPlaying) {
+                                  LevyraPlayingIndicator(
+                                      playing = true,
+                                      color = Color.White,
+                                      size = 16.dp,
+                                      contentDescription = strings.playing
+                                  )
+                              } else {
+                                  Icon(
+                                      imageVector = Icons.Rounded.PlayArrow,
+                                      contentDescription = strings.play,
+                                      tint = Color.White,
+                                      modifier = Modifier.size(18.dp)
+                                  )
+                              }
+                          }
+                      }
+                  }
+                  Text(
+                      text = track.title,
+                      color = LevyraText,
+                      fontSize = 14.5.sp,
+                      lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
+                      fontWeight = FontWeight.SemiBold,
+                      maxLines = 1,
+                      overflow = TextOverflow.Ellipsis
+                  )
+                  if (metadata.isNotBlank()) {
+                      Text(
+                          text = metadata,
+                          color = LevyraMuted,
+                          fontSize = 12.sp,
+                          lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                          fontWeight = FontWeight.Normal,
+                          maxLines = 1,
+                          overflow = TextOverflow.Ellipsis
+                      )
+                  }
+              }
+          }
+          '''
+          text = text[:start] + video_card + text[end:]
+
+          path.write_text(text)
+          PY
+
+      - name: Remove one-shot workflow and push result
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/artist-ui-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/artist-ui-once.yml
+          git diff --cached --check
+          git commit -m "feat(ui): refine artist page presentation"
+          git push origin HEAD:fix/instant-page-canvas
