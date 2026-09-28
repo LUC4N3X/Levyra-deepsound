@@ -57,8 +57,9 @@ internal data class PlayerCinematicGeometry(
 )
 
 internal val PlayerCinematicTitleOverlap: Dp = 20.dp
-internal const val PlayerCinematicStackedFade = 0.48f
+internal const val PlayerCinematicStackedFade = 0.32f
 internal const val PlayerCinematicSideFade = 0.34f
+internal const val PlayerCinematicMaxStackedAspect = 1.2f
 internal const val PlayerCinematicSideDissolveFraction = 0.16f
 private const val PlayerCinematicBloomReach = 0.42f
 private const val PlayerCinematicBloomAlpha = 0.46f
@@ -97,12 +98,16 @@ internal fun playerCinematicGeometry(
         heroHeight = containerHeight,
         sideDissolve = false
     )
-    LevyraPlayerPane.Stacked -> PlayerCinematicGeometry(
-        layout = PlayerCinematicLayout.Stacked,
-        heroWidth = containerWidth,
-        heroHeight = containerHeight,
-        sideDissolve = false
-    )
+    LevyraPlayerPane.Stacked -> {
+        val heroHeight = min(stackedHeroBottom, containerHeight)
+        val heroWidth = min(containerWidth, heroHeight * PlayerCinematicMaxStackedAspect)
+        PlayerCinematicGeometry(
+            layout = PlayerCinematicLayout.Stacked,
+            heroWidth = heroWidth,
+            heroHeight = heroHeight,
+            sideDissolve = heroWidth < containerWidth
+        )
+    }
 }
 
 @Composable
@@ -152,15 +157,10 @@ internal fun PlayerCinematicStage(
             )
         }
 
-        val stageSize = if (stacked) {
-            Modifier.fillMaxSize()
-        } else {
-            Modifier.size(width = geometry.heroWidth, height = geometry.heroHeight)
-        }
         Box(
             modifier = Modifier
                 .align(if (stacked) Alignment.TopCenter else Alignment.TopStart)
-                .then(stageSize)
+                .size(width = geometry.heroWidth, height = geometry.heroHeight)
                 .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Stage)
                 .graphicsLayer {
                     alpha = if (morphActive) morphAnchors.stageRevealAlpha() else 1f
@@ -255,7 +255,6 @@ private fun PlayerCinematicChromeScrim(modifier: Modifier = Modifier) {
 }
 
 private fun DrawScope.drawStackedCinematicField(ambience: PlayerAmbience) {
-    drawRect(ambience.base)
     drawRect(
         brush = Brush.radialGradient(
             colors = listOf(ambience.primary.copy(alpha = 0.34f), Color.Transparent),
