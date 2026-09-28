@@ -194,16 +194,23 @@ private object PublicProviderDns : Dns {
         val first = bytes[0].toInt().and(0xff)
         val second = bytes[1].toInt().and(0xff)
         val third = bytes[2].toInt().and(0xff)
-        if (first == 0 || first == 127 || first >= 224) return true
-        if (first == 100 && second in 64..127) return true
-        if (first == 169 && second == 254) return true
-        if (first == 192 && second == 0) return true
-        if (first == 192 && second == 88 && third == 99) return true
-        if (first == 198 && second in 18..19) return true
-        if (first == 198 && second == 51 && third == 100) return true
-        if (first == 203 && second == 0 && third == 113) return true
-        return false
+        return when (first) {
+            0, 127 -> true
+            in 224..255 -> true
+            100 -> second in 64..127
+            169 -> second == 254
+            192 -> isNonPublic192(second, third)
+            198 -> isNonPublic198(second, third)
+            203 -> second == 0 && third == 113
+            else -> false
+        }
     }
+
+    private fun isNonPublic192(second: Int, third: Int): Boolean =
+        second == 0 || (second == 88 && third == 99)
+
+    private fun isNonPublic198(second: Int, third: Int): Boolean =
+        second in 18..19 || (second == 51 && third == 100)
 
     private fun isNonPublicIpv6(bytes: ByteArray): Boolean {
         val first = bytes[0].toInt().and(0xff)
