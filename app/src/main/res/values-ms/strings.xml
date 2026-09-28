@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Menyambung ke pemain</string>
     <string name="car_now_playing">Sedang dimainkan</string>
     <string name="car_queue">Baris gilir</string>
-    <string name="notification_shuffle">Rawak</string>
-    <string name="notification_favorite">Kegemaran</string>
+    <string name="notification_favorite_add">Tambah ke kegemaran</string>
+    <string name="notification_favorite_remove">Alih keluar daripada kegemaran</string>
+    <string name="notification_shuffle_enable">Hidupkan main rawak</string>
+    <string name="notification_shuffle_disable">Matikan main rawak</string>
+    <string name="notification_repeat_off">Ulang dimatikan</string>
+    <string name="notification_repeat_all">Ulang semua</string>
+    <string name="notification_repeat_one">Ulang satu</string>
     <string name="tile_recognize_music">Kenal pasti muzik</string>
     <string name="tile_playback">Pemutaran</string>
     <string name="shortcut_search">Cari</string>

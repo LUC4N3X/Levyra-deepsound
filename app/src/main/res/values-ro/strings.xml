@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Se conectează la player</string>
     <string name="car_now_playing">În redare</string>
     <string name="car_queue">Coadă</string>
-    <string name="notification_shuffle">Aleatoriu</string>
-    <string name="notification_favorite">Favorit</string>
+    <string name="notification_favorite_add">Adaugă la favorite</string>
+    <string name="notification_favorite_remove">Elimină din favorite</string>
+    <string name="notification_shuffle_enable">Activează redarea aleatorie</string>
+    <string name="notification_shuffle_disable">Dezactivează redarea aleatorie</string>
+    <string name="notification_repeat_off">Repetare dezactivată</string>
+    <string name="notification_repeat_all">Repetă tot</string>
+    <string name="notification_repeat_one">Repetă piesa</string>
     <string name="tile_recognize_music">Recunoaște muzica</string>
     <string name="tile_playback">Redare</string>
     <string name="shortcut_search">Căutare</string>
