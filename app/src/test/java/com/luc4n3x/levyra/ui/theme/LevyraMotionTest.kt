@@ -19,6 +19,8 @@ class LevyraMotionTest {
         LevyraMotion.release,
         LevyraMotion.expand,
         LevyraMotion.collapse,
+        LevyraMotion.playerExpand,
+        LevyraMotion.playerCollapse,
         LevyraMotion.settle,
         LevyraMotion.snappy,
         LevyraMotion.expressive,
@@ -49,6 +51,16 @@ class LevyraMotionTest {
         assertTrue(LevyraMotion.spatial.dampingRatio > LevyraMotion.expand.dampingRatio)
         assertTrue(LevyraMotion.settle.dampingRatio >= 0.9f)
         assertTrue(LevyraMotion.collapse.dampingRatio > LevyraMotion.expand.dampingRatio)
+    }
+
+    @Test
+    fun `player morph springs are softer and calmer than generic surface springs`() {
+        assertTrue(LevyraMotion.playerExpand.stiffness < LevyraMotion.expand.stiffness)
+        assertTrue(LevyraMotion.playerCollapse.stiffness < LevyraMotion.collapse.stiffness)
+        assertTrue(LevyraMotion.playerExpand.dampingRatio >= LevyraMotion.expand.dampingRatio)
+        assertTrue(LevyraMotion.playerCollapse.dampingRatio >= LevyraMotion.playerExpand.dampingRatio)
+        assertEquals(LevyraMotion.playerExpand.spec<Float>(), LevyraPlayerDesign.expandSpring<Float>())
+        assertEquals(LevyraMotion.playerCollapse.spec<Float>(), LevyraPlayerDesign.collapseSpring<Float>())
     }
 
     @Test

@@ -80,6 +80,10 @@ object LevyraMotion {
         const val ExpandStiffness: Float = 360f
         const val CollapseDamping: Float = 0.86f
         const val CollapseStiffness: Float = 430f
+        const val PlayerExpandDamping: Float = 0.88f
+        const val PlayerExpandStiffness: Float = 220f
+        const val PlayerCollapseDamping: Float = 0.90f
+        const val PlayerCollapseStiffness: Float = 250f
         const val SettleDamping: Float = 0.90f
         const val SettleStiffness: Float = 540f
         const val SnappyDamping: Float = 0.82f
@@ -100,6 +104,8 @@ object LevyraMotion {
     val release = LevyraSpring(Springs.ReleaseDamping, Springs.ReleaseStiffness)
     val expand = LevyraSpring(Springs.ExpandDamping, Springs.ExpandStiffness)
     val collapse = LevyraSpring(Springs.CollapseDamping, Springs.CollapseStiffness)
+    val playerExpand = LevyraSpring(Springs.PlayerExpandDamping, Springs.PlayerExpandStiffness)
+    val playerCollapse = LevyraSpring(Springs.PlayerCollapseDamping, Springs.PlayerCollapseStiffness)
     val settle = LevyraSpring(Springs.SettleDamping, Springs.SettleStiffness)
     val snappy = LevyraSpring(Springs.SnappyDamping, Springs.SnappyStiffness)
     val expressive = LevyraSpring(Springs.ExpressiveDamping, Springs.ExpressiveStiffness)

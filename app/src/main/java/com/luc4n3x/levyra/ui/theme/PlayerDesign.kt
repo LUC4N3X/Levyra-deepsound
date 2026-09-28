@@ -104,10 +104,10 @@ object LevyraPlayerDesign {
 
     const val PressDamping: Float = LevyraMotion.Springs.ReleaseDamping
     const val PressStiffness: Float = LevyraMotion.Springs.ReleaseStiffness
-    const val ExpandDamping: Float = LevyraMotion.Springs.ExpandDamping
-    const val ExpandStiffness: Float = LevyraMotion.Springs.ExpandStiffness
-    const val CollapseDamping: Float = LevyraMotion.Springs.CollapseDamping
-    const val CollapseStiffness: Float = LevyraMotion.Springs.CollapseStiffness
+    const val ExpandDamping: Float = LevyraMotion.Springs.PlayerExpandDamping
+    const val ExpandStiffness: Float = LevyraMotion.Springs.PlayerExpandStiffness
+    const val CollapseDamping: Float = LevyraMotion.Springs.PlayerCollapseDamping
+    const val CollapseStiffness: Float = LevyraMotion.Springs.PlayerCollapseStiffness
     const val PaletteMillis: Int = LevyraMotion.Durations.Palette
 
     fun <T> motion(animated: Boolean, spec: AnimationSpec<T>): AnimationSpec<T> =
@@ -115,9 +115,9 @@ object LevyraPlayerDesign {
 
     fun <T> pressSpring(): SpringSpec<T> = LevyraMotion.release.spec()
 
-    fun <T> expandSpring(): SpringSpec<T> = LevyraMotion.expand.spec()
+    fun <T> expandSpring(): SpringSpec<T> = LevyraMotion.playerExpand.spec()
 
-    fun <T> collapseSpring(): SpringSpec<T> = LevyraMotion.collapse.spec()
+    fun <T> collapseSpring(): SpringSpec<T> = LevyraMotion.playerCollapse.spec()
 
     fun <T> paletteTween(): TweenSpec<T> = LevyraMotion.palette()
 
