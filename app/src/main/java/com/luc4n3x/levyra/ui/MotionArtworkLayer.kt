@@ -354,7 +354,7 @@ internal fun motionStaticBedVisible(
     if (!pageMode) return !motionVisible
     if (motionVisible) return false
     if (videoUnavailable) return true
-    if (motionResolving || videoCandidatePending) return false
+    if (motionResolving) return false
     return true
 }
 

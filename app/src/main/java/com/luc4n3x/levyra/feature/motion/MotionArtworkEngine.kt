@@ -31,6 +31,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
+import java.util.LinkedHashMap
 import java.util.Locale
 
 class MotionArtworkEngine(context: Context) {
@@ -49,6 +50,7 @@ class MotionArtworkEngine(context: Context) {
     private var activeProviders: List<MotionArtworkProvider> = emptyList()
     private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val requestCoordinator = MotionArtworkRequestCoordinator(lookupScope)
+    private val metadataWarmCache = MotionMetadataWarmCache()
 
     private val artistMotionProvider by lazy { AppleMotionArtworkProvider(appContext) }
 
@@ -81,11 +83,16 @@ class MotionArtworkEngine(context: Context) {
     }.flowOn(Dispatchers.IO)
 
     private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
-        val budgetMs = motionMetadataForegroundBudgetMs(track)
-        if (budgetMs <= 0L) return track
-        val prepared = lookupScope.async { prepareLookupTrack(track) }
-        return withTimeoutOrNull(budgetMs) { prepared.await() } ?: track
+    val remembered = metadataWarmCache.get(track) ?: track
+    val budgetMs = motionMetadataForegroundBudgetMs(remembered)
+    if (budgetMs <= 0L) return remembered
+    val prepared = lookupScope.async {
+        prepareLookupTrack(remembered).also { resolved ->
+            metadataWarmCache.put(track, resolved)
+        }
     }
+    return withTimeoutOrNull(budgetMs) { prepared.await() } ?: remembered
+}
 
     private suspend fun prepareLookupTrack(track: Track): Track {
         if (track.isrc.isNotBlank() && !isUnusableMotionAlbum(track.album)) return track
@@ -607,6 +614,30 @@ internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeou
     } else {
         configuredTimeoutMs
     }
+
+internal class MotionMetadataWarmCache(private val maxEntries: Int = 64) {
+    private val entries = LinkedHashMap<String, Track>(16, 0.75f, true)
+
+    @Synchronized
+    fun get(track: Track): Track? = entries[key(track)]
+
+    @Synchronized
+    fun put(original: Track, prepared: Track) {
+        if (prepared == original) return
+        entries[key(original)] = prepared
+        while (entries.size > maxEntries) {
+            val iterator = entries.entries.iterator()
+            if (!iterator.hasNext()) return
+            iterator.next()
+            iterator.remove()
+        }
+    }
+
+    private fun key(track: Track): String = track.id.trim().ifBlank {
+        listOf(track.title, track.artist)
+            .joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
+    }
+}
 
 internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =
     if (source == LevyraCanvasSource.Auto) identityKey else "$identityKey#${source.name.lowercase()}"

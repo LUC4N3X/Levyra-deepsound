@@ -51,6 +51,35 @@ internal fun chooseVerifiedArtistShelfThumbnail(
     headerPortraitUrl: String
 ): String = searchThumbnailUrl.trim().ifBlank { headerPortraitUrl.trim() }
 
+internal fun mergeArtistSongs(
+    preview: List<Track>,
+    expanded: List<Track>,
+    limit: Int = 100
+): List<Track> {
+    val expandedById = expanded.associateBy { it.id }
+    val seen = HashSet<String>()
+    val merged = ArrayList<Track>(minOf(limit, preview.size + expanded.size))
+
+    fun append(track: Track) {
+        if (merged.size >= limit || !seen.add(track.id)) return
+        val expandedTrack = expandedById[track.id]
+        val resolved = if (
+            track.durationMs <= 0L &&
+            expandedTrack != null &&
+            expandedTrack.durationMs > 0L
+        ) {
+            track.copy(durationMs = expandedTrack.durationMs)
+        } else {
+            track
+        }
+        merged += resolved
+    }
+
+    preview.forEach(::append)
+    expanded.forEach(::append)
+    return merged
+}
+
 internal fun normalizeInlineArtistBiography(value: String): ArtistBiography? {
     val normalized = value
         .replace("\u00a0", " ")
@@ -688,7 +717,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val albumPointer = findReleasePointers(root, "Album", browseId).firstOrNull()
         val singlePointer = findReleasePointers(root, "Singol", browseId).firstOrNull()
         val videoPointer = findVideoPointer(root)
-        val songs = (extractTopSongs(root, name) + expanded.songs).distinctBy { it.id }.take(100)
+        val songs = mergeArtistSongs(extractTopSongs(root, name), expanded.songs)
         val mergedReleases = mergeReleases(
             extractReleases(root, "Album") + extractReleases(root, "Singol"),
             expanded.albums + expanded.singles

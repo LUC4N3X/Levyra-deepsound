@@ -94,6 +94,26 @@ class MotionArtworkRequestCoordinatorTest {
     }
 
     @Test
+    fun latePreparedMetadataIsReusedAsTheNextLookupBase() {
+        val cache = MotionMetadataWarmCache(maxEntries = 4)
+        val raw = track(
+            id = "youtube-id",
+            title = "Song",
+            artist = "Wrong Artist",
+            album = "YouTube Music"
+        )
+        val prepared = raw.copy(
+            artist = "Correct Artist",
+            album = "Real Album",
+            isrc = "ITABC2600001"
+        )
+
+        assertEquals(null, cache.get(raw))
+        cache.put(raw, prepared)
+        assertEquals(prepared, cache.get(raw))
+    }
+
+    @Test
     fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {
         val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {

@@ -97,8 +97,8 @@ class MotionArtworkLayerTest {
     }
 
     @Test
-    fun pageMotionKeepsStaticCoverHiddenUntilFirstVideoFrame() {
-        assertFalse(
+    fun pageMotionKeepsStaticCoverVisibleUntilFirstVideoFrame() {
+        assertTrue(
             motionStaticBedVisible(
                 pageMode = true,
                 motionResolving = false,
