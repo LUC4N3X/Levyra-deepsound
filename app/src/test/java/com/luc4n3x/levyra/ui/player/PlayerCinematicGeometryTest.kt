@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlayerCinematicGeometryTest {
@@ -24,7 +25,7 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
-    fun phonePortraitImmersiveCanvasFillsTheWholePlayer() {
+    fun phonePortraitImmersiveCanvasStopsAtHeroBottom() {
         val geometry = playerCinematicGeometry(
             pane = LevyraPlayerPane.Stacked,
             containerWidth = 412.dp,
@@ -35,12 +36,12 @@ class PlayerCinematicGeometryTest {
 
         assertEquals(PlayerCinematicLayout.Stacked, geometry.layout)
         assertEquals(412.dp, geometry.heroWidth)
-        assertEquals(915.dp, geometry.heroHeight)
+        assertEquals(461.dp, geometry.heroHeight)
         assertFalse(geometry.sideDissolve)
     }
 
     @Test
-    fun wideStackedImmersiveCanvasStillFillsTheSurface() {
+    fun wideStackedImmersiveCanvasKeepsBoundedHeroAndSideDissolve() {
         val geometry = playerCinematicGeometry(
             pane = LevyraPlayerPane.Stacked,
             containerWidth = 800.dp,
@@ -49,9 +50,9 @@ class PlayerCinematicGeometryTest {
             paneGap = 24.dp
         )
 
-        assertEquals(800.dp, geometry.heroWidth)
-        assertEquals(1280.dp, geometry.heroHeight)
-        assertFalse(geometry.sideDissolve)
+        assertEquals(500.dp * PlayerCinematicMaxStackedAspect, geometry.heroWidth)
+        assertEquals(500.dp, geometry.heroHeight)
+        assertTrue(geometry.sideDissolve)
     }
 
     @Test
