@@ -46,6 +46,7 @@ Play streamed music and your own files in the same app, save tracks for offline 
   <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" width="185" alt="Get Levyra on IzzyOnDroid"></a>
   <a href="https://sourceforge.net/projects/levyra.mirror/"><img src="docs/assets/levyra-sourceforge.svg" width="185" alt="Download Levyra from SourceForge"></a>
   <a href="https://apkpure.com/p/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkpure.svg" width="185" alt="Get Levyra on APKPure"></a>
+  <a href="https://apkfab.com/levyra/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkfab.svg" width="185" alt="Get Levyra on APKFab"></a>
   <br>
   <a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/levyra-androidfreeware-download.svg" width="185" alt="Get Levyra on AndroidFreeware"></a>
   <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" width="185" alt="Install Levyra with Obtainium"></a>
