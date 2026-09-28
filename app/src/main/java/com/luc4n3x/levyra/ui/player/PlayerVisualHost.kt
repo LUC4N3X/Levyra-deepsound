@@ -21,7 +21,12 @@ internal fun playerBackdropArtworkUrl(
     immersive: Boolean,
     backgroundMode: PlayerBackgroundMode,
     artworkUrl: String
-): String = if (immersive && backgroundMode != PlayerBackgroundMode.Blur) "" else artworkUrl
+): String = when {
+    !immersive -> artworkUrl
+    backgroundMode == PlayerBackgroundMode.Blur -> artworkUrl
+    backgroundMode == PlayerBackgroundMode.Dynamic -> artworkUrl
+    else -> ""
+}
 
 @Composable
 internal fun PlayerVisualHost(
