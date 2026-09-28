@@ -13,6 +13,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +31,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
+import java.util.LinkedHashMap
 import java.util.Locale
 
 class MotionArtworkEngine(context: Context) {
@@ -48,6 +50,7 @@ class MotionArtworkEngine(context: Context) {
     private var activeProviders: List<MotionArtworkProvider> = emptyList()
     private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val requestCoordinator = MotionArtworkRequestCoordinator(lookupScope)
+    private val metadataWarmCache = MotionMetadataWarmCache()
 
     private val artistMotionProvider by lazy { AppleMotionArtworkProvider(appContext) }
 
@@ -66,7 +69,7 @@ class MotionArtworkEngine(context: Context) {
     ): Flow<MotionArtwork> = flow {
         if (!networkPolicy.canResolveCurrent()) return@flow
         val runtime = MotionArtworkRuntime.snapshot()
-        val lookupTrack = prepareLookupTrack(track)
+        val lookupTrack = prepareLookupTrackWithinBudget(track)
         if (!networkPolicy.canResolveCurrent()) return@flow
         val identityKey = motionArtworkRequestKey(lookupTrack, source)
         val requestKey = "${runtime.epoch}:$identityKey"
@@ -78,6 +81,18 @@ class MotionArtworkEngine(context: Context) {
             }
         )
     }.flowOn(Dispatchers.IO)
+
+    private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
+        val remembered = metadataWarmCache.get(track) ?: track
+        val budgetMs = motionMetadataForegroundBudgetMs(remembered)
+        if (budgetMs <= 0L) return remembered
+        val prepared = lookupScope.async {
+            prepareLookupTrack(remembered).also { resolved ->
+                metadataWarmCache.put(track, resolved)
+            }
+        }
+        return withTimeoutOrNull(budgetMs) { prepared.await() } ?: remembered
+    }
 
     private suspend fun prepareLookupTrack(track: Track): Track {
         if (track.isrc.isNotBlank() && !isUnusableMotionAlbum(track.album)) return track
@@ -104,6 +119,7 @@ class MotionArtworkEngine(context: Context) {
         val clean = artistName.trim()
         if (clean.length < 2) return null
         if (!networkPolicy.canResolveCurrent()) return null
+        if (!shouldWarmDedicatedArtistMotion(source)) return null
         val runtime = MotionArtworkRuntime.snapshot()
         val config = runtime.value
         val identityKey = motionArtworkCacheKey(
@@ -115,10 +131,14 @@ class MotionArtworkEngine(context: Context) {
             MotionArtworkCacheResult.Negative -> return null
             MotionArtworkCacheResult.Miss -> Unit
         }
-        Timber.d("Artist motion engine resolve start artist=%s source=%s", clean, source)
-        return sharedProgressive("${runtime.epoch}:$identityKey") { emit ->
+        Timber.d("Artist motion engine background warmup start artist=%s source=%s", clean, source)
+        val request = sharedProgressive("${runtime.epoch}:$identityKey") { emit ->
             resolveArtistFresh(clean, identityKey, runtime.epoch, config)?.let { emit(it) }
-        }.lastOrNull()
+        }
+        lookupScope.launch { request.lastOrNull() }
+        val foregroundWaitMs = artistMotionForegroundWaitMs(source)
+        if (foregroundWaitMs <= 0L) return null
+        return withTimeoutOrNull(foregroundWaitMs) { request.lastOrNull() }
     }
 
     private suspend fun resolveArtistFresh(
@@ -569,6 +589,24 @@ private const val ARTIST_MOTION_CONFIDENCE = 100
 private const val ARTIST_MOTION_REQUEST_TIMEOUT_MS = 45_000L
 private const val APPLE_MOTION_PLAYER_REQUEST_TIMEOUT_MS = 25_000L
 private const val DEFAULT_MOTION_METADATA_COUNTRY = "IT"
+private const val MOTION_METADATA_FOREGROUND_BUDGET_MS = 150L
+
+internal fun artistMotionForegroundWaitMs(source: LevyraCanvasSource): Long = when (source) {
+    LevyraCanvasSource.Auto,
+    LevyraCanvasSource.Apple,
+    LevyraCanvasSource.Community,
+    LevyraCanvasSource.Tidal -> 0L
+}
+
+internal fun shouldWarmDedicatedArtistMotion(source: LevyraCanvasSource): Boolean = when (source) {
+    LevyraCanvasSource.Auto,
+    LevyraCanvasSource.Apple -> true
+    LevyraCanvasSource.Community,
+    LevyraCanvasSource.Tidal -> false
+}
+
+internal fun motionMetadataForegroundBudgetMs(track: Track): Long =
+    if (track.isrc.isNotBlank() && !isUnusableMotionAlbum(track.album)) 0L else MOTION_METADATA_FOREGROUND_BUDGET_MS
 
 internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeoutMs: Long): Long =
     if (providerId == "apple-motion") {
@@ -576,6 +614,38 @@ internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeou
     } else {
         configuredTimeoutMs
     }
+
+internal class MotionMetadataWarmCache(private val maxEntries: Int = 64) {
+    private val entries = LinkedHashMap<String, Track>(16, 0.75f, true)
+
+    @Synchronized
+    fun get(track: Track): Track? = entries[key(track)]
+
+    @Synchronized
+    fun put(original: Track, prepared: Track) {
+        if (prepared == original) return
+        entries[key(original)] = prepared
+        while (entries.size > maxEntries) {
+            val iterator = entries.entries.iterator()
+            if (!iterator.hasNext()) return
+            iterator.next()
+            iterator.remove()
+        }
+    }
+
+    private fun key(track: Track): String = listOf(
+        track.id,
+        track.title,
+        track.artist,
+        track.album,
+        track.isrc,
+        track.year,
+        track.releaseDate,
+        track.albumArtist,
+        track.albumBrowseId,
+        track.artistBrowseIds.joinToString(",")
+    ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
+}
 
 internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =
     if (source == LevyraCanvasSource.Auto) identityKey else "$identityKey#${source.name.lowercase()}"

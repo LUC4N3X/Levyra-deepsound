@@ -84,6 +84,76 @@ class MotionArtworkLayerTest {
     }
 
     @Test
+    fun pageMotionDoesNotFlashStaticCoverWhileCanvasIsResolving() {
+        assertFalse(
+            motionStaticBedVisible(
+                pageMode = true,
+                motionResolving = true,
+                motionVisible = false,
+                videoCandidatePending = false,
+                videoUnavailable = false
+            )
+        )
+    }
+
+    @Test
+    fun pageMotionKeepsStaticCoverVisibleUntilFirstVideoFrame() {
+        assertTrue(
+            motionStaticBedVisible(
+                pageMode = true,
+                motionResolving = false,
+                motionVisible = false,
+                videoCandidatePending = true,
+                videoUnavailable = false
+            )
+        )
+    }
+
+    @Test
+    fun pageMotionShowsStaticCoverAfterConclusiveMissOrVideoFailure() {
+        assertTrue(
+            motionStaticBedVisible(
+                pageMode = true,
+                motionResolving = false,
+                motionVisible = false,
+                videoCandidatePending = false,
+                videoUnavailable = false
+            )
+        )
+        assertTrue(
+            motionStaticBedVisible(
+                pageMode = true,
+                motionResolving = true,
+                motionVisible = false,
+                videoCandidatePending = true,
+                videoUnavailable = true
+            )
+        )
+    }
+
+    @Test
+    fun nowPlayingStaticCoverBehaviorDoesNotChange() {
+        assertTrue(
+            motionStaticBedVisible(
+                pageMode = false,
+                motionResolving = true,
+                motionVisible = false,
+                videoCandidatePending = true,
+                videoUnavailable = false
+            )
+        )
+        assertFalse(
+            motionStaticBedVisible(
+                pageMode = false,
+                motionResolving = false,
+                motionVisible = true,
+                videoCandidatePending = false,
+                videoUnavailable = false
+            )
+        )
+    }
+
+    @Test
     fun cinematicZoomDoesNotChangeArtistImmersiveCrop() {
         assertEquals(1.32f, motionArtworkMaxZoom(MotionArtworkPresentation.Immersive), 0f)
         assertEquals(MotionArtworkCinematicMaxZoom, motionArtworkMaxZoom(MotionArtworkPresentation.Cinematic), 0f)

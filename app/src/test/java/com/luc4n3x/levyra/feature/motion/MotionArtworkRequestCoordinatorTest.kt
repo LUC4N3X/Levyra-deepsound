@@ -19,7 +19,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MotionArtworkRequestCoordinatorTest {
@@ -60,6 +62,81 @@ class MotionArtworkRequestCoordinatorTest {
             motionArtworkRequestKey(first, LevyraCanvasSource.Auto),
             motionArtworkRequestKey(second, LevyraCanvasSource.Auto)
         )
+    }
+
+    @Test
+    fun artistPageNeverWaitsForDedicatedNetworkLookupOnCacheMiss() {
+        LevyraCanvasSource.entries.forEach { source ->
+            assertEquals(0L, artistMotionForegroundWaitMs(source))
+        }
+    }
+
+    @Test
+    fun dedicatedArtistWarmupOnlyRunsWhenAppleIsEligible() {
+        assertTrue(shouldWarmDedicatedArtistMotion(LevyraCanvasSource.Auto))
+        assertTrue(shouldWarmDedicatedArtistMotion(LevyraCanvasSource.Apple))
+        assertFalse(shouldWarmDedicatedArtistMotion(LevyraCanvasSource.Community))
+        assertFalse(shouldWarmDedicatedArtistMotion(LevyraCanvasSource.Tidal))
+    }
+
+    @Test
+    fun incompleteMetadataGetsOnlyATinyForegroundBudget() {
+        val incomplete = track(
+            id = "raw",
+            title = "Song",
+            artist = "Artist",
+            album = "YouTube Music"
+        )
+        val prepared = incomplete.copy(album = "Real Album", isrc = "ITABC2600001")
+
+        assertTrue(motionMetadataForegroundBudgetMs(incomplete) in 1L..200L)
+        assertEquals(0L, motionMetadataForegroundBudgetMs(prepared))
+    }
+
+    @Test
+    fun latePreparedMetadataIsReusedAsTheNextLookupBase() {
+        val cache = MotionMetadataWarmCache(maxEntries = 4)
+        val raw = track(
+            id = "youtube-id",
+            title = "Song",
+            artist = "Wrong Artist",
+            album = "YouTube Music"
+        )
+        val prepared = raw.copy(
+            artist = "Correct Artist",
+            album = "Real Album",
+            isrc = "ITABC2600001"
+        )
+
+        assertEquals(null, cache.get(raw))
+        cache.put(raw, prepared)
+        assertEquals(prepared, cache.get(raw))
+    }
+
+    @Test
+    fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {
+        val cache = MotionMetadataWarmCache(maxEntries = 4)
+        val raw = track(
+            id = "youtube-id",
+            title = "Song",
+            artist = "Wrong Artist",
+            album = "YouTube Music"
+        )
+        val prepared = raw.copy(
+            artist = "Correct Artist",
+            album = "Real Album",
+            isrc = "ITABC2600001"
+        )
+        val newerInput = raw.copy(
+            artist = "New Correct Artist",
+            album = "New Real Album",
+            isrc = "ITABC2600002"
+        )
+
+        cache.put(raw, prepared)
+
+        assertEquals(prepared, cache.get(raw))
+        assertEquals(null, cache.get(newerInput))
     }
 
     @Test
