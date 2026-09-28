@@ -1,0 +1,121 @@
+name: Final PR 762 format cleanup once
+
+on:
+  push:
+    branches:
+      - fix/instant-page-canvas
+
+permissions:
+  contents: write
+
+jobs:
+  fix-format:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/instant-page-canvas
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Fix exact Kotlin indentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          engine = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
+          text = engine.read_text()
+          start = text.index('    private fun key(track: Track): String = listOf(')
+          end = text.index('\n}\n\ninternal fun motionArtworkCacheKey', start)
+          expected = (
+              '    private fun key(track: Track): String = listOf(\n'
+              '        track.id,\n'
+              '        track.title,\n'
+              '        track.artist,\n'
+              '        track.album,\n'
+              '        track.isrc,\n'
+              '        track.year,\n'
+              '        track.releaseDate,\n'
+              '        track.albumArtist,\n'
+              '        track.albumBrowseId,\n'
+              '        track.artistBrowseIds.joinToString(",")\n'
+              '    ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }'
+          )
+          engine.write_text(text[:start] + expected + text[end:])
+
+          test_file = Path('app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt')
+          text = test_file.read_text()
+          start = text.index('    @Test\nfun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {')
+          end = text.index('    @Test\n    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {', start)
+          expected_test = (
+              '    @Test\n'
+              '    fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {\n'
+              '        val cache = MotionMetadataWarmCache(maxEntries = 4)\n'
+              '        val raw = track(\n'
+              '            id = "youtube-id",\n'
+              '            title = "Song",\n'
+              '            artist = "Wrong Artist",\n'
+              '            album = "YouTube Music"\n'
+              '        )\n'
+              '        val prepared = raw.copy(\n'
+              '            artist = "Correct Artist",\n'
+              '            album = "Real Album",\n'
+              '            isrc = "ITABC2600001"\n'
+              '        )\n'
+              '        val newerInput = raw.copy(\n'
+              '            artist = "New Correct Artist",\n'
+              '            album = "New Real Album",\n'
+              '            isrc = "ITABC2600002"\n'
+              '        )\n\n'
+              '        cache.put(raw, prepared)\n\n'
+              '        assertEquals(prepared, cache.get(raw))\n'
+              '        assertEquals(null, cache.get(newerInput))\n'
+              '    }\n\n'
+          )
+          test_file.write_text(text[:start] + expected_test + text[end:])
+
+          updated_engine = engine.read_text()
+          updated_test = test_file.read_text()
+          if expected not in updated_engine:
+              raise SystemExit('engine formatting verification failed')
+          if expected_test not in updated_test:
+              raise SystemExit('test formatting verification failed')
+          PY
+          git diff --check
+
+      - name: Verify targeted tests and compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.ArtistPopularSongsMergeTest' \
+            --tests 'com.luc4n3x.levyra.ui.MotionArtworkLayerTest' \
+            --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest' \
+            --console=plain --warning-mode summary
+          ./gradlew :app:compileDebugKotlin --console=plain --warning-mode summary
+          git diff --check
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt \
+            app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt
+          git commit -m "style(motion): normalize metadata cache formatting"
+          git pull --rebase origin fix/instant-page-canvas
+          git push origin HEAD:fix/instant-page-canvas
