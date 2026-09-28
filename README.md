@@ -72,13 +72,6 @@ Play streamed music and your own files in the same app, save tracks for offline 
 >
 > Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
 
-> [!WARNING]
-> **Regional availability**
->
-> Some of Levyra's streaming features rely on YouTube Music. If YouTube Music is blocked or unavailable in your region, those parts of the app may not work unless you connect through a VPN or proxy in a supported region. Levyra does not bypass regional restrictions on its own.
->
-> Local playback and features that do not depend on YouTube Music are not affected.
-
 ## ✦ Why Levyra
 
 I started Levyra because I wanted one player for the music I stream and the files I already have. I wanted local tracks to feel like part of the same library, with playlists, history and downloads that do not depend on a Levyra account.
@@ -304,6 +297,16 @@ Levyra is built for lawful use, research, and interoperability, not for piracy o
 
 Levyra may cache media temporarily for playback and can save user-requested downloads as standard media files. Neither feature gives you permission to redistribute third-party content. You are responsible for making sure your use of Levyra complies with applicable law and with the terms of any third-party service you choose to access.
 
+#### - Regional availability and experimental network compatibility
+
+Some streaming features depend on third-party services such as YouTube Music. Those services may be unavailable, filtered, or unreliable in some countries, networks, or accounts.
+
+Some Levyra builds include optional experimental network compatibility tools that can change how YouTube requests are resolved, routed, or sent when the normal connection does not work. These are best-effort features. They can fail, slow playback, or stop working after a network or provider change, and Levyra does not guarantee that they will restore access.
+
+Enabling a compatibility option does not grant access rights, unlock paid features, or make an otherwise restricted use authorized. You are responsible for following applicable law and the terms, account rules, and network policies that apply to the services you use.
+
+Local playback and features that do not depend on the affected service continue to work independently.
+
 #### - Support artists and creators
 
 Levyra does not unlock paid subscriptions or grant access rights offered by third-party providers. If you want an official subscription experience, subscribe directly through the provider, including [YouTube Premium](https://www.youtube.com/premium), [YouTube Music Premium](https://www.youtube.com/musicpremium), or [Spotify Premium](https://www.spotify.com/premium/).
@@ -316,7 +319,9 @@ Levyra does not require a Levyra account and does not include telemetry, analyti
 
 #### - Technical interoperability and access restrictions
 
-Levyra includes client-side code for compatibility with external services. It handles things like stream resolution, requests, and tokens so those integrations can work. These are interoperability features, not tools for bypassing access controls, geographic restrictions, or paid entitlements.
+Levyra includes client-side code for compatibility with external services. Depending on the feature, it may resolve streams, process requests and tokens, use alternate DNS or routing, or apply optional experimental connection methods.
+
+Those capabilities do not grant permission to access a service, region, catalog item, account feature, subscription tier, or paid entitlement that you are not otherwise allowed to use. Availability and authorization remain governed by the service, your account, the network you are using, applicable terms, and applicable law. Network compatibility options are provided on a best-effort basis and may stop working at any time.
 
 #### - Warranty and third-party availability
 
