@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.AudioLanguageIntelligence
+import com.luc4n3x.levyra.data.FavoriteMembership
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.deduplicateSearchSongs
 import com.luc4n3x.levyra.data.areAllFavoriteTracks
@@ -3106,24 +3107,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         favoriteStoreJob?.cancel()
         favoriteStoreJob = viewModelScope.launch {
             favoritesStore.observeMembership().collect { membership ->
-                val changed = favoriteMutationMutex.withLock {
-                    val stale = withContext(Dispatchers.Default) {
-                        !membership.sameTracksAs(_state.value.favorites)
+                val addedCurrent = favoriteMutationMutex.withLock {
+                    val previous = _state.value.favorites
+                    val stale = withContext(Dispatchers.Default) { !membership.sameTracksAs(previous) }
+                    if (!stale) return@withLock null
+                    val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
+                    val timestamps = favoritesStore.loadTimestampsSuspending()
+                    _state.update { state ->
+                        state.copy(
+                            favorites = favorites,
+                            favoriteIds = favorites.map { favorite -> favorite.id }.toSet(),
+                            favoriteTimestamps = timestamps
+                        )
                     }
-                    if (stale) {
-                        val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
-                        val timestamps = favoritesStore.loadTimestampsSuspending()
-                        _state.update { state ->
-                            state.copy(
-                                favorites = favorites,
-                                favoriteIds = favorites.map { favorite -> favorite.id }.toSet(),
-                                favoriteTimestamps = timestamps
-                            )
+                    withContext(Dispatchers.Default) {
+                        val current = _state.value.currentTrack
+                            ?.let { track -> FavoriteMembership.of(listOf(track)) }
+                        val previousMembership = FavoriteMembership.of(previous)
+                        favorites.filter { track ->
+                            current?.contains(track) == true && !previousMembership.contains(track)
                         }
                     }
-                    stale
-                }
-                if (changed) refreshForgottenFavorites()
+                } ?: return@collect
+                refreshForgottenFavorites()
+                addedCurrent.forEach { track -> autoDownloadFavorite(track, becameFavorite = true) }
             }
         }
     }

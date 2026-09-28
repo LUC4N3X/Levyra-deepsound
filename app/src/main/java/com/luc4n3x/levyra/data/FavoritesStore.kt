@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -77,7 +78,7 @@ class FavoritesStore(context: Context) {
 
     suspend fun setFavorite(track: Track, favorite: Boolean): List<Track> = withContext(Dispatchers.IO) {
         favoritesStoreMutationMutex.withLock {
-            val current = loadInternal()
+            val current = loadInternal(failOnReadError = true)
             val updated = favoriteTracksWithMembership(current, track, favorite)
             if (updated != current) saveAndCompleteMigration(updated)
             updated
@@ -85,6 +86,7 @@ class FavoritesStore(context: Context) {
     }
 
     internal fun observeMembership(): Flow<FavoriteMembership> = dao.observeIdentities()
+        .onStart { favoritesStoreMutationMutex.withLock { loadInternal() } }
         .map { rows -> FavoriteMembership(rows.mapTo(hashSetOf()) { favoriteTrackKey(it.id, it.artist, it.title) }) }
         .flowOn(Dispatchers.IO)
 
@@ -97,11 +99,10 @@ class FavoritesStore(context: Context) {
         }
     }
 
-    private suspend fun loadInternal(): List<Track> {
+    private suspend fun loadInternal(failOnReadError: Boolean = false): List<Track> {
         val entities = runCatching { dao.all() }
             .onFailure { Timber.w(it, "Favorite tracks load failed") }
-            .getOrNull()
-            ?: return emptyList()
+            .getOrElse { error -> if (failOnReadError) throw error else return emptyList() }
         rememberTimestampSnapshot(entities.associate { it.id to it.createdAt })
         val stored = entities.map { it.toTrack() }
         if (stored.isNotEmpty()) {

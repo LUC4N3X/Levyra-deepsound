@@ -1025,7 +1025,7 @@ class PlaybackService : MediaLibraryService() {
                         }
                     }
                     else -> SystemMediaCommand.fromCustomAction(customCommand.customAction)
-                        ?.let { command -> Futures.immediateFuture(handleSystemMediaCommand(command, session.player)) }
+                        ?.let { command -> handleSystemMediaCommand(command, session.player) }
                         ?: super.onCustomCommand(session, controller, customCommand, args)
                 }
             }
@@ -1233,46 +1233,51 @@ class PlaybackService : MediaLibraryService() {
         return START_STICKY
     }
 
-    private fun handleSystemMediaCommand(command: SystemMediaCommand, sessionPlayer: Player): SessionResult {
+    private fun handleSystemMediaCommand(
+        command: SystemMediaCommand,
+        sessionPlayer: Player
+    ): ListenableFuture<SessionResult> {
         val queue = queueEngine.state.value
         val sessionItem = systemMediaSessionItem(sessionPlayer.currentMediaItem)
+        val invalidState = Futures.immediateFuture(SessionResult(androidx.media3.session.SessionError.ERROR_INVALID_STATE))
         when (command) {
             SystemMediaCommand.AddFavorite, SystemMediaCommand.RemoveFavorite -> {
-                val target = systemFavoriteTarget(queue, sessionItem)
-                    ?: return SessionResult(androidx.media3.session.SessionError.ERROR_INVALID_STATE)
+                val target = systemFavoriteTarget(queue, sessionItem) ?: return invalidState
                 val favorite = command == SystemMediaCommand.AddFavorite
+                val result = SettableFuture.create<SessionResult>()
                 serviceScope.launch {
                     try {
                         favoritesStore.setFavorite(target, favorite)
+                        result.set(SessionResult(SessionResult.RESULT_SUCCESS))
                     } catch (cancelled: CancellationException) {
+                        result.cancel(false)
                         throw cancelled
                     } catch (error: Exception) {
                         Timber.w(error, "System favorite action failed")
+                        result.set(SessionResult(androidx.media3.session.SessionError.ERROR_UNKNOWN))
                     }
                 }
+                return result
             }
             SystemMediaCommand.EnableShuffle, SystemMediaCommand.DisableShuffle -> {
-                if (!systemQueueControlsAvailable(queue, sessionItem)) {
-                    return SessionResult(androidx.media3.session.SessionError.ERROR_INVALID_STATE)
-                }
+                if (!systemQueueControlsAvailable(queue, sessionItem)) return invalidState
                 queueEngine.setShuffle(command == SystemMediaCommand.EnableShuffle)
                 clearPreparedQueueNextIfStaleInternal()
             }
             SystemMediaCommand.SetRepeatOff, SystemMediaCommand.SetRepeatAll, SystemMediaCommand.SetRepeatOne -> {
                 val mode = command.repeatModeTarget
-                if (mode == null || !systemQueueControlsAvailable(queue, sessionItem)) {
-                    return SessionResult(androidx.media3.session.SessionError.ERROR_INVALID_STATE)
-                }
+                if (mode == null || !systemQueueControlsAvailable(queue, sessionItem)) return invalidState
                 queueEngine.setRepeatMode(mode)
-                sessionPlayer.repeatMode = if (mode == com.luc4n3x.levyra.domain.RepeatMode.One) {
-                    Player.REPEAT_MODE_ONE
-                } else {
-                    Player.REPEAT_MODE_OFF
+                val remote = sessionPlayer.deviceInfo.playbackType == DeviceInfo.PLAYBACK_TYPE_REMOTE
+                sessionPlayer.repeatMode = when {
+                    mode == com.luc4n3x.levyra.domain.RepeatMode.One -> Player.REPEAT_MODE_ONE
+                    mode == com.luc4n3x.levyra.domain.RepeatMode.All && remote -> Player.REPEAT_MODE_ALL
+                    else -> Player.REPEAT_MODE_OFF
                 }
                 clearPreparedQueueNextIfStaleInternal()
             }
         }
-        return SessionResult(SessionResult.RESULT_SUCCESS)
+        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
     }
 
     private fun canSkipToPreviousTrack(): Boolean {
