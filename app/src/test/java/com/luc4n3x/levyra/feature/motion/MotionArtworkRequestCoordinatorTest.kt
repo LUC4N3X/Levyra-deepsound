@@ -114,31 +114,30 @@ class MotionArtworkRequestCoordinatorTest {
     }
 
     @Test
-fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {
-    val cache = MotionMetadataWarmCache(maxEntries = 4)
-    val raw = track(
-        id = "youtube-id",
-        title = "Song",
-        artist = "Wrong Artist",
-        album = "YouTube Music"
-    )
-    val prepared = raw.copy(
-        artist = "Correct Artist",
-        album = "Real Album",
-        isrc = "ITABC2600001"
-    )
-    val newerInput = raw.copy(
-        artist = "New Correct Artist",
-        album = "New Real Album",
-        isrc = "ITABC2600002"
-    )
+    fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {
+        val cache = MotionMetadataWarmCache(maxEntries = 4)
+        val raw = track(
+  id = "youtube-id",
+  title = "Song",
+  artist = "Wrong Artist",
+  album = "YouTube Music"
+        )
+        val prepared = raw.copy(
+  artist = "Correct Artist",
+  album = "Real Album",
+  isrc = "ITABC2600001"
+        )
+        val newerInput = raw.copy(
+  artist = "New Correct Artist",
+  album = "New Real Album",
+  isrc = "ITABC2600002"
+        )
 
-    cache.put(raw, prepared)
+        cache.put(raw, prepared)
 
-    assertEquals(prepared, cache.get(raw))
-    assertEquals(null, cache.get(newerInput))
-}
-
+        assertEquals(prepared, cache.get(raw))
+        assertEquals(null, cache.get(newerInput))
+    }
     @Test
     fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {
         val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
