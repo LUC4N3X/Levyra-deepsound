@@ -1,0 +1,141 @@
+name: Guard motion metadata cache identity once
+
+on:
+  push:
+    branches:
+      - fix/instant-page-canvas
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-verify:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/instant-page-canvas
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: RED stale metadata cache regression
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt')
+          text = path.read_text()
+          marker = '''    @Test
+    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {
+'''
+          if marker not in text:
+              raise SystemExit('test insertion marker not found')
+          test = '''    @Test
+    fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {
+        val cache = MotionMetadataWarmCache(maxEntries = 4)
+        val raw = track(
+            id = "youtube-id",
+            title = "Song",
+            artist = "Wrong Artist",
+            album = "YouTube Music"
+        )
+        val prepared = raw.copy(
+            artist = "Correct Artist",
+            album = "Real Album",
+            isrc = "ITABC2600001"
+        )
+        val newerInput = raw.copy(
+            artist = "New Correct Artist",
+            album = "New Real Album",
+            isrc = "ITABC2600002"
+        )
+
+        cache.put(raw, prepared)
+
+        assertEquals(prepared, cache.get(raw))
+        assertEquals(null, cache.get(newerInput))
+    }
+
+'''
+          path.write_text(text.replace(marker, test + marker, 1))
+          PY
+          set +e
+          ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId' --console=plain --warning-mode summary
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected stale-cache regression test to fail before implementation'
+            exit 1
+          fi
+
+      - name: GREEN source-aware metadata cache
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
+          text = path.read_text()
+          old = '''    private fun key(track: Track): String = track.id.trim().ifBlank {
+        listOf(track.title, track.artist)
+            .joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
+    }
+'''
+          new = '''    private fun key(track: Track): String = listOf(
+        track.id,
+        track.title,
+        track.artist,
+        track.album,
+        track.isrc,
+        track.year,
+        track.releaseDate,
+        track.albumArtist,
+        track.albumBrowseId,
+        track.artistBrowseIds.joinToString(",")
+    ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
+'''
+          if text.count(old) != 1:
+              raise SystemExit(f'cache key block expected once, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          ./gradlew :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.latePreparedMetadataIsReusedAsTheNextLookupBase' \
+            --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId' \
+            --console=plain --warning-mode summary
+
+      - name: Verify targeted regressions and compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.ArtistPopularSongsMergeTest' \
+            --tests 'com.luc4n3x.levyra.ui.MotionArtworkLayerTest' \
+            --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest' \
+            --console=plain --warning-mode summary
+          ./gradlew :app:compileDebugKotlin --console=plain --warning-mode summary
+          git diff --check
+
+      - name: Remove one-shot workflow and push result
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/pr762-metadata-cache-identity-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt \
+            app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt \
+            .github/workflows/pr762-metadata-cache-identity-once.yml
+          git commit -m "fix(motion): scope metadata warm cache to source identity"
+          git push origin HEAD:fix/instant-page-canvas
