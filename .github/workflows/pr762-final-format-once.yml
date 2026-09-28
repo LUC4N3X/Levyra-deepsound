@@ -57,8 +57,12 @@ jobs:
 
           test_file = Path('app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt')
           text = test_file.read_text()
-          start = text.index('    @Test\nfun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {')
-          end = text.index('    @Test\n    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {', start)
+          method = 'fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {'
+          method_pos = text.index(method)
+          start = text.rfind('    @Test', 0, method_pos)
+          if start < 0:
+              raise SystemExit('cache regression @Test marker not found')
+          next_test = text.index('    @Test', method_pos + len(method))
           expected_test = (
               '    @Test\n'
               '    fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {\n'
@@ -84,7 +88,7 @@ jobs:
               '        assertEquals(null, cache.get(newerInput))\n'
               '    }\n\n'
           )
-          test_file.write_text(text[:start] + expected_test + text[end:])
+          test_file.write_text(text[:start] + expected_test + text[next_test:])
 
           updated_engine = engine.read_text()
           updated_test = test_file.read_text()
