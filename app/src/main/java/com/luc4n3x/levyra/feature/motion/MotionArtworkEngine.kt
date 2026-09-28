@@ -83,16 +83,16 @@ class MotionArtworkEngine(context: Context) {
     }.flowOn(Dispatchers.IO)
 
     private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
-    val remembered = metadataWarmCache.get(track) ?: track
-    val budgetMs = motionMetadataForegroundBudgetMs(remembered)
-    if (budgetMs <= 0L) return remembered
-    val prepared = lookupScope.async {
-        prepareLookupTrack(remembered).also { resolved ->
-            metadataWarmCache.put(track, resolved)
+        val remembered = metadataWarmCache.get(track) ?: track
+        val budgetMs = motionMetadataForegroundBudgetMs(remembered)
+        if (budgetMs <= 0L) return remembered
+        val prepared = lookupScope.async {
+            prepareLookupTrack(remembered).also { resolved ->
+                metadataWarmCache.put(track, resolved)
+            }
         }
+        return withTimeoutOrNull(budgetMs) { prepared.await() } ?: remembered
     }
-    return withTimeoutOrNull(budgetMs) { prepared.await() } ?: remembered
-}
 
     private suspend fun prepareLookupTrack(track: Track): Track {
         if (track.isrc.isNotBlank() && !isUnusableMotionAlbum(track.album)) return track
