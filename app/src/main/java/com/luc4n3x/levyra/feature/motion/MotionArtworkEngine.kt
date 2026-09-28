@@ -634,17 +634,17 @@ internal class MotionMetadataWarmCache(private val maxEntries: Int = 64) {
     }
 
     private fun key(track: Track): String = listOf(
-    track.id,
-    track.title,
-    track.artist,
-    track.album,
-    track.isrc,
-    track.year,
-    track.releaseDate,
-    track.albumArtist,
-    track.albumBrowseId,
-    track.artistBrowseIds.joinToString(",")
-).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
+        track.id,
+        track.title,
+        track.artist,
+        track.album,
+        track.isrc,
+        track.year,
+        track.releaseDate,
+        track.albumArtist,
+        track.albumBrowseId,
+        track.artistBrowseIds.joinToString(",")
+    ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
 }
 
 internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =
