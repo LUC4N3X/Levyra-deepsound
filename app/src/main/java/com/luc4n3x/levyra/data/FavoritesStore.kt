@@ -8,6 +8,10 @@ import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -72,6 +76,20 @@ class FavoritesStore(context: Context) {
         }
     }
 
+    suspend fun setFavorite(track: Track, favorite: Boolean): List<Track> = withContext(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock {
+            val current = loadInternal(failOnReadError = true)
+            val updated = favoriteTracksWithMembership(current, track, favorite)
+            if (updated != current) saveAndCompleteMigration(updated)
+            updated
+        }
+    }
+
+    internal fun observeMembership(): Flow<FavoriteMembership> = dao.observeIdentities()
+        .onStart { favoritesStoreMutationMutex.withLock { loadInternal() } }
+        .map { rows -> FavoriteMembership(rows.mapTo(hashSetOf()) { favoriteTrackKey(it.id, it.artist, it.title) }) }
+        .flowOn(Dispatchers.IO)
+
     suspend fun toggleFavorites(tracks: List<Track>): List<Track> = withContext(Dispatchers.IO) {
         favoritesStoreMutationMutex.withLock {
             val current = loadInternal()
@@ -81,11 +99,10 @@ class FavoritesStore(context: Context) {
         }
     }
 
-    private suspend fun loadInternal(): List<Track> {
+    private suspend fun loadInternal(failOnReadError: Boolean = false): List<Track> {
         val entities = runCatching { dao.all() }
             .onFailure { Timber.w(it, "Favorite tracks load failed") }
-            .getOrNull()
-            ?: return emptyList()
+            .getOrElse { error -> if (failOnReadError) throw error else return emptyList() }
         rememberTimestampSnapshot(entities.associate { it.id to it.createdAt })
         val stored = entities.map { it.toTrack() }
         if (stored.isNotEmpty()) {
@@ -196,21 +213,44 @@ internal fun areAllFavoriteTracks(current: List<Track>, targets: List<Track>): B
     return targets.all { favoriteTrackKey(it) in currentKeys }
 }
 
-private data class FavoriteTrackKey(
+internal fun favoriteTracksWithMembership(current: List<Track>, track: Track, favorite: Boolean): List<Track> {
+    val key = favoriteTrackKey(track)
+    val present = current.any { favoriteTrackKey(it) == key }
+    return when {
+        present == favorite -> current
+        favorite -> listOf(track) + current
+        else -> current.filterNot { favoriteTrackKey(it) == key }
+    }
+}
+
+internal class FavoriteMembership(private val keys: Set<FavoriteTrackKey>) {
+    fun contains(track: Track): Boolean = favoriteTrackKey(track) in keys
+
+    fun sameTracksAs(tracks: List<Track>): Boolean = tracks.mapTo(hashSetOf(), ::favoriteTrackKey) == keys
+
+    companion object {
+        internal fun of(tracks: List<Track>): FavoriteMembership =
+            FavoriteMembership(tracks.mapTo(hashSetOf(), ::favoriteTrackKey))
+    }
+}
+
+internal data class FavoriteTrackKey(
     val id: String?,
     val artist: String,
     val title: String
 )
 
-private fun favoriteTrackKey(track: Track): FavoriteTrackKey {
-    val id = track.id.trim().lowercase(Locale.ROOT)
-    return if (id.isNotEmpty()) {
-        FavoriteTrackKey(id = id, artist = "", title = "")
+private fun favoriteTrackKey(track: Track): FavoriteTrackKey = favoriteTrackKey(track.id, track.artist, track.title)
+
+private fun favoriteTrackKey(id: String, artist: String, title: String): FavoriteTrackKey {
+    val normalizedId = id.trim().lowercase(Locale.ROOT)
+    return if (normalizedId.isNotEmpty()) {
+        FavoriteTrackKey(id = normalizedId, artist = "", title = "")
     } else {
         FavoriteTrackKey(
             id = null,
-            artist = track.artist.trim().lowercase(Locale.ROOT),
-            title = track.title.trim().lowercase(Locale.ROOT)
+            artist = artist.trim().lowercase(Locale.ROOT),
+            title = title.trim().lowercase(Locale.ROOT)
         )
     }
 }

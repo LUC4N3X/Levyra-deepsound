@@ -24,8 +24,13 @@
     <string name="car_connecting_player">מתחבר לנגן</string>
     <string name="car_now_playing">מתנגן עכשיו</string>
     <string name="car_queue">תור</string>
-    <string name="notification_shuffle">ערבוב</string>
-    <string name="notification_favorite">מועדף</string>
+    <string name="notification_favorite_add">הוספה למועדפים</string>
+    <string name="notification_favorite_remove">הסרה מהמועדפים</string>
+    <string name="notification_shuffle_enable">הפעלת ערבוב</string>
+    <string name="notification_shuffle_disable">כיבוי ערבוב</string>
+    <string name="notification_repeat_off">חזרה כבויה</string>
+    <string name="notification_repeat_all">חזרה על הכול</string>
+    <string name="notification_repeat_one">חזרה על שיר אחד</string>
     <string name="tile_recognize_music">זיהוי מוזיקה</string>
     <string name="tile_playback">השמעה</string>
     <string name="shortcut_search">חיפוש</string>

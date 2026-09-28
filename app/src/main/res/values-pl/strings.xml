@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Łączenie z odtwarzaczem</string>
     <string name="car_now_playing">Teraz odtwarzane</string>
     <string name="car_queue">Kolejka</string>
-    <string name="notification_shuffle">Losowo</string>
-    <string name="notification_favorite">Ulubione</string>
+    <string name="notification_favorite_add">Dodaj do ulubionych</string>
+    <string name="notification_favorite_remove">Usuń z ulubionych</string>
+    <string name="notification_shuffle_enable">Włącz odtwarzanie losowe</string>
+    <string name="notification_shuffle_disable">Wyłącz odtwarzanie losowe</string>
+    <string name="notification_repeat_off">Powtarzanie wyłączone</string>
+    <string name="notification_repeat_all">Powtarzaj wszystko</string>
+    <string name="notification_repeat_one">Powtarzaj utwór</string>
     <string name="tile_recognize_music">Rozpoznaj muzykę</string>
     <string name="tile_playback">Odtwarzanie</string>
     <string name="shortcut_search">Szukaj</string>

@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Connexion au lecteur</string>
     <string name="car_now_playing">Lecture en cours</string>
     <string name="car_queue">File d’attente</string>
-    <string name="notification_shuffle">Aléatoire</string>
-    <string name="notification_favorite">Favori</string>
+    <string name="notification_favorite_add">Ajouter aux favoris</string>
+    <string name="notification_favorite_remove">Retirer des favoris</string>
+    <string name="notification_shuffle_enable">Activer la lecture aléatoire</string>
+    <string name="notification_shuffle_disable">Désactiver la lecture aléatoire</string>
+    <string name="notification_repeat_off">Répétition désactivée</string>
+    <string name="notification_repeat_all">Tout répéter</string>
+    <string name="notification_repeat_one">Répéter le titre</string>
     <string name="tile_recognize_music">Reconnaître la musique</string>
     <string name="tile_playback">Lecture</string>
     <string name="shortcut_search">Rechercher</string>
