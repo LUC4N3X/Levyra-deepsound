@@ -69,6 +69,79 @@ class LosslessStreamValidatorTest {
     }
 
     @Test
+    fun plainEac3IsNotAcceptedAsLosslessFallback() {
+        val plainEac3 = dashResponse("ec-3", sampleRate = 48_000, bitDepth = 24, channels = 6)
+
+        val result = LosslessStreamValidator.validate(
+            plainEac3,
+            AudioQualityPreference.MAX_QUALITY,
+            200
+        ) as LosslessStreamValidation.Invalid
+
+        assertEquals(StreamRejection.UNSUPPORTED_CODEC, result.rejection)
+    }
+
+    @Test
+    fun mixedFlacAndLossyDashDoesNotClaimVerifiedLossless() {
+        val xml = """
+            <?xml version="1.0"?>
+            <MPD><Period>
+            <AdaptationSet mimeType="audio/mp4" codecs="flac" audioSamplingRate="96000" bitDepth="24">
+              <AudioChannelConfiguration value="2"/><Representation bandwidth="1400000"/>
+            </AdaptationSet>
+            <AdaptationSet mimeType="audio/mp4" codecs="mp4a.40.2" audioSamplingRate="48000">
+              <AudioChannelConfiguration value="2"/><Representation bandwidth="320000"/>
+            </AdaptationSet>
+            </Period></MPD>
+        """.trimIndent()
+        val response = ProviderHttpResponse(
+            200,
+            mapOf("Content-Type" to "application/dash+xml"),
+            xml.toByteArray()
+        )
+
+        val result = LosslessStreamValidator.validate(
+            response,
+            AudioQualityPreference.HI_RES,
+            200
+        ) as LosslessStreamValidation.Invalid
+
+        assertEquals(StreamRejection.UNSUPPORTED_CODEC, result.rejection)
+    }
+
+    @Test
+    fun ambiguousDashMetadataIsReportedAsUnknownInsteadOfTakingTheMaximum() {
+        val xml = """
+            <?xml version="1.0"?>
+            <MPD><Period><AdaptationSet mimeType="audio/flac" codecs="flac">
+              <Representation bandwidth="900000" audioSamplingRate="44100" bitDepth="16">
+                <AudioChannelConfiguration value="2"/>
+              </Representation>
+              <Representation bandwidth="1800000" audioSamplingRate="96000" bitDepth="24">
+                <AudioChannelConfiguration value="2"/>
+              </Representation>
+            </AdaptationSet></Period></MPD>
+        """.trimIndent()
+        val response = ProviderHttpResponse(
+            200,
+            mapOf("Content-Type" to "application/dash+xml"),
+            xml.toByteArray()
+        )
+
+        val result = LosslessStreamValidator.validate(
+            response,
+            AudioQualityPreference.CD_LOSSLESS,
+            200
+        ) as LosslessStreamValidation.Valid
+
+        assertTrue(result.format.isLossless)
+        assertEquals(0, result.format.sampleRateHz)
+        assertEquals(0, result.format.bitDepth)
+        assertEquals(2, result.format.channels)
+        assertEquals(0, result.format.estimatedKbps)
+    }
+
+    @Test
     fun cdAndHiResPropertiesRemainDistinct() {
         val cd = LosslessStreamValidator.validate(
             flacResponse(44_100, 16, 2),
