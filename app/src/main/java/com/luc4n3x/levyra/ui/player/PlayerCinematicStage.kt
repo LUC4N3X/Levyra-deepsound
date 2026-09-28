@@ -57,13 +57,15 @@ internal data class PlayerCinematicGeometry(
 )
 
 internal val PlayerCinematicTitleOverlap: Dp = 20.dp
-internal const val PlayerCinematicStackedFade = 0.36f
+internal const val PlayerCinematicStackedFade = 0.32f
 internal const val PlayerCinematicSideFade = 0.34f
 internal const val PlayerCinematicMaxStackedAspect = 1.2f
 internal const val PlayerCinematicSideDissolveFraction = 0.16f
 private const val PlayerCinematicBloomReach = 0.42f
-private const val PlayerCinematicBloomAlpha = 0.56f
-private const val PlayerCinematicBloomEdgeAlpha = 0.40f
+private const val PlayerCinematicBloomAlpha = 0.46f
+private const val PlayerCinematicBloomEdgeAlpha = 0.32f
+private const val PlayerCinematicLowerVeilStart = 0.42f
+private const val PlayerCinematicLowerVeilMid = 0.72f
 private val PlayerCinematicChromeScrim: Dp = 104.dp
 
 internal fun playerCinematicStackedHeroBottom(
@@ -147,13 +149,14 @@ internal fun PlayerCinematicStage(
                     .fillMaxSize()
                     .drawBehind {
                         if (stacked) {
-                            drawStackedCinematicBloom(bloom.value, geometry.heroHeight.toPx())
+                            drawStackedCinematicField(ambience)
                         } else {
                             drawSideCinematicBloom(bloom.value, geometry.heroWidth.toPx())
                         }
                     }
             )
         }
+
         Box(
             modifier = Modifier
                 .align(if (stacked) Alignment.TopCenter else Alignment.TopStart)
@@ -184,8 +187,54 @@ internal fun PlayerCinematicStage(
                 }
             }
         }
+
+        if (stacked && colorField) {
+            PlayerCinematicLowerVeil(
+                primary = ambience.primary,
+                secondary = ambience.secondary,
+                base = ambience.base,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         PlayerCinematicChromeScrim(modifier = Modifier.align(Alignment.TopCenter))
     }
+}
+
+@Composable
+private fun PlayerCinematicLowerVeil(
+    primary: Color,
+    secondary: Color,
+    base: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.drawBehind {
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(primary.copy(alpha = 0.14f), Color.Transparent),
+                    center = Offset(size.width * 0.12f, size.height * 0.72f),
+                    radius = size.maxDimension * 0.58f
+                )
+            )
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(secondary.copy(alpha = 0.12f), Color.Transparent),
+                    center = Offset(size.width * 0.92f, size.height * 0.64f),
+                    radius = size.maxDimension * 0.52f
+                )
+            )
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Transparent,
+                        PlayerCinematicLowerVeilStart to Color.Transparent,
+                        PlayerCinematicLowerVeilMid to base.copy(alpha = 0.24f),
+                        1f to Color.Black.copy(alpha = 0.70f)
+                    )
+                )
+            )
+        }
+    )
 }
 
 @Composable
@@ -205,22 +254,27 @@ private fun PlayerCinematicChromeScrim(modifier: Modifier = Modifier) {
     )
 }
 
-private fun DrawScope.drawStackedCinematicBloom(color: Color, heroHeightPx: Float) {
-    val heroBottom = heroHeightPx.coerceAtMost(size.height)
-    val start = heroBottom * (1f - PlayerCinematicStackedFade)
-    val end = (heroBottom * (1f + PlayerCinematicBloomReach)).coerceAtMost(size.height)
-    if (end <= start) return
-    val edge = ((heroBottom - start) / (end - start)).coerceIn(0f, 1f)
+private fun DrawScope.drawStackedCinematicField(ambience: PlayerAmbience) {
+    drawRect(
+        brush = Brush.radialGradient(
+            colors = listOf(ambience.primary.copy(alpha = 0.34f), Color.Transparent),
+            center = Offset(size.width * 0.18f, size.height * 0.70f),
+            radius = size.maxDimension * 0.72f
+        )
+    )
+    drawRect(
+        brush = Brush.radialGradient(
+            colors = listOf(ambience.secondary.copy(alpha = 0.28f), Color.Transparent),
+            center = Offset(size.width * 0.88f, size.height * 0.58f),
+            radius = size.maxDimension * 0.64f
+        )
+    )
     drawRect(
         brush = Brush.verticalGradient(
-            0f to color.copy(alpha = PlayerCinematicBloomAlpha),
-            edge to color.copy(alpha = PlayerCinematicBloomEdgeAlpha),
-            1f to Color.Transparent,
-            startY = start,
-            endY = end
-        ),
-        topLeft = Offset(0f, start),
-        size = Size(size.width, end - start)
+            0f to Color.Transparent,
+            0.56f to Color.Transparent,
+            1f to Color.Black.copy(alpha = 0.62f)
+        )
     )
 }
 

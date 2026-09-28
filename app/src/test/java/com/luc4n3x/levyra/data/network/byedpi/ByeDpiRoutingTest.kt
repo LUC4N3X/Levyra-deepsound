@@ -14,6 +14,7 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.UnknownHostException
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.ExtendedSSLSession
@@ -117,6 +118,7 @@ class ByeDpiRoutingTest {
         }
 
         assertEquals(0x01, socks.requests.single().addressType)
+        assertTrue(tls.awaitSni())
         assertEquals(listOf(youtubeHost), tls.requestedServerNames)
     }
 
@@ -302,6 +304,7 @@ class ByeDpiRoutingTest {
 
     private inner class TlsServer(certificate: HeldCertificate) : Closeable {
         val requestedServerNames = CopyOnWriteArrayList<String>()
+        private val sniObserved = CountDownLatch(1)
         private val serverSocket: SSLServerSocket
         val port: Int get() = serverSocket.localPort
 
@@ -329,6 +332,7 @@ class ByeDpiRoutingTest {
                     (it.session as ExtendedSSLSession).requestedServerNames
                         .filterIsInstance<SNIHostName>()
                         .forEach { name -> requestedServerNames += name.asciiName }
+                    sniObserved.countDown()
                     val input = it.inputStream.bufferedReader()
                     while (!input.readLine().isNullOrEmpty()) Unit
                     it.outputStream.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok".toByteArray())
@@ -337,6 +341,8 @@ class ByeDpiRoutingTest {
                 }
             }
         }
+
+        fun awaitSni(): Boolean = sniObserved.await(2, TimeUnit.SECONDS)
 
         override fun close() = serverSocket.close()
     }

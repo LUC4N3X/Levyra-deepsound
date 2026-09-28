@@ -78,21 +78,22 @@ class PlayerExpansionTest {
     }
 
     @Test
-    fun `the mini player hands over before the player surface is solid`() {
+    fun `the mini player stays readable deeper into the handoff`() {
         assertEquals(1f, playerChromeAlpha(0f), 0.0001f)
         assertEquals(1f, playerChromeAlpha(0.02f), 0.0001f)
-        assertTrue(playerChromeAlpha(0.2f) in 0.45f..0.6f)
-        assertEquals(0f, playerChromeAlpha(0.4f), 0.0001f)
+        assertTrue(playerChromeAlpha(0.2f) in 0.68f..0.74f)
+        assertTrue(playerChromeAlpha(0.4f) in 0.10f..0.20f)
+        assertEquals(0f, playerChromeAlpha(0.52f), 0.0001f)
         assertEquals(0f, playerChromeAlpha(1f), 0.0001f)
     }
 
     @Test
-    fun `the full player emerges early behind the flying artwork`() {
+    fun `the full player reveals progressively instead of finishing early`() {
         assertEquals(0f, playerSurfaceAlpha(0f), 0.0001f)
-        assertEquals(0f, playerSurfaceAlpha(0.015f), 0.0001f)
-        assertTrue(playerSurfaceAlpha(0.25f) in 0.5f..0.65f)
-        assertEquals(1f, playerSurfaceAlpha(0.44f), 0.0001f)
-        assertEquals(1f, playerSurfaceAlpha(0.5f), 0.0001f)
+        assertEquals(0f, playerSurfaceAlpha(0.08f), 0.0001f)
+        assertTrue(playerSurfaceAlpha(0.32f) in 0.36f..0.43f)
+        assertTrue(playerSurfaceAlpha(0.44f) in 0.67f..0.75f)
+        assertEquals(1f, playerSurfaceAlpha(0.64f), 0.0001f)
         assertEquals(1f, playerSurfaceAlpha(1f), 0.0001f)
     }
 
