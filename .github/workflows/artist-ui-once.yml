@@ -24,58 +24,40 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text()
 
-          def replace_once(old: str, new: str, label: str):
+          def sub_once(pattern: str, replacement: str, label: str, flags: int = 0):
               global text
-              count = text.count(old)
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
               if count != 1:
                   raise SystemExit(f'{label}: expected exactly 1 match, found {count}')
-              text = text.replace(old, new, 1)
+              text = updated
 
-          replace_once(
-              '    val heroArtwork = profile?.let { it.thumbnailUrl.ifBlank { it.bannerUrl } }.orEmpty()',
-              '    val heroArtwork = profile?.let { it.bannerUrl.ifBlank { it.thumbnailUrl } }.orEmpty()',
+          sub_once(
+              r'val heroArtwork = profile\?\.let \{ it\.thumbnailUrl\.ifBlank \{ it\.bannerUrl \} \}\.orEmpty\(\)',
+              'val heroArtwork = profile?.let { it.bannerUrl.ifBlank { it.thumbnailUrl } }.orEmpty()',
               'prefer artist banner for hero'
           )
 
-          replace_once(
-              '''        if (profile != null) {
-              ArtworkBackdropWash(
-                  artworkUrl = heroArtwork,
-                  tint = atmosphere,
-                  base = LevyraBlack,
-                  modifier = Modifier
-                      .fillMaxWidth()
-                      .height(heroHeight + ArtistBackdropTail)
-                      .graphicsLayer { translationY = -heroScroll() }
-              )
-          }
-
-          ''',
-              '',
+          sub_once(
+              r'''\n\s*if \(profile != null\) \{\n\s*ArtworkBackdropWash\(\n\s*artworkUrl = heroArtwork,\n\s*tint = atmosphere,\n\s*base = LevyraBlack,\n\s*modifier = Modifier\n\s*\.fillMaxWidth\(\)\n\s*\.height\(heroHeight \+ ArtistBackdropTail\)\n\s*\.graphicsLayer \{ translationY = -heroScroll\(\) \}\n\s*\)\n\s*\}\n''',
+              '\n',
               'remove artist color wash'
           )
 
-          replace_once(
-              'private val ArtistBackdropTail = 420.dp\n',
+          sub_once(
+              r'^private val ArtistBackdropTail = 420\.dp\n',
               '',
-              'remove obsolete artist backdrop tail'
+              'remove obsolete artist backdrop tail',
+              re.MULTILINE
           )
 
-          replace_once(
-              '''            .drawBehind {
-                  drawRect(
-                      Brush.verticalGradient(
-                          0f to atmosphere.copy(alpha = 0.9f),
-                          1f to scrim
-                      )
-                  )
-              }
-          ''',
-              '''            .drawBehind {
+          sub_once(
+              r'''\.drawBehind \{\n\s*drawRect\(\n\s*Brush\.verticalGradient\(\n\s*0f to atmosphere\.copy\(alpha = 0\.9f\),\n\s*1f to scrim\n\s*\)\n\s*\)\n\s*\}''',
+              '''.drawBehind {
                   drawRect(
                       Brush.verticalGradient(
                           0f to Color(0xFF111214),
@@ -83,75 +65,49 @@ jobs:
                           1f to scrim
                       )
                   )
-              }
-          ''',
+              }''',
               'neutralize artist hero base'
           )
 
-          replace_once(
-              '''                                0f to statusProtection,
-                                  0.22f to Color.Transparent,
-                                  0.52f to atmosphere.copy(alpha = 0.10f),
-                                  0.74f to scrim.copy(alpha = 0.62f),
-                                  0.92f to scrim.copy(alpha = 0.96f),
-                                  1f to scrim
-          ''',
-              '''                                0f to statusProtection,
+          sub_once(
+              r'''0f to statusProtection,\n\s*0\.22f to Color\.Transparent,\n\s*0\.52f to atmosphere\.copy\(alpha = 0\.10f\),\n\s*0\.74f to scrim\.copy\(alpha = 0\.62f\),\n\s*0\.92f to scrim\.copy\(alpha = 0\.96f\),\n\s*1f to scrim''',
+              '''0f to statusProtection,
                                   0.20f to Color.Transparent,
                                   0.54f to Color.Black.copy(alpha = 0.08f),
                                   0.74f to Color.Black.copy(alpha = 0.62f),
                                   0.92f to Color.Black.copy(alpha = 0.96f),
-                                  1f to Color.Black
-          ''',
+                                  1f to Color.Black''',
               'neutralize artist hero scrim'
           )
 
-          replace_once(
-              '                                highlight = highlight,\n',
-              '',
-              'remove colored play accent call argument'
-          )
-          replace_once(
-              '    highlight: Color,\n',
-              '',
-              'remove colored play accent parameter'
-          )
-          replace_once(
-              '    val onHighlight = remember(highlight) { Color.White.playerContentColor(listOf(highlight)) }\n',
-              '''    val playContainer = if (LevyraIsLight) Color(0xFF11131F) else Color.White
+          sub_once(
+              r'val onHighlight = remember\(highlight\) \{ Color\.White\.playerContentColor\(listOf\(highlight\)\) \}',
+              '''val playContainer = if (LevyraIsLight) Color(0xFF11131F) else Color.White
               val playContent = if (LevyraIsLight) Color.White else Color.Black
-          ''',
+              val playShadow = remember(highlight) { Color.Black.playerMix(highlight, 0.04f) }''',
               'use neutral play colors'
           )
 
-          replace_once(
-              '''                    .shadow(
-                          elevation = 14.dp,
-                          shape = CircleShape,
-                          ambientColor = highlight,
-                          spotColor = highlight
-                      )
-                      .background(highlight, CircleShape)
-          ''',
-              '''                    .shadow(
+          sub_once(
+              r'''\.shadow\(\n\s*elevation = 14\.dp,\n\s*shape = CircleShape,\n\s*ambientColor = highlight,\n\s*spotColor = highlight\n\s*\)\n\s*\.background\(highlight, CircleShape\)''',
+              '''.shadow(
                           elevation = 10.dp,
                           shape = CircleShape,
                           ambientColor = Color.Black.copy(alpha = 0.24f),
-                          spotColor = Color.Black.copy(alpha = 0.18f)
+                          spotColor = playShadow.copy(alpha = 0.18f)
                       )
-                      .background(playContainer, CircleShape)
-          ''',
+                      .background(playContainer, CircleShape)''',
               'neutralize artist play button'
           )
-          replace_once(
-              '                    color = onHighlight,\n',
-              '                    color = playContent,\n',
+          sub_once(
+              r'color = onHighlight,',
+              'color = playContent,',
               'neutralize artist play glyph'
           )
 
-          replace_once(
-              '    val barColor = LevyraBlack.playerMix(atmosphere, 0.14f)\n',
-              '    val barColor = LevyraBlack.playerMix(atmosphere, 0.04f)\n',
+          sub_once(
+              r'val barColor = LevyraBlack\.playerMix\(atmosphere, 0\.14f\)',
+              'val barColor = LevyraBlack.playerMix(atmosphere, 0.04f)',
               'neutralize artist top bar'
           )
 
