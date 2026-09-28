@@ -25,7 +25,7 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
-    fun phonePortraitHeroIsEdgeToEdge() {
+    fun phonePortraitImmersiveCanvasStopsAtHeroBottom() {
         val geometry = playerCinematicGeometry(
             pane = LevyraPlayerPane.Stacked,
             containerWidth = 412.dp,
@@ -41,7 +41,7 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
-    fun wideStackedHeroIsCappedAndDissolvesSideways() {
+    fun wideStackedImmersiveCanvasKeepsBoundedHeroAndSideDissolve() {
         val geometry = playerCinematicGeometry(
             pane = LevyraPlayerPane.Stacked,
             containerWidth = 800.dp,
@@ -51,6 +51,7 @@ class PlayerCinematicGeometryTest {
         )
 
         assertEquals(500.dp * PlayerCinematicMaxStackedAspect, geometry.heroWidth)
+        assertEquals(500.dp, geometry.heroHeight)
         assertTrue(geometry.sideDissolve)
     }
 
@@ -70,9 +71,10 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
-    fun immersiveBlurKeepsBlurredArtworkBackdrop() {
+    fun immersiveDynamicAndBlurKeepArtworkForTheColorField() {
         assertEquals("art", playerBackdropArtworkUrl(immersive = true, backgroundMode = PlayerBackgroundMode.Blur, artworkUrl = "art"))
-        assertEquals("", playerBackdropArtworkUrl(immersive = true, backgroundMode = PlayerBackgroundMode.Dynamic, artworkUrl = "art"))
+        assertEquals("art", playerBackdropArtworkUrl(immersive = true, backgroundMode = PlayerBackgroundMode.Dynamic, artworkUrl = "art"))
+        assertEquals("", playerBackdropArtworkUrl(immersive = true, backgroundMode = PlayerBackgroundMode.Dark, artworkUrl = "art"))
         assertEquals("art", playerBackdropArtworkUrl(immersive = false, backgroundMode = PlayerBackgroundMode.Dynamic, artworkUrl = "art"))
     }
 
