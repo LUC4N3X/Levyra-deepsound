@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Povezivanje s reproduktorom</string>
     <string name="car_now_playing">Trenutno svira</string>
     <string name="car_queue">Red čekanja</string>
-    <string name="notification_shuffle">Nasumično</string>
-    <string name="notification_favorite">Favorit</string>
+    <string name="notification_favorite_add">Dodaj u favorite</string>
+    <string name="notification_favorite_remove">Ukloni iz favorita</string>
+    <string name="notification_shuffle_enable">Uključi nasumično</string>
+    <string name="notification_shuffle_disable">Isključi nasumično</string>
+    <string name="notification_repeat_off">Ponavljanje isključeno</string>
+    <string name="notification_repeat_all">Ponovi sve</string>
+    <string name="notification_repeat_one">Ponovi jednu</string>
     <string name="tile_recognize_music">Prepoznaj glazbu</string>
     <string name="tile_playback">Reprodukcija</string>
     <string name="shortcut_search">Pretraži</string>

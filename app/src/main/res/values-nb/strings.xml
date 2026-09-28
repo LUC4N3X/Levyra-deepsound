@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Kobler til spilleren</string>
     <string name="car_now_playing">Spilles nå</string>
     <string name="car_queue">Kø</string>
-    <string name="notification_shuffle">Tilfeldig rekkefølge</string>
-    <string name="notification_favorite">Favoritt</string>
+    <string name="notification_favorite_add">Legg til i favoritter</string>
+    <string name="notification_favorite_remove">Fjern fra favoritter</string>
+    <string name="notification_shuffle_enable">Slå på tilfeldig rekkefølge</string>
+    <string name="notification_shuffle_disable">Slå av tilfeldig rekkefølge</string>
+    <string name="notification_repeat_off">Gjentakelse av</string>
+    <string name="notification_repeat_all">Gjenta alle</string>
+    <string name="notification_repeat_one">Gjenta én</string>
     <string name="tile_recognize_music">Gjenkjenn musikk</string>
     <string name="tile_playback">Avspilling</string>
     <string name="shortcut_search">Søk</string>

@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Připojování k přehrávači</string>
     <string name="car_now_playing">Právě hraje</string>
     <string name="car_queue">Fronta</string>
-    <string name="notification_shuffle">Náhodné přehrávání</string>
-    <string name="notification_favorite">Oblíbit</string>
+    <string name="notification_favorite_add">Přidat do oblíbených</string>
+    <string name="notification_favorite_remove">Odebrat z oblíbených</string>
+    <string name="notification_shuffle_enable">Zapnout náhodné přehrávání</string>
+    <string name="notification_shuffle_disable">Vypnout náhodné přehrávání</string>
+    <string name="notification_repeat_off">Opakování vypnuto</string>
+    <string name="notification_repeat_all">Opakovat vše</string>
+    <string name="notification_repeat_one">Opakovat skladbu</string>
     <string name="tile_recognize_music">Rozpoznat hudbu</string>
     <string name="tile_playback">Přehrávání</string>
     <string name="shortcut_search">Hledat</string>

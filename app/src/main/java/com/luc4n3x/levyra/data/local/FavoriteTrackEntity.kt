@@ -42,6 +42,12 @@ data class FavoriteTrackEntity(
     val createdAt: Long
 )
 
+data class FavoriteTrackIdentity(
+    val id: String,
+    val title: String,
+    val artist: String
+)
+
 fun FavoriteTrackEntity.toTrack(): Track = Track(
     id = id,
     title = title,

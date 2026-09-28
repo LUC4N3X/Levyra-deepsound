@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Yhdistetään soittimeen</string>
     <string name="car_now_playing">Nyt soi</string>
     <string name="car_queue">Jono</string>
-    <string name="notification_shuffle">Satunnaistoisto</string>
-    <string name="notification_favorite">Suosikki</string>
+    <string name="notification_favorite_add">Lisää suosikkeihin</string>
+    <string name="notification_favorite_remove">Poista suosikeista</string>
+    <string name="notification_shuffle_enable">Ota satunnaistoisto käyttöön</string>
+    <string name="notification_shuffle_disable">Poista satunnaistoisto käytöstä</string>
+    <string name="notification_repeat_off">Toisto pois</string>
+    <string name="notification_repeat_all">Toista kaikki</string>
+    <string name="notification_repeat_one">Toista yksi</string>
     <string name="tile_recognize_music">Tunnista musiikki</string>
     <string name="tile_playback">Toisto</string>
     <string name="shortcut_search">Haku</string>

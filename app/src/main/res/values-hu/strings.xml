@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Csatlakozás a lejátszóhoz</string>
     <string name="car_now_playing">Most szól</string>
     <string name="car_queue">Lejátszási sor</string>
-    <string name="notification_shuffle">Véletlenszerű lejátszás</string>
-    <string name="notification_favorite">Kedvenc</string>
+    <string name="notification_favorite_add">Hozzáadás a kedvencekhez</string>
+    <string name="notification_favorite_remove">Eltávolítás a kedvencek közül</string>
+    <string name="notification_shuffle_enable">Véletlenszerű lejátszás bekapcsolása</string>
+    <string name="notification_shuffle_disable">Véletlenszerű lejátszás kikapcsolása</string>
+    <string name="notification_repeat_off">Ismétlés ki</string>
+    <string name="notification_repeat_all">Összes ismétlése</string>
+    <string name="notification_repeat_one">Egy szám ismétlése</string>
     <string name="tile_recognize_music">Zene felismerése</string>
     <string name="tile_playback">Lejátszás</string>
     <string name="shortcut_search">Keresés</string>
