@@ -210,6 +210,11 @@ object LevyraMotion {
             EnterTransition.None togetherWith ExitTransition.None
         }
 
+    /**
+     * Metadata and artwork swap for a track change. [direction] is +1 when the queue moved forward,
+     * -1 when it moved back and 0 when the change did not come from a queue step; it is already
+     * expressed in screen space, so callers mirror it for RTL.
+     */
     fun trackChange(enabled: Boolean, direction: Int): ContentTransform {
         if (!enabled) return EnterTransition.None togetherWith ExitTransition.None
         val enter = if (direction == 0) {
