@@ -46,8 +46,8 @@ class GenericLosslessAddonProviderTest {
             losslessEnabled = true,
             allowUpgrade = false
         )
-        val candidate = ((provider.search("Blinding Lights The Weeknd", request) as ProviderSearchOutcome.Found)
-            .candidates.single())
+        val searchOutcome = provider.search("Blinding Lights The Weeknd", request) as ProviderSearchOutcome.Found
+        val candidate = searchOutcome.candidates.single()
 
         val stream = (provider.resolveStream(candidate, request) as ProviderStreamOutcome.Resolved).stream
 
@@ -185,7 +185,10 @@ class GenericLosslessAddonProviderTest {
         val packed = (sampleRate.toLong() shl 44) or
             ((channels - 1).toLong() shl 41) or
             ((bitDepth - 1).toLong() shl 36)
-        for (index in 0 until 8) bytes[18 + index] = (packed ushr ((7 - index) * 8)).toByte()
+        for (index in 0 until 8) {
+            val shift = (7 - index) * 8
+            bytes[18 + index] = (packed ushr shift).toByte()
+        }
         return ProviderHttpResponse(
             206,
             mapOf("Content-Type" to "audio/flac", "Content-Range" to "bytes 0-41/12000000"),

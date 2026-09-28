@@ -113,7 +113,8 @@ class LosslessStreamValidatorTest {
             ((channels - 1).toLong() shl 41) or
             ((bitDepth - 1).toLong() shl 36)
         for (index in 0 until 8) {
-            bytes[18 + index] = (packed ushr ((7 - index) * 8)).toByte()
+            val shift = (7 - index) * 8
+            bytes[18 + index] = (packed ushr shift).toByte()
         }
         return ProviderHttpResponse(
             206,

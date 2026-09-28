@@ -155,8 +155,10 @@ internal object LosslessStreamValidator {
         var packed = 0L
         for (index in 18..25) packed = (packed shl 8) or (bytes[index].toLong() and 0xffL)
         val sampleRate = ((packed ushr 44) and 0xfffffL).toInt()
-        val channels = (((packed ushr 41) and 0x7L) + 1L).toInt()
-        val bitDepth = (((packed ushr 36) and 0x1fL) + 1L).toInt()
+        val rawChannels = (packed ushr 41) and 0x7L
+        val channels = (rawChannels + 1L).toInt()
+        val rawBitDepth = (packed ushr 36) and 0x1fL
+        val bitDepth = (rawBitDepth + 1L).toInt()
         if (sampleRate !in 8_000..768_000 || bitDepth !in 4..32 || channels !in 1..8) return null
         return FlacStreamInfo(sampleRate, bitDepth, channels)
     }

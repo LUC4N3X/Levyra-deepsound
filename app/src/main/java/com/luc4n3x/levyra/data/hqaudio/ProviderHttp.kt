@@ -183,29 +183,37 @@ private object PublicProviderDns : Dns {
             return true
         }
         val bytes = address.address
-        if (bytes.size == 4) {
-            val first = bytes[0].toInt() and 0xff
-            val second = bytes[1].toInt() and 0xff
-            val third = bytes[2].toInt() and 0xff
-            return first == 0 || first == 127 || first >= 224 ||
-                (first == 100 && second in 64..127) ||
-                (first == 169 && second == 254) ||
-                (first == 192 && second == 0) ||
-                (first == 192 && second == 88 && third == 99) ||
-                (first == 198 && second in 18..19) ||
-                (first == 198 && second == 51 && third == 100) ||
-                (first == 203 && second == 0 && third == 113)
+        return when (bytes.size) {
+            4 -> isNonPublicIpv4(bytes)
+            16 -> isNonPublicIpv6(bytes)
+            else -> true
         }
-        if (bytes.size == 16) {
-            val first = bytes[0].toInt() and 0xff
-            val second = bytes[1].toInt() and 0xff
-            val documentationRange = first == 0x20 && second == 0x01 &&
-                (bytes[2].toInt() and 0xff) == 0x0d && (bytes[3].toInt() and 0xff) == 0xb8
-            return (first and 0xfe) == 0xfc ||
-                (first == 0xfe && (second and 0xc0) == 0x80) ||
-                documentationRange
-        }
-        return true
+    }
+
+    private fun isNonPublicIpv4(bytes: ByteArray): Boolean {
+        val first = bytes[0].toInt().and(0xff)
+        val second = bytes[1].toInt().and(0xff)
+        val third = bytes[2].toInt().and(0xff)
+        if (first == 0 || first == 127 || first >= 224) return true
+        if (first == 100 && second in 64..127) return true
+        if (first == 169 && second == 254) return true
+        if (first == 192 && second == 0) return true
+        if (first == 192 && second == 88 && third == 99) return true
+        if (first == 198 && second in 18..19) return true
+        if (first == 198 && second == 51 && third == 100) return true
+        if (first == 203 && second == 0 && third == 113) return true
+        return false
+    }
+
+    private fun isNonPublicIpv6(bytes: ByteArray): Boolean {
+        val first = bytes[0].toInt().and(0xff)
+        val second = bytes[1].toInt().and(0xff)
+        val third = bytes[2].toInt().and(0xff)
+        val fourth = bytes[3].toInt().and(0xff)
+        val isUniqueLocal = first.and(0xfe) == 0xfc
+        val isLinkLocal = first == 0xfe && second.and(0xc0) == 0x80
+        val isDocumentation = first == 0x20 && second == 0x01 && third == 0x0d && fourth == 0xb8
+        return isUniqueLocal || isLinkLocal || isDocumentation
     }
 }
 
