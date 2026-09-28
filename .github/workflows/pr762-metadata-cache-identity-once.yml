@@ -1,4 +1,4 @@
-name: Guard motion metadata cache identity once
+name: Finalize PR 762 cache fix once
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  fix-and-verify:
+  format-and-verify:
     runs-on: ubuntu-latest
     if: github.actor != 'github-actions[bot]'
     env:
@@ -28,71 +28,21 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: RED stale metadata cache regression
+      - name: Normalize Kotlin formatting
         shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt')
-          text = path.read_text()
-          marker = "    @Test\n    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {\n"
-          if marker not in text:
-              raise SystemExit('test insertion marker not found')
-          test = '''    @Test
-          fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {
-              val cache = MotionMetadataWarmCache(maxEntries = 4)
-              val raw = track(
-                  id = "youtube-id",
-                  title = "Song",
-                  artist = "Wrong Artist",
-                  album = "YouTube Music"
-              )
-              val prepared = raw.copy(
-                  artist = "Correct Artist",
-                  album = "Real Album",
-                  isrc = "ITABC2600001"
-              )
-              val newerInput = raw.copy(
-                  artist = "New Correct Artist",
-                  album = "New Real Album",
-                  isrc = "ITABC2600002"
-              )
 
-              cache.put(raw, prepared)
-
-              assertEquals(prepared, cache.get(raw))
-              assertEquals(null, cache.get(newerInput))
-          }
-
-          '''
-          test = '\n'.join(line[10:] if line.startswith('          ') else line for line in test.splitlines()) + '\n'
-          path.write_text(text.replace(marker, test + marker, 1))
-          PY
-          set +e
-          ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId' --console=plain --warning-mode summary
-          status=$?
-          set -e
-          if [ "$status" -eq 0 ]; then
-            echo 'Expected stale-cache regression test to fail before implementation'
-            exit 1
-          fi
-
-      - name: GREEN source-aware metadata cache
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
-          text = path.read_text()
-          start_token = '    private fun key(track: Track): String = track.id.trim().ifBlank {'
-          end_token = '\n    }\n}'
+          engine = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
+          text = engine.read_text()
+          start_token = '    private fun key(track: Track): String = listOf('
+          class_end_token = '\n}\n\ninternal fun motionArtworkCacheKey'
           start = text.find(start_token)
-          if start < 0:
-              raise SystemExit('cache key start not found')
-          end = text.find(end_token, start)
-          if end < 0:
-              raise SystemExit('cache key end not found')
-          end += len('\n    }')
+          end = text.find(class_end_token, start)
+          if start < 0 or end < 0:
+              raise SystemExit('MotionMetadataWarmCache key block not found')
           replacement = '''    private fun key(track: Track): String = listOf(
               track.id,
               track.title,
@@ -104,16 +54,58 @@ jobs:
               track.albumArtist,
               track.albumBrowseId,
               track.artistBrowseIds.joinToString(",")
-          ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }'''
-          replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in replacement.splitlines())
-          path.write_text(text[:start] + replacement + text[end:])
-          PY
-          ./gradlew :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.latePreparedMetadataIsReusedAsTheNextLookupBase' \
-            --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId' \
-            --console=plain --warning-mode summary
+          ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
+          '''
+          replacement = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in replacement.splitlines()
+          ).rstrip()
+          engine.write_text(text[:start] + replacement + text[end:])
 
-      - name: Verify targeted regressions and compile
+          test = Path('app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt')
+          text = test.read_text()
+          start_token = '    @Test\nfun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {'
+          next_token = '    @Test\n    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {'
+          start = text.find(start_token)
+          end = text.find(next_token, start)
+          if start < 0 or end < 0:
+              raise SystemExit('cache regression test block not found')
+          replacement = '''    @Test
+              fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {
+                  val cache = MotionMetadataWarmCache(maxEntries = 4)
+                  val raw = track(
+                      id = "youtube-id",
+                      title = "Song",
+                      artist = "Wrong Artist",
+                      album = "YouTube Music"
+                  )
+                  val prepared = raw.copy(
+                      artist = "Correct Artist",
+                      album = "Real Album",
+                      isrc = "ITABC2600001"
+                  )
+                  val newerInput = raw.copy(
+                      artist = "New Correct Artist",
+                      album = "New Real Album",
+                      isrc = "ITABC2600002"
+                  )
+
+                  cache.put(raw, prepared)
+
+                  assertEquals(prepared, cache.get(raw))
+                  assertEquals(null, cache.get(newerInput))
+              }
+
+          '''
+          replacement = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in replacement.splitlines()
+          )
+          test.write_text(text[:start] + replacement + text[end:])
+          PY
+          git diff --check
+
+      - name: Verify regressions and compile
         shell: bash
         run: |
           set -euo pipefail
@@ -125,7 +117,7 @@ jobs:
           ./gradlew :app:compileDebugKotlin --console=plain --warning-mode summary
           git diff --check
 
-      - name: Commit verified fix
+      - name: Commit formatting cleanup
         shell: bash
         run: |
           set -euo pipefail
@@ -134,6 +126,6 @@ jobs:
           git add \
             app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt \
             app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt
-          git commit -m "fix(motion): scope metadata warm cache to source identity"
+          git commit -m "style(motion): clean cache regression formatting"
           git pull --rebase origin fix/instant-page-canvas
           git push origin HEAD:fix/instant-page-canvas
