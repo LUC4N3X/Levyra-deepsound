@@ -2043,7 +2043,14 @@ fun LevyraApp(
                         withFrameNanos { }
                         withFrameNanos { }
                     }
-                    playerExpansion.animateTo(target, LevyraPlayerDesign.expandSpring())
+                    playerExpansion.animateTo(
+                target,
+                if (target > playerExpansion.value) {
+                    LevyraPlayerDesign.expandSpring()
+                } else {
+                    LevyraPlayerDesign.collapseSpring()
+                }
+            )
                 } else {
                     playerExpansion.snapTo(target)
                 }
