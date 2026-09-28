@@ -273,17 +273,6 @@ Contributions and bug reports are welcome. Technical documentation and architect
 
 ---
 
-> [!WARNING]
-> **Regional availability & experimental network compatibility**
->
-> Some streaming features depend on third-party services such as YouTube Music. Those services may be unavailable, filtered, or unreliable in some countries, networks, or accounts.
->
-> Some Levyra builds include optional experimental network compatibility tools that can change how YouTube requests are resolved, routed, or sent when the normal connection does not work. They are best-effort compatibility features. They can fail, slow playback, or stop working after a network or provider change, and Levyra does not guarantee that they will restore access.
->
-> Enabling a compatibility option does not grant access rights, unlock paid features, or make an otherwise restricted use authorized. You are responsible for following applicable law and the terms, account rules, and network policies that apply to the services you use.
->
-> Local playback and features that do not depend on the affected service continue to work independently. See the [Legal Notice](docs/legal/LEGAL.md) for the full terms.
-
 ## ✦ Legal disclaimer and terms of use
 
 <div align="center">
@@ -307,6 +296,16 @@ If there is a problem with media hosted by another service, contact that service
 Levyra is built for lawful use, research, and interoperability, not for piracy or copyright infringement. Streaming, downloading, format conversion, and offline caching are software features. They do not transfer copyright or ownership of third-party media.
 
 Levyra may cache media temporarily for playback and can save user-requested downloads as standard media files. Neither feature gives you permission to redistribute third-party content. You are responsible for making sure your use of Levyra complies with applicable law and with the terms of any third-party service you choose to access.
+
+#### - Regional availability and experimental network compatibility
+
+Some streaming features depend on third-party services such as YouTube Music. Those services may be unavailable, filtered, or unreliable in some countries, networks, or accounts.
+
+Some Levyra builds include optional experimental network compatibility tools that can change how YouTube requests are resolved, routed, or sent when the normal connection does not work. These are best-effort features. They can fail, slow playback, or stop working after a network or provider change, and Levyra does not guarantee that they will restore access.
+
+Enabling a compatibility option does not grant access rights, unlock paid features, or make an otherwise restricted use authorized. You are responsible for following applicable law and the terms, account rules, and network policies that apply to the services you use.
+
+Local playback and features that do not depend on the affected service continue to work independently.
 
 #### - Support artists and creators
 
