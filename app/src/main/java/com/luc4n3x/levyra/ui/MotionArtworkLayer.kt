@@ -355,6 +355,7 @@ internal fun motionStaticBedVisible(
     if (motionVisible) return false
     if (videoUnavailable) return true
     if (motionResolving) return false
+    if (videoCandidatePending) return true
     return true
 }
 
