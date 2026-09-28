@@ -115,9 +115,9 @@ object LevyraPlayerDesign {
 
     fun <T> pressSpring(): SpringSpec<T> = LevyraMotion.release.spec()
 
-    fun <T> expandSpring(): SpringSpec<T> = LevyraMotion.expand.spec()
+    fun <T> expandSpring(): SpringSpec<T> = LevyraMotion.playerExpand.spec()
 
-    fun <T> collapseSpring(): SpringSpec<T> = LevyraMotion.collapse.spec()
+    fun <T> collapseSpring(): SpringSpec<T> = LevyraMotion.playerCollapse.spec()
 
     fun <T> playerExpandSpring(): SpringSpec<T> = LevyraMotion.playerExpand.spec()
 
