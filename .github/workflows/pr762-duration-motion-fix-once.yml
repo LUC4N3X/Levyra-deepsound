@@ -1,4 +1,4 @@
-name: Fix artist duration and motion review once
+name: Apply verified PR 762 fixes once
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  fix-and-verify:
+  apply-and-verify:
     runs-on: ubuntu-latest
     if: github.actor != 'github-actions[bot]'
     env:
@@ -28,11 +28,56 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: RED artist popular songs duration
+      - name: Apply duration and motion fixes
         shell: bash
         run: |
-          cat > app/src/test/java/com/luc4n3x/levyra/data/ArtistPopularSongsMergeTest.kt <<'EOF'
-          package com.luc4n3x.levyra.data
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # 1. Artist popular songs: keep preview order but backfill missing durations
+          artist = Path('app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt')
+          text = artist.read_text()
+          marker = 'internal fun normalizeInlineArtistBiography(value: String): ArtistBiography? {'
+          if marker not in text:
+              raise SystemExit('ArtistRepository insertion marker not found')
+          helper = '''internal fun mergeArtistSongs(
+              preview: List<Track>,
+              expanded: List<Track>,
+              limit: Int = 100
+          ): List<Track> {
+              val expandedById = expanded.associateBy { it.id }
+              val seen = HashSet<String>()
+              val merged = ArrayList<Track>(minOf(limit, preview.size + expanded.size))
+
+              fun append(track: Track) {
+                  if (merged.size >= limit || !seen.add(track.id)) return
+                  val expandedTrack = expandedById[track.id]
+                  val resolved = if (
+                      track.durationMs <= 0L &&
+                      expandedTrack != null &&
+                      expandedTrack.durationMs > 0L
+                  ) {
+                      track.copy(durationMs = expandedTrack.durationMs)
+                  } else {
+                      track
+                  }
+                  merged += resolved
+              }
+
+              preview.forEach(::append)
+              expanded.forEach(::append)
+              return merged
+          }
+
+          '''
+          text = text.replace(marker, helper + marker, 1)
+          old_merge = 'val songs = (extractTopSongs(root, name) + expanded.songs).distinctBy { it.id }.take(100)'
+          new_merge = 'val songs = mergeArtistSongs(extractTopSongs(root, name), expanded.songs)'
+          if text.count(old_merge) != 1:
+              raise SystemExit(f'Artist songs merge expression expected once, found {text.count(old_merge)}')
+          artist.write_text(text.replace(old_merge, new_merge, 1))
+
+          Path('app/src/test/java/com/luc4n3x/levyra/data/ArtistPopularSongsMergeTest.kt').write_text('''package com.luc4n3x.levyra.data
 
           import com.luc4n3x.levyra.domain.Track
           import org.junit.Assert.assertEquals
@@ -81,79 +126,19 @@ jobs:
                   accentEnd = 0
               )
           }
-          EOF
-          set +e
-          ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.data.ArtistPopularSongsMergeTest' --console=plain --warning-mode summary
-          status=$?
-          set -e
-          if [ "$status" -eq 0 ]; then
-            echo 'Expected duration regression test to fail before implementation'
-            exit 1
-          fi
+          ''')
 
-      - name: GREEN artist popular songs duration
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
+          # 2. Keep static artwork visible while a verified video waits for its first frame
+          layer = Path('app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt')
+          text = layer.read_text()
+          old_visibility = '    if (motionResolving || videoCandidatePending) return false\n'
+          if text.count(old_visibility) != 1:
+              raise SystemExit(f'Motion visibility condition expected once, found {text.count(old_visibility)}')
+          layer.write_text(text.replace(old_visibility, '    if (motionResolving) return false\n', 1))
 
-          path = Path('app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt')
-          text = path.read_text()
-
-          marker = 'internal fun normalizeInlineArtistBiography(value: String): ArtistBiography? {'
-          if marker not in text:
-              raise SystemExit('ArtistRepository insertion marker not found')
-
-          helper = '''internal fun mergeArtistSongs(
-              preview: List<Track>,
-              expanded: List<Track>,
-              limit: Int = 100
-          ): List<Track> {
-              val expandedById = expanded.associateBy { it.id }
-              val seen = HashSet<String>()
-              val merged = ArrayList<Track>(minOf(limit, preview.size + expanded.size))
-
-              fun append(track: Track) {
-                  if (merged.size >= limit || !seen.add(track.id)) return
-                  val expandedTrack = expandedById[track.id]
-                  val resolved = if (
-                      track.durationMs <= 0L &&
-                      expandedTrack != null &&
-                      expandedTrack.durationMs > 0L
-                  ) {
-                      track.copy(durationMs = expandedTrack.durationMs)
-                  } else {
-                      track
-                  }
-                  merged += resolved
-              }
-
-              preview.forEach(::append)
-              expanded.forEach(::append)
-              return merged
-          }
-
-          '''
-          text = text.replace(marker, helper + marker, 1)
-
-          old = 'val songs = (extractTopSongs(root, name) + expanded.songs).distinctBy { it.id }.take(100)'
-          new = 'val songs = mergeArtistSongs(extractTopSongs(root, name), expanded.songs)'
-          if text.count(old) != 1:
-              raise SystemExit(f'Artist songs merge expression expected once, found {text.count(old)}')
-          text = text.replace(old, new, 1)
-          path.write_text(text)
-          PY
-          ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.data.ArtistPopularSongsMergeTest' --console=plain --warning-mode summary
-
-      - name: RED keep static cover until Canvas first frame
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('app/src/test/java/com/luc4n3x/levyra/ui/MotionArtworkLayerTest.kt')
-          text = path.read_text()
-          old = '''    @Test
+          layer_test = Path('app/src/test/java/com/luc4n3x/levyra/ui/MotionArtworkLayerTest.kt')
+          text = layer_test.read_text()
+          old_test = '''    @Test
               fun pageMotionKeepsStaticCoverHiddenUntilFirstVideoFrame() {
                   assertFalse(
                       motionStaticBedVisible(
@@ -166,7 +151,7 @@ jobs:
                   )
               }
           '''
-          new = '''    @Test
+          new_test = '''    @Test
               fun pageMotionKeepsStaticCoverVisibleUntilFirstVideoFrame() {
                   assertTrue(
                       motionStaticBedVisible(
@@ -179,111 +164,30 @@ jobs:
                   )
               }
           '''
-          if text.count(old) != 1:
-              raise SystemExit(f'Motion static bed test block expected once, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
-          PY
-          set +e
-          ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.ui.MotionArtworkLayerTest.pageMotionKeepsStaticCoverVisibleUntilFirstVideoFrame' --console=plain --warning-mode summary
-          status=$?
-          set -e
-          if [ "$status" -eq 0 ]; then
-            echo 'Expected first-frame static cover regression test to fail before implementation'
-            exit 1
-          fi
+          if text.count(old_test) != 1:
+              raise SystemExit(f'Motion first-frame test expected once, found {text.count(old_test)}')
+          layer_test.write_text(text.replace(old_test, new_test, 1))
 
-      - name: GREEN keep static cover until Canvas first frame
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt')
-          text = path.read_text()
-          old = '    if (motionResolving || videoCandidatePending) return false\n'
-          new = '    if (motionResolving) return false\n'
-          if text.count(old) != 1:
-              raise SystemExit(f'Motion static visibility condition expected once, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
-          PY
-          ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.ui.MotionArtworkLayerTest.pageMotionKeepsStaticCoverVisibleUntilFirstVideoFrame' --console=plain --warning-mode summary
-
-      - name: RED retain late metadata enrichment
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt')
-          text = path.read_text()
-          marker = '''    @Test
-              fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {
-          '''
-          if marker not in text:
-              raise SystemExit('Motion metadata cache test insertion marker not found')
-          test = '''    @Test
-              fun latePreparedMetadataIsReusedAsTheNextLookupBase() {
-                  val cache = MotionMetadataWarmCache(maxEntries = 4)
-                  val raw = track(
-                      id = "youtube-id",
-                      title = "Song",
-                      artist = "Wrong Artist",
-                      album = "YouTube Music"
-                  )
-                  val prepared = raw.copy(
-                      artist = "Correct Artist",
-                      album = "Real Album",
-                      isrc = "ITABC2600001"
-                  )
-
-                  assertEquals(null, cache.get(raw))
-                  cache.put(raw, prepared)
-                  assertEquals(prepared, cache.get(raw))
-              }
-
-          '''
-          path.write_text(text.replace(marker, test + marker, 1))
-          PY
-          set +e
-          ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.latePreparedMetadataIsReusedAsTheNextLookupBase' --console=plain --warning-mode summary
-          status=$?
-          set -e
-          if [ "$status" -eq 0 ]; then
-            echo 'Expected late metadata retention regression test to fail before implementation'
-            exit 1
-          fi
-
-      - name: GREEN retain late metadata enrichment
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
-          text = path.read_text()
-
-          import_marker = 'import java.util.Locale\n'
-          if import_marker not in text:
+          # 3. Retain metadata enrichment that completes after the 150 ms foreground budget
+          engine = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
+          text = engine.read_text()
+          locale_import = 'import java.util.Locale\n'
+          if locale_import not in text:
               raise SystemExit('Locale import marker not found')
-          text = text.replace(import_marker, 'import java.util.LinkedHashMap\nimport java.util.Locale\n', 1)
+          text = text.replace(locale_import, 'import java.util.LinkedHashMap\nimport java.util.Locale\n', 1)
 
-          property_marker = '    private val requestCoordinator = MotionArtworkRequestCoordinator(lookupScope)\n'
-          if property_marker not in text:
+          coordinator = '    private val requestCoordinator = MotionArtworkRequestCoordinator(lookupScope)\n'
+          if coordinator not in text:
               raise SystemExit('requestCoordinator marker not found')
-          text = text.replace(
-              property_marker,
-              property_marker + '    private val metadataWarmCache = MotionMetadataWarmCache()\n',
-              1
-          )
+          text = text.replace(coordinator, coordinator + '    private val metadataWarmCache = MotionMetadataWarmCache()\n', 1)
 
-          old = '''    private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
-              val budgetMs = motionMetadataForegroundBudgetMs(track)
-              if (budgetMs <= 0L) return track
-              val prepared = lookupScope.async { prepareLookupTrack(track) }
-              return withTimeoutOrNull(budgetMs) { prepared.await() } ?: track
-          }
-          '''
-          new = '''    private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
+          start_marker = '    private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {'
+          next_marker = '    private suspend fun prepareLookupTrack(track: Track): Track {'
+          start = text.find(start_marker)
+          end = text.find(next_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('prepareLookupTrackWithinBudget boundaries not found')
+          replacement = '''    private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
               val remembered = metadataWarmCache.get(track) ?: track
               val budgetMs = motionMetadataForegroundBudgetMs(remembered)
               if (budgetMs <= 0L) return remembered
@@ -294,15 +198,14 @@ jobs:
               }
               return withTimeoutOrNull(budgetMs) { prepared.await() } ?: remembered
           }
-          '''
-          if text.count(old) != 1:
-              raise SystemExit(f'prepareLookupTrackWithinBudget block expected once, found {text.count(old)}')
-          text = text.replace(old, new, 1)
 
-          marker = 'internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =\n'
-          if marker not in text:
+          '''
+          text = text[:start] + replacement + text[end:]
+
+          cache_marker = 'internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =\n'
+          if cache_marker not in text:
               raise SystemExit('motionArtworkCacheKey marker not found')
-          helper = '''internal class MotionMetadataWarmCache(private val maxEntries: Int = 64) {
+          cache = '''internal class MotionMetadataWarmCache(private val maxEntries: Int = 64) {
               private val entries = LinkedHashMap<String, Track>(16, 0.75f, true)
 
               @Synchronized
@@ -327,12 +230,41 @@ jobs:
           }
 
           '''
-          text = text.replace(marker, helper + marker, 1)
-          path.write_text(text)
-          PY
-          ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.latePreparedMetadataIsReusedAsTheNextLookupBase' --console=plain --warning-mode summary
+          text = text.replace(cache_marker, cache + cache_marker, 1)
+          engine.write_text(text)
 
-      - name: Verify targeted suite and Kotlin compile
+          request_test = Path('app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt')
+          text = request_test.read_text()
+          test_marker = '''    @Test
+              fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {
+          '''
+          if test_marker not in text:
+              raise SystemExit('metadata cache test insertion marker not found')
+          cache_test = '''    @Test
+              fun latePreparedMetadataIsReusedAsTheNextLookupBase() {
+                  val cache = MotionMetadataWarmCache(maxEntries = 4)
+                  val raw = track(
+                      id = "youtube-id",
+                      title = "Song",
+                      artist = "Wrong Artist",
+                      album = "YouTube Music"
+                  )
+                  val prepared = raw.copy(
+                      artist = "Correct Artist",
+                      album = "Real Album",
+                      isrc = "ITABC2600001"
+                  )
+
+                  assertEquals(null, cache.get(raw))
+                  cache.put(raw, prepared)
+                  assertEquals(prepared, cache.get(raw))
+              }
+
+          '''
+          request_test.write_text(text.replace(test_marker, cache_test + test_marker, 1))
+          PY
+
+      - name: Verify targeted tests and Kotlin compile
         shell: bash
         run: |
           set -euo pipefail
