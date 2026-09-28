@@ -59,8 +59,8 @@ class LevyraMotionTest {
         assertTrue(LevyraMotion.playerCollapse.stiffness < LevyraMotion.collapse.stiffness)
         assertTrue(LevyraMotion.playerExpand.dampingRatio >= LevyraMotion.expand.dampingRatio)
         assertTrue(LevyraMotion.playerCollapse.dampingRatio >= LevyraMotion.playerExpand.dampingRatio)
-        assertEquals(LevyraMotion.playerExpand.spec<Float>(), LevyraPlayerDesign.playerExpandSpring<Float>())
-        assertEquals(LevyraMotion.playerCollapse.spec<Float>(), LevyraPlayerDesign.playerCollapseSpring<Float>())
+        assertEquals(LevyraMotion.playerExpand.spec<Float>(), LevyraPlayerDesign.expandSpring<Float>())
+        assertEquals(LevyraMotion.playerCollapse.spec<Float>(), LevyraPlayerDesign.collapseSpring<Float>())
     }
 
     @Test
