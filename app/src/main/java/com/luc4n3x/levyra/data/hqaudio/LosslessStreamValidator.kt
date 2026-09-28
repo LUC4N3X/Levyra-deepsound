@@ -99,26 +99,37 @@ internal object LosslessStreamValidator {
     ): LosslessStreamValidation {
         val xml = response.body.toString(Charsets.UTF_8)
         val codecs = dashCodec.findAll(xml).map { it.groupValues[1] }.toList()
-        val normalizedCodecs = codecs.joinToString(",").lowercase(Locale.ROOT)
-        val isFlac = normalizedCodecs.split(',').any { it.trim() in FLAC_CODECS }
-        val isEac3 = normalizedCodecs.contains("ec-3") || normalizedCodecs.contains("ec+3") ||
-            normalizedCodecs.contains("eac3") ||
-            normalizedCodecs.split(',').any { it.trim() == "ec3" }
-        val hasAtmosSignal = normalizedCodecs.contains("ec+3") ||
+        val codecTokens = codecs
+            .flatMap { it.split(',') }
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter(String::isNotBlank)
+        val hasFlac = codecTokens.any { it in FLAC_CODECS }
+        val hasEac3 = codecTokens.any(::isEac3Codec)
+        val hasOtherLossyAudio = codecTokens.any(::isKnownLossyAudioCodec)
+        val hasAtmosSignal = codecTokens.any { it.contains("ec+3") } ||
             xml.contains("EC3_ExtensionType", ignoreCase = true) && xml.contains("JOC", ignoreCase = true)
-        val isAtmos = isEac3 && hasAtmosSignal
-        if (!isFlac && !isEac3) {
+        val isAtmos = hasEac3 && hasAtmosSignal
+
+        if (!hasFlac && !hasEac3) {
+            return LosslessStreamValidation.Invalid(StreamRejection.UNSUPPORTED_CODEC, response.code)
+        }
+        if (hasFlac && (hasEac3 || hasOtherLossyAudio)) {
+            return LosslessStreamValidation.Invalid(StreamRejection.UNSUPPORTED_CODEC, response.code)
+        }
+        if (hasEac3 && hasOtherLossyAudio) {
             return LosslessStreamValidation.Invalid(StreamRejection.UNSUPPORTED_CODEC, response.code)
         }
         if (requested == AudioQualityPreference.DOLBY_ATMOS && !isAtmos) {
             return LosslessStreamValidation.Invalid(StreamRejection.FAKE_ATMOS, response.code)
         }
-        val sampleRate = dashSampleRate.findAll(xml).mapNotNull { it.groupValues[1].toIntOrNull() }.maxOrNull() ?: 0
-        val bitDepth = dashBitDepth.findAll(xml).mapNotNull { it.groupValues[1].toIntOrNull() }.maxOrNull() ?: 0
-        val channels = dashChannels.findAll(xml).mapNotNull { it.groupValues[1].toIntOrNull() }.maxOrNull() ?: 0
-        val bitrate = dashBandwidth.findAll(xml)
-            .mapNotNull { it.groupValues[1].toLongOrNull() }
-            .maxOrNull()
+        if (requested != AudioQualityPreference.DOLBY_ATMOS && hasEac3) {
+            return LosslessStreamValidation.Invalid(StreamRejection.UNSUPPORTED_CODEC, response.code)
+        }
+
+        val sampleRate = uniqueDashInt(dashSampleRate, xml)
+        val bitDepth = uniqueDashInt(dashBitDepth, xml)
+        val channels = uniqueDashInt(dashChannels, xml)
+        val bitrate = uniqueDashLong(dashBandwidth, xml)
             ?.div(1_000L)
             ?.coerceAtMost(Int.MAX_VALUE.toLong())
             ?.toInt()
@@ -130,20 +141,40 @@ internal object LosslessStreamValidator {
                 codec = codecs.firstOrNull { codec ->
                     val clean = codec.lowercase(Locale.ROOT)
                     clean.contains("ec-3") || clean.contains("ec+3") ||
-                        clean.contains("eac3") || clean.contains("flac")
+                        clean.contains("eac3") || clean.contains("flac") || clean.contains("fla1")
                 }.orEmpty(),
                 contentLength = 0L,
                 estimatedKbps = bitrate,
                 sampleRateHz = sampleRate,
                 bitDepth = bitDepth,
                 channels = channels,
-                isLossless = isFlac,
+                isLossless = hasFlac,
                 isSpatial = isAtmos,
                 isAtmos = isAtmos,
                 deliveryMethod = PlaybackDeliveryMethod.DASH
             )
         )
     }
+
+    private fun uniqueDashInt(regex: Regex, xml: String): Int = regex.findAll(xml)
+        .mapNotNull { it.groupValues[1].toIntOrNull()?.takeIf { value -> value > 0 } }
+        .distinct()
+        .toList()
+        .singleOrNull()
+        ?: 0
+
+    private fun uniqueDashLong(regex: Regex, xml: String): Long? = regex.findAll(xml)
+        .mapNotNull { it.groupValues[1].toLongOrNull()?.takeIf { value -> value > 0L } }
+        .distinct()
+        .toList()
+        .singleOrNull()
+
+    private fun isEac3Codec(codec: String): Boolean =
+        codec == "ec-3" || codec == "ec+3" || codec == "eac3" || codec == "ec3"
+
+    private fun isKnownLossyAudioCodec(codec: String): Boolean =
+        codec.startsWith("mp4a") || codec == "aac" || codec.startsWith("opus") ||
+            codec.startsWith("vorbis") || codec == "ac-3" || codec == "ac3"
 
     private fun parseFlacStreamInfo(bytes: ByteArray): FlacStreamInfo? {
         if (bytes.size < 26 || !bytes.startsWithFlac()) return null
