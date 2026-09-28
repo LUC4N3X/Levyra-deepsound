@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Kumokonekta sa player</string>
     <string name="car_now_playing">Tumutugtog ngayon</string>
     <string name="car_queue">Pila ng kanta</string>
-    <string name="notification_shuffle">I-shuffle</string>
-    <string name="notification_favorite">Paborito</string>
+    <string name="notification_favorite_add">Idagdag sa mga paborito</string>
+    <string name="notification_favorite_remove">Alisin sa mga paborito</string>
+    <string name="notification_shuffle_enable">I-on ang shuffle</string>
+    <string name="notification_shuffle_disable">I-off ang shuffle</string>
+    <string name="notification_repeat_off">Naka-off ang pag-ulit</string>
+    <string name="notification_repeat_all">Ulitin lahat</string>
+    <string name="notification_repeat_one">Ulitin ang isa</string>
     <string name="tile_recognize_music">Kilalanin ang musika</string>
     <string name="tile_playback">Playback</string>
     <string name="shortcut_search">Maghanap</string>

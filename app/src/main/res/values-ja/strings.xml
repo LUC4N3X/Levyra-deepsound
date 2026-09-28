@@ -24,8 +24,13 @@
     <string name="car_connecting_player">プレーヤーに接続中</string>
     <string name="car_now_playing">再生中</string>
     <string name="car_queue">再生キュー</string>
-    <string name="notification_shuffle">シャッフル</string>
-    <string name="notification_favorite">お気に入り</string>
+    <string name="notification_favorite_add">お気に入りに追加</string>
+    <string name="notification_favorite_remove">お気に入りから削除</string>
+    <string name="notification_shuffle_enable">シャッフルをオン</string>
+    <string name="notification_shuffle_disable">シャッフルをオフ</string>
+    <string name="notification_repeat_off">リピートオフ</string>
+    <string name="notification_repeat_all">全曲リピート</string>
+    <string name="notification_repeat_one">1曲リピート</string>
     <string name="tile_recognize_music">音楽を認識</string>
     <string name="tile_playback">再生</string>
     <string name="shortcut_search">検索</string>

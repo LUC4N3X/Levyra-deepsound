@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Verbinden met speler</string>
     <string name="car_now_playing">Wordt nu afgespeeld</string>
     <string name="car_queue">Wachtrij</string>
-    <string name="notification_shuffle">Willekeurig</string>
-    <string name="notification_favorite">Favoriet</string>
+    <string name="notification_favorite_add">Aan favorieten toevoegen</string>
+    <string name="notification_favorite_remove">Uit favorieten verwijderen</string>
+    <string name="notification_shuffle_enable">Willekeurig afspelen aan</string>
+    <string name="notification_shuffle_disable">Willekeurig afspelen uit</string>
+    <string name="notification_repeat_off">Herhalen uit</string>
+    <string name="notification_repeat_all">Alles herhalen</string>
+    <string name="notification_repeat_one">Nummer herhalen</string>
     <string name="tile_recognize_music">Muziek herkennen</string>
     <string name="tile_playback">Afspelen</string>
     <string name="shortcut_search">Zoeken</string>

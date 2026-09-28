@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Oynatıcıya bağlanıyor</string>
     <string name="car_now_playing">Şimdi çalıyor</string>
     <string name="car_queue">Sıra</string>
-    <string name="notification_shuffle">Karıştır</string>
-    <string name="notification_favorite">Favori</string>
+    <string name="notification_favorite_add">Favorilere ekle</string>
+    <string name="notification_favorite_remove">Favorilerden kaldır</string>
+    <string name="notification_shuffle_enable">Karıştırmayı aç</string>
+    <string name="notification_shuffle_disable">Karıştırmayı kapat</string>
+    <string name="notification_repeat_off">Tekrar kapalı</string>
+    <string name="notification_repeat_all">Tümünü tekrarla</string>
+    <string name="notification_repeat_one">Şarkıyı tekrarla</string>
     <string name="tile_recognize_music">Müziği tanı</string>
     <string name="tile_playback">Oynatma</string>
     <string name="shortcut_search">Ara</string>

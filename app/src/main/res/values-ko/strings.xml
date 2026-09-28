@@ -24,8 +24,13 @@
     <string name="car_connecting_player">플레이어에 연결 중</string>
     <string name="car_now_playing">재생 중</string>
     <string name="car_queue">재생 대기열</string>
-    <string name="notification_shuffle">셔플</string>
-    <string name="notification_favorite">즐겨찾기</string>
+    <string name="notification_favorite_add">즐겨찾기에 추가</string>
+    <string name="notification_favorite_remove">즐겨찾기에서 삭제</string>
+    <string name="notification_shuffle_enable">셔플 켜기</string>
+    <string name="notification_shuffle_disable">셔플 끄기</string>
+    <string name="notification_repeat_off">반복 끔</string>
+    <string name="notification_repeat_all">전체 반복</string>
+    <string name="notification_repeat_one">한 곡 반복</string>
     <string name="tile_recognize_music">음악 인식</string>
     <string name="tile_playback">재생</string>
     <string name="shortcut_search">검색</string>

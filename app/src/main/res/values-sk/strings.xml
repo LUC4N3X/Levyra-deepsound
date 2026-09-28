@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Pripájanie k prehrávaču</string>
     <string name="car_now_playing">Práve hrá</string>
     <string name="car_queue">Poradie</string>
-    <string name="notification_shuffle">Náhodné prehrávanie</string>
-    <string name="notification_favorite">Obľúbené</string>
+    <string name="notification_favorite_add">Pridať do obľúbených</string>
+    <string name="notification_favorite_remove">Odstrániť z obľúbených</string>
+    <string name="notification_shuffle_enable">Zapnúť náhodné prehrávanie</string>
+    <string name="notification_shuffle_disable">Vypnúť náhodné prehrávanie</string>
+    <string name="notification_repeat_off">Opakovanie vypnuté</string>
+    <string name="notification_repeat_all">Opakovať všetko</string>
+    <string name="notification_repeat_one">Opakovať skladbu</string>
     <string name="tile_recognize_music">Rozpoznať hudbu</string>
     <string name="tile_playback">Prehrávanie</string>
     <string name="shortcut_search">Hľadať</string>
