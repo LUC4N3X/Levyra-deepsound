@@ -271,6 +271,8 @@ Contributions and bug reports are welcome. Technical documentation and architect
   <a href="https://techolay.net/levyra-android-ve-windows-icin-acik-kaynak-muzik-oynaticisi/"><b>Techolay</b></a>
   &nbsp;·&nbsp;
   <a href="https://hysenlabs.com/en/projects/luc4n3x-levyra-deepsound"><b>Hysen Labs</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://www.pitchhut.com/project/levyra-music-player"><b>PitchHut</b></a>
 </sub>
 
 </div>
