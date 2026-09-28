@@ -79,9 +79,13 @@ data class ResolvedHighQualityStream(
     val qualityLabel: String
         get() = when {
             isAtmos -> "Dolby Atmos"
-            isLossless && bitDepth >= 24 && sampleRateHz > 96_000 -> "Hi-Res $bitDepth-bit / ${sampleRateHz / 1_000} kHz"
-            isLossless && bitDepth >= 24 -> "Hi-Res $bitDepth-bit / ${sampleRateHz / 1_000} kHz"
-            isLossless -> "CD Lossless ${bitDepth.takeIf { it > 0 } ?: 16}-bit / ${formatSampleRate(sampleRateHz)}"
+            isLossless && bitDepth >= 24 && sampleRateHz >= 96_000 ->
+                "Hi-Res $bitDepth-bit / ${formatSampleRate(sampleRateHz)}"
+            isLossless && bitDepth > 0 && sampleRateHz > 0 && bitDepth == 16 && sampleRateHz == 44_100 ->
+                "CD Lossless 16-bit / 44.1 kHz"
+            isLossless && bitDepth > 0 && sampleRateHz > 0 ->
+                "Lossless $bitDepth-bit / ${formatSampleRate(sampleRateHz)}"
+            isLossless -> "Lossless"
             tier != null && matchesNominalTier -> "${tier.kbps} kbps"
             estimatedKbps > 0 -> "~$estimatedKbps kbps"
             else -> "Verified audio"
@@ -96,7 +100,6 @@ data class ResolvedHighQualityStream(
     fun isFresh(nowMs: Long, marginMs: Long): Boolean = url.isNotBlank() && nowMs + marginMs < expiresAtMs
 
     private fun formatSampleRate(value: Int): String = when {
-        value <= 0 -> "44.1 kHz"
         value % 1_000 == 0 -> "${value / 1_000} kHz"
         else -> "${value / 1_000.0} kHz"
     }
@@ -155,6 +158,10 @@ object HighQualityTierPolicy {
         return alternativeKbps >= baseline + MINIMUM_GAIN_KBPS
     }
 
-    fun accepts(stream: ResolvedHighQualityStream, normalKbps: Int?, normalAvailable: Boolean): Boolean =
-        stream.isLossless || stream.isAtmos || accepts(stream.deliveredKbps, normalKbps, normalAvailable)
+    fun accepts(stream: ResolvedHighQualityStream, normalKbps: Int?, normalAvailable: Boolean): Boolean {
+        if (stream.isAtmos) return true
+        if (stream.isLossless && stream.bitDepth >= 16 && stream.sampleRateHz >= 44_100) return true
+        if (stream.isLossless && !normalAvailable) return true
+        return accepts(stream.deliveredKbps, normalKbps, normalAvailable)
+    }
 }
