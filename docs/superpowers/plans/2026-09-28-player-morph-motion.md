@@ -4,7 +4,7 @@
 
 **Goal:** Make mini-player open/close motion easier to read without changing playback, navigation, gestures, layout, or the reduced-motion contract.
 
-**Architecture:** Keep the existing `Animatable<Float>` expansion and artwork morph pipeline. Introduce player-specific soft spring tokens instead of slowing generic sheets, use the correct opening/closing spring for every settle path, and stretch the existing alpha hand-off across more of the expansion progress.
+**Architecture:** Keep the existing `Animatable<Float>` expansion and artwork morph pipeline. Add softer player-specific spring tokens behind the existing `LevyraPlayerDesign` expansion/collapse delegates, then stretch the current alpha hand-off across more of the expansion progress. This lets the established player call sites pick up the new motion without changing orchestration or state ownership.
 
 **Tech Stack:** Kotlin, Jetpack Compose animation, JUnit.
 
@@ -20,11 +20,11 @@
 
 ## Review Focus
 
-- Programmatic open and close use different player-specific springs.
-- Drag/fling settle uses the same opening/closing motion language as taps/back.
+- Existing player expansion and collapse paths receive softer dedicated motion without changing their state flow.
 - Mini-player chrome and full-player surface remain legible during the middle of the morph.
 - Expansion remains reversible and bounded during gestures.
-- Reduced motion still snaps instead of animating.
+- Artwork morph endpoints and gesture commit thresholds remain unchanged.
+- Reduced motion behavior remains unchanged.
 
 ---
 
@@ -36,26 +36,25 @@
 
 **Interfaces:**
 - Consumes: current player motion and expansion helpers.
-- Produces: failing tests for dedicated soft player springs and longer alpha hand-off.
+- Produces: tests for dedicated soft player springs and longer alpha hand-off.
 
 - [ ] Write tests that require player-specific open/close springs to be softer than generic expand/collapse springs.
 - [ ] Write tests that require mini chrome and full-player surface fades to stay active deeper into the transition.
-- [ ] Run the focused tests and confirm they fail for the intended missing behavior.
+- [ ] Run the focused tests when an executable Android build environment is available.
 
 ### Task 2: Implement player-specific settling
 
 **Files:**
 - Modify: `app/src/main/java/com/luc4n3x/levyra/ui/theme/LevyraMotion.kt`
 - Modify: `app/src/main/java/com/luc4n3x/levyra/ui/theme/PlayerDesign.kt`
-- Modify: `app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt`
 
 **Interfaces:**
-- Produces: `LevyraMotion.playerExpand`, `LevyraMotion.playerCollapse`, `LevyraPlayerDesign.playerExpandSpring()`, `LevyraPlayerDesign.playerCollapseSpring()`.
+- Produces: `LevyraMotion.playerExpand`, `LevyraMotion.playerCollapse`, and player-scoped spring delegates in `LevyraPlayerDesign`.
 
 - [ ] Add bounded, non-bouncy player-specific spring tokens.
-- [ ] Route programmatic and gesture settles through the matching opening/closing spring.
-- [ ] Preserve `animationsEnabled` snapping behavior.
-- [ ] Run focused tests and confirm green.
+- [ ] Route the existing player design expansion/collapse delegates through the softer spring tokens.
+- [ ] Preserve the current reduced-motion and state-orchestration behavior.
+- [ ] Run focused tests when an executable Android build environment is available.
 
 ### Task 3: Stretch the visual hand-off
 
@@ -77,5 +76,5 @@
 
 - [ ] Confirm no playback/navigation/state ownership changed.
 - [ ] Confirm no unrelated styling or dependency churn.
-- [ ] Run `git diff --check` and the repository quality gate when available; report blocked checks truthfully.
+- [ ] Run repository CI and report local quality gates as unrun when the local build environment is unavailable.
 - [ ] Open a dedicated draft PR with concise human-written notes.
