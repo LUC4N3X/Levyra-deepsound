@@ -5121,7 +5121,7 @@ private fun ArtistOverlay(
     ) {
         LazyListState()
     }
-    val heroArtwork = profile?.let { it.thumbnailUrl.ifBlank { it.bannerUrl } }.orEmpty()
+    val heroArtwork = profile?.let { it.bannerUrl.ifBlank { it.thumbnailUrl } }.orEmpty()
     val fallbackPalette = remember(accentStart, accentEnd) {
         ArtworkPalette(accentStart.toArgb(), accentEnd.toArgb())
     }
@@ -5180,17 +5180,6 @@ private fun ArtistOverlay(
         val titleDocked by remember(artistListState, heroHeightPx, topBarPx) {
             derivedStateOf { collapse() >= ArtistTitleDockStart }
         }
-        if (profile != null) {
-            ArtworkBackdropWash(
-                artworkUrl = heroArtwork,
-                tint = atmosphere,
-                base = LevyraBlack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(heroHeight + ArtistBackdropTail)
-                    .graphicsLayer { translationY = -heroScroll() }
-            )
-        }
 
         LazyColumn(
             state = artistListState,
@@ -5225,7 +5214,6 @@ private fun ArtistOverlay(
                                 profile = artist,
                                 artworkUrl = heroArtwork,
                                 height = heroHeight,
-                                atmosphere = atmosphere,
                                 motionArtwork = state.artistMotionArtwork,
                                 motionEnabled = state.animationsEnabled && state.motionArtworkEnabled,
                                 animated = animated,
@@ -5753,7 +5741,6 @@ private fun ArtistSectionTitle(title: String) {
 }
 
 private const val ArtistHeroAspect = 1.08f
-private val ArtistBackdropTail = 420.dp
 private val ArtistHeroMinHeight = 340.dp
 private val ArtistHeroMaxHeight = 520.dp
 private const val ArtistHeroViewportShare = 0.62f
@@ -5848,7 +5835,6 @@ private fun ArtistHero(
     profile: ArtistProfile,
     artworkUrl: String,
     height: Dp,
-    atmosphere: Color,
     motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
     motionEnabled: Boolean,
     animated: Boolean,
@@ -5881,7 +5867,8 @@ private fun ArtistHero(
             .drawBehind {
                 drawRect(
                     Brush.verticalGradient(
-                        0f to atmosphere.copy(alpha = 0.9f),
+                        0f to Color(0xFF111214),
+                        0.58f to Color(0xFF08090B),
                         1f to scrim
                     )
                 )
@@ -5936,11 +5923,11 @@ private fun ArtistHero(
                         Brush.verticalGradient(
                             colorStops = arrayOf(
                                 0f to statusProtection,
-                                0.22f to Color.Transparent,
-                                0.52f to atmosphere.copy(alpha = 0.10f),
-                                0.74f to scrim.copy(alpha = 0.62f),
-                                0.92f to scrim.copy(alpha = 0.96f),
-                                1f to scrim
+                                0.20f to Color.Transparent,
+                                0.54f to Color.Black.copy(alpha = 0.08f),
+                                0.74f to Color.Black.copy(alpha = 0.62f),
+                                0.92f to Color.Black.copy(alpha = 0.96f),
+                                1f to Color.Black
                             )
                         )
                     )
@@ -6012,7 +5999,9 @@ private fun ArtistActionBar(
     val strings = LocalLevyraStrings.current
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     var artistMenuExpanded by remember(profile.browseId, profile.name) { mutableStateOf(false) }
-    val onHighlight = remember(highlight) { Color.White.playerContentColor(listOf(highlight)) }
+    val playContainer = if (LevyraIsLight) Color(0xFF11131F) else Color.White
+    val playContent = if (LevyraIsLight) Color.White else Color.Black
+    val playShadow = remember(highlight) { Color.Black.playerMix(highlight, 0.04f) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -6100,12 +6089,12 @@ private fun ArtistActionBar(
                 modifier = Modifier
                     .size(58.dp)
                     .shadow(
-                        elevation = 14.dp,
+                        elevation = 10.dp,
                         shape = CircleShape,
-                        ambientColor = highlight,
-                        spotColor = highlight
+                        ambientColor = Color.Black.copy(alpha = 0.24f),
+                        spotColor = playShadow.copy(alpha = 0.18f)
                     )
-                    .background(highlight, CircleShape)
+                    .background(playContainer, CircleShape)
                     .levyraPressable(
                         onClick = onPlay,
                         pressedScale = LevyraPressScale.Control,
@@ -6116,7 +6105,7 @@ private fun ArtistActionBar(
             ) {
                 LevyraPlayPauseGlyph(
                     playing = false,
-                    color = onHighlight,
+                    color = playContent,
                     contentDescription = strings.play,
                     modifier = Modifier.size(30.dp)
                 )
@@ -6137,7 +6126,7 @@ private fun ArtistTopBar(
     val strings = LocalLevyraStrings.current
     val density = LocalDensity.current
     val titleDropPx = with(density) { 10.dp.toPx() }
-    val barColor = LevyraBlack.playerMix(atmosphere, 0.14f)
+    val barColor = LevyraBlack.playerMix(atmosphere, 0.04f)
     val hairline = LevyraText.copy(alpha = 0.08f)
     Row(
         modifier = modifier
@@ -24522,36 +24511,34 @@ private fun VideoGlassCard(
     isPlaying: Boolean,
     onClick: () -> Unit
 ) {
-    val accentStart = Color(track.accentStart)
-    val accentEnd = Color(track.accentEnd)
-    val scale by animateFloatAsState(if (isCurrent) 1.02f else 1f, label = "scale")
+    val strings = LocalLevyraStrings.current
+    val viewCount = remember(track.youtubeViewCount, strings.code) {
+        formatSearchViewCount(track.youtubeViewCount, strings.code)
+    }
+    val metadata = remember(track.artist, viewCount) {
+        listOf(track.artist.trim(), viewCount.trim())
+            .filter(String::isNotBlank)
+            .joinToString(" · ")
+    }
     Column(
         modifier = Modifier
-            .width(292.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .width(260.dp)
+            .pressable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        val shape = RoundedCornerShape(20.dp)
+        val shape = RoundedCornerShape(11.dp)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .shadow(
-                    elevation = if (isCurrent) 24.dp else 16.dp,
-                    shape = shape,
-                    clip = false,
-                    ambientColor = accentStart.copy(alpha = if (isCurrent) 0.24f else 0.12f),
-                    spotColor = accentEnd.copy(alpha = if (isCurrent) 0.28f else 0.14f)
-                )
                 .clip(shape)
-                .border(
-                    width = if (isCurrent) 1.25f.dp else 1.dp,
-                    color = if (isCurrent) accentStart.copy(alpha = 0.54f) else Color.White.copy(alpha = 0.12f),
-                    shape = shape
+                .background(LevyraPanelSoft)
+                .then(
+                    if (isCurrent) {
+                        Modifier.border(1.5.dp, Color.White.copy(alpha = 0.72f), shape)
+                    } else {
+                        Modifier
+                    }
                 )
         ) {
             AsyncImage(
@@ -24559,7 +24546,7 @@ private fun VideoGlassCard(
                     .data(track.largeThumbnailUrl.ifEmpty { track.thumbnailUrl })
                     .crossfade(true)
                     .build(),
-                contentDescription = null,
+                contentDescription = track.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
@@ -24568,93 +24555,61 @@ private fun VideoGlassCard(
                     .matchParentSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(
-                                Color.Black.copy(alpha = 0.16f),
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.66f)
+                            colorStops = arrayOf(
+                                0f to Color.Transparent,
+                                0.76f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = 0.24f)
                             )
                         )
                     )
             )
-            Surface(
-                color = Color.Black.copy(alpha = 0.30f),
-                border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.10f)),
-                shape = RoundedCornerShape(999.dp),
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+            if (isCurrent) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(10.dp)
+                        .size(32.dp)
+                        .background(Color.Black.copy(alpha = 0.58f), CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Videocam,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.90f),
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Text(
-                        text = LocalLevyraStrings.current.video.uppercase(Locale.ROOT),
-                        color = Color.White.copy(alpha = 0.90f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp
-                    )
+                    if (isPlaying) {
+                        LevyraPlayingIndicator(
+                            playing = true,
+                            color = Color.White,
+                            size = 16.dp,
+                            contentDescription = strings.playing
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = strings.play,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(54.dp)
-                    .background(Color.Black.copy(alpha = 0.28f), CircleShape)
-                    .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isCurrent && isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = track.title,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = track.artist,
-                    color = Color.White.copy(alpha = 0.74f),
-                    fontSize = 12.5.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         }
         Text(
-            text = displayableAlbumLabel(track) ?: LocalLevyraStrings.current.video,
-            color = accentStart.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color.copy(alpha = 0.82f),
-            fontSize = 11.5.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
-            fontWeight = FontWeight.Bold,
+            text = track.title,
+            color = LevyraText,
+            fontSize = 14.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 2.dp)
+            overflow = TextOverflow.Ellipsis
         )
+        if (metadata.isNotBlank()) {
+            Text(
+                text = metadata,
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
