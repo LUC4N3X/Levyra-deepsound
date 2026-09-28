@@ -21,6 +21,13 @@ internal fun searchSongMetadataKey(track: Track): String {
     return "recording:$title|$artist|$durationSeconds"
 }
 
+private fun searchSongLooseMetadataKey(track: Track): String {
+    val title = albumRecommendationTextKey(track.title)
+    val artist = artistIdentityKey(primaryArtistSegment(track.artist))
+    if (title.isBlank() || artist.isBlank()) return ""
+    return "recording:$title|$artist"
+}
+
 internal fun searchAlbumCanonicalKey(album: AlbumHit): String {
     val browseId = album.browseId.trim().lowercase(Locale.ROOT)
     if (browseId.isNotBlank()) return "browse:$browseId"
@@ -69,8 +76,45 @@ internal fun isMusicVideoResult(videoType: String): Boolean {
     return normalized != MUSIC_VIDEO_TYPE_AUDIO
 }
 
-internal fun mergeSearchSongs(existing: List<Track>, incoming: List<Track>): List<Track> =
-    mergeSearchEntities(existing, incoming, ::searchSongIdentityKey, ::searchSongMetadataKey, ::richerSong)
+internal fun mergeSearchSongs(existing: List<Track>, incoming: List<Track>): List<Track> {
+    val strict = mergeSearchEntities(
+        existing,
+        incoming,
+        ::searchSongIdentityKey,
+        ::searchSongMetadataKey,
+        ::richerSong
+    )
+    return mergeComplementarySearchSongMetadata(strict)
+}
+
+private fun mergeComplementarySearchSongMetadata(songs: List<Track>): List<Track> {
+    if (songs.size < 2) return songs
+
+    val merged = songs.toMutableList()
+    val removed = HashSet<Int>()
+    val indicesByLooseKey = songs.indices.groupBy { index ->
+        searchSongLooseMetadataKey(songs[index])
+    }
+
+    for ((looseKey, indices) in indicesByLooseKey) {
+        if (looseKey.isBlank()) continue
+        val knownDurationIndices = indices.filter { index -> songs[index].durationMs > 0L }
+        val incompleteDurationIndices = indices.filter { index -> songs[index].durationMs <= 0L }
+        if (knownDurationIndices.size != 1 || incompleteDurationIndices.isEmpty()) continue
+
+        val participants = indices.sorted()
+        val targetIndex = participants.first()
+        var combined = songs[targetIndex]
+        for (participantIndex in participants.drop(1)) {
+            combined = richerSong(combined, songs[participantIndex])
+            removed.add(participantIndex)
+        }
+        merged[targetIndex] = combined
+    }
+
+    if (removed.isEmpty()) return songs
+    return merged.filterIndexed { index, _ -> index !in removed }
+}
 
 internal fun selectSearchTopResultTracks(
     topTrack: Track?,
@@ -121,8 +165,20 @@ internal fun filterSearchSongsExcludingTopResult(
     return songs.filterNot { song ->
         val identity = searchSongIdentityKey(song)
         val metadata = searchSongMetadataKey(song)
-        identity in topResultIds || (metadata.isNotBlank() && metadata in topResultMetadataKeys)
+        identity in topResultIds ||
+            (metadata.isNotBlank() && metadata in topResultMetadataKeys) ||
+            topResultTracks.any { topTrack -> areComplementarySearchSongResults(song, topTrack) }
     }
+}
+
+private fun areComplementarySearchSongResults(first: Track, second: Track): Boolean {
+    val firstHasDuration = first.durationMs > 0L
+    val secondHasDuration = second.durationMs > 0L
+    if (firstHasDuration == secondHasDuration) return false
+
+    val firstKey = searchSongLooseMetadataKey(first)
+    if (firstKey.isBlank()) return false
+    return firstKey == searchSongLooseMetadataKey(second)
 }
 
 internal fun mergeSearchAlbums(existing: List<AlbumHit>, incoming: List<AlbumHit>): List<AlbumHit> =
