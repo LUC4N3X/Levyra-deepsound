@@ -23,7 +23,7 @@ Installing or using Levyra does not give anyone permission to copy, download, mo
 
 Third-party websites, services, APIs, endpoints, media, metadata, and other resources remain subject to their own terms, policies, licences, access rules, technical restrictions, and applicable law.
 
-Levyra does not replace, extend, bypass, or override rights or restrictions set by a service provider or rights holder.
+Levyra does not grant permission to ignore or override rights or restrictions set by a service provider or rights holder.
 
 The fact that Levyra can interact with a service does not mean that every possible use of that feature is permitted by that service, a rights holder, or the law.
 
@@ -45,13 +45,17 @@ Personal or non-commercial use does not, by itself, make a copy or download lawf
 
 Levyra does not operate a catalog of infringing copies, does not centrally host user-downloaded media, and does not grant or sell access to third-party copyrighted works.
 
-## 6. Technical compatibility and interoperability
+## 6. Technical compatibility, routing, and regional restrictions
 
-Levyra includes client-side mechanisms used for compatibility and interoperability with third-party media services. Depending on the feature, this may include stream resolution, request processing, token handling, provider-specific routing, compatibility fallbacks, and related technical processing.
+Levyra includes client-side mechanisms used for compatibility and interoperability with third-party media services. Depending on the feature, this may include stream resolution, request processing, token handling, provider-specific routing, alternate DNS resolution, compatibility fallbacks, and optional experimental connection methods for networks where ordinary access is unreliable.
 
-These mechanisms are not permission to bypass access controls, circumvent technological protection measures, defeat geographic restrictions, or obtain paid features, subscription tiers, account privileges, bitrate levels, catalog items, or other service benefits without lawful entitlement.
+Some of those methods can change how requests are resolved, routed, split, or transmitted. Their presence in Levyra does not mean that a provider, network operator, or local authority has authorized their use in every circumstance.
 
-Third-party providers may change, restrict, rate-limit, block, suspend, or discontinue access at any time. Levyra does not represent that any particular integration, route, request method, compatibility technique, bitrate, or media source is approved or supported by the relevant provider.
+Users are responsible for making sure that any network compatibility option they enable is permitted by applicable law, the rules of the network they are using, their account status, and the terms of the third-party service involved.
+
+These mechanisms do not grant rights to obtain paid features, subscription tiers, account privileges, bitrate levels, catalog items, or other service benefits without lawful entitlement. Levyra does not guarantee that a compatibility method will restore access, remain effective, or continue working after a provider or network changes its systems.
+
+Third-party providers and network operators may change, restrict, rate-limit, block, suspend, or discontinue access at any time. Levyra does not represent that any particular integration, route, request method, compatibility technique, bitrate, or media source is approved or supported by the relevant provider.
 
 ## 7. No guarantee of legality
 
