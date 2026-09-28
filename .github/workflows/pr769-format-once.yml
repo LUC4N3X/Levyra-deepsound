@@ -1,0 +1,65 @@
+name: Format PR769 directional settle once
+
+on:
+  push:
+    branches:
+      - fix/player-morph-motion
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/player-morph-motion
+          fetch-depth: 0
+
+      - name: Normalize formatting
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text()
+          old = '''                    playerExpansion.animateTo(
+                target,
+                if (target > playerExpansion.value) {
+                    LevyraPlayerDesign.expandSpring()
+                } else {
+                    LevyraPlayerDesign.collapseSpring()
+                }
+            )'''
+          new = '''                    playerExpansion.animateTo(
+                        target,
+                        if (target > playerExpansion.value) {
+                            LevyraPlayerDesign.expandSpring()
+                        } else {
+                            LevyraPlayerDesign.collapseSpring()
+                        }
+                    )'''
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'expected one directional settle block, found {count}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+          git diff --check
+          test "$(git diff --name-only | tr '\n' ' ')" = "app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt "
+
+      - name: Remove one-shot workflow and push formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/pr769-format-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/pr769-format-once.yml
+          git diff --cached --check
+          git commit -m "style(player): normalize settle formatting"
+          git push origin HEAD:fix/player-morph-motion
