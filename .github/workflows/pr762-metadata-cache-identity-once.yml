@@ -33,41 +33,40 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           path = Path('app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt')
           text = path.read_text()
-          marker = '''    @Test
-    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {
-'''
+          marker = "    @Test\n    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {\n"
           if marker not in text:
               raise SystemExit('test insertion marker not found')
-          test = '''    @Test
-    fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {
-        val cache = MotionMetadataWarmCache(maxEntries = 4)
-        val raw = track(
-            id = "youtube-id",
-            title = "Song",
-            artist = "Wrong Artist",
-            album = "YouTube Music"
-        )
-        val prepared = raw.copy(
-            artist = "Correct Artist",
-            album = "Real Album",
-            isrc = "ITABC2600001"
-        )
-        val newerInput = raw.copy(
-            artist = "New Correct Artist",
-            album = "New Real Album",
-            isrc = "ITABC2600002"
-        )
-
-        cache.put(raw, prepared)
-
-        assertEquals(prepared, cache.get(raw))
-        assertEquals(null, cache.get(newerInput))
-    }
-
-'''
+          lines = [
+              '    @Test',
+              '    fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {',
+              '        val cache = MotionMetadataWarmCache(maxEntries = 4)',
+              '        val raw = track(',
+              '            id = "youtube-id",',
+              '            title = "Song",',
+              '            artist = "Wrong Artist",',
+              '            album = "YouTube Music"',
+              '        )',
+              '        val prepared = raw.copy(',
+              '            artist = "Correct Artist",',
+              '            album = "Real Album",',
+              '            isrc = "ITABC2600001"',
+              '        )',
+              '        val newerInput = raw.copy(',
+              '            artist = "New Correct Artist",',
+              '            album = "New Real Album",',
+              '            isrc = "ITABC2600002"',
+              '        )',
+              '',
+              '        cache.put(raw, prepared)',
+              '',
+              '        assertEquals(prepared, cache.get(raw))',
+              '        assertEquals(null, cache.get(newerInput))',
+              '    }',
+              '',
+          ]
+          test = '\n'.join(lines) + '\n'
           path.write_text(text.replace(marker, test + marker, 1))
           PY
           set +e
@@ -84,27 +83,26 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           path = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
           text = path.read_text()
-          old = '''    private fun key(track: Track): String = track.id.trim().ifBlank {
-        listOf(track.title, track.artist)
-            .joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
-    }
-'''
-          new = '''    private fun key(track: Track): String = listOf(
-        track.id,
-        track.title,
-        track.artist,
-        track.album,
-        track.isrc,
-        track.year,
-        track.releaseDate,
-        track.albumArtist,
-        track.albumBrowseId,
-        track.artistBrowseIds.joinToString(",")
-    ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
-'''
+          old = """    private fun key(track: Track): String = track.id.trim().ifBlank {
+              listOf(track.title, track.artist)
+                  .joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
+          }
+          """
+          new = """    private fun key(track: Track): String = listOf(
+              track.id,
+              track.title,
+              track.artist,
+              track.album,
+              track.isrc,
+              track.year,
+              track.releaseDate,
+              track.albumArtist,
+              track.albumBrowseId,
+              track.artistBrowseIds.joinToString(",")
+          ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
+          """
           if text.count(old) != 1:
               raise SystemExit(f'cache key block expected once, found {text.count(old)}')
           path.write_text(text.replace(old, new, 1))
