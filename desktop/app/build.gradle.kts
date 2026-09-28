@@ -55,6 +55,7 @@ kotlin {
             include("com/luc4n3x/levyra/domain/LevyraAudio.kt")
             include("com/luc4n3x/levyra/domain/ParametricEqualizer.kt")
             include("com/luc4n3x/levyra/domain/PlaylistImportFailureKind.kt")
+            include("com/luc4n3x/levyra/domain/LyricsProviderPriority.kt")
             include("com/luc4n3x/levyra/feature/radio/RadioCategory.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraPersonalizedSearchStrings.kt")
         }
@@ -80,6 +81,7 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.json)
     implementation(libs.okhttp)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
