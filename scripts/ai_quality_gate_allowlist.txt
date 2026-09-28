@@ -84,3 +84,6 @@ app/src/upstream/jniLibs/arm64-v8a/libbyedpi.so
 app/src/upstream/jniLibs/armeabi-v7a/libbyedpi.so
 app/src/upstream/jniLibs/x86/libbyedpi.so
 app/src/upstream/jniLibs/x86_64/libbyedpi.so
+# Generated and checksum-pinned by the Gradle 9.8 wrapper upgrade.
+gradle/wrapper/gradle-wrapper.jar
+third_party/LevyraExtractor/gradle/wrapper/gradle-wrapper.jar
