@@ -1,0 +1,64 @@
+name: Normalize motion metadata formatting once
+
+on:
+  push:
+    branches:
+      - fix/instant-page-canvas
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/instant-page-canvas
+          fetch-depth: 0
+
+      - name: Normalize metadata helper indentation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
+          text = path.read_text()
+          start_marker = '    private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {'
+          next_marker = '    private suspend fun prepareLookupTrack(track: Track): Track {'
+          start = text.find(start_marker)
+          end = text.find(next_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('metadata helper boundaries not found')
+          lines = [
+              '    private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {',
+              '        val remembered = metadataWarmCache.get(track) ?: track',
+              '        val budgetMs = motionMetadataForegroundBudgetMs(remembered)',
+              '        if (budgetMs <= 0L) return remembered',
+              '        val prepared = lookupScope.async {',
+              '            prepareLookupTrack(remembered).also { resolved ->',
+              '                metadataWarmCache.put(track, resolved)',
+              '            }',
+              '        }',
+              '        return withTimeoutOrNull(budgetMs) { prepared.await() } ?: remembered',
+              '    }',
+              '',
+          ]
+          replacement = '\n'.join(lines) + '\n'
+          path.write_text(text[:start] + replacement + text[end:])
+          PY
+          git diff --check
+
+      - name: Remove one-shot workflow and push result
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/pr762-format-metadata-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt .github/workflows/pr762-format-metadata-once.yml
+          git commit -m "style(motion): format metadata warmup helper"
+          git push origin HEAD:fix/instant-page-canvas
