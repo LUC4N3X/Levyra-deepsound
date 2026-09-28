@@ -46,6 +46,7 @@ Play streamed music and your own files in the same app, save tracks for offline 
   <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" width="185" alt="Get Levyra on IzzyOnDroid"></a>
   <a href="https://sourceforge.net/projects/levyra.mirror/"><img src="docs/assets/levyra-sourceforge.svg" width="185" alt="Download Levyra from SourceForge"></a>
   <a href="https://apkpure.com/p/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkpure.svg" width="185" alt="Get Levyra on APKPure"></a>
+  <a href="https://apkfab.com/levyra/com.luc4n3x.levyra"><img src="docs/assets/levyra-apkfab.svg" width="185" alt="Get Levyra on APKFab"></a>
   <br>
   <a href="https://www.androidfreeware.net/download-levyra-apk.html"><img src="docs/assets/levyra-androidfreeware-download.svg" width="185" alt="Get Levyra on AndroidFreeware"></a>
   <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" width="185" alt="Install Levyra with Obtainium"></a>
@@ -257,7 +258,6 @@ Contributions and bug reports are welcome. Technical documentation and architect
   <a href="https://api.reuse.software/info/github.com/LUC4N3X/Levyra-deepsound"><img src="https://api.reuse.software/badge/github.com/LUC4N3X/Levyra-deepsound" alt="REUSE compliant"></a>
   <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="20"></a>
 </p>
-
 <sub>
   <b>Featured:</b>
   <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
