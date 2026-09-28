@@ -38,35 +38,34 @@ jobs:
           marker = "    @Test\n    fun cancellingLastSubscriberCancelsUnderlyingResolution() = runBlocking {\n"
           if marker not in text:
               raise SystemExit('test insertion marker not found')
-          lines = [
-              '    @Test',
-              '    fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {',
-              '        val cache = MotionMetadataWarmCache(maxEntries = 4)',
-              '        val raw = track(',
-              '            id = "youtube-id",',
-              '            title = "Song",',
-              '            artist = "Wrong Artist",',
-              '            album = "YouTube Music"',
-              '        )',
-              '        val prepared = raw.copy(',
-              '            artist = "Correct Artist",',
-              '            album = "Real Album",',
-              '            isrc = "ITABC2600001"',
-              '        )',
-              '        val newerInput = raw.copy(',
-              '            artist = "New Correct Artist",',
-              '            album = "New Real Album",',
-              '            isrc = "ITABC2600002"',
-              '        )',
-              '',
-              '        cache.put(raw, prepared)',
-              '',
-              '        assertEquals(prepared, cache.get(raw))',
-              '        assertEquals(null, cache.get(newerInput))',
-              '    }',
-              '',
-          ]
-          test = '\n'.join(lines) + '\n'
+          test = '''    @Test
+          fun cachedMetadataDoesNotReplaceNewerInputForTheSameTrackId() {
+              val cache = MotionMetadataWarmCache(maxEntries = 4)
+              val raw = track(
+                  id = "youtube-id",
+                  title = "Song",
+                  artist = "Wrong Artist",
+                  album = "YouTube Music"
+              )
+              val prepared = raw.copy(
+                  artist = "Correct Artist",
+                  album = "Real Album",
+                  isrc = "ITABC2600001"
+              )
+              val newerInput = raw.copy(
+                  artist = "New Correct Artist",
+                  album = "New Real Album",
+                  isrc = "ITABC2600002"
+              )
+
+              cache.put(raw, prepared)
+
+              assertEquals(prepared, cache.get(raw))
+              assertEquals(null, cache.get(newerInput))
+          }
+
+          '''
+          test = '\n'.join(line[10:] if line.startswith('          ') else line for line in test.splitlines()) + '\n'
           path.write_text(text.replace(marker, test + marker, 1))
           PY
           set +e
@@ -85,12 +84,16 @@ jobs:
           from pathlib import Path
           path = Path('app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt')
           text = path.read_text()
-          old = """    private fun key(track: Track): String = track.id.trim().ifBlank {
-              listOf(track.title, track.artist)
-                  .joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
-          }
-          """
-          new = """    private fun key(track: Track): String = listOf(
+          start_token = '    private fun key(track: Track): String = track.id.trim().ifBlank {'
+          end_token = '\n    }\n}'
+          start = text.find(start_token)
+          if start < 0:
+              raise SystemExit('cache key start not found')
+          end = text.find(end_token, start)
+          if end < 0:
+              raise SystemExit('cache key end not found')
+          end += len('\n    }')
+          replacement = '''    private fun key(track: Track): String = listOf(
               track.id,
               track.title,
               track.artist,
@@ -101,11 +104,9 @@ jobs:
               track.albumArtist,
               track.albumBrowseId,
               track.artistBrowseIds.joinToString(",")
-          ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }
-          """
-          if text.count(old) != 1:
-              raise SystemExit(f'cache key block expected once, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
+          ).joinToString("|") { value -> value.trim().lowercase(Locale.ROOT) }'''
+          replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in replacement.splitlines())
+          path.write_text(text[:start] + replacement + text[end:])
           PY
           ./gradlew :app:testDebugUnitTest \
             --tests 'com.luc4n3x.levyra.feature.motion.MotionArtworkRequestCoordinatorTest.latePreparedMetadataIsReusedAsTheNextLookupBase' \
@@ -124,16 +125,15 @@ jobs:
           ./gradlew :app:compileDebugKotlin --console=plain --warning-mode summary
           git diff --check
 
-      - name: Remove one-shot workflow and push result
+      - name: Commit verified fix
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/workflows/pr762-metadata-cache-identity-once.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             app/src/main/java/com/luc4n3x/levyra/feature/motion/MotionArtworkEngine.kt \
-            app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt \
-            .github/workflows/pr762-metadata-cache-identity-once.yml
+            app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkRequestCoordinatorTest.kt
           git commit -m "fix(motion): scope metadata warm cache to source identity"
+          git pull --rebase origin fix/instant-page-canvas
           git push origin HEAD:fix/instant-page-canvas
