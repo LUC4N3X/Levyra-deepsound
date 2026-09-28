@@ -5865,14 +5865,14 @@ private fun ArtistHero(
             .height(height)
             .clipToBounds()
             .drawBehind {
-        drawRect(
-            Brush.verticalGradient(
-                0f to Color(0xFF111214),
-                0.58f to Color(0xFF08090B),
-                1f to scrim
-            )
-        )
-    }
+                drawRect(
+                    Brush.verticalGradient(
+                        0f to Color(0xFF111214),
+                        0.58f to Color(0xFF08090B),
+                        1f to scrim
+                    )
+                )
+            }
     ) {
         Box(
             modifier = Modifier
@@ -5923,11 +5923,11 @@ private fun ArtistHero(
                         Brush.verticalGradient(
                             colorStops = arrayOf(
                                 0f to statusProtection,
-                        0.20f to Color.Transparent,
-                        0.54f to Color.Black.copy(alpha = 0.08f),
-                        0.74f to Color.Black.copy(alpha = 0.62f),
-                        0.92f to Color.Black.copy(alpha = 0.96f),
-                        1f to Color.Black
+                                0.20f to Color.Transparent,
+                                0.54f to Color.Black.copy(alpha = 0.08f),
+                                0.74f to Color.Black.copy(alpha = 0.62f),
+                                0.92f to Color.Black.copy(alpha = 0.96f),
+                                1f to Color.Black
                             )
                         )
                     )
@@ -6089,12 +6089,12 @@ private fun ArtistActionBar(
                 modifier = Modifier
                     .size(58.dp)
                     .shadow(
-                elevation = 10.dp,
-                shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.24f),
-                spotColor = playShadow.copy(alpha = 0.18f)
-            )
-            .background(playContainer, CircleShape)
+                        elevation = 10.dp,
+                        shape = CircleShape,
+                        ambientColor = Color.Black.copy(alpha = 0.24f),
+                        spotColor = playShadow.copy(alpha = 0.18f)
+                    )
+                    .background(playContainer, CircleShape)
                     .levyraPressable(
                         onClick = onPlay,
                         pressedScale = LevyraPressScale.Control,
