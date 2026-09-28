@@ -1,0 +1,113 @@
+name: Verify artist UI refinement once
+
+on:
+  push:
+    branches:
+      - fix/instant-page-canvas
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-apply:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/instant-page-canvas
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Normalize Artist screen source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text()
+
+          def sub_once(pattern: str, replacement: str, label: str, flags: int = 0):
+              global text
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly 1 match, found {count}')
+              text = updated
+
+          sub_once(
+              r'''\.drawBehind \{\n\s*drawRect\(\n\s*Brush\.verticalGradient\(\n\s*0f to Color\(0xFF111214\),\n\s*0\.58f to Color\(0xFF08090B\),\n\s*1f to scrim\n\s*\)\n\s*\)\n\s*\}''',
+              '''.drawBehind {
+                  drawRect(
+                      Brush.verticalGradient(
+                          0f to Color(0xFF111214),
+                          0.58f to Color(0xFF08090B),
+                          1f to scrim
+                      )
+                  )
+              }''',
+              'format artist hero base'
+          )
+
+          sub_once(
+              r'''0f to statusProtection,\n\s*0\.20f to Color\.Transparent,\n\s*0\.54f to Color\.Black\.copy\(alpha = 0\.08f\),\n\s*0\.74f to Color\.Black\.copy\(alpha = 0\.62f\),\n\s*0\.92f to Color\.Black\.copy\(alpha = 0\.96f\),\n\s*1f to Color\.Black''',
+              '''0f to statusProtection,
+                                  0.20f to Color.Transparent,
+                                  0.54f to Color.Black.copy(alpha = 0.08f),
+                                  0.74f to Color.Black.copy(alpha = 0.62f),
+                                  0.92f to Color.Black.copy(alpha = 0.96f),
+                                  1f to Color.Black''',
+              'format artist hero scrim'
+          )
+
+          sub_once(
+              r'''\.shadow\(\n\s*elevation = 10\.dp,\n\s*shape = CircleShape,\n\s*ambientColor = Color\.Black\.copy\(alpha = 0\.24f\),\n\s*spotColor = playShadow\.copy\(alpha = 0\.18f\)\n\s*\)\n\s*\.background\(playContainer, CircleShape\)''',
+              '''.shadow(
+                          elevation = 10.dp,
+                          shape = CircleShape,
+                          ambientColor = Color.Black.copy(alpha = 0.24f),
+                          spotColor = playShadow.copy(alpha = 0.18f)
+                      )
+                      .background(playContainer, CircleShape)''',
+              'format artist play action'
+          )
+
+          sub_once(
+              r'''(ArtistHero\(\n\s*profile = artist,\n\s*artworkUrl = heroArtwork,\n\s*height = heroHeight,\n)\s*atmosphere = atmosphere,\n''',
+              r'\1',
+              'remove artist hero atmosphere call argument'
+          )
+          sub_once(
+              r'''(private fun ArtistHero\(\n\s*profile: ArtistProfile,\n\s*artworkUrl: String,\n\s*height: Dp,\n)\s*atmosphere: Color,\n''',
+              r'\1',
+              'remove artist hero atmosphere parameter'
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Compile Android Kotlin
+        shell: bash
+        run: ./gradlew :app:compileDebugKotlin --console=plain --warning-mode summary
+
+      - name: Remove one-shot workflow and push result
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/artist-ui-cleanup-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/artist-ui-cleanup-once.yml
+          git diff --cached --check
+          git commit -m "style(ui): polish artist screen implementation"
+          git push origin HEAD:fix/instant-page-canvas
