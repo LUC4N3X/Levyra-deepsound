@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Connessione al lettore</string>
     <string name="car_now_playing">In riproduzione</string>
     <string name="car_queue">Coda</string>
-    <string name="notification_shuffle">Riproduzione casuale</string>
-    <string name="notification_favorite">Preferito</string>
+    <string name="notification_favorite_add">Aggiungi ai preferiti</string>
+    <string name="notification_favorite_remove">Rimuovi dai preferiti</string>
+    <string name="notification_shuffle_enable">Attiva riproduzione casuale</string>
+    <string name="notification_shuffle_disable">Disattiva riproduzione casuale</string>
+    <string name="notification_repeat_off">Ripetizione disattivata</string>
+    <string name="notification_repeat_all">Ripeti tutto</string>
+    <string name="notification_repeat_one">Ripeti brano</string>
     <string name="tile_recognize_music">Riconosci la musica</string>
     <string name="tile_playback">Riproduzione</string>
     <string name="shortcut_search">Cerca</string>

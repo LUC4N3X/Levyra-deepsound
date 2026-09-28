@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Đang kết nối với trình phát</string>
     <string name="car_now_playing">Đang phát</string>
     <string name="car_queue">Hàng đợi</string>
-    <string name="notification_shuffle">Phát ngẫu nhiên</string>
-    <string name="notification_favorite">Yêu thích</string>
+    <string name="notification_favorite_add">Thêm vào mục yêu thích</string>
+    <string name="notification_favorite_remove">Xóa khỏi mục yêu thích</string>
+    <string name="notification_shuffle_enable">Bật phát ngẫu nhiên</string>
+    <string name="notification_shuffle_disable">Tắt phát ngẫu nhiên</string>
+    <string name="notification_repeat_off">Tắt lặp lại</string>
+    <string name="notification_repeat_all">Lặp lại tất cả</string>
+    <string name="notification_repeat_one">Lặp lại một bài</string>
     <string name="tile_recognize_music">Nhận diện nhạc</string>
     <string name="tile_playback">Phát</string>
     <string name="shortcut_search">Tìm kiếm</string>

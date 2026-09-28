@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Подключение к плееру</string>
     <string name="car_now_playing">Сейчас играет</string>
     <string name="car_queue">Очередь</string>
-    <string name="notification_shuffle">Перемешать</string>
-    <string name="notification_favorite">В избранное</string>
+    <string name="notification_favorite_add">Добавить в избранное</string>
+    <string name="notification_favorite_remove">Удалить из избранного</string>
+    <string name="notification_shuffle_enable">Включить перемешивание</string>
+    <string name="notification_shuffle_disable">Выключить перемешивание</string>
+    <string name="notification_repeat_off">Повтор выключен</string>
+    <string name="notification_repeat_all">Повторять все</string>
+    <string name="notification_repeat_one">Повторять трек</string>
     <string name="tile_recognize_music">Распознать музыку</string>
     <string name="tile_playback">Воспроизведение</string>
     <string name="shortcut_search">Поиск</string>

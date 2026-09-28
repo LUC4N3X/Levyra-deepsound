@@ -24,8 +24,13 @@
     <string name="car_connecting_player">در حال اتصال به پخش‌کننده</string>
     <string name="car_now_playing">در حال پخش</string>
     <string name="car_queue">صف پخش</string>
-    <string name="notification_shuffle">پخش تصادفی</string>
-    <string name="notification_favorite">علاقه‌مندی</string>
+    <string name="notification_favorite_add">افزودن به علاقه‌مندی‌ها</string>
+    <string name="notification_favorite_remove">حذف از علاقه‌مندی‌ها</string>
+    <string name="notification_shuffle_enable">روشن کردن پخش تصادفی</string>
+    <string name="notification_shuffle_disable">خاموش کردن پخش تصادفی</string>
+    <string name="notification_repeat_off">تکرار خاموش</string>
+    <string name="notification_repeat_all">تکرار همه</string>
+    <string name="notification_repeat_one">تکرار یک آهنگ</string>
     <string name="tile_recognize_music">تشخیص موسیقی</string>
     <string name="tile_playback">پخش</string>
     <string name="shortcut_search">جستجو</string>

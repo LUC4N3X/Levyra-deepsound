@@ -24,8 +24,13 @@
     <string name="car_connecting_player">正在連線至播放器</string>
     <string name="car_now_playing">現正播放</string>
     <string name="car_queue">播放佇列</string>
-    <string name="notification_shuffle">隨機播放</string>
-    <string name="notification_favorite">收藏</string>
+    <string name="notification_favorite_add">加入收藏</string>
+    <string name="notification_favorite_remove">從收藏中移除</string>
+    <string name="notification_shuffle_enable">開啟隨機播放</string>
+    <string name="notification_shuffle_disable">關閉隨機播放</string>
+    <string name="notification_repeat_off">關閉重複播放</string>
+    <string name="notification_repeat_all">全部重複播放</string>
+    <string name="notification_repeat_one">單曲重複播放</string>
     <string name="tile_recognize_music">辨識音樂</string>
     <string name="tile_playback">播放</string>
     <string name="shortcut_search">搜尋</string>

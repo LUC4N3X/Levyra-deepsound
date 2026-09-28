@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Ansluter till spelaren</string>
     <string name="car_now_playing">Spelas nu</string>
     <string name="car_queue">Kö</string>
-    <string name="notification_shuffle">Blanda</string>
-    <string name="notification_favorite">Favorit</string>
+    <string name="notification_favorite_add">Lägg till i favoriter</string>
+    <string name="notification_favorite_remove">Ta bort från favoriter</string>
+    <string name="notification_shuffle_enable">Aktivera blandning</string>
+    <string name="notification_shuffle_disable">Inaktivera blandning</string>
+    <string name="notification_repeat_off">Upprepning av</string>
+    <string name="notification_repeat_all">Upprepa alla</string>
+    <string name="notification_repeat_one">Upprepa en</string>
     <string name="tile_recognize_music">Känn igen musik</string>
     <string name="tile_playback">Uppspelning</string>
     <string name="shortcut_search">Sök</string>

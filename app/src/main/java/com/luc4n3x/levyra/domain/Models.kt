@@ -301,6 +301,12 @@ enum class RepeatMode {
     One
 }
 
+fun RepeatMode.nextInCycle(): RepeatMode = when (this) {
+    RepeatMode.Off -> RepeatMode.All
+    RepeatMode.All -> RepeatMode.One
+    RepeatMode.One -> RepeatMode.Off
+}
+
 const val SPONSOR_SEGMENT_ACTION_SKIP = "skip"
 
 data class SponsorSegment(

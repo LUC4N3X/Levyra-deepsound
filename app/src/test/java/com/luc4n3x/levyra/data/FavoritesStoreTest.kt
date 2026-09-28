@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -53,6 +55,33 @@ class FavoritesStoreTest {
 
         assertEquals(2, updated.size)
         assertTrue(areAllFavoriteTracks(updated, listOf(first, second)))
+    }
+
+    @Test
+    fun explicitFavoriteStateIsIdempotent() {
+        val current = track("current", "Current")
+        val other = track("other", "Other")
+
+        val added = favoriteTracksWithMembership(listOf(other), current, favorite = true)
+        assertEquals(listOf("current", "other"), added.map { it.id })
+        assertSame(added, favoriteTracksWithMembership(added, current.copy(id = " CURRENT "), favorite = true))
+
+        val removed = favoriteTracksWithMembership(added, current, favorite = false)
+        assertEquals(listOf("other"), removed.map { it.id })
+        assertSame(removed, favoriteTracksWithMembership(removed, current, favorite = false))
+    }
+
+    @Test
+    fun membershipUsesFavoriteIdentityRules() {
+        val byId = track("Abc", "Title")
+        val byMetadata = track("", "Song", artist = "Artist")
+        val membership = FavoriteMembership.of(listOf(byId, byMetadata))
+
+        assertTrue(membership.contains(byId.copy(id = " abc ", title = "Renamed")))
+        assertTrue(membership.contains(track("", " song ", artist = "ARTIST")))
+        assertFalse(membership.contains(track("other", "Song", artist = "Artist")))
+        assertTrue(membership.sameTracksAs(listOf(byMetadata, byId)))
+        assertFalse(membership.sameTracksAs(listOf(byId)))
     }
 
     private fun track(

@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Verbindung zum Player wird hergestellt</string>
     <string name="car_now_playing">Aktuelle Wiedergabe</string>
     <string name="car_queue">Warteschlange</string>
-    <string name="notification_shuffle">Zufallswiedergabe</string>
-    <string name="notification_favorite">Zu Favoriten</string>
+    <string name="notification_favorite_add">Zu Favoriten hinzufügen</string>
+    <string name="notification_favorite_remove">Aus Favoriten entfernen</string>
+    <string name="notification_shuffle_enable">Zufallswiedergabe aktivieren</string>
+    <string name="notification_shuffle_disable">Zufallswiedergabe deaktivieren</string>
+    <string name="notification_repeat_off">Wiederholen aus</string>
+    <string name="notification_repeat_all">Alle wiederholen</string>
+    <string name="notification_repeat_one">Titel wiederholen</string>
     <string name="tile_recognize_music">Musik erkennen</string>
     <string name="tile_playback">Wiedergabe</string>
     <string name="shortcut_search">Suche</string>
