@@ -24,8 +24,13 @@
     <string name="car_connecting_player">Ühendamisel pleieriga</string>
     <string name="car_now_playing">Hetkel esitamisel</string>
     <string name="car_queue">Esitusjärjekord</string>
-    <string name="notification_shuffle">Juhuesitus</string>
-    <string name="notification_favorite">Lemmik</string>
+    <string name="notification_favorite_add">Lisa lemmikutesse</string>
+    <string name="notification_favorite_remove">Eemalda lemmikutest</string>
+    <string name="notification_shuffle_enable">Lülita juhuesitus sisse</string>
+    <string name="notification_shuffle_disable">Lülita juhuesitus välja</string>
+    <string name="notification_repeat_off">Kordus väljas</string>
+    <string name="notification_repeat_all">Korda kõiki</string>
+    <string name="notification_repeat_one">Korda ühte</string>
     <string name="tile_recognize_music">Tuvasta muusika</string>
     <string name="tile_playback">Taasesitus</string>
     <string name="shortcut_search">Otsi</string>

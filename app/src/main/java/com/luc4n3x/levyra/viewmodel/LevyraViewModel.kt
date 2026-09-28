@@ -93,6 +93,7 @@ import com.luc4n3x.levyra.domain.BatchDownloadKind
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.PlaylistHitPreview
 import com.luc4n3x.levyra.domain.resolvedWith
+import com.luc4n3x.levyra.domain.nextInCycle
 import com.luc4n3x.levyra.domain.batchDownloadKey
 import com.luc4n3x.levyra.domain.batchDownloadKindOf
 import com.luc4n3x.levyra.domain.batchDownloadProgress
@@ -897,6 +898,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var sharedMediaJob: Job? = null
     private var recognitionCollectorJob: Job? = null
     private var recognitionHistoryJob: Job? = null
+    private var favoriteStoreJob: Job? = null
     private var recognitionMatchJob: Job? = null
     private var jamStateJob: Job? = null
     private var networkTestJob: Job? = null
@@ -1282,6 +1284,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         observeRecognitionHistory()
+        observeFavoriteStore()
         observeJamState()
         observeSimilarSongsSeed()
         observeConnectivity()
@@ -3099,6 +3102,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun observeFavoriteStore() {
+        favoriteStoreJob?.cancel()
+        favoriteStoreJob = viewModelScope.launch {
+            favoritesStore.observeMembership().collect { membership ->
+                val changed = favoriteMutationMutex.withLock {
+                    val stale = withContext(Dispatchers.Default) {
+                        !membership.sameTracksAs(_state.value.favorites)
+                    }
+                    if (stale) {
+                        val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
+                        val timestamps = favoritesStore.loadTimestampsSuspending()
+                        _state.update { state ->
+                            state.copy(
+                                favorites = favorites,
+                                favoriteIds = favorites.map { favorite -> favorite.id }.toSet(),
+                                favoriteTimestamps = timestamps
+                            )
+                        }
+                    }
+                    stale
+                }
+                if (changed) refreshForgottenFavorites()
+            }
+        }
+    }
+
     private fun observeRecognitionHistory() {
         recognitionHistoryJob?.cancel()
         recognitionHistoryJob = viewModelScope.launch {
@@ -3657,11 +3686,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleRepeat() {
         if (jamController.rejectGuestLocalMutation()) return
-        val mode = when (queueEngine.state.value.repeatMode) {
-            RepeatMode.Off -> RepeatMode.All
-            RepeatMode.All -> RepeatMode.One
-            RepeatMode.One -> RepeatMode.Off
-        }
+        val mode = queueEngine.state.value.repeatMode.nextInCycle()
         queueEngine.setRepeatMode(mode)
         player.setRepeatOne(mode == RepeatMode.One)
         refreshQueuePrefetch()
