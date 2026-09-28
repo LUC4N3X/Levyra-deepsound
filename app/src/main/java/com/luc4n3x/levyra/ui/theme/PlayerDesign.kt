@@ -119,10 +119,6 @@ object LevyraPlayerDesign {
 
     fun <T> collapseSpring(): SpringSpec<T> = LevyraMotion.playerCollapse.spec()
 
-    fun <T> playerExpandSpring(): SpringSpec<T> = LevyraMotion.playerExpand.spec()
-
-    fun <T> playerCollapseSpring(): SpringSpec<T> = LevyraMotion.playerCollapse.spec()
-
     fun <T> paletteTween(): TweenSpec<T> = LevyraMotion.palette()
 
     fun <T> emphasizedTween(durationMillis: Int = 320): TweenSpec<T> =
