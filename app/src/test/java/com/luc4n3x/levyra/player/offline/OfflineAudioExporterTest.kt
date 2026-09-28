@@ -31,6 +31,14 @@ class OfflineAudioExporterTest {
     }
 
     @Test
+    fun verifiedFlacSourcesRemainFlacForOfflineExport() {
+        assertTrue(isFlacAudioSource("audio/flac", "https://cdn.example.com/stream/track"))
+        assertTrue(isFlacAudioSource("", "https://cdn.example.com/track.flac?token=abc"))
+        assertTrue(isSupportedOfflineSource("audio/flac", "https://cdn.example.com/stream/track"))
+        assertFalse(isFlacAudioSource("audio/mp4", "https://cdn.example.com/track.flac"))
+    }
+
+    @Test
     fun incompatibleOfflineSourceErrorsAreDetectedWithoutRetryingTheSameUrl() {
         assertTrue(isUnsupportedOfflineAudioSource(IOException("Offline export requires an M4A audio source")))
         assertTrue(isUnsupportedOfflineAudioSource(IOException("Offline export received a non-audio MP4 source")))

@@ -3,6 +3,9 @@ package com.luc4n3x.levyra.data.hqaudio
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.AlternativeAudioSource
+import com.luc4n3x.levyra.domain.AudioQualityPreference
+import com.luc4n3x.levyra.domain.AudioQualityRequest
+import com.luc4n3x.levyra.domain.AudioStreamPurpose
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
@@ -21,10 +24,32 @@ class HighQualityPlaybackCoordinator(
             resolver.mode = value
         }
 
-    fun queryFor(track: Track, isVideoMode: Boolean, audioQuality: String): AlternativeTrackQuery? {
-        if (!resolver.mode.enabled || isVideoMode) return null
+    val playbackRequest: AudioQualityRequest
+        get() = resolver.playbackRequest
+
+    fun configureLossless(enabled: Boolean, quality: AudioQualityPreference) {
+        resolver.configureLossless(enabled, quality)
+    }
+
+    fun invalidateSelections() {
+        resolver.invalidateSelections()
+    }
+
+    fun downloadRequest(quality: AudioQualityPreference): AudioQualityRequest = resolver.requestForDownload(quality)
+
+    fun queryFor(
+        track: Track,
+        isVideoMode: Boolean,
+        audioQuality: String,
+        request: AudioQualityRequest = resolver.playbackRequest
+    ): AlternativeTrackQuery? {
+        if (!resolver.isActive(request) || isVideoMode) return null
         if (track.playbackManifest?.alternativeSource != null) return null
-        if (audioQuality.equals(DATA_SAVER_AUDIO_QUALITY, ignoreCase = true)) return null
+        if (audioQuality.equals(DATA_SAVER_AUDIO_QUALITY, ignoreCase = true) &&
+            request.purpose == AudioStreamPurpose.PLAYBACK && !request.losslessEnabled
+        ) {
+            return null
+        }
         if (isLocalTrack(track)) return null
         if (track.title.isBlank() || track.artist.isBlank() || track.durationMs <= 0L) return null
         return AlternativeTrackQuery(
@@ -41,18 +66,19 @@ class HighQualityPlaybackCoordinator(
         track: Track,
         query: AlternativeTrackQuery,
         provenance: () -> PlaybackStreamProvenance,
+        request: AudioQualityRequest = resolver.playbackRequest,
         resolveNormal: suspend () -> Track
     ): Track {
         val startedAt = clock()
-        val pending = resolver.begin(identityKey(track), query)
+        val pending = resolver.begin(identityKey(track), query, request)
         val normal = runCatchingPreservingCancellation { resolveNormal() }
         val normalTrack = normal.getOrNull()
         if (normalTrack?.playbackManifest?.alternativeSource != null) return normalTrack
-        val waitMs = waitBudgetMs(resolver.mode, clock() - startedAt, normalTrack != null)
+        val waitMs = waitBudgetMs(resolver.mode, request, clock() - startedAt, normalTrack != null)
         when (val resolution = resolver.await(pending, waitMs)) {
             is HighQualityResolution.Selected -> {
                 val normalKbps = normalTrack?.let(::normalAudioKbps)
-                if (HighQualityTierPolicy.accepts(resolution.stream.deliveredKbps, normalKbps, normalTrack != null)) {
+                if (HighQualityTierPolicy.accepts(resolution.stream, normalKbps, normalTrack != null)) {
                     HighQualityAudioDiagnostics.selected(resolution.stream, resolution.evaluation, clock() - startedAt)
                     return applyStream(track, normalTrack, resolution, provenance())
                 }
@@ -73,21 +99,28 @@ class HighQualityPlaybackCoordinator(
         normalCached: Track?,
         isVideoMode: Boolean,
         audioQuality: String,
-        provenance: () -> PlaybackStreamProvenance
+        provenance: () -> PlaybackStreamProvenance,
+        request: AudioQualityRequest = resolver.playbackRequest
     ): Track? {
         if (normalCached?.playbackManifest?.alternativeSource != null) return null
-        queryFor(track, isVideoMode, audioQuality) ?: return null
-        val selection = resolver.cachedSelection(identityKey(track)) ?: return null
+        queryFor(track, isVideoMode, audioQuality, request) ?: return null
+        val selection = resolver.cachedSelection(identityKey(track), request) ?: return null
         val normalKbps = normalCached?.let(::normalAudioKbps)
-        if (!HighQualityTierPolicy.accepts(selection.stream.deliveredKbps, normalKbps, normalCached != null)) return null
+        if (!HighQualityTierPolicy.accepts(selection.stream, normalKbps, normalCached != null)) return null
         return applyStream(track, normalCached, selection, provenance())
     }
 
     /** A cached normal stream must not start playback while a higher-quality lookup can still succeed. */
-    fun awaitsUpgrade(track: Track, normalCached: Track?, isVideoMode: Boolean, audioQuality: String): Boolean {
+    fun awaitsUpgrade(
+        track: Track,
+        normalCached: Track?,
+        isVideoMode: Boolean,
+        audioQuality: String,
+        request: AudioQualityRequest = resolver.playbackRequest
+    ): Boolean {
         if (normalCached?.playbackManifest?.alternativeSource != null) return false
-        queryFor(track, isVideoMode, audioQuality) ?: return false
-        return resolver.upgradePending(identityKey(track))
+        queryFor(track, isVideoMode, audioQuality, request) ?: return false
+        return resolver.upgradePending(identityKey(track), request)
     }
 
     fun providerHealth(): List<ProviderBackendHealth> = resolver.providerHealth()
@@ -96,7 +129,13 @@ class HighQualityPlaybackCoordinator(
 
     fun reportFailure(track: Track, reason: String) {
         val source = track.playbackManifest?.alternativeSource ?: return
-        resolver.reportPlaybackFailure(identityKey(track), source.providerTrackId, reason)
+        resolver.reportPlaybackFailure(
+            identityKey(track),
+            source.providerId,
+            source.providerTrackId,
+            track.streamUrl,
+            reason
+        )
     }
 
     internal fun applyStream(
@@ -109,19 +148,25 @@ class HighQualityPlaybackCoordinator(
         val stream = selection.stream
         val base = normal ?: requested
         val durationMs = requested.durationMs.takeIf { it > 0L } ?: base.durationMs
-        val label = "$SOURCE_LABEL · ${resolver.providerName}"
+        val label = "$SOURCE_LABEL · ${resolver.providerName(stream.providerId)}"
         val descriptor = PlaybackStreamDescriptor(
             url = stream.url,
             kind = PlaybackStreamKind.AUDIO,
-            deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+            deliveryMethod = stream.deliveryMethod,
             container = stream.container,
             mimeType = stream.mimeType,
             codec = stream.codec,
             bitrate = stream.displayKbps * 1_000,
             averageBitrate = stream.deliveredKbps * 1_000,
+            sampleRate = stream.sampleRateHz,
+            bitDepth = stream.bitDepth,
             qualityLabel = stream.qualityLabel,
             expiresAtMs = stream.expiresAtMs,
-            selected = true
+            selected = true,
+            channels = stream.channels,
+            isLossless = stream.isLossless,
+            isSpatial = stream.isSpatial,
+            isAtmos = stream.isAtmos
         )
         val manifest = ResolvedPlaybackManifest(
             sourceVideoId = PlaybackSourceIdentity.sourceVideoId(requested),
@@ -142,7 +187,12 @@ class HighQualityPlaybackCoordinator(
                 providerTrackId = stream.providerTrackId,
                 bitrateKbps = stream.displayKbps,
                 verdict = selection.evaluation.verdict,
-                confidence = selection.evaluation.confidence
+                confidence = selection.evaluation.confidence,
+                requestedQuality = stream.requestedQuality,
+                deliveredQuality = stream.deliveredQuality,
+                isLossless = stream.isLossless,
+                isSpatial = stream.isSpatial,
+                isAtmos = stream.isAtmos
             )
         )
         return base.copy(
@@ -167,8 +217,16 @@ class HighQualityPlaybackCoordinator(
         return (bitsPerSecond / 1_000).takeIf { it > 0 }
     }
 
-    private fun waitBudgetMs(mode: HighQualityAudioMode, normalElapsedMs: Long, normalAvailable: Boolean): Long {
+    private fun waitBudgetMs(
+        mode: HighQualityAudioMode,
+        request: AudioQualityRequest,
+        normalElapsedMs: Long,
+        normalAvailable: Boolean
+    ): Long {
         if (!normalAvailable) return (PREFER_320_WAIT_MS - normalElapsedMs).coerceAtLeast(0L)
+        if (request.losslessEnabled && request.preference.requestsLossless) {
+            return (PREFER_320_WAIT_MS - normalElapsedMs).coerceAtLeast(0L)
+        }
         return when (mode) {
             HighQualityAudioMode.PREFER_320 -> (PREFER_320_WAIT_MS - normalElapsedMs).coerceAtLeast(0L)
             HighQualityAudioMode.AUTOMATIC ->

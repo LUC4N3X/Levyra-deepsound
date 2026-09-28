@@ -22,4 +22,34 @@ class ProviderDestinationPolicyTest {
         assertFalse(ProviderDestinationPolicy.allows("https://jiosaavn.com.evil.example/".toHttpUrl()))
         assertFalse(ProviderDestinationPolicy.allows("https://saavncdn.com.evil.example/".toHttpUrl()))
     }
+
+    @Test
+    fun configurableProviderUsesAnExactHttpsHostAllowlist() {
+        val allowed = setOf("addon.example.org", "cdn.example.org")
+
+        assertTrue(
+            ConfigurableProviderDestinationPolicy.allows(
+                "https://cdn.example.org/audio/track.flac".toHttpUrl(),
+                allowed
+            )
+        )
+        assertFalse(
+            ConfigurableProviderDestinationPolicy.allows(
+                "https://cdn.example.org.evil.test/audio/track.flac".toHttpUrl(),
+                allowed
+            )
+        )
+        assertFalse(
+            ConfigurableProviderDestinationPolicy.allows(
+                "http://cdn.example.org/audio/track.flac".toHttpUrl(),
+                allowed
+            )
+        )
+        assertFalse(
+            ConfigurableProviderDestinationPolicy.allows(
+                "https://user:secret@cdn.example.org/audio/track.flac".toHttpUrl(),
+                allowed
+            )
+        )
+    }
 }

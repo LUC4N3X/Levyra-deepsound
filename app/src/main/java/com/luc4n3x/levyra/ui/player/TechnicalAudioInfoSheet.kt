@@ -304,13 +304,28 @@ internal fun buildSourceRows(
         technicalSourceBitrateKbps(stream)?.let { add(copy.bitrate to "$it kbps") }
         stream?.sampleRate?.takeIf { it > 0 }?.let { add(copy.sampleRate to formatTechnicalSampleRate(it)) }
         stream?.bitDepth?.takeIf { it > 0 }?.let { add(copy.bitDepth to "$it-bit") }
+        stream?.channels?.takeIf { it > 0 }?.let { add(copy.channels to it.toString()) }
         stream?.qualityLabel?.takeIf(String::isNotBlank)?.let { add(copy.quality to it) }
         stream?.itag?.takeIf { it >= 0 }?.let { add(copy.streamId to "itag $it") }
         manifest?.loudnessDb?.takeIf { it.isFinite() }?.let {
             add(copy.loudness to String.format(Locale.ROOT, "%+.1f dB", it))
         }
         alternative?.let {
-            add(copy.verifiedSource to "${it.providerId} · ${it.bitrateKbps} kbps · ${it.verdict.name}")
+            add(copy.requested to it.requestedQuality.storageValue)
+            it.deliveredQuality.takeIf(String::isNotBlank)?.let { quality -> add(copy.delivered to quality) }
+            val format = when {
+                it.isAtmos -> "Dolby Atmos"
+                it.isSpatial -> copy.spatial
+                it.isLossless -> copy.lossless
+                else -> copy.lossy
+            }
+            add(copy.format to format)
+            val verifiedSource = buildList {
+                add(it.providerId)
+                if (it.bitrateKbps > 0) add("${it.bitrateKbps} kbps")
+                add(it.verdict.name)
+            }.joinToString(" · ")
+            add(copy.verifiedSource to verifiedSource)
             add(copy.confidence to "${it.confidence.coerceIn(0, 100)}%")
         }
     }

@@ -202,10 +202,12 @@ internal class FakeHighQualityProvider(
     var lookupOutcome: suspend (String) -> ProviderLookupOutcome = { ProviderLookupOutcome.Missing },
     var streamOutcome: suspend (AlternativeTrackCandidate) -> ProviderStreamOutcome = {
         ProviderStreamOutcome.Resolved(resolvedStream(it))
-    }
+    },
+    providerId: String = "jiosaavn",
+    override val requiresHighQualityMode: Boolean = true
 ) : HighQualityAudioProvider {
-    override val id: String = "jiosaavn"
-    override val displayName: String = "JioSaavn"
+    override val id: String = providerId
+    override val displayName: String = if (providerId == "jiosaavn") "JioSaavn" else providerId
 
     val searches = CopyOnWriteArrayList<String>()
     val lookups = CopyOnWriteArrayList<String>()

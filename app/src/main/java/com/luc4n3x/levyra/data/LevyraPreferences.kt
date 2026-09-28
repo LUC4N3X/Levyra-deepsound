@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -97,6 +98,9 @@ data class LevyraPreferencesSnapshot(
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
     val jamDisplayName: String = "",
     val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
+    val losslessAudioEnabled: Boolean = false,
+    val streamingAudioQuality: AudioQualityPreference = AudioQualityPreference.MAX_QUALITY,
+    val losslessAddonUrl: String = "",
     val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
     val preferredAudioLanguage: String = "",
     val videoQualityTarget: VideoQualityTarget = VideoQualityTarget.AUTO,
@@ -147,6 +151,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_QUALITY] = normalizeAudioQuality(snapshot.audioQuality)
             mutable[KEY_PREFERRED_AUDIO_LANGUAGE] = AudioLanguageIntelligence.normalizeLanguage(snapshot.preferredAudioLanguage)
             mutable[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = snapshot.highQualityAudioMode.storageValue
+            mutable[KEY_LOSSLESS_AUDIO_ENABLED] = snapshot.losslessAudioEnabled
+            mutable[KEY_STREAMING_AUDIO_QUALITY] = snapshot.streamingAudioQuality.storageValue
+            mutable[KEY_LOSSLESS_ADDON_URL] = snapshot.losslessAddonUrl.trim()
             mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
             mutable[KEY_LYRICS_LATENCY_PROFILES] = snapshot.lyricsLatencyProfiles.encode()
@@ -507,6 +514,26 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = mode.storageValue }
     }
 
+    fun losslessAudioEnabled(): Boolean = read { it[KEY_LOSSLESS_AUDIO_ENABLED] ?: false }
+
+    fun setLosslessAudioEnabled(enabled: Boolean) {
+        write { it[KEY_LOSSLESS_AUDIO_ENABLED] = enabled }
+    }
+
+    fun streamingAudioQuality(): AudioQualityPreference = read {
+        AudioQualityPreference.fromStorage(it[KEY_STREAMING_AUDIO_QUALITY])
+    }
+
+    fun setStreamingAudioQuality(quality: AudioQualityPreference) {
+        write { it[KEY_STREAMING_AUDIO_QUALITY] = quality.storageValue }
+    }
+
+    fun losslessAddonUrl(): String = read { it[KEY_LOSSLESS_ADDON_URL].orEmpty().trim() }
+
+    fun setLosslessAddonUrl(value: String) {
+        write { it[KEY_LOSSLESS_ADDON_URL] = value.trim() }
+    }
+
     fun dismissedUpdateVersion(): String = read { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
 
     fun setDismissedUpdateVersion(version: String) {
@@ -685,6 +712,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             automationSettings = automationSettingsFrom(preferences),
             jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty(),
             highQualityAudioMode = HighQualityAudioMode.fromStorage(preferences[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO]),
+            losslessAudioEnabled = preferences[KEY_LOSSLESS_AUDIO_ENABLED] ?: false,
+            streamingAudioQuality = AudioQualityPreference.fromStorage(preferences[KEY_STREAMING_AUDIO_QUALITY]),
+            losslessAddonUrl = preferences[KEY_LOSSLESS_ADDON_URL].orEmpty().trim(),
             lyricsLatencyProfiles = LyricsLatencyProfiles.decode(preferences[KEY_LYRICS_LATENCY_PROFILES].orEmpty()),
             preferredAudioLanguage = AudioLanguageIntelligence.normalizeLanguage(preferences[KEY_PREFERRED_AUDIO_LANGUAGE].orEmpty()),
             videoQualityTarget = VideoQualityTarget.fromStorage(preferences[KEY_VIDEO_QUALITY]),
@@ -1027,6 +1057,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val KEY_PREFERRED_AUDIO_LANGUAGE = stringPreferencesKey("preferred_audio_language")
         val KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO = stringPreferencesKey("high_quality_alternative_audio")
+        val KEY_LOSSLESS_AUDIO_ENABLED = booleanPreferencesKey("lossless_audio_enabled")
+        val KEY_STREAMING_AUDIO_QUALITY = stringPreferencesKey("streaming_audio_quality")
+        val KEY_LOSSLESS_ADDON_URL = stringPreferencesKey("lossless_addon_url")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")

@@ -178,7 +178,12 @@ data class LevyraInterfaceSettings(
 
 enum class LevyraDownloadPreset {
     Automatic,
+    DolbyAtmos,
+    MaxQuality,
+    HiRes,
+    CdLossless,
     HighQuality,
+    Normal,
     DataSaver;
 
     companion object {
@@ -221,16 +226,38 @@ data class LevyraDownloadSettings(
 
     val maxParallelFragments: Int
         get() = when (preset) {
+            LevyraDownloadPreset.DolbyAtmos,
+            LevyraDownloadPreset.MaxQuality,
+            LevyraDownloadPreset.HiRes,
+            LevyraDownloadPreset.CdLossless,
             LevyraDownloadPreset.HighQuality -> 24
             LevyraDownloadPreset.Automatic -> 20
+            LevyraDownloadPreset.Normal -> 18
             LevyraDownloadPreset.DataSaver -> 16
         }
 
     val resolverAudioQuality: String?
         get() = when (preset) {
+            LevyraDownloadPreset.DolbyAtmos,
+            LevyraDownloadPreset.MaxQuality,
+            LevyraDownloadPreset.HiRes,
+            LevyraDownloadPreset.CdLossless,
             LevyraDownloadPreset.HighQuality -> "High"
+            LevyraDownloadPreset.Normal -> "Auto"
             LevyraDownloadPreset.DataSaver -> "Low"
             LevyraDownloadPreset.Automatic -> null
+        }
+
+    val audioQualityPreference: AudioQualityPreference
+        get() = when (preset) {
+            LevyraDownloadPreset.DolbyAtmos -> AudioQualityPreference.DOLBY_ATMOS
+            LevyraDownloadPreset.MaxQuality -> AudioQualityPreference.MAX_QUALITY
+            LevyraDownloadPreset.HiRes -> AudioQualityPreference.HI_RES
+            LevyraDownloadPreset.CdLossless -> AudioQualityPreference.CD_LOSSLESS
+            LevyraDownloadPreset.HighQuality -> AudioQualityPreference.HIGH
+            LevyraDownloadPreset.Normal -> AudioQualityPreference.NORMAL
+            LevyraDownloadPreset.DataSaver -> AudioQualityPreference.DATA_SAVER
+            LevyraDownloadPreset.Automatic -> AudioQualityPreference.MAX_QUALITY
         }
 
     val storedPresetKey: String

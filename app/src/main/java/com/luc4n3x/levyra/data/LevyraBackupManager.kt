@@ -27,6 +27,7 @@ import com.luc4n3x.levyra.data.local.PlaylistTagLinkEntity
 import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.LevyraAmbientMode
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
@@ -1011,6 +1012,9 @@ class LevyraBackupManager(private val context: Context) {
             .put("audioQuality", snapshot.audioQuality)
             .put("preferredAudioLanguage", snapshot.preferredAudioLanguage)
             .put("highQualityAudioMode", snapshot.highQualityAudioMode.storageValue)
+            .put("losslessAudioEnabled", snapshot.losslessAudioEnabled)
+            .put("streamingAudioQuality", snapshot.streamingAudioQuality.storageValue)
+            .put("losslessAddonUrl", snapshot.losslessAddonUrl)
             .put("audioNormalization", snapshot.audioNormalization)
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
             .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
@@ -1053,6 +1057,9 @@ class LevyraBackupManager(private val context: Context) {
             highQualityAudioMode = HighQualityAudioMode.fromStorage(
                 json.optString("highQualityAudioMode", HighQualityAudioMode.PREFER_320.storageValue)
             ),
+            losslessAudioEnabled = json.optBoolean("losslessAudioEnabled", false),
+            streamingAudioQuality = AudioQualityPreference.fromStorage(json.optString("streamingAudioQuality")),
+            losslessAddonUrl = json.optString("losslessAddonUrl").trim(),
             dismissedUpdateVersion = preferences.dismissedUpdateVersion(),
             lastTrack = json.optJSONObject("lastTrack")?.let(TrackJson::fromJson),
             lastPositionMs = json.optLong("lastPositionMs").coerceAtLeast(0L),

@@ -17,6 +17,9 @@ import com.luc4n3x.levyra.data.hqaudio.ProviderStreamValidator
 import com.luc4n3x.levyra.data.hqaudio.ResolvedHighQualityStream
 import com.luc4n3x.levyra.data.hqaudio.StreamRejection
 import com.luc4n3x.levyra.data.hqaudio.StreamValidation
+import com.luc4n3x.levyra.domain.AudioQualityPreference
+import com.luc4n3x.levyra.domain.AudioQualityRequest
+import com.luc4n3x.levyra.domain.AudioStreamPurpose
 import java.io.IOException
 import java.io.InterruptedIOException
 import kotlinx.coroutines.currentCoroutineContext
@@ -83,51 +86,76 @@ internal class JioSaavnAudioProvider(
     )
 
     override suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome {
+        return resolveStream(candidate, QUALITY_ORDER)
+    }
+
+    override suspend fun resolveStream(
+        candidate: AlternativeTrackCandidate,
+        request: AudioQualityRequest
+    ): ProviderStreamOutcome = when (val outcome = resolveStream(candidate, qualityOrder(request))) {
+        is ProviderStreamOutcome.Resolved -> ProviderStreamOutcome.Resolved(
+            outcome.stream.copy(
+                requestedQuality = if (request.purpose == AudioStreamPurpose.PLAYBACK && !request.losslessEnabled) {
+                    AudioQualityPreference.HIGH
+                } else {
+                    request.preference
+                }
+            )
+        )
+        else -> outcome
+    }
+
+    private suspend fun resolveStream(
+        candidate: AlternativeTrackCandidate,
+        qualityOrder: List<AudioQualityTier>
+    ): ProviderStreamOutcome {
         if (candidate.mediaToken.isBlank()) return ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
         val rejections = mutableListOf<StreamRejection>()
         val probed = mutableSetOf<String>()
-        val direct = resolveViaDirectDecryption(candidate, rejections, probed)
+        val direct = resolveViaDirectDecryption(candidate, qualityOrder, rejections, probed)
         direct.resolved?.let { return it }
-        return resolveViaAuthToken(candidate, direct.location, rejections, probed)
+        return resolveViaAuthToken(candidate, direct.location, qualityOrder, rejections, probed)
     }
 
     private suspend fun resolveViaDirectDecryption(
         candidate: AlternativeTrackCandidate,
+        qualityOrder: List<AudioQualityTier>,
         rejections: MutableList<StreamRejection>,
         probed: MutableSet<String>
     ): DirectDecryptionAttempt {
         val location = JioSaavnMediaLocation.fromMediaToken(candidate.mediaToken) ?: return DirectDecryptionAttempt(null, null)
         HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_DIRECT, candidate.offers320, location.openHost)
-        val resolved = probeTiers(candidate, location, QUALITY_ORDER.take(1), rejections, probed)
+        val resolved = probeTiers(candidate, location, qualityOrder.take(1), rejections, probed)
         return DirectDecryptionAttempt(location, resolved)
     }
 
     private suspend fun resolveViaAuthToken(
         candidate: AlternativeTrackCandidate,
         direct: JioSaavnMediaLocation?,
+        qualityOrder: List<AudioQualityTier>,
         rejections: MutableList<StreamRejection>,
         probed: MutableSet<String>
     ): ProviderStreamOutcome {
         HighQualityAudioDiagnostics.mediaRoute(id, candidate.providerTrackId, ROUTE_AUTHORIZED, candidate.offers320, "-")
-        val authorizeUrl = JioSaavnEndpoints.authorizeMedia(candidate.mediaToken, AudioQualityTier.KBPS_320)
+        val authorizeUrl = JioSaavnEndpoints.authorizeMedia(candidate.mediaToken, qualityOrder.first())
         val authorization = when (val result = api(authorizeUrl, authorizationCircuitBreaker)) {
             is ApiResult.Success -> JioSaavnPayloadParser.mediaAuthorization(result.body)
             is ApiResult.Failure ->
-                return directFallback(candidate, direct, rejections, probed) ?: ProviderStreamOutcome.Failed(result.failure)
+                return directFallback(candidate, direct, qualityOrder, rejections, probed) ?: ProviderStreamOutcome.Failed(result.failure)
         }
         val location = when (authorization) {
             is JioSaavnMediaAuthorization.Granted -> JioSaavnMediaLocation.parse(authorization.url)
-                ?: return directFallback(candidate, direct, rejections, probed)
+                ?: return directFallback(candidate, direct, qualityOrder, rejections, probed)
                     ?: ProviderStreamOutcome.Failed(ProviderFailure.MALFORMED_RESPONSE)
             JioSaavnMediaAuthorization.Denied ->
-                return directFallback(candidate, direct, rejections, probed)
+                return directFallback(candidate, direct, qualityOrder, rejections, probed)
                     ?: ProviderStreamOutcome.Unavailable(rejections + StreamRejection.NO_MEDIA)
             JioSaavnMediaAuthorization.Malformed ->
-                return directFallback(candidate, direct, rejections, probed)
+                return directFallback(candidate, direct, qualityOrder, rejections, probed)
                     ?: ProviderStreamOutcome.Failed(ProviderFailure.MALFORMED_RESPONSE)
         }
-        return probeTiers(candidate, location, QUALITY_ORDER, rejections, probed)
-            ?: directFallback(candidate, direct, rejections, probed)
+        return probeTiers(candidate, location, qualityOrder, rejections, probed)
+            ?: directFallback(candidate, direct, qualityOrder, rejections, probed)
             ?: ProviderStreamOutcome.Unavailable(rejections)
     }
 
@@ -139,9 +167,17 @@ internal class JioSaavnAudioProvider(
     private suspend fun directFallback(
         candidate: AlternativeTrackCandidate,
         direct: JioSaavnMediaLocation?,
+        qualityOrder: List<AudioQualityTier>,
         rejections: MutableList<StreamRejection>,
         probed: MutableSet<String>
-    ): ProviderStreamOutcome? = direct?.let { probeTiers(candidate, it, QUALITY_ORDER.drop(1), rejections, probed) }
+    ): ProviderStreamOutcome? = direct?.let { probeTiers(candidate, it, qualityOrder.drop(1), rejections, probed) }
+
+    private fun qualityOrder(request: AudioQualityRequest): List<AudioQualityTier> = when {
+        request.purpose == AudioStreamPurpose.PLAYBACK && !request.losslessEnabled -> QUALITY_ORDER
+        request.preference == AudioQualityPreference.NORMAL -> listOf(AudioQualityTier.KBPS_160, AudioQualityTier.KBPS_96)
+        request.preference == AudioQualityPreference.DATA_SAVER -> listOf(AudioQualityTier.KBPS_96)
+        else -> QUALITY_ORDER
+    }
 
     private suspend fun probeTiers(
         candidate: AlternativeTrackCandidate,

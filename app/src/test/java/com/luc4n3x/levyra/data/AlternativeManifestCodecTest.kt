@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.AlternativeAudioSource
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
+import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
@@ -46,7 +47,16 @@ class AlternativeManifestCodecTest {
 
     @Test
     fun alternativeProvenanceSurvivesRoundTrip() {
-        val source = AlternativeAudioSource("jiosaavn", "pW-kkdqr", 320, AlternativeMatchVerdict.EXACT, 100)
+        val source = AlternativeAudioSource(
+            "lossless-addon",
+            "pW-kkdqr",
+            2_304,
+            AlternativeMatchVerdict.EXACT,
+            100,
+            requestedQuality = AudioQualityPreference.MAX_QUALITY,
+            deliveredQuality = "Hi-Res 24-bit / 192 kHz",
+            isLossless = true
+        )
         val decoded = PlaybackManifestCodec.decode(PlaybackManifestCodec.encode(manifest(source)))!!
         assertEquals(source, decoded.alternativeSource)
         assertTrue(decoded.isAlternativeSource)

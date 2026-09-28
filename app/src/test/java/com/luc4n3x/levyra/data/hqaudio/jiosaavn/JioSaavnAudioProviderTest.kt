@@ -24,6 +24,9 @@ import com.luc4n3x.levyra.data.hqaudio.query
 import com.luc4n3x.levyra.data.hqaudio.saavnSong
 import com.luc4n3x.levyra.data.hqaudio.searchBody
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.AudioQualityPreference
+import com.luc4n3x.levyra.domain.AudioQualityRequest
+import com.luc4n3x.levyra.domain.AudioStreamPurpose
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.Base64
@@ -145,6 +148,61 @@ class JioSaavnAudioProviderTest {
         assertEquals("audio/mp4", stream.mimeType)
         runBlocking { provider.resolveStream(candidate(duration = 200)) }
         assertEquals(1, exchange.requests.count { it.url.startsWith("https://web.saavncdn.com/") })
+    }
+
+    @Test
+    fun normalAndDataSaverRequestsDoNotProbeHigherJioTiers() {
+        val normalExchange = ScriptedExchange { request ->
+            if (request.url.endsWith("_160.mp4")) validFor(160) else htmlResponse(404)
+        }
+        val normal = runBlocking {
+            provider(normalExchange).resolveStream(
+                localCandidate,
+                AudioQualityRequest(
+                    preference = AudioQualityPreference.NORMAL,
+                    purpose = AudioStreamPurpose.DOWNLOAD
+                )
+            )
+        } as ProviderStreamOutcome.Resolved
+        assertEquals(AudioQualityTier.KBPS_160, normal.stream.tier)
+        assertEquals(AudioQualityPreference.NORMAL, normal.stream.requestedQuality)
+        assertFalse(normalExchange.requests.any { it.url.endsWith("_320.mp4") })
+
+        val saverExchange = ScriptedExchange { request ->
+            if (request.url.endsWith("_96.mp4")) validFor(96) else htmlResponse(404)
+        }
+        val saver = runBlocking {
+            provider(saverExchange).resolveStream(
+                localCandidate,
+                AudioQualityRequest(
+                    preference = AudioQualityPreference.DATA_SAVER,
+                    purpose = AudioStreamPurpose.DOWNLOAD
+                )
+            )
+        } as ProviderStreamOutcome.Resolved
+        assertEquals(AudioQualityTier.KBPS_96, saver.stream.tier)
+        assertEquals(AudioQualityPreference.DATA_SAVER, saver.stream.requestedQuality)
+        assertFalse(saverExchange.requests.any { it.url.endsWith("_320.mp4") || it.url.endsWith("_160.mp4") })
+    }
+
+    @Test
+    fun disabledLosslessFeaturePreservesTheExistingJioPlaybackOrder() {
+        val exchange = ScriptedExchange { request ->
+            if (request.url.endsWith("_320.mp4")) validFor(320) else htmlResponse(404)
+        }
+        val stream = runBlocking {
+            provider(exchange).resolveStream(
+                localCandidate,
+                AudioQualityRequest(
+                    preference = AudioQualityPreference.DATA_SAVER,
+                    purpose = AudioStreamPurpose.PLAYBACK,
+                    losslessEnabled = false
+                )
+            )
+        } as ProviderStreamOutcome.Resolved
+
+        assertEquals(AudioQualityTier.KBPS_320, stream.stream.tier)
+        assertEquals(AudioQualityPreference.HIGH, stream.stream.requestedQuality)
     }
 
     @Test

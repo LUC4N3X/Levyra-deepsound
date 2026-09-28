@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
+import com.luc4n3x.levyra.domain.AudioQualityRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -13,11 +14,15 @@ internal class HighQualityProviderLane(
     private val clock: () -> Long,
     private val isTrackQuarantined: (providerTrackId: String) -> Boolean
 ) {
-    suspend fun resolve(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution = try {
+    suspend fun resolve(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        request: AudioQualityRequest
+    ): HighQualityResolution = try {
         val queryFingerprint = AlternativeTrackFingerprint.of(query)
         val stored = mappingStore.load(identityKey, provider.id, queryFingerprint)
-        val refreshed = stored?.let { refreshStoredMapping(identityKey, query, it) }
-        refreshed ?: searchAndResolve(identityKey, query, queryFingerprint)
+        val refreshed = stored?.let { refreshStoredMapping(identityKey, query, it, request) }
+        refreshed ?: searchAndResolve(identityKey, query, queryFingerprint, request)
     } catch (error: CancellationException) {
         throw error
     } catch (error: Exception) {
@@ -27,7 +32,8 @@ internal class HighQualityProviderLane(
     private suspend fun refreshStoredMapping(
         identityKey: String,
         query: AlternativeTrackQuery,
-        mapping: StoredAlternativeMapping
+        mapping: StoredAlternativeMapping,
+        request: AudioQualityRequest
     ): HighQualityResolution? {
         if (isTrackQuarantined(mapping.providerTrackId)) {
             mappingStore.remove(identityKey, provider.id)
@@ -47,7 +53,7 @@ internal class HighQualityProviderLane(
                     null
                 } else {
                     HighQualityAudioDiagnostics.cacheHit(provider.id, mapping.providerTrackId)
-                    resolveStream(identityKey, evaluation, mapping.queryFingerprint)
+                    resolveStream(identityKey, evaluation, mapping.queryFingerprint, request)
                 }
             }
             ProviderLookupOutcome.Missing -> {
@@ -65,13 +71,14 @@ internal class HighQualityProviderLane(
     private suspend fun searchAndResolve(
         identityKey: String,
         query: AlternativeTrackQuery,
-        queryFingerprint: String
+        queryFingerprint: String,
+        request: AudioQualityRequest
     ): HighQualityResolution {
         val collected = LinkedHashMap<String, AlternativeTrackCandidate>()
         var selection: AlternativeMatchSelection = AlternativeMatchSelection.Rejected(MatchRejection.NO_CANDIDATES, emptyList())
         for ((index, text) in AlternativeSearchPlan.queries(query).withIndex()) {
             currentCoroutineContext().ensureActive()
-            when (val outcome = provider.search(text)) {
+            when (val outcome = provider.search(text, request)) {
                 is ProviderSearchOutcome.Failed ->
                     return HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
                 is ProviderSearchOutcome.Found -> {
@@ -97,7 +104,7 @@ internal class HighQualityProviderLane(
             is AlternativeMatchSelection.Accepted -> {
                 HighQualityAudioDiagnostics.matchAccepted(query, finalSelection.evaluation)
                 when (val hydration = hydrate(query, finalSelection.evaluation)) {
-                    is Hydration.Ready -> resolveStream(identityKey, hydration.evaluation, queryFingerprint)
+                    is Hydration.Ready -> resolveStream(identityKey, hydration.evaluation, queryFingerprint, request)
                     is Hydration.Refused -> hydration.fallback
                 }
             }
@@ -154,8 +161,9 @@ internal class HighQualityProviderLane(
     private suspend fun resolveStream(
         identityKey: String,
         evaluation: AlternativeMatchEvaluation,
-        queryFingerprint: String
-    ): HighQualityResolution = when (val outcome = provider.resolveStream(evaluation.candidate)) {
+        queryFingerprint: String,
+        request: AudioQualityRequest
+    ): HighQualityResolution = when (val outcome = provider.resolveStream(evaluation.candidate, request)) {
         is ProviderStreamOutcome.Resolved -> {
             mappingStore.save(
                 identityKey,

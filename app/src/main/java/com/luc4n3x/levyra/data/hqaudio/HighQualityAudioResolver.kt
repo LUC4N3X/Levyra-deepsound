@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.domain.AudioQualityPreference
+import com.luc4n3x.levyra.domain.AudioQualityRequest
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -38,15 +40,30 @@ sealed interface HighQualityResolution {
 }
 
 class HighQualityAudioResolver(
-    private val provider: HighQualityAudioProvider,
+    private val providers: List<HighQualityAudioProvider>,
     private val mappingStore: HighQualityMappingStore,
     private val scope: CoroutineScope,
     matcher: AlternativeTrackMatcher = AlternativeTrackMatcher(),
     private val clock: () -> Long = System::currentTimeMillis,
     private val lookupBudgetMs: Long = LOOKUP_BUDGET_MS
 ) {
-    private val lane = HighQualityProviderLane(provider, mappingStore, matcher, clock) { providerTrackId ->
-        isQuarantined(quarantinedProviderTracks, providerTrackId)
+    constructor(
+        provider: HighQualityAudioProvider,
+        mappingStore: HighQualityMappingStore,
+        scope: CoroutineScope,
+        matcher: AlternativeTrackMatcher = AlternativeTrackMatcher(),
+        clock: () -> Long = System::currentTimeMillis,
+        lookupBudgetMs: Long = LOOKUP_BUDGET_MS
+    ) : this(listOf(provider), mappingStore, scope, matcher, clock, lookupBudgetMs)
+
+    init {
+        require(providers.isNotEmpty()) { "At least one high-quality audio provider is required" }
+    }
+
+    private val lanes = providers.map { provider ->
+        HighQualityProviderLane(provider, mappingStore, matcher, clock) { providerTrackId ->
+            isQuarantined(quarantinedProviderTracks, providerTrackKey(provider.id, providerTrackId))
+        }
     }
     private val streams = ConcurrentHashMap<String, HighQualityResolution.Selected>()
     private val quarantinedIdentities = ConcurrentHashMap<String, Long>()
@@ -59,54 +76,97 @@ class HighQualityAudioResolver(
     var mode: HighQualityAudioMode = HighQualityAudioMode.OFF
         set(value) {
             field = value
-            if (!value.enabled) streams.clear()
+            if (!value.enabled && !playbackRequest.losslessEnabled) streams.clear()
         }
 
+    @Volatile
+    var playbackRequest: AudioQualityRequest = AudioQualityRequest()
+        private set
+
     val providerId: String
-        get() = provider.id
+        get() = providers.first().id
 
     val providerName: String
-        get() = provider.displayName
+        get() = providers.first().displayName
 
-    fun providerHealth(): List<ProviderBackendHealth> = provider.health()
+    fun providerHealth(): List<ProviderBackendHealth> = providers.flatMap(HighQualityAudioProvider::health)
 
-    fun cachedSelection(identityKey: String): HighQualityResolution.Selected? {
-        if (!mode.enabled || isQuarantined(quarantinedIdentities, identityKey)) return null
-        val cached = streams[identityKey] ?: return null
+    fun providerName(providerId: String): String =
+        providers.firstOrNull { it.id == providerId }?.displayName ?: providerId
+
+    fun configureLossless(enabled: Boolean, quality: AudioQualityPreference) {
+        val updated = AudioQualityRequest(preference = quality, losslessEnabled = enabled)
+        if (updated == playbackRequest) return
+        playbackRequest = updated
+        streams.clear()
+        unmatchedIdentities.clear()
+    }
+
+    fun invalidateSelections() {
+        streams.clear()
+        unmatchedIdentities.clear()
+        quarantinedIdentities.clear()
+    }
+
+    fun requestForDownload(quality: AudioQualityPreference): AudioQualityRequest = AudioQualityRequest(
+        preference = quality,
+        purpose = com.luc4n3x.levyra.domain.AudioStreamPurpose.DOWNLOAD,
+        losslessEnabled = playbackRequest.losslessEnabled
+    )
+
+    fun isActive(request: AudioQualityRequest = playbackRequest): Boolean =
+        mode.enabled || request.losslessEnabled
+
+    fun cachedSelection(
+        identityKey: String,
+        request: AudioQualityRequest = playbackRequest
+    ): HighQualityResolution.Selected? {
+        val key = resolutionKey(identityKey, request)
+        if (!isActive(request)) return null
+        val cached = streams[key] ?: return null
         val usable = cached.stream.isFresh(clock(), STREAM_REFRESH_MARGIN_MS) &&
-            !isQuarantined(quarantinedProviderTracks, cached.stream.providerTrackId)
+            !isQuarantined(
+                quarantinedProviderTracks,
+                providerTrackKey(cached.stream.providerId, cached.stream.providerTrackId)
+            )
         if (!usable) {
-            streams.remove(identityKey, cached)
+            streams.remove(key, cached)
             return null
         }
         return cached
     }
 
     /** True while a provider stream could still be found for this identity and none is cached yet. */
-    fun upgradePending(identityKey: String): Boolean {
-        if (!mode.enabled) return false
+    fun upgradePending(identityKey: String, request: AudioQualityRequest = playbackRequest): Boolean {
+        val key = resolutionKey(identityKey, request)
+        if (!isActive(request)) return false
         if (isQuarantined(quarantinedIdentities, identityKey)) return false
-        if (isQuarantined(unmatchedIdentities, identityKey)) return false
-        if (cachedSelection(identityKey) != null) return false
+        if (isQuarantined(unmatchedIdentities, key)) return false
+        if (cachedSelection(identityKey, request) != null) return false
         return synchronized(inFlightLock) {
-            inFlight.containsKey(identityKey) || inFlight.size < MAX_IN_FLIGHT_LOOKUPS
+            inFlight.containsKey(key) || inFlight.size < MAX_IN_FLIGHT_LOOKUPS
         }
     }
 
-    fun begin(identityKey: String, query: AlternativeTrackQuery): Deferred<HighQualityResolution> {
-        if (!mode.enabled) return completed(HighQualityFallbackReason.DISABLED)
+    fun begin(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        request: AudioQualityRequest = playbackRequest
+    ): Deferred<HighQualityResolution> {
+        val key = resolutionKey(identityKey, request)
+        if (!isActive(request)) return completed(HighQualityFallbackReason.DISABLED)
         if (isQuarantined(quarantinedIdentities, identityKey)) return completed(HighQualityFallbackReason.QUARANTINED)
-        if (isQuarantined(unmatchedIdentities, identityKey)) return completed(HighQualityFallbackReason.NO_MATCH)
-        cachedSelection(identityKey)?.let { return CompletableDeferred(it) }
+        if (isQuarantined(unmatchedIdentities, key)) return completed(HighQualityFallbackReason.NO_MATCH)
+        cachedSelection(identityKey, request)?.let { return CompletableDeferred(it) }
         val lookup = synchronized(inFlightLock) {
-            inFlight[identityKey]?.let { return it }
+            inFlight[key]?.let { return it }
             if (inFlight.size >= MAX_IN_FLIGHT_LOOKUPS) return completed(HighQualityFallbackReason.BUSY)
-            scope.async(start = CoroutineStart.LAZY) { lookup(identityKey, query) }
-                .also { inFlight[identityKey] = it }
+            scope.async(start = CoroutineStart.LAZY) { lookup(identityKey, query, request) }
+                .also { inFlight[key] = it }
         }
         lookup.invokeOnCompletion {
             synchronized(inFlightLock) {
-                inFlight.remove(identityKey, lookup)
+                inFlight.remove(key, lookup)
             }
         }
         lookup.start()
@@ -125,21 +185,61 @@ class HighQualityAudioResolver(
         HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup cancelled")
     }
 
-    fun reportPlaybackFailure(identityKey: String, providerTrackId: String, reason: String) {
+    fun reportPlaybackFailure(
+        identityKey: String,
+        providerId: String,
+        providerTrackId: String,
+        streamUrl: String,
+        reason: String
+    ) {
         val until = clock() + FAILURE_QUARANTINE_MS
-        streams.remove(identityKey)
-        quarantine(quarantinedIdentities, identityKey, until)
-        if (providerTrackId.isNotBlank()) quarantine(quarantinedProviderTracks, providerTrackId, until)
-        mappingStore.remove(identityKey, provider.id)
+        streams.keys.removeAll { it.startsWith("$identityKey|") }
+        val provider = providers.firstOrNull { it.id == providerId }
+        provider?.reportStreamFailure(providerTrackId, streamUrl, reason)
+        if (providerTrackId.isNotBlank() && provider?.quarantineTrackOnStreamFailure != false) {
+            quarantine(quarantinedIdentities, identityKey, until)
+            quarantine(quarantinedProviderTracks, providerTrackKey(providerId, providerTrackId), until)
+            mappingStore.remove(identityKey, providerId)
+        }
         HighQualityAudioDiagnostics.fallback(HighQualityFallbackReason.QUARANTINED, "playback failure: ${reason.take(80)}", providerTrackId)
     }
 
-    private suspend fun lookup(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution {
-        val resolution = withTimeoutOrNull(lookupBudgetMs) { lane.resolve(identityKey, query) }
-            ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
-        if (resolution is HighQualityResolution.Selected && mode.enabled) rememberStream(identityKey, resolution)
+    fun reportPlaybackFailure(identityKey: String, providerId: String, providerTrackId: String, reason: String) {
+        reportPlaybackFailure(identityKey, providerId, providerTrackId, "", reason)
+    }
+
+    fun reportPlaybackFailure(identityKey: String, providerTrackId: String, reason: String) {
+        reportPlaybackFailure(identityKey, providers.first().id, providerTrackId, "", reason)
+    }
+
+    private suspend fun lookup(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        request: AudioQualityRequest
+    ): HighQualityResolution {
+        var resolution: HighQualityResolution = HighQualityResolution.Fallback(HighQualityFallbackReason.NO_MATCH)
+        val startedNanos = System.nanoTime()
+        val activeLanes = lanes.filter { lane ->
+            lane.provider.isEnabled(request) &&
+                (mode.enabled || request.losslessEnabled || !lane.provider.requiresHighQualityMode)
+        }
+        for (lane in activeLanes) {
+            currentCoroutineContext().ensureActive()
+            val elapsedMs = (System.nanoTime() - startedNanos).coerceAtLeast(0L) / 1_000_000L
+            val remainingMs = (lookupBudgetMs - elapsedMs).coerceAtLeast(0L)
+            if (remainingMs == 0L) {
+                resolution = HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "overall budget")
+                break
+            }
+            resolution = withTimeoutOrNull(minOf(remainingMs, lane.provider.resolutionTimeoutMs)) {
+                lane.resolve(identityKey, query, request)
+            } ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, lane.provider.id)
+            if (resolution is HighQualityResolution.Selected) break
+        }
+        val key = resolutionKey(identityKey, request)
+        if (resolution is HighQualityResolution.Selected && isActive(request)) rememberStream(key, resolution)
         if (resolution is HighQualityResolution.Fallback && resolution.reason in DEFINITIVE_MISSES) {
-            quarantine(unmatchedIdentities, identityKey, clock() + UNMATCHED_MEMORY_MS)
+            quarantine(unmatchedIdentities, key, clock() + UNMATCHED_MEMORY_MS)
         }
         return resolution
     }
@@ -172,6 +272,12 @@ class HighQualityAudioResolver(
         entries.remove(key, until)
         return false
     }
+
+    private fun resolutionKey(identityKey: String, request: AudioQualityRequest): String =
+        "$identityKey|${request.cacheKey}"
+
+    private fun providerTrackKey(providerId: String, providerTrackId: String): String =
+        "$providerId|$providerTrackId"
 
     private fun completed(reason: HighQualityFallbackReason): Deferred<HighQualityResolution> =
         CompletableDeferred(HighQualityResolution.Fallback(reason))

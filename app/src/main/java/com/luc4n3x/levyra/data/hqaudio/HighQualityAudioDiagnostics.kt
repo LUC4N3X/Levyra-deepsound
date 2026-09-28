@@ -176,10 +176,10 @@ internal object HighQualityAudioDiagnostics {
 
     fun selected(stream: ResolvedHighQualityStream, evaluation: AlternativeMatchEvaluation, waitedMs: Long) {
         Timber.d(
-            "HQ_PROVIDER_SELECTED provider=%s id=%s tier=%dkbps estimated=%dkbps label=\"%s\" mime=%s host=%s verdict=%s confidence=%d waitedMs=%d",
+            "HQ_PROVIDER_SELECTED provider=%s id=%s tier=%s estimated=%dkbps label=\"%s\" mime=%s host=%s verdict=%s confidence=%d waitedMs=%d",
             stream.providerId,
             stream.providerTrackId,
-            stream.tier.kbps,
+            stream.tier?.let { "${it.kbps}kbps" } ?: stream.qualityLabel,
             stream.estimatedKbps,
             stream.qualityLabel,
             stream.mimeType,

@@ -54,7 +54,11 @@ data class PlaybackStreamDescriptor(
     val itag: Int = -1,
     val qualityLabel: String = "",
     val expiresAtMs: Long = 0L,
-    val selected: Boolean = false
+    val selected: Boolean = false,
+    val channels: Int = 0,
+    val isLossless: Boolean = false,
+    val isSpatial: Boolean = false,
+    val isAtmos: Boolean = false
 ) {
     fun isFresh(nowMs: Long = System.currentTimeMillis(), refreshAheadMs: Long = 90_000L): Boolean {
         if (url.isBlank()) return false
