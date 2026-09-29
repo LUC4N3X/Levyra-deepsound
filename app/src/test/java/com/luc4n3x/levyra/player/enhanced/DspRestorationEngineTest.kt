@@ -122,4 +122,83 @@ class DspRestorationEngineTest {
             assertEquals(0f, s, 1e-5f)
         }
     }
+
+    @Test
+    fun process_pureMonoSignal_preservesIdenticalChannels() {
+        val frames = 1024
+        val input = FloatArray(frames * channels)
+        for (i in 0 until frames) {
+            val s = sin(2.0 * PI * 11_000.0 * i / sampleRate).toFloat() * 0.5f
+            input[i * 2] = s
+            input[i * 2 + 1] = s
+        }
+        val output = FloatArray(frames * channels)
+
+        val metrics = EnhancedAudioMetrics(
+            deficitConfidence = 0.9f,
+            adaptiveResidualGain = 0.45f,
+            stereoCoherence = 1.0f,
+            bypassed = false
+        )
+
+        engine.process(input, output, 0, frames, metrics)
+
+        for (i in 0 until frames) {
+            val left = output[i * 2]
+            val right = output[i * 2 + 1]
+            assertEquals("Mono channels must be identical", left, right, 1e-7f)
+        }
+    }
+
+    @Test
+    fun process_hardPannedLeftSignal_producesZeroBleedInSilentChannel() {
+        val frames = 1024
+        val input = FloatArray(frames * channels)
+        for (i in 0 until frames) {
+            val s = sin(2.0 * PI * 11_000.0 * i / sampleRate).toFloat() * 0.5f
+            input[i * 2] = s
+            input[i * 2 + 1] = 0f // Completely silent right channel
+        }
+        val output = FloatArray(frames * channels)
+
+        val metrics = EnhancedAudioMetrics(
+            deficitConfidence = 0.9f,
+            adaptiveResidualGain = 0.40f,
+            stereoCoherence = 0.5f,
+            bypassed = false
+        )
+
+        engine.process(input, output, 0, frames, metrics)
+
+        for (i in 0 until frames) {
+            val right = output[i * 2 + 1]
+            assertEquals("Silent channel must remain completely silent without bleed", 0f, right, 1e-6f)
+        }
+    }
+
+    @Test
+    fun process_antiCorrelatedStereo_suppressesSideExcitation() {
+        val frames = 1024
+        val input = FloatArray(frames * channels)
+        for (i in 0 until frames) {
+            val s = sin(2.0 * PI * 11_000.0 * i / sampleRate).toFloat() * 0.5f
+            input[i * 2] = s
+            input[i * 2 + 1] = -s // Out of phase
+        }
+        val output = FloatArray(frames * channels)
+
+        val metrics = EnhancedAudioMetrics(
+            deficitConfidence = 0.9f,
+            adaptiveResidualGain = 0.40f,
+            stereoCoherence = -1.0f, // Negative coherence
+            bypassed = false
+        )
+
+        val success = engine.process(input, output, 0, frames, metrics)
+        assertTrue(success)
+        for (i in 0 until frames) {
+            assertFalse(output[i * 2].isNaN())
+            assertFalse(output[i * 2 + 1].isNaN())
+        }
+    }
 }

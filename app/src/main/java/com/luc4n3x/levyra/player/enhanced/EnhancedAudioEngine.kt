@@ -29,8 +29,25 @@ interface EnhancedAudioEngine {
         output: FloatArray,
         offset: Int,
         frames: Int,
-        metrics: EnhancedAudioMetrics
+        adaptiveResidualGain: Float,
+        stereoCoherence: Float = 1f
     ): Boolean
+
+    fun process(
+        input: FloatArray,
+        output: FloatArray,
+        offset: Int,
+        frames: Int,
+        metrics: EnhancedAudioMetrics
+    ): Boolean = process(input, output, offset, frames, metrics.adaptiveResidualGain, metrics.stereoCoherence)
+
+    fun process(
+        input: FloatArray,
+        output: FloatArray,
+        offset: Int,
+        frames: Int,
+        metrics: MutableEnhancedAudioMetrics
+    ): Boolean = process(input, output, offset, frames, metrics.adaptiveResidualGain, metrics.stereoCoherence)
 
     /**
      * Clears internal state (delay lines, filters, history) upon seek or track change.

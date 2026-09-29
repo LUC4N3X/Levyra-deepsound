@@ -5,10 +5,18 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+
+/**
+ * Clock interface for deterministic time injection in tests and profiling.
+ */
+fun interface TimeProvider {
+    fun nanoTime(): Long
+}
 
 /**
  * Media3 [AudioProcessor] integrating Levyra Enhanced Audio into the playback pipeline.
@@ -18,13 +26,14 @@ import kotlinx.coroutines.flow.asStateFlow
  * 2. Real-time deficit gating via [EnhancedAudioAnalyzer].
  * 3. Restoration execution via [EnhancedAudioEngine] (defaults to [DspRestorationEngine]).
  * 4. Comprehensive bypass management (Lossless source, remote playback, user disabled, low confidence, etc.).
- * 5. Headroom and clipping prevention.
- * 6. Thread-safe diagnostics exposure for Technical Audio Info.
+ * 5. Latency/CPU overload watchdog with hysteresis and automatic recovery.
+ * 6. Thread-safe, rate-limited diagnostics exposure for Technical Audio Info.
  */
 class EnhancedAudioProcessor(
     private var config: EnhancedAudioConfig = EnhancedAudioConfig(),
     private val dspEngine: EnhancedAudioEngine = DspRestorationEngine(),
-    private val neuralEngine: NeuralRestorationEngine = NeuralRestorationEngine()
+    private val neuralEngine: NeuralRestorationEngine = NeuralRestorationEngine(),
+    private val timeProvider: TimeProvider = TimeProvider { System.nanoTime() }
 ) : AudioProcessor {
 
     @Volatile
@@ -58,6 +67,16 @@ class EnhancedAudioProcessor(
     private val _metricsState = MutableStateFlow(EnhancedAudioMetrics())
     val metricsState: StateFlow<EnhancedAudioMetrics> = _metricsState.asStateFlow()
 
+    private val mutableMetrics = MutableEnhancedAudioMetrics()
+    private var lastEmitTimeNs = 0L
+    private var lastEmittedBypassReason: EnhancedAudioBypassReason? = null
+    private var lastEmittedBypassed: Boolean? = null
+
+    // Latency watchdog hysteresis state
+    private var consecutiveOverruns = 0
+    private var isOverloadBypassed = false
+    private var cooldownRemainingBlocks = 0
+
     private var format: AudioFormat = AudioFormat.NOT_SET
     private var configured = false
     private var inputEnded = false
@@ -81,7 +100,6 @@ class EnhancedAudioProcessor(
         format = inputAudioFormat
         configured = true
 
-        // Select engine: Prefer neural if available, fallback to rock-solid DSP
         activeEngine = if (neuralEngine.isAvailable) neuralEngine else dspEngine
         activeEngine.configure(inputAudioFormat.sampleRate, inputAudioFormat.channelCount, config)
         analyzer.configure(inputAudioFormat.sampleRate, inputAudioFormat.channelCount, config)
@@ -110,24 +128,30 @@ class EnhancedAudioProcessor(
 
         val bypassReason = currentBypassReason()
         if (bypassReason != null) {
-            // Direct passthrough: copy directly to output buffer with zero overhead
+            if (isOverloadBypassed) {
+                cooldownRemainingBlocks--
+                if (cooldownRemainingBlocks <= 0) {
+                    isOverloadBypassed = false
+                    consecutiveOverruns = 0
+                }
+            }
+
             val out = replaceOutputBuffer(remaining)
             out.put(inputBuffer)
             inputBuffer.position(inputLimit)
             out.flip()
 
-            val metrics = EnhancedAudioMetrics(
-                bypassed = true,
-                bypassReason = bypassReason
-            )
-            _metricsState.value = metrics
+            mutableMetrics.reset()
+            mutableMetrics.setBypass(bypassReason)
+            maybeEmitMetrics(mutableMetrics)
             return
         }
 
         val totalSamples = frames * format.channelCount
         ensureFloatCapacity(totalSamples)
 
-        val startTime = System.nanoTime() / 1_000L
+        val blockStartNs = timeProvider.nanoTime()
+        val startTimeUs = blockStartNs / 1_000L
 
         try {
             if (format.encoding == C.ENCODING_PCM_FLOAT) {
@@ -140,10 +164,10 @@ class EnhancedAudioProcessor(
                 }
             }
 
-            val metrics = analyzer.analyze(floatInput, 0, frames, startTime)
+            analyzer.analyze(floatInput, 0, frames, startTimeUs, mutableMetrics)
 
-            val success = if (metrics.isActive) {
-                activeEngine.process(floatInput, floatOutput, 0, frames, metrics)
+            val success = if (mutableMetrics.isActive) {
+                activeEngine.process(floatInput, floatOutput, 0, frames, mutableMetrics)
             } else {
                 System.arraycopy(floatInput, 0, floatOutput, 0, totalSamples)
                 true
@@ -166,18 +190,32 @@ class EnhancedAudioProcessor(
             }
             out.flip()
 
-            _metricsState.value = metrics
+            val blockEndNs = timeProvider.nanoTime()
+            val elapsedUs = (blockEndNs - blockStartNs) / 1_000L
+            mutableMetrics.processingTimeUs = elapsedUs
+
+            // Watchdog hysteresis: only trigger bypass after consecutive overruns
+            if (elapsedUs > config.maxAllowedProcessingTimeUs) {
+                consecutiveOverruns++
+                if (consecutiveOverruns >= OVERRUN_HYSTERESIS_LIMIT) {
+                    isOverloadBypassed = true
+                    cooldownRemainingBlocks = RECOVERY_COOLDOWN_BLOCKS
+                    mutableMetrics.setBypass(EnhancedAudioBypassReason.CPU_OVERLOAD)
+                }
+            } else {
+                consecutiveOverruns = 0
+            }
+
+            maybeEmitMetrics(mutableMetrics)
         } catch (error: Throwable) {
-            // Safe bypass on any error - playback never stops
             val out = replaceOutputBuffer(remaining)
             inputBuffer.position(inputLimit - remaining)
             out.put(inputBuffer)
             out.flip()
 
-            _metricsState.value = EnhancedAudioMetrics(
-                bypassed = true,
-                bypassReason = EnhancedAudioBypassReason.INTERNAL_ERROR
-            )
+            mutableMetrics.reset()
+            mutableMetrics.setBypass(EnhancedAudioBypassReason.INTERNAL_ERROR)
+            maybeEmitMetrics(mutableMetrics, force = true)
         } finally {
             inputBuffer.position(inputLimit)
         }
@@ -207,8 +245,12 @@ class EnhancedAudioProcessor(
         format = AudioFormat.NOT_SET
         floatInput = FloatArray(0)
         floatOutput = FloatArray(0)
+        consecutiveOverruns = 0
+        isOverloadBypassed = false
+        cooldownRemainingBlocks = 0
         activeEngine.release()
         analyzer.reset()
+        mutableMetrics.reset()
     }
 
     fun updateConfig(newConfig: EnhancedAudioConfig) {
@@ -222,23 +264,35 @@ class EnhancedAudioProcessor(
         isLosslessSource -> EnhancedAudioBypassReason.ALREADY_LOSSLESS
         isRemotePlayback -> EnhancedAudioBypassReason.CAST_OR_REMOTE_PLAYBACK
         !configured -> EnhancedAudioBypassReason.ENGINE_NOT_READY
+        isOverloadBypassed -> EnhancedAudioBypassReason.CPU_OVERLOAD
         else -> null
     }
 
     private fun updateState() {
         val reason = currentBypassReason()
         if (reason != null) {
-            _metricsState.value = EnhancedAudioMetrics(
-                bypassed = true,
-                bypassReason = reason
-            )
+            mutableMetrics.reset()
+            mutableMetrics.setBypass(reason)
+            maybeEmitMetrics(mutableMetrics, force = true)
+        }
+    }
+
+    private fun maybeEmitMetrics(metrics: MutableEnhancedAudioMetrics, force: Boolean = false) {
+        val nowNs = timeProvider.nanoTime()
+        val stateChanged = metrics.bypassed != lastEmittedBypassed || metrics.bypassReason != lastEmittedBypassReason
+        if (force || stateChanged || (nowNs - lastEmitTimeNs >= EMIT_INTERVAL_NS)) {
+            lastEmitTimeNs = nowNs
+            lastEmittedBypassed = metrics.bypassed
+            lastEmittedBypassReason = metrics.bypassReason
+            _metricsState.value = metrics.toSnapshot()
         }
     }
 
     private fun ensureFloatCapacity(required: Int) {
         if (floatInput.size < required) {
-            floatInput = FloatArray(required)
-            floatOutput = FloatArray(required)
+            val newCapacity = max(required, (floatInput.size * 3) / 2).coerceAtLeast(4096)
+            floatInput = FloatArray(newCapacity)
+            floatOutput = FloatArray(newCapacity)
         }
     }
 
@@ -258,5 +312,11 @@ class EnhancedAudioProcessor(
         buffer.order(ByteOrder.LITTLE_ENDIAN)
         outputBuffer = buffer
         return buffer
+    }
+
+    companion object {
+        private const val EMIT_INTERVAL_NS = 200_000_000L // 200ms -> 5 Hz
+        private const val OVERRUN_HYSTERESIS_LIMIT = 5
+        private const val RECOVERY_COOLDOWN_BLOCKS = 50
     }
 }

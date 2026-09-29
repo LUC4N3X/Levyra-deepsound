@@ -49,7 +49,8 @@ class LevyraExperienceSettingsTest {
     @Test
     fun downloadPresetsSelectIndependentOfflineQuality() {
         assertEquals("High", LevyraDownloadSettings(preset = LevyraDownloadPreset.HighQuality).resolverAudioQuality)
-        assertEquals("Auto", LevyraDownloadSettings(preset = LevyraDownloadPreset.HiRes).resolverAudioQuality)
+        assertEquals("High", LevyraDownloadSettings(preset = LevyraDownloadPreset.HiRes).resolverAudioQuality)
+        assertEquals("Auto", LevyraDownloadSettings(preset = LevyraDownloadPreset.Normal).resolverAudioQuality)
         assertEquals("Low", LevyraDownloadSettings(preset = LevyraDownloadPreset.DataSaver).resolverAudioQuality)
         assertEquals(null, LevyraDownloadSettings(preset = LevyraDownloadPreset.Automatic).resolverAudioQuality)
         assertEquals(

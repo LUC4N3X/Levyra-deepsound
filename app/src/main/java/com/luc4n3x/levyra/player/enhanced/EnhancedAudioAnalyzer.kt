@@ -117,14 +117,17 @@ class EnhancedAudioAnalyzer(
         smoothedConfidence = 0f
     }
 
+    private val reusableMetrics = MutableEnhancedAudioMetrics()
+
     fun analyze(
         input: FloatArray,
         offset: Int,
         frames: Int,
-        startTimeUs: Long
-    ): EnhancedAudioMetrics {
+        startTimeUs: Long,
+        target: MutableEnhancedAudioMetrics = this.reusableMetrics
+    ): MutableEnhancedAudioMetrics {
         if (frames <= 0 || channels <= 0) {
-            return emptyMetrics()
+            return emptyMetrics(target)
         }
 
         var maxPeak = 0f
@@ -179,7 +182,8 @@ class EnhancedAudioAnalyzer(
             transientDensity = transientDensity,
             stereoCoherence = stereoCoherence,
             maxPeak = maxPeak,
-            startTimeUs = startTimeUs
+            startTimeUs = startTimeUs,
+            target = target
         )
     }
 
@@ -219,14 +223,15 @@ class EnhancedAudioAnalyzer(
         transientDensity: Float,
         stereoCoherence: Float,
         maxPeak: Float,
-        startTimeUs: Long
-    ): EnhancedAudioMetrics {
+        startTimeUs: Long,
+        target: MutableEnhancedAudioMetrics
+    ): MutableEnhancedAudioMetrics {
         val nyquist = sampleRate / 2f
         val hasAirBand = nyquist > 19_000f
 
         if (baseRms < SILENCE_RMS_FLOOR || !hasAirBand) {
             smoothedConfidence *= SMOOTHING_FALLBACK
-            return buildBypassMetrics(0f, 0f, transientDensity, stereoCoherence, maxPeak, startTimeUs)
+            return buildBypassMetrics(0f, 0f, transientDensity, stereoCoherence, maxPeak, startTimeUs, target)
         }
 
         val cutoffRatio = cutoffRms / max(1e-4f, baseRms)
@@ -234,7 +239,7 @@ class EnhancedAudioAnalyzer(
 
         if (cutoffRatio < 0.01f || cutoffRms < 1e-3f) {
             smoothedConfidence *= SMOOTHING_FALLBACK
-            return buildBypassMetrics(nyquist, airToCutoffRatio, transientDensity, stereoCoherence, maxPeak, startTimeUs)
+            return buildBypassMetrics(nyquist, airToCutoffRatio, transientDensity, stereoCoherence, maxPeak, startTimeUs, target)
         }
 
         val lossyDropDetected = airToCutoffRatio < 0.35f
@@ -261,20 +266,19 @@ class EnhancedAudioAnalyzer(
         val elapsedUs = System.nanoTime() / 1_000L - startTimeUs
         val estimatedCutoffHz = if (lossyDropDetected) config.cutoffFrequencyHz else nyquist
 
-        return EnhancedAudioMetrics(
-            spectralCutoffHz = estimatedCutoffHz,
-            hfEnergyRatio = airToCutoffRatio,
-            spectralHoleCount = if (lossyDropDetected) 1 else 0,
-            tonality = 0.5f,
-            transientDensity = transientDensity,
-            stereoCoherence = stereoCoherence,
-            peakAmplitude = maxPeak,
-            deficitConfidence = smoothedConfidence,
-            adaptiveResidualGain = adaptiveGain,
-            processingTimeUs = elapsedUs,
-            bypassed = !meetsThreshold,
-            bypassReason = if (!meetsThreshold) EnhancedAudioBypassReason.INSUFFICIENT_CONFIDENCE else null
-        )
+        target.spectralCutoffHz = estimatedCutoffHz
+        target.hfEnergyRatio = airToCutoffRatio
+        target.spectralHoleCount = if (lossyDropDetected) 1 else 0
+        target.tonality = 0.5f
+        target.transientDensity = transientDensity
+        target.stereoCoherence = stereoCoherence
+        target.peakAmplitude = maxPeak
+        target.deficitConfidence = smoothedConfidence
+        target.adaptiveResidualGain = adaptiveGain
+        target.processingTimeUs = elapsedUs
+        target.bypassed = !meetsThreshold
+        target.bypassReason = if (!meetsThreshold) EnhancedAudioBypassReason.INSUFFICIENT_CONFIDENCE else null
+        return target
     }
 
     private fun buildBypassMetrics(
@@ -283,29 +287,31 @@ class EnhancedAudioAnalyzer(
         transientDensity: Float,
         stereoCoherence: Float,
         maxPeak: Float,
-        startTimeUs: Long
-    ): EnhancedAudioMetrics {
+        startTimeUs: Long,
+        target: MutableEnhancedAudioMetrics
+    ): MutableEnhancedAudioMetrics {
         val elapsedUs = System.nanoTime() / 1_000L - startTimeUs
-        return EnhancedAudioMetrics(
-            spectralCutoffHz = cutoffHz,
-            hfEnergyRatio = hfRatio,
-            spectralHoleCount = 0,
-            tonality = 0.5f,
-            transientDensity = transientDensity,
-            stereoCoherence = stereoCoherence,
-            peakAmplitude = maxPeak,
-            deficitConfidence = 0f,
-            adaptiveResidualGain = 0f,
-            processingTimeUs = elapsedUs,
-            bypassed = true,
-            bypassReason = EnhancedAudioBypassReason.INSUFFICIENT_CONFIDENCE
-        )
+        target.spectralCutoffHz = cutoffHz
+        target.hfEnergyRatio = hfRatio
+        target.spectralHoleCount = 0
+        target.tonality = 0.5f
+        target.transientDensity = transientDensity
+        target.stereoCoherence = stereoCoherence
+        target.peakAmplitude = maxPeak
+        target.deficitConfidence = 0f
+        target.adaptiveResidualGain = 0f
+        target.processingTimeUs = elapsedUs
+        target.bypassed = true
+        target.bypassReason = EnhancedAudioBypassReason.INSUFFICIENT_CONFIDENCE
+        return target
     }
 
-    private fun emptyMetrics(): EnhancedAudioMetrics = EnhancedAudioMetrics(
-        bypassed = true,
-        bypassReason = EnhancedAudioBypassReason.INSUFFICIENT_CONFIDENCE
-    )
+    private fun emptyMetrics(target: MutableEnhancedAudioMetrics): MutableEnhancedAudioMetrics {
+        target.reset()
+        target.bypassed = true
+        target.bypassReason = EnhancedAudioBypassReason.INSUFFICIENT_CONFIDENCE
+        return target
+    }
 
     companion object {
         private const val SILENCE_RMS_FLOOR = 0.001f

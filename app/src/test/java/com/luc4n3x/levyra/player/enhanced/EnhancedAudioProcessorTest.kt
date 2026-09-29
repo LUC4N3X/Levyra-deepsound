@@ -144,4 +144,89 @@ class EnhancedAudioProcessorTest {
         processor.reset()
         assertFalse(processor.isActive)
     }
+
+    @Test
+    fun watchdog_singleSpike_doesNotTriggerBypass() {
+        var callCount = 0
+        var spike = false
+        val clock = TimeProvider {
+            callCount++
+            if (spike && callCount % 2 == 0) {
+                // End time spiked by 10ms
+                (callCount * 1_000_000L + 10_000_000L)
+            } else {
+                callCount * 1_000_000L
+            }
+        }
+        val proc = EnhancedAudioProcessor(timeProvider = clock)
+        proc.configure(pcm16Format)
+
+        val frames = 128
+        val buffer = ByteBuffer.allocateDirect(frames * 2 * 2).order(ByteOrder.LITTLE_ENDIAN)
+
+        // Block 1: normal
+        buffer.position(0)
+        proc.queueInput(buffer)
+        proc.output
+        assertFalse(proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
+
+        // Block 2: spike
+        spike = true
+        buffer.position(0)
+        proc.queueInput(buffer)
+        proc.output
+        assertFalse("Single spike must not trigger overload bypass", proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
+
+        // Block 3: back to normal
+        spike = false
+        buffer.position(0)
+        proc.queueInput(buffer)
+        proc.output
+        assertFalse(proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
+    }
+
+    @Test
+    fun watchdog_sustainedOverload_triggersCpuOverloadBypassAndRecovers() {
+        var simulatedBlockDurationNs = 10_000_000L // 10ms > 5ms budget
+        var time = 0L
+        val clock = TimeProvider {
+            val t = time
+            time += simulatedBlockDurationNs
+            t
+        }
+        val proc = EnhancedAudioProcessor(timeProvider = clock)
+        proc.configure(pcm16Format)
+
+        val frames = 128
+        val buffer = ByteBuffer.allocateDirect(frames * 2 * 2).order(ByteOrder.LITTLE_ENDIAN)
+
+        // Feed 4 overload blocks: should NOT trigger bypass yet (threshold is 5)
+        repeat(4) {
+            buffer.position(0)
+            proc.queueInput(buffer)
+            proc.output
+            assertFalse(proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
+        }
+
+        // 5th overload block: triggers CPU_OVERLOAD
+        buffer.position(0)
+        proc.queueInput(buffer)
+        proc.output
+        assertEquals(EnhancedAudioBypassReason.CPU_OVERLOAD, proc.metricsState.value.bypassReason)
+        assertTrue(proc.metricsState.value.bypassed)
+
+        // Process 50 cooldown blocks in bypass
+        repeat(50) {
+            buffer.position(0)
+            proc.queueInput(buffer)
+            proc.output
+        }
+
+        // Recovery: after 50 cooldown blocks, overload clears
+        simulatedBlockDurationNs = 1_000_000L // back to 1ms
+        buffer.position(0)
+        proc.queueInput(buffer)
+        proc.output
+        assertFalse(proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
+    }
 }

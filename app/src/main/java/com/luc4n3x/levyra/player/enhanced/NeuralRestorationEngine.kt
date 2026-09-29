@@ -38,7 +38,8 @@ class NeuralRestorationEngine(
         output: FloatArray,
         offset: Int,
         frames: Int,
-        metrics: EnhancedAudioMetrics
+        adaptiveResidualGain: Float,
+        stereoCoherence: Float
     ): Boolean {
         if (!isAvailable) {
             return false // Trigger fallback to DSP engine

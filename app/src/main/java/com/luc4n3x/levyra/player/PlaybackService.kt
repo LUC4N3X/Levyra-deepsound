@@ -1932,7 +1932,8 @@ class PlaybackService : MediaLibraryService() {
             enabled = currentAudioSettings.limiterEnabled &&
                 (currentAudioSettings.equalizerEnabled || parametricActive ||
                     currentAudioSettings.virtualizer > 0 ||
-                    currentAudioSettings.replayGainActive || currentAudioNormalization)
+                    currentAudioSettings.replayGainActive || currentAudioNormalization ||
+                    currentAudioSettings.enhancedAudioEnabled)
         }
         val isLossless = track.playbackManifest?.alternativeSource?.isLossless == true
         val enhancedAudio = EnhancedAudioProcessor().apply {
