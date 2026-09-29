@@ -679,8 +679,8 @@ class LyricsRepository(context: Context? = null) {
     private fun improvesLyricsDetail(previous: LyricsResult, current: LyricsResult): Boolean {
         val previousWordTimed = previous.lines.any { it.words.isNotEmpty() }
         val currentWordTimed = current.lines.any { it.words.isNotEmpty() }
-        if (currentWordTimed && !previousWordTimed && current.confidence >= previous.confidence - 5) return true
-        if (current.synced && !previous.synced && current.confidence >= previous.confidence - 3) return true
+        if (currentWordTimed && !previousWordTimed && current.confidence >= previous.confidence) return true
+        if (current.synced && !previous.synced && current.confidence >= previous.confidence) return true
         if (current.sections.size > previous.sections.size && current.confidence >= previous.confidence) return true
         if (
             translatedEligibleCount(current) > translatedEligibleCount(previous) &&
@@ -1395,7 +1395,7 @@ class LyricsRepository(context: Context? = null) {
         translate: Boolean,
         providerOrdering: String
     ): String {
-        val seed = "${LyricsMatcher.normalize(title)}|${LyricsMatcher.normalize(artist)}|${durationSec.coerceAtLeast(0L) / 5L}|${videoId.trim()}|${languageCode.lowercase(Locale.ROOT)}|$translate|$providerOrdering|$CACHE_VERSION"
+        val seed = "${LyricsMatcher.normalize(title)}|${LyricsMatcher.normalize(artist)}|${durationSec.coerceAtLeast(0L) / 5L}|${videoId.trim()}|${languageCode.lowercase(Locale.ROOT)}|$translate|$providerOrdering|$CACHE_VERSION|$PARSER_REVISION"
         return sha256(seed)
     }
 
@@ -1487,6 +1487,7 @@ class LyricsRepository(context: Context? = null) {
 
     companion object {
         internal const val CACHE_VERSION = 8
+        private const val PARSER_REVISION = 2
         private const val POSITIVE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
         private const val STALE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
         private const val LEGACY_CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L

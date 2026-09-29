@@ -8,7 +8,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
-import com.luc4n3x.levyra.domain.LyricWord
 import kotlin.math.abs
 
 const val LYRICS_CLOCK_RESYNC_THRESHOLD_MS = 320L
@@ -127,28 +126,6 @@ fun lyricsLineFocusPositionMs(positionMs: Long, smoothingEnabled: Boolean): Long
 
 fun Char.isPunctuationWithoutLeadingSpace(): Boolean =
     this in charArrayOf(',', '.', ';', ':', '!', '?', ')', ']', '}', '’', '\'', '…')
-
-fun buildTimedLyricText(words: List<LyricWord>): TimedLyricText {
-    val text = StringBuilder()
-    val timedWords = ArrayList<TimedLyricWord>(words.size)
-    words.forEach { word ->
-        val value = word.text.trim()
-        if (value.isNotBlank()) {
-            if (text.isNotEmpty() && !value.first().isPunctuationWithoutLeadingSpace()) {
-                text.append(' ')
-            }
-            val startIndex = text.length
-            text.append(value)
-            timedWords += TimedLyricWord(
-                startIndex = startIndex,
-                length = value.length,
-                startMs = word.startMs,
-                endMs = word.endMs.coerceAtLeast(word.startMs + 1L)
-            )
-        }
-    }
-    return TimedLyricText(text.toString(), timedWords)
-}
 
 fun karaokeCharacterProgress(
     timedText: TimedLyricText,
