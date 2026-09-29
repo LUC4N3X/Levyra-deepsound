@@ -1,0 +1,958 @@
+{
+ "total": 78,
+ "start": 1,
+ "results": [
+  {
+   "id": "pizXlfUB",
+   "title": "Blinding Lights",
+   "type": "song",
+   "language": "english",
+   "year": "2021",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "The Highlights",
+    "duration": "204",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-pizXlfUB",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "pW-kkdqr",
+   "title": "Blinding Lights",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Blinding Lights",
+    "duration": "204",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-pW-kkdqr",
+    "rights": {
+     "code": "0",
+     "cacheable": "false",
+     "delete_cached_object": "true",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "fW-Mxsnu",
+   "title": "Blinding Lights",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "After Hours",
+    "duration": "200",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-fW-Mxsnu",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "VIBvI7hb",
+   "title": "Blinding Lights (Major Lazer Remix)",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Blinding Lights",
+    "duration": "198",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-VIBvI7hb",
+    "rights": {
+     "code": "0",
+     "cacheable": "false",
+     "delete_cached_object": "true",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Major Lazer",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Unni Mukundan",
+       "role": "starring",
+       "type": "artist"
+      },
+      {
+       "name": "Yukti Thareja",
+       "role": "starring",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "ESdbJZkE",
+   "title": "Blinding Lights (Major Lazer Remix)",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Blinding Lights (Major Lazer Remix)",
+    "duration": "198",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-ESdbJZkE",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Major Lazer",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "yxS-Ojiv",
+   "title": "Blinding Lights (Instrumental)",
+   "type": "song",
+   "language": "unknown",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Blinding Lights (Instrumental)",
+    "duration": "201",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-yxS-Ojiv",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Major Lazer",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Neeru Bajwa",
+       "role": "starring",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "w1LZMplW",
+   "title": "Blinding Lights (Instrumental)",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Blinding Lights",
+    "duration": "201",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-w1LZMplW",
+    "rights": {
+     "code": "0",
+     "cacheable": "false",
+     "delete_cached_object": "true",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Major Lazer",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "1GjJrwl6",
+   "title": "Blinding Lights (Chromatics Remix)",
+   "type": "song",
+   "language": "english",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Blinding Lights",
+    "duration": "261",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-1GjJrwl6",
+    "rights": {
+     "code": "0",
+     "cacheable": "false",
+     "delete_cached_object": "true",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Chromatics",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Nathaniel Stanton Miller",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "John David Padgett",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Nathaniel Stanton Miller",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "John David Padgett",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "uvJ74vaH",
+   "title": "Blinding Lights (Remix)",
+   "type": "song",
+   "language": "spanish",
+   "year": "2020",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Blinding Lights (Remix)",
+    "duration": "206",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-uvJ74vaH",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      },
+      {
+       "name": "Rosalia",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Chromatics",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Rosalía Vila Tobella",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Rosalia",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Rosalía Vila Tobella",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "tqzhTeNO",
+   "title": "Blinding Lights",
+   "type": "song",
+   "language": "english",
+   "year": "2023",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "PARTY LIEDER 2023 ",
+    "duration": "204",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-tqzhTeNO",
+    "rights": {
+     "code": "0",
+     "cacheable": "false",
+     "delete_cached_object": "true",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Chromatics",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Max Martin",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Max Martin",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Oscar Holter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Abel &quot;The Weeknd&quot; Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Ahmad Balshe",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason &quot;daheala&quot; Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}
