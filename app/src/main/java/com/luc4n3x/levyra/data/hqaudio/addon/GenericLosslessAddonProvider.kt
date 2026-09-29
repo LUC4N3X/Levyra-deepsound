@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data.hqaudio.addon
 
 import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackCandidate
 import com.luc4n3x.levyra.data.hqaudio.ConfigurableProviderDestinationPolicy
+import com.luc4n3x.levyra.data.hqaudio.ConfigurableProviderPlaybackPolicy
 import com.luc4n3x.levyra.data.hqaudio.LosslessStreamValidation
 import com.luc4n3x.levyra.data.hqaudio.LosslessStreamValidator
 import com.luc4n3x.levyra.data.hqaudio.ProviderBackendHealth
@@ -160,7 +161,14 @@ internal class GenericLosslessAddonProvider(
                     rejections += StreamRejection.URL_EXPIRED
                     return AttemptResolution.Continue
                 }
-                val probe = probe(mediaUrl, manifest.allowedHosts)
+                val probe = try {
+                    probe(mediaUrl, manifest.allowedHosts)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: IOException) {
+                    rejections += StreamRejection.TRANSPORT
+                    return AttemptResolution.Continue
+                }
                 return when (val validation = LosslessStreamValidator.validate(probe, attempt, candidate.durationSeconds)) {
                     is LosslessStreamValidation.Invalid -> {
                         rejections += validation.rejection
@@ -173,6 +181,9 @@ internal class GenericLosslessAddonProvider(
                             rejections += StreamRejection.UNSUPPORTED_CONTAINER
                             AttemptResolution.Continue
                         } else {
+                            if (request.purpose == AudioStreamPurpose.PLAYBACK) {
+                                ConfigurableProviderPlaybackPolicy.register(mediaUrl, manifest.allowedHosts, expiresAtMs)
+                            }
                             val resolved = validation.format.toResolved(candidate, request.preference, mediaUrl.toString(), expiresAtMs)
                             if (satisfiesAttempt(validation.format, attempt)) {
                                 AttemptResolution.Resolved(resolved)
