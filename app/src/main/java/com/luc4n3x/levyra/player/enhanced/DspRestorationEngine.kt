@@ -3,172 +3,49 @@ package com.luc4n3x.levyra.player.enhanced
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.math.tanh
 
-/**
- * High-fidelity, conservative DSP audio restoration engine for Levyra.
- *
- * Implements:
- * 1. Mid/Side stereo coherence protection (M = 0.5*(L+R), S = 0.5*(L-R)).
- * 2. Band-isolated harmonic extension with 2x oversampling on the residual branch
- *    to reduce ultrasonic aliasing foldback into the audible spectrum.
- * 3. Side excitation controlled by measured stereo coherence with complete
- *    anti-phase suppression and hard-panning isolation.
- * 4. Micro-transient envelope dynamics unmasking.
- * 5. Internal soft-knee headroom limiter preventing clipping before the output sink.
- *
- * Designed with zero allocations in the hot loop for minimal CPU and battery consumption.
- */
 class DspRestorationEngine : EnhancedAudioEngine {
-    override val name: String = "Levyra DSP Restoration"
+    override val name: String = "Levyra Band Replication"
 
-    private var sampleRate: Int = 44_100
-    private var channels: Int = 2
-    private var config: EnhancedAudioConfig = EnhancedAudioConfig()
+    private var sampleRate = 44_100
+    private var channels = 2
+    private var config = EnhancedAudioConfig()
 
-    // Biquad coefficients: Mid source bandpass at Fs (8-15 kHz)
-    private var bqMidB0 = 1f
-    private var bqMidB1 = 0f
-    private var bqMidB2 = 0f
-    private var bqMidA1 = 0f
-    private var bqMidA2 = 0f
+    private var cutoffHz = 0f
+    private var shiftHz = 0f
+    private var currentGain = 0f
 
-    // Biquad coefficients: 2x Interpolation Lowpass at 2*Fs (~15.5 kHz)
-    private var bqInterpB0 = 1f
-    private var bqInterpB1 = 0f
-    private var bqInterpB2 = 0f
-    private var bqInterpA1 = 0f
-    private var bqInterpA2 = 0f
+    private var sourceHighPass = Array(0) { Biquad() }
+    private var sourceLowPass = Array(0) { Biquad() }
+    private var outputHighPass = Array(0) { Biquad() }
+    private var hilbertA = Array(0) { AllpassChain(HILBERT_A) }
+    private var hilbertB = Array(0) { AllpassChain(HILBERT_B) }
+    private var delayedB = FloatArray(0)
 
-    // Biquad coefficients: 2x Air Bandpass at 2*Fs (~19 kHz)
-    private var bqAirB0 = 1f
-    private var bqAirB1 = 0f
-    private var bqAirB2 = 0f
-    private var bqAirA1 = 0f
-    private var bqAirA2 = 0f
-
-    // Biquad coefficients: 2x Anti-Aliasing Lowpass at 2*Fs (~21 kHz)
-    private var bqAaB0 = 1f
-    private var bqAaB1 = 0f
-    private var bqAaB2 = 0f
-    private var bqAaA1 = 0f
-    private var bqAaA2 = 0f
-
-    // Filter states for Mid channel (direct form I)
-    private var midBqMidX1 = 0f
-    private var midBqMidX2 = 0f
-    private var midBqMidY1 = 0f
-    private var midBqMidY2 = 0f
-
-    private var midBqInterpX1 = 0f
-    private var midBqInterpX2 = 0f
-    private var midBqInterpY1 = 0f
-    private var midBqInterpY2 = 0f
-
-    private var midBqAirX1 = 0f
-    private var midBqAirX2 = 0f
-    private var midBqAirY1 = 0f
-    private var midBqAirY2 = 0f
-
-    private var midBqAaX1 = 0f
-    private var midBqAaX2 = 0f
-    private var midBqAaY1 = 0f
-    private var midBqAaY2 = 0f
-
-    // Filter states for Side channel (direct form I)
-    private var sideBqMidX1 = 0f
-    private var sideBqMidX2 = 0f
-    private var sideBqMidY1 = 0f
-    private var sideBqMidY2 = 0f
-
-    private var sideBqInterpX1 = 0f
-    private var sideBqInterpX2 = 0f
-    private var sideBqInterpY1 = 0f
-    private var sideBqInterpY2 = 0f
-
-    private var sideBqAirX1 = 0f
-    private var sideBqAirX2 = 0f
-    private var sideBqAirY1 = 0f
-    private var sideBqAirY2 = 0f
-
-    private var sideBqAaX1 = 0f
-    private var sideBqAaX2 = 0f
-    private var sideBqAaY1 = 0f
-    private var sideBqAaY2 = 0f
-
-    // Transient envelope followers
-    private var envFastM = 0f
-    private var envSlowM = 0f
+    private var oscCos = 1.0
+    private var oscSin = 0.0
+    private var stepCos = 1.0
+    private var stepSin = 0.0
+    private var oscSamples = 0
 
     override fun configure(sampleRateHz: Int, channelCount: Int, config: EnhancedAudioConfig) {
-        this.sampleRate = sampleRateHz.coerceAtLeast(8_000)
-        this.channels = channelCount.coerceIn(1, MAX_CHANNELS)
+        sampleRate = sampleRateHz.coerceAtLeast(8_000)
+        channels = channelCount.coerceIn(1, 8)
         this.config = config.normalized()
-        calculateCoefficients()
+        val filterCount = channels * 2
+        sourceHighPass = Array(filterCount) { Biquad() }
+        sourceLowPass = Array(filterCount) { Biquad() }
+        outputHighPass = Array(filterCount) { Biquad() }
+        hilbertA = Array(channels) { AllpassChain(HILBERT_A) }
+        hilbertB = Array(channels) { AllpassChain(HILBERT_B) }
+        delayedB = FloatArray(channels)
+        cutoffHz = 0f
+        shiftHz = 0f
         reset()
-    }
-
-    private fun calculateCoefficients() {
-        val sr = sampleRate.toDouble()
-        val nyquist = sr / 2.0
-
-        // 1. Source bandpass at Fs (8-15 kHz)
-        val midCenter = min(11_500.0, nyquist * 0.65)
-        val midQ = 1.0
-        val w0Mid = 2.0 * PI * midCenter / sr
-        val alphaMid = sin(w0Mid) / (2.0 * midQ)
-        val a0Mid = 1.0 + alphaMid
-
-        bqMidB0 = (alphaMid / a0Mid).toFloat()
-        bqMidB1 = 0f
-        bqMidB2 = (-alphaMid / a0Mid).toFloat()
-        bqMidA1 = (-2.0 * cos(w0Mid) / a0Mid).toFloat()
-        bqMidA2 = ((1.0 - alphaMid) / a0Mid).toFloat()
-
-        // 2x oversampling domain calculations
-        val sr2x = sr * 2.0
-
-        // 2. Interpolation lowpass at 2*Fs (~15.5 kHz)
-        val interpCutoff = min(15_500.0, nyquist * 0.85)
-        val w0Interp = 2.0 * PI * interpCutoff / sr2x
-        val alphaInterp = sin(w0Interp) / (2.0 * 0.70710678)
-        val a0Interp = 1.0 + alphaInterp
-        val cosInterp = cos(w0Interp)
-
-        bqInterpB0 = ((1.0 - cosInterp) * 0.5 / a0Interp).toFloat()
-        bqInterpB1 = ((1.0 - cosInterp) / a0Interp).toFloat()
-        bqInterpB2 = ((1.0 - cosInterp) * 0.5 / a0Interp).toFloat()
-        bqInterpA1 = (-2.0 * cosInterp / a0Interp).toFloat()
-        bqInterpA2 = ((1.0 - alphaInterp) / a0Interp).toFloat()
-
-        // 3. Air band bandpass at 2*Fs (~19 kHz)
-        val airCenter = min(19_000.0, nyquist * 0.92)
-        val airQ = 1.2
-        val w0Air = 2.0 * PI * airCenter / sr2x
-        val alphaAir = sin(w0Air) / (2.0 * airQ)
-        val a0Air = 1.0 + alphaAir
-
-        bqAirB0 = (alphaAir / a0Air).toFloat()
-        bqAirB1 = 0f
-        bqAirB2 = (-alphaAir / a0Air).toFloat()
-        bqAirA1 = (-2.0 * cos(w0Air) / a0Air).toFloat()
-        bqAirA2 = ((1.0 - alphaAir) / a0Air).toFloat()
-
-        // 4. Anti-aliasing lowpass at 2*Fs (~21 kHz)
-        val aaCutoff = min(21_000.0, nyquist * 0.98)
-        val w0Aa = 2.0 * PI * aaCutoff / sr2x
-        val alphaAa = sin(w0Aa) / (2.0 * 0.70710678)
-        val a0Aa = 1.0 + alphaAa
-        val cosAa = cos(w0Aa)
-
-        bqAaB0 = ((1.0 - cosAa) * 0.5 / a0Aa).toFloat()
-        bqAaB1 = ((1.0 - cosAa) / a0Aa).toFloat()
-        bqAaB2 = ((1.0 - cosAa) * 0.5 / a0Aa).toFloat()
-        bqAaA1 = (-2.0 * cosAa / a0Aa).toFloat()
-        bqAaA2 = ((1.0 - alphaAa) / a0Aa).toFloat()
     }
 
     override fun process(
@@ -178,270 +55,206 @@ class DspRestorationEngine : EnhancedAudioEngine {
         frames: Int,
         adaptiveResidualGain: Float,
         stereoCoherence: Float
+    ): Boolean = render(input, output, offset, frames, cutoffHz, adaptiveResidualGain)
+
+    override fun process(
+        input: FloatArray,
+        output: FloatArray,
+        offset: Int,
+        frames: Int,
+        metrics: MutableEnhancedAudioMetrics
+    ): Boolean = render(input, output, offset, frames, metrics.spectralCutoffHz, metrics.adaptiveResidualGain)
+
+    override fun process(
+        input: FloatArray,
+        output: FloatArray,
+        offset: Int,
+        frames: Int,
+        metrics: EnhancedAudioMetrics
+    ): Boolean = render(input, output, offset, frames, metrics.spectralCutoffHz, metrics.adaptiveResidualGain)
+
+    private fun render(
+        input: FloatArray,
+        output: FloatArray,
+        offset: Int,
+        frames: Int,
+        requestedCutoffHz: Float,
+        targetGain: Float
     ): Boolean {
         if (frames <= 0) return true
-
-        if (adaptiveResidualGain <= 0f) {
-            val total = frames * channels
+        val total = frames * channels
+        val nyquist = sampleRate / 2f
+        val usable = requestedCutoffHz > 0f && requestedCutoffHz < nyquist - MIN_PATCH_HZ
+        if (usable && abs(requestedCutoffHz - cutoffHz) > RETUNE_TOLERANCE_HZ) retune(requestedCutoffHz)
+        val endGain = if (usable) targetGain.coerceIn(0f, 1f) else 0f
+        if (cutoffHz <= 0f || (endGain == 0f && currentGain == 0f)) {
             System.arraycopy(input, offset, output, offset, total)
+            currentGain = 0f
             return true
         }
-
-        val harmonicGain = config.harmonicGain
-        val transientSense = config.transientSensitivity
         val ceiling = config.truePeakCeilingLinear
-        val ceilingMargin = (1f - ceiling).coerceAtLeast(0.001f)
-
-        val ch = channels
-        var idx = offset
-
-        val allowSide = ch >= 2 && stereoCoherence > 0.05f
-        val sideScale = if (allowSide) (stereoCoherence * 0.5f).coerceIn(0f, 0.5f) else 0f
-
-        for (f in 0 until frames) {
-            if (ch >= 2) {
-                val origL = input[idx]
-                val origR = input[idx + 1]
-
-                val mid = (origL + origR) * 0.5f
-                val side = (origL - origR) * 0.5f
-
-                // Mid bandpass at Fs
-                val midBand = filterMidSource(mid)
-
-                // 2x oversampled harmonic generation on Mid
-                val airMid = process2xHarmonicMid(midBand, harmonicGain)
-
-                // Envelope follower on Mid
-                val absM = abs(midBand)
-                envFastM = envFastM * 0.85f + absM * 0.15f
-                envSlowM = envSlowM * 0.98f + absM * 0.02f
-                val transientDelta = max(0f, envFastM - envSlowM)
-                val transientMultiplier = 1f + transientDelta * transientSense
-
-                val resM = airMid * transientMultiplier
-
-                // Always advance the Side filters so silence/coherence gating cannot freeze stale IIR history.
-                val sideBand = filterSideSource(side)
-                val airSide = process2xHarmonicSide(sideBand, harmonicGain)
-                val resS = if (allowSide && abs(side) > 1e-6f) {
-                    airSide * transientMultiplier * sideScale
-                } else {
-                    0f
-                }
-
-                val rawResL = resM + resS
-                val rawResR = resM - resS
-
-                // Hard pan protection: taper residual if channel is near silence
-                val actL = (abs(origL) / 0.005f).coerceIn(0f, 1f)
-                val actR = (abs(origR) / 0.005f).coerceIn(0f, 1f)
-
-                val resL = rawResL * actL
-                val resR = rawResR * actR
-
-                val blendedL = origL + resL * adaptiveResidualGain
-                val blendedR = origR + resR * adaptiveResidualGain
-
-                output[idx] = applySoftKneeLimiter(blendedL, ceiling, ceilingMargin)
-                output[idx + 1] = applySoftKneeLimiter(blendedR, ceiling, ceilingMargin)
-
-                for (c in 2 until ch) {
-                    output[idx + c] = input[idx + c]
-                }
-            } else {
-                val orig = input[idx]
-                val midBand = filterMidSource(orig)
-                val airMid = process2xHarmonicMid(midBand, harmonicGain)
-
-                val absM = abs(midBand)
-                envFastM = envFastM * 0.85f + absM * 0.15f
-                envSlowM = envSlowM * 0.98f + absM * 0.02f
-                val transientDelta = max(0f, envFastM - envSlowM)
-                val transientMultiplier = 1f + transientDelta * transientSense
-
-                val res = airMid * transientMultiplier
-                val blended = orig + res * adaptiveResidualGain
-                output[idx] = applySoftKneeLimiter(blended, ceiling, ceilingMargin)
+        val margin = (1f - ceiling).coerceAtLeast(0.001f)
+        val gainStep = (endGain - currentGain) / frames
+        var gain = currentGain
+        var index = offset
+        for (frame in 0 until frames) {
+            gain += gainStep
+            val c = oscCos.toFloat()
+            val s = oscSin.toFloat()
+            for (channel in 0 until channels) {
+                val dry = input[index + channel]
+                val filterIndex = channel * 2
+                var band = sourceHighPass[filterIndex].process(dry)
+                band = sourceHighPass[filterIndex + 1].process(band)
+                band = sourceLowPass[filterIndex].process(band)
+                band = sourceLowPass[filterIndex + 1].process(band)
+                val inPhase = hilbertA[channel].process(band)
+                val quadrature = delayedB[channel]
+                delayedB[channel] = hilbertB[channel].process(band)
+                var patch = inPhase * c - quadrature * s
+                patch = outputHighPass[filterIndex].process(patch)
+                patch = outputHighPass[filterIndex + 1].process(patch)
+                output[index + channel] = softLimit(dry + patch * gain, ceiling, margin)
             }
-            idx += ch
+            advanceOscillator()
+            index += channels
         }
-
+        currentGain = endGain
         return true
     }
 
-    private fun process2xHarmonicMid(midBand: Float, harmonicGain: Float): Float {
-        val u0 = filterMidInterp(2.0f * midBand)
-        val x0 = u0.coerceIn(-1.5f, 1.5f)
-        val h2_0 = x0 * x0 * 0.5f
-        val h3_0 = (4f * x0 * x0 * x0 - 3f * x0) * 0.15f
-        val raw0 = (h2_0 + h3_0) * harmonicGain
-        val air0 = filterMidAir(raw0)
-        filterMidAa(air0)
-
-        val u1 = filterMidInterp(0.0f)
-        val x1 = u1.coerceIn(-1.5f, 1.5f)
-        val h2_1 = x1 * x1 * 0.5f
-        val h3_1 = (4f * x1 * x1 * x1 - 3f * x1) * 0.15f
-        val raw1 = (h2_1 + h3_1) * harmonicGain
-        val air1 = filterMidAir(raw1)
-        return filterMidAa(air1)
+    private fun retune(newCutoffHz: Float) {
+        val nyquist = sampleRate / 2f
+        cutoffHz = newCutoffHz
+        shiftHz = min(newCutoffHz * MAX_PATCH_RATIO, nyquist - newCutoffHz - GUARD_HZ).coerceAtLeast(MIN_PATCH_HZ)
+        val sourceLow = newCutoffHz - shiftHz
+        for (filter in sourceHighPass) filter.setHighPass(sourceLow, sampleRate)
+        for (filter in sourceLowPass) filter.setLowPass(newCutoffHz - GUARD_HZ, sampleRate)
+        for (filter in outputHighPass) filter.setHighPass(newCutoffHz, sampleRate)
+        val w = 2.0 * PI * shiftHz / sampleRate
+        stepCos = cos(w)
+        stepSin = sin(w)
     }
 
-    private fun process2xHarmonicSide(sideBand: Float, harmonicGain: Float): Float {
-        val u0 = filterSideInterp(2.0f * sideBand)
-        val x0 = u0.coerceIn(-1.5f, 1.5f)
-        val h2_0 = x0 * x0 * 0.5f
-        val h3_0 = (4f * x0 * x0 * x0 - 3f * x0) * 0.15f
-        val raw0 = (h2_0 + h3_0) * harmonicGain
-        val air0 = filterSideAir(raw0)
-        filterSideAa(air0)
-
-        val u1 = filterSideInterp(0.0f)
-        val x1 = u1.coerceIn(-1.5f, 1.5f)
-        val h2_1 = x1 * x1 * 0.5f
-        val h3_1 = (4f * x1 * x1 * x1 - 3f * x1) * 0.15f
-        val raw1 = (h2_1 + h3_1) * harmonicGain
-        val air1 = filterSideAir(raw1)
-        return filterSideAa(air1)
-    }
-
-    private fun applySoftKneeLimiter(sample: Float, ceiling: Float, ceilingMargin: Float): Float {
-        val absS = abs(sample)
-        val limited = if (absS > ceiling) {
-            val excess = (absS - ceiling) / ceilingMargin
-            val sign = if (sample >= 0f) 1f else -1f
-            sign * (ceiling + ceilingMargin * tanh(excess.toDouble()).toFloat())
-        } else {
-            sample
+    private fun advanceOscillator() {
+        val nextCos = oscCos * stepCos - oscSin * stepSin
+        val nextSin = oscSin * stepCos + oscCos * stepSin
+        oscCos = nextCos
+        oscSin = nextSin
+        oscSamples++
+        if (oscSamples >= RENORMALIZE_INTERVAL) {
+            val magnitude = sqrt(oscCos * oscCos + oscSin * oscSin)
+            oscCos /= magnitude
+            oscSin /= magnitude
+            oscSamples = 0
         }
-        return limited.coerceIn(-1f, 1f)
     }
 
-    private fun filterMidSource(x: Float): Float {
-        val y = bqMidB0 * x + bqMidB1 * midBqMidX1 + bqMidB2 * midBqMidX2 -
-            bqMidA1 * midBqMidY1 - bqMidA2 * midBqMidY2
-        midBqMidX2 = midBqMidX1
-        midBqMidX1 = x
-        midBqMidY2 = midBqMidY1
-        midBqMidY1 = y
-        return y
-    }
-
-    private fun filterMidInterp(x: Float): Float {
-        val y = bqInterpB0 * x + bqInterpB1 * midBqInterpX1 + bqInterpB2 * midBqInterpX2 -
-            bqInterpA1 * midBqInterpY1 - bqInterpA2 * midBqInterpY2
-        midBqInterpX2 = midBqInterpX1
-        midBqInterpX1 = x
-        midBqInterpY2 = midBqInterpY1
-        midBqInterpY1 = y
-        return y
-    }
-
-    private fun filterMidAir(x: Float): Float {
-        val y = bqAirB0 * x + bqAirB1 * midBqAirX1 + bqAirB2 * midBqAirX2 -
-            bqAirA1 * midBqAirY1 - bqAirA2 * midBqAirY2
-        midBqAirX2 = midBqAirX1
-        midBqAirX1 = x
-        midBqAirY2 = midBqAirY1
-        midBqAirY1 = y
-        return y
-    }
-
-    private fun filterMidAa(x: Float): Float {
-        val y = bqAaB0 * x + bqAaB1 * midBqAaX1 + bqAaB2 * midBqAaX2 -
-            bqAaA1 * midBqAaY1 - bqAaA2 * midBqAaY2
-        midBqAaX2 = midBqAaX1
-        midBqAaX1 = x
-        midBqAaY2 = midBqAaY1
-        midBqAaY1 = y
-        return y
-    }
-
-    private fun filterSideSource(x: Float): Float {
-        val y = bqMidB0 * x + bqMidB1 * sideBqMidX1 + bqMidB2 * sideBqMidX2 -
-            bqMidA1 * sideBqMidY1 - bqMidA2 * sideBqMidY2
-        sideBqMidX2 = sideBqMidX1
-        sideBqMidX1 = x
-        sideBqMidY2 = sideBqMidY1
-        sideBqMidY1 = y
-        return y
-    }
-
-    private fun filterSideInterp(x: Float): Float {
-        val y = bqInterpB0 * x + bqInterpB1 * sideBqInterpX1 + bqInterpB2 * sideBqInterpX2 -
-            bqInterpA1 * sideBqInterpY1 - bqInterpA2 * sideBqInterpY2
-        sideBqInterpX2 = sideBqInterpX1
-        sideBqInterpX1 = x
-        sideBqInterpY2 = sideBqInterpY1
-        sideBqInterpY1 = y
-        return y
-    }
-
-    private fun filterSideAir(x: Float): Float {
-        val y = bqAirB0 * x + bqAirB1 * sideBqAirX1 + bqAirB2 * sideBqAirX2 -
-            bqAirA1 * sideBqAirY1 - bqAirA2 * sideBqAirY2
-        sideBqAirX2 = sideBqAirX1
-        sideBqAirX1 = x
-        sideBqAirY2 = sideBqAirY1
-        sideBqAirY1 = y
-        return y
-    }
-
-    private fun filterSideAa(x: Float): Float {
-        val y = bqAaB0 * x + bqAaB1 * sideBqAaX1 + bqAaB2 * sideBqAaX2 -
-            bqAaA1 * sideBqAaY1 - bqAaA2 * sideBqAaY2
-        sideBqAaX2 = sideBqAaX1
-        sideBqAaX1 = x
-        sideBqAaY2 = sideBqAaY1
-        sideBqAaY1 = y
-        return y
+    private fun softLimit(sample: Float, ceiling: Float, margin: Float): Float {
+        val magnitude = abs(sample)
+        if (magnitude <= ceiling) return sample
+        val sign = if (sample >= 0f) 1f else -1f
+        return (sign * (ceiling + margin * tanh(((magnitude - ceiling) / margin).toDouble()).toFloat())).coerceIn(-1f, 1f)
     }
 
     override fun reset() {
-        midBqMidX1 = 0f
-        midBqMidX2 = 0f
-        midBqMidY1 = 0f
-        midBqMidY2 = 0f
-        midBqInterpX1 = 0f
-        midBqInterpX2 = 0f
-        midBqInterpY1 = 0f
-        midBqInterpY2 = 0f
-        midBqAirX1 = 0f
-        midBqAirX2 = 0f
-        midBqAirY1 = 0f
-        midBqAirY2 = 0f
-        midBqAaX1 = 0f
-        midBqAaX2 = 0f
-        midBqAaY1 = 0f
-        midBqAaY2 = 0f
-
-        sideBqMidX1 = 0f
-        sideBqMidX2 = 0f
-        sideBqMidY1 = 0f
-        sideBqMidY2 = 0f
-        sideBqInterpX1 = 0f
-        sideBqInterpX2 = 0f
-        sideBqInterpY1 = 0f
-        sideBqInterpY2 = 0f
-        sideBqAirX1 = 0f
-        sideBqAirX2 = 0f
-        sideBqAirY1 = 0f
-        sideBqAirY2 = 0f
-        sideBqAaX1 = 0f
-        sideBqAaX2 = 0f
-        sideBqAaY1 = 0f
-        sideBqAaY2 = 0f
-
-        envFastM = 0f
-        envSlowM = 0f
+        sourceHighPass.forEach(Biquad::clear)
+        sourceLowPass.forEach(Biquad::clear)
+        outputHighPass.forEach(Biquad::clear)
+        hilbertA.forEach(AllpassChain::clear)
+        hilbertB.forEach(AllpassChain::clear)
+        delayedB.fill(0f)
+        oscCos = 1.0
+        oscSin = 0.0
+        oscSamples = 0
+        currentGain = 0f
     }
 
     override fun release() {
         reset()
     }
 
-    companion object {
-        private const val MAX_CHANNELS = 8
+    private class Biquad {
+        private var b0 = 1f
+        private var b1 = 0f
+        private var b2 = 0f
+        private var a1 = 0f
+        private var a2 = 0f
+        private var x1 = 0f
+        private var x2 = 0f
+        private var y1 = 0f
+        private var y2 = 0f
+
+        fun setLowPass(frequencyHz: Float, sampleRate: Int) = design(frequencyHz, sampleRate, lowPass = true)
+
+        fun setHighPass(frequencyHz: Float, sampleRate: Int) = design(frequencyHz, sampleRate, lowPass = false)
+
+        private fun design(frequencyHz: Float, sampleRate: Int, lowPass: Boolean) {
+            val w0 = 2.0 * PI * frequencyHz.coerceIn(20f, sampleRate * 0.49f) / sampleRate
+            val alpha = sin(w0) / (2.0 * BUTTERWORTH_Q)
+            val cosW = cos(w0)
+            val a0 = 1.0 + alpha
+            val numerator = if (lowPass) (1.0 - cosW) / 2.0 else (1.0 + cosW) / 2.0
+            b0 = (numerator / a0).toFloat()
+            b1 = ((if (lowPass) 1.0 - cosW else -(1.0 + cosW)) / a0).toFloat()
+            b2 = b0
+            a1 = (-2.0 * cosW / a0).toFloat()
+            a2 = ((1.0 - alpha) / a0).toFloat()
+        }
+
+        fun process(x: Float): Float {
+            val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+            x2 = x1
+            x1 = x
+            y2 = y1
+            y1 = y
+            return y
+        }
+
+        fun clear() {
+            x1 = 0f
+            x2 = 0f
+            y1 = 0f
+            y2 = 0f
+        }
+    }
+
+    private class AllpassChain(coefficients: FloatArray) {
+        private val squared = FloatArray(coefficients.size) { coefficients[it] * coefficients[it] }
+        private val x1 = FloatArray(coefficients.size)
+        private val x2 = FloatArray(coefficients.size)
+        private val y1 = FloatArray(coefficients.size)
+        private val y2 = FloatArray(coefficients.size)
+
+        fun process(input: Float): Float {
+            var value = input
+            for (i in squared.indices) {
+                val y = squared[i] * (value + y2[i]) - x2[i]
+                x2[i] = x1[i]
+                x1[i] = value
+                y2[i] = y1[i]
+                y1[i] = y
+                value = y
+            }
+            return value
+        }
+
+        fun clear() {
+            x1.fill(0f)
+            x2.fill(0f)
+            y1.fill(0f)
+            y2.fill(0f)
+        }
+    }
+
+    private companion object {
+        const val BUTTERWORTH_Q = 0.7071067811865476
+        const val MAX_PATCH_RATIO = 0.35f
+        const val MIN_PATCH_HZ = 1_000f
+        const val GUARD_HZ = 150f
+        const val RETUNE_TOLERANCE_HZ = 60f
+        const val RENORMALIZE_INTERVAL = 4_096
+        val HILBERT_A = floatArrayOf(0.6923878f, 0.9360654f, 0.9882295f, 0.9987488f)
+        val HILBERT_B = floatArrayOf(0.4021921f, 0.8561711f, 0.9722910f, 0.9952885f)
     }
 }

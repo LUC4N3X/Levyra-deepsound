@@ -390,7 +390,7 @@ internal fun buildEnhancedAudioRows(
         }
     } else {
         add(copy.status to copy.active)
-        add(copy.engine to "Levyra DSP Restoration")
+        add(copy.engine to "Levyra Band Replication")
         val processingRate = sourceSampleRateHz?.takeIf { it > 0 } ?: 44_100
         add(copy.processing to "${formatTechnicalSampleRate(processingRate)} · 32-bit float")
         if (metrics.deficitConfidence > 0f) {

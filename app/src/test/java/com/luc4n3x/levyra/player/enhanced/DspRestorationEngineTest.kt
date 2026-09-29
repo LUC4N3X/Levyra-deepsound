@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player.enhanced
 
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.sin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,36 +44,38 @@ class DspRestorationEngineTest {
     }
 
     @Test
-    fun process_activeDeficit_generatesBoundedResidual() {
-        val frames = 1024
+    fun process_activeDeficit_shiftsTheBandBelowCutoffUpward() {
+        val frames = 16_384
         val input = FloatArray(frames * channels)
-        // Signal with energy in 10 kHz
         for (i in 0 until frames) {
-            val s = sin(2.0 * PI * 10_000.0 * i / sampleRate).toFloat() * 0.4f
+            val s = sin(2.0 * PI * 15_000.0 * i / sampleRate).toFloat() * 0.4f
             input[i * 2] = s
             input[i * 2 + 1] = s
         }
         val output = FloatArray(frames * channels)
+        val metrics = EnhancedAudioMetrics(spectralCutoffHz = 16_000f, deficitConfidence = 0.8f, adaptiveResidualGain = 0.5f, bypassed = false)
 
-        val metrics = EnhancedAudioMetrics(
-            deficitConfidence = 0.8f,
-            adaptiveResidualGain = 0.40f,
-            bypassed = false
-        )
-
-        // Warm up filters
         engine.process(input, output, 0, frames, metrics)
-        val success = engine.process(input, output, 0, frames, metrics)
-        assertTrue(success)
+        engine.process(input, output, 0, frames, metrics)
 
-        var differenceDetected = false
-        for (i in input.indices) {
-            val diff = abs(output[i] - input[i])
-            if (diff > 1e-4f) differenceDetected = true
-            // Residual must be bounded and subtle
-            assertTrue("Output diverged too much: diff=$diff", diff < 0.25f)
+        val shift = minOf(16_000.0 * 0.35, sampleRate / 2.0 - 16_000.0 - 150.0)
+        val upper = toneLevel(output, 15_000.0 + shift) - toneLevel(input, 15_000.0 + shift)
+        val lower = toneLevel(output, 15_000.0 - shift) - toneLevel(input, 15_000.0 - shift)
+        assertTrue("upper=$upper", upper > 0.01)
+        assertTrue("lower=$lower", lower < upper * 0.05)
+        for (i in input.indices) assertTrue(abs(output[i] - input[i]) < 0.25f)
+    }
+
+    private fun toneLevel(signal: FloatArray, frequency: Double): Double {
+        var re = 0.0
+        var im = 0.0
+        val frames = signal.size / channels
+        for (i in frames / 2 until frames) {
+            val angle = 2.0 * PI * frequency * i / sampleRate
+            re += signal[i * 2] * cos(angle)
+            im += signal[i * 2] * sin(angle)
         }
-        assertTrue("Expected subtle residual to be added", differenceDetected)
+        return 2.0 * Math.sqrt(re * re + im * im) / (frames / 2)
     }
 
     @Test

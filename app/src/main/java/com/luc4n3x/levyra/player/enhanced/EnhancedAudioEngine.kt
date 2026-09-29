@@ -9,7 +9,7 @@ package com.luc4n3x.levyra.player.enhanced
 interface EnhancedAudioEngine {
     /**
      * Human-readable name of the engine displayed in Technical Audio Info
-     * (e.g., "Levyra DSP Restoration" or "Levyra Neural Restore").
+     * (e.g., "Levyra Band Replication").
      */
     val name: String
 

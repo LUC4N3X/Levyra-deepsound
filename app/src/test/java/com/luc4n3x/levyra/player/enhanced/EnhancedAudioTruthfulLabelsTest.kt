@@ -115,7 +115,7 @@ class EnhancedAudioTruthfulLabelsTest {
         ).toMap()
 
         assertEquals(copy.active, rows[copy.status])
-        assertEquals("Levyra DSP Restoration", rows[copy.engine])
+        assertEquals("Levyra Band Replication", rows[copy.engine])
         assertEquals("44.1 kHz · 32-bit float", rows[copy.processing])
         assertEquals("85%", rows[copy.confidence])
     }
