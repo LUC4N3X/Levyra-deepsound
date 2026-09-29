@@ -43,21 +43,19 @@ import com.luc4n3x.levyra.ui.components.playerGlass
 import com.luc4n3x.levyra.ui.artwork.ArtworkPreviewOverlay
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.livingArtworkColors
-import com.luc4n3x.levyra.ui.artwork.ArtworkDissolveEdge
 import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
-import com.luc4n3x.levyra.ui.artwork.artworkDissolve
 import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
-import com.luc4n3x.levyra.ui.album.AlbumHeaderOverlap
 import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteEnd
 import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteStart
-import com.luc4n3x.levyra.ui.album.AlbumHeroDissolve
-import com.luc4n3x.levyra.ui.album.AlbumSplitHeroFraction
-import com.luc4n3x.levyra.ui.album.AlbumSplitListStartFraction
 import com.luc4n3x.levyra.ui.album.AlbumStageColors
-import com.luc4n3x.levyra.ui.album.AlbumFieldTail
 import com.luc4n3x.levyra.ui.album.albumContentGutter
-import com.luc4n3x.levyra.ui.album.albumStackedHeroHeight
 import com.luc4n3x.levyra.ui.album.albumStageColors
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
+import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
+import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareCard
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareFormat
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsAudioOutputRoute
@@ -613,7 +611,6 @@ import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
 import com.luc4n3x.levyra.ui.library.PlaylistStudioScreen
 import com.luc4n3x.levyra.ui.mixlab.MixLabScreen
 import com.luc4n3x.levyra.ui.components.rememberLastNonNull
-import com.luc4n3x.levyra.ui.library.SavedAlbumBookmarkOverlay
 import com.luc4n3x.levyra.viewmodel.completedScanSongs
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
@@ -2726,6 +2723,7 @@ fun LevyraApp(
                         favoriteIds = state.favoriteIds,
                         downloadedTrackIds = state.downloadedTrackIds,
                         downloadProgressByTrackId = state.downloadProgressByTrackId,
+                        animationsEnabled = state.animationsEnabled,
                         onClose = viewModel::closePlaylistHit,
                         onPlay = { viewModel.playOpenPlaylistHit() },
                         onShuffle = { viewModel.playOpenPlaylistHit(shuffled = true) },
@@ -2735,7 +2733,6 @@ fun LevyraApp(
                         onDownloadTrack = viewModel::exportTrack,
                         onQueueTrack = viewModel::addToQueue,
                         onTogglePlayback = viewModel::togglePlay,
-                        onSkipNext = viewModel::next,
                         onOpenPlayer = viewModel::openPlayerScreen
                     )
                 }
@@ -3797,40 +3794,36 @@ private fun AlbumOverlay(
     val stageTarget = remember(albumPalette, lightTheme) {
         albumStageColors(Color(albumPalette.start), Color(albumPalette.end), lightTheme)
     }
-    val stage = animatedAlbumStage(target = stageTarget, animated = state.animationsEnabled)
+    val stage = animatedImmersiveMediaColors(
+        target = stageTarget,
+        animated = state.animationsEnabled,
+        labelPrefix = "album"
+    )
     val motionEnabled = state.animationsEnabled && state.motionArtworkEnabled
-
-    val albumHeader: @Composable () -> Unit = {
-        if (album != null) {
-            AlbumHeader(
-                album = album,
-                trackCount = tracks.size,
-                description = description,
-                stage = stage,
-                isPlaying = albumIsPlaying && !trackLoadFailed,
-                isResolving = albumIsResolving,
-                trackLoadFailed = trackLoadFailed,
-                onPlay = { if (albumIsActive) onTogglePlayback() else onPlayAll() },
-                onShuffle = onShuffleAll,
-                onRetry = onRetry,
-                onOpenArtist = onOpenAlbumArtist,
-                onDownload = onDownloadAlbum,
-                isPinnedToHome = SpeedDial.albumKey(album)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
-                homePinsFull = state.speedDialPins.size >= SpeedDial.MAX_PINS,
-                onTogglePinToHome = { onTogglePinToHome(album) },
-                onShare = {
-                    val shareText = buildString {
-                        append(album.title)
-                        if (album.artist.isNotBlank()) append(" - ").append(album.artist)
-                        if (album.browseId.isNotBlank()) append("\nhttps://music.youtube.com/browse/").append(album.browseId)
-                    }
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                    }
-                    context.startActivity(Intent.createChooser(intent, strings.share))
+    var albumMenuExpanded by rememberSaveable(album?.browseId, album?.title) { mutableStateOf(false) }
+    var albumDescriptionExpanded by rememberSaveable(album?.browseId, album?.title) { mutableStateOf(false) }
+    var albumDescriptionOverflows by remember(description) { mutableStateOf(false) }
+    val albumMetadata = remember(album?.year, tracks.size, strings) {
+        listOf(album?.year.orEmpty(), tracks.takeIf { it.isNotEmpty() }?.let { strings.formatTrackCount(it.size) }.orEmpty())
+            .filter { it.isNotBlank() }
+            .joinToString("  ·  ")
+    }
+    val albumPinned = album?.let { SpeedDial.albumKey(it) }
+        ?.let { key -> state.speedDialPins.any { it.key == key } } == true
+    val shareAlbum: () -> Unit = {
+        album?.let { currentAlbum ->
+            val shareText = buildString {
+                append(currentAlbum.title)
+                if (currentAlbum.artist.isNotBlank()) append(" - ").append(currentAlbum.artist)
+                if (currentAlbum.browseId.isNotBlank()) {
+                    append("\nhttps://music.youtube.com/browse/").append(currentAlbum.browseId)
                 }
-            )
+            }
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, shareText)
+            }
+            context.startActivity(Intent.createChooser(intent, strings.share))
         }
     }
     val albumTrackItems: LazyListScope.(Dp) -> Unit = { gutter ->
@@ -3900,12 +3893,11 @@ private fun AlbumOverlay(
         val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val topBarHeight = statusTop + ALBUM_TOP_BAR_HEIGHT
         val topBarPx = with(density) { topBarHeight.toPx() }
-        val stackedHeroHeight = albumStackedHeroHeight(maxWidth, maxHeight)
-        val heroPx = with(density) { stackedHeroHeight.toPx() }
-        val splitCollapsePx = with(density) { ALBUM_SPLIT_COLLAPSE_OFFSET.toPx() }
-        val collapsedState = remember(listState, split, heroPx, topBarPx, splitCollapsePx) {
+        val heroHeight = immersiveHeroHeight(split, maxWidth, maxHeight, topBarHeight)
+        val heroPx = with(density) { heroHeight.toPx() }
+        val collapsedState = remember(listState, heroPx, topBarPx) {
             derivedStateOf {
-                val threshold = if (split) splitCollapsePx else (heroPx - topBarPx).coerceAtLeast(0f)
+                val threshold = (heroPx - topBarPx).coerceAtLeast(0f)
                 listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > threshold
             }
         }
@@ -3929,54 +3921,13 @@ private fun AlbumOverlay(
                     }
                 }
             }
-            split -> {
-                val heroWidth = maxWidth * AlbumSplitHeroFraction
-                val listStart = maxWidth * AlbumSplitListStartFraction
-                AlbumSplitField(stage = stage, heroWidth = heroWidth, modifier = Modifier.matchParentSize())
-                AlbumArtworkLayer(
-                    cover = cover,
-                    title = album.title,
-                    motionArtwork = state.albumMotionArtwork,
-                    motionEnabled = motionEnabled,
-                    canvasQuality = state.interfaceSettings.canvasQuality,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .fillMaxHeight()
-                        .width(heroWidth)
-                        .artworkDissolve(ArtworkDissolveEdge.End, ALBUM_SPLIT_DISSOLVE)
-                )
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = listStart),
-                    contentPadding = PaddingValues(top = topBarHeight, bottom = albumBottomInset)
-                ) {
-                    item(key = "album-header", contentType = "album-header") {
-                        Box(modifier = Modifier.padding(horizontal = ALBUM_SPLIT_GUTTER)) { albumHeader() }
-                    }
-                    albumTrackItems(ALBUM_SPLIT_GUTTER)
-                }
-            }
             else -> {
                 val gutter = albumContentGutter(maxWidth)
-                val overlapPx = with(density) { AlbumHeaderOverlap.toPx() }
-                val parallax = state.animationsEnabled
-                val heroScroll: () -> Float = {
-                    if (listState.firstVisibleItemIndex == 0) {
-                        listState.firstVisibleItemScrollOffset.toFloat()
-                    } else {
-                        heroPx
-                    }
-                }
                 ArtworkBackdropWash(
                     artworkUrl = cover,
                     tint = stage.fieldTop,
                     base = stage.base,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(stackedHeroHeight + AlbumFieldTail)
-                        .graphicsLayer { translationY = -heroScroll() }
+                    modifier = Modifier.fillMaxSize()
                 )
                 LazyColumn(
                     state = listState,
@@ -3984,32 +3935,100 @@ private fun AlbumOverlay(
                     contentPadding = PaddingValues(bottom = albumBottomInset)
                 ) {
                     item(key = "album-hero", contentType = "album-hero") {
-                        AlbumArtworkLayer(
-                            cover = cover,
+                        ImmersiveMediaHero(
                             title = album.title,
-                            motionArtwork = state.albumMotionArtwork,
-                            motionEnabled = motionEnabled,
-                            canvasQuality = state.interfaceSettings.canvasQuality,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(stackedHeroHeight)
-                                .graphicsLayer {
-                                    translationY = if (parallax && listState.firstVisibleItemIndex == 0) {
-                                        listState.firstVisibleItemScrollOffset * ALBUM_HERO_PARALLAX
-                                    } else {
-                                        0f
-                                    }
-                                }
-                                .artworkDissolve(ArtworkDissolveEdge.Bottom, AlbumHeroDissolve)
+                            subtitle = album.artist,
+                            metadata = albumMetadata,
+                            colors = stage,
+                            wide = split,
+                            viewportWidth = maxWidth,
+                            viewportHeight = maxHeight,
+                            topBarHeight = topBarHeight,
+                            onSubtitleClick = onOpenAlbumArtist.takeIf { album.artist.isNotBlank() },
+                            actions = {
+                                ImmersiveMediaActionRow(
+                                    primary = ImmersiveMediaPrimaryAction(
+                                        enabled = tracks.isNotEmpty() || trackLoadFailed,
+                                        label = when {
+                                            trackLoadFailed -> strings.exploreSamplesRetry
+                                            albumIsPlaying -> strings.pause
+                                            else -> strings.play
+                                        },
+                                        contentDescription = when {
+                                            trackLoadFailed -> strings.exploreSamplesRetry
+                                            albumIsPlaying -> strings.pause
+                                            else -> strings.play
+                                        },
+                                        icon = when {
+                                            trackLoadFailed -> Icons.Rounded.Refresh
+                                            albumIsPlaying -> Icons.Rounded.Pause
+                                            else -> Icons.Rounded.PlayArrow
+                                        },
+                                        loading = albumIsResolving,
+                                        onClick = when {
+                                            trackLoadFailed -> onRetry
+                                            albumIsActive -> onTogglePlayback
+                                            else -> onPlayAll
+                                        }
+                                    ),
+                                    shuffleLabel = strings.shuffle,
+                                    downloadLabel = strings.download,
+                                    colors = stage,
+                                    shuffleEnabled = tracks.size > 1 && !trackLoadFailed,
+                                    downloadEnabled = tracks.isNotEmpty(),
+                                    onShuffle = onShuffleAll,
+                                    onDownload = onDownloadAlbum
+                                )
+                            },
+                            artwork = {
+                                AlbumArtworkLayer(
+                                    cover = cover,
+                                    title = album.title,
+                                    motionArtwork = state.albumMotionArtwork,
+                                    motionEnabled = motionEnabled,
+                                    canvasQuality = state.interfaceSettings.canvasQuality,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         )
                     }
-                    item(key = "album-header", contentType = "album-header") {
-                        Box(
-                            modifier = Modifier
-                                .albumOverlapUpward(AlbumHeaderOverlap)
-                                .padding(horizontal = gutter)
-                        ) {
-                            albumHeader()
+                    if (description.isNotBlank()) {
+                        item(key = "album-description", contentType = "album-description") {
+                            val canToggleDescription = albumDescriptionExpanded || albumDescriptionOverflows
+                            Column(
+                                modifier = Modifier
+                                    .padding(horizontal = gutter, vertical = 8.dp)
+                                    .fillMaxWidth()
+                                    .clip(LevyraPlayerDesign.ShapeSm)
+                                    .clickable(enabled = canToggleDescription, role = Role.Button) {
+                                        albumDescriptionExpanded = !albumDescriptionExpanded
+                                    }
+                                    .padding(horizontal = LevyraPlayerDesign.SpaceXs, vertical = LevyraPlayerDesign.SpaceSm),
+                                verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
+                            ) {
+                                Text(
+                                    text = description,
+                                    color = stage.contentMuted,
+                                    fontSize = 14.sp,
+                                    lineHeight = 21.sp,
+                                    letterSpacing = (-0.2).sp,
+                                    maxLines = if (albumDescriptionExpanded) Int.MAX_VALUE else 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                    onTextLayout = { result ->
+                                        if (!albumDescriptionExpanded) {
+                                            albumDescriptionOverflows = result.hasVisualOverflow
+                                        }
+                                    }
+                                )
+                                if (canToggleDescription) {
+                                    Text(
+                                        text = if (albumDescriptionExpanded) strings.showLess else strings.readAll,
+                                        color = stage.accent,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
                         }
                     }
                     albumTrackItems(gutter)
@@ -4017,32 +4036,87 @@ private fun AlbumOverlay(
             }
         }
 
-        AlbumTopBar(
+        ImmersiveMediaTopBar(
             title = album?.title.orEmpty(),
-            stage = stage,
+            colors = stage,
             collapsedState = collapsedState,
             height = topBarHeight,
-            reserveBookmarkSlot = album != null,
             animated = state.animationsEnabled,
-            onClose = onClose,
-            onSearch = {
-                val query = listOf(album?.title.orEmpty(), album?.artist.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
-                if (query.isNotBlank()) openExternalUrl(context, "https://music.youtube.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}", strings)
+            backLabel = strings.back,
+            onBack = onClose,
+            actions = {
+                if (album != null) {
+                    PlayerGlassIconButton(
+                        icon = if (albumSaved) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = if (albumSaved) strings.removeFromFavorites else strings.addToFavorites,
+                        onClick = onToggleAlbumFavorite,
+                        enabled = tracks.isNotEmpty(),
+                        size = 48.dp,
+                        tint = if (albumSaved) LevyraPink else Color.White,
+                        fill = Color.Black.copy(alpha = 0.34f),
+                        modifier = Modifier.semantics {
+                            toggleableState = ToggleableState(albumSaved)
+                        }
+                    )
+                    Box {
+                        PlayerGlassIconButton(
+                            icon = Icons.Rounded.MoreVert,
+                            contentDescription = strings.more,
+                            onClick = { albumMenuExpanded = true },
+                            size = 48.dp,
+                            tint = Color.White,
+                            fill = Color.Black.copy(alpha = 0.34f)
+                        )
+                        DropdownMenu(
+                            expanded = albumMenuExpanded,
+                            onDismissRequest = { albumMenuExpanded = false },
+                            modifier = Modifier.background(stage.fieldTop)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(strings.search) },
+                                leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                                onClick = {
+                                    albumMenuExpanded = false
+                                    val query = listOf(album.title, album.artist).filter { it.isNotBlank() }.joinToString(" ")
+                                    if (query.isNotBlank()) {
+                                        openExternalUrl(
+                                            context,
+                                            "https://music.youtube.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}",
+                                            strings
+                                        )
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(strings.share) },
+                                leadingIcon = { Icon(Icons.Rounded.Share, null) },
+                                onClick = { albumMenuExpanded = false; shareAlbum() }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    val copy = strings.speedDialCopy()
+                                    Text(
+                                        when {
+                                            albumPinned -> copy.removeFromHome
+                                            state.speedDialPins.size >= SpeedDial.MAX_PINS -> copy.homeFull
+                                            else -> copy.addToHome
+                                        }
+                                    )
+                                },
+                                leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
+                                enabled = albumPinned || state.speedDialPins.size < SpeedDial.MAX_PINS,
+                                onClick = {
+                                    albumMenuExpanded = false
+                                    onTogglePinToHome(album)
+                                }
+                            )
+                        }
+                    }
+                }
             }
         )
         if (state.albumLoading && album != null && tracks.isNotEmpty()) {
             LinearMiniLoading(modifier = Modifier.align(Alignment.TopCenter).padding(top = topBarHeight))
-        }
-        if (album != null) {
-            SavedAlbumBookmarkOverlay(
-                saved = albumSaved,
-                enabled = tracks.isNotEmpty(),
-                languageCode = state.languageCode,
-                onToggle = onToggleAlbumFavorite,
-                container = ALBUM_CHROME_FILL,
-                border = ALBUM_CHROME_BORDER,
-                idleTint = Color.White
-            )
         }
         state.currentTrack?.let { current ->
             AlbumNowPlayingDock(
@@ -4139,349 +4213,7 @@ private fun AlbumOverlay(
 }
 
 private const val ALBUM_SKELETON_ROWS = 6
-private const val ALBUM_HERO_PARALLAX = 0.32f
-private const val ALBUM_SPLIT_DISSOLVE = 0.34f
-private const val ALBUM_STAGE_COLOR_MS = 460
 private val ALBUM_TOP_BAR_HEIGHT = 64.dp
-private val ALBUM_SPLIT_GUTTER = 24.dp
-private val ALBUM_SPLIT_COLLAPSE_OFFSET = 96.dp
-private val ALBUM_CHROME_FILL = Color.Black.copy(alpha = 0.38f)
-private val ALBUM_CHROME_BORDER = Color.White.copy(alpha = 0.14f)
-
-private fun Modifier.albumOverlapUpward(overlap: Dp): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints)
-    val overlapPx = overlap.roundToPx().coerceAtMost(placeable.height)
-    layout(placeable.width, placeable.height - overlapPx) {
-        placeable.place(0, -overlapPx)
-    }
-}
-
-@Composable
-private fun animatedAlbumStage(target: AlbumStageColors, animated: Boolean): AlbumStageColors {
-    val spec: AnimationSpec<Color> = if (animated) {
-        tween(ALBUM_STAGE_COLOR_MS, easing = LinearOutSlowInEasing)
-    } else {
-        snap()
-    }
-    val fieldTop by animateColorAsState(target.fieldTop, spec, label = "album-field-top")
-    val fieldMid by animateColorAsState(target.fieldMid, spec, label = "album-field-mid")
-    val base by animateColorAsState(target.base, spec, label = "album-field-base")
-    val content by animateColorAsState(target.content, spec, label = "album-content")
-    val contentMuted by animateColorAsState(target.contentMuted, spec, label = "album-content-muted")
-    val accent by animateColorAsState(target.accent, spec, label = "album-accent")
-    val actionStart by animateColorAsState(target.actionStart, spec, label = "album-action-start")
-    val actionEnd by animateColorAsState(target.actionEnd, spec, label = "album-action-end")
-    val actionContent by animateColorAsState(target.actionContent, spec, label = "album-action-content")
-    return AlbumStageColors(
-        fieldTop = fieldTop,
-        fieldMid = fieldMid,
-        base = base,
-        content = content,
-        contentMuted = contentMuted,
-        accent = accent,
-        actionStart = actionStart,
-        actionEnd = actionEnd,
-        actionContent = actionContent,
-        secondaryFill = target.secondaryFill,
-        hairline = target.hairline
-    )
-}
-
-@Composable
-private fun AlbumSplitField(stage: AlbumStageColors, heroWidth: Dp, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.drawBehind {
-            val heroEnd = heroWidth.toPx().coerceAtMost(size.width)
-            val start = heroEnd * (1f - ALBUM_SPLIT_DISSOLVE)
-            val end = (heroEnd * 1.55f).coerceAtMost(size.width)
-            if (end <= start) return@drawBehind
-            val rtl = layoutDirection == LayoutDirection.Rtl
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    0f to stage.fieldTop,
-                    0.45f to stage.fieldMid,
-                    1f to stage.base,
-                    startX = if (rtl) size.width - start else start,
-                    endX = if (rtl) size.width - end else end
-                ),
-                topLeft = Offset(if (rtl) size.width - end else 0f, 0f),
-                size = Size(end, size.height)
-            )
-        }
-    )
-}
-
-@Composable
-private fun AlbumArtworkLayer(
-    cover: String,
-    title: String,
-    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
-    motionEnabled: Boolean,
-    canvasQuality: LevyraCanvasQuality,
-    modifier: Modifier = Modifier
-) {
-    MotionArtworkLayer(
-        artwork = motionArtwork,
-        enabled = motionEnabled,
-        isPlaying = false,
-        pageMode = true,
-        cornerRadius = 0.dp,
-        presentation = MotionArtworkPresentation.Cinematic,
-        quality = canvasQuality,
-        modifier = modifier
-    ) {
-        SeamlessArtworkImage(
-            url = cover,
-            contentDescription = title,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Brush.linearGradient(listOf(AlbumNeutralPaletteStart, AlbumNeutralPaletteEnd))),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Album, null, tint = Color.White.copy(alpha = 0.82f), modifier = Modifier.size(72.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun AlbumTopBar(
-    title: String,
-    stage: AlbumStageColors,
-    collapsedState: androidx.compose.runtime.State<Boolean>,
-    height: Dp,
-    reserveBookmarkSlot: Boolean,
-    animated: Boolean,
-    onClose: () -> Unit,
-    onSearch: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val collapsed by collapsedState
-    val collapse by animateFloatAsState(
-        targetValue = if (collapsed) 1f else 0f,
-        animationSpec = if (animated) tween(220, easing = LinearOutSlowInEasing) else snap(),
-        label = "album-topbar-collapse"
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height)
-            .drawBehind {
-                if (collapse < 1f) {
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to Color.Black.copy(alpha = 0.44f * (1f - collapse)),
-                            1f to Color.Transparent
-                        )
-                    )
-                }
-                if (collapse > 0f) drawRect(color = stage.fieldTop.copy(alpha = collapse))
-            }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            PlayerRoundIconButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = strings.back,
-                tint = Color.White,
-                background = ALBUM_CHROME_FILL,
-                borderColor = ALBUM_CHROME_BORDER,
-                onClick = onClose
-            )
-            Text(
-                text = title,
-                color = stage.content,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.4).sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .weight(1f)
-                    .graphicsLayer { alpha = collapse }
-                    .then(if (collapse <= 0.05f) Modifier.clearAndSetSemantics {} else Modifier)
-            )
-            if (reserveBookmarkSlot) Spacer(modifier = Modifier.width(ALBUM_BOOKMARK_SLOT))
-            PlayerRoundIconButton(
-                icon = Icons.Rounded.Search,
-                contentDescription = strings.search,
-                tint = Color.White,
-                background = ALBUM_CHROME_FILL,
-                borderColor = ALBUM_CHROME_BORDER,
-                onClick = onSearch
-            )
-        }
-    }
-}
-
-private val ALBUM_BOOKMARK_SLOT = 50.dp
-
-@Composable
-private fun AlbumHeader(
-    album: AlbumHit,
-    trackCount: Int,
-    description: String,
-    stage: AlbumStageColors,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    trackLoadFailed: Boolean,
-    onPlay: () -> Unit,
-    onShuffle: () -> Unit,
-    onRetry: () -> Unit,
-    onOpenArtist: () -> Unit,
-    onDownload: () -> Unit,
-    isPinnedToHome: Boolean,
-    homePinsFull: Boolean,
-    onTogglePinToHome: () -> Unit,
-    onShare: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    var descriptionExpanded by rememberSaveable(album.browseId, album.title) { mutableStateOf(false) }
-    val meta = remember(album.year, trackCount, strings) {
-        listOf(album.year, if (trackCount > 0) strings.formatTrackCount(trackCount) else "")
-            .filter { it.isNotBlank() }
-            .joinToString("  ·  ")
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = LevyraPlayerDesign.SpaceLg),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = album.title,
-            color = stage.content,
-            fontSize = 28.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(28.sp),
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.8).sp,
-            textAlign = TextAlign.Center,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.semantics { heading() }
-        )
-        if (album.artist.isNotBlank()) {
-            Row(
-                modifier = Modifier
-                    .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                    .clip(LevyraPlayerDesign.ShapePill)
-                    .clickable(
-                        onClickLabel = strings.openArtist,
-                        role = Role.Button,
-                        onClick = onOpenArtist
-                    )
-                    .padding(horizontal = LevyraPlayerDesign.SpaceMd),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = album.artist,
-                    color = stage.accent,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.3).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = stage.accent,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-        if (meta.isNotBlank()) {
-            Text(
-                text = meta,
-                color = stage.contentMuted,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = (-0.1).sp,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceLg))
-        Row(
-            modifier = Modifier
-                .widthIn(max = ALBUM_ACTIONS_MAX_WIDTH)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
-        ) {
-            AlbumPlayButton(
-                enabled = trackCount > 0 || trackLoadFailed,
-                isPlaying = isPlaying,
-                isResolving = isResolving,
-                retry = trackLoadFailed,
-                stage = stage,
-                onClick = if (trackLoadFailed) onRetry else onPlay,
-                modifier = Modifier.weight(1f)
-            )
-            AlbumShuffleButton(
-                enabled = trackCount > 1 && !trackLoadFailed,
-                stage = stage,
-                onClick = onShuffle
-            )
-        }
-        Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
-        AlbumQuietActions(
-            showDownload = trackCount > 0,
-            stage = stage,
-            isPinnedToHome = isPinnedToHome,
-            homePinsFull = homePinsFull,
-            onDownload = onDownload,
-            onShare = onShare,
-            onTogglePinToHome = onTogglePinToHome
-        )
-        if (description.isNotBlank()) {
-            Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceSm))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(LevyraPlayerDesign.ShapeSm)
-                    .clickable(role = Role.Button) { descriptionExpanded = !descriptionExpanded }
-                    .padding(horizontal = LevyraPlayerDesign.SpaceXs, vertical = LevyraPlayerDesign.SpaceSm),
-                verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
-            ) {
-                Text(
-                    text = description,
-                    color = stage.contentMuted,
-                    fontSize = 14.sp,
-                    lineHeight = 21.sp,
-                    letterSpacing = (-0.2).sp,
-                    maxLines = if (descriptionExpanded) Int.MAX_VALUE else 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = if (descriptionExpanded) strings.showLess else strings.readAll,
-                    color = stage.accent,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.2).sp
-                )
-            }
-        }
-    }
-}
-
-private val ALBUM_ACTIONS_MAX_WIDTH = 520.dp
-private val ALBUM_ACTION_HEIGHT = 52.dp
-
-private fun albumControlShape(): RoundedCornerShape {
-    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
-    return RoundedCornerShape(if (isAppleStyle) LevyraPlayerDesign.CornerXs else LevyraPlayerDesign.CornerSm)
-}
 
 @Composable
 private fun AlbumTracksUnavailableState(message: String) {
@@ -4516,193 +4248,6 @@ private fun AlbumTracksUnavailableState(message: String) {
     }
 }
 
-@Composable
-private fun AlbumPlayButton(
-    enabled: Boolean,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    retry: Boolean,
-    stage: AlbumStageColors,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val strings = LocalLevyraStrings.current
-    val shape = albumControlShape()
-    val content = if (enabled) stage.actionContent else stage.contentMuted
-    Box(
-        modifier = modifier
-            .height(ALBUM_ACTION_HEIGHT)
-            .shadow(if (enabled) 14.dp else 0.dp, shape, clip = false, spotColor = stage.actionStart.copy(alpha = 0.55f))
-            .clip(shape)
-            .background(
-                if (enabled) {
-                    Brush.horizontalGradient(listOf(stage.actionStart, stage.actionEnd))
-                } else {
-                    Brush.horizontalGradient(listOf(stage.secondaryFill, stage.secondaryFill))
-                }
-            )
-            .pressable(enabled = enabled && !isResolving, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = LevyraPlayerDesign.SpaceMd),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
-        ) {
-            if (isResolving) {
-                CircularProgressIndicator(
-                    color = content,
-                    strokeWidth = 2.5.dp,
-                    modifier = Modifier.size(20.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = when {
-                        retry -> Icons.Rounded.Refresh
-                        isPlaying -> Icons.Rounded.Pause
-                        else -> Icons.Rounded.PlayArrow
-                    },
-                    contentDescription = null,
-                    tint = content,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = when {
-                    retry -> strings.exploreSamplesRetry
-                    isPlaying -> strings.playing
-                    else -> strings.play
-                },
-                color = content,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.3).sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-private fun AlbumShuffleButton(
-    enabled: Boolean,
-    stage: AlbumStageColors,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val shape = albumControlShape()
-    val content = if (enabled) stage.content else stage.contentMuted.copy(alpha = 0.5f)
-    Box(
-        modifier = modifier
-            .size(ALBUM_ACTION_HEIGHT)
-            .clip(shape)
-            .background(stage.secondaryFill)
-            .border(BorderStroke(LevyraPlayerDesign.Hairline, stage.hairline), shape)
-            .pressable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Shuffle,
-            contentDescription = LocalLevyraStrings.current.shuffle,
-            tint = content,
-            modifier = Modifier.size(24.dp)
-        )
-    }
-}
-
-@Composable
-private fun AlbumQuietAction(
-    icon: ImageVector,
-    label: String,
-    stage: AlbumStageColors,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-            .clip(LevyraPlayerDesign.ShapePill)
-            .pressable(onClick = onClick)
-            .padding(horizontal = LevyraPlayerDesign.SpaceMd),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, contentDescription = null, tint = stage.contentMuted, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = label,
-            color = stage.contentMuted,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = (-0.2).sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun AlbumQuietActions(
-    showDownload: Boolean,
-    stage: AlbumStageColors,
-    isPinnedToHome: Boolean,
-    homePinsFull: Boolean,
-    onDownload: () -> Unit,
-    onShare: () -> Unit,
-    onTogglePinToHome: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val speedDialCopy = remember(strings) { strings.speedDialCopy() }
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (showDownload) {
-            AlbumQuietAction(icon = Icons.Rounded.Download, label = strings.offline, stage = stage, onClick = onDownload)
-        }
-        AlbumQuietAction(icon = Icons.Rounded.Share, label = strings.share, stage = stage, onClick = onShare)
-        AlbumPinAction(
-            pinned = isPinnedToHome,
-            enabled = isPinnedToHome || !homePinsFull,
-            label = when {
-                isPinnedToHome -> speedDialCopy.removeFromHome
-                homePinsFull -> speedDialCopy.homeFull
-                else -> speedDialCopy.addToHome
-            },
-            stage = stage,
-            onClick = onTogglePinToHome
-        )
-    }
-}
-
-@Composable
-private fun AlbumPinAction(
-    pinned: Boolean,
-    enabled: Boolean,
-    label: String,
-    stage: AlbumStageColors,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(LevyraPlayerDesign.MinimumTouchTarget)
-            .clip(CircleShape)
-            .semantics { toggleableState = ToggleableState(pinned) }
-            .pressable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.PushPin,
-            contentDescription = label,
-            tint = when {
-                pinned -> LevyraCyan
-                enabled -> stage.contentMuted
-                else -> stage.contentMuted.copy(alpha = 0.4f)
-            },
-            modifier = Modifier.size(18.dp)
-        )
-    }
-}
-
 private fun uiTrackMatches(current: Track?, candidate: Track): Boolean {
     if (current == null) return false
     if (current.id.isNotBlank() && candidate.id.isNotBlank() && current.id == candidate.id) return true
@@ -4711,6 +4256,47 @@ private fun uiTrackMatches(current: Track?, candidate: Track): Boolean {
     val currentArtist = current.artist.trim().lowercase()
     val candidateArtist = candidate.artist.trim().lowercase()
     return currentTitle.isNotBlank() && currentTitle == candidateTitle && currentArtist == candidateArtist
+}
+
+@Composable
+private fun AlbumArtworkLayer(
+    cover: String,
+    title: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    motionEnabled: Boolean,
+    canvasQuality: LevyraCanvasQuality,
+    modifier: Modifier = Modifier
+) {
+    MotionArtworkLayer(
+        artwork = motionArtwork,
+        enabled = motionEnabled,
+        isPlaying = false,
+        pageMode = true,
+        cornerRadius = 0.dp,
+        presentation = MotionArtworkPresentation.Cinematic,
+        quality = canvasQuality,
+        modifier = modifier
+    ) {
+        SeamlessArtworkImage(
+            url = cover,
+            contentDescription = title,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(listOf(AlbumNeutralPaletteStart, AlbumNeutralPaletteEnd))),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Album,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.82f),
+                    modifier = Modifier.size(72.dp)
+                )
+            }
+        }
+    }
 }
 
 @Composable
