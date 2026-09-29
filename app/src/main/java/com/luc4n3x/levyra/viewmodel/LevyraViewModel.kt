@@ -1405,9 +1405,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 audioQuality = settings.audioQuality,
                 preferredAudioLanguage = settings.preferredAudioLanguage,
                 highQualityAudioMode = preferences.highQualityAudioMode(),
-                losslessAudioEnabled = preferences.losslessAudioEnabled(),
-                streamingAudioQuality = preferences.streamingAudioQuality(),
-                losslessAddonUrl = preferences.losslessAddonUrl(),
                 audioNormalization = settings.audioNormalization,
                 audioSettings = settings.audioSettings,
                 lyricsTranslationEnabled = settings.lyricsTranslationEnabled,
@@ -4418,25 +4415,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(highQualityAudioMode = mode) }
     }
 
-    fun setLosslessAudioEnabled(enabled: Boolean) {
-        preferences.setLosslessAudioEnabled(enabled)
-        resolver.setLosslessAudioEnabled(enabled)
-        _state.update { it.copy(losslessAudioEnabled = enabled) }
-    }
-
-    fun setStreamingAudioQuality(quality: com.luc4n3x.levyra.domain.AudioQualityPreference) {
-        preferences.setStreamingAudioQuality(quality)
-        resolver.setStreamingAudioQuality(quality)
-        _state.update { it.copy(streamingAudioQuality = quality) }
-    }
-
-    fun setLosslessAddonUrl(value: String) {
-        val normalized = value.trim()
-        preferences.setLosslessAddonUrl(normalized)
-        resolver.refreshLosslessProviderConfiguration()
-        _state.update { it.copy(losslessAddonUrl = normalized) }
-    }
-
     fun openSleepTimer() {
         _state.update { it.copy(showSleepTimer = true) }
     }
@@ -5568,9 +5546,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 audioQuality = snapshot.audioQuality,
                 preferredAudioLanguage = snapshot.preferredAudioLanguage,
                 highQualityAudioMode = snapshot.highQualityAudioMode,
-                losslessAudioEnabled = snapshot.losslessAudioEnabled,
-                streamingAudioQuality = snapshot.streamingAudioQuality,
-                losslessAddonUrl = snapshot.losslessAddonUrl,
                 audioNormalization = snapshot.audioNormalization,
                 audioSettings = snapshot.audioSettings,
                 playbackSpeed = snapshot.audioSettings.playbackSpeed,
@@ -5597,9 +5572,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         resolver.setAudioQuality(snapshot.audioQuality)
         resolver.setPreferredAudioLanguage(snapshot.preferredAudioLanguage)
         resolver.setHighQualityAudioMode(snapshot.highQualityAudioMode)
-        resolver.setLosslessAudioEnabled(snapshot.losslessAudioEnabled)
-        resolver.setStreamingAudioQuality(snapshot.streamingAudioQuality)
-        resolver.refreshLosslessProviderConfiguration()
         withContext(Dispatchers.IO) {
             queueEngine.restore(
                 fallbackTracks = emptyList(),

@@ -1,9 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -23,99 +21,5 @@ class ProviderDestinationPolicyTest {
         assertFalse(ProviderDestinationPolicy.allows("https://localhost/".toHttpUrl()))
         assertFalse(ProviderDestinationPolicy.allows("https://jiosaavn.com.evil.example/".toHttpUrl()))
         assertFalse(ProviderDestinationPolicy.allows("https://saavncdn.com.evil.example/".toHttpUrl()))
-    }
-
-    @Test
-    fun configurableProviderUsesAnExactHttpsHostAllowlist() {
-        val allowed = setOf("addon.example.org", "cdn.example.org")
-
-        assertTrue(
-            ConfigurableProviderDestinationPolicy.allows(
-                "https://cdn.example.org/audio/track.flac".toHttpUrl(),
-                allowed
-            )
-        )
-        assertFalse(
-            ConfigurableProviderDestinationPolicy.allows(
-                "https://cdn.example.org.evil.test/audio/track.flac".toHttpUrl(),
-                allowed
-            )
-        )
-        assertFalse(
-            ConfigurableProviderDestinationPolicy.allows(
-                "http://cdn.example.org/audio/track.flac".toHttpUrl(),
-                allowed
-            )
-        )
-        assertFalse(
-            ConfigurableProviderDestinationPolicy.allows(
-                "https://user:secret@cdn.example.org/audio/track.flac".toHttpUrl(),
-                allowed
-            )
-        )
-    }
-
-    @Test
-    fun playbackPolicyCarriesAllowlistToChildHostsAndFailsClosedAfterExpiry() {
-        val now = 1_800_000_000_000L
-        val allowed = setOf("cdn.example.org", "segments.example.org")
-        assertTrue(
-            ConfigurableProviderPlaybackPolicy.register(
-                "https://cdn.example.org/manifest.mpd".toHttpUrl(),
-                allowed,
-                now + 60_000L,
-                now
-            )
-        )
-
-        assertEquals(
-            allowed,
-            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
-                "https://segments.example.org/audio/0001.m4s",
-                now
-            )
-        )
-        assertNull(
-            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
-                "https://segments.example.org.evil.test/audio/0001.m4s",
-                now
-            )
-        )
-        assertEquals(
-            emptySet<String>(),
-            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
-                "https://segments.example.org/audio/0001.m4s",
-                now + 60_001L
-            )
-        )
-    }
-
-    @Test
-    fun registeredHostWithDisallowedSchemeOrPortStaysOnProtectedPath() {
-        val now = 1_800_000_100_000L
-        val allowed = setOf("cdn-secure.example.org")
-        assertTrue(
-            ConfigurableProviderPlaybackPolicy.register(
-                "https://cdn-secure.example.org/audio/track.flac".toHttpUrl(),
-                allowed,
-                now + 60_000L,
-                now
-            )
-        )
-
-        assertEquals(
-            emptySet<String>(),
-            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
-                "http://cdn-secure.example.org/audio/track.flac",
-                now
-            )
-        )
-        assertEquals(
-            emptySet<String>(),
-            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
-                "https://cdn-secure.example.org:8443/audio/track.flac",
-                now
-            )
-        )
     }
 }

@@ -22,7 +22,6 @@ import com.luc4n3x.levyra.domain.ChartRegion
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
-import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
@@ -224,9 +223,6 @@ data class LevyraUiState(
     val audioQuality: String = LevyraAudioQuality.DEFAULT,
     val preferredAudioLanguage: String = "",
     val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
-    val losslessAudioEnabled: Boolean = false,
-    val streamingAudioQuality: AudioQualityPreference = AudioQualityPreference.MAX_QUALITY,
-    val losslessAddonUrl: String = "",
     val showAudioQualityPanel: Boolean = false,
     val audioNormalization: Boolean = false,
     val audioSettings: LevyraAudioSettings = LevyraAudioSettings(),

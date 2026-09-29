@@ -78,7 +78,7 @@ internal class HighQualityProviderLane(
         var selection: AlternativeMatchSelection = AlternativeMatchSelection.Rejected(MatchRejection.NO_CANDIDATES, emptyList())
         for ((index, text) in AlternativeSearchPlan.queries(query).withIndex()) {
             currentCoroutineContext().ensureActive()
-            when (val outcome = provider.search(text, request)) {
+            when (val outcome = provider.search(text)) {
                 is ProviderSearchOutcome.Failed ->
                     return HighQualityResolution.Fallback(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, outcome.failure.name)
                 is ProviderSearchOutcome.Found -> {

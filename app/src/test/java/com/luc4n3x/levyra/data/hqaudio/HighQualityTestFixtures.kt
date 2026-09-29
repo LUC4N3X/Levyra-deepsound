@@ -203,8 +203,7 @@ internal class FakeHighQualityProvider(
     var streamOutcome: suspend (AlternativeTrackCandidate) -> ProviderStreamOutcome = {
         ProviderStreamOutcome.Resolved(resolvedStream(it))
     },
-    providerId: String = "jiosaavn",
-    override val requiresHighQualityMode: Boolean = true
+    providerId: String = "jiosaavn"
 ) : HighQualityAudioProvider {
     override val id: String = providerId
     override val displayName: String = if (providerId == "jiosaavn") "JioSaavn" else providerId

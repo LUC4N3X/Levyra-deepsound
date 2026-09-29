@@ -48,19 +48,34 @@ class AlternativeManifestCodecTest {
     @Test
     fun alternativeProvenanceSurvivesRoundTrip() {
         val source = AlternativeAudioSource(
-            "lossless-addon",
+            "jiosaavn",
             "pW-kkdqr",
-            2_304,
+            96,
             AlternativeMatchVerdict.EXACT,
             100,
-            requestedQuality = AudioQualityPreference.MAX_QUALITY,
-            deliveredQuality = "Hi-Res 24-bit / 192 kHz",
-            isLossless = true
+            requestedQuality = AudioQualityPreference.DATA_SAVER,
+            deliveredQuality = "96 kbps",
+            isLossless = false
         )
         val decoded = PlaybackManifestCodec.decode(PlaybackManifestCodec.encode(manifest(source)))!!
         assertEquals(source, decoded.alternativeSource)
         assertTrue(decoded.isAlternativeSource)
         assertEquals("4NRXx6U8ABQ", decoded.sourceVideoId)
+    }
+
+    @Test
+    fun manifestsCachedWithRetiredRemoteLosslessFieldsStayReadable() {
+        val source = AlternativeAudioSource("jiosaavn", "pW-kkdqr", 320, AlternativeMatchVerdict.HIGH, 91)
+        val encoded = PlaybackManifestCodec.encode(manifest(source))
+        val legacy = encoded
+            .replace("\"requestedQuality\":\"high\"", "\"requestedQuality\":\"max_quality\",\"isAtmos\":true,\"isSpatial\":true")
+            .replace("\"channels\":", "\"isAtmos\":true,\"isSpatial\":true,\"channels\":")
+        assertTrue(legacy.contains("max_quality"))
+
+        val decoded = PlaybackManifestCodec.decode(legacy)!!
+
+        assertEquals(source, decoded.alternativeSource)
+        assertEquals(AudioQualityPreference.HIGH, decoded.alternativeSource?.requestedQuality)
     }
 
     @Test

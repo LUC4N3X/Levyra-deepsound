@@ -16,13 +16,11 @@ class CodeRabbitResolverRegressionTest {
         try {
             val transient = FakeHighQualityProvider(
                 searchOutcome = { ProviderSearchOutcome.Failed(ProviderFailure.NETWORK) },
-                providerId = "transient-provider",
-                requiresHighQualityMode = false
+                providerId = "transient-provider"
             )
             val definitiveMiss = FakeHighQualityProvider(
                 searchOutcome = { ProviderSearchOutcome.Found(emptyList()) },
-                providerId = "definitive-miss-provider",
-                requiresHighQualityMode = false
+                providerId = "definitive-miss-provider"
             )
             val resolver = HighQualityAudioResolver(
                 providers = listOf(transient, definitiveMiss),

@@ -214,28 +214,7 @@ private val alternativeAudioBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun alternativeAudioLocalizationEntries(code: String): Map<String, String> =
-    localizedBundleOrEnglish(alternativeAudioBundles, code) + losslessAudioStrings(code)
-
-private fun losslessAudioStrings(code: String): Map<String, String> {
-    val italian = code == "it"
-    return mapOf(
-        "losslessAudioTitle" to if (italian) "Audio Lossless / Hi-Res" else "Lossless / Hi-Res audio",
-        "losslessAudioSubtitle" to if (italian) {
-            "Usa un addon HTTPS configurabile e verificato prima di JioSaavn. Se non è disponibile, il fallback resta automatico."
-        } else {
-            "Use a configurable verified HTTPS addon before JioSaavn. Fallback remains automatic when unavailable."
-        },
-        "losslessAddonUrl" to if (italian) "URL addon Lossless" else "Lossless addon URL",
-        "losslessAddonUrlHint" to "https://example.org/addon",
-        "losslessQualityAtmos" to "Dolby Atmos",
-        "losslessQualityMax" to if (italian) "Qualità massima · fino a 24-bit / 192 kHz" else "Max quality · up to 24-bit / 192 kHz",
-        "losslessQualityHiRes" to "Hi-Res · 24-bit / 96 kHz",
-        "losslessQualityCd" to "CD Lossless · 16-bit / 44.1 kHz",
-        "losslessQualityHigh" to "High · 320 kbps",
-        "losslessQualityNormal" to "Normal · 160 kbps",
-        "losslessQualityDataSaver" to "Data Saver · 96 kbps"
-    )
-}
+    localizedBundleOrEnglish(alternativeAudioBundles, code)
 
 internal fun alternativeAudioLocalizationCodes(): Set<String> = supportedLocalizationCodes()
 
@@ -244,16 +223,5 @@ internal val alternativeAudioKeys: Set<String> = setOf(
     "alternativeAudioSubtitle",
     "alternativeAudioOff",
     "alternativeAudioAutomatic",
-    "alternativeAudioPrefer320",
-    "losslessAudioTitle",
-    "losslessAudioSubtitle",
-    "losslessAddonUrl",
-    "losslessAddonUrlHint",
-    "losslessQualityAtmos",
-    "losslessQualityMax",
-    "losslessQualityHiRes",
-    "losslessQualityCd",
-    "losslessQualityHigh",
-    "losslessQualityNormal",
-    "losslessQualityDataSaver"
+    "alternativeAudioPrefer320"
 )

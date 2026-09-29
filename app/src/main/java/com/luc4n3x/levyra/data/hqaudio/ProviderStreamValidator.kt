@@ -11,11 +11,7 @@ enum class StreamRejection {
     NOT_AUDIO,
     UNSUPPORTED_CONTAINER,
     UNKNOWN_LENGTH,
-    BITRATE_MISMATCH,
-    MALFORMED_AUDIO,
-    UNSUPPORTED_CODEC,
-    FAKE_ATMOS,
-    URL_EXPIRED
+    BITRATE_MISMATCH
 }
 
 sealed interface StreamValidation {

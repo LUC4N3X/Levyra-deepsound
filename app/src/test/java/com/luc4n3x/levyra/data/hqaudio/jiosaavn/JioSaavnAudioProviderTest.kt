@@ -151,23 +151,7 @@ class JioSaavnAudioProviderTest {
     }
 
     @Test
-    fun normalAndDataSaverRequestsDoNotProbeHigherJioTiers() {
-        val normalExchange = ScriptedExchange { request ->
-            if (request.url.endsWith("_160.mp4")) validFor(160) else htmlResponse(404)
-        }
-        val normal = runBlocking {
-            provider(normalExchange).resolveStream(
-                localCandidate,
-                AudioQualityRequest(
-                    preference = AudioQualityPreference.NORMAL,
-                    purpose = AudioStreamPurpose.DOWNLOAD
-                )
-            )
-        } as ProviderStreamOutcome.Resolved
-        assertEquals(AudioQualityTier.KBPS_160, normal.stream.tier)
-        assertEquals(AudioQualityPreference.NORMAL, normal.stream.requestedQuality)
-        assertFalse(normalExchange.requests.any { it.url.endsWith("_320.mp4") })
-
+    fun dataSaverDownloadDoesNotProbeHigherJioTiers() {
         val saverExchange = ScriptedExchange { request ->
             if (request.url.endsWith("_96.mp4")) validFor(96) else htmlResponse(404)
         }
@@ -186,7 +170,7 @@ class JioSaavnAudioProviderTest {
     }
 
     @Test
-    fun disabledLosslessFeaturePreservesTheExistingJioPlaybackOrder() {
+    fun playbackRequestKeepsTheJio320FirstOrder() {
         val exchange = ScriptedExchange { request ->
             if (request.url.endsWith("_320.mp4")) validFor(320) else htmlResponse(404)
         }
@@ -195,8 +179,7 @@ class JioSaavnAudioProviderTest {
                 localCandidate,
                 AudioQualityRequest(
                     preference = AudioQualityPreference.DATA_SAVER,
-                    purpose = AudioStreamPurpose.PLAYBACK,
-                    losslessEnabled = false
+                    purpose = AudioStreamPurpose.PLAYBACK
                 )
             )
         } as ProviderStreamOutcome.Resolved

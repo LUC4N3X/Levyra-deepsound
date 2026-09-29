@@ -334,13 +334,7 @@ internal fun buildSourceRows(
         alternative?.let {
             add(copy.requested to it.requestedQuality.storageValue)
             it.deliveredQuality.takeIf(String::isNotBlank)?.let { quality -> add(copy.delivered to quality) }
-            val format = when {
-                it.isAtmos -> "Dolby Atmos"
-                it.isSpatial -> copy.spatial
-                it.isLossless -> copy.lossless
-                else -> copy.lossy
-            }
-            add(copy.format to format)
+            add(copy.format to if (it.isLossless) copy.lossless else copy.lossy)
             val verifiedSource = buildList {
                 add(it.providerId)
                 if (it.bitrateKbps > 0) add("${it.bitrateKbps} kbps")

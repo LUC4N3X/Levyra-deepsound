@@ -49,18 +49,17 @@ class LevyraExperienceSettingsTest {
     @Test
     fun downloadPresetsSelectIndependentOfflineQuality() {
         assertEquals("High", LevyraDownloadSettings(preset = LevyraDownloadPreset.HighQuality).resolverAudioQuality)
-        assertEquals("High", LevyraDownloadSettings(preset = LevyraDownloadPreset.HiRes).resolverAudioQuality)
-        assertEquals("Auto", LevyraDownloadSettings(preset = LevyraDownloadPreset.Normal).resolverAudioQuality)
         assertEquals("Low", LevyraDownloadSettings(preset = LevyraDownloadPreset.DataSaver).resolverAudioQuality)
         assertEquals(null, LevyraDownloadSettings(preset = LevyraDownloadPreset.Automatic).resolverAudioQuality)
         assertEquals(
-            AudioQualityPreference.DOLBY_ATMOS,
-            LevyraDownloadSettings(preset = LevyraDownloadPreset.DolbyAtmos).audioQualityPreference
+            AudioQualityPreference.HIGH,
+            LevyraDownloadSettings(preset = LevyraDownloadPreset.Automatic).audioQualityPreference
         )
         assertEquals(
-            AudioQualityPreference.CD_LOSSLESS,
-            LevyraDownloadSettings(preset = LevyraDownloadPreset.CdLossless).audioQualityPreference
+            AudioQualityPreference.DATA_SAVER,
+            LevyraDownloadSettings(preset = LevyraDownloadPreset.DataSaver).audioQualityPreference
         )
+        assertEquals(LevyraDownloadPreset.Automatic, LevyraDownloadPreset.from("MaxQuality"))
     }
 
     @Test

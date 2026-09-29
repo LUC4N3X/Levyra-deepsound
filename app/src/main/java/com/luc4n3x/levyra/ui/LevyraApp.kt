@@ -2575,12 +2575,6 @@ fun LevyraApp(
                     onPreferredAudioLanguage = viewModel::setPreferredAudioLanguage,
                     highQualityAudioMode = state.highQualityAudioMode,
                     onHighQualityAudioMode = viewModel::setHighQualityAudioMode,
-                    losslessAudioEnabled = state.losslessAudioEnabled,
-                    streamingAudioQuality = state.streamingAudioQuality,
-                    losslessAddonUrl = state.losslessAddonUrl,
-                    onLosslessAudioEnabled = viewModel::setLosslessAudioEnabled,
-                    onStreamingAudioQuality = viewModel::setStreamingAudioQuality,
-                    onLosslessAddonUrl = viewModel::setLosslessAddonUrl,
                     onEqualizerEnabled = viewModel::setEqualizerEnabled,
                     onPreset = viewModel::setEqualizerPreset,
                     onBandLevel = viewModel::setEqualizerBand,
@@ -19538,13 +19532,8 @@ private fun SettingsOverlay(
                                     subtitle = strings.downloadQualityPresetSubtitle,
                                     options = listOf(
                                         LevyraDownloadPreset.Automatic.name to strings.downloadPresetAutomatic,
-                                        LevyraDownloadPreset.DolbyAtmos.name to strings.losslessQualityAtmos,
-                                        LevyraDownloadPreset.MaxQuality.name to strings.losslessQualityMax,
-                                        LevyraDownloadPreset.HiRes.name to strings.losslessQualityHiRes,
-                                        LevyraDownloadPreset.CdLossless.name to strings.losslessQualityCd,
-                                        LevyraDownloadPreset.HighQuality.name to strings.losslessQualityHigh,
-                                        LevyraDownloadPreset.Normal.name to strings.losslessQualityNormal,
-                                        LevyraDownloadPreset.DataSaver.name to strings.losslessQualityDataSaver
+                                        LevyraDownloadPreset.HighQuality.name to strings.downloadPresetHighQuality,
+                                        LevyraDownloadPreset.DataSaver.name to strings.downloadPresetDataSaver
                                     ),
                                     selected = downloadSettings.preset.name,
                                     onSelect = { value -> onDownloadSettings(downloadSettings.copy(preset = LevyraDownloadPreset.valueOf(value))) }

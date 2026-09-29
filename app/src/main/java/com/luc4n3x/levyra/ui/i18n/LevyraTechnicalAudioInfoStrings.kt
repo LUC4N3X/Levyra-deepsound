@@ -43,7 +43,6 @@ internal data class TechnicalAudioInfoCopy(
     val format: String = "Format",
     val lossless: String = "Lossless",
     val lossy: String = "Lossy",
-    val spatial: String = "Spatial audio",
     val enhancedAudio: String = "LEVYRA ENHANCED AUDIO",
     val status: String = "Status",
     val active: String = "Active",
@@ -64,7 +63,7 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Affidabilità", "Non disponibile", "Nessuna", "Richiesto", "Fallback",
         "Normalizzazione", "Equalizzatore", "Limiter", "Virtualizer", "Preamp",
         codecId = "ID codec", remotePlayback = "Riproduzione remota", receiverManaged = "Gestito dal ricevitore",
-        delivered = "Fornita", format = "Formato", lossless = "Lossless", lossy = "Lossy", spatial = "Audio spaziale"
+        delivered = "Fornita", format = "Formato", lossless = "Lossless", lossy = "Lossy"
     )
     "es" -> TechnicalAudioInfoCopy(
         "Información técnica de audio", "Formato real, fuente y ruta de señal en tiempo real",

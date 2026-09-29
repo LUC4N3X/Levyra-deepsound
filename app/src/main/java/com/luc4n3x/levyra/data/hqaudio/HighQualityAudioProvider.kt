@@ -57,15 +57,9 @@ data class ResolvedHighQualityStream(
     val bitDepth: Int = 0,
     val channels: Int = 0,
     val isLossless: Boolean = false,
-    val isSpatial: Boolean = false,
-    val isAtmos: Boolean = false,
     val deliveryMethod: PlaybackDeliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
-    val requestedQuality: AudioQualityPreference = when (tier) {
-        AudioQualityTier.KBPS_320 -> AudioQualityPreference.HIGH
-        AudioQualityTier.KBPS_160 -> AudioQualityPreference.NORMAL
-        AudioQualityTier.KBPS_96 -> AudioQualityPreference.DATA_SAVER
-        null -> AudioQualityPreference.MAX_QUALITY
-    }
+    val requestedQuality: AudioQualityPreference =
+        if (tier == AudioQualityTier.KBPS_96) AudioQualityPreference.DATA_SAVER else AudioQualityPreference.HIGH
 ) {
     val host: String
         get() = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
@@ -78,11 +72,6 @@ data class ResolvedHighQualityStream(
 
     val qualityLabel: String
         get() = when {
-            isAtmos -> "Dolby Atmos"
-            isLossless && bitDepth >= 24 && sampleRateHz >= 96_000 ->
-                "Hi-Res $bitDepth-bit / ${formatSampleRate(sampleRateHz)}"
-            isLossless && bitDepth > 0 && sampleRateHz > 0 && bitDepth == 16 && sampleRateHz == 44_100 ->
-                "CD Lossless 16-bit / 44.1 kHz"
             isLossless && bitDepth > 0 && sampleRateHz > 0 ->
                 "Lossless $bitDepth-bit / ${formatSampleRate(sampleRateHz)}"
             isLossless -> "Lossless"
@@ -121,15 +110,7 @@ interface HighQualityAudioProvider {
     val id: String
     val displayName: String
 
-    val requiresHighQualityMode: Boolean
-        get() = true
-
-    val quarantineTrackOnStreamFailure: Boolean
-        get() = true
-
     suspend fun search(query: String): ProviderSearchOutcome
-
-    suspend fun search(query: String, request: AudioQualityRequest): ProviderSearchOutcome = search(query)
 
     suspend fun lookup(providerTrackId: String): ProviderLookupOutcome
 
@@ -138,14 +119,7 @@ interface HighQualityAudioProvider {
     suspend fun resolveStream(candidate: AlternativeTrackCandidate, request: AudioQualityRequest): ProviderStreamOutcome =
         resolveStream(candidate)
 
-    fun isEnabled(request: AudioQualityRequest): Boolean = true
-
-    val resolutionTimeoutMs: Long
-        get() = 8_000L
-
     fun health(): List<ProviderBackendHealth> = emptyList()
-
-    fun reportStreamFailure(providerTrackId: String, url: String, reason: String) = Unit
 }
 
 object HighQualityTierPolicy {
@@ -159,7 +133,6 @@ object HighQualityTierPolicy {
     }
 
     fun accepts(stream: ResolvedHighQualityStream, normalKbps: Int?, normalAvailable: Boolean): Boolean {
-        if (stream.isAtmos) return true
         if (stream.isLossless && stream.bitDepth >= 16 && stream.sampleRateHz >= 44_100) return true
         if (stream.isLossless && !normalAvailable) return true
         return accepts(stream.deliveredKbps, normalKbps, normalAvailable)

@@ -182,7 +182,7 @@ class EnhancedAudioTruthfulLabelsTest {
                 bitrateKbps = 960,
                 verdict = AlternativeMatchVerdict.EXACT,
                 confidence = 100,
-                requestedQuality = AudioQualityPreference.CD_LOSSLESS,
+                requestedQuality = AudioQualityPreference.HIGH,
                 deliveredQuality = "FLAC · 24-bit 48 kHz",
                 isLossless = true
             )

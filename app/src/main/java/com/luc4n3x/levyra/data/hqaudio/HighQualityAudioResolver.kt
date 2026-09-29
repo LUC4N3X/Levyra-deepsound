@@ -1,8 +1,9 @@
 package com.luc4n3x.levyra.data.hqaudio
 
-import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.AudioQualityRequest
+import com.luc4n3x.levyra.domain.AudioStreamPurpose
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -76,12 +77,10 @@ class HighQualityAudioResolver(
     var mode: HighQualityAudioMode = HighQualityAudioMode.OFF
         set(value) {
             field = value
-            if (!value.enabled && !playbackRequest.losslessEnabled) streams.clear()
+            if (!value.enabled) streams.clear()
         }
 
-    @Volatile
-    var playbackRequest: AudioQualityRequest = AudioQualityRequest()
-        private set
+    val playbackRequest: AudioQualityRequest = AudioQualityRequest()
 
     val providerId: String
         get() = providers.first().id
@@ -94,35 +93,17 @@ class HighQualityAudioResolver(
     fun providerName(providerId: String): String =
         providers.firstOrNull { it.id == providerId }?.displayName ?: providerId
 
-    fun configureLossless(enabled: Boolean, quality: AudioQualityPreference) {
-        val updated = AudioQualityRequest(preference = quality, losslessEnabled = enabled)
-        if (updated == playbackRequest) return
-        playbackRequest = updated
-        streams.clear()
-        unmatchedIdentities.clear()
-    }
+    fun requestForDownload(quality: AudioQualityPreference): AudioQualityRequest =
+        AudioQualityRequest(preference = quality, purpose = AudioStreamPurpose.DOWNLOAD)
 
-    fun invalidateSelections() {
-        streams.clear()
-        unmatchedIdentities.clear()
-        quarantinedIdentities.clear()
-    }
-
-    fun requestForDownload(quality: AudioQualityPreference): AudioQualityRequest = AudioQualityRequest(
-        preference = quality,
-        purpose = com.luc4n3x.levyra.domain.AudioStreamPurpose.DOWNLOAD,
-        losslessEnabled = playbackRequest.losslessEnabled
-    )
-
-    fun isActive(request: AudioQualityRequest = playbackRequest): Boolean =
-        mode.enabled || request.losslessEnabled
+    fun isActive(): Boolean = mode.enabled
 
     fun cachedSelection(
         identityKey: String,
         request: AudioQualityRequest = playbackRequest
     ): HighQualityResolution.Selected? {
         val key = resolutionKey(identityKey, request)
-        if (!isActive(request)) return null
+        if (!isActive()) return null
         val cached = streams[key] ?: return null
         val usable = cached.stream.isFresh(clock(), STREAM_REFRESH_MARGIN_MS) &&
             !isQuarantined(
@@ -139,7 +120,7 @@ class HighQualityAudioResolver(
     /** True while a provider stream could still be found for this identity and none is cached yet. */
     fun upgradePending(identityKey: String, request: AudioQualityRequest = playbackRequest): Boolean {
         val key = resolutionKey(identityKey, request)
-        if (!isActive(request)) return false
+        if (!isActive()) return false
         if (isQuarantined(quarantinedIdentities, identityKey)) return false
         if (isQuarantined(unmatchedIdentities, key)) return false
         if (cachedSelection(identityKey, request) != null) return false
@@ -154,7 +135,7 @@ class HighQualityAudioResolver(
         request: AudioQualityRequest = playbackRequest
     ): Deferred<HighQualityResolution> {
         val key = resolutionKey(identityKey, request)
-        if (!isActive(request)) return completed(HighQualityFallbackReason.DISABLED)
+        if (!isActive()) return completed(HighQualityFallbackReason.DISABLED)
         if (isQuarantined(quarantinedIdentities, identityKey)) return completed(HighQualityFallbackReason.QUARANTINED)
         if (isQuarantined(unmatchedIdentities, key)) return completed(HighQualityFallbackReason.NO_MATCH)
         cachedSelection(identityKey, request)?.let { return CompletableDeferred(it) }
@@ -185,18 +166,10 @@ class HighQualityAudioResolver(
         HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup cancelled")
     }
 
-    fun reportPlaybackFailure(
-        identityKey: String,
-        providerId: String,
-        providerTrackId: String,
-        streamUrl: String,
-        reason: String
-    ) {
+    fun reportPlaybackFailure(identityKey: String, providerId: String, providerTrackId: String, reason: String) {
         val until = clock() + FAILURE_QUARANTINE_MS
         streams.keys.removeAll { it.startsWith("$identityKey|") }
-        val provider = providers.firstOrNull { it.id == providerId }
-        provider?.reportStreamFailure(providerTrackId, streamUrl, reason)
-        if (providerTrackId.isNotBlank() && provider?.quarantineTrackOnStreamFailure != false) {
+        if (providerTrackId.isNotBlank()) {
             quarantine(quarantinedIdentities, identityKey, until)
             quarantine(quarantinedProviderTracks, providerTrackKey(providerId, providerTrackId), until)
             mappingStore.remove(identityKey, providerId)
@@ -204,12 +177,8 @@ class HighQualityAudioResolver(
         HighQualityAudioDiagnostics.fallback(HighQualityFallbackReason.QUARANTINED, "playback failure: ${reason.take(80)}", providerTrackId)
     }
 
-    fun reportPlaybackFailure(identityKey: String, providerId: String, providerTrackId: String, reason: String) {
-        reportPlaybackFailure(identityKey, providerId, providerTrackId, "", reason)
-    }
-
     fun reportPlaybackFailure(identityKey: String, providerTrackId: String, reason: String) {
-        reportPlaybackFailure(identityKey, providers.first().id, providerTrackId, "", reason)
+        reportPlaybackFailure(identityKey, providers.first().id, providerTrackId, reason)
     }
 
     private suspend fun lookup(
@@ -221,11 +190,7 @@ class HighQualityAudioResolver(
         var sawExecutedLane = false
         var allExecutedLanesDefinitiveMisses = true
         val startedNanos = System.nanoTime()
-        val activeLanes = lanes.filter { lane ->
-            lane.provider.isEnabled(request) &&
-                (mode.enabled || request.losslessEnabled || !lane.provider.requiresHighQualityMode)
-        }
-        for (lane in activeLanes) {
+        for (lane in lanes) {
             currentCoroutineContext().ensureActive()
             val elapsedMs = (System.nanoTime() - startedNanos).coerceAtLeast(0L) / 1_000_000L
             val remainingMs = (lookupBudgetMs - elapsedMs).coerceAtLeast(0L)
@@ -234,7 +199,7 @@ class HighQualityAudioResolver(
                 resolution = HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "overall budget")
                 break
             }
-            resolution = withTimeoutOrNull(minOf(remainingMs, lane.provider.resolutionTimeoutMs)) {
+            resolution = withTimeoutOrNull(remainingMs) {
                 lane.resolve(identityKey, query, request)
             } ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, lane.provider.id)
             sawExecutedLane = true
@@ -247,7 +212,7 @@ class HighQualityAudioResolver(
             }
         }
         val key = resolutionKey(identityKey, request)
-        if (resolution is HighQualityResolution.Selected && isActive(request)) rememberStream(key, resolution)
+        if (resolution is HighQualityResolution.Selected && isActive()) rememberStream(key, resolution)
         if (
             resolution is HighQualityResolution.Fallback &&
             resolution.reason in DEFINITIVE_MISSES &&

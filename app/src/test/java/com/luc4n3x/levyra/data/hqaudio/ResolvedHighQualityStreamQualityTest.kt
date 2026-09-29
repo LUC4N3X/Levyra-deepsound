@@ -21,14 +21,14 @@ class ResolvedHighQualityStreamQualityTest {
     }
 
     @Test
-    fun exactCdFormatUsesCdLosslessLabel() {
+    fun exactCdFormatUsesMeasuredLosslessLabel() {
         val stream = stream(
             bitDepth = 16,
             sampleRateHz = 44_100,
             isLossless = true
         )
 
-        assertEquals("CD Lossless 16-bit / 44.1 kHz", stream.qualityLabel)
+        assertEquals("Lossless 16-bit / 44.1 kHz", stream.qualityLabel)
     }
 
     @Test
@@ -39,7 +39,7 @@ class ResolvedHighQualityStreamQualityTest {
             isLossless = true
         )
 
-        assertEquals("Hi-Res 24-bit / 96 kHz", stream.qualityLabel)
+        assertEquals("Lossless 24-bit / 96 kHz", stream.qualityLabel)
     }
 
     @Test
@@ -72,7 +72,7 @@ class ResolvedHighQualityStreamQualityTest {
         isLossless: Boolean,
         estimatedKbps: Int = 0
     ) = ResolvedHighQualityStream(
-        providerId = "lossless-addon",
+        providerId = "flac-source",
         providerTrackId = "track-1",
         url = "https://cdn.example.org/audio",
         tier = null,
@@ -86,6 +86,6 @@ class ResolvedHighQualityStreamQualityTest {
         bitDepth = bitDepth,
         channels = 2,
         isLossless = isLossless,
-        requestedQuality = AudioQualityPreference.MAX_QUALITY
+        requestedQuality = AudioQualityPreference.HIGH
     )
 }

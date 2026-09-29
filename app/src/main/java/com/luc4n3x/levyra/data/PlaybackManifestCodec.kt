@@ -35,8 +35,6 @@ object PlaybackManifestCodec {
                     .put("selected", stream.selected)
                     .put("channels", stream.channels)
                     .put("isLossless", stream.isLossless)
-                    .put("isSpatial", stream.isSpatial)
-                    .put("isAtmos", stream.isAtmos)
             )
         }
         return JSONObject()
@@ -85,9 +83,7 @@ object PlaybackManifestCodec {
                         expiresAtMs = json.optLong("expiresAtMs", 0L),
                         selected = json.optBoolean("selected", false),
                         channels = json.optInt("channels", 0),
-                        isLossless = json.optBoolean("isLossless", false),
-                        isSpatial = json.optBoolean("isSpatial", false),
-                        isAtmos = json.optBoolean("isAtmos", false)
+                        isLossless = json.optBoolean("isLossless", false)
                     )
                 )
             }
@@ -167,8 +163,6 @@ private fun AlternativeAudioSource.toJson(): JSONObject = JSONObject()
     .put("requestedQuality", requestedQuality.storageValue)
     .put("deliveredQuality", deliveredQuality)
     .put("isLossless", isLossless)
-    .put("isSpatial", isSpatial)
-    .put("isAtmos", isAtmos)
 
 private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
     val providerId = optString("providerId")
@@ -186,9 +180,7 @@ private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
             com.luc4n3x.levyra.domain.AudioQualityPreference.HIGH
         ),
         deliveredQuality = optString("deliveredQuality"),
-        isLossless = optBoolean("isLossless", false),
-        isSpatial = optBoolean("isSpatial", false),
-        isAtmos = optBoolean("isAtmos", false)
+        isLossless = optBoolean("isLossless", false)
     )
 }
 

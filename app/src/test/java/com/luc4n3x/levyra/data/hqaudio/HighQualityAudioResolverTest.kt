@@ -1,8 +1,6 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
-import com.luc4n3x.levyra.domain.AudioQualityPreference
-import com.luc4n3x.levyra.domain.AudioQualityRequest
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
@@ -63,43 +61,6 @@ class HighQualityAudioResolverTest {
         assertEquals(AudioQualityTier.KBPS_320, result.stream.tier)
         assertEquals(1, provider.searches.size)
         assertEquals(1, storage.values.size)
-    }
-
-    @Test
-    fun unavailableLosslessProviderFallsBackToJioBeforeYoutube() {
-        val lossless = FakeHighQualityProvider(
-            searchOutcome = {
-                ProviderSearchOutcome.Found(listOf(candidate().copy(providerId = "lossless-addon")))
-            },
-            lookupOutcome = {
-                ProviderLookupOutcome.Found(candidate().copy(providerId = "lossless-addon"))
-            },
-            streamOutcome = {
-                ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
-            },
-            providerId = "lossless-addon",
-            requiresHighQualityMode = false
-        )
-        val jio = exactProvider()
-        val resolver = HighQualityAudioResolver(
-            providers = listOf(lossless, jio),
-            mappingStore = HighQualityMappingStore(storage),
-            scope = scope
-        ).apply {
-            mode = HighQualityAudioMode.OFF
-            configureLossless(true, AudioQualityPreference.MAX_QUALITY)
-        }
-        val request = AudioQualityRequest(
-            preference = AudioQualityPreference.MAX_QUALITY,
-            losslessEnabled = true
-        )
-
-        val result = runBlocking { resolver.await(resolver.begin(identity, query(), request), 5_000L) }
-
-        assertTrue(result is HighQualityResolution.Selected)
-        assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
-        assertTrue(lossless.streamRequests.isNotEmpty())
-        assertTrue(jio.streamRequests.isNotEmpty())
     }
 
     @Test

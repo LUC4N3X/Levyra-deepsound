@@ -95,7 +95,7 @@ internal class JioSaavnAudioProvider(
     ): ProviderStreamOutcome = when (val outcome = resolveStream(candidate, qualityOrder(request))) {
         is ProviderStreamOutcome.Resolved -> ProviderStreamOutcome.Resolved(
             outcome.stream.copy(
-                requestedQuality = if (request.purpose == AudioStreamPurpose.PLAYBACK && !request.losslessEnabled) {
+                requestedQuality = if (request.purpose == AudioStreamPurpose.PLAYBACK) {
                     AudioQualityPreference.HIGH
                 } else {
                     request.preference
@@ -173,8 +173,7 @@ internal class JioSaavnAudioProvider(
     ): ProviderStreamOutcome? = direct?.let { probeTiers(candidate, it, qualityOrder.drop(1), rejections, probed) }
 
     private fun qualityOrder(request: AudioQualityRequest): List<AudioQualityTier> = when {
-        request.purpose == AudioStreamPurpose.PLAYBACK && !request.losslessEnabled -> QUALITY_ORDER
-        request.preference == AudioQualityPreference.NORMAL -> listOf(AudioQualityTier.KBPS_160, AudioQualityTier.KBPS_96)
+        request.purpose == AudioStreamPurpose.PLAYBACK -> QUALITY_ORDER
         request.preference == AudioQualityPreference.DATA_SAVER -> listOf(AudioQualityTier.KBPS_96)
         else -> QUALITY_ORDER
     }

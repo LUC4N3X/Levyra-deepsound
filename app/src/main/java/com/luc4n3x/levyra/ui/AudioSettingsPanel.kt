@@ -101,7 +101,6 @@ import com.luc4n3x.levyra.domain.AutoEqCatalog
 import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
-import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.ParametricEqProfile
@@ -147,12 +146,6 @@ internal fun AudioSettingsPanel(
     onPreferredAudioLanguage: (String) -> Unit = {},
     highQualityAudioMode: HighQualityAudioMode,
     onHighQualityAudioMode: (HighQualityAudioMode) -> Unit,
-    losslessAudioEnabled: Boolean,
-    streamingAudioQuality: AudioQualityPreference,
-    losslessAddonUrl: String,
-    onLosslessAudioEnabled: (Boolean) -> Unit,
-    onStreamingAudioQuality: (AudioQualityPreference) -> Unit,
-    onLosslessAddonUrl: (String) -> Unit,
     onEqualizerEnabled: (Boolean) -> Unit,
     onPreset: (String) -> Unit,
     onBandLevel: (Int, Int) -> Unit,
@@ -270,51 +263,6 @@ internal fun AudioSettingsPanel(
                         ),
                         onSelect = onHighQualityAudioMode
                     )
-                }
-                item {
-                    AudioCard {
-                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            AudioToggleRow(
-                                title = strings.losslessAudioTitle,
-                                subtitle = strings.losslessAudioSubtitle,
-                                checked = losslessAudioEnabled,
-                                onCheckedChange = onLosslessAudioEnabled
-                            )
-                            AudioQualityChoiceColumn(
-                                selected = streamingAudioQuality.storageValue,
-                                labels = listOf(
-                                    strings.losslessQualityAtmos to AudioQualityPreference.DOLBY_ATMOS.storageValue,
-                                    strings.losslessQualityMax to AudioQualityPreference.MAX_QUALITY.storageValue,
-                                    strings.losslessQualityHiRes to AudioQualityPreference.HI_RES.storageValue,
-                                    strings.losslessQualityCd to AudioQualityPreference.CD_LOSSLESS.storageValue,
-                                    strings.losslessQualityHigh to AudioQualityPreference.HIGH.storageValue,
-                                    strings.losslessQualityNormal to AudioQualityPreference.NORMAL.storageValue,
-                                    strings.losslessQualityDataSaver to AudioQualityPreference.DATA_SAVER.storageValue
-                                ),
-                                onSelect = { selectedQuality ->
-                                    onStreamingAudioQuality(AudioQualityPreference.fromStorage(selectedQuality))
-                                }
-                            )
-                            OutlinedTextField(
-                                value = losslessAddonUrl,
-                                onValueChange = { onLosslessAddonUrl(it.take(512)) },
-                                enabled = losslessAudioEnabled,
-                                singleLine = true,
-                                label = { Text(strings.losslessAddonUrl) },
-                                placeholder = { Text(strings.losslessAddonUrlHint) },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = LevyraText,
-                                    unfocusedTextColor = LevyraText,
-                                    disabledTextColor = LevyraMuted,
-                                    focusedBorderColor = LevyraCyan.copy(alpha = 0.7f),
-                                    unfocusedBorderColor = LevyraAdaptiveHairline,
-                                    disabledBorderColor = LevyraAdaptiveHairline,
-                                    cursorColor = LevyraCyan
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
                 }
                 item {
                     AudioLanguageCard(
@@ -1676,44 +1624,6 @@ private fun AudioQualityRow(
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AudioQualityChoiceColumn(
-    selected: String,
-    labels: List<Pair<String, String>>,
-    onSelect: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier.selectableGroup(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        labels.forEach { (label, quality) ->
-            val isSelected = selected.equals(quality, ignoreCase = true)
-            Surface(
-                color = if (isSelected) LevyraCyan.copy(alpha = 0.18f) else LevyraAdaptiveChip,
-                shape = ChipShape,
-                border = BorderStroke(1.dp, if (isSelected) LevyraCyan.copy(alpha = 0.7f) else LevyraAdaptiveHairline),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .selectable(
-                        selected = isSelected,
-                        role = Role.RadioButton,
-                        onClick = { onSelect(quality) }
-                    )
-            ) {
-                Text(
-                    text = label,
-                    color = if (isSelected) LevyraCyan else LevyraText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 17.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
             }
         }
     }

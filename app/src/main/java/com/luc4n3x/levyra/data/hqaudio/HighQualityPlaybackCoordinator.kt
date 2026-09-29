@@ -7,7 +7,6 @@ import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.AudioQualityRequest
 import com.luc4n3x.levyra.domain.AudioStreamPurpose
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
-import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.PlaybackStreamProvenance
@@ -27,14 +26,6 @@ class HighQualityPlaybackCoordinator(
     val playbackRequest: AudioQualityRequest
         get() = resolver.playbackRequest
 
-    fun configureLossless(enabled: Boolean, quality: AudioQualityPreference) {
-        resolver.configureLossless(enabled, quality)
-    }
-
-    fun invalidateSelections() {
-        resolver.invalidateSelections()
-    }
-
     fun downloadRequest(quality: AudioQualityPreference): AudioQualityRequest = resolver.requestForDownload(quality)
 
     fun queryFor(
@@ -43,10 +34,10 @@ class HighQualityPlaybackCoordinator(
         audioQuality: String,
         request: AudioQualityRequest = resolver.playbackRequest
     ): AlternativeTrackQuery? {
-        if (!resolver.isActive(request) || isVideoMode) return null
+        if (!resolver.isActive() || isVideoMode) return null
         if (track.playbackManifest?.alternativeSource != null) return null
         if (audioQuality.equals(DATA_SAVER_AUDIO_QUALITY, ignoreCase = true) &&
-            request.purpose == AudioStreamPurpose.PLAYBACK && !request.losslessEnabled
+            request.purpose == AudioStreamPurpose.PLAYBACK
         ) {
             return null
         }
@@ -74,7 +65,7 @@ class HighQualityPlaybackCoordinator(
         val normal = runCatchingPreservingCancellation { resolveNormal() }
         val normalTrack = normal.getOrNull()
         if (normalTrack?.playbackManifest?.alternativeSource != null) return normalTrack
-        val waitMs = waitBudgetMs(resolver.mode, request, clock() - startedAt, normalTrack != null)
+        val waitMs = waitBudgetMs(resolver.mode, clock() - startedAt, normalTrack != null)
         when (val resolution = resolver.await(pending, waitMs)) {
             is HighQualityResolution.Selected -> {
                 val normalKbps = normalTrack?.let(::normalAudioKbps)
@@ -133,7 +124,6 @@ class HighQualityPlaybackCoordinator(
             identityKey(track),
             source.providerId,
             source.providerTrackId,
-            track.streamUrl,
             reason
         )
     }
@@ -164,9 +154,7 @@ class HighQualityPlaybackCoordinator(
             expiresAtMs = stream.expiresAtMs,
             selected = true,
             channels = stream.channels,
-            isLossless = stream.isLossless,
-            isSpatial = stream.isSpatial,
-            isAtmos = stream.isAtmos
+            isLossless = stream.isLossless
         )
         val manifest = ResolvedPlaybackManifest(
             sourceVideoId = PlaybackSourceIdentity.sourceVideoId(requested),
@@ -190,9 +178,7 @@ class HighQualityPlaybackCoordinator(
                 confidence = selection.evaluation.confidence,
                 requestedQuality = stream.requestedQuality,
                 deliveredQuality = stream.deliveredQuality,
-                isLossless = stream.isLossless,
-                isSpatial = stream.isSpatial,
-                isAtmos = stream.isAtmos
+                isLossless = stream.isLossless
             )
         )
         return base.copy(
@@ -217,16 +203,8 @@ class HighQualityPlaybackCoordinator(
         return (bitsPerSecond / 1_000).takeIf { it > 0 }
     }
 
-    private fun waitBudgetMs(
-        mode: HighQualityAudioMode,
-        request: AudioQualityRequest,
-        normalElapsedMs: Long,
-        normalAvailable: Boolean
-    ): Long {
+    private fun waitBudgetMs(mode: HighQualityAudioMode, normalElapsedMs: Long, normalAvailable: Boolean): Long {
         if (!normalAvailable) return (PREFER_320_WAIT_MS - normalElapsedMs).coerceAtLeast(0L)
-        if (request.losslessEnabled && request.preference.requestsLossless) {
-            return (PREFER_320_WAIT_MS - normalElapsedMs).coerceAtLeast(0L)
-        }
         return when (mode) {
             HighQualityAudioMode.PREFER_320 -> (PREFER_320_WAIT_MS - normalElapsedMs).coerceAtLeast(0L)
             HighQualityAudioMode.AUTOMATIC ->

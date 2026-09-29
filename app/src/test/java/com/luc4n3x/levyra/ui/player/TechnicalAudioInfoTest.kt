@@ -51,7 +51,7 @@ class TechnicalAudioInfoTest {
                 bitrateKbps = 320,
                 verdict = AlternativeMatchVerdict.EXACT,
                 confidence = 98,
-                requestedQuality = AudioQualityPreference.HI_RES,
+                requestedQuality = AudioQualityPreference.HIGH,
                 deliveredQuality = "High · 320 kbps"
             )
         )
@@ -62,7 +62,7 @@ class TechnicalAudioInfoTest {
         assertEquals("48 kHz", rows[copy.sampleRate])
         assertEquals("24-bit", rows[copy.bitDepth])
         assertEquals("2", rows[copy.channels])
-        assertEquals("hi_res", rows[copy.requested])
+        assertEquals("high", rows[copy.requested])
         assertEquals("High · 320 kbps", rows[copy.delivered])
         assertEquals(copy.lossy, rows[copy.format])
         assertEquals("itag 251", rows[copy.streamId])

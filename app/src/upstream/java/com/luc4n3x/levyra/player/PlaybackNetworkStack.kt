@@ -10,9 +10,6 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cronet.CronetDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import com.luc4n3x.levyra.data.hqaudio.ConfigurableProviderPlaybackInterceptor
-import com.luc4n3x.levyra.data.hqaudio.ConfigurableProviderPlaybackPolicy
-import com.luc4n3x.levyra.data.hqaudio.PublicProviderDns
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
@@ -135,20 +132,10 @@ object PlaybackNetworkStack {
             (settings.byeDpiEnabled && ByeDpiSupervisor.isEngaged())
     }
 
-    private fun createOkHttpFactory(allowedHosts: Set<String>? = null): HttpDataSource.Factory {
+    private fun createOkHttpFactory(): HttpDataSource.Factory {
         val context = appContext
-        val baseClient = LevyraHttpClientFactory.streaming(context)
-        val client = if (allowedHosts != null) {
-            baseClient.newBuilder()
-                .dns(PublicProviderDns)
-                .addNetworkInterceptor(ConfigurableProviderPlaybackInterceptor(allowedHosts))
-                .followRedirects(true)
-                .followSslRedirects(true)
-                .build()
-        } else {
-            baseClient
-        }
-        return OkHttpDataSource.Factory(client).setUserAgent(USER_AGENT)
+        return OkHttpDataSource.Factory(LevyraHttpClientFactory.streaming(context))
+            .setUserAgent(USER_AGENT)
     }
 
     private fun reportCronetSuccess() {
@@ -198,8 +185,9 @@ object PlaybackNetworkStack {
             return this
         }
 
-        override fun createDataSource(): HttpDataSource =
-            ResilientHttpDataSource(requestPriority, defaultRequestProperties)
+        override fun createDataSource(): HttpDataSource {
+            return ResilientHttpDataSource(requestPriority, defaultRequestProperties)
+        }
     }
 
     private class ResilientHttpDataSource(
@@ -231,15 +219,6 @@ object PlaybackNetworkStack {
 
         override fun open(dataSpec: DataSpec): Long {
             check(activeSource == null) { "Data source is already open" }
-
-            val protectedHosts = ConfigurableProviderPlaybackPolicy.allowedHostsFor(dataSpec.uri.toString())
-            if (protectedHosts != null) {
-                val protectedSource = prepareSource(prepareFactory(createOkHttpFactory(protectedHosts)).createDataSource())
-                activeSource = protectedSource
-                activeTransport = Transport.OKHTTP
-                return protectedSource.open(dataSpec)
-            }
-
             val cronetFactory = createCronetFactory(requestPriority)
             if (cronetFactory != null) {
                 val cronetSource = prepareSource(prepareFactory(cronetFactory).createDataSource())
@@ -290,12 +269,17 @@ object PlaybackNetworkStack {
             source?.close()
         }
 
-        private fun prepareFactory(factory: HttpDataSource.Factory): HttpDataSource.Factory =
-            factory.setDefaultRequestProperties(defaultRequestProperties.getSnapshot())
+        private fun prepareFactory(factory: HttpDataSource.Factory): HttpDataSource.Factory {
+            return factory.setDefaultRequestProperties(defaultRequestProperties.getSnapshot())
+        }
 
         private fun prepareSource(source: HttpDataSource): HttpDataSource {
-            for ((name, value) in requestProperties.getSnapshot()) source.setRequestProperty(name, value)
-            for (listener in transferListeners) source.addTransferListener(listener)
+            for ((name, value) in requestProperties.getSnapshot()) {
+                source.setRequestProperty(name, value)
+            }
+            for (listener in transferListeners) {
+                source.addTransferListener(listener)
+            }
             return source
         }
 

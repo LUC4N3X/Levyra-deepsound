@@ -16,10 +16,8 @@ import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
 import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
 import com.luc4n3x.levyra.data.hqaudio.HighQualityPlaybackCoordinator
 import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
-import com.luc4n3x.levyra.data.hqaudio.ConfigurableProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
-import com.luc4n3x.levyra.data.hqaudio.addon.GenericLosslessAddonProvider
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
 import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
@@ -380,21 +378,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val highQualityPlayback = HighQualityPlaybackCoordinator(
         HighQualityAudioResolver(
-            providers = listOf(
-                GenericLosslessAddonProvider(
-                    exchange = ConfigurableProviderExchange(),
-                    enabled = userPreferences::losslessAudioEnabled,
-                    baseUrl = userPreferences::losslessAddonUrl
-                ),
-                JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client))
-            ),
+            provider = JioSaavnAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope
         )
-    ).apply {
-        mode = userPreferences.highQualityAudioMode()
-        configureLossless(userPreferences.losslessAudioEnabled(), userPreferences.streamingAudioQuality())
-    }
+    ).apply { mode = userPreferences.highQualityAudioMode() }
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
     private val youtubeEngagementTtlMs = 12L * 60L * 60L * 1000L
@@ -494,22 +482,6 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         highQualityPlayback.mode = mode
-    }
-
-    fun setLosslessAudioEnabled(enabled: Boolean) {
-        highQualityPlayback.configureLossless(enabled, highQualityPlayback.playbackRequest.preference)
-    }
-
-    fun setStreamingAudioQuality(quality: AudioQualityPreference) {
-        highQualityPlayback.configureLossless(highQualityPlayback.playbackRequest.losslessEnabled, quality)
-    }
-
-    fun refreshLosslessProviderConfiguration() {
-        highQualityPlayback.invalidateSelections()
-        highQualityPlayback.configureLossless(
-            userPreferences.losslessAudioEnabled(),
-            userPreferences.streamingAudioQuality()
-        )
     }
 
     private fun refreshPlaybackPolicyInBackground(force: Boolean, reason: String) {
@@ -1120,7 +1092,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
         val resolved = resolveWithLanguageRevisionRetry(track) { requestTrack, preferredLanguage ->
             val request = highQualityPlayback.downloadRequest(
-                alternativeQualityOverride ?: userPreferences.streamingAudioQuality()
+                alternativeQualityOverride ?: AudioQualityPreference.HIGH
             )
             val query = highQualityPlayback.queryFor(requestTrack, false, quality, request)
             suspend fun resolveNormalOffline(): Track {
