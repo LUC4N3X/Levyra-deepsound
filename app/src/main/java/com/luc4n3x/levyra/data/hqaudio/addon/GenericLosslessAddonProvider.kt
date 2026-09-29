@@ -180,10 +180,13 @@ internal class GenericLosslessAddonProvider(
                         ) {
                             rejections += StreamRejection.UNSUPPORTED_CONTAINER
                             AttemptResolution.Continue
+                        } else if (
+                            request.purpose == AudioStreamPurpose.PLAYBACK &&
+                            !ConfigurableProviderPlaybackPolicy.register(mediaUrl, manifest.allowedHosts, expiresAtMs)
+                        ) {
+                            rejections += StreamRejection.TRANSPORT
+                            AttemptResolution.Continue
                         } else {
-                            if (request.purpose == AudioStreamPurpose.PLAYBACK) {
-                                ConfigurableProviderPlaybackPolicy.register(mediaUrl, manifest.allowedHosts, expiresAtMs)
-                            }
                             val resolved = validation.format.toResolved(candidate, request.preference, mediaUrl.toString(), expiresAtMs)
                             if (satisfiesAttempt(validation.format, attempt)) {
                                 AttemptResolution.Resolved(resolved)
