@@ -41,7 +41,7 @@ class EnhancedAudioSourceFormatListenerTest {
         val input = ByteBuffer.allocateDirect(4_096).order(ByteOrder.LITTLE_ENDIAN)
         var sample = 0
         while (input.hasRemaining()) {
-            input.putShort(((sample * 7_919) % 65_536 - 32_768).toShort())
+            input.putShort((sample * 7_919 % 65_536 - 32_768).toShort())
             sample++
         }
         input.flip()
