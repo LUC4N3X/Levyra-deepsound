@@ -328,7 +328,9 @@ internal fun buildSourceRows(
         manifest?.loudnessDb?.takeIf { it.isFinite() }?.let {
             add(copy.loudness to String.format(Locale.ROOT, "%+.1f dB", it))
         }
-        add(copy.lossless to if (alternative?.isLossless == true) copy.yes else copy.no)
+        technicalLosslessState(stream, alternative?.isLossless)?.let { isLossless ->
+            add(copy.lossless to if (isLossless) copy.yes else copy.no)
+        }
         alternative?.let {
             add(copy.requested to it.requestedQuality.storageValue)
             it.deliveredQuality.takeIf(String::isNotBlank)?.let { quality -> add(copy.delivered to quality) }
@@ -348,6 +350,32 @@ internal fun buildSourceRows(
             add(copy.confidence to "${it.confidence.coerceIn(0, 100)}%")
         }
     }
+}
+
+private fun technicalLosslessState(
+    stream: PlaybackStreamDescriptor?,
+    alternativeLossless: Boolean?
+): Boolean? {
+    alternativeLossless?.let { return it }
+    val descriptor = stream ?: return null
+    if (descriptor.isLossless) return true
+
+    val codec = descriptor.codec.trim().lowercase(Locale.ROOT)
+    val container = descriptor.container.trim().lowercase(Locale.ROOT)
+    val mime = descriptor.mimeType.substringBefore(';').trim().lowercase(Locale.ROOT)
+    if (
+        codec.contains("flac") || codec.contains("alac") || codec.contains("pcm") ||
+        container == "flac" || container == "alac" || container == "wav" ||
+        mime == "audio/flac" || mime == "audio/x-flac" || mime == "audio/alac" || mime == "audio/wav"
+    ) {
+        return true
+    }
+
+    val knownLossy = codec.contains("mp4a") || codec.contains("aac") || codec.contains("opus") ||
+        codec.contains("vorbis") || codec.contains("mp3") || codec.contains("ac-3") || codec.contains("ec-3") ||
+        mime == "audio/mp4" || mime == "audio/mpeg" || mime == "audio/webm" || mime == "audio/aac" ||
+        mime == "audio/ogg"
+    return if (knownLossy) false else null
 }
 
 internal fun buildEnhancedAudioRows(
@@ -387,7 +415,7 @@ internal fun buildProcessingLabel(
     val virtualizerActive = equalizerActive && settings.virtualizer > 0
     val preampActive = equalizerActive && settings.preampDb != 0f
     val limiterActive = settings.limiterEnabled &&
-        (equalizerActive || virtualizerActive || replayGainActive || audioNormalization)
+        (equalizerActive || virtualizerActive || replayGainActive || audioNormalization || settings.enhancedAudioEnabled)
 
     if (audioNormalization) add(copy.normalization)
     if (equalizerActive) add(copy.equalizer)
