@@ -415,7 +415,7 @@ internal fun buildProcessingLabel(
     val virtualizerActive = equalizerActive && settings.virtualizer > 0
     val preampActive = equalizerActive && settings.preampDb != 0f
     val limiterActive = settings.limiterEnabled &&
-        (equalizerActive || virtualizerActive || replayGainActive || audioNormalization || settings.enhancedAudioEnabled)
+        (equalizerActive || virtualizerActive || replayGainActive || audioNormalization)
 
     if (audioNormalization) add(copy.normalization)
     if (equalizerActive) add(copy.equalizer)
