@@ -114,4 +114,3 @@ None
 - [ ] No secrets, keystores, build artifacts, or local configuration files were committed
 - [ ] Android and Desktop versioning and release channels remain independent
 - [ ] CI checks pass, or any known issue is explained in the description
-- [ ] The complete Levyra PR template is preserved and reviewed with levyra-humanizer without changing verified claims
