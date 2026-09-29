@@ -139,11 +139,9 @@ private val EqualizerHandleRadius = 5.dp
 @Composable
 internal fun AudioSettingsPanel(
     selected: String,
-    preferredAudioLanguage: String = "",
     currentTrack: Track?,
     audioSettings: LevyraAudioSettings,
     onSelect: (String) -> Unit,
-    onPreferredAudioLanguage: (String) -> Unit = {},
     highQualityAudioMode: HighQualityAudioMode,
     onHighQualityAudioMode: (HighQualityAudioMode) -> Unit,
     onEqualizerEnabled: (Boolean) -> Unit,
@@ -153,6 +151,7 @@ internal fun AudioSettingsPanel(
     onVirtualizer: (Int) -> Unit,
     onPreamp: (Float) -> Unit,
     onLimiter: (Boolean) -> Unit,
+    onEnhancedAudio: (Boolean) -> Unit = {},
     onCrossfade: (Int) -> Unit,
     onDjSoft: (Boolean) -> Unit,
     onReplayGain: (Boolean) -> Unit,
@@ -263,33 +262,6 @@ internal fun AudioSettingsPanel(
                         onSelect = onHighQualityAudioMode
                     )
                 }
-                item {
-                    AudioLanguageCard(
-                        title = strings.audioLanguageTitle,
-                        description = strings.audioLanguageSubtitle,
-                        selected = preferredAudioLanguage,
-                        options = remember(strings.audioLanguageOriginalDefault, preferredAudioLanguage) {
-                            audioLanguageSelectorOptions(
-                                baseOptions = listOf(
-                                    "" to strings.audioLanguageOriginalDefault,
-                                    "en" to "🇬🇧 English",
-                                    "it" to "🇮🇹 Italiano",
-                                    "es" to "🇪🇸 Español",
-                                    "fr" to "🇫🇷 Français",
-                                    "de" to "🇩🇪 Deutsch",
-                                    "pt" to "🇵🇹 Português",
-                                    "ja" to "🇯🇵 日本語",
-                                    "ko" to "🇰🇷 한국어",
-                                    "ru" to "🇷🇺 Русский",
-                                    "hi" to "🇮🇳 हिन्दी"
-                                ),
-                                storedLanguage = preferredAudioLanguage
-                            )
-                        },
-                        onSelect = onPreferredAudioLanguage
-                    )
-                }
-
                 item { AudioSectionLabel(strings.audioSectionEqualizer) }
                 item {
                     EqualizerModeSelector(
@@ -434,6 +406,16 @@ internal fun AudioSettingsPanel(
                         range = 0f..100f,
                         icon = true,
                         onValue = { onVirtualizer(it.roundToInt()) }
+                    )
+                }
+
+                item { AudioSectionLabel(strings.audioSectionEnhancement) }
+                item {
+                    AudioToggleRow(
+                        title = strings.enhancedAudioTitle,
+                        subtitle = strings.enhancedAudioSubtitle,
+                        checked = audioSettings.enhancedAudioEnabled,
+                        onCheckedChange = onEnhancedAudio
                     )
                 }
 
@@ -1667,80 +1649,6 @@ private fun AlternativeAudioCard(
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-internal fun audioLanguageSelectorOptions(
-    baseOptions: List<Pair<String, String>>,
-    storedLanguage: String
-): List<Pair<String, String>> {
-    if (storedLanguage.isBlank() || baseOptions.any { (code, _) -> code == storedLanguage }) return baseOptions
-    return baseOptions + (storedLanguage to storedAudioLanguageLabel(storedLanguage))
-}
-
-private fun storedAudioLanguageLabel(code: String): String {
-    val locale = Locale.forLanguageTag(code)
-    val name = locale.getDisplayName(locale)
-    if (name.isBlank() || name.equals(code, ignoreCase = true)) return code
-    return name.replaceFirstChar { it.titlecase(locale) }
-}
-
-@Composable
-private fun AudioLanguageCard(
-    title: String,
-    description: String,
-    selected: String,
-    options: List<Pair<String, String>>,
-    onSelect: (String) -> Unit
-) {
-    AudioCard {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                Text(
-                    description,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 16.sp
-                )
-            }
-            Column(
-                modifier = Modifier.selectableGroup(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                options.forEach { (lang, label) ->
-                    val isSelected = lang == selected
-                    Surface(
-                        color = if (isSelected) LevyraCyan.copy(alpha = 0.18f) else LevyraAdaptiveChip,
-                        shape = ChipShape,
-                        border = BorderStroke(1.dp, if (isSelected) LevyraCyan.copy(alpha = 0.7f) else LevyraAdaptiveHairline),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 44.dp)
-                            .selectable(
-                                selected = isSelected,
-                                role = Role.RadioButton,
-                                onClick = { onSelect(lang) }
-                            )
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.CenterStart,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                        ) {
-                            Text(
-                                label,
-                                color = if (isSelected) LevyraCyan else LevyraText,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
