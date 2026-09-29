@@ -5,16 +5,17 @@ import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
 import java.io.IOException
 import java.net.InetAddress
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Dns
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
-import okhttp3.Callback
-import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -157,6 +158,44 @@ internal object ConfigurableProviderDestinationPolicy {
     fun normalizeHost(value: String): String = value.trim().trimEnd('.').lowercase(Locale.ROOT)
 }
 
+internal object ConfigurableProviderPlaybackPolicy {
+    private data class Policy(val allowedHosts: Set<String>, val expiresAtMs: Long)
+
+    private val byHost = ConcurrentHashMap<String, Policy>()
+
+    fun register(url: HttpUrl, allowedHosts: Set<String>, expiresAtMs: Long) {
+        val normalized = allowedHosts
+            .map(ConfigurableProviderDestinationPolicy::normalizeHost)
+            .filter(String::isNotBlank)
+            .toSet()
+        if (expiresAtMs <= System.currentTimeMillis()) return
+        if (!ConfigurableProviderDestinationPolicy.allows(url, normalized)) return
+
+        val policy = Policy(normalized, expiresAtMs)
+        normalized.forEach { host -> byHost[host] = policy }
+        if (byHost.size > MAX_REGISTERED_HOSTS) prune(System.currentTimeMillis())
+    }
+
+    fun allowedHostsFor(rawUrl: String, nowMs: Long = System.currentTimeMillis()): Set<String>? {
+        val url = rawUrl.toHttpUrlOrNull() ?: return null
+        val host = ConfigurableProviderDestinationPolicy.normalizeHost(url.host)
+        val policy = byHost[host] ?: return null
+        if (policy.expiresAtMs <= nowMs) {
+            policy.allowedHosts.forEach { member -> byHost.remove(member, policy) }
+            return null
+        }
+        return policy.allowedHosts.takeIf { ConfigurableProviderDestinationPolicy.allows(url, it) }
+    }
+
+    private fun prune(nowMs: Long) {
+        byHost.entries.forEach { (host, policy) ->
+            if (policy.expiresAtMs <= nowMs) byHost.remove(host, policy)
+        }
+    }
+
+    private const val MAX_REGISTERED_HOSTS = 128
+}
+
 private object ConfigurableProviderDestinationInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val allowed = chain.request().tag(AllowedProviderDestinations::class.java)?.hosts.orEmpty()
@@ -167,7 +206,23 @@ private object ConfigurableProviderDestinationInterceptor : Interceptor {
     }
 }
 
-private object PublicProviderDns : Dns {
+internal class ConfigurableProviderPlaybackInterceptor(
+    allowedHosts: Set<String>
+) : Interceptor {
+    private val normalizedHosts = allowedHosts
+        .map(ConfigurableProviderDestinationPolicy::normalizeHost)
+        .filter(String::isNotBlank)
+        .toSet()
+
+    override fun intercept(chain: Interceptor.Chain): Response {
+        if (!ConfigurableProviderDestinationPolicy.allows(chain.request().url, normalizedHosts)) {
+            throw IOException("Blocked configurable provider playback destination")
+        }
+        return chain.proceed(chain.request())
+    }
+}
+
+internal object PublicProviderDns : Dns {
     override fun lookup(hostname: String): List<InetAddress> {
         val addresses = Dns.SYSTEM.lookup(hostname)
         if (addresses.isEmpty() || addresses.any(::isNonPublicAddress)) {
