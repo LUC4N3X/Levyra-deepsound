@@ -217,25 +217,32 @@ internal class LocalAudioTagEditor(context: Context) {
             return CopySourceResult.Unavailable
         } ?: return CopySourceResult.Unavailable
         return try {
-            stream.use { input ->
-                target.outputStream().buffered().use { output ->
-                    val buffer = ByteArray(COPY_BUFFER)
-                    var total = 0L
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        if (read == 0) continue
-                        total += read
-                        if (total > sizeLimit) return CopySourceResult.TooLarge
-                        output.write(buffer, 0, read)
-                    }
-                }
+            val copied = stream.use { input ->
+                target.outputStream().buffered().use { output -> copyBounded(input, output, sizeLimit) }
             }
-            if (target.isFile && target.length() > 0L) CopySourceResult.Ok else CopySourceResult.Unavailable
+            when {
+                !copied -> CopySourceResult.TooLarge
+                target.isFile && target.length() > 0L -> CopySourceResult.Ok
+                else -> CopySourceResult.Unavailable
+            }
         } catch (error: IOException) {
             Timber.d(error, "Local tag source copy failed")
             if (target.usableSpace < COPY_BUFFER) CopySourceResult.NoSpace else CopySourceResult.Unavailable
         }
+    }
+
+    @Throws(IOException::class)
+    private fun copyBounded(input: java.io.InputStream, output: java.io.OutputStream, sizeLimit: Long): Boolean {
+        val buffer = ByteArray(COPY_BUFFER)
+        var total = 0L
+        var read = input.read(buffer)
+        while (read >= 0) {
+            total += read
+            if (total > sizeLimit) return false
+            output.write(buffer, 0, read)
+            read = input.read(buffer)
+        }
+        return true
     }
 
     @Throws(IOException::class)

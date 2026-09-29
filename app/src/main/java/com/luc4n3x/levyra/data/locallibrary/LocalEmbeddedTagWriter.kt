@@ -334,23 +334,8 @@ internal object LocalEmbeddedTagWriter {
         }
         if (blocks.firstOrNull()?.type != 0) return LocalEmbeddedTagWriteResult(false, "streaminfo_missing")
 
-        val editedKeys = editedVorbisKeys(edits, artwork)
-        var replacedComment = false
-        val rewritten = ArrayList<FlacBlock>(blocks.size + 2)
-        blocks.forEach { block ->
-            when {
-                block.type == 4 -> if (!replacedComment) {
-                    val payload = rewriteVorbisComment(block.payload, edits, editedKeys)
-                        ?: return LocalEmbeddedTagWriteResult(false, "invalid_vorbis_comment")
-                    rewritten += FlacBlock(4, payload)
-                    replacedComment = true
-                }
-                block.type == FLAC_PICTURE_BLOCK && artwork != LocalArtworkWrite.Keep -> Unit
-                else -> rewritten += block
-            }
-        }
-        if (!replacedComment) rewritten += FlacBlock(4, createVorbisComment(edits))
-        if (artwork is LocalArtworkWrite.Embed) rewritten += FlacBlock(FLAC_PICTURE_BLOCK, flacPicture(artwork))
+        val rewritten = rewriteFlacBlocks(blocks, edits, artwork)
+            ?: return LocalEmbeddedTagWriteResult(false, "invalid_vorbis_comment")
 
         val out = ByteArrayOutputStream(source.size + 4096)
         out.write("fLaC".toByteArray(StandardCharsets.ISO_8859_1))
@@ -367,6 +352,27 @@ internal object LocalEmbeddedTagWriter {
         output.parentFile?.mkdirs()
         output.writeBytes(out.toByteArray())
         return LocalEmbeddedTagWriteResult(output.isFile && output.length() > 0L, "ok")
+    }
+
+    private fun rewriteFlacBlocks(
+        blocks: List<FlacBlock>,
+        edits: LocalTagEdits,
+        artwork: LocalArtworkWrite
+    ): List<FlacBlock>? {
+        val editedKeys = editedVorbisKeys(edits, artwork)
+        val dropPictures = artwork != LocalArtworkWrite.Keep
+        val commentIndex = blocks.indexOfFirst { it.type == 4 }
+        val rewritten = ArrayList<FlacBlock>(blocks.size + 2)
+        blocks.forEachIndexed { index, block ->
+            when {
+                index == commentIndex -> rewritten += FlacBlock(4, rewriteVorbisComment(block.payload, edits, editedKeys) ?: return null)
+                block.type == 4 || (dropPictures && block.type == FLAC_PICTURE_BLOCK) -> Unit
+                else -> rewritten += block
+            }
+        }
+        if (commentIndex < 0) rewritten += FlacBlock(4, createVorbisComment(edits))
+        if (artwork is LocalArtworkWrite.Embed) rewritten += FlacBlock(FLAC_PICTURE_BLOCK, flacPicture(artwork))
+        return rewritten
     }
 
     private fun editedVorbisKeys(edits: LocalTagEdits, artwork: LocalArtworkWrite): Set<String> = buildSet {

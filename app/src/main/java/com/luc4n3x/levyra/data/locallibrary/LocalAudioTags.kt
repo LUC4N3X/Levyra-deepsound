@@ -209,12 +209,11 @@ internal object LocalDeepTagReader {
     }
 
     private fun id3TerminatorEnd(bytes: ByteArray, encoding: Int): Int {
-        val wide = encoding == 1 || encoding == 2
+        val width = if (encoding == 1 || encoding == 2) 2 else 1
         var index = 0
-        while (index < bytes.size) {
-            if (!wide && bytes[index] == 0.toByte()) return index + 1
-            if (wide && index + 1 < bytes.size && bytes[index] == 0.toByte() && bytes[index + 1] == 0.toByte()) return index + 2
-            index += if (wide) 2 else 1
+        while (index + width <= bytes.size) {
+            if ((0 until width).all { bytes[index + it] == 0.toByte() }) return index + width
+            index += width
         }
         return -1
     }
@@ -415,17 +414,11 @@ internal object LocalDeepTagReader {
         var cursor = ilst.payloadStart
         while (cursor + 8 <= ilst.end) {
             val item = readMp4Box(source, cursor, ilst.end) ?: break
-            when (item.type) {
-                MP4_TITLE -> mp4DataText(source, item)?.let { putTag(result, "TITLE", it) }
-                MP4_ARTIST -> mp4DataText(source, item)?.let { putTag(result, "ARTIST", it) }
-                MP4_ALBUM -> mp4DataText(source, item)?.let { putTag(result, "ALBUM", it) }
-                MP4_COMPOSER -> mp4DataText(source, item)?.let { putTag(result, "COMPOSER", it) }
-                MP4_COMMENT -> mp4DataText(source, item)?.let { putTag(result, "COMMENT", it) }
-                MP4_COPYRIGHT, MP4_COPYRIGHT_ALT -> mp4DataText(source, item)?.let { putTag(result, "COPYRIGHT", it) }
-                MP4_FREEFORM -> {
-                    val pair = mp4Freeform(source, item)
-                    if (pair != null) putTag(result, pair.first.uppercase(Locale.ROOT), pair.second)
-                }
+            val textKey = MP4_TEXT_KEYS[item.type]
+            if (textKey != null) {
+                mp4DataText(source, item)?.let { putTag(result, textKey, it) }
+            } else if (item.type == MP4_FREEFORM) {
+                mp4Freeform(source, item)?.let { (name, value) -> putTag(result, name.uppercase(Locale.ROOT), value) }
             }
             cursor = item.end
         }
@@ -751,6 +744,15 @@ internal object LocalDeepTagReader {
     private val MP4_TITLE = fourCc(0xA9, 'n'.code, 'a'.code, 'm'.code)
     private val MP4_ARTIST = fourCc(0xA9, 'A'.code, 'R'.code, 'T'.code)
     private val MP4_ALBUM = fourCc(0xA9, 'a'.code, 'l'.code, 'b'.code)
+    private val MP4_TEXT_KEYS = mapOf(
+        MP4_TITLE to "TITLE",
+        MP4_ARTIST to "ARTIST",
+        MP4_ALBUM to "ALBUM",
+        MP4_COMPOSER to "COMPOSER",
+        MP4_COMMENT to "COMMENT",
+        MP4_COPYRIGHT to "COPYRIGHT",
+        MP4_COPYRIGHT_ALT to "COPYRIGHT"
+    )
     private val VORBIS_LYRICS_KEYS = setOf("LYRICS", "UNSYNCEDLYRICS", "UNSYNCED LYRICS")
 
     private enum class TagContainer { Id3, Flac, Ogg, Mp4, Unknown }
