@@ -1009,7 +1009,6 @@ class LevyraBackupManager(private val context: Context) {
             .put("sponsorBlock", snapshot.sponsorBlock)
             .put("skipSilence", snapshot.skipSilence)
             .put("audioQuality", snapshot.audioQuality)
-            .put("preferredAudioLanguage", snapshot.preferredAudioLanguage)
             .put("highQualityAudioMode", snapshot.highQualityAudioMode.storageValue)
             .put("audioNormalization", snapshot.audioNormalization)
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
@@ -1075,7 +1074,6 @@ class LevyraBackupManager(private val context: Context) {
             backupSettings = parseBackupSettings(json.optJSONObject("backupSettings")),
             automationSettings = parseAutomationSettings(json.optJSONObject("automationSettings")),
             jamDisplayName = json.optString("jamDisplayName"),
-            preferredAudioLanguage = AudioLanguageIntelligence.normalizeLanguage(json.optString("preferredAudioLanguage")),
             videoQualityTarget = VideoQualityTarget.fromStorage(json.optString("videoQualityTarget")),
             lyricsProviderOrdering = json.optJSONArray("lyricsProviderOrdering")
                 ?.toString()

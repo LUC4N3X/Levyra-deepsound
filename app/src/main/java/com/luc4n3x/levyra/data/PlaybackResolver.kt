@@ -408,8 +408,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     @Volatile
     private var selectedAudioQuality = userPreferences.audioQuality()
 
-    @Volatile
-    private var selectedPreferredAudioLanguage = userPreferences.preferredAudioLanguage()
+    private val selectedPreferredAudioLanguage = ""
 
     private val audioLanguageRevision = AtomicLong(0L)
 
@@ -446,24 +445,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         selectedAudioQuality = normalizeAudioQuality(value)
     }
 
-    fun setPreferredAudioLanguage(value: String) {
-        val normalized = AudioLanguageIntelligence.normalizeLanguage(value)
-        synchronized(streamCacheMutationLock) {
-            if (selectedPreferredAudioLanguage == normalized) return
-            selectedPreferredAudioLanguage = normalized
-            audioLanguageRevision.incrementAndGet()
-            resolverGeneration.incrementAndGet()
-        }
-    }
-
     fun invalidateVideoQualitySelection() {
         synchronized(streamCacheMutationLock) {
             resolverGeneration.incrementAndGet()
             streamCache.keys.removeAll { it.contains("_video_") }
         }
     }
-
-    fun preferredAudioLanguage(): String = selectedPreferredAudioLanguage
 
     private fun preferredAudioLanguageSnapshot(): Pair<String, Long> =
         synchronized(streamCacheMutationLock) {
