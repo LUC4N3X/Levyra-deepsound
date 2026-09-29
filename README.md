@@ -111,34 +111,34 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 </p>
 
 <p align="center">
-  <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp?v=minimal-20260929" width="200" alt="Levyra home and personalized radio" /></a>
-  <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=minimal-20260929" width="200" alt="Levyra song and video player" /></a>
-  <a href="docs/assets/showcase/cards/03_now_playing.webp"><img src="docs/assets/showcase/cards/03_now_playing.webp?v=minimal-20260929" width="200" alt="Levyra synchronized lyrics and player" /></a>
-  <a href="docs/assets/showcase/cards/04_player_deck.webp"><img src="docs/assets/showcase/cards/04_player_deck.webp?v=minimal-20260929" width="200" alt="Levyra customizable player decks" /></a>
+  <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp?v=delicate-20260929" width="210" alt="Levyra home and personalized radio" /></a>
+  <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=delicate-20260929" width="210" alt="Levyra song and video player" /></a>
+  <a href="docs/assets/showcase/cards/03_now_playing.webp"><img src="docs/assets/showcase/cards/03_now_playing.webp?v=delicate-20260929" width="210" alt="Levyra synchronized lyrics and player" /></a>
+  <a href="docs/assets/showcase/cards/04_player_deck.webp"><img src="docs/assets/showcase/cards/04_player_deck.webp?v=delicate-20260929" width="210" alt="Levyra customizable player decks" /></a>
 </p>
 <p align="center">
-  <a href="docs/assets/showcase/cards/05_explore_mix.webp"><img src="docs/assets/showcase/cards/05_explore_mix.webp?v=minimal-20260929" width="200" alt="Levyra explore and mix hub" /></a>
-  <a href="docs/assets/showcase/cards/06_artist_profile.webp"><img src="docs/assets/showcase/cards/06_artist_profile.webp?v=minimal-20260929" width="200" alt="Levyra artist profile and discography" /></a>
-  <a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp?v=minimal-20260929" width="200" alt="Levyra moods and genres" /></a>
-  <a href="docs/assets/showcase/cards/08_audio_tuning.webp"><img src="docs/assets/showcase/cards/08_audio_tuning.webp?v=minimal-20260929" width="200" alt="Levyra audio tuning and playback engine" /></a>
+  <a href="docs/assets/showcase/cards/05_explore_mix.webp"><img src="docs/assets/showcase/cards/05_explore_mix.webp?v=delicate-20260929" width="210" alt="Levyra explore and mix hub" /></a>
+  <a href="docs/assets/showcase/cards/06_artist_profile.webp"><img src="docs/assets/showcase/cards/06_artist_profile.webp?v=delicate-20260929" width="210" alt="Levyra artist profile and discography" /></a>
+  <a href="docs/assets/showcase/cards/07_genres.webp"><img src="docs/assets/showcase/cards/07_genres.webp?v=delicate-20260929" width="210" alt="Levyra moods and genres" /></a>
+  <a href="docs/assets/showcase/cards/08_audio_tuning.webp"><img src="docs/assets/showcase/cards/08_audio_tuning.webp?v=delicate-20260929" width="210" alt="Levyra audio tuning and playback engine" /></a>
 </p>
 <p align="center">
-  <a href="docs/assets/showcase/cards/09_album.webp"><img src="docs/assets/showcase/cards/09_album.webp?v=minimal-20260929" width="200" alt="Levyra album details and tracklist" /></a>
-  <a href="docs/assets/showcase/cards/10_search.webp"><img src="docs/assets/showcase/cards/10_search.webp?v=minimal-20260929" width="200" alt="Levyra instant search and suggestions" /></a>
-  <a href="docs/assets/showcase/cards/11_collections.webp"><img src="docs/assets/showcase/cards/11_collections.webp?v=minimal-20260929" width="200" alt="Levyra curated collections and playlists" /></a>
-  <a href="docs/assets/showcase/cards/12_listening_rhythm.webp"><img src="docs/assets/showcase/cards/12_listening_rhythm.webp?v=minimal-20260929" width="200" alt="Levyra listening rhythm and habits" /></a>
+  <a href="docs/assets/showcase/cards/09_album.webp"><img src="docs/assets/showcase/cards/09_album.webp?v=delicate-20260929" width="210" alt="Levyra album details and tracklist" /></a>
+  <a href="docs/assets/showcase/cards/10_search.webp"><img src="docs/assets/showcase/cards/10_search.webp?v=delicate-20260929" width="210" alt="Levyra instant search and suggestions" /></a>
+  <a href="docs/assets/showcase/cards/11_collections.webp"><img src="docs/assets/showcase/cards/11_collections.webp?v=delicate-20260929" width="210" alt="Levyra curated collections and playlists" /></a>
+  <a href="docs/assets/showcase/cards/12_listening_rhythm.webp"><img src="docs/assets/showcase/cards/12_listening_rhythm.webp?v=delicate-20260929" width="210" alt="Levyra listening rhythm and habits" /></a>
 </p>
 <p align="center">
-  <a href="docs/assets/showcase/cards/13_your_orbit.webp"><img src="docs/assets/showcase/cards/13_your_orbit.webp?v=minimal-20260929" width="200" alt="Levyra orbit and favorite tracks" /></a>
-  <a href="docs/assets/showcase/cards/14_listening_pulse.webp"><img src="docs/assets/showcase/cards/14_listening_pulse.webp?v=minimal-20260929" width="200" alt="Levyra private listening stats and charts" /></a>
-  <a href="docs/assets/showcase/cards/15_artist_playlists.webp"><img src="docs/assets/showcase/cards/15_artist_playlists.webp?v=minimal-20260929" width="200" alt="Levyra artist playlists and collections" /></a>
-  <a href="docs/assets/showcase/cards/16_settings_vault.webp"><img src="docs/assets/showcase/cards/16_settings_vault.webp?v=minimal-20260929" width="200" alt="Levyra settings and local vault backups" /></a>
+  <a href="docs/assets/showcase/cards/13_your_orbit.webp"><img src="docs/assets/showcase/cards/13_your_orbit.webp?v=delicate-20260929" width="210" alt="Levyra orbit and favorite tracks" /></a>
+  <a href="docs/assets/showcase/cards/14_listening_pulse.webp"><img src="docs/assets/showcase/cards/14_listening_pulse.webp?v=delicate-20260929" width="210" alt="Levyra private listening stats and charts" /></a>
+  <a href="docs/assets/showcase/cards/15_artist_playlists.webp"><img src="docs/assets/showcase/cards/15_artist_playlists.webp?v=delicate-20260929" width="210" alt="Levyra artist playlists and collections" /></a>
+  <a href="docs/assets/showcase/cards/16_settings_vault.webp"><img src="docs/assets/showcase/cards/16_settings_vault.webp?v=delicate-20260929" width="210" alt="Levyra settings and local vault backups" /></a>
 </p>
 <p align="center">
-  <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=minimal-20260929" width="200" alt="Levyra new releases" /></a>
-  <a href="docs/assets/showcase/cards/18_fresh_currents.webp"><img src="docs/assets/showcase/cards/18_fresh_currents.webp?v=minimal-20260929" width="200" alt="Levyra discovery stream and fresh currents" /></a>
-  <a href="docs/assets/showcase/cards/19_featured_artists.webp"><img src="docs/assets/showcase/cards/19_featured_artists.webp?v=minimal-20260929" width="200" alt="Levyra featured artists" /></a>
-  <a href="docs/assets/showcase/cards/20_soundstage.webp"><img src="docs/assets/showcase/cards/20_soundstage.webp?v=minimal-20260929" width="200" alt="Levyra lossless soundstage" /></a>
+  <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=delicate-20260929" width="210" alt="Levyra new releases" /></a>
+  <a href="docs/assets/showcase/cards/18_fresh_currents.webp"><img src="docs/assets/showcase/cards/18_fresh_currents.webp?v=delicate-20260929" width="210" alt="Levyra discovery stream and fresh currents" /></a>
+  <a href="docs/assets/showcase/cards/19_featured_artists.webp"><img src="docs/assets/showcase/cards/19_featured_artists.webp?v=delicate-20260929" width="210" alt="Levyra featured artists" /></a>
+  <a href="docs/assets/showcase/cards/20_soundstage.webp"><img src="docs/assets/showcase/cards/20_soundstage.webp?v=delicate-20260929" width="210" alt="Levyra lossless soundstage" /></a>
 </p>
 
 </div>

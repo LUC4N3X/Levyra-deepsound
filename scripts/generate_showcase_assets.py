@@ -19,14 +19,14 @@ def get_font(size, bold=False):
 def enhance_screenshot(img):
     img = img.convert("RGB")
     enhancer = ImageEnhance.Contrast(img)
-    img = enhancer.enhance(1.05)
-    enhancer = ImageEnhance.Color(img)
     img = enhancer.enhance(1.06)
+    enhancer = ImageEnhance.Color(img)
+    img = enhancer.enhance(1.08)
     enhancer = ImageEnhance.Sharpness(img)
-    img = enhancer.enhance(1.10)
+    img = enhancer.enhance(1.12)
     return img
 
-def create_clean_phone(screen_img, target_height=1060):
+def create_clean_phone(screen_img, target_height=1180):
     screen_img = enhance_screenshot(screen_img)
     orig_w, orig_h = screen_img.size
     aspect = orig_w / orig_h
@@ -34,7 +34,7 @@ def create_clean_phone(screen_img, target_height=1060):
     screen_w = int(screen_h * aspect)
     screen_res = screen_img.resize((screen_w, screen_h), Image.Resampling.LANCZOS)
 
-    bezel = max(7, int(screen_w * 0.030))
+    bezel = max(7, int(screen_w * 0.028))
     corner_radius = int(screen_w * 0.125)
     phone_w = screen_w + bezel * 2
     phone_h = screen_h + bezel * 2
@@ -43,8 +43,8 @@ def create_clean_phone(screen_img, target_height=1060):
     draw = ImageDraw.Draw(phone)
 
     # Dark titanium body
-    draw.rounded_rectangle((0, 0, phone_w - 1, phone_h - 1), radius=corner_radius, fill=(18, 20, 26, 255))
-    draw.rounded_rectangle((0, 0, phone_w - 1, phone_h - 1), radius=corner_radius, outline=(60, 68, 82, 255), width=2)
+    draw.rounded_rectangle((0, 0, phone_w - 1, phone_h - 1), radius=corner_radius, fill=(16, 18, 24, 255))
+    draw.rounded_rectangle((0, 0, phone_w - 1, phone_h - 1), radius=corner_radius, outline=(65, 75, 90, 255), width=2)
 
     # Screen mask
     screen_mask = Image.new("L", (screen_w, screen_h), 0)
@@ -69,7 +69,7 @@ def create_clean_phone(screen_img, target_height=1060):
 
     return phone
 
-def create_studio_shadow(phone, blur=45, opacity=110, offset_y=26):
+def create_studio_shadow(phone, blur=48, opacity=115, offset_y=28):
     pad = blur * 2 + abs(offset_y)
     sw = phone.width + pad * 2
     sh = phone.height + pad * 2
@@ -84,46 +84,42 @@ def create_studio_shadow(phone, blur=45, opacity=110, offset_y=26):
     shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
     return shadow, pad
 
-def create_rich_wave_bg(width, height, top_col, accent_start, accent_end, y_start=960, y_end=680):
+def create_delicate_bg(width, height, top_tint, accent_tone, glow_tone=None, y_start=920, y_end=660):
     """
-    Renders an organic, supersampled S-curve separating a bright tinted canvas
-    and a vibrant, rich color gradient.
+    Renders an organic, supersampled soft S-curve separating a delicate tinted canvas
+    and a soft, refined accent tone, with an ethereal ambient glow behind the phone.
     """
+    card = Image.new("RGBA", (width, height), (*top_tint, 255))
     w2, h2 = width * 2, height * 2
-    img2 = Image.new("RGBA", (w2, h2), (*top_col, 255))
+    wave_layer = Image.new("RGBA", (w2, h2), (0, 0, 0, 0))
+    wdraw = ImageDraw.Draw(wave_layer)
 
-    steps = 120
-    xs = np.linspace(0, w2, steps)
+    steps = 100
     t = np.linspace(0, 1, steps)
     y1_2 = y_start * 2
     y2_2 = y_end * 2
-    c1_y = y1_2 - 180
-    c2_y = y2_2 + 180
+    c1_y = y1_2 - 140
+    c2_y = y2_2 + 140
     ys = (1 - t)**3 * y1_2 + 3 * (1 - t)**2 * t * c1_y + 3 * (1 - t) * t**2 * c2_y + t**3 * y2_2
+    xs = np.linspace(0, w2, steps)
 
     poly = [(0, y1_2)]
     for x, y in zip(xs, ys):
         poly.append((int(x), int(y)))
     poly.extend([(w2, y2_2), (w2, h2), (0, h2)])
+    wdraw.polygon(poly, fill=(*accent_tone, 255))
 
-    mask2 = Image.new("L", (w2, h2), 0)
-    mdraw = ImageDraw.Draw(mask2)
-    mdraw.polygon(poly, fill=255)
+    wave_smooth = wave_layer.resize((width, height), Image.Resampling.LANCZOS)
+    card = Image.alpha_composite(card, wave_smooth)
 
-    g_arr = np.zeros((h2, w2, 4), dtype=np.uint8)
-    for y in range(h2):
-        ratio = y / h2
-        r = int(accent_start[0] * (1 - ratio) + accent_end[0] * ratio)
-        g = int(accent_start[1] * (1 - ratio) + accent_end[1] * ratio)
-        b = int(accent_start[2] * (1 - ratio) + accent_end[2] * ratio)
-        g_arr[y, :, 0] = r
-        g_arr[y, :, 1] = g
-        g_arr[y, :, 2] = b
-        g_arr[y, :, 3] = 255
+    if glow_tone:
+        glow_canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        gdraw = ImageDraw.Draw(glow_canvas)
+        gdraw.ellipse((180, 600, 720, 1180), fill=(*glow_tone, 50))
+        glow_canvas = glow_canvas.filter(ImageFilter.GaussianBlur(90))
+        card = Image.alpha_composite(card, glow_canvas)
 
-    gradient2 = Image.fromarray(g_arr)
-    img2.paste(gradient2, (0, 0), mask2)
-    return img2.resize((width, height), Image.Resampling.LANCZOS)
+    return card
 
 def generate_hero_panoramic_showcase():
     """
@@ -206,58 +202,59 @@ def generate_hero_panoramic_showcase():
 
 def generate_feature_cards():
     """
-    Generates all 20 feature cards with rich, vibrant, premium colors (ZERO grey, ZERO pink).
+    Generates all 20 feature cards with delicate, elegant, harmonious palettes
+    and high-visibility typography and larger phone mockups.
     """
     card_w, card_h = 900, 1600
-    title_font = get_font(58, bold=True)
-    sub_font = get_font(28, bold=False)
+    title_font = get_font(68, bold=True)
+    sub_font = get_font(33, bold=False)
 
-    # 1. CONNECTED HERO CARDS (01 & 02) - Nordic Ocean Sapphire
+    # 1. CONNECTED HERO CARDS (01 & 02) - Soft Nordic Ice Blue
     pano_w = card_w * 2
     pano_h = card_h
-    pano_bg = create_rich_wave_bg(
+    pano_bg = create_delicate_bg(
         pano_w, pano_h,
-        top_col=(240, 247, 255),
-        accent_start=(24, 100, 218),
-        accent_end=(14, 68, 175),
+        top_tint=(238, 245, 250),
+        accent_tone=(170, 196, 218),
+        glow_tone=(148, 185, 210),
         y_start=1150,
         y_end=620
     )
 
     home_file = os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_171253_LEVYRA.jpg")
     with Image.open(home_file) as source:
-        phone_hero = create_clean_phone(source, target_height=1280)
+        phone_hero = create_clean_phone(source, target_height=1400)
 
     rotated_hero = phone_hero.rotate(25, resample=Image.Resampling.BICUBIC, expand=True)
-    rot_shadow, rpad = create_studio_shadow(rotated_hero, blur=48, opacity=110, offset_y=28)
+    rot_shadow, rpad = create_studio_shadow(rotated_hero, blur=52, opacity=115, offset_y=30)
 
     hero_x = 900 - rotated_hero.width // 2 - 35
-    hero_y = 170
+    hero_y = 150
     pano_bg.paste(rot_shadow, (hero_x - rpad, hero_y - rpad), rot_shadow)
     pano_bg.paste(rotated_hero, (hero_x, hero_y), rotated_hero)
 
     pdraw = ImageDraw.Draw(pano_bg)
 
     # Card 01 Text (Bottom Left)
-    pdraw.text((75, 1190), "Pure listening", font=get_font(60, bold=True), fill=(15, 23, 42, 255))
+    pdraw.text((75, 1170), "Pure listening", font=get_font(72, bold=True), fill=(12, 18, 28, 255))
     pdraw.multiline_text(
-        (75, 1275),
+        (75, 1265),
         "Zero ads, zero accounts, zero tracking.\nPure high-fidelity YouTube Music,\nplayed natively on your device.",
-        font=sub_font,
-        fill=(25, 40, 60, 255),
-        spacing=10
+        font=get_font(34),
+        fill=(35, 50, 68, 255),
+        spacing=12
     )
 
     # Card 02 Text (Top Right)
     c2_left = 900
-    text_x = c2_left + 330
-    pdraw.text((text_x, 95), "Download & keep", font=title_font, fill=(20, 23, 29, 255))
+    text_x = c2_left + 300
+    pdraw.text((text_x, 80), "Download & keep", font=get_font(70, bold=True), fill=(15, 22, 32, 255))
     pdraw.multiline_text(
         (text_x, 175),
         "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
-        font=sub_font,
-        fill=(71, 85, 105, 255),
-        spacing=10
+        font=get_font(33),
+        fill=(45, 60, 75, 255),
+        spacing=12
     )
 
     card_01 = pano_bg.crop((0, 0, card_w, card_h))
@@ -266,47 +263,60 @@ def generate_feature_cards():
     card_02.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "02_stay_with_the_song.webp"), "WEBP", quality=92, method=6)
     print("Generated Hero Cards: 01_home.webp, 02_stay_with_the_song.webp")
 
-    # 2. CARDS 03 TO 20 (Rich, Vibrant, Premium Palettes - ZERO Grey, ZERO Pink)
+    # 2. CARDS 03 TO 20 (Cohesive, Delicate Palettes - ZERO Carnival, ZERO Pink, ZERO Grey)
+    # Five subtle tone-on-tone themes:
+    # C_CELESTE   = (top, accent, glow)
+    # C_SAGE      = (top, accent, glow)
+    # C_CASHMERE  = (top, accent, glow)
+    # C_TWILIGHT  = (top, accent, glow)
+    # C_SEAFOAM   = (top, accent, glow)
+    C_CELESTE = ((238, 245, 250), (170, 196, 218), (148, 185, 210))
+    C_SAGE = ((238, 246, 242), (168, 198, 188), (145, 185, 172))
+    C_CASHMERE = ((248, 245, 240), (212, 194, 170), (195, 175, 150))
+    C_TWILIGHT = ((244, 244, 250), (182, 184, 212), (162, 165, 200))
+    C_SEAFOAM = ((238, 246, 248), (166, 198, 202), (145, 188, 192))
+
     single_specs = [
-        # (filename, screenshot_file, title, subtitle, top_color, accent_start, accent_end)
-        ("03_now_playing.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Stay with the song", "One focused player for audio and video.\nSynced lyrics move with every beat.", (255, 250, 242), (214, 108, 28), (170, 72, 16)),
-        ("04_player_deck.webp", "Screenshot_20260929_195520_LEVYRA.jpg", "Style your player", "Canvas, card deck, or classic vinyl.\nSwitch your stage seamlessly.", (244, 246, 255), (79, 70, 229), (55, 45, 185)),
-        ("05_explore_mix.webp", "Screenshot_20260927_140841_LEVYRA.jpg", "Explore and mix", "Live radio, fresh currents, and custom\nsliders between familiar and new.", (236, 250, 255), (14, 136, 225), (8, 98, 180)),
-        ("06_artist_profile.webp", "Screenshot_20260926_194603_LEVYRA.jpg", "Meet the artist", "Full discography, singles, biographies,\nand top tracks in one tap.", (248, 243, 255), (124, 58, 237), (92, 38, 195)),
-        ("07_genres.webp", "Screenshot_20260929_194827_LEVYRA.jpg", "Pick a direction", "Move through moods, vibes, and genres\ncrafted for every moment.", (238, 253, 246), (16, 155, 102), (10, 118, 75)),
-        ("08_audio_tuning.webp", "Screenshot_20260926_194845_LEVYRA.jpg", "Shape the playback", "Sleep timer, tempo tuning, loudness norm,\nand advanced audio engine.", (238, 252, 252), (13, 148, 136), (10, 112, 104)),
-        ("09_album.webp", "Screenshot_20260926_194706_LEVYRA.jpg", "Open the album", "High-resolution artwork, release info,\nand complete tracklists.", (255, 251, 240), (205, 135, 25), (165, 98, 14)),
-        ("10_search.webp", "Screenshot_20260926_194736_LEVYRA.jpg", "Find it instantly", "Recent searches, suggestions, and\ninstant matching across your music.", (238, 251, 255), (6, 145, 195), (4, 108, 150)),
-        ("11_collections.webp", "Screenshot_20260927_132323_LEVYRA.jpg", "Curated for you", "Handpicked playlists and gems\nrevolving around what you love.", (244, 245, 255), (99, 102, 241), (72, 75, 210)),
-        ("12_listening_rhythm.webp", "Screenshot_20260927_131943_LEVYRA.jpg", "Your listening rhythm", "Activity heatmaps, peak hours, and\nyour personal listening cadence.", (238, 253, 246), (16, 160, 110), (10, 122, 82)),
-        ("13_your_orbit.webp", "Screenshot_20260929_195235_LEVYRA.jpg", "In your orbit", "The songs and artists that always return\nto your rotation.", (247, 242, 255), (109, 40, 217), (78, 24, 172)),
-        ("14_listening_pulse.webp", "Screenshot_20260926_193717_LEVYRA.jpg", "Keep it personal", "Private listening stats and charts,\ncomputed strictly on your device.", (240, 247, 255), (30, 80, 220), (18, 58, 175)),
-        ("15_artist_playlists.webp", "Screenshot_20260929_201454_LEVYRA.jpg", "Artist playlists", "Curated sets, tours, and the\nessential catalog of every artist.", (242, 248, 255), (25, 100, 220), (16, 70, 172)),
-        ("16_settings_vault.webp", "Screenshot_20260929_194944_LEVYRA.jpg", "Tailor every detail", "Audio, design, gestures, and local\nsingle-file Vault backups.", (240, 252, 246), (22, 130, 88), (14, 95, 62)),
-        ("17_new_releases.webp", "Screenshot_20260927_132248_LEVYRA.jpg", "Fresh off the stage", "New singles and albums updated\nevery week directly from artists.", (255, 248, 244), (216, 85, 38), (172, 60, 22)),
-        ("18_fresh_currents.webp", "Screenshot_20260929_194853_LEVYRA.jpg", "Discovery stream", "Explore live stations, genre charts,\nand community soundscapes.", (236, 254, 255), (8, 155, 185), (5, 118, 145)),
-        ("19_featured_artists.webp", "Screenshot_20260905_135618_LEVYRA.jpg", "Featured artists", "Discover local and global artists,\ncurated collections, and albums.", (248, 242, 255), (135, 52, 225), (98, 32, 180)),
-        ("20_soundstage.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Pure soundstage", "Experience lossless decoding and\nuncompromised audio fidelity.", (240, 247, 255), (20, 85, 215), (12, 58, 162)),
+        # (filename, screenshot_file, title, subtitle, palette)
+        ("03_now_playing.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Stay with the song", "One focused player for audio and video.\nSynced lyrics move with every beat.", C_CASHMERE),
+        ("04_player_deck.webp", "Screenshot_20260929_195520_LEVYRA.jpg", "Style your player", "Canvas, card deck, or classic vinyl.\nSwitch your stage seamlessly.", C_TWILIGHT),
+        ("05_explore_mix.webp", "Screenshot_20260927_140841_LEVYRA.jpg", "Explore and mix", "Live radio, fresh currents, and custom\nsliders between familiar and new.", C_SEAFOAM),
+        ("06_artist_profile.webp", "Screenshot_20260926_194603_LEVYRA.jpg", "Meet the artist", "Full discography, singles, biographies,\nand top tracks in one tap.", C_TWILIGHT),
+        ("07_genres.webp", "Screenshot_20260929_194827_LEVYRA.jpg", "Pick a direction", "Move through moods, vibes, and genres\ncrafted for every moment.", C_SAGE),
+        ("08_audio_tuning.webp", "Screenshot_20260926_194845_LEVYRA.jpg", "Shape the playback", "Sleep timer, tempo tuning, loudness norm,\nand advanced audio engine.", C_CELESTE),
+        ("09_album.webp", "Screenshot_20260926_194706_LEVYRA.jpg", "Open the album", "High-resolution artwork, release info,\nand complete tracklists.", C_CASHMERE),
+        ("10_search.webp", "Screenshot_20260926_194736_LEVYRA.jpg", "Find it instantly", "Recent searches, suggestions, and\ninstant matching across your music.", C_CELESTE),
+        ("11_collections.webp", "Screenshot_20260927_132323_LEVYRA.jpg", "Curated for you", "Handpicked playlists and gems\nrevolving around what you love.", C_TWILIGHT),
+        ("12_listening_rhythm.webp", "Screenshot_20260927_131943_LEVYRA.jpg", "Your listening rhythm", "Activity heatmaps, peak hours, and\nyour personal listening cadence.", C_SAGE),
+        ("13_your_orbit.webp", "Screenshot_20260929_195235_LEVYRA.jpg", "In your orbit", "The songs and artists that always return\nto your rotation.", C_TWILIGHT),
+        ("14_listening_pulse.webp", "Screenshot_20260926_193717_LEVYRA.jpg", "Keep it personal", "Private listening stats and charts,\ncomputed strictly on your device.", C_CELESTE),
+        ("15_artist_playlists.webp", "Screenshot_20260929_201454_LEVYRA.jpg", "Artist playlists", "Curated sets, tours, and the\nessential catalog of every artist.", C_CELESTE),
+        ("16_settings_vault.webp", "Screenshot_20260929_194944_LEVYRA.jpg", "Tailor every detail", "Audio, design, gestures, and local\nsingle-file Vault backups.", C_SAGE),
+        ("17_new_releases.webp", "Screenshot_20260927_132248_LEVYRA.jpg", "Fresh off the stage", "New singles and albums updated\nevery week directly from artists.", C_CASHMERE),
+        ("18_fresh_currents.webp", "Screenshot_20260929_194853_LEVYRA.jpg", "Discovery stream", "Explore live stations, genre charts,\nand community soundscapes.", C_SEAFOAM),
+        ("19_featured_artists.webp", "Screenshot_20260905_135618_LEVYRA.jpg", "Featured artists", "Discover local and global artists,\ncurated collections, and albums.", C_TWILIGHT),
+        ("20_soundstage.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Pure soundstage", "Experience lossless decoding and\nuncompromised audio fidelity.", C_CELESTE),
     ]
 
-    for filename, screenshot_name, title, subtitle, top_col, a_start, a_end in single_specs:
+    for filename, screenshot_name, title, subtitle, palette in single_specs:
         screen_file = os.path.join(SCREENSHOT_DIR, screenshot_name)
         if not os.path.exists(screen_file):
             print(f"Skipping {filename}: {screen_file} not found")
             continue
 
         with Image.open(screen_file) as source:
-            phone = create_clean_phone(source, target_height=1060)
+            phone = create_clean_phone(source, target_height=1180)
 
-        bg = create_rich_wave_bg(card_w, card_h, top_col, a_start, a_end, y_start=960, y_end=680)
+        top_tint, accent_tone, glow_tone = palette
+        bg = create_delicate_bg(card_w, card_h, top_tint, accent_tone, glow_tone, y_start=920, y_end=660)
         draw = ImageDraw.Draw(bg)
 
-        draw.text((75, 95), title, font=title_font, fill=(15, 23, 42, 255))
-        draw.multiline_text((75, 175), subtitle, font=sub_font, fill=(71, 85, 105, 255), spacing=10)
+        draw.text((75, 80), title, font=title_font, fill=(12, 18, 28, 255))
+        draw.multiline_text((75, 175), subtitle, font=sub_font, fill=(45, 60, 72, 255), spacing=10)
 
-        shadow, pad = create_studio_shadow(phone, blur=45, opacity=110, offset_y=26)
+        shadow, pad = create_studio_shadow(phone, blur=48, opacity=115, offset_y=28)
         px = (card_w - phone.width) // 2
-        py = 390
+        py = 330
         bg.paste(shadow, (px - pad, py - pad), shadow)
         bg.paste(phone, (px, py), phone)
 
@@ -315,7 +325,7 @@ def generate_feature_cards():
         print(f"Generated Feature Card: {out_path}")
 
 def main():
-    print("Generating rich, refined Levyra showcase assets...")
+    print("Generating delicate, refined Levyra showcase assets...")
     try:
         generate_hero_panoramic_showcase()
     except (FileNotFoundError, OSError) as e:
