@@ -1,21 +1,20 @@
 <!--
-Thank you for contributing to Levyra.
-Keep the complete Levyra section structure, make every claim evidence-based, remove guidance comments, and use "N/A" where a section does not apply.
-Apply the repository-native levyra-humanizer skill as the final prose pass without changing facts, validation results, or unchecked evidence.
+Thanks for contributing to Levyra.
+Keep the PR focused, describe what actually changed, and remove anything that does not apply.
 -->
 
 ## Summary
 
-<!-- Explain what changed, why it was needed, and the user-facing result in a few clear sentences. -->
+<!-- What changed and why? A few clear sentences are enough. -->
 
 
-## What changed
+## Changes
 
-<!-- List the most important implementation changes. Keep this focused on the actual diff. -->
+<!-- Keep this to the important parts of the diff. -->
 
 - 
 
-## Type of change
+## Type
 
 - [ ] Bug fix
 - [ ] New feature
@@ -29,44 +28,44 @@ Apply the repository-native levyra-humanizer skill as the final prose pass witho
 
 ## Scope
 
-- **Platform:** Android / Windows Desktop / Shared infrastructure
-- **Area:** Player / Streaming / Downloads / Library / UI / Lyrics / Localization / System integration / Build and release / Documentation
+- **Platform:** Android / Windows Desktop / Shared
+- **Area:**
 
-## Validation
+## Testing
 
-### Automated checks
+### Automated
 
-- [ ] Android: `./gradlew --no-daemon :app:lintRelease :app:testReleaseUnitTest :app:assembleRelease`
-- [ ] Desktop: `cd desktop && ./gradlew check assemble`
-- [ ] Targeted tests were added or updated
-- [ ] Not applicable, with the reason explained below
+<!-- List the checks or commands you actually ran. Use "N/A" if none were needed. -->
 
-### Manual testing
+- 
 
-| Environment | Scenario | Result |
+### Manual
+
+| Device / environment | What was tested | Result |
 |---|---|---|
 |  |  |  |
 
-<!-- Add screenshots, recordings, logs, or benchmark results when they make the change easier to verify. -->
+## Screenshots or recordings
+
+<!-- Add these for visual changes when they help explain the result. Remove this section if it does not apply. -->
+
 
 ## Risk and compatibility
 
-- **Risk level:** Low / Medium / High
-- **Compatibility or migration notes:** None
-- **Known limitations:** None
-- **Rollback plan:** Revert this PR
+<!-- Mention migrations, preference changes, database changes, downloads, cached data, platform differences, or anything else reviewers should know. "None" is fine. -->
 
-<!-- Consider databases, preferences, downloads, cached data, protocols, background work, cancellation, lifecycle, RTL, and accessibility where relevant. -->
+- **Risk:** Low / Medium / High
+- **Notes:** None
 
 ## Reviewer notes
 
-<!-- Highlight files, decisions, trade-offs, or edge cases that deserve closer review. -->
+<!-- Optional: point reviewers to tricky code, trade-offs, edge cases, or decisions worth a closer look. -->
 
 - 
 
 ## Release note
 
-<!-- Write one short user-facing sentence, or "None" for internal-only changes. -->
+<!-- One short user-facing sentence, or "None" for internal-only changes. -->
 
 None
 
@@ -77,11 +76,8 @@ None
 
 ## Checklist
 
-- [ ] The PR is focused and contains no unrelated changes
-- [ ] The implementation follows the existing architecture and naming conventions
-- [ ] Threading, lifecycle, cancellation, and resource cleanup were reviewed where relevant
-- [ ] Tests, documentation, localization, and screenshots were updated where required
+- [ ] This PR is focused and does not include unrelated changes
+- [ ] I tested the parts I changed
+- [ ] Tests, documentation, localization, and screenshots were updated where needed
 - [ ] No secrets, keystores, generated packages, archives, or local-only files were committed
-- [ ] Android and Desktop versioning and release channels remain independent
-- [ ] CI is green, or every remaining failure is explained in this PR
-- [ ] The complete Levyra PR template is preserved and the final description passed through `levyra-humanizer` without changing its claims
+- [ ] CI is green, or any remaining failure is explained in the PR
