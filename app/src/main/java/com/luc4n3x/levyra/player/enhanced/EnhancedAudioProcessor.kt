@@ -293,12 +293,11 @@ class EnhancedAudioProcessor(
     }
 
     private fun updateState() {
-        val reason = currentBypassReason()
-        if (reason != null) {
-            mutableMetrics.reset()
-            mutableMetrics.setBypass(reason)
-            maybeEmitMetrics(mutableMetrics, force = true)
-        }
+        val reason = currentBypassReason() ?: return
+        _metricsState.value = EnhancedAudioMetrics(
+            bypassed = true,
+            bypassReason = reason
+        )
     }
 
     private fun maybeEmitMetrics(metrics: MutableEnhancedAudioMetrics, force: Boolean = false) {
