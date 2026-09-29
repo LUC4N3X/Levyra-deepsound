@@ -11,12 +11,11 @@ os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 
 SCREENS = {
     "home": "Screenshot_20260926_171253_LEVYRA.jpg",
-    "home_discovery": "Screenshot_20260905_135618_LEVYRA.jpg",
     "charts": "charts.png",
     "genres": "genres.png",
     "listening_pulse": "pulse.png",
     "lyrics": "lyrics.png",
-    "now_playing": "Screenshot_20260926_193948_LEVYRA.jpg",
+    "now_playing": "player.png",
     "search_artist": "search-artist.png",
     "artist_discography": "discography2.png",
     "artist_profile": "artist-profile.png",
@@ -434,21 +433,6 @@ def generate_feature_cards():
 
 def main():
     print("Generating refined Levyra showcase assets...")
-    generate_studio_dual_card(
-        "17_home_discovery",
-        "Home discovery",
-        "Keep discovering",
-        "Artists, Levyra Collections,\nand video in one continuous home.",
-        "home",
-        "home_discovery",
-        (73, 151, 255),
-        (211, 48, 170),
-        [
-            "Personal artists and releases",
-            "Collections shaped around your taste",
-            "Video when you want it",
-        ],
-    )
     generate_hero_panoramic_showcase()
     generate_feature_cards()
     print("Showcase generation completed successfully!")
