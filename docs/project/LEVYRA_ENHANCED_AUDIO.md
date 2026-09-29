@@ -14,7 +14,7 @@
    Deficit Confidence: 85%
    ```
 3. **Default ON with Instant Bypassing**: The feature is enabled by default (`true`), toggleable from the Audio Settings panel, and automatically bypassed with zero audio glitch when conditions are unsuitable.
-4. **Zero Heap Allocation in Realtime Audio Thread**: All intermediate buffers and filter states are pre-allocated upon configuration, guaranteeing zero GC pressure or audio underruns.
+4. **Steady-State Allocation Control**: Audio scratch buffers, analyzer metrics, and filter states are reused after configuration. UI metric snapshots are emitted at a throttled rate outside the DSP scratch path.
 
 ---
 
@@ -43,7 +43,7 @@ flowchart TD
     F --> G["Mid Source Bandpass (8-15 kHz)"]
     G --> H["2x Oversampling Branch"]
     H --> I["Interpolation Lowpass at 2*Fs (~15.5 kHz)"]
-    I --> J["Chebyshev Non-Linear Excitation (T2, T3)"]
+    I --> J["Weighted Quadratic / Cubic Harmonic Excitation"]
     J --> K["Air Bandpass at 2*Fs (~19 kHz)"]
     K --> L["Anti-Aliasing Lowpass at 2*Fs (~21 kHz)"]
     L --> M["2:1 Decimation to Native Rate"]
@@ -67,13 +67,19 @@ The deficit confidence $C \in [0.0, 1.0]$ is temporally smoothed via attack/deca
 $$C_t = \alpha C_{t-1} + (1 - \alpha) C_{\text{instant}}$$
 
 ### 3.2. 2x Oversampled Harmonic Reconstruction
-Higher harmonics are synthesized using orthogonal Chebyshev polynomials $T_2(x) = 2x^2 - 1$ and $T_3(x) = 4x^3 - 3x$ at a $2\times$ oversampled rate ($2 F_s$) exclusively on the residual branch.
-Operating at $2 F_s$ ensures that harmonics generated up to $45\text{ kHz}$ remain strictly below the $2 F_s$ Nyquist limit ($44.1\text{ kHz}$ or $48\text{ kHz}$). An anti-aliasing lowpass filter at $21\text{ kHz}$ attenuates all energy above native Nyquist before $2:1$ decimation, completely preventing ultrasonic foldback into the audible band.
+The current DSP generates a deliberately conservative weighted quadratic/cubic residual at a $2\times$ oversampled rate ($2F_s$). After interpolation and input clamping, the implementation uses:
+$$h_2(x) = 0.5x^2$$
+$$h_3(x) = 0.15(4x^3 - 3x)$$
+$$r(x) = g_{\text{harmonic}}\left(h_2(x) + h_3(x)\right)$$
+
+This is not an exact $T_2/T_3$ Chebyshev pair: the quadratic branch intentionally omits the $-1$ constant term. The generated residual is then passed through the air-band filter and a low-pass stage near $21\text{ kHz}$ before 2:1 decimation.
+
+Running the non-linear branch at $2F_s$ gives substantially more spectral headroom than generating the same harmonics directly at the native rate. It therefore reduces audible alias foldback, but it does not mathematically guarantee zero aliasing for every possible input: third-order products near the top of the source band can approach or exceed the oversampled Nyquist frequency before filtering. The implementation and UI consequently describe this as perceptual restoration, not lossless reconstruction.
 
 ### 3.3. Mid/Side Stereo Coherence & Hard-Panning Protection
 To preserve soundstage width and avoid diffuse phase smearing:
 1. Restoration is computed primarily on the Mid channel ($M = 0.5(L+R)$).
-2. Side channel ($S = 0.5(L-R)$) excitation is conservatively scaled by measured stereo coherence ($S_{\text{scale}} = \text{coherence} \cdot 0.5$) and completely suppressed if $\text{coherence} \le 0.05$ (anti-correlated stereo).
+2. Side channel ($S = 0.5(L-R)$) excitation is conservatively scaled by measured stereo coherence ($S_{\text{scale}} = \text{coherence} \cdot 0.5$) and completely suppressed if $\text{coherence} \le 0.05$ (anti-correlated stereo). The Side filter chain still advances while its output is gated so stale IIR state cannot reappear when Side processing resumes.
 3. Pure mono streams ($L == R$) have $S = 0$, guaranteeing bit-exact identical channel output ($L_{\text{out}} == R_{\text{out}}$).
 4. Hard-panned signals taper residual injection based on per-channel activity, preventing cross-channel bleed into inactive channels.
 
@@ -81,7 +87,7 @@ To preserve soundstage width and avoid diffuse phase smearing:
 To prevent digital clipping when adding high-frequency air, an internal soft-knee hyperbolic tangent ceiling is enforced at $-0.5\text{ dBFS}$ ($V_c \approx 0.944$):
 $$\tilde{y}[n] = \begin{cases} y[n] & \text{if } |y[n]| \le V_c \\ \operatorname{sgn}(y[n]) \cdot \left(V_c + (1 - V_c) \tanh\left(\frac{|y[n]| - V_c}{1 - V_c}\right)\right) & \text{if } |y[n]| > V_c \end{cases}$$
 
-This internal soft-knee limiter protects the immediate buffer output. The system's downstream `TruePeakLimiterAudioProcessor` (with $4\times$ oversampling and lookahead) remains active at the end of the full pipeline to protect physical DAC hardware against inter-sample peaks.
+This internal soft-knee limiter protects the immediate buffer output. The system's downstream `TruePeakLimiterAudioProcessor` (with $4\times$ oversampling and lookahead) remains the final peak-protection stage when enabled for the active DSP path.
 
 ---
 
