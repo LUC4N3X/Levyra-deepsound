@@ -26,8 +26,16 @@ data class LocalTagEdits(
     val composer: String,
     val lyricist: String,
     val comment: String,
-    val copyright: String
+    val copyright: String,
+    val artwork: LocalArtworkEdit = LocalArtworkEdit.Keep,
+    val lyrics: String? = null
 )
+
+sealed interface LocalArtworkEdit {
+    data object Keep : LocalArtworkEdit
+    data object Remove : LocalArtworkEdit
+    data class Replace(val sourceUri: String) : LocalArtworkEdit
+}
 
 sealed interface LocalTagWriteResult {
     data class Success(val media: LocalMediaEntity) : LocalTagWriteResult
@@ -35,6 +43,9 @@ sealed interface LocalTagWriteResult {
     data object UnsupportedFormat : LocalTagWriteResult
     data object FileTooLarge : LocalTagWriteResult
     data object FileUnavailable : LocalTagWriteResult
+    data object WriteDenied : LocalTagWriteResult
+    data object InsufficientSpace : LocalTagWriteResult
+    data object InvalidArtwork : LocalTagWriteResult
     data object Failed : LocalTagWriteResult
 }
 
@@ -52,6 +63,10 @@ internal object LocalDeepTagReader {
     private const val MAX_OGG_PREFIX_BYTES = 2 * 1024 * 1024
     private const val MAX_CUSTOM_VALUE = 4_096
     private const val MAX_CUSTOM_TEXT = 24_000
+    private const val MAX_LYRICS_BYTES = 512L * 1024L
+    private const val MAX_ARTWORK_BYTES = 8 * 1024 * 1024
+    private const val FLAC_PICTURE_BLOCK = 6
+    const val MAX_LYRICS_CHARS = 128 * 1024
 
     fun read(context: Context, row: LocalMediaEntity): LocalDeepTags {
         val path = row.filePath.trim()
@@ -77,43 +92,166 @@ internal object LocalDeepTagReader {
             RandomAccessTagSource(RandomAccessFile(file, "r")).use(::readSource)
         }.getOrDefault(LocalDeepTags())
 
+    internal fun readTagMap(file: File): Map<String, String> =
+        runCatching {
+            RandomAccessTagSource(RandomAccessFile(file, "r")).use { source ->
+                when (containerOf(source)) {
+                    TagContainer.Id3 -> readId3(source)
+                    TagContainer.Flac -> readFlac(source)
+                    TagContainer.Ogg -> readOgg(source)
+                    TagContainer.Mp4 -> readMp4(source)
+                    TagContainer.Unknown -> emptyMap()
+                }
+            }
+        }.getOrDefault(emptyMap())
+
+    fun readEmbeddedLyrics(context: Context, row: LocalMediaEntity): String {
+        val path = row.filePath.trim()
+        if (path.isNotEmpty()) {
+            val file = File(path)
+            if (file.isFile && file.canRead() && file.length() > 0L) {
+                runCatching {
+                    RandomAccessTagSource(RandomAccessFile(file, "r")).use(::readLyricsSource)
+                }.getOrNull()?.let { return it }
+            }
+        }
+        val uri = runCatching { Uri.parse(row.contentUri) }.getOrNull() ?: return ""
+        if (!uri.scheme.equals("content", ignoreCase = true)) return ""
+        return runCatching {
+            val descriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return@runCatching ""
+            ChannelTagSource(ParcelFileDescriptor.AutoCloseInputStream(descriptor)).use(::readLyricsSource)
+        }.getOrDefault("")
+    }
+
+    internal fun readEmbeddedArtwork(file: File): ByteArray? =
+        runCatching {
+            RandomAccessTagSource(RandomAccessFile(file, "r")).use { source ->
+                when (containerOf(source)) {
+                    TagContainer.Id3 -> {
+                        var found: ByteArray? = null
+                        walkId3(source) { id, frame ->
+                            if (found == null && id == "APIC") found = id3PictureData(frame)
+                        }
+                        found
+                    }
+                    TagContainer.Flac ->
+                        readFlacBlock(source, FLAC_PICTURE_BLOCK, MAX_ARTWORK_BYTES)?.let(::flacPictureData)
+                    TagContainer.Mp4 -> readMp4Artwork(source)
+                    TagContainer.Ogg, TagContainer.Unknown -> null
+                }
+            }
+        }.getOrNull()
+
+    internal fun hasEmbeddedArtwork(file: File): Boolean =
+        runCatching {
+            RandomAccessTagSource(RandomAccessFile(file, "r")).use { source ->
+                when (containerOf(source)) {
+                    TagContainer.Id3 -> id3HasPicture(source)
+                    TagContainer.Flac -> locateFlacBlock(source, FLAC_PICTURE_BLOCK) != null
+                    TagContainer.Mp4 -> findMp4Cover(source) != null
+                    TagContainer.Ogg, TagContainer.Unknown -> false
+                }
+            }
+        }.getOrDefault(true)
+
+    internal fun readEmbeddedLyrics(file: File): String =
+        runCatching {
+            RandomAccessTagSource(RandomAccessFile(file, "r")).use(::readLyricsSource)
+        }.getOrDefault("")
+
     private fun readSource(source: SeekableTagSource): LocalDeepTags {
-        if (source.length < 4L) return LocalDeepTags()
-        val head = ByteArray(minOf(16L, source.length).toInt())
-        source.seek(0L)
-        source.readFully(head)
-        val tags = when {
-            startsWith(head, "ID3") -> readId3(source)
-            startsWith(head, "fLaC") -> readFlac(source, 0L)
-            startsWith(head, "OggS") -> readOgg(source)
-            head.size >= 8 && ascii(head, 4, 4) == "ftyp" -> readMp4(source)
-            else -> emptyMap()
+        val tags = when (containerOf(source)) {
+            TagContainer.Id3 -> readId3(source)
+            TagContainer.Flac -> readFlac(source)
+            TagContainer.Ogg -> readOgg(source)
+            TagContainer.Mp4 -> readMp4(source)
+            TagContainer.Unknown -> emptyMap()
         }
         return tags.toDeepTags()
     }
 
+    private fun readLyricsSource(source: SeekableTagSource): String {
+        val lyrics = when (containerOf(source)) {
+            TagContainer.Id3 -> {
+                var found = ""
+                walkId3(source) { id, frame ->
+                    if (found.isEmpty() && (id == "USLT" || id == "ULT")) found = id3Lyrics(frame).orEmpty()
+                }
+                found
+            }
+            TagContainer.Flac -> {
+                var found = ""
+                walkFlacComments(source) { key, value ->
+                    if (found.isEmpty() && key.uppercase(Locale.ROOT) in VORBIS_LYRICS_KEYS) found = value
+                }
+                found
+            }
+            TagContainer.Mp4 -> readMp4Lyrics(source)
+            TagContainer.Ogg, TagContainer.Unknown -> ""
+        }
+        return lyrics.replace("\r\n", "\n").replace('\r', '\n').trim().take(MAX_LYRICS_CHARS)
+    }
+
+    private fun containerOf(source: SeekableTagSource): TagContainer {
+        if (source.length < 4L) return TagContainer.Unknown
+        val head = ByteArray(minOf(16L, source.length).toInt())
+        source.seek(0L)
+        source.readFully(head)
+        return when {
+            startsWith(head, "ID3") -> TagContainer.Id3
+            startsWith(head, "fLaC") -> TagContainer.Flac
+            startsWith(head, "OggS") -> TagContainer.Ogg
+            head.size >= 8 && ascii(head, 4, 4) == "ftyp" -> TagContainer.Mp4
+            else -> TagContainer.Unknown
+        }
+    }
+
     private fun readId3(source: SeekableTagSource): Map<String, String> {
+        val result = linkedMapOf<String, String>()
+        walkId3(source) { id, frame -> readId3Frame(id, frame, result) }
+        return result
+    }
+
+    private fun walkId3(source: SeekableTagSource, visit: (String, ByteArray) -> Unit) {
         source.seek(0L)
         val header = ByteArray(10)
-        if (source.read(header) != header.size || !startsWith(header, "ID3")) return emptyMap()
+        if (source.read(header) != header.size || !startsWith(header, "ID3")) return
         val version = header[3].toInt() and 0xFF
-        if (version !in 2..4) return emptyMap()
+        if (version !in 2..4) return
         val size = syncSafeInt(header, 6).coerceAtMost(MAX_ID3_BYTES)
-        if (size <= 0) return emptyMap()
+        if (size <= 0) return
 
         var payload = ByteArray(size)
         source.readFully(payload)
         if (header[5].toInt() and 0x80 != 0) payload = deUnsynchronize(payload)
         val cursor = id3FramesStart(payload, version, header[5].toInt() and 0xFF)
-        return if (version == 2) {
-            readId3v22Frames(payload, cursor)
+        if (version == 2) {
+            walkId3v22Frames(payload, cursor, visit)
         } else {
-            readId3v23PlusFrames(payload, cursor, version)
+            walkId3v23PlusFrames(payload, cursor, version, visit)
         }
     }
 
-    private fun readId3v22Frames(payload: ByteArray, start: Int): Map<String, String> {
-        val result = linkedMapOf<String, String>()
+    private fun id3Lyrics(bytes: ByteArray): String? {
+        if (bytes.size <= 4) return null
+        val encoding = bytes[0].toInt() and 0xFF
+        val body = bytes.copyOfRange(4, bytes.size)
+        val separator = id3TerminatorEnd(body, encoding)
+        val textStart = if (separator < 0) 0 else separator
+        return decodeId3String(body, textStart, body.size - textStart, encoding).trim().takeIf { it.isNotEmpty() }
+    }
+
+    private fun id3TerminatorEnd(bytes: ByteArray, encoding: Int): Int {
+        val width = if (encoding == 1 || encoding == 2) 2 else 1
+        var index = 0
+        while (index + width <= bytes.size) {
+            if ((0 until width).all { bytes[index + it] == 0.toByte() }) return index + width
+            index += width
+        }
+        return -1
+    }
+
+    private fun walkId3v22Frames(payload: ByteArray, start: Int, visit: (String, ByteArray) -> Unit) {
         var cursor = start
         while (cursor + 6 <= payload.size) {
             val id = ascii(payload, cursor, 3)
@@ -123,18 +261,17 @@ internal object LocalDeepTagReader {
                 (payload[cursor + 5].toInt() and 0xFF)
             cursor += 6
             if (frameSize <= 0 || cursor + frameSize > payload.size) break
-            readId3Frame(id3v22ToV23(id), payload.copyOfRange(cursor, cursor + frameSize), result)
+            visit(if (id == "ULT") id else id3v22ToV23(id), payload.copyOfRange(cursor, cursor + frameSize))
             cursor += frameSize
         }
-        return result
     }
 
-    private fun readId3v23PlusFrames(
+    private fun walkId3v23PlusFrames(
         payload: ByteArray,
         start: Int,
-        version: Int
-    ): Map<String, String> {
-        val result = linkedMapOf<String, String>()
+        version: Int,
+        visit: (String, ByteArray) -> Unit
+    ) {
         var cursor = start
         while (cursor + 10 <= payload.size) {
             val id = ascii(payload, cursor, 4)
@@ -146,10 +283,9 @@ internal object LocalDeepTagReader {
             if (frameSize <= 0 || cursor + frameSize > payload.size) break
             var frame = payload.copyOfRange(cursor, cursor + frameSize)
             if (version == 4 && flags and 0x0002 != 0) frame = deUnsynchronize(frame)
-            readId3Frame(id, frame, result)
+            visit(id, frame)
             cursor += frameSize
         }
-        return result
     }
 
     private fun id3FramesStart(payload: ByteArray, version: Int, flags: Int): Int {
@@ -226,10 +362,73 @@ internal object LocalDeepTagReader {
             .trimEnd('\u0000')
     }
 
-    private fun readFlac(source: SeekableTagSource, start: Long): Map<String, String> {
-        source.seek(start)
+    private fun readFlac(source: SeekableTagSource): Map<String, String> {
+        val result = linkedMapOf<String, String>()
+        walkFlacComments(source) { key, value -> putTag(result, key, value) }
+        return result
+    }
+
+    private fun id3HasPicture(source: SeekableTagSource): Boolean {
+        source.seek(0L)
+        val header = ByteArray(10)
+        if (source.read(header) != header.size || syncSafeInt(header, 6) > MAX_ID3_BYTES) return true
+        var found = false
+        walkId3(source) { id, _ -> if (id == "APIC") found = true }
+        return found
+    }
+
+    private fun readFlacBlock(source: SeekableTagSource, wantedType: Int, maxBytes: Int): ByteArray? {
+        val size = locateFlacBlock(source, wantedType) ?: return null
+        return if (size > maxBytes) null else ByteArray(size).also(source::readFully)
+    }
+
+    private fun locateFlacBlock(source: SeekableTagSource, wantedType: Int): Int? {
+        source.seek(0L)
         val magic = ByteArray(4)
-        if (source.read(magic) != 4 || !startsWith(magic, "fLaC")) return emptyMap()
+        if (source.read(magic) != 4 || !startsWith(magic, "fLaC")) return null
+        var last = false
+        var blocks = 0
+        while (!last && blocks++ < 128 && source.position + 4 <= source.length) {
+            val header = ByteArray(4)
+            source.readFully(header)
+            last = header[0].toInt() and 0x80 != 0
+            val size = int32be(header, 0) and 0x00FF_FFFF
+            if (source.position + size > source.length) return null
+            if (header[0].toInt() and 0x7F == wantedType) return size
+            source.seek(source.position + size)
+        }
+        return null
+    }
+
+    private fun flacPictureData(block: ByteArray): ByteArray? {
+        fun lengthAt(offset: Long): Int? =
+            if (offset < 0L || offset + 4 > block.size) null else int32be(block, offset.toInt()).takeIf { it >= 0 }
+        val mimeLength = lengthAt(4L) ?: return null
+        val descriptionOffset = 8L + mimeLength
+        val descriptionLength = lengthAt(descriptionOffset) ?: return null
+        val dataLengthOffset = descriptionOffset + 4L + descriptionLength + 16L
+        val dataLength = lengthAt(dataLengthOffset) ?: return null
+        val dataStart = dataLengthOffset + 4L
+        if (dataStart + dataLength > block.size) return null
+        return block.copyOfRange(dataStart.toInt(), (dataStart + dataLength).toInt())
+    }
+
+    private fun id3PictureData(frame: ByteArray): ByteArray? {
+        if (frame.size < 4) return null
+        val encoding = frame[0].toInt() and 0xFF
+        var mimeEnd = 1
+        while (mimeEnd < frame.size && frame[mimeEnd] != 0.toByte()) mimeEnd++
+        val descriptionStart = mimeEnd + 2
+        if (descriptionStart >= frame.size) return null
+        val descriptionEnd = id3TerminatorEnd(frame.copyOfRange(descriptionStart, frame.size), encoding)
+        if (descriptionEnd < 0) return null
+        return frame.copyOfRange(descriptionStart + descriptionEnd, frame.size)
+    }
+
+    private fun walkFlacComments(source: SeekableTagSource, visit: (String, String) -> Unit) {
+        source.seek(0L)
+        val magic = ByteArray(4)
+        if (source.read(magic) != 4 || !startsWith(magic, "fLaC")) return
         var last = false
         var blocks = 0
         while (!last && blocks++ < 128 && source.position + 4 <= source.length) {
@@ -244,11 +443,11 @@ internal object LocalDeepTagReader {
             if (type == 4 && size <= MAX_COMMENT_BYTES) {
                 val payload = ByteArray(size)
                 source.readFully(payload)
-                return parseVorbisComments(payload, 0)
+                walkVorbisComments(payload, 0, visit)
+                return
             }
             source.seek(source.position + size)
         }
-        return emptyMap()
     }
 
     private fun readOgg(source: SeekableTagSource): Map<String, String> {
@@ -265,16 +464,21 @@ internal object LocalDeepTagReader {
     }
 
     private fun parseVorbisComments(bytes: ByteArray, start: Int): Map<String, String> {
+        val result = linkedMapOf<String, String>()
+        walkVorbisComments(bytes, start) { key, value -> putTag(result, key, value) }
+        return result
+    }
+
+    private fun walkVorbisComments(bytes: ByteArray, start: Int, visit: (String, String) -> Unit) {
         var cursor = start
-        if (cursor + 4 > bytes.size) return emptyMap()
+        if (cursor + 4 > bytes.size) return
         val vendorSize = int32le(bytes, cursor)
         cursor += 4
-        if (vendorSize < 0 || vendorSize > MAX_COMMENT_BYTES || cursor + vendorSize > bytes.size) return emptyMap()
+        if (vendorSize < 0 || vendorSize > MAX_COMMENT_BYTES || cursor + vendorSize > bytes.size) return
         cursor += vendorSize
-        if (cursor + 4 > bytes.size) return emptyMap()
+        if (cursor + 4 > bytes.size) return
         val count = int32le(bytes, cursor).coerceIn(0, 50_000)
         cursor += 4
-        val result = linkedMapOf<String, String>()
         repeat(count) {
             if (cursor + 4 > bytes.size) return@repeat
             val length = int32le(bytes, cursor)
@@ -283,9 +487,8 @@ internal object LocalDeepTagReader {
             val entry = String(bytes, cursor, length, StandardCharsets.UTF_8)
             cursor += length
             val separator = entry.indexOf('=')
-            if (separator > 0) putTag(result, entry.substring(0, separator).uppercase(Locale.ROOT), entry.substring(separator + 1))
+            if (separator > 0) visit(entry.substring(0, separator).uppercase(Locale.ROOT), entry.substring(separator + 1))
         }
-        return result
     }
 
     private fun readMp4(source: SeekableTagSource): Map<String, String> {
@@ -301,18 +504,68 @@ internal object LocalDeepTagReader {
         var cursor = ilst.payloadStart
         while (cursor + 8 <= ilst.end) {
             val item = readMp4Box(source, cursor, ilst.end) ?: break
-            when (item.type) {
-                MP4_COMPOSER -> mp4DataText(source, item)?.let { putTag(result, "COMPOSER", it) }
-                MP4_COMMENT -> mp4DataText(source, item)?.let { putTag(result, "COMMENT", it) }
-                MP4_COPYRIGHT, MP4_COPYRIGHT_ALT -> mp4DataText(source, item)?.let { putTag(result, "COPYRIGHT", it) }
-                MP4_FREEFORM -> {
-                    val pair = mp4Freeform(source, item)
-                    if (pair != null) putTag(result, pair.first.uppercase(Locale.ROOT), pair.second)
-                }
+            val textKey = MP4_TEXT_KEYS[item.type]
+            val pairKey = MP4_PAIR_KEYS[item.type]
+            if (textKey != null) {
+                mp4DataText(source, item)?.let { putTag(result, textKey, it) }
+            } else if (pairKey != null) {
+                mp4PairNumber(source, item)?.let { putTag(result, pairKey, it.toString()) }
+            } else if (item.type == MP4_FREEFORM) {
+                mp4Freeform(source, item)?.let { (name, value) -> putTag(result, name.uppercase(Locale.ROOT), value) }
             }
             cursor = item.end
         }
         return result
+    }
+
+    private fun mp4PairNumber(source: SeekableTagSource, parent: Mp4Box): Int? {
+        val data = findChild(source, parent.payloadStart, parent.end, MP4_DATA) ?: return null
+        val start = data.payloadStart + 8
+        if (start + 4 > data.end) return null
+        val bytes = ByteArray(4)
+        source.seek(start)
+        source.readFully(bytes)
+        return (int32be(bytes, 0) and 0xFFFF).takeIf { it > 0 }
+    }
+
+    private fun readMp4Artwork(source: SeekableTagSource): ByteArray? {
+        val item = findMp4Cover(source) ?: return null
+        val data = findChild(source, item.payloadStart, item.end, MP4_DATA) ?: return null
+        val start = data.payloadStart + 8
+        if (start >= data.end || data.end - start > MAX_ARTWORK_BYTES) return null
+        val bytes = ByteArray((data.end - start).toInt())
+        source.seek(start)
+        source.readFully(bytes)
+        return bytes
+    }
+
+    private fun findMp4Cover(source: SeekableTagSource): Mp4Box? {
+        val moov = findChild(source, 0L, source.length, MP4_MOOV) ?: return null
+        val udta = findChild(source, moov.payloadStart, moov.end, MP4_UDTA)
+        val meta = when {
+            udta != null -> findChild(source, udta.payloadStart, udta.end, MP4_META)
+            else -> findChild(source, moov.payloadStart, moov.end, MP4_META)
+        } ?: return null
+        val ilst = findChild(source, (meta.payloadStart + 4).coerceAtMost(meta.end), meta.end, MP4_ILST) ?: return null
+        return findChild(source, ilst.payloadStart, ilst.end, MP4_COVER)
+    }
+
+    private fun readMp4Lyrics(source: SeekableTagSource): String {
+        val moov = findChild(source, 0L, source.length, MP4_MOOV) ?: return ""
+        val udta = findChild(source, moov.payloadStart, moov.end, MP4_UDTA)
+        val meta = when {
+            udta != null -> findChild(source, udta.payloadStart, udta.end, MP4_META)
+            else -> findChild(source, moov.payloadStart, moov.end, MP4_META)
+        } ?: return ""
+        val ilst = findChild(source, (meta.payloadStart + 4).coerceAtMost(meta.end), meta.end, MP4_ILST) ?: return ""
+        val item = findChild(source, ilst.payloadStart, ilst.end, MP4_LYRICS) ?: return ""
+        val data = findChild(source, item.payloadStart, item.end, MP4_DATA) ?: return ""
+        val start = data.payloadStart + 8
+        if (start >= data.end || data.end - start > MAX_LYRICS_BYTES) return ""
+        val bytes = ByteArray((data.end - start).toInt())
+        source.seek(start)
+        source.readFully(bytes)
+        return String(bytes, StandardCharsets.UTF_8).trim('\u0000')
     }
 
     private fun mp4DataText(source: SeekableTagSource, parent: Mp4Box): String? {
@@ -612,6 +865,27 @@ internal object LocalDeepTagReader {
     private val MP4_COMMENT = fourCc(0xA9, 'c'.code, 'm'.code, 't'.code)
     private val MP4_COPYRIGHT = ascii4("cprt")
     private val MP4_COPYRIGHT_ALT = fourCc(0xA9, 'c'.code, 'p'.code, 'y'.code)
+    private val MP4_LYRICS = fourCc(0xA9, 'l'.code, 'y'.code, 'r'.code)
+    private val MP4_TITLE = fourCc(0xA9, 'n'.code, 'a'.code, 'm'.code)
+    private val MP4_ARTIST = fourCc(0xA9, 'A'.code, 'R'.code, 'T'.code)
+    private val MP4_ALBUM = fourCc(0xA9, 'a'.code, 'l'.code, 'b'.code)
+    private val MP4_COVER = ascii4("covr")
+    private val MP4_TEXT_KEYS = mapOf(
+        MP4_TITLE to "TITLE",
+        MP4_ARTIST to "ARTIST",
+        MP4_ALBUM to "ALBUM",
+        ascii4("aART") to "ALBUMARTIST",
+        fourCc(0xA9, 'd'.code, 'a'.code, 'y'.code) to "DATE",
+        fourCc(0xA9, 'g'.code, 'e'.code, 'n'.code) to "GENRE",
+        MP4_COMPOSER to "COMPOSER",
+        MP4_COMMENT to "COMMENT",
+        MP4_COPYRIGHT to "COPYRIGHT",
+        MP4_COPYRIGHT_ALT to "COPYRIGHT"
+    )
+    private val MP4_PAIR_KEYS = mapOf(ascii4("trkn") to "TRACKNUMBER", ascii4("disk") to "DISCNUMBER")
+    private val VORBIS_LYRICS_KEYS = setOf("LYRICS", "UNSYNCEDLYRICS", "UNSYNCED LYRICS")
+
+    private enum class TagContainer { Id3, Flac, Ogg, Mp4, Unknown }
 
     private val MULTI_VALUE_KEYS = setOf("ARTIST", "COMPOSER", "LYRICIST", "GENRE")
     private val RESERVED_TAG_KEYS = setOf(
