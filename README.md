@@ -126,12 +126,12 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
   <a href="docs/assets/showcase/cards/09_artist_profile.webp"><img src="docs/assets/showcase/cards/09_artist_profile.webp" width="200" alt="Levyra artist profile and biography" /></a>
   <a href="docs/assets/showcase/cards/10_album.webp"><img src="docs/assets/showcase/cards/10_album.webp" width="200" alt="Levyra album details and tracklist" /></a>
   <a href="docs/assets/showcase/cards/11_search.webp"><img src="docs/assets/showcase/cards/11_search.webp" width="200" alt="Levyra search history and artists" /></a>
-  <a href="docs/assets/showcase/cards/12_player_settings.webp"><img src="docs/assets/showcase/cards/12_player_settings.webp" width="200" alt="Levyra player settings" /></a>
+  <a href="docs/assets/showcase/cards/12_player_settings.webp"><img src="docs/assets/showcase/cards/12_player_settings.webp" width="200" alt="Levyra Player Deck display modes" /></a>
 </p>
 <p align="center">
   <a href="docs/assets/showcase/cards/13_explore.webp"><img src="docs/assets/showcase/cards/13_explore.webp" width="200" alt="Levyra explore and mix hub" /></a>
   <a href="docs/assets/showcase/cards/14_new_releases.webp"><img src="docs/assets/showcase/cards/14_new_releases.webp" width="200" alt="Levyra new releases" /></a>
-  <a href="docs/assets/showcase/cards/15_collections.webp"><img src="docs/assets/showcase/cards/15_collections.webp" width="200" alt="Levyra curated collections and playlists" /></a>
+  <a href="docs/assets/showcase/cards/15_collections.webp"><img src="docs/assets/showcase/cards/15_collections.webp" width="200" alt="Levyra library, favorites, downloads, history, and playlists" /></a>
   <a href="docs/assets/showcase/cards/16_listening_rhythm.webp"><img src="docs/assets/showcase/cards/16_listening_rhythm.webp" width="200" alt="Levyra listening rhythm and habits" /></a>
 </p>
 
