@@ -1,19 +1,27 @@
 <!--
-Thank you for contributing to Levyra.
-Keep the complete Levyra section structure, make every claim evidence-based, remove guidance comments, and use "N/A" where a section does not apply.
-Apply the repository-native levyra-humanizer skill as the final prose pass without changing facts, validation results, or unchecked evidence.
+Thanks for contributing to Levyra!
+
+Keep your pull request focused, explain why the change is needed, and include clear testing evidence.
+Please preserve the complete Levyra section layout. If a section does not apply to your PR, mark it as "N/A" instead of deleting it.
+When writing the PR description, pass it through levyra-humanizer so it reads naturally and clearly without changing facts or test results.
 -->
 
 ## Summary
 
-<!-- Explain what changed, why it was needed, and the user-facing result in a few clear sentences. -->
+<!--
+What problem does this PR solve, or what does it add?
+Keep it clear and direct: two or three sentences are usually enough.
+-->
 
 
-## What changed
+## Changes
 
-<!-- List the most important implementation changes. Keep this focused on the actual diff. -->
+<!--
+List the main parts of the diff so reviewers know where to look.
+Focus on logic changes, architecture decisions, and new files.
+-->
 
-- 
+- <!-- Key change -->
 
 ## Type of change
 
@@ -21,7 +29,7 @@ Apply the repository-native levyra-humanizer skill as the final prose pass witho
 - [ ] New feature
 - [ ] Performance improvement
 - [ ] Refactor or maintenance
-- [ ] UI or UX change
+- [ ] UI or UX update
 - [ ] Localization or accessibility
 - [ ] Build, CI, packaging, or release change
 - [ ] Documentation
@@ -29,59 +37,80 @@ Apply the repository-native levyra-humanizer skill as the final prose pass witho
 
 ## Scope
 
-- **Platform:** Android / Windows Desktop / Shared infrastructure
-- **Area:** Player / Streaming / Downloads / Library / UI / Lyrics / Localization / System integration / Build and release / Documentation
+- **Platform:** Android / Windows Desktop / Shared
+- **Area:** <!-- e.g. Player, Streaming, Downloads, Library, UI, Lyrics, System integration -->
 
-## Validation
+## Testing
 
 ### Automated checks
 
-- [ ] Android: `./gradlew --no-daemon :app:lintRelease :app:testReleaseUnitTest :app:assembleRelease`
-- [ ] Desktop: `cd desktop && ./gradlew check assemble`
-- [ ] Targeted tests were added or updated
-- [ ] Not applicable, with the reason explained below
+<!--
+List the tests or quality gates you ran.
+Examples:
+- ./gradlew test
+- python3 scripts/ai_quality_gate.py --profile fast
+- N/A (with brief explanation)
+-->
+
+- <!-- Command or test suite -->
 
 ### Manual testing
 
-| Environment | Scenario | Result |
+<!--
+Describe how you verified the change on real hardware, emulators, or desktop environments.
+-->
+
+| Device or OS | What was tested | Result |
 |---|---|---|
 |  |  |  |
 
-<!-- Add screenshots, recordings, logs, or benchmark results when they make the change easier to verify. -->
+## Screenshots or recordings
+
+<!--
+Add before and after screenshots, GIFs, or short screen recordings for visual changes.
+If your change does not touch the UI, write "N/A" or remove this section.
+-->
+
 
 ## Risk and compatibility
 
-- **Risk level:** Low / Medium / High
-- **Compatibility or migration notes:** None
-- **Known limitations:** None
-- **Rollback plan:** Revert this PR
+<!--
+Mention any migrations, settings, database changes, downloads, cached data, or background tasks that could affect users.
+Write "None" if there are no known risks or breaking changes.
+-->
 
-<!-- Consider databases, preferences, downloads, cached data, protocols, background work, cancellation, lifecycle, RTL, and accessibility where relevant. -->
+- **Risk level:** Low / Medium / High
+- **Notes:** None
 
 ## Reviewer notes
 
-<!-- Highlight files, decisions, trade-offs, or edge cases that deserve closer review. -->
+<!--
+Optional: call out trade-offs, tricky spots in the diff, or specific files where you would like feedback.
+-->
 
-- 
+- <!-- Note for reviewers -->
 
 ## Release note
 
-<!-- Write one short user-facing sentence, or "None" for internal-only changes. -->
+<!--
+One user-facing sentence for the changelog, or "None" for internal-only changes.
+-->
 
 None
 
 ## Related issues
+
+<!-- Link any issues that this pull request closes or relates to. -->
 
 - Closes #
 - Related to #
 
 ## Checklist
 
-- [ ] The PR is focused and contains no unrelated changes
-- [ ] The implementation follows the existing architecture and naming conventions
-- [ ] Threading, lifecycle, cancellation, and resource cleanup were reviewed where relevant
-- [ ] Tests, documentation, localization, and screenshots were updated where required
-- [ ] No secrets, keystores, generated packages, archives, or local-only files were committed
+- [ ] This pull request focuses on a single change with no unrelated diffs
+- [ ] The code follows existing repository architecture and conventions
+- [ ] I tested the changes and verified them locally
+- [ ] Documentation, tests, and assets were updated where relevant
+- [ ] No secrets, keystores, build artifacts, or local configuration files were committed
 - [ ] Android and Desktop versioning and release channels remain independent
-- [ ] CI is green, or every remaining failure is explained in this PR
-- [ ] The complete Levyra PR template is preserved and the final description passed through `levyra-humanizer` without changing its claims
+- [ ] CI checks pass, or any known issue is explained in the description
