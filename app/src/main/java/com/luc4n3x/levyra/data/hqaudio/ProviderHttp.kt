@@ -188,7 +188,9 @@ internal object ConfigurableProviderPlaybackPolicy {
         val host = ConfigurableProviderDestinationPolicy.normalizeHost(url.host)
         val policy = byHost[host] ?: return null
         if (policy.expiresAtMs <= nowMs) return emptySet()
-        return policy.allowedHosts.takeIf { ConfigurableProviderDestinationPolicy.allows(url, it) }
+        return policy.allowedHosts.takeIf {
+            ConfigurableProviderDestinationPolicy.allows(url, it)
+        } ?: emptySet()
     }
 
     private const val MAX_HOSTS_PER_POLICY = 32
