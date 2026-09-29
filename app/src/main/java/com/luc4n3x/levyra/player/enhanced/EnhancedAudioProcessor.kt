@@ -72,7 +72,6 @@ class EnhancedAudioProcessor(
     private var lastEmittedBypassReason: EnhancedAudioBypassReason? = null
     private var lastEmittedBypassed: Boolean? = null
 
-    // Latency watchdog hysteresis state
     private var consecutiveOverruns = 0
     private var isOverloadBypassed = false
     private var cooldownRemainingBlocks = 0
@@ -84,7 +83,6 @@ class EnhancedAudioProcessor(
     private var buffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
 
-    // Reusable float buffers for zero-allocation processing
     private var floatInput = FloatArray(0)
     private var floatOutput = FloatArray(0)
 
@@ -274,7 +272,7 @@ class EnhancedAudioProcessor(
         consecutiveOverruns = 0
         isOverloadBypassed = false
         cooldownRemainingBlocks = 0
-        activeEngine.release()
+        activeEngine.reset()
         analyzer.reset()
         mutableMetrics.reset()
     }
@@ -341,7 +339,7 @@ class EnhancedAudioProcessor(
     }
 
     companion object {
-        private const val EMIT_INTERVAL_NS = 200_000_000L // 200ms -> 5 Hz
+        private const val EMIT_INTERVAL_NS = 200_000_000L
         private const val OVERRUN_HYSTERESIS_LIMIT = 5
         private const val RECOVERY_COOLDOWN_BLOCKS = 50
     }
