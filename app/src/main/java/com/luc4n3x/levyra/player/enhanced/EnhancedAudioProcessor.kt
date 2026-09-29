@@ -156,12 +156,7 @@ class EnhancedAudioProcessor(
             readInputToFloats(inputBuffer, totalSamples)
             analyzer.analyze(floatInput, 0, frames, startTimeUs, mutableMetrics)
 
-            val success = if (mutableMetrics.isActive) {
-                activeEngine.process(floatInput, floatOutput, 0, frames, mutableMetrics)
-            } else {
-                System.arraycopy(floatInput, 0, floatOutput, 0, totalSamples)
-                true
-            }
+            val success = activeEngine.process(floatInput, floatOutput, 0, frames, mutableMetrics)
 
             if (!success) {
                 System.arraycopy(floatInput, 0, floatOutput, 0, totalSamples)
