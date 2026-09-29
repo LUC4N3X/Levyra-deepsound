@@ -50,9 +50,36 @@ def get_font(size, bold=False):
     except TypeError:
         return ImageFont.load_default()
 
+def remove_system_status_bar(img):
+    """Rebuilds the screenshot background over Android's clock and system icons."""
+    img = img.convert("RGB")
+    width, height = img.size
+    status_height = min(height, max(1, int(round(width * 0.078))))
+    sample_top = min(height - 1, max(0, int(round(width * 0.058))))
+    sample_height = min(height - sample_top, max(1, int(round(width * 0.014))))
+
+    background = img.crop((0, sample_top, width, sample_top + sample_height))
+    background = background.resize((width, status_height), Image.Resampling.BICUBIC)
+    background = background.filter(ImageFilter.GaussianBlur(max(8, int(round(width * 0.018)))))
+
+    fade_height = min(status_height, max(1, int(round(width * 0.014))))
+    mask = Image.new("L", (width, status_height), 255)
+    mask_pixels = mask.load()
+    fade_start = status_height - fade_height
+    for y in range(fade_start, status_height):
+        alpha = int(255 * (status_height - 1 - y) / max(1, fade_height - 1))
+        for x in range(width):
+            mask_pixels[x, y] = alpha
+
+    original_top = img.crop((0, 0, width, status_height))
+    cleaned_top = Image.composite(background, original_top, mask)
+    cleaned = img.copy()
+    cleaned.paste(cleaned_top, (0, 0))
+    return cleaned
+
 def enhance_screenshot(img):
     """Subtle polish: OLED contrast, slight vibrance, crisp sharpness."""
-    img = img.convert("RGB")
+    img = remove_system_status_bar(img)
     enhancer = ImageEnhance.Contrast(img)
     img = enhancer.enhance(1.04)
     enhancer = ImageEnhance.Color(img)
