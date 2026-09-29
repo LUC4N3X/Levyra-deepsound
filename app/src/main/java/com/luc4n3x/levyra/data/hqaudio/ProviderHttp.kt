@@ -175,7 +175,7 @@ internal object ConfigurableProviderPlaybackPolicy {
             .toSet()
         if (expiresAtMs <= nowMs || normalized.isEmpty() || normalized.size > MAX_HOSTS_PER_POLICY) return false
         if (!ConfigurableProviderDestinationPolicy.allows(url, normalized)) return false
-        val newHosts = normalized.count { it !in byHost }
+        val newHosts = normalized.count { !byHost.containsKey(it) }
         if (byHost.size + newHosts > MAX_REGISTERED_HOSTS) return false
 
         val policy = Policy(normalized, expiresAtMs)
