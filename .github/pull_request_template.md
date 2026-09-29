@@ -1,26 +1,35 @@
 <!--
-Thanks for contributing to Levyra.
-Keep the PR focused, describe what actually changed, and remove anything that does not apply.
+Thanks for contributing to Levyra!
+
+Keep your pull request focused, explain why the change is needed, and include clear testing evidence.
+Please preserve the complete Levyra section layout. If a section does not apply to your PR, mark it as "N/A" instead of deleting it.
+When writing the PR description, pass it through levyra-humanizer so it reads naturally and clearly without changing facts or test results.
 -->
 
 ## Summary
 
-<!-- What changed and why? A few clear sentences are enough. -->
+<!--
+What problem does this PR solve, or what does it add?
+Keep it clear and direct: two or three sentences are usually enough.
+-->
 
 
 ## Changes
 
-<!-- Keep this to the important parts of the diff. -->
+<!--
+List the main parts of the diff so reviewers know where to look.
+Focus on logic changes, architecture decisions, and new files.
+-->
 
-- 
+- <!-- Key change -->
 
-## Type
+## Type of change
 
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Performance improvement
 - [ ] Refactor or maintenance
-- [ ] UI or UX change
+- [ ] UI or UX update
 - [ ] Localization or accessibility
 - [ ] Build, CI, packaging, or release change
 - [ ] Documentation
@@ -29,55 +38,80 @@ Keep the PR focused, describe what actually changed, and remove anything that do
 ## Scope
 
 - **Platform:** Android / Windows Desktop / Shared
-- **Area:**
+- **Area:** <!-- e.g. Player, Streaming, Downloads, Library, UI, Lyrics, System integration -->
 
 ## Testing
 
-### Automated
+### Automated checks
 
-<!-- List the checks or commands you actually ran. Use "N/A" if none were needed. -->
+<!--
+List the tests or quality gates you ran.
+Examples:
+- ./gradlew test
+- python3 scripts/ai_quality_gate.py --profile fast
+- N/A (with brief explanation)
+-->
 
-- 
+- <!-- Command or test suite -->
 
-### Manual
+### Manual testing
 
-| Device / environment | What was tested | Result |
+<!--
+Describe how you verified the change on real hardware, emulators, or desktop environments.
+-->
+
+| Device or OS | What was tested | Result |
 |---|---|---|
 |  |  |  |
 
 ## Screenshots or recordings
 
-<!-- Add these for visual changes when they help explain the result. Remove this section if it does not apply. -->
+<!--
+Add before and after screenshots, GIFs, or short screen recordings for visual changes.
+If your change does not touch the UI, write "N/A" or remove this section.
+-->
 
 
 ## Risk and compatibility
 
-<!-- Mention migrations, preference changes, database changes, downloads, cached data, platform differences, or anything else reviewers should know. "None" is fine. -->
+<!--
+Mention any migrations, settings, database changes, downloads, cached data, or background tasks that could affect users.
+Write "None" if there are no known risks or breaking changes.
+-->
 
-- **Risk:** Low / Medium / High
+- **Risk level:** Low / Medium / High
 - **Notes:** None
 
 ## Reviewer notes
 
-<!-- Optional: point reviewers to tricky code, trade-offs, edge cases, or decisions worth a closer look. -->
+<!--
+Optional: call out trade-offs, tricky spots in the diff, or specific files where you would like feedback.
+-->
 
-- 
+- <!-- Note for reviewers -->
 
 ## Release note
 
-<!-- One short user-facing sentence, or "None" for internal-only changes. -->
+<!--
+One user-facing sentence for the changelog, or "None" for internal-only changes.
+-->
 
 None
 
 ## Related issues
+
+<!-- Link any issues that this pull request closes or relates to. -->
 
 - Closes #
 - Related to #
 
 ## Checklist
 
-- [ ] This PR is focused and does not include unrelated changes
-- [ ] I tested the parts I changed
-- [ ] Tests, documentation, localization, and screenshots were updated where needed
-- [ ] No secrets, keystores, generated packages, archives, or local-only files were committed
-- [ ] CI is green, or any remaining failure is explained in the PR
+- [ ] This pull request focuses on a single change with no unrelated diffs
+- [ ] The code follows existing repository architecture and conventions
+- [ ] I tested the changes and verified them locally
+- [ ] Documentation, tests, and assets were updated where relevant
+- [ ] No secrets, keystores, build artifacts, or local configuration files were committed
+- [ ] Android and Desktop versioning and release channels remain independent
+- [ ] CI checks pass, or any known issue is explained in the description
+- [ ] The complete Levyra PR template is preserved and reviewed with levyra-humanizer without changing verified claims
