@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-29T05:48:18Z",
+  "generatedAt": "2026-09-29T12:58:34Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -650,11 +650,14 @@
         },
         {
           "position": 27,
-          "id": "levyra-82dffb286fdb0f665f3b",
+          "id": "levyra-be36f408a1a82d5992da",
           "title": "Movin' To The Sun",
           "artists": [
             {
               "name": "HUGEL"
+            },
+            {
+              "name": "Imael Angel"
             },
             {
               "name": "Ultra Naté"
@@ -672,7 +675,7 @@
             "confidence": 100,
             "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e4d17d7e6cf481caaac75484"
         },
         {
           "position": 28,
@@ -1126,12 +1129,6 @@
           },
           "durationMs": 156393,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "i34pFNr42mc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02450a730dd72f3bf49882ae9d"
         },
         {
@@ -1645,7 +1642,7 @@
         },
         {
           "position": 18,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1653,8 +1650,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1664,7 +1661,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 19,
@@ -1904,7 +1901,7 @@
         },
         {
           "position": 30,
-          "id": "levyra-1251ea592cf71a2f5d87",
+          "id": "levyra-db45de9170a46e6d895d",
           "title": "505",
           "artists": [
             {
@@ -1912,12 +1909,12 @@
             }
           ],
           "album": {
-            "name": "Favourite Worst Nightmare (Standard Version)",
+            "name": "Favourite Worst Nightmare",
             "releaseDate": "2007-04-22"
           },
           "durationMs": 253586,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020c8ac83035e9588e8ad34b90"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b1f8da74f225fa1225cdface"
         },
         {
           "position": 31,
@@ -3222,11 +3219,14 @@
         },
         {
           "position": 37,
-          "id": "levyra-82dffb286fdb0f665f3b",
+          "id": "levyra-be36f408a1a82d5992da",
           "title": "Movin' To The Sun",
           "artists": [
             {
               "name": "HUGEL"
+            },
+            {
+              "name": "Imael Angel"
             },
             {
               "name": "Ultra Naté"
@@ -3244,7 +3244,7 @@
             "confidence": 100,
             "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e4d17d7e6cf481caaac75484"
         },
         {
           "position": 38,
@@ -5302,12 +5302,6 @@
           },
           "durationMs": 156393,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "i34pFNr42mc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02450a730dd72f3bf49882ae9d"
         },
         {
@@ -5863,11 +5857,14 @@
         },
         {
           "position": 47,
-          "id": "levyra-82dffb286fdb0f665f3b",
+          "id": "levyra-be36f408a1a82d5992da",
           "title": "Movin' To The Sun",
           "artists": [
             {
               "name": "HUGEL"
+            },
+            {
+              "name": "Imael Angel"
             },
             {
               "name": "Ultra Naté"
@@ -5885,7 +5882,7 @@
             "confidence": 100,
             "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e4d17d7e6cf481caaac75484"
         },
         {
           "position": 48,
@@ -6056,11 +6053,14 @@
         },
         {
           "position": 5,
-          "id": "levyra-82dffb286fdb0f665f3b",
+          "id": "levyra-be36f408a1a82d5992da",
           "title": "Movin' To The Sun",
           "artists": [
             {
               "name": "HUGEL"
+            },
+            {
+              "name": "Imael Angel"
             },
             {
               "name": "Ultra Naté"
@@ -6078,7 +6078,7 @@
             "confidence": 100,
             "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e4d17d7e6cf481caaac75484"
         },
         {
           "position": 6,
@@ -6398,12 +6398,6 @@
           },
           "durationMs": 156393,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "i34pFNr42mc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02450a730dd72f3bf49882ae9d"
         },
         {
@@ -9854,12 +9848,6 @@
           },
           "durationMs": 156393,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "i34pFNr42mc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02450a730dd72f3bf49882ae9d"
         },
         {
@@ -9973,11 +9961,14 @@
         },
         {
           "position": 17,
-          "id": "levyra-82dffb286fdb0f665f3b",
+          "id": "levyra-be36f408a1a82d5992da",
           "title": "Movin' To The Sun",
           "artists": [
             {
               "name": "HUGEL"
+            },
+            {
+              "name": "Imael Angel"
             },
             {
               "name": "Ultra Naté"
@@ -9995,7 +9986,7 @@
             "confidence": 100,
             "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e4d17d7e6cf481caaac75484"
         },
         {
           "position": 18,
@@ -10061,6 +10052,12 @@
           },
           "durationMs": 198425,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "SkHJ5ChXcDo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -14754,12 +14751,6 @@
           },
           "durationMs": 120545,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "9YU5lFqpgV4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCgdudhVrecjBxDEuk7-ZzmA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02463fce4562806107cddf6aea"
         },
         {
@@ -14777,6 +14768,12 @@
           },
           "durationMs": 167964,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "Xo_JUe1SCXU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCBwDFF8NRtUaQh9SqMtFEWg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02258f63134b1b504c35299fa3"
         },
         {
@@ -15221,11 +15218,14 @@
         },
         {
           "position": 38,
-          "id": "levyra-82dffb286fdb0f665f3b",
+          "id": "levyra-be36f408a1a82d5992da",
           "title": "Movin' To The Sun",
           "artists": [
             {
               "name": "HUGEL"
+            },
+            {
+              "name": "Imael Angel"
             },
             {
               "name": "Ultra Naté"
@@ -15243,7 +15243,7 @@
             "confidence": 100,
             "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e4d17d7e6cf481caaac75484"
         },
         {
           "position": 39,
@@ -16358,12 +16358,6 @@
           },
           "durationMs": 115339,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "Xfg8OKKxgF4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCfzDkHiSC3u0yaqMmfo0-BQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02da1213ba760b2269e2cd9974"
         },
         {
@@ -17965,12 +17959,6 @@
           },
           "durationMs": 242307,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "pNvWypiFVBs",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UClCKlASZTUZUnYuib0Z7n2A"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0232bbfa83930a98df7b2c2d52"
         },
         {
@@ -20495,7 +20483,7 @@
             "confidence": 100,
             "artistBrowseId": "UCGKXb1syicud01CJOOFRykg"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02613aaa3ae566d9f36008aed0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e691217483df8798445c82e2"
         },
         {
           "position": 33,
@@ -22389,6 +22377,8 @@
           "youtubeMusic": {
             "audioVideoId": "R5By6ms2a3Y",
             "audioConfidence": 100,
+            "videoId": "gmjZf_Nxlec",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCXYVQ1uTq-KQbPk6IQlXHnA"
           },
@@ -25733,11 +25723,11 @@
         },
         {
           "position": 17,
-          "id": "levyra-009079c49575da6b1335",
+          "id": "levyra-fc7ff3ad4f020deaa89f",
           "title": "Mơ",
           "artists": [
             {
-              "name": "VCT"
+              "name": "Vũ Cát Tường"
             }
           ],
           "album": {
@@ -25746,6 +25736,12 @@
           },
           "durationMs": 262191,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Rmun4-dd2xQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCRR908cRMgRkekWQXpk31sA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028b40ad72aa86e76099297d7b"
         },
         {
@@ -26057,11 +26053,11 @@
         },
         {
           "position": 30,
-          "id": "levyra-04de3738158a7a90ba68",
+          "id": "levyra-0ef845d584922e9f0abd",
           "title": "Vết Mưa",
           "artists": [
             {
-              "name": "VCT"
+              "name": "Vũ Cát Tường"
             }
           ],
           "album": {
@@ -26070,6 +26066,12 @@
           },
           "durationMs": 210067,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "FpL-aKcV940",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCRR908cRMgRkekWQXpk31sA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024992bf290fe8c9f82a0e66e4"
         },
         {
@@ -26360,11 +26362,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 43,
@@ -27583,7 +27585,7 @@
       "tracks": [
         {
           "position": 1,
-          "id": "levyra-4bafa7c6adf8553e199c",
+          "id": "levyra-f0eb94008538f42bf80a",
           "title": "Mahal Magmahal",
           "artists": [
             {
@@ -27594,17 +27596,17 @@
             "name": "Mahal Magmahal",
             "releaseDate": "2025-01-29"
           },
-          "durationMs": 294816,
+          "durationMs": 296128,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "jOF29E6hY6s",
+            "audioVideoId": "5mnZcoQldHM",
             "audioConfidence": 100,
             "videoId": "8hJJ2l8UaxQ",
             "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgBv8sCbOtqH8w_LzxubNWg"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025f0dbc0f25b0af5a51b53c55"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b4add5793b12cb8a3e86a8f4"
         },
         {
           "position": 2,
@@ -30297,12 +30299,6 @@
           },
           "durationMs": 194989,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "eCMGGJ1iKrg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC34pUrfMejPerQ52fUFUaag"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b2641225c7a5f9809ca2e311"
         },
         {
@@ -30447,6 +30443,12 @@
           },
           "durationMs": 194250,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "XWo59qFLU2w",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCSCrExOEvG92AxJt9iKoPUA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022da9f5242090bb1a56255542"
         },
         {
