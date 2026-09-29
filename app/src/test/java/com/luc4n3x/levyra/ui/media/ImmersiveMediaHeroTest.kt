@@ -24,6 +24,12 @@ class ImmersiveMediaHeroTest {
         assertDpEquals(300.dp, immersiveWideArtworkSize(1200.dp, 900.dp))
     }
 
+    @Test
+    fun heroHeightMatchesRenderedLayout() {
+        assertDpEquals(324.dp, immersiveHeroHeight(true, 600.dp, 400.dp, 64.dp))
+        assertDpEquals(336.dp, immersiveHeroHeight(false, 400.dp, 800.dp, 64.dp))
+    }
+
     private fun assertDpEquals(expected: Dp, actual: Dp) {
         assertEquals(expected.value, actual.value, 0.001f)
     }

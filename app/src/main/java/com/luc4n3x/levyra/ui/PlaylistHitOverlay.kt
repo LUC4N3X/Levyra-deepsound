@@ -82,9 +82,8 @@ import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
 import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
+import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
 import com.luc4n3x.levyra.ui.media.immersiveMediaColors
-import com.luc4n3x.levyra.ui.media.immersivePortraitHeroHeight
-import com.luc4n3x.levyra.ui.media.immersiveWideArtworkSize
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
@@ -111,7 +110,6 @@ internal fun PlaylistHitOverlay(
     onDownloadTrack: (Track) -> Unit,
     onQueueTrack: (Track) -> Unit,
     onTogglePlayback: () -> Unit,
-    onSkipNext: () -> Unit,
     onOpenPlayer: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -138,7 +136,7 @@ internal fun PlaylistHitOverlay(
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(colors.base)) {
         val wide = resolvePlayerPane(maxWidth.value, maxHeight.value) == LevyraPlayerPane.SideBySide
         val topBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
-        val heroHeight = playlistHeroHeight(wide, maxWidth, maxHeight, topBarHeight)
+        val heroHeight = immersiveHeroHeight(wide, maxWidth, maxHeight, topBarHeight)
         val collapseThreshold = with(density) { (heroHeight - topBarHeight).coerceAtLeast(0.dp).toPx() }
         val collapsedState = remember(listState, collapseThreshold) {
             derivedStateOf {
@@ -182,7 +180,6 @@ internal fun PlaylistHitOverlay(
                 track = track,
                 isPlaying = isPlaying,
                 onTogglePlayback = onTogglePlayback,
-                onSkipNext = onSkipNext,
                 onOpenPlayer = onOpenPlayer,
                 onPlayTrack = onPlayTrack,
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -200,13 +197,6 @@ private fun playlistPaletteKey(preview: PlaylistHitPreview): String {
         largeThumbnailUrl = artworkUrl
     )
 }
-
-private fun playlistHeroHeight(wide: Boolean, width: Dp, height: Dp, topBarHeight: Dp): Dp =
-    if (wide) {
-        topBarHeight + immersiveWideArtworkSize(width, height) + 40.dp
-    } else {
-        immersivePortraitHeroHeight(width, height)
-    }
 
 @Composable
 private fun PlaylistHitList(
@@ -388,7 +378,6 @@ private fun PlaylistHitNowPlayingDock(
     track: Track,
     isPlaying: Boolean,
     onTogglePlayback: () -> Unit,
-    onSkipNext: () -> Unit,
     onOpenPlayer: () -> Unit,
     onPlayTrack: (Track) -> Unit,
     modifier: Modifier = Modifier
@@ -396,20 +385,15 @@ private fun PlaylistHitNowPlayingDock(
     val strings = LocalLevyraStrings.current
     val tracks = preview.tracks
     val nextTrack = remember(tracks, track.id) { preview.nextTrackAfter(track.id) }
-    val currentInPlaylist = remember(tracks, track.id) { tracks.any { it.id == track.id } }
-    val onNext = when {
-        tracks.isEmpty() -> null
-        currentInPlaylist -> onSkipNext
-        else -> nextTrack?.let { next -> { onPlayTrack(next) } }
-    }
+    val onNext = nextTrack?.let { next -> { onPlayTrack(next) } }
     LibraryNowPlayingDock(
         track = track,
         isPlaying = isPlaying,
         onToggle = onTogglePlayback,
         onOpen = onOpenPlayer,
         onNext = onNext,
-        nextEnabled = currentInPlaylist || nextTrack != null,
-        nextLabel = if (currentInPlaylist) "" else nextTrack?.let { "${strings.next}: ${it.title}" }.orEmpty(),
+        nextEnabled = nextTrack != null,
+        nextLabel = nextTrack?.let { "${strings.next}: ${it.title}" }.orEmpty(),
         modifier = modifier
             .navigationBarsPadding()
             .padding(14.dp)

@@ -49,14 +49,13 @@ import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteEnd
 import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteStart
 import com.luc4n3x.levyra.ui.album.AlbumStageColors
 import com.luc4n3x.levyra.ui.album.albumContentGutter
-import com.luc4n3x.levyra.ui.album.albumStackedHeroHeight
 import com.luc4n3x.levyra.ui.album.albumStageColors
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
 import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
-import com.luc4n3x.levyra.ui.media.immersiveWideArtworkSize
+import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareCard
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareFormat
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsAudioOutputRoute
@@ -2734,7 +2733,6 @@ fun LevyraApp(
                         onDownloadTrack = viewModel::exportTrack,
                         onQueueTrack = viewModel::addToQueue,
                         onTogglePlayback = viewModel::togglePlay,
-                        onSkipNext = viewModel::next,
                         onOpenPlayer = viewModel::openPlayerScreen
                     )
                 }
@@ -3804,6 +3802,7 @@ private fun AlbumOverlay(
     val motionEnabled = state.animationsEnabled && state.motionArtworkEnabled
     var albumMenuExpanded by rememberSaveable(album?.browseId, album?.title) { mutableStateOf(false) }
     var albumDescriptionExpanded by rememberSaveable(album?.browseId, album?.title) { mutableStateOf(false) }
+    var albumDescriptionOverflows by remember(description) { mutableStateOf(false) }
     val albumMetadata = remember(album?.year, tracks.size, strings) {
         listOf(album?.year.orEmpty(), tracks.takeIf { it.isNotEmpty() }?.let { strings.formatTrackCount(it.size) }.orEmpty())
             .filter { it.isNotBlank() }
@@ -3894,12 +3893,7 @@ private fun AlbumOverlay(
         val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val topBarHeight = statusTop + ALBUM_TOP_BAR_HEIGHT
         val topBarPx = with(density) { topBarHeight.toPx() }
-        val stackedHeroHeight = albumStackedHeroHeight(maxWidth, maxHeight)
-        val heroHeight = if (split) {
-            topBarHeight + immersiveWideArtworkSize(maxWidth, maxHeight) + 40.dp
-        } else {
-            stackedHeroHeight
-        }
+        val heroHeight = immersiveHeroHeight(split, maxWidth, maxHeight, topBarHeight)
         val heroPx = with(density) { heroHeight.toPx() }
         val collapsedState = remember(listState, heroPx, topBarPx) {
             derivedStateOf {
@@ -4000,12 +3994,13 @@ private fun AlbumOverlay(
                     }
                     if (description.isNotBlank()) {
                         item(key = "album-description", contentType = "album-description") {
+                            val canToggleDescription = albumDescriptionExpanded || albumDescriptionOverflows
                             Column(
                                 modifier = Modifier
                                     .padding(horizontal = gutter, vertical = 8.dp)
                                     .fillMaxWidth()
                                     .clip(LevyraPlayerDesign.ShapeSm)
-                                    .clickable(role = Role.Button) {
+                                    .clickable(enabled = canToggleDescription, role = Role.Button) {
                                         albumDescriptionExpanded = !albumDescriptionExpanded
                                     }
                                     .padding(horizontal = LevyraPlayerDesign.SpaceXs, vertical = LevyraPlayerDesign.SpaceSm),
@@ -4018,14 +4013,21 @@ private fun AlbumOverlay(
                                     lineHeight = 21.sp,
                                     letterSpacing = (-0.2).sp,
                                     maxLines = if (albumDescriptionExpanded) Int.MAX_VALUE else 3,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
+                                    onTextLayout = { result ->
+                                        if (!albumDescriptionExpanded) {
+                                            albumDescriptionOverflows = result.hasVisualOverflow
+                                        }
+                                    }
                                 )
-                                Text(
-                                    text = if (albumDescriptionExpanded) strings.showLess else strings.readAll,
-                                    color = stage.accent,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                                if (canToggleDescription) {
+                                    Text(
+                                        text = if (albumDescriptionExpanded) strings.showLess else strings.readAll,
+                                        color = stage.accent,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
                             }
                         }
                     }

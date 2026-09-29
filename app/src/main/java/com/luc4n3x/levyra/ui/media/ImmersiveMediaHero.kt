@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -147,6 +148,13 @@ internal fun immersivePortraitHeroHeight(width: Dp, height: Dp): Dp {
 internal fun immersiveWideArtworkSize(width: Dp, height: Dp): Dp =
     min(300.dp, max(240.dp, min(width * 0.34f, height * 0.58f)))
 
+internal fun immersiveHeroHeight(wide: Boolean, width: Dp, height: Dp, topBarHeight: Dp): Dp =
+    if (wide) {
+        topBarHeight + immersiveWideArtworkSize(width, height) + 20.dp
+    } else {
+        immersivePortraitHeroHeight(width, height)
+    }
+
 @Composable
 internal fun animatedImmersiveMediaColors(
     target: ImmersiveMediaColors,
@@ -199,11 +207,13 @@ internal fun ImmersiveMediaHero(
     artwork: @Composable BoxScope.() -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val heroHeight = immersiveHeroHeight(wide, viewportWidth, viewportHeight, topBarHeight)
     if (wide) {
         val artworkSize = immersiveWideArtworkSize(viewportWidth, viewportHeight)
         Row(
             modifier = modifier
                 .fillMaxWidth()
+                .height(heroHeight)
                 .padding(top = topBarHeight, start = 32.dp, end = 32.dp, bottom = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(28.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -232,7 +242,6 @@ internal fun ImmersiveMediaHero(
             }
         }
     } else {
-        val heroHeight = immersivePortraitHeroHeight(viewportWidth, viewportHeight)
         Column(modifier = modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
@@ -254,11 +263,15 @@ internal fun ImmersiveMediaHero(
                     title = title,
                     subtitle = subtitle,
                     metadata = metadata,
-                    colors = colors.copy(
-                        content = Color.White,
-                        contentMuted = Color.White.copy(alpha = 0.78f),
-                        accent = Color.White
-                    ),
+                    colors = if (colors.content.luminance() > 0.5f) {
+                        colors.copy(
+                            content = Color.White,
+                            contentMuted = Color.White.copy(alpha = 0.78f),
+                            accent = Color.White
+                        )
+                    } else {
+                        colors
+                    },
                     centered = true,
                     onSubtitleClick = onSubtitleClick,
                     modifier = Modifier
