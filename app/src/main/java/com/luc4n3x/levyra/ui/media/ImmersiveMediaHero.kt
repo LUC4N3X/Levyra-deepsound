@@ -293,40 +293,9 @@ private fun ImmersiveMediaMetadata(
     val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
     val textAlign = if (centered) TextAlign.Center else TextAlign.Start
     Column(modifier = modifier, horizontalAlignment = horizontal) {
-        Text(
-            text = title,
-            color = colors.content,
-            fontSize = if (centered) 28.sp else 30.sp,
-            lineHeight = if (centered) 32.sp else 34.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.8).sp,
-            textAlign = textAlign,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.semantics { heading() }
-        )
+        ImmersiveMediaTitle(title, colors, centered, textAlign)
         if (subtitle.isNotBlank()) {
-            Text(
-                text = subtitle,
-                color = if (onSubtitleClick != null) colors.accent else colors.contentMuted,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = textAlign,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .heightIn(min = if (onSubtitleClick != null) 40.dp else 24.dp)
-                    .then(
-                        if (onSubtitleClick != null) {
-                            Modifier
-                                .clip(LevyraPlayerDesign.ShapePill)
-                                .levyraPressable(onClick = onSubtitleClick, role = Role.Button)
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        } else {
-                            Modifier.padding(top = 4.dp)
-                        }
-                    )
-            )
+            ImmersiveMediaSubtitle(subtitle, colors, textAlign, onSubtitleClick)
         }
         if (metadata.isNotBlank()) {
             Text(
@@ -340,6 +309,57 @@ private fun ImmersiveMediaMetadata(
             )
         }
     }
+}
+
+@Composable
+private fun ImmersiveMediaTitle(
+    title: String,
+    colors: ImmersiveMediaColors,
+    centered: Boolean,
+    textAlign: TextAlign
+) {
+    Text(
+        text = title,
+        color = colors.content,
+        fontSize = if (centered) 28.sp else 30.sp,
+        lineHeight = if (centered) 32.sp else 34.sp,
+        fontWeight = FontWeight.Black,
+        letterSpacing = (-0.8).sp,
+        textAlign = textAlign,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.semantics { heading() }
+    )
+}
+
+@Composable
+private fun ImmersiveMediaSubtitle(
+    subtitle: String,
+    colors: ImmersiveMediaColors,
+    textAlign: TextAlign,
+    onClick: (() -> Unit)?
+) {
+    val interactive = onClick != null
+    val interactionModifier = if (onClick != null) {
+        Modifier
+            .clip(LevyraPlayerDesign.ShapePill)
+            .levyraPressable(onClick = onClick, role = Role.Button)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    } else {
+        Modifier.padding(top = 4.dp)
+    }
+    Text(
+        text = subtitle,
+        color = if (interactive) colors.accent else colors.contentMuted,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.SemiBold,
+        textAlign = textAlign,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .heightIn(min = if (interactive) 40.dp else 24.dp)
+            .then(interactionModifier)
+    )
 }
 
 @Composable

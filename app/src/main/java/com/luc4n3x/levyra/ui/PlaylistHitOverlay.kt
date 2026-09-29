@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +55,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.ArtworkPalette
@@ -75,6 +77,7 @@ import com.luc4n3x.levyra.ui.library.LibraryEmpty
 import com.luc4n3x.levyra.ui.library.LibraryNowPlayingDock
 import com.luc4n3x.levyra.ui.library.LibraryTrackRow
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaColors
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
@@ -113,25 +116,12 @@ internal fun PlaylistHitOverlay(
     onOpenPlayer: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val context = LocalContext.current
     val density = LocalDensity.current
     val listState = rememberSaveable(preview.hit.playlistId, saver = LazyListState.Saver) { LazyListState() }
     val tracks = preview.tracks
-    val nextTrack = remember(tracks, currentTrack?.id) { preview.nextTrackAfter(currentTrack?.id) }
-    val currentInPlaylist = remember(tracks, currentTrack?.id) {
-        currentTrack != null && tracks.any { it.id == currentTrack.id }
-    }
     val artworkUrl = preview.hit.thumbnailUrl
     val paletteKey = remember(preview.hit.playlistId, preview.hit.browseId, artworkUrl) {
-        if (artworkUrl.isBlank()) {
-            ""
-        } else {
-            ArtworkPaletteCache.key(
-                trackId = "playlist:${preview.hit.playlistId.ifBlank { preview.hit.browseId }}",
-                thumbnailUrl = artworkUrl,
-                largeThumbnailUrl = artworkUrl
-            )
-        }
+        playlistPaletteKey(preview)
     }
     val fallbackPalette = remember {
         ArtworkPalette(AlbumNeutralPaletteStart.toArgb(), AlbumNeutralPaletteEnd.toArgb())
@@ -145,16 +135,11 @@ internal fun PlaylistHitOverlay(
     val countLabel = remember(preview.hit.trackCountLabel, tracks.size, strings) {
         preview.hit.displayTrackCount(tracks.size, strings::formatTrackCount)
     }
-    var menuExpanded by rememberSaveable(preview.hit.playlistId) { mutableStateOf(false) }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(colors.base)) {
         val wide = resolvePlayerPane(maxWidth.value, maxHeight.value) == LevyraPlayerPane.SideBySide
         val topBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
-        val heroHeight = if (wide) {
-            topBarHeight + immersiveWideArtworkSize(maxWidth, maxHeight) + 40.dp
-        } else {
-            immersivePortraitHeroHeight(maxWidth, maxHeight)
-        }
+        val heroHeight = playlistHeroHeight(wide, maxWidth, maxHeight, topBarHeight)
         val collapseThreshold = with(density) { (heroHeight - topBarHeight).coerceAtLeast(0.dp).toPx() }
         val collapsedState = remember(listState, collapseThreshold) {
             derivedStateOf {
@@ -168,158 +153,268 @@ internal fun PlaylistHitOverlay(
             base = colors.base,
             modifier = Modifier.fillMaxSize()
         )
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = if (currentTrack != null) 220.dp else 110.dp)
-        ) {
-            item(key = "playlist-hit-hero", contentType = "playlist-hit-hero") {
-                ImmersiveMediaHero(
-                    title = preview.hit.title,
-                    subtitle = preview.hit.author,
-                    metadata = countLabel,
-                    colors = colors,
-                    wide = wide,
-                    viewportWidth = maxWidth,
-                    viewportHeight = maxHeight,
-                    topBarHeight = topBarHeight,
-                    onSubtitleClick = null,
-                    actions = {
-                        ImmersiveMediaActionRow(
-                            primary = ImmersiveMediaPrimaryAction(
-                                enabled = tracks.isNotEmpty(),
-                                label = strings.play,
-                                contentDescription = strings.play,
-                                icon = Icons.Rounded.PlayArrow,
-                                onClick = onPlay
-                            ),
-                            shuffleLabel = strings.shuffle,
-                            downloadLabel = strings.downloadPlaylist,
-                            colors = colors,
-                            shuffleEnabled = tracks.size > 1,
-                            downloadEnabled = tracks.isNotEmpty(),
-                            onShuffle = onShuffle,
-                            onDownload = onDownload
-                        )
-                    },
-                    artwork = {
-                        SeamlessArtworkImage(
-                            url = artworkUrl,
-                            contentDescription = preview.hit.title,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Brush.linearGradient(listOf(AlbumNeutralPaletteStart, AlbumNeutralPaletteEnd)))
-                            )
-                        }
-                    }
-                )
-            }
-            when {
-                preview.loading -> item(key = "playlist-hit-loading", contentType = "playlist-hit-state") {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp, color = colors.accent)
-                    }
-                }
-                tracks.isEmpty() -> item(key = "playlist-hit-empty", contentType = "playlist-hit-state") {
-                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.albumTracksUnavailable)
-                    }
-                }
-                else -> itemsIndexed(
-                    items = tracks,
-                    key = { index, track -> "playlist-hit-track-$index-${track.id}" },
-                    contentType = { _, _ -> "playlist-hit-track" }
-                ) { _, track ->
-                    val isCurrent = track.id == currentTrack?.id
-                    LibraryTrackRow(
-                        track = track,
-                        selected = false,
-                        selectionActive = false,
-                        isCurrent = isCurrent,
-                        isPlaying = isCurrent && isPlaying,
-                        isFavorite = track.id in favoriteIds,
-                        isDownloaded = track.id in downloadedTrackIds,
-                        downloadProgress = downloadProgressByTrackId[track.id],
-                        onClick = { onPlayTrack(track) },
-                        onLongClick = null,
-                        onFavorite = { onFavorite(track) },
-                        onDownload = { onDownloadTrack(track) },
-                        onQueue = { onQueueTrack(track) },
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
-            }
-        }
-        ImmersiveMediaTopBar(
-            title = preview.hit.title,
+        PlaylistHitList(
+            preview = preview,
+            currentTrack = currentTrack,
+            isPlaying = isPlaying,
+            favoriteIds = favoriteIds,
+            downloadedTrackIds = downloadedTrackIds,
+            downloadProgressByTrackId = downloadProgressByTrackId,
             colors = colors,
-            collapsedState = collapsedState,
-            height = topBarHeight,
-            animated = animationsEnabled,
-            backLabel = strings.back,
-            onBack = onClose,
-            actions = {
-                Box {
-                    PlayerGlassIconButton(
-                        icon = Icons.Rounded.MoreVert,
-                        contentDescription = strings.more,
-                        onClick = { menuExpanded = true },
-                        size = 48.dp,
-                        tint = Color.White,
-                        fill = Color.Black.copy(alpha = 0.34f)
-                    )
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                        modifier = Modifier.background(colors.fieldTop)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(strings.share) },
-                            leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                val id = preview.hit.playlistId.ifBlank { preview.hit.browseId.removePrefix("VL") }
-                                val text = buildString {
-                                    append(preview.hit.title)
-                                    if (id.isNotBlank()) append("\nhttps://music.youtube.com/playlist?list=").append(id)
-                                }
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, text)
-                                }
-                                context.startActivity(Intent.createChooser(intent, strings.share))
-                            }
-                        )
-                    }
-                }
-            }
+            wide = wide,
+            viewportWidth = maxWidth,
+            viewportHeight = maxHeight,
+            topBarHeight = topBarHeight,
+            countLabel = countLabel,
+            artworkUrl = artworkUrl,
+            state = listState,
+            onPlay = onPlay,
+            onShuffle = onShuffle,
+            onDownload = onDownload,
+            onPlayTrack = onPlayTrack,
+            onFavorite = onFavorite,
+            onDownloadTrack = onDownloadTrack,
+            onQueueTrack = onQueueTrack
         )
-        if (currentTrack != null) {
-            LibraryNowPlayingDock(
-                track = currentTrack,
+        PlaylistHitTopBar(preview, colors, collapsedState, topBarHeight, animationsEnabled, onClose)
+        currentTrack?.let { track ->
+            PlaylistHitNowPlayingDock(
+                preview = preview,
+                track = track,
                 isPlaying = isPlaying,
-                onToggle = onTogglePlayback,
-                onOpen = onOpenPlayer,
-                onNext = when {
-                    tracks.isEmpty() -> null
-                    currentInPlaylist -> onSkipNext
-                    else -> { { if (nextTrack != null) onPlayTrack(nextTrack) } }
-                },
-                nextEnabled = currentInPlaylist || nextTrack != null,
-                nextLabel = if (currentInPlaylist) "" else nextTrack?.let { "${strings.next}: ${it.title}" }.orEmpty(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(14.dp)
+                onTogglePlayback = onTogglePlayback,
+                onSkipNext = onSkipNext,
+                onOpenPlayer = onOpenPlayer,
+                onPlayTrack = onPlayTrack,
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
+}
+
+private fun playlistPaletteKey(preview: PlaylistHitPreview): String {
+    val artworkUrl = preview.hit.thumbnailUrl
+    if (artworkUrl.isBlank()) return ""
+    return ArtworkPaletteCache.key(
+        trackId = "playlist:${preview.hit.playlistId.ifBlank { preview.hit.browseId }}",
+        thumbnailUrl = artworkUrl,
+        largeThumbnailUrl = artworkUrl
+    )
+}
+
+private fun playlistHeroHeight(wide: Boolean, width: Dp, height: Dp, topBarHeight: Dp): Dp =
+    if (wide) {
+        topBarHeight + immersiveWideArtworkSize(width, height) + 40.dp
+    } else {
+        immersivePortraitHeroHeight(width, height)
+    }
+
+@Composable
+private fun PlaylistHitList(
+    preview: PlaylistHitPreview,
+    currentTrack: Track?,
+    isPlaying: Boolean,
+    favoriteIds: Set<String>,
+    downloadedTrackIds: Set<String>,
+    downloadProgressByTrackId: Map<String, Int>,
+    colors: ImmersiveMediaColors,
+    wide: Boolean,
+    viewportWidth: Dp,
+    viewportHeight: Dp,
+    topBarHeight: Dp,
+    countLabel: String,
+    artworkUrl: String,
+    state: LazyListState,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit,
+    onDownload: () -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    onFavorite: (Track) -> Unit,
+    onDownloadTrack: (Track) -> Unit,
+    onQueueTrack: (Track) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val tracks = preview.tracks
+    LazyColumn(
+        state = state,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = if (currentTrack != null) 220.dp else 110.dp)
+    ) {
+        item(key = "playlist-hit-hero", contentType = "playlist-hit-hero") {
+            ImmersiveMediaHero(
+                title = preview.hit.title,
+                subtitle = preview.hit.author,
+                metadata = countLabel,
+                colors = colors,
+                wide = wide,
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+                topBarHeight = topBarHeight,
+                onSubtitleClick = null,
+                actions = {
+                    ImmersiveMediaActionRow(
+                        primary = ImmersiveMediaPrimaryAction(
+                            enabled = tracks.isNotEmpty(),
+                            label = strings.play,
+                            contentDescription = strings.play,
+                            icon = Icons.Rounded.PlayArrow,
+                            onClick = onPlay
+                        ),
+                        shuffleLabel = strings.shuffle,
+                        downloadLabel = strings.downloadPlaylist,
+                        colors = colors,
+                        shuffleEnabled = tracks.size > 1,
+                        downloadEnabled = tracks.isNotEmpty(),
+                        onShuffle = onShuffle,
+                        onDownload = onDownload
+                    )
+                },
+                artwork = {
+                    SeamlessArtworkImage(
+                        url = artworkUrl,
+                        contentDescription = preview.hit.title,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Brush.linearGradient(listOf(AlbumNeutralPaletteStart, AlbumNeutralPaletteEnd)))
+                        )
+                    }
+                }
+            )
+        }
+        when {
+            preview.loading -> item(key = "playlist-hit-loading", contentType = "playlist-hit-state") {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp, color = colors.accent)
+                }
+            }
+            tracks.isEmpty() -> item(key = "playlist-hit-empty", contentType = "playlist-hit-state") {
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.albumTracksUnavailable)
+                }
+            }
+            else -> itemsIndexed(
+                items = tracks,
+                key = { index, track -> "playlist-hit-track-$index-${track.id}" },
+                contentType = { _, _ -> "playlist-hit-track" }
+            ) { _, track ->
+                val isCurrent = track.id == currentTrack?.id
+                LibraryTrackRow(
+                    track = track,
+                    selected = false,
+                    selectionActive = false,
+                    isCurrent = isCurrent,
+                    isPlaying = isCurrent && isPlaying,
+                    isFavorite = track.id in favoriteIds,
+                    isDownloaded = track.id in downloadedTrackIds,
+                    downloadProgress = downloadProgressByTrackId[track.id],
+                    onClick = { onPlayTrack(track) },
+                    onLongClick = null,
+                    onFavorite = { onFavorite(track) },
+                    onDownload = { onDownloadTrack(track) },
+                    onQueue = { onQueueTrack(track) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistHitTopBar(
+    preview: PlaylistHitPreview,
+    colors: ImmersiveMediaColors,
+    collapsedState: State<Boolean>,
+    height: Dp,
+    animationsEnabled: Boolean,
+    onClose: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
+    var menuExpanded by rememberSaveable(preview.hit.playlistId) { mutableStateOf(false) }
+    ImmersiveMediaTopBar(
+        title = preview.hit.title,
+        colors = colors,
+        collapsedState = collapsedState,
+        height = height,
+        animated = animationsEnabled,
+        backLabel = strings.back,
+        onBack = onClose,
+        actions = {
+            Box {
+                PlayerGlassIconButton(
+                    icon = Icons.Rounded.MoreVert,
+                    contentDescription = strings.more,
+                    onClick = { menuExpanded = true },
+                    size = 48.dp,
+                    tint = Color.White,
+                    fill = Color.Black.copy(alpha = 0.34f)
+                )
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.background(colors.fieldTop)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(strings.share) },
+                        leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            val id = preview.hit.playlistId.ifBlank { preview.hit.browseId.removePrefix("VL") }
+                            val text = buildString {
+                                append(preview.hit.title)
+                                if (id.isNotBlank()) append("\nhttps://music.youtube.com/playlist?list=").append(id)
+                            }
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, text)
+                            }
+                            context.startActivity(Intent.createChooser(intent, strings.share))
+                        }
+                    )
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun PlaylistHitNowPlayingDock(
+    preview: PlaylistHitPreview,
+    track: Track,
+    isPlaying: Boolean,
+    onTogglePlayback: () -> Unit,
+    onSkipNext: () -> Unit,
+    onOpenPlayer: () -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalLevyraStrings.current
+    val tracks = preview.tracks
+    val nextTrack = remember(tracks, track.id) { preview.nextTrackAfter(track.id) }
+    val currentInPlaylist = remember(tracks, track.id) { tracks.any { it.id == track.id } }
+    val onNext = when {
+        tracks.isEmpty() -> null
+        currentInPlaylist -> onSkipNext
+        else -> nextTrack?.let { next -> { onPlayTrack(next) } }
+    }
+    LibraryNowPlayingDock(
+        track = track,
+        isPlaying = isPlaying,
+        onToggle = onTogglePlayback,
+        onOpen = onOpenPlayer,
+        onNext = onNext,
+        nextEnabled = currentInPlaylist || nextTrack != null,
+        nextLabel = if (currentInPlaylist) "" else nextTrack?.let { "${strings.next}: ${it.title}" }.orEmpty(),
+        modifier = modifier
+            .navigationBarsPadding()
+            .padding(14.dp)
+    )
 }
 
 @Composable
