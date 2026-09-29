@@ -1,7 +1,9 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -49,6 +51,37 @@ class ProviderDestinationPolicyTest {
             ConfigurableProviderDestinationPolicy.allows(
                 "https://user:secret@cdn.example.org/audio/track.flac".toHttpUrl(),
                 allowed
+            )
+        )
+    }
+
+    @Test
+    fun playbackPolicyCarriesAllowlistToChildHostsAndExpires() {
+        val now = 1_800_000_000_000L
+        val allowed = setOf("cdn.example.org", "segments.example.org")
+        ConfigurableProviderPlaybackPolicy.register(
+            "https://cdn.example.org/manifest.mpd".toHttpUrl(),
+            allowed,
+            now + 60_000L
+        )
+
+        assertEquals(
+            allowed,
+            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
+                "https://segments.example.org/audio/0001.m4s",
+                now
+            )
+        )
+        assertNull(
+            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
+                "https://segments.example.org.evil.test/audio/0001.m4s",
+                now
+            )
+        )
+        assertNull(
+            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
+                "https://segments.example.org/audio/0001.m4s",
+                now + 60_001L
             )
         )
     }
