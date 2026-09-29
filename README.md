@@ -138,7 +138,7 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
   <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=grid4-20260929" width="200" alt="Levyra new releases" /></a>
   <a href="docs/assets/showcase/cards/18_fresh_currents.webp"><img src="docs/assets/showcase/cards/18_fresh_currents.webp?v=grid4-20260929" width="200" alt="Levyra discovery stream and fresh currents" /></a>
   <a href="docs/assets/showcase/cards/19_featured_artists.webp"><img src="docs/assets/showcase/cards/19_featured_artists.webp?v=grid4-20260929" width="200" alt="Levyra featured artists" /></a>
-  <a href="docs/assets/showcase/cards/20_soundstage.webp"><img src="docs/assets/showcase/cards/20_soundstage.webp?v=grid4-20260929" width="200" alt="Levyra lossless soundstage" /></a>
+  <a href="docs/assets/showcase/cards/20_soundstage.webp"><img src="docs/assets/showcase/cards/20_soundstage.webp?v=card20-20260929" width="200" alt="Levyra artist discography and shuffle" /></a>
 </p>
 
 </div>

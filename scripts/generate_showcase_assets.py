@@ -316,11 +316,18 @@ def generate_feature_cards():
         ("17_new_releases.webp", "Screenshot_20260927_132248_LEVYRA.jpg", "Fresh off the stage", "New singles and albums updated\nevery week directly from artists.", C_CASHMERE),
         ("18_fresh_currents.webp", "Screenshot_20260929_194853_LEVYRA.jpg", "Discovery stream", "Explore live stations, genre charts,\nand community soundscapes.", C_SEAFOAM),
         ("19_featured_artists.webp", "Screenshot_20260905_135618_LEVYRA.jpg", "Featured artists", "Discover local and global artists,\ncurated collections, and albums.", C_TWILIGHT),
-        ("20_soundstage.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Pure soundstage", "Experience lossless decoding and\nuncompromised audio fidelity.", C_CELESTE),
+        ("20_soundstage.webp", "Screenshot_20260929_212908_LEVYRA.jpg", "Artist discography", "Top tracks, monthly audience,\nand instant artist shuffle.", C_CELESTE),
     ]
 
     for filename, screenshot_name, title, subtitle, palette in single_specs:
-        screen_file = os.path.join(SCREENSHOT_DIR, screenshot_name)
+        if os.path.isabs(screenshot_name):
+            screen_file = screenshot_name
+        else:
+            screen_file = os.path.join(SCREENSHOT_DIR, screenshot_name)
+            if not os.path.exists(screen_file):
+                fallback = os.path.join(r"C:\Users\Luca Drogo\Downloads", screenshot_name)
+                if os.path.exists(fallback):
+                    screen_file = fallback
         if not os.path.exists(screen_file):
             print(f"Skipping {filename}: {screen_file} not found")
             continue
