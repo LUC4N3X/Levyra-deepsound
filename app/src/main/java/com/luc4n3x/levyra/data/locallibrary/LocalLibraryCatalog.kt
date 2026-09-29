@@ -55,7 +55,7 @@ data class LocalLibraryCatalog(
 )
 
 fun LocalMediaEntity.toLocalTrack(): Track {
-    val artwork = localArtworkModel(contentUri, albumId)
+    val artwork = localArtworkModel(contentUri, albumId, dateModifiedMs)
     val replayGain = parseLocalReplayGainTags(customTags)
     return Track(
         id = levyraTrackId.ifEmpty { LOCAL_MEDIA_TRACK_ID_PREFIX + identityKey },

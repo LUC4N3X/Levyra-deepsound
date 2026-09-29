@@ -39,7 +39,7 @@ class LyricsParsingTest {
     }
 
     @Test
-    fun enhancedLrcAppliesOffsetAndKeepsWordTiming() {
+    fun enhancedLrcPositiveOffsetShowsLyricsEarlierAndKeepsWordTiming() {
         val lines = LrcLyricsParser.parse(
             """
             [offset:+250]
@@ -49,11 +49,26 @@ class LyricsParsingTest {
         )
 
         assertEquals(2, lines.size)
-        assertEquals(10_250L, lines[0].startMs)
+        assertEquals(9_750L, lines[0].startMs)
         assertEquals("Hello world", lines[0].text)
         assertEquals(2, lines[0].words.size)
-        assertEquals(10_250L, lines[0].words[0].startMs)
-        assertEquals(10_750L, lines[0].words[1].startMs)
+        assertEquals(9_750L, lines[0].words[0].startMs)
+        assertEquals(10_250L, lines[0].words[1].startMs)
+        assertEquals(19_750L, lines[1].startMs)
+    }
+
+    @Test
+    fun lrcNegativeOffsetDelaysLyricsWithoutGoingBelowZero() {
+        val lines = LrcLyricsParser.parse(
+            """
+            [offset:-400]
+            [00:00.10]Intro
+            [00:05.00]Verse
+            """.trimIndent()
+        )
+
+        assertEquals(500L, lines[0].startMs)
+        assertEquals(5_400L, lines[1].startMs)
     }
 
     @Test

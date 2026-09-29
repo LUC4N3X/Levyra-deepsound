@@ -299,6 +299,12 @@ class PlaybackService : MediaLibraryService() {
             return true
         }
 
+        fun publishTrackMetadata(track: Track): Boolean {
+            val service = activeService ?: return false
+            service.serviceScope.launch { service.publishTrackMetadataInternal(track) }
+            return true
+        }
+
         fun publishSystemLyrics(
             track: Track,
             lines: List<LyricLine>,
@@ -573,6 +579,34 @@ class PlaybackService : MediaLibraryService() {
             .build()
         val index = player.currentMediaItemIndex
         if (index in 0 until player.mediaItemCount) player.replaceMediaItem(index, updatedItem)
+    }
+
+    private fun publishTrackMetadataInternal(track: Track) {
+        val player = activePlayer ?: return
+        if (track.streamUrl.isBlank()) return
+        val fresh = LevyraMediaItemFactory.metadataOnly(track).mediaMetadata
+        for (index in 0 until player.mediaItemCount) {
+            val item = player.getMediaItemAt(index)
+            if (item.localConfiguration?.uri?.toString() != track.streamUrl) continue
+            val extras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY).apply {
+                putString("levyra.title", track.title)
+                putString("levyra.artist", track.artist)
+                putString("levyra.album", track.album)
+            }
+            val metadata = item.mediaMetadata
+                .buildUpon()
+                .setTitle(fresh.title)
+                .setDisplayTitle(fresh.displayTitle)
+                .setArtist(fresh.artist)
+                .setSubtitle(fresh.subtitle)
+                .setAlbumTitle(fresh.albumTitle)
+                .setArtworkUri(fresh.artworkUri)
+                .setExtras(extras)
+                .build()
+            if (metadata != item.mediaMetadata) {
+                player.replaceMediaItem(index, item.buildUpon().setMediaMetadata(metadata).build())
+            }
+        }
     }
 
     private fun publishSystemLyricsInternal(

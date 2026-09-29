@@ -294,6 +294,7 @@ import com.luc4n3x.levyra.data.locallibrary.LocalLibraryRepository
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryStatus
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
 import com.luc4n3x.levyra.data.locallibrary.buildLocalLibraryCatalog
+import com.luc4n3x.levyra.data.locallibrary.toLocalTrack
 import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import com.luc4n3x.levyra.player.queue.shouldPromptForQueueDestination
 import com.luc4n3x.levyra.player.queue.mergePendingQueueDestinationTracks
@@ -5869,8 +5870,49 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         onResult: (com.luc4n3x.levyra.data.locallibrary.LocalTagWriteResult) -> Unit
     ) {
         viewModelScope.launch {
-            onResult(localLibrary.saveTags(identityKey, edits))
+            val result = localLibrary.saveTags(identityKey, edits)
+            if (result is com.luc4n3x.levyra.data.locallibrary.LocalTagWriteResult.Success) {
+                applyEditedLocalMedia(result.media.toLocalTrack())
+            }
+            onResult(result)
         }
+    }
+
+    fun loadLocalEmbeddedLyrics(identityKey: String, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            onResult(localLibrary.embeddedLyrics(identityKey))
+        }
+    }
+
+    private fun applyEditedLocalMedia(edited: Track) {
+        fun Track.withLocalEdit(): Track = if (streamUrl != edited.streamUrl) {
+            this
+        } else {
+            copy(
+                title = edited.title,
+                artist = edited.artist,
+                album = edited.album,
+                thumbnailUrl = edited.thumbnailUrl,
+                largeThumbnailUrl = edited.largeThumbnailUrl,
+                year = edited.year,
+                albumArtist = edited.albumArtist,
+                trackNumber = edited.trackNumber,
+                discNumber = edited.discNumber
+            )
+        }
+        val snapshot = _state.value
+        val affectsPlayback = snapshot.currentTrack?.streamUrl == edited.streamUrl ||
+            snapshot.queue.any { it.streamUrl == edited.streamUrl }
+        if (!affectsPlayback) return
+        _state.update { current ->
+            current.copy(
+                currentTrack = current.currentTrack?.withLocalEdit(),
+                queue = current.queue.map { it.withLocalEdit() }
+            )
+        }
+        queueEngine.updateTrackMetadata(edited)
+        PlaybackService.publishTrackMetadata(edited)
+        if (snapshot.currentTrack?.streamUrl == edited.streamUrl) updateWidget()
     }
 
     fun refreshLocalLibraryAccess() {

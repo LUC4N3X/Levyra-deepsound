@@ -24,7 +24,14 @@ internal val localTagKeys = setOf(
     "localTagWriteFailed",
     "localTagUnsupported",
     "localTagTooLarge",
-    "localTagPermissionDenied"
+    "localTagPermissionDenied",
+    "localTagArtwork",
+    "localTagChangeArtwork",
+    "localTagRemoveArtwork",
+    "localTagLyrics",
+    "localTagFileMissing",
+    "localTagNoSpace",
+    "localTagArtworkInvalid"
 )
 
 private fun localTagBundle(
@@ -489,7 +496,361 @@ private val localTagBundles = mapOf(
     )
 )
 
+private fun localTagEditorBundle(
+    artwork: String,
+    changeArtwork: String,
+    removeArtwork: String,
+    lyrics: String,
+    fileMissing: String,
+    noSpace: String,
+    artworkInvalid: String
+): Map<String, String> = mapOf(
+    "localTagArtwork" to artwork,
+    "localTagChangeArtwork" to changeArtwork,
+    "localTagRemoveArtwork" to removeArtwork,
+    "localTagLyrics" to lyrics,
+    "localTagFileMissing" to fileMissing,
+    "localTagNoSpace" to noSpace,
+    "localTagArtworkInvalid" to artworkInvalid
+)
+
+private val localTagEditorBundles = mapOf(
+    "en" to localTagEditorBundle(
+        "Artwork",
+        "Change artwork",
+        "Remove embedded artwork",
+        "Embedded lyrics",
+        "This file was moved or deleted.",
+        "Not enough free space to save the changes safely.",
+        "This image can't be used as artwork."
+    ),
+    "it" to localTagEditorBundle(
+        "Copertina",
+        "Cambia copertina",
+        "Rimuovi copertina incorporata",
+        "Testo incorporato",
+        "Il file è stato spostato o eliminato.",
+        "Spazio libero insufficiente per salvare le modifiche in sicurezza.",
+        "Questa immagine non può essere usata come copertina."
+    ),
+    "es" to localTagEditorBundle(
+        "Portada",
+        "Cambiar portada",
+        "Quitar portada incrustada",
+        "Letra incrustada",
+        "El archivo se movió o se eliminó.",
+        "No hay espacio libre suficiente para guardar los cambios de forma segura.",
+        "Esta imagen no se puede usar como portada."
+    ),
+    "fr" to localTagEditorBundle(
+        "Pochette",
+        "Changer la pochette",
+        "Supprimer la pochette intégrée",
+        "Paroles intégrées",
+        "Ce fichier a été déplacé ou supprimé.",
+        "Espace libre insuffisant pour enregistrer les modifications en toute sécurité.",
+        "Cette image ne peut pas servir de pochette."
+    ),
+    "de" to localTagEditorBundle(
+        "Cover",
+        "Cover ändern",
+        "Eingebettetes Cover entfernen",
+        "Eingebettete Songtexte",
+        "Diese Datei wurde verschoben oder gelöscht.",
+        "Nicht genug freier Speicher, um die Änderungen sicher zu speichern.",
+        "Dieses Bild kann nicht als Cover verwendet werden."
+    ),
+    "pt" to localTagEditorBundle(
+        "Capa",
+        "Alterar capa",
+        "Remover capa incorporada",
+        "Letra incorporada",
+        "Este ficheiro foi movido ou eliminado.",
+        "Não há espaço livre suficiente para guardar as alterações em segurança.",
+        "Esta imagem não pode ser usada como capa."
+    ),
+    "nl" to localTagEditorBundle(
+        "Hoesafbeelding",
+        "Hoesafbeelding wijzigen",
+        "Ingesloten hoesafbeelding verwijderen",
+        "Ingesloten songtekst",
+        "Dit bestand is verplaatst of verwijderd.",
+        "Niet genoeg vrije ruimte om de wijzigingen veilig op te slaan.",
+        "Deze afbeelding kan niet als hoesafbeelding worden gebruikt."
+    ),
+    "pl" to localTagEditorBundle(
+        "Okładka",
+        "Zmień okładkę",
+        "Usuń osadzoną okładkę",
+        "Osadzony tekst",
+        "Ten plik został przeniesiony lub usunięty.",
+        "Za mało wolnego miejsca, aby bezpiecznie zapisać zmiany.",
+        "Tego obrazu nie można użyć jako okładki."
+    ),
+    "ro" to localTagEditorBundle(
+        "Copertă",
+        "Schimbă coperta",
+        "Elimină coperta încorporată",
+        "Versuri încorporate",
+        "Fișierul a fost mutat sau șters.",
+        "Spațiu liber insuficient pentru a salva modificările în siguranță.",
+        "Această imagine nu poate fi folosită drept copertă."
+    ),
+    "el" to localTagEditorBundle(
+        "Εξώφυλλο",
+        "Αλλαγή εξωφύλλου",
+        "Αφαίρεση ενσωματωμένου εξωφύλλου",
+        "Ενσωματωμένοι στίχοι",
+        "Το αρχείο μετακινήθηκε ή διαγράφηκε.",
+        "Δεν υπάρχει αρκετός ελεύθερος χώρος για ασφαλή αποθήκευση των αλλαγών.",
+        "Αυτή η εικόνα δεν μπορεί να χρησιμοποιηθεί ως εξώφυλλο."
+    ),
+    "sv" to localTagEditorBundle(
+        "Omslag",
+        "Byt omslag",
+        "Ta bort inbäddat omslag",
+        "Inbäddad låttext",
+        "Filen har flyttats eller tagits bort.",
+        "Inte tillräckligt med ledigt utrymme för att spara ändringarna säkert.",
+        "Den här bilden kan inte användas som omslag."
+    ),
+    "da" to localTagEditorBundle(
+        "Cover",
+        "Skift cover",
+        "Fjern indlejret cover",
+        "Indlejret sangtekst",
+        "Filen er blevet flyttet eller slettet.",
+        "Ikke nok ledig plads til at gemme ændringerne sikkert.",
+        "Dette billede kan ikke bruges som cover."
+    ),
+    "cs" to localTagEditorBundle(
+        "Obal",
+        "Změnit obal",
+        "Odebrat vložený obal",
+        "Vložený text",
+        "Soubor byl přesunut nebo smazán.",
+        "Nedostatek volného místa pro bezpečné uložení změn.",
+        "Tento obrázek nelze použít jako obal."
+    ),
+    "sk" to localTagEditorBundle(
+        "Obal",
+        "Zmeniť obal",
+        "Odstrániť vložený obal",
+        "Vložený text",
+        "Súbor bol presunutý alebo odstránený.",
+        "Nedostatok voľného miesta na bezpečné uloženie zmien.",
+        "Tento obrázok nemožno použiť ako obal."
+    ),
+    "hr" to localTagEditorBundle(
+        "Omot",
+        "Promijeni omot",
+        "Ukloni ugrađeni omot",
+        "Ugrađeni stihovi",
+        "Datoteka je premještena ili izbrisana.",
+        "Nema dovoljno slobodnog prostora za sigurno spremanje promjena.",
+        "Ova se slika ne može koristiti kao omot."
+    ),
+    "bg" to localTagEditorBundle(
+        "Обложка",
+        "Смяна на обложката",
+        "Премахване на вградената обложка",
+        "Вграден текст",
+        "Файлът е преместен или изтрит.",
+        "Няма достатъчно свободно място за безопасно запазване на промените.",
+        "Това изображение не може да се използва като обложка."
+    ),
+    "hu" to localTagEditorBundle(
+        "Borító",
+        "Borító módosítása",
+        "Beágyazott borító eltávolítása",
+        "Beágyazott dalszöveg",
+        "A fájlt áthelyezték vagy törölték.",
+        "Nincs elég szabad hely a módosítások biztonságos mentéséhez.",
+        "Ez a kép nem használható borítóként."
+    ),
+    "fi" to localTagEditorBundle(
+        "Kansikuva",
+        "Vaihda kansikuva",
+        "Poista upotettu kansikuva",
+        "Upotetut sanat",
+        "Tiedosto on siirretty tai poistettu.",
+        "Vapaata tilaa ei ole tarpeeksi muutosten turvalliseen tallentamiseen.",
+        "Tätä kuvaa ei voi käyttää kansikuvana."
+    ),
+    "et" to localTagEditorBundle(
+        "Kaanepilt",
+        "Muuda kaanepilti",
+        "Eemalda manustatud kaanepilt",
+        "Manustatud laulusõnad",
+        "Fail on teisaldatud või kustutatud.",
+        "Muudatuste turvaliseks salvestamiseks pole piisavalt vaba ruumi.",
+        "Seda pilti ei saa kaanepildina kasutada."
+    ),
+    "nb" to localTagEditorBundle(
+        "Omslag",
+        "Endre omslag",
+        "Fjern innebygd omslag",
+        "Innebygd sangtekst",
+        "Filen er flyttet eller slettet.",
+        "Ikke nok ledig plass til å lagre endringene trygt.",
+        "Dette bildet kan ikke brukes som omslag."
+    ),
+    "ca" to localTagEditorBundle(
+        "Portada",
+        "Canvia la portada",
+        "Elimina la portada incrustada",
+        "Lletra incrustada",
+        "El fitxer s'ha mogut o eliminat.",
+        "No hi ha prou espai lliure per desar els canvis amb seguretat.",
+        "Aquesta imatge no es pot fer servir com a portada."
+    ),
+    "uk" to localTagEditorBundle(
+        "Обкладинка",
+        "Змінити обкладинку",
+        "Видалити вбудовану обкладинку",
+        "Вбудований текст пісні",
+        "Файл переміщено або видалено.",
+        "Недостатньо вільного місця, щоб безпечно зберегти зміни.",
+        "Це зображення не можна використати як обкладинку."
+    ),
+    "ru" to localTagEditorBundle(
+        "Обложка",
+        "Изменить обложку",
+        "Удалить встроенную обложку",
+        "Встроенный текст песни",
+        "Файл был перемещён или удалён.",
+        "Недостаточно свободного места для безопасного сохранения изменений.",
+        "Это изображение нельзя использовать как обложку."
+    ),
+    "tr" to localTagEditorBundle(
+        "Kapak",
+        "Kapağı değiştir",
+        "Gömülü kapağı kaldır",
+        "Gömülü şarkı sözleri",
+        "Bu dosya taşındı veya silindi.",
+        "Değişiklikleri güvenle kaydetmek için yeterli boş alan yok.",
+        "Bu görsel kapak olarak kullanılamaz."
+    ),
+    "ar" to localTagEditorBundle(
+        "صورة الغلاف",
+        "تغيير صورة الغلاف",
+        "إزالة صورة الغلاف المضمّنة",
+        "الكلمات المضمّنة",
+        "تم نقل هذا الملف أو حذفه.",
+        "لا توجد مساحة خالية كافية لحفظ التغييرات بأمان.",
+        "لا يمكن استخدام هذه الصورة كغلاف."
+    ),
+    "fa" to localTagEditorBundle(
+        "کاور",
+        "تغییر کاور",
+        "حذف کاور جاسازی‌شده",
+        "متن ترانهٔ جاسازی‌شده",
+        "این فایل جابه‌جا یا حذف شده است.",
+        "فضای خالی کافی برای ذخیرهٔ امن تغییرات وجود ندارد.",
+        "از این تصویر نمی‌توان به‌عنوان کاور استفاده کرد."
+    ),
+    "zh" to localTagEditorBundle(
+        "封面",
+        "更换封面",
+        "移除内嵌封面",
+        "内嵌歌词",
+        "此文件已被移动或删除。",
+        "可用空间不足，无法安全保存更改。",
+        "此图片无法用作封面。"
+    ),
+    "zh-Hant" to localTagEditorBundle(
+        "封面",
+        "更換封面",
+        "移除內嵌封面",
+        "內嵌歌詞",
+        "此檔案已被移動或刪除。",
+        "可用空間不足，無法安全儲存變更。",
+        "此圖片無法用作封面。"
+    ),
+    "ja" to localTagEditorBundle(
+        "アートワーク",
+        "アートワークを変更",
+        "埋め込みアートワークを削除",
+        "埋め込み歌詞",
+        "このファイルは移動または削除されました。",
+        "変更を安全に保存するための空き容量が不足しています。",
+        "この画像はアートワークとして使用できません。"
+    ),
+    "ko" to localTagEditorBundle(
+        "앨범 아트",
+        "앨범 아트 변경",
+        "내장 앨범 아트 삭제",
+        "내장 가사",
+        "이 파일은 이동되었거나 삭제되었습니다.",
+        "변경 사항을 안전하게 저장할 여유 공간이 부족합니다.",
+        "이 이미지는 앨범 아트로 사용할 수 없습니다."
+    ),
+    "hi" to localTagEditorBundle(
+        "आर्टवर्क",
+        "आर्टवर्क बदलें",
+        "एम्बेड किया गया आर्टवर्क हटाएँ",
+        "एम्बेड किए गए बोल",
+        "यह फ़ाइल हटा दी गई है या कहीं और ले जाई गई है।",
+        "बदलावों को सुरक्षित रूप से सहेजने के लिए पर्याप्त खाली जगह नहीं है।",
+        "इस इमेज को आर्टवर्क के रूप में इस्तेमाल नहीं किया जा सकता।"
+    ),
+    "id" to localTagEditorBundle(
+        "Sampul",
+        "Ganti sampul",
+        "Hapus sampul tersemat",
+        "Lirik tersemat",
+        "File ini telah dipindahkan atau dihapus.",
+        "Ruang kosong tidak cukup untuk menyimpan perubahan dengan aman.",
+        "Gambar ini tidak dapat digunakan sebagai sampul."
+    ),
+    "ms" to localTagEditorBundle(
+        "Kulit album",
+        "Tukar kulit album",
+        "Alih keluar kulit album terbenam",
+        "Lirik terbenam",
+        "Fail ini telah dialihkan atau dipadamkan.",
+        "Ruang kosong tidak mencukupi untuk menyimpan perubahan dengan selamat.",
+        "Imej ini tidak boleh digunakan sebagai kulit album."
+    ),
+    "vi" to localTagEditorBundle(
+        "Ảnh bìa",
+        "Đổi ảnh bìa",
+        "Xóa ảnh bìa nhúng",
+        "Lời bài hát nhúng",
+        "Tệp này đã bị di chuyển hoặc bị xóa.",
+        "Không đủ dung lượng trống để lưu thay đổi một cách an toàn.",
+        "Không thể dùng hình ảnh này làm ảnh bìa."
+    ),
+    "th" to localTagEditorBundle(
+        "ภาพปก",
+        "เปลี่ยนภาพปก",
+        "ลบภาพปกที่ฝังไว้",
+        "เนื้อเพลงที่ฝังไว้",
+        "ไฟล์นี้ถูกย้ายหรือถูกลบแล้ว",
+        "พื้นที่ว่างไม่เพียงพอที่จะบันทึกการเปลี่ยนแปลงอย่างปลอดภัย",
+        "ไม่สามารถใช้รูปภาพนี้เป็นภาพปกได้"
+    ),
+    "fil" to localTagEditorBundle(
+        "Artwork",
+        "Palitan ang artwork",
+        "Alisin ang naka-embed na artwork",
+        "Naka-embed na liriko",
+        "Nailipat o nabura ang file na ito.",
+        "Kulang ang libreng espasyo para ligtas na ma-save ang mga pagbabago.",
+        "Hindi magagamit ang larawang ito bilang artwork."
+    ),
+    "he" to localTagEditorBundle(
+        "עטיפה",
+        "החלפת עטיפה",
+        "הסרת העטיפה המוטמעת",
+        "מילים מוטמעות",
+        "הקובץ הועבר או נמחק.",
+        "אין מספיק מקום פנוי כדי לשמור את השינויים בבטחה.",
+        "לא ניתן להשתמש בתמונה הזו כעטיפה."
+    )
+)
+
 internal fun localTagLocalizationEntries(code: String): Map<String, String> =
-    localizedBundleOrEnglish(localTagBundles, code)
+    localizedBundleOrEnglish(localTagBundles, code) + localizedBundleOrEnglish(localTagEditorBundles, code)
 
 internal fun localTagLocalizationCodes(): Set<String> = localTagBundles.keys

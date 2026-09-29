@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.data.local.LocalMediaEntity
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
 import com.luc4n3x.levyra.data.locallibrary.LocalTagEdits
 import com.luc4n3x.levyra.data.locallibrary.LocalTagWriteResult
+import com.luc4n3x.levyra.data.locallibrary.toLocalTrack
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -359,6 +360,7 @@ internal fun LevyraLibraryScreen(
     var localTagEditorTarget by remember { mutableStateOf<LocalMediaEntity?>(null) }
     var localTagEditorSaving by remember { mutableStateOf(false) }
     var localTagEditorError by remember { mutableStateOf<String?>(null) }
+    var localTagEditorLyrics by remember { mutableStateOf<String?>(null) }
     var pendingLocalTagWrite by remember { mutableStateOf<Pair<LocalMediaEntity, LocalTagEdits>?>(null) }
 
     fun handleTagWriteResult(
@@ -392,7 +394,22 @@ internal fun LevyraLibraryScreen(
                 localTagEditorSaving = false
                 localTagEditorError = strings.localTagTooLarge
             }
-            LocalTagWriteResult.FileUnavailable,
+            LocalTagWriteResult.FileUnavailable -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagFileMissing
+            }
+            LocalTagWriteResult.WriteDenied -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagPermissionDenied
+            }
+            LocalTagWriteResult.InsufficientSpace -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagNoSpace
+            }
+            LocalTagWriteResult.InvalidArtwork -> {
+                localTagEditorSaving = false
+                localTagEditorError = strings.localTagArtworkInvalid
+            }
             LocalTagWriteResult.Failed -> {
                 localTagEditorSaving = false
                 localTagEditorError = strings.localTagWriteFailed
@@ -445,6 +462,10 @@ internal fun LevyraLibraryScreen(
                 state.localLibrary.catalog.mediaByUri[track.streamUrl]?.let { media ->
                     localTagEditorTarget = media
                     localTagEditorError = null
+                    localTagEditorLyrics = null
+                    viewModel.loadLocalEmbeddedLyrics(media.identityKey) { lyrics ->
+                        if (localTagEditorTarget?.identityKey == media.identityKey) localTagEditorLyrics = lyrics
+                    }
                 }
             }
         )
@@ -1051,14 +1072,18 @@ internal fun LevyraLibraryScreen(
     }
 
     localTagEditorTarget?.let { target ->
+        val targetArtwork = remember(target) { target.toLocalTrack().thumbnailUrl }
         LocalTagEditorSheet(
             media = target,
+            artworkModel = targetArtwork,
+            embeddedLyrics = localTagEditorLyrics,
             saving = localTagEditorSaving,
             error = localTagEditorError,
             onDismiss = {
                 if (!localTagEditorSaving) {
                     localTagEditorTarget = null
                     localTagEditorError = null
+                    localTagEditorLyrics = null
                     pendingLocalTagWrite = null
                 }
             },

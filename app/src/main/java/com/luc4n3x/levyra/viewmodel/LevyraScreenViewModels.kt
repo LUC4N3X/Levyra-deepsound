@@ -353,6 +353,8 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
         edits: com.luc4n3x.levyra.data.locallibrary.LocalTagEdits,
         onResult: (com.luc4n3x.levyra.data.locallibrary.LocalTagWriteResult) -> Unit
     ) = root.saveLocalAudioTags(identityKey, edits, onResult)
+    fun loadLocalEmbeddedLyrics(identityKey: String, onResult: (String) -> Unit) =
+        root.loadLocalEmbeddedLyrics(identityKey, onResult)
     fun setLocalFolderHidden(folderKey: String, hidden: Boolean) = root.setLocalFolderExcluded(folderKey, hidden)
     fun cancelDownload(taskKey: String) = root.cancelDownload(taskKey)
     fun retryBatchDownload(batchKey: String) = root.retryBatchDownload(batchKey)
