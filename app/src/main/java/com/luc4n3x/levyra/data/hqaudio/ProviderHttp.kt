@@ -163,36 +163,35 @@ internal object ConfigurableProviderPlaybackPolicy {
 
     private val byHost = ConcurrentHashMap<String, Policy>()
 
-    fun register(url: HttpUrl, allowedHosts: Set<String>, expiresAtMs: Long) {
+    fun register(
+        url: HttpUrl,
+        allowedHosts: Set<String>,
+        expiresAtMs: Long,
+        nowMs: Long = System.currentTimeMillis()
+    ): Boolean {
         val normalized = allowedHosts
             .map(ConfigurableProviderDestinationPolicy::normalizeHost)
             .filter(String::isNotBlank)
             .toSet()
-        if (expiresAtMs <= System.currentTimeMillis()) return
-        if (!ConfigurableProviderDestinationPolicy.allows(url, normalized)) return
+        if (expiresAtMs <= nowMs || normalized.isEmpty() || normalized.size > MAX_HOSTS_PER_POLICY) return false
+        if (!ConfigurableProviderDestinationPolicy.allows(url, normalized)) return false
+        val newHosts = normalized.count { it !in byHost }
+        if (byHost.size + newHosts > MAX_REGISTERED_HOSTS) return false
 
         val policy = Policy(normalized, expiresAtMs)
         normalized.forEach { host -> byHost[host] = policy }
-        if (byHost.size > MAX_REGISTERED_HOSTS) prune(System.currentTimeMillis())
+        return true
     }
 
     fun allowedHostsFor(rawUrl: String, nowMs: Long = System.currentTimeMillis()): Set<String>? {
         val url = rawUrl.toHttpUrlOrNull() ?: return null
         val host = ConfigurableProviderDestinationPolicy.normalizeHost(url.host)
         val policy = byHost[host] ?: return null
-        if (policy.expiresAtMs <= nowMs) {
-            policy.allowedHosts.forEach { member -> byHost.remove(member, policy) }
-            return null
-        }
+        if (policy.expiresAtMs <= nowMs) return emptySet()
         return policy.allowedHosts.takeIf { ConfigurableProviderDestinationPolicy.allows(url, it) }
     }
 
-    private fun prune(nowMs: Long) {
-        byHost.entries.forEach { (host, policy) ->
-            if (policy.expiresAtMs <= nowMs) byHost.remove(host, policy)
-        }
-    }
-
+    private const val MAX_HOSTS_PER_POLICY = 32
     private const val MAX_REGISTERED_HOSTS = 128
 }
 
