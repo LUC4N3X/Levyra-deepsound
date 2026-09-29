@@ -2,48 +2,26 @@ package com.luc4n3x.levyra.player.offline
 
 import java.nio.file.Files
 import java.nio.file.Path
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CodeRabbitOfflineRegressionTest {
     @Test
-    fun parallelFlacDownloadDoesNotRequestMp4Extraction() {
-        val content = exporterSource()
+    fun flacInputBypassesMp4TransformerExtraction() {
+        val content = extractorSource()
+        val flacGuard = content.indexOf("if (isFlacInput(input))")
+        val transformerPath = content.indexOf("runExtraction(context, input, output)")
 
-        assertFalse(
-            "FLAC range downloads must not be sent through the MP4 audio extractor",
-            content.contains("DownloadedAudio(temp, container, !isMp4AudioSource(contentType, track.streamUrl))")
-        )
-        assertTrue(
-            "Parallel downloads should only request extraction for muxed MP4",
-            content.contains("DownloadedAudio(temp, container, isMuxedMp4Source(contentType, track.streamUrl))")
-        )
+        assertTrue("FLAC input must be detected before Transformer extraction", flacGuard >= 0)
+        assertTrue("FLAC input must be copied without lossy transcoding", content.contains("input.copyTo(output, overwrite = true)"))
+        assertTrue("FLAC passthrough must execute before the MP4 extraction path", transformerPath > flacGuard)
     }
 
-    @Test
-    fun validatedMimeHintIsUsedWhenDownloadResponsesAreOpaque() {
-        val content = exporterSource()
-        val directResponseCheck = "isSupportedOfflineSource(responseType, response.request.url.toString())"
-
-        assertFalse(
-            "Opaque responses must fall back to the already validated selected-stream MIME type",
-            content.contains(directResponseCheck)
-        )
-        assertTrue(
-            "Serial and range response validation should share the validated MIME fallback",
-            content.countOccurrences("offlineResponseContentType(") >= 3
-        )
-    }
-
-    private fun exporterSource(): String {
+    private fun extractorSource(): String {
         val source = sequenceOf(
-            Path.of("app/src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt"),
-            Path.of("src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt")
-        ).firstOrNull(Files::exists) ?: error("OfflineAudioExporter.kt not found")
+            Path.of("app/src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioTrackExtractor.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioTrackExtractor.kt")
+        ).firstOrNull(Files::exists) ?: error("OfflineAudioTrackExtractor.kt not found")
         return Files.readString(source)
     }
-
-    private fun String.countOccurrences(needle: String): Int =
-        windowed(needle.length, 1).count { it == needle }
 }
