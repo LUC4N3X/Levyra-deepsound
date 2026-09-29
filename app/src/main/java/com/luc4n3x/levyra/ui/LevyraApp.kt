@@ -4246,8 +4246,6 @@ private fun AlbumTracksUnavailableState(message: String) {
     }
 }
 
-@Composable
-
 private fun uiTrackMatches(current: Track?, candidate: Track): Boolean {
     if (current == null) return false
     if (current.id.isNotBlank() && candidate.id.isNotBlank() && current.id == candidate.id) return true
@@ -4256,6 +4254,47 @@ private fun uiTrackMatches(current: Track?, candidate: Track): Boolean {
     val currentArtist = current.artist.trim().lowercase()
     val candidateArtist = candidate.artist.trim().lowercase()
     return currentTitle.isNotBlank() && currentTitle == candidateTitle && currentArtist == candidateArtist
+}
+
+@Composable
+private fun AlbumArtworkLayer(
+    cover: String,
+    title: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    motionEnabled: Boolean,
+    canvasQuality: LevyraCanvasQuality,
+    modifier: Modifier = Modifier
+) {
+    MotionArtworkLayer(
+        artwork = motionArtwork,
+        enabled = motionEnabled,
+        isPlaying = false,
+        pageMode = true,
+        cornerRadius = 0.dp,
+        presentation = MotionArtworkPresentation.Cinematic,
+        quality = canvasQuality,
+        modifier = modifier
+    ) {
+        SeamlessArtworkImage(
+            url = cover,
+            contentDescription = title,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(listOf(AlbumNeutralPaletteStart, AlbumNeutralPaletteEnd))),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Album,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.82f),
+                    modifier = Modifier.size(72.dp)
+                )
+            }
+        }
+    }
 }
 
 @Composable

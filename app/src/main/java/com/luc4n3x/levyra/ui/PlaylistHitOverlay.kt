@@ -85,7 +85,6 @@ import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersivePortraitHeroHeight
 import com.luc4n3x.levyra.ui.media.immersiveWideArtworkSize
-import com.luc4n3x.levyra.ui.theme.LevyraIsLight
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder

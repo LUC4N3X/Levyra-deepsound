@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.ui.media
 
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
