@@ -131,73 +131,158 @@ internal class GenericLosslessAddonProvider(
         attempt: AudioQualityPreference,
         rejections: MutableList<StreamRejection>
     ): AttemptResolution {
-        val streamUrl = endpoint(manifest.base, "stream", candidate.providerTrackId)
-            ?.newBuilder()
-            ?.addQueryParameter("quality", attempt.protocolValue)
-            ?.addQueryParameter("atmos", if (attempt == AudioQualityPreference.DOLBY_ATMOS) "auto" else "none")
-            ?.addQueryParameter("intent", request.purpose.name.lowercase(Locale.ROOT))
-            ?.build()
+        val streamUrl = buildStreamUrl(manifest, candidate, request, attempt)
             ?: return AttemptResolution.Failed(ProviderFailure.MALFORMED_RESPONSE)
-        when (val result = executeJson(streamUrl, manifest.allowedHosts, MAX_STREAM_BODY_BYTES, streamCircuitBreaker)) {
-            is JsonResult.Failure -> {
-                if (result.failure == ProviderFailure.NOT_FOUND) {
-                    rejections += StreamRejection.NO_MEDIA
-                    return AttemptResolution.Continue
-                }
-                return AttemptResolution.Failed(result.failure)
-            }
-            is JsonResult.Success -> {
-                val payload = parseStream(result.body) ?: run {
-                    rejections += StreamRejection.NO_MEDIA
-                    return AttemptResolution.Continue
-                }
-                val mediaUrl = payload.url.toHttpUrlOrNull()
-                if (mediaUrl == null || !ConfigurableProviderDestinationPolicy.allows(mediaUrl, manifest.allowedHosts) || isFailedStream(mediaUrl.toString())) {
-                    rejections += StreamRejection.TRANSPORT
-                    return AttemptResolution.Continue
-                }
-                val expiresAtMs = streamExpiry(payload.expiresAtMs, mediaUrl)
-                if (expiresAtMs <= clock() + MINIMUM_URL_LIFETIME_MS) {
-                    rejections += StreamRejection.URL_EXPIRED
-                    return AttemptResolution.Continue
-                }
-                val probe = try {
-                    probe(mediaUrl, manifest.allowedHosts)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: IOException) {
-                    rejections += StreamRejection.TRANSPORT
-                    return AttemptResolution.Continue
-                }
-                return when (val validation = LosslessStreamValidator.validate(probe, attempt, candidate.durationSeconds)) {
-                    is LosslessStreamValidation.Invalid -> {
-                        rejections += validation.rejection
-                        AttemptResolution.Continue
-                    }
-                    is LosslessStreamValidation.Valid -> {
-                        if (request.purpose == AudioStreamPurpose.DOWNLOAD &&
-                            validation.format.deliveryMethod != com.luc4n3x.levyra.domain.PlaybackDeliveryMethod.PROGRESSIVE
-                        ) {
-                            rejections += StreamRejection.UNSUPPORTED_CONTAINER
-                            AttemptResolution.Continue
-                        } else if (
-                            request.purpose == AudioStreamPurpose.PLAYBACK &&
-                            !ConfigurableProviderPlaybackPolicy.register(mediaUrl, manifest.allowedHosts, expiresAtMs)
-                        ) {
-                            rejections += StreamRejection.TRANSPORT
-                            AttemptResolution.Continue
-                        } else {
-                            val resolved = validation.format.toResolved(candidate, request.preference, mediaUrl.toString(), expiresAtMs)
-                            if (satisfiesAttempt(validation.format, attempt)) {
-                                AttemptResolution.Resolved(resolved)
-                            } else {
-                                AttemptResolution.CandidateVerified(resolved)
-                            }
-                        }
-                    }
-                }
-            }
+        return when (val result = executeJson(streamUrl, manifest.allowedHosts, MAX_STREAM_BODY_BYTES, streamCircuitBreaker)) {
+            is JsonResult.Failure -> handleStreamFailure(result, rejections)
+            is JsonResult.Success -> evaluateStreamPayload(
+                manifest = manifest,
+                candidate = candidate,
+                request = request,
+                attempt = attempt,
+                body = result.body,
+                rejections = rejections
+            )
         }
+    }
+
+    private fun buildStreamUrl(
+        manifest: ManifestCache,
+        candidate: AlternativeTrackCandidate,
+        request: AudioQualityRequest,
+        attempt: AudioQualityPreference
+    ): HttpUrl? = endpoint(manifest.base, "stream", candidate.providerTrackId)
+        ?.newBuilder()
+        ?.addQueryParameter("quality", attempt.protocolValue)
+        ?.addQueryParameter("atmos", if (attempt == AudioQualityPreference.DOLBY_ATMOS) "auto" else "none")
+        ?.addQueryParameter("intent", request.purpose.name.lowercase(Locale.ROOT))
+        ?.build()
+
+    private fun handleStreamFailure(
+        result: JsonResult.Failure,
+        rejections: MutableList<StreamRejection>
+    ): AttemptResolution {
+        if (result.failure != ProviderFailure.NOT_FOUND) return AttemptResolution.Failed(result.failure)
+        return rejectStream(rejections, StreamRejection.NO_MEDIA)
+    }
+
+    private suspend fun evaluateStreamPayload(
+        manifest: ManifestCache,
+        candidate: AlternativeTrackCandidate,
+        request: AudioQualityRequest,
+        attempt: AudioQualityPreference,
+        body: String,
+        rejections: MutableList<StreamRejection>
+    ): AttemptResolution {
+        val prepared = prepareStream(body, manifest, rejections) ?: return AttemptResolution.Continue
+        val validation = validatePreparedStream(prepared, manifest, candidate, attempt, rejections)
+            ?: return AttemptResolution.Continue
+        return resolveValidation(validation, prepared, candidate, request, attempt, manifest, rejections)
+    }
+
+    private fun prepareStream(
+        body: String,
+        manifest: ManifestCache,
+        rejections: MutableList<StreamRejection>
+    ): PreparedStream? {
+        val payload = parseStream(body) ?: return rejectAndNull(rejections, StreamRejection.NO_MEDIA)
+        val mediaUrl = payload.url.toHttpUrlOrNull()
+            ?: return rejectAndNull(rejections, StreamRejection.TRANSPORT)
+        if (!ConfigurableProviderDestinationPolicy.allows(mediaUrl, manifest.allowedHosts) || isFailedStream(mediaUrl.toString())) {
+            return rejectAndNull(rejections, StreamRejection.TRANSPORT)
+        }
+        val expiresAtMs = streamExpiry(payload.expiresAtMs, mediaUrl)
+        if (expiresAtMs <= clock() + MINIMUM_URL_LIFETIME_MS) {
+            return rejectAndNull(rejections, StreamRejection.URL_EXPIRED)
+        }
+        return PreparedStream(mediaUrl, expiresAtMs)
+    }
+
+    private suspend fun validatePreparedStream(
+        prepared: PreparedStream,
+        manifest: ManifestCache,
+        candidate: AlternativeTrackCandidate,
+        attempt: AudioQualityPreference,
+        rejections: MutableList<StreamRejection>
+    ): LosslessStreamValidation? {
+        val response = try {
+            probe(prepared.url, manifest.allowedHosts)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: IOException) {
+            rejections += StreamRejection.TRANSPORT
+            return null
+        }
+        return LosslessStreamValidator.validate(response, attempt, candidate.durationSeconds)
+    }
+
+    private fun resolveValidation(
+        validation: LosslessStreamValidation,
+        prepared: PreparedStream,
+        candidate: AlternativeTrackCandidate,
+        request: AudioQualityRequest,
+        attempt: AudioQualityPreference,
+        manifest: ManifestCache,
+        rejections: MutableList<StreamRejection>
+    ): AttemptResolution = when (validation) {
+        is LosslessStreamValidation.Invalid -> rejectStream(rejections, validation.rejection)
+        is LosslessStreamValidation.Valid -> resolveVerifiedStream(
+            format = validation.format,
+            prepared = prepared,
+            candidate = candidate,
+            request = request,
+            attempt = attempt,
+            manifest = manifest,
+            rejections = rejections
+        )
+    }
+
+    private fun resolveVerifiedStream(
+        format: VerifiedAudioFormat,
+        prepared: PreparedStream,
+        candidate: AlternativeTrackCandidate,
+        request: AudioQualityRequest,
+        attempt: AudioQualityPreference,
+        manifest: ManifestCache,
+        rejections: MutableList<StreamRejection>
+    ): AttemptResolution {
+        if (request.purpose == AudioStreamPurpose.DOWNLOAD &&
+            format.deliveryMethod != com.luc4n3x.levyra.domain.PlaybackDeliveryMethod.PROGRESSIVE
+        ) {
+            return rejectStream(rejections, StreamRejection.UNSUPPORTED_CONTAINER)
+        }
+        if (request.purpose == AudioStreamPurpose.PLAYBACK &&
+            !ConfigurableProviderPlaybackPolicy.register(prepared.url, manifest.allowedHosts, prepared.expiresAtMs)
+        ) {
+            return rejectStream(rejections, StreamRejection.TRANSPORT)
+        }
+        val resolved = format.toResolved(
+            candidate = candidate,
+            requested = request.preference,
+            url = prepared.url.toString(),
+            expiresAtMs = prepared.expiresAtMs
+        )
+        return if (satisfiesAttempt(format, attempt)) {
+            AttemptResolution.Resolved(resolved)
+        } else {
+            AttemptResolution.CandidateVerified(resolved)
+        }
+    }
+
+    private fun rejectStream(
+        rejections: MutableList<StreamRejection>,
+        rejection: StreamRejection
+    ): AttemptResolution {
+        rejections += rejection
+        return AttemptResolution.Continue
+    }
+
+    private fun rejectAndNull(
+        rejections: MutableList<StreamRejection>,
+        rejection: StreamRejection
+    ): PreparedStream? {
+        rejections += rejection
+        return null
     }
 
     override fun health(): List<ProviderBackendHealth> = listOf(
@@ -425,6 +510,7 @@ internal class GenericLosslessAddonProvider(
     private data class ManifestCache(val base: HttpUrl, val allowedHosts: Set<String>, val expiresAtMs: Long)
     private data class CachedCandidate(val candidate: AlternativeTrackCandidate, val expiresAtMs: Long)
     private data class StreamPayload(val url: String, val expiresAtMs: Long)
+    private data class PreparedStream(val url: HttpUrl, val expiresAtMs: Long)
 
     private sealed interface AttemptResolution {
         data class Resolved(val stream: ResolvedHighQualityStream) : AttemptResolution
