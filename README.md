@@ -104,7 +104,7 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 
 <div align="center">
 
-<a href="docs/assets/showcase/00_levyra_hero_wall_player.webp"><img src="docs/assets/showcase/00_levyra_hero_wall_player.webp?v=minimal-20260929" width="100%" alt="Levyra music player for Android and Windows" /></a>
+<a href="docs/assets/showcase/00_levyra_hero_wall_player.webp"><img src="docs/assets/showcase/00_levyra_hero_wall_player.webp?v=cascade-20260929" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <p align="center">
   <sub>Browse radio and charts, open an artist, switch to video or follow synced lyrics. Your listening stats stay on your device.</sub>

@@ -123,78 +123,99 @@ def create_delicate_bg(width, height, top_tint, accent_tone, glow_tone=None, y_s
 
 def generate_hero_panoramic_showcase():
     """
-    Generates 00_levyra_hero_wall_player.webp with compact cinematic proportions,
-    the user-provided 3D Levyra DeepSound logo, and dynamic fanned screenshot wall.
+    Generates 00_levyra_hero_wall_player.webp with compact cinematic proportions (2400x880),
+    a fluid organic brand wave, prominent 3D Levyra DeepSound logo (no long descriptions),
+    and a dynamic -20° cascading phone flight inspired by modern product showcases.
     """
     canvas_w, canvas_h = 2400, 880
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (7, 8, 14, 255))
-    draw = ImageDraw.Draw(canvas)
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (8, 10, 16, 255))
 
-    # Ambient geometric lighting accents
-    draw.polygon([(680, 0), (2400, 0), (2400, 320), (950, 520)], fill=(20, 36, 75, 255))
-    draw.polygon([(1050, 880), (2400, 620), (2400, 880)], fill=(95, 22, 115, 200))
-    draw.polygon([(1650, 0), (1920, 0), (1350, 880), (1100, 880)], fill=(180, 25, 140, 60))
+    # Fluid organic wave on the left (Levyra Cosmic Sapphire brand wave)
+    w_canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    wdraw = ImageDraw.Draw(w_canvas)
 
-    # Soft radial glow behind center hero phone
-    glow_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    gdraw = ImageDraw.Draw(glow_layer)
-    gdraw.ellipse((1200, 100, 1800, 700), fill=(40, 80, 180, 70))
-    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(80))
-    canvas.paste(glow_layer, (0, 0), glow_layer)
+    steps = 120
+    t = np.linspace(0, 1, steps)
+    x_start = 720
+    x_end = 450
+    c1_x = 880
+    c2_x = 380
+    xs = (1 - t)**3 * x_start + 3 * (1 - t)**2 * t * c1_x + 3 * (1 - t) * t**2 * c2_x + t**3 * x_end
+    ys = np.linspace(0, canvas_h, steps)
 
-    # Paste Levyra DeepSound 3D Logo from user path
-    target_logo_w = 340
-    logo_file = LOGO_PATH if os.path.exists(LOGO_PATH) else r"app\src\main\res\drawable\levyra_logo.png"
-    with Image.open(logo_file) as l_src:
-        logo = l_src.convert("RGBA")
-        bbox = logo.getbbox()
-        logo_crop = logo.crop(bbox)
-        target_logo_h = int(logo_crop.height * (target_logo_w / logo_crop.width))
-        logo_res = logo_crop.resize((target_logo_w, target_logo_h), Image.Resampling.LANCZOS)
-    canvas.paste(logo_res, (110, 65), logo_res)
+    poly = [(0, 0)]
+    for x, y in zip(xs, ys):
+        poly.append((int(x), int(y)))
+    poly.extend([(0, canvas_h)])
 
-    # Typography on the left
-    text_y = 65 + target_logo_h + 30
-    draw.text((118, text_y), "MUSIC, KEPT PERSONAL.", font=get_font(28, bold=True), fill=(56, 189, 248, 255))
-    text_y += 50
-    draw.multiline_text(
-        (118, text_y),
-        "Native playback on Android and Windows.\nHigh-res streaming, synced lyrics & offline library.\nNo ads. Zero telemetry. 100% open source.",
-        font=get_font(22),
-        fill=(205, 215, 230, 255),
-        spacing=10
-    )
-    text_y += 120
-    draw.line((118, text_y, 480, text_y), fill=(255, 255, 255, 60), width=2)
-    text_y += 24
-    draw.text((118, text_y), "PLAY  /  EXPLORE  /  KEEP", font=get_font(18, bold=True), fill=(255, 255, 255, 180))
-    text_y += 35
-    draw.text((118, text_y), "ANDROID • WINDOWS", font=get_font(17, bold=True), fill=(56, 189, 248, 220))
+    wdraw.polygon(poly, fill=(18, 38, 88, 255))
 
-    # Two-tier fanned phone screenshot wall
-    back_row = [
-        ("Screenshot_20260926_194736_LEVYRA.jpg", 460, 640, 80, -7),
-        ("Screenshot_20260926_194706_LEVYRA.jpg", 480, 980, 50, -3),
-        ("Screenshot_20260927_132248_LEVYRA.jpg", 480, 1680, 50, 4),
-        ("Screenshot_20260929_194827_LEVYRA.jpg", 460, 1960, 90, 7),
+    # Ambient glows behind wave and phones
+    w_glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    gdraw = ImageDraw.Draw(w_glow)
+    gdraw.ellipse((350, 80, 880, 800), fill=(26, 92, 215, 85))
+    gdraw.ellipse((100, 500, 600, 950), fill=(110, 25, 145, 60))
+    w_glow = w_glow.filter(ImageFilter.GaussianBlur(130))
+
+    canvas = Image.alpha_composite(canvas, w_canvas)
+    canvas = Image.alpha_composite(canvas, w_glow)
+
+    r_glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    rgdraw = ImageDraw.Draw(r_glow)
+    rgdraw.ellipse((1350, 120, 2250, 820), fill=(50, 25, 115, 65))
+    r_glow = r_glow.filter(ImageFilter.GaussianBlur(140))
+    canvas = Image.alpha_composite(canvas, r_glow)
+
+    ROT_ANGLE = -20
+
+    phones_spec = [
+        # Back / Upper Row
+        ("Screenshot_20260927_140841_LEVYRA.jpg", 640, 880, -110, 1),
+        ("Screenshot_20260926_194706_LEVYRA.jpg", 660, 1360, -160, 2),
+        ("Screenshot_20260929_194827_LEVYRA.jpg", 640, 1840, -120, 1),
+
+        # Middle / Center Row
+        ("Screenshot_20260926_171253_LEVYRA.jpg", 710, 960, 300, 4),
+        ("Screenshot_20260926_193948_LEVYRA.jpg", 760, 1450, 210, 5),
+        ("Screenshot_20260926_194603_LEVYRA.jpg", 710, 1950, 250, 4),
+
+        # Bottom / Accents
+        ("Screenshot_20260929_195520_LEVYRA.jpg", 650, 1560, 650, 3),
+        ("Screenshot_20260929_201454_LEVYRA.jpg", 650, 2060, 680, 3),
     ]
-    front_row = [
-        ("Screenshot_20260926_171253_LEVYRA.jpg", 640, 860, 230, -4),
-        ("Screenshot_20260926_193948_LEVYRA.jpg", 770, 1260, 95, 0),
-        ("Screenshot_20260926_194603_LEVYRA.jpg", 640, 1720, 230, 4),
-    ]
 
-    for filename, height, px, py, angle in back_row + front_row:
+    phones_spec.sort(key=lambda s: s[4])
+
+    for filename, height, px, py, z in phones_spec:
         s_path = os.path.join(SCREENSHOT_DIR, filename)
         if not os.path.exists(s_path):
             continue
         with Image.open(s_path) as src:
             phone = create_clean_phone(src, target_height=height)
-        if angle:
-            phone = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        shadow, pad = create_studio_shadow(phone, blur=36, opacity=160, offset_y=22)
+        rotated = phone.rotate(ROT_ANGLE, resample=Image.Resampling.BICUBIC, expand=True)
+        shadow, pad = create_studio_shadow(rotated, blur=40, opacity=145, offset_y=24)
         canvas.paste(shadow, (px - pad, py - pad), shadow)
-        canvas.paste(phone, (px, py), phone)
+        canvas.paste(rotated, (px, py), rotated)
+
+    # Left branding: Large 3D Logo + concise punchy title (NO long paragraphs)
+    logo_file = LOGO_PATH if os.path.exists(LOGO_PATH) else r"app\src\main\res\drawable\levyra_logo.png"
+    with Image.open(logo_file) as l_src:
+        logo = l_src.convert("RGBA")
+        bbox = logo.getbbox()
+        logo_crop = logo.crop(bbox)
+        target_logo_w = 440
+        target_logo_h = int(logo_crop.height * (target_logo_w / logo_crop.width))
+        logo_res = logo_crop.resize((target_logo_w, target_logo_h), Image.Resampling.LANCZOS)
+
+    logo_x = 90
+    logo_y = (canvas_h - target_logo_h - 70) // 2
+    canvas.paste(logo_res, (logo_x, logo_y), logo_res)
+
+    draw = ImageDraw.Draw(canvas)
+    text_y = logo_y + target_logo_h + 24
+    draw.text((logo_x + 10, text_y), "MUSIC, KEPT PERSONAL.", font=get_font(28, bold=True), fill=(56, 189, 248, 255))
+    text_y += 42
+    draw.text((logo_x + 10, text_y), "ANDROID • WINDOWS", font=get_font(18, bold=True), fill=(185, 205, 230, 200))
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
