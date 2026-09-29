@@ -89,4 +89,33 @@ class ProviderDestinationPolicyTest {
             )
         )
     }
+
+    @Test
+    fun registeredHostWithDisallowedSchemeOrPortStaysOnProtectedPath() {
+        val now = 1_800_000_100_000L
+        val allowed = setOf("cdn-secure.example.org")
+        assertTrue(
+            ConfigurableProviderPlaybackPolicy.register(
+                "https://cdn-secure.example.org/audio/track.flac".toHttpUrl(),
+                allowed,
+                now + 60_000L,
+                now
+            )
+        )
+
+        assertEquals(
+            emptySet<String>(),
+            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
+                "http://cdn-secure.example.org/audio/track.flac",
+                now
+            )
+        )
+        assertEquals(
+            emptySet<String>(),
+            ConfigurableProviderPlaybackPolicy.allowedHostsFor(
+                "https://cdn-secure.example.org:8443/audio/track.flac",
+                now
+            )
+        )
+    }
 }
