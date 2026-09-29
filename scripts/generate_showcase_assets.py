@@ -1,4 +1,5 @@
 import os
+import math
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
 SCREENSHOT_DIR = os.environ.get(
@@ -11,36 +12,9 @@ DOWNLOADS_DIR = os.environ.get(
 )
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
 OUT_CARDS_DIR = os.path.join(OUT_SHOWCASE_DIR, "cards")
-LOGO_PATH = r"app\src\main\res\drawable\levyra_logo.png"
 
 os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_CARDS_DIR, exist_ok=True)
-
-SCREENS = {
-    "home": os.environ.get("LEVYRA_SCREEN_HOME", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_171253_LEVYRA.jpg")),
-    "charts": "screen-charts.jpg",
-    "genres": os.environ.get("LEVYRA_SCREEN_GENRES", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_194827_LEVYRA.jpg")),
-    "listening_pulse": os.environ.get("LEVYRA_SCREEN_PULSE", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_193717_LEVYRA.jpg")),
-    "lyrics": "screen-lyrics.jpg",
-    "now_playing": os.environ.get("LEVYRA_SCREEN_PLAYER", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_193948_LEVYRA.jpg")),
-    "search_artist": "screen-search-artist.jpg",
-    "artist_discography": "screen-artist-discography.jpg",
-    "artist_profile": os.environ.get("LEVYRA_SCREEN_ARTIST", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_194603_LEVYRA.jpg")),
-    "album": os.environ.get("LEVYRA_SCREEN_ALBUM", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_194706_LEVYRA.jpg")),
-    "search": os.environ.get("LEVYRA_SCREEN_SEARCH", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_194736_LEVYRA.jpg")),
-    "player_settings": os.environ.get("LEVYRA_SCREEN_SETTINGS", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_194845_LEVYRA.jpg")),
-    "explore": os.environ.get("LEVYRA_SCREEN_EXPLORE", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_194853_LEVYRA.jpg")),
-    "new_releases": os.environ.get("LEVYRA_SCREEN_RELEASES", os.path.join(DOWNLOADS_DIR, "Screenshot_20260927_132248_LEVYRA.jpg")),
-    "collections": os.environ.get("LEVYRA_SCREEN_COLLECTIONS", os.path.join(DOWNLOADS_DIR, "Screenshot_20260927_132323_LEVYRA.jpg")),
-    "listening_rhythm": os.environ.get("LEVYRA_SCREEN_RHYTHM", os.path.join(DOWNLOADS_DIR, "Screenshot_20260927_131943_LEVYRA.jpg")),
-    "player_deck": os.environ.get("LEVYRA_SCREEN_PLAYER_DECK", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_195520_LEVYRA.jpg")),
-    "artist_playlists": os.environ.get("LEVYRA_SCREEN_ARTIST_PLAYLISTS", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_201454_LEVYRA.jpg")),
-    "settings_vault": os.environ.get("LEVYRA_SCREEN_SETTINGS_VAULT", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_194944_LEVYRA.jpg")),
-    "your_orbit": os.environ.get("LEVYRA_SCREEN_ORBIT", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_195235_LEVYRA.jpg")),
-}
-
-def get_screen_path(filename):
-    return filename if os.path.isabs(filename) else os.path.join(SCREENSHOT_DIR, filename)
 
 def get_font(size, bold=False):
     """Loads a TrueType font across Windows/Linux/macOS or falls back safely to default font."""
@@ -61,398 +35,250 @@ def get_font(size, bold=False):
     except TypeError:
         return ImageFont.load_default()
 
-def enhance_screenshot(img):
-    """Subtle polish: OLED contrast, slight vibrance, crisp sharpness."""
-    img = img.convert("RGB")
-    enhancer = ImageEnhance.Contrast(img)
-    img = enhancer.enhance(1.04)
-    enhancer = ImageEnhance.Color(img)
-    img = enhancer.enhance(1.05)
-    enhancer = ImageEnhance.Sharpness(img)
-    img = enhancer.enhance(1.10)
-    return img
+def create_clean_phone(source_img, target_height=1060):
+    """Renders a realistic dark titanium phone frame with punch-hole camera and subtle glass reflection."""
+    src_w, src_h = source_img.size
+    screen_h = target_height
+    screen_w = int(screen_h * src_w / src_h)
 
-def create_phone_frame(screen_img, target_height=1400, bezel_color=(20, 22, 28)):
-    """
-    Renders a realistic, ultra-sleek modern bezel frame around the screenshot with antialiasing,
-    rounded screen corners, edge reflection, and drop shadow.
-    """
-    screen_img = enhance_screenshot(screen_img)
+    bezel = 14
+    phone_w = screen_w + bezel * 2
+    phone_h = screen_h + bezel * 2
+    outer_r = 46
+    inner_r = 36
 
-    orig_w, orig_h = screen_img.size
-    aspect = orig_w / orig_h
+    screen_resized = source_img.resize((screen_w, screen_h), Image.Resampling.LANCZOS).convert("RGBA")
+    screen_resized = ImageEnhance.Contrast(screen_resized).enhance(1.05)
+    screen_resized = ImageEnhance.Sharpness(screen_resized).enhance(1.10)
 
-    screen_h = int(target_height)
-    screen_w = int(screen_h * aspect)
+    # Subtle glass sheen
+    sheen = Image.new("RGBA", (screen_w, screen_h), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(sheen)
+    sdraw.polygon([(0, 0), (screen_w, 0), (0, int(screen_h * 0.40))], fill=(255, 255, 255, 12))
+    screen_resized = Image.alpha_composite(screen_resized, sheen)
 
-    bezel_lr = int(screen_w * 0.032)
-    bezel_tb = int(screen_h * 0.022)
-    corner_radius = int(screen_w * 0.11)
-    screen_corner_radius = int(screen_w * 0.08)
+    screen_mask = Image.new("L", (screen_w, screen_h), 0)
+    ImageDraw.Draw(screen_mask).rounded_rectangle((0, 0, screen_w, screen_h), radius=inner_r, fill=255)
 
-    frame_w = screen_w + bezel_lr * 2
-    frame_h = screen_h + bezel_tb * 2
+    phone = Image.new("RGBA", (phone_w, phone_h), (0, 0, 0, 0))
+    pdraw = ImageDraw.Draw(phone)
 
-    SS = 2
-    canvas_w = (frame_w + 60) * SS
-    canvas_h = (frame_h + 60) * SS
+    # Frame
+    pdraw.rounded_rectangle((0, 0, phone_w, phone_h), radius=outer_r, fill=(20, 23, 30, 255))
+    pdraw.rounded_rectangle((0, 0, phone_w, phone_h), radius=outer_r, outline=(255, 255, 255, 50), width=1)
 
-    body_img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(body_img)
+    phone.paste(screen_resized, (bezel, bezel), screen_mask)
 
-    phone_x0 = 30 * SS
-    phone_y0 = 30 * SS
-    phone_x1 = phone_x0 + frame_w * SS
-    phone_y1 = phone_y0 + frame_h * SS
+    # Speaker slit
+    speaker_w = 44
+    speaker_h = 3
+    speaker_x = (phone_w - speaker_w) // 2
+    pdraw.rounded_rectangle((speaker_x, 5, speaker_x + speaker_w, 8), radius=2, fill=(10, 10, 12, 220))
 
-    # Outer phone titanium bezel
-    draw.rounded_rectangle(
-        [phone_x0, phone_y0, phone_x1, phone_y1],
-        radius=corner_radius * SS,
-        fill=(bezel_color[0], bezel_color[1], bezel_color[2], 255),
-        outline=(65, 72, 88, 255),
-        width=int(2 * SS)
+    # Camera punch hole
+    cam_r = 9
+    cam_x = phone_w // 2
+    cam_y = bezel + 22
+    pdraw.ellipse((cam_x - cam_r, cam_y - cam_r, cam_x + cam_r, cam_y + cam_r), fill=(8, 10, 14, 255))
+
+    return phone
+
+def create_studio_shadow(phone, blur=45, opacity=100, offset_y=26):
+    """Generates a natural two-stage studio drop shadow."""
+    pad = blur * 2 + abs(offset_y)
+    sw = phone.width + pad * 2
+    sh = phone.height + pad * 2
+    shadow = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(shadow)
+
+    sdraw.rounded_rectangle(
+        (pad + 8, pad + 10, pad + phone.width - 8, pad + phone.height + 6),
+        radius=46,
+        fill=(10, 15, 26, int(opacity * 0.55))
     )
-
-    # Inner border
-    inner_border_inset = int(1.5 * SS)
-    draw.rounded_rectangle(
-        [phone_x0 + inner_border_inset, phone_y0 + inner_border_inset,
-         phone_x1 - inner_border_inset, phone_y1 - inner_border_inset],
-        radius=(corner_radius - 2) * SS,
-        outline=(12, 14, 18, 255),
-        width=int(1.5 * SS)
+    sdraw.rounded_rectangle(
+        (pad, pad + offset_y, pad + phone.width, pad + phone.height + offset_y),
+        radius=46,
+        fill=(10, 15, 26, opacity)
     )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
+    return shadow, pad
 
-    # Resize screen to target
-    resized_screen = screen_img.resize((screen_w * SS, screen_h * SS), Image.Resampling.LANCZOS).convert("RGBA")
-
-    screen_mask = Image.new("L", (screen_w * SS, screen_h * SS), 0)
-    mask_draw = ImageDraw.Draw(screen_mask)
-    mask_draw.rounded_rectangle(
-        [0, 0, screen_w * SS, screen_h * SS],
-        radius=screen_corner_radius * SS,
-        fill=255
-    )
-
-    screen_x = phone_x0 + bezel_lr * SS
-    screen_y = phone_y0 + bezel_tb * SS
-
-    body_img.paste(resized_screen, (screen_x, screen_y), screen_mask)
-
-    # Subtle top speaker slit in the top bezel
-    speaker_w = int(50 * SS)
-    speaker_h = int(3 * SS)
-    spk_x0 = (phone_x0 + phone_x1 - speaker_w) // 2
-    spk_y0 = phone_y0 + int(7 * SS)
-    draw.rounded_rectangle([spk_x0, spk_y0, spk_x0 + speaker_w, spk_y0 + speaker_h], radius=int(1.5 * SS), fill=(40, 44, 52, 255))
-
-    framed = body_img.resize((frame_w + 60, frame_h + 60), Image.Resampling.LANCZOS)
-    return framed
-
-def create_gallery_screen(screen_img, target_height=1600):
-    screen_img = enhance_screenshot(screen_img)
-    aspect = screen_img.width / screen_img.height
-    target_width = int(target_height * aspect)
-    screen = screen_img.resize((target_width, target_height), Image.Resampling.LANCZOS).convert("RGBA")
-    radius = int(target_width * 0.055)
-    mask = Image.new("L", screen.size, 0)
-    ImageDraw.Draw(mask).rounded_rectangle(
-        [0, 0, target_width - 1, target_height - 1],
-        radius=radius,
-        fill=255,
-    )
-    screen.putalpha(mask)
-    border = Image.new("RGBA", screen.size, (0, 0, 0, 0))
-    ImageDraw.Draw(border).rounded_rectangle(
-        [1, 1, target_width - 2, target_height - 2],
-        radius=radius,
-        outline=(70, 78, 96, 180),
-        width=3,
-    )
-    return Image.alpha_composite(screen, border)
-
-def create_ambient_glow(width, height, center, radius, color, max_alpha=120):
-    glow = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(glow)
-    cx, cy = center
-    r = radius
-    for step in range(25, 0, -1):
-        curr_r = int(r * (step / 25.0))
-        alpha = int(max_alpha * (1.0 - (step / 25.0)**0.7))
-        draw.ellipse([cx - curr_r, cy - curr_r, cx + curr_r, cy + curr_r], fill=(color[0], color[1], color[2], alpha))
-    glow = glow.filter(ImageFilter.GaussianBlur(int(radius * 0.45)))
-    return glow
-
-def create_studio_shadow(phone_img, blur_radius=35, opacity=150, offset=(0, 22)):
-    w, h = phone_img.size
-    shadow_canvas = Image.new("RGBA", (w + blur_radius * 2 + abs(offset[0]), h + blur_radius * 2 + abs(offset[1])), (0, 0, 0, 0))
-    alpha = phone_img.split()[3]
-    shadow_mask = Image.new("RGBA", phone_img.size, (0, 0, 0, opacity))
-    shadow_mask.putalpha(alpha)
-    paste_x = blur_radius + max(0, offset[0])
-    paste_y = blur_radius + max(0, offset[1])
-    shadow_canvas.paste(shadow_mask, (paste_x, paste_y), shadow_mask)
-    shadow_canvas = shadow_canvas.filter(ImageFilter.GaussianBlur(blur_radius))
-    return shadow_canvas
-
-def draw_vector_sparkle(draw, center, radius, color):
-    """Draws a 4-point diamond sparkle (like ✦)."""
-    cx, cy = center
-    r = radius
-    r_inner = r * 0.28
-    points = [
-        (cx, cy - r),
-        (cx + r_inner, cy - r_inner),
-        (cx + r, cy),
-        (cx + r_inner, cy + r_inner),
-        (cx, cy + r),
-        (cx - r_inner, cy + r_inner),
-        (cx - r, cy),
-        (cx - r_inner, cy - r_inner)
-    ]
-    draw.polygon(points, fill=color)
-
-def generate_studio_dual_card(
-    card_id,
-    title_category,
-    title_main,
-    subtitle,
-    screen1_key,
-    screen2_key,
-    primary_glow_color,
-    secondary_glow_color,
-    features_list=None
-):
-    """
-    Renders a high-end 1600x960 studio showcase banner with two floating phones,
-    ambient studio lighting, subtle grid/gradient background, and crisp typography.
-    """
-    card_w, card_h = 1600, 960
-    canvas = Image.new("RGBA", (card_w, card_h), (10, 12, 16, 255))
-
-    # 1. Background studio lighting & ambient gradients
-    bg_glow1 = create_ambient_glow(card_w, card_h, (1080, 420), 550, primary_glow_color, max_alpha=95)
-    bg_glow2 = create_ambient_glow(card_w, card_h, (1320, 680), 450, secondary_glow_color, max_alpha=75)
-    bg_glow3 = create_ambient_glow(card_w, card_h, (250, 180), 350, (30, 40, 65), max_alpha=45)
-
-    canvas = Image.alpha_composite(canvas, bg_glow1)
-    canvas = Image.alpha_composite(canvas, bg_glow2)
-    canvas = Image.alpha_composite(canvas, bg_glow3)
-
-    # Top subtle border
+def create_minimal_wave_bg(w, h, top_color, accent_color, y_start, y_end):
+    """Renders a clean, minimal dual-tone canvas with a smooth organic curve. Zero white lines or busy decorations."""
+    canvas = Image.new("RGBA", (w, h), (*top_color, 255))
     draw = ImageDraw.Draw(canvas)
-    draw.line([(0, 0), (card_w, 0)], fill=(50, 56, 70, 200), width=1)
 
-    # 2. Left Column: Studio Typography & Feature badges
-    tag_font = get_font(16, bold=True)
-    title_font = get_font(42, bold=True)
-    sub_font = get_font(19, bold=False)
-    bullet_font = get_font(17, bold=False)
+    curve_pts = []
+    for x in range(0, w + 1, 4):
+        t = x / w
+        t_curve = t * t * (3.0 - 2.0 * t)
+        y = y_start + (y_end - y_start) * t_curve
+        curve_pts.append((x, y))
 
-    # Category badge pill
-    cat_text = title_category.upper()
-    cat_bbox = tag_font.getbbox(cat_text)
-    cat_w = cat_bbox[2] - cat_bbox[0]
-    cat_h = cat_bbox[3] - cat_bbox[1]
-
-    pill_x, pill_y = 75, 80
-    sparkle_pad = 28
-    pill_pad_x, pill_pad_y = 16, 8
-    pill_rect = [pill_x, pill_y, pill_x + cat_w + pill_pad_x * 2 + sparkle_pad, pill_y + cat_h + pill_pad_y * 2]
-
-    pill_overlay = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
-    pill_draw = ImageDraw.Draw(pill_overlay)
-    pill_draw.rounded_rectangle(pill_rect, radius=8, fill=(primary_glow_color[0], primary_glow_color[1], primary_glow_color[2], 40), outline=(primary_glow_color[0], primary_glow_color[1], primary_glow_color[2], 130), width=1)
-
-    # Draw vector diamond inside pill
-    draw_vector_sparkle(pill_draw, (pill_x + pill_pad_x + 8, pill_y + pill_pad_y + cat_h // 2), 7, (230, 240, 255, 240))
-    pill_draw.text((pill_x + pill_pad_x + sparkle_pad, pill_y + pill_pad_y - cat_bbox[1]), cat_text, font=tag_font, fill=(235, 240, 255, 255))
-    canvas = Image.alpha_composite(canvas, pill_overlay)
-
-    # Main Title
-    draw = ImageDraw.Draw(canvas)
-    y_cursor = pill_y + cat_h + pill_pad_y * 2 + 28
-
-    for line in title_main.split("\n"):
-        draw.text((75, y_cursor), line, font=title_font, fill=(255, 255, 255, 255))
-        y_cursor += 52
-
-    y_cursor += 10
-    # Subtitle
-    for line in subtitle.split("\n"):
-        draw.text((75, y_cursor), line, font=sub_font, fill=(160, 172, 195, 255))
-        y_cursor += 28
-
-    y_cursor += 24
-
-    # Feature bullets
-    if features_list:
-        for feat in features_list:
-            draw_vector_sparkle(draw, (84, y_cursor + 12), 5, (primary_glow_color[0], primary_glow_color[1], primary_glow_color[2], 255))
-            draw.text((102, y_cursor), feat, font=bullet_font, fill=(220, 230, 245, 255))
-            y_cursor += 36
-
-    # Bottom brand watermark
-    brand_font = get_font(15, bold=True)
-    draw.text((75, card_h - 65), "LEVYRA · NATIVE MUSIC EXPERIENCE", font=brand_font, fill=(80, 92, 115, 200))
-
-    # 3. Right Side: Dual Floating Phone Mockups
-    img1_src = Image.open(get_screen_path(SCREENS[screen1_key]))
-    img2_src = Image.open(get_screen_path(SCREENS[screen2_key]))
-
-    phone1 = create_phone_frame(img1_src, target_height=780)
-    phone2 = create_phone_frame(img2_src, target_height=840)
-
-    # Phone 1 (Back / Left phone)
-    p1_x = 600
-    p1_y = 85
-    shadow1 = create_studio_shadow(phone1, blur_radius=40, opacity=150, offset=(0, 20))
-    canvas.paste(shadow1, (p1_x - 40, p1_y - 20), shadow1)
-    canvas.paste(phone1, (p1_x, p1_y), phone1)
-
-    # Phone 2 (Front / Right phone)
-    p2_x = 950
-    p2_y = 55
-    shadow2 = create_studio_shadow(phone2, blur_radius=50, opacity=190, offset=(0, 30))
-    canvas.paste(shadow2, (p2_x - 50, p2_y - 20), shadow2)
-    canvas.paste(phone2, (p2_x, p2_y), phone2)
-
-    out_path = os.path.join(OUT_SHOWCASE_DIR, f"{card_id}.webp")
-    canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
-    print(f"Generated Showcase Card: {out_path}")
+    poly = [(0, h)] + [(0, curve_pts[0][1])] + curve_pts + [(w, h)]
+    draw.polygon(poly, fill=(*accent_color, 255))
+    return canvas
 
 def generate_hero_panoramic_showcase():
-    canvas_w, canvas_h = 2400, 1160
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (7, 8, 13, 255))
+    """Generates 00_levyra_hero_wall_player.webp wide panoramic hero banner."""
+    home_file = os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_171253_LEVYRA.jpg")
+    np_file = os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_193948_LEVYRA.jpg")
+    explore_file = os.path.join(SCREENSHOT_DIR, "Screenshot_20260927_140841_LEVYRA.jpg")
+
+    if not all(os.path.exists(f) for f in [home_file, np_file, explore_file]):
+        raise FileNotFoundError("Missing screenshots for hero banner")
+
+    wall_w, wall_h = 2400, 1200
+    canvas = Image.new("RGBA", (wall_w, wall_h), (15, 23, 42, 255))
+
+    # Ambient studio lighting
+    aura = Image.new("RGBA", (wall_w, wall_h), (0, 0, 0, 0))
+    adraw = ImageDraw.Draw(aura)
+    adraw.ellipse((1400, 200, 2200, 1000), fill=(105, 140, 165, 75))
+    adraw.ellipse((1000, 300, 1800, 1100), fill=(185, 145, 110, 65))
+    aura = aura.filter(ImageFilter.GaussianBlur(140))
+    canvas = Image.alpha_composite(canvas, aura)
+
     draw = ImageDraw.Draw(canvas)
-
-    draw.polygon(
-        [(720, 0), (2400, 0), (2400, 370), (980, 610)],
-        fill=(21, 35, 72, 255),
-    )
-    draw.polygon(
-        [(1080, 1160), (2400, 820), (2400, 1160)],
-        fill=(126, 29, 143, 255),
-    )
-    draw.polygon(
-        [(1730, 0), (1960, 0), (1420, 1160), (1190, 1160)],
-        fill=(216, 31, 174, 80),
-    )
-    draw = ImageDraw.Draw(canvas)
-
-    with Image.open(LOGO_PATH) as logo_source:
-        logo = logo_source.convert("RGBA")
-        logo.thumbnail((410, 410), Image.Resampling.LANCZOS)
-    canvas.paste(logo, (118, 72), logo)
-
-    draw.text((110, 470), "LEVYRA", font=get_font(112, bold=True), fill=(255, 255, 255, 255))
-    draw.text((118, 605), "MUSIC, KEPT PERSONAL.", font=get_font(32, bold=True), fill=(98, 208, 255, 255))
+    draw.text((120, 480), "LEVYRA", font=get_font(96, bold=True), fill=(255, 255, 255, 255))
+    draw.text((120, 600), "MUSIC, KEPT PERSONAL.", font=get_font(34, bold=True), fill=(147, 197, 253, 255))
     draw.multiline_text(
-        (118, 675),
-        "Native playback on Android and Windows.\nNo ads. No telemetry. Your library stays yours.",
-        font=get_font(25),
-        fill=(205, 209, 221, 255),
-        spacing=12,
+        (120, 670),
+        "Native playback on Android and Windows.\nZero ads. Zero telemetry. Your library stays yours.",
+        font=get_font(26),
+        fill=(203, 213, 225, 255),
+        spacing=12
     )
-    draw.line((118, 815, 560, 815), fill=(255, 255, 255, 85), width=3)
-    draw.text((118, 845), "PLAY  /  EXPLORE  /  KEEP", font=get_font(20, bold=True), fill=(255, 255, 255, 185))
-    draw.text((118, 1035), "ANDROID + WINDOWS", font=get_font(18, bold=True), fill=(255, 255, 255, 130))
 
-    back_row = [
-        ("search_artist", 500, 660, 120, -6),
-        ("artist_discography", 520, 1020, 70, -3),
-        ("charts", 520, 1740, 70, 4),
-        ("genres", 500, 2010, 130, 6),
-    ]
-    front_row = [
-        ("home", 700, 900, 330, -4),
-        ("now_playing", 850, 1320, 180, 0),
-        ("lyrics", 700, 1800, 330, 4),
-    ]
-    for key, height, x, y, angle in back_row + front_row:
-        with Image.open(get_screen_path(SCREENS[key])) as source:
-            phone = create_phone_frame(source, target_height=height)
-        if angle:
-            phone = phone.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
-        shadow = create_studio_shadow(phone, blur_radius=42, opacity=190, offset=(0, 26))
-        canvas.paste(shadow, (x - 42, y - 16), shadow)
-        canvas.paste(phone, (x, y), phone)
+    with Image.open(explore_file) as s1:
+        p1 = create_clean_phone(s1, target_height=780).rotate(10, resample=Image.Resampling.BICUBIC, expand=True)
+    with Image.open(np_file) as s2:
+        p2 = create_clean_phone(s2, target_height=920)
+    with Image.open(home_file) as s3:
+        p3 = create_clean_phone(s3, target_height=820).rotate(-8, resample=Image.Resampling.BICUBIC, expand=True)
+
+    sh1, pad1 = create_studio_shadow(p1, blur=40, opacity=110, offset_y=24)
+    sh2, pad2 = create_studio_shadow(p2, blur=45, opacity=130, offset_y=28)
+    sh3, pad3 = create_studio_shadow(p3, blur=40, opacity=110, offset_y=24)
+
+    canvas.paste(sh1, (1080 - pad1, 260 - pad1), sh1)
+    canvas.paste(p1, (1080, 260), p1)
+
+    canvas.paste(sh3, (1780 - pad3, 240 - pad3), sh3)
+    canvas.paste(p3, (1780, 240), p3)
+
+    canvas.paste(sh2, (1400 - pad2, 160 - pad2), sh2)
+    canvas.paste(p2, (1400, 160), p2)
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
-    canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
-    print(f"Generated Panoramic Hero Showcase: {out_path}")
+    canvas.convert("RGB").save(out_path, "WEBP", quality=92, method=6)
+    print("Generated Panoramic Hero Showcase:", out_path)
 
 def generate_feature_cards():
+    """Generates all 20 feature cards with delicate, muted dual-tone minimal design (ZERO pink)."""
     card_w, card_h = 900, 1600
-    specs = [
-        ("home", "01", "Your music, up front", "Radio, mood shortcuts,\nand Your Orbit.", (235, 215, 220), (199, 143, 158)),
-        ("now_playing", "02", "Stay with the song", "Song and video share\none focused player.", (204, 222, 236), (139, 181, 211)),
-        ("lyrics", "03", "Follow every line", "Synced lyrics move\nwith the music.", (235, 220, 193), (195, 158, 104)),
-        ("charts", "04", "See what is playing", "Browse Top 50 charts\nacross countries.", (205, 220, 241), (121, 166, 217)),
-        ("search_artist", "05", "Find the artist", "Search songs, albums,\nplaylists, and artists.", (222, 213, 235), (164, 138, 199)),
-        ("artist_discography", "06", "Go deeper", "Popular tracks, albums,\nsingles, and EPs.", (235, 215, 208), (198, 139, 124)),
-        ("genres", "07", "Pick a direction", "Move through moods\nand genres quickly.", (207, 227, 220), (128, 182, 168)),
-        ("listening_pulse", "08", "Keep it personal", "Private listening stats,\ncomputed on this device.", (212, 216, 237), (139, 149, 200)),
-        ("artist_profile", "09", "Meet the artist", "Biography, audience,\nand popular tracks.", (228, 225, 204), (174, 163, 96)),
-        ("album", "10", "Open the whole album", "Artwork, context,\nand a complete tracklist.", (238, 221, 203), (199, 151, 106)),
-        ("search", "11", "Find it fast", "Recent music and artists,\nready when you return.", (205, 228, 231), (105, 177, 181)),
-        ("player_settings", "12", "Shape the playback", "Radio, sleep timer,\nquality, and more.", (232, 211, 226), (190, 127, 169)),
-        ("explore", "13", "Explore and mix", "Live stations, custom mixes,\nand fresh currents.", (205, 225, 245), (68, 138, 245)),
-        ("new_releases", "14", "Fresh off the stage", "New singles and albums\nupdated every week.", (245, 215, 210), (225, 115, 95)),
-        ("collections", "15", "Curated for you", "Playlists and gems\naround what you love.", (226, 212, 244), (152, 95, 215)),
-        ("listening_rhythm", "16", "Your listening rhythm", "Activity, peak hours,\nand listening habits.", (210, 238, 225), (72, 180, 135)),
-        ("player_deck", "17", "Style your player", "Canvas, cards, or artwork.\nSwitch layouts seamlessly.", (242, 218, 222), (195, 78, 98)),
-        ("artist_playlists", "18", "Artist playlists", "Curated sets, tours, and\nthe best of every artist.", (210, 225, 242), (48, 120, 225)),
-        ("settings_vault", "19", "Tailor every detail", "Audio, design, gestures,\nand local Vault backups.", (220, 228, 234), (105, 142, 165)),
-        ("your_orbit", "20", "In your orbit", "The tracks and artists\nthat always return to you.", (235, 218, 240), (165, 102, 185)),
+    title_font = get_font(58, bold=True)
+    sub_font = get_font(28, bold=False)
+
+    # 1. CONNECTED HERO CARDS (01 & 02)
+    pano_w = card_w * 2
+    pano_h = card_h
+    # Delicate Nordic air blue
+    pano_bg = create_minimal_wave_bg(pano_w, pano_h, (238, 243, 248), (130, 165, 195), y_start=1150, y_end=620)
+
+    home_file = os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_171253_LEVYRA.jpg")
+    with Image.open(home_file) as source:
+        phone_hero = create_clean_phone(source, target_height=1280)
+
+    rotated_hero = phone_hero.rotate(25, resample=Image.Resampling.BICUBIC, expand=True)
+    rot_shadow, rpad = create_studio_shadow(rotated_hero, blur=48, opacity=100, offset_y=28)
+
+    hero_x = 900 - rotated_hero.width // 2 - 35
+    hero_y = 170
+    pano_bg.paste(rot_shadow, (hero_x - rpad, hero_y - rpad), rot_shadow)
+    pano_bg.paste(rotated_hero, (hero_x, hero_y), rotated_hero)
+
+    pdraw = ImageDraw.Draw(pano_bg)
+
+    # Card 01 Text (Bottom Left)
+    pdraw.text((75, 1190), "Pure listening", font=get_font(60, bold=True), fill=(15, 23, 42, 255))
+    pdraw.multiline_text(
+        (75, 1275),
+        "Zero ads, zero accounts, zero tracking.\nPure high-fidelity YouTube Music,\nplayed natively on your device.",
+        font=sub_font,
+        fill=(30, 45, 65, 255),
+        spacing=10
+    )
+
+    # Card 02 Text (Top Right)
+    c2_left = 900
+    text_x = c2_left + 330
+    pdraw.text((text_x, 95), "Download & keep", font=title_font, fill=(20, 23, 29, 255))
+    pdraw.multiline_text(
+        (text_x, 175),
+        "Clean M4A files in device storage.\nFull metadata, artwork, and lyrics.",
+        font=sub_font,
+        fill=(75, 82, 92, 255),
+        spacing=10
+    )
+
+    card_01 = pano_bg.crop((0, 0, card_w, card_h))
+    card_02 = pano_bg.crop((card_w, 0, pano_w, card_h))
+    card_01.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "01_home.webp"), "WEBP", quality=92, method=6)
+    card_02.convert("RGB").save(os.path.join(OUT_CARDS_DIR, "02_stay_with_the_song.webp"), "WEBP", quality=92, method=6)
+    print("Generated Hero Cards: 01_home.webp, 02_stay_with_the_song.webp")
+
+    # 2. CARDS 03 TO 20 (Clean Single Cards with Delicate, Non-Aggressive, Zero-Pink Tones)
+    single_specs = [
+        # (filename, screenshot_file, title, subtitle, top_color, accent_color)
+        ("03_now_playing.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Stay with the song", "One focused player for audio and video.\nSynced lyrics move with every beat.", (248, 240, 234), (195, 155, 130)),
+        ("04_player_deck.webp", "Screenshot_20260929_195520_LEVYRA.jpg", "Style your player", "Canvas, card deck, or classic vinyl.\nSwitch your stage seamlessly.", (238, 242, 246), (115, 135, 155)),
+        ("05_explore_mix.webp", "Screenshot_20260927_140841_LEVYRA.jpg", "Explore and mix", "Live radio, fresh currents, and custom\nsliders between familiar and new.", (236, 244, 248), (120, 160, 185)),
+        ("06_artist_profile.webp", "Screenshot_20260926_194603_LEVYRA.jpg", "Meet the artist", "Full discography, singles, biographies,\nand top tracks in one tap.", (242, 240, 246), (135, 125, 160)),
+        ("07_genres.webp", "Screenshot_20260929_194827_LEVYRA.jpg", "Pick a direction", "Move through moods, vibes, and genres\ncrafted for every moment.", (238, 245, 240), (130, 168, 148)),
+        ("08_audio_tuning.webp", "Screenshot_20260926_194845_LEVYRA.jpg", "Shape the playback", "Sleep timer, tempo tuning, loudness norm,\nand advanced audio engine.", (240, 242, 246), (110, 125, 150)),
+        ("09_album.webp", "Screenshot_20260926_194706_LEVYRA.jpg", "Open the album", "High-resolution artwork, release info,\nand complete tracklists.", (248, 242, 235), (185, 150, 115)),
+        ("10_search.webp", "Screenshot_20260926_194736_LEVYRA.jpg", "Find it instantly", "Recent searches, suggestions, and\ninstant matching across your music.", (236, 244, 248), (110, 155, 175)),
+        ("11_collections.webp", "Screenshot_20260927_132323_LEVYRA.jpg", "Curated for you", "Handpicked playlists and gems\nrevolving around what you love.", (244, 240, 248), (145, 130, 165)),
+        ("12_listening_rhythm.webp", "Screenshot_20260927_131943_LEVYRA.jpg", "Your listening rhythm", "Activity heatmaps, peak hours, and\nyour personal listening cadence.", (236, 246, 244), (115, 160, 150)),
+        ("13_your_orbit.webp", "Screenshot_20260929_195235_LEVYRA.jpg", "In your orbit", "The songs and artists that always return\nto your rotation.", (240, 240, 248), (125, 130, 170)),
+        ("14_listening_pulse.webp", "Screenshot_20260926_193717_LEVYRA.jpg", "Keep it personal", "Private listening stats and charts,\ncomputed strictly on your device.", (238, 242, 248), (115, 145, 180)),
+        ("15_artist_playlists.webp", "Screenshot_20260929_201454_LEVYRA.jpg", "Artist playlists", "Curated sets, tours, and the\nessential catalog of every artist.", (238, 242, 246), (110, 135, 165)),
+        ("16_settings_vault.webp", "Screenshot_20260929_194944_LEVYRA.jpg", "Tailor every detail", "Audio, design, gestures, and local\nsingle-file Vault backups.", (240, 242, 245), (120, 130, 142)),
+        ("17_new_releases.webp", "Screenshot_20260927_132248_LEVYRA.jpg", "Fresh off the stage", "New singles and albums updated\nevery week directly from artists.", (248, 242, 238), (185, 135, 115)),
+        ("18_fresh_currents.webp", "Screenshot_20260929_194853_LEVYRA.jpg", "Discovery stream", "Explore live stations, genre charts,\nand community soundscapes.", (235, 245, 248), (105, 155, 170)),
+        ("19_featured_artists.webp", "Screenshot_20260905_135618_LEVYRA.jpg", "Featured artists", "Discover local and global artists,\ncurated collections, and albums.", (244, 242, 248), (130, 125, 155)),
+        ("20_soundstage.webp", "Screenshot_20260926_193948_LEVYRA.jpg", "Pure soundstage", "Experience lossless decoding and\nuncompromised audio fidelity.", (238, 244, 248), (105, 140, 165)),
     ]
 
-    label_font = get_font(19, bold=True)
-    title_font = get_font(52, bold=True)
-    subtitle_font = get_font(27, bold=False)
-
-    for key, number, title, subtitle, background, accent in specs:
-        screen_file = get_screen_path(SCREENS[key])
+    for filename, screenshot_name, title, subtitle, top_col, accent_col in single_specs:
+        screen_file = os.path.join(SCREENSHOT_DIR, screenshot_name)
         if not os.path.exists(screen_file):
-            print(f"Skipping {key} ({number}): {screen_file} not found")
+            print(f"Skipping {filename}: {screen_file} not found")
             continue
 
-        card = Image.new("RGBA", (card_w, card_h), (*background, 255))
-        draw = ImageDraw.Draw(card)
-        draw.polygon(
-            [(0, 950), (card_w, 650), (card_w, card_h), (0, card_h)],
-            fill=(*accent, 255),
-        )
-        draw.rounded_rectangle((64, 58, 254, 104), radius=23, fill=(20, 23, 29, 235))
-        draw.text((159, 81), f"LEVYRA / {number}", font=label_font, fill=(255, 255, 255, 255), anchor="mm")
-        draw.text((64, 132), title, font=title_font, fill=(20, 23, 29, 255))
-        draw.multiline_text(
-            (64, 205),
-            subtitle,
-            font=subtitle_font,
-            fill=(66, 73, 83, 255),
-            spacing=8,
-        )
-
         with Image.open(screen_file) as source:
-            phone = create_phone_frame(source, target_height=1050)
-        phone_x = (card_w - phone.width) // 2
-        phone_y = 390
-        shadow = create_studio_shadow(phone, blur_radius=42, opacity=175, offset=(0, 28))
-        card.paste(shadow, (phone_x - 42, phone_y - 16), shadow)
-        card.paste(phone, (phone_x, phone_y), phone)
+            phone = create_clean_phone(source, target_height=1060)
 
-        output_name = {
-            "now_playing": "02_stay_with_the_song.webp",
-            "listening_pulse": "08_keep_it_personal.webp",
-        }.get(key, f"{number}_{key}.webp")
-        out_path = os.path.join(OUT_CARDS_DIR, output_name)
-        card.convert("RGB").save(out_path, "WEBP", quality=91, method=6)
+        bg = create_minimal_wave_bg(card_w, card_h, top_col, accent_col, y_start=960, y_end=680)
+        draw = ImageDraw.Draw(bg)
+
+        draw.text((75, 95), title, font=title_font, fill=(20, 23, 29, 255))
+        draw.multiline_text((75, 175), subtitle, font=sub_font, fill=(75, 82, 92, 255), spacing=10)
+
+        shadow, pad = create_studio_shadow(phone, blur=45, opacity=100, offset_y=26)
+        px = (card_w - phone.width) // 2
+        py = 390
+        bg.paste(shadow, (px - pad, py - pad), shadow)
+        bg.paste(phone, (px, py), phone)
+
+        out_path = os.path.join(OUT_CARDS_DIR, filename)
+        bg.convert("RGB").save(out_path, "WEBP", quality=92, method=6)
         print(f"Generated Feature Card: {out_path}")
 
 def main():
-    print("Generating refined Levyra showcase assets...")
+    print("Generating minimal, refined Levyra showcase assets...")
     try:
         generate_hero_panoramic_showcase()
     except (FileNotFoundError, OSError) as e:
