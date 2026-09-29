@@ -23,18 +23,31 @@ object LevyraM4aTagWriter {
         )
     }
 
-    fun writeTags(input: File, output: File, edits: LevyraM4aTagEdits): LevyraM4aTagResult =
-        writeInternal(
+    fun writeTags(input: File, output: File, edits: LevyraM4aTagEdits): LevyraM4aTagResult {
+        val artworkType = edits.artworkData?.let { data ->
+            artworkType(data) ?: return LevyraM4aTagResult(false, false, "unsupported_artwork")
+        }
+        val replacementTypes = buildSet {
+            addAll(Atom.EDITABLE_TAGS)
+            if (edits.lyrics != null) add(Atom.LYRICS)
+            if (edits.artworkData != null || edits.removeArtwork) add(Atom.COVR)
+        }
+        return writeInternal(
             input = input,
             output = output,
             metadataItemsFactory = { source, boxes ->
                 val totals = readExistingPairTotals(source, boxes)
-                buildTagEditItems(edits, totals.trackTotal, totals.discTotal)
+                buildTagEditItems(edits, totals.trackTotal, totals.discTotal) +
+                    listOfNotNull(
+                        edits.lyrics?.trim()?.takeIf(String::isNotEmpty)?.take(MAX_LYRICS_CHARS)?.let { textItem(Atom.LYRICS, it) },
+                        if (edits.artworkData != null && artworkType != null) binaryItem(Atom.COVR, edits.artworkData, artworkType) else null
+                    )
             },
-            replacementTypes = Atom.EDITABLE_TAGS,
+            replacementTypes = replacementTypes,
             replacementFreeformNames = setOf(FREEFORM_LYRICIST),
-            artworkEmbedded = false
+            artworkEmbedded = artworkType != null
         )
+    }
 
     private fun writeInternal(
         input: File,
@@ -543,7 +556,10 @@ data class LevyraM4aTagEdits(
     val composer: String,
     val lyricist: String,
     val comment: String,
-    val copyright: String
+    val copyright: String,
+    val lyrics: String? = null,
+    val artworkData: ByteArray? = null,
+    val removeArtwork: Boolean = false
 )
 
 data class LevyraM4aMetadata(

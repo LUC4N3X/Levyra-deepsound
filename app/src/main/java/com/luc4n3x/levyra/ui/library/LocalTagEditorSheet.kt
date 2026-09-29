@@ -1,6 +1,21 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.data.locallibrary.LocalArtworkEdit
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +57,7 @@ import com.luc4n3x.levyra.data.locallibrary.LocalTagEdits
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
+import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 
@@ -49,6 +65,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 @Composable
 internal fun LocalTagEditorSheet(
     media: LocalMediaEntity,
+    artworkModel: String,
+    embeddedLyrics: String?,
     saving: Boolean,
     error: String?,
     onDismiss: () -> Unit,
@@ -68,6 +86,16 @@ internal fun LocalTagEditorSheet(
     var lyricist by remember(media.identityKey) { mutableStateOf(media.lyricist) }
     var comment by remember(media.identityKey) { mutableStateOf(media.comment) }
     var copyright by remember(media.identityKey) { mutableStateOf(media.copyright) }
+    var artworkEdit by remember(media.identityKey) { mutableStateOf<LocalArtworkEdit>(LocalArtworkEdit.Keep) }
+    var lyrics by remember(media.identityKey, embeddedLyrics) { mutableStateOf(embeddedLyrics.orEmpty()) }
+    val artworkPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { picked ->
+        if (picked != null) artworkEdit = LocalArtworkEdit.Replace(picked.toString())
+    }
+    val previewModel = when (val edit = artworkEdit) {
+        LocalArtworkEdit.Keep -> artworkModel
+        LocalArtworkEdit.Remove -> ""
+        is LocalArtworkEdit.Replace -> edit.sourceUri
+    }
 
     ModalBottomSheet(
         onDismissRequest = { if (!saving) onDismiss() },
@@ -104,6 +132,68 @@ internal fun LocalTagEditorSheet(
                 }
             }
             Text(strings.localTagEditorSubtitle, color = LevyraMuted, fontSize = 12.sp)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(LevyraPanelSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (previewModel.isNotBlank()) {
+                        AsyncImage(
+                            model = previewModel,
+                            contentDescription = strings.localTagArtwork,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Icon(
+                            Icons.Rounded.LibraryMusic,
+                            contentDescription = null,
+                            tint = LevyraMuted,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            artworkPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        enabled = !saving,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Rounded.Image, contentDescription = null)
+                        Text(
+                            strings.localTagChangeArtwork,
+                            modifier = Modifier.padding(start = 8.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    TextButton(
+                        onClick = { artworkEdit = LocalArtworkEdit.Remove },
+                        enabled = !saving && artworkEdit != LocalArtworkEdit.Remove,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Rounded.DeleteOutline, contentDescription = null)
+                        Text(
+                            strings.localTagRemoveArtwork,
+                            modifier = Modifier.padding(start = 8.dp),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
 
             TagField(strings.localTagTitle, title, { title = it }, !saving)
             TagField(strings.localTagArtist, artist, { artist = it }, !saving)
@@ -163,6 +253,14 @@ internal fun LocalTagEditorSheet(
                 minLines = 2
             )
             TagField(strings.localTagCopyright, copyright, { copyright = it }, !saving)
+            TagField(
+                label = strings.localTagLyrics,
+                value = lyrics,
+                onValueChange = { lyrics = it.take(LYRICS_FIELD_MAX_CHARS) },
+                enabled = !saving && embeddedLyrics != null,
+                singleLine = false,
+                minLines = 3
+            )
 
             if (!error.isNullOrBlank()) {
                 Text(error, color = LevyraPink, fontSize = 12.sp)
@@ -191,7 +289,9 @@ internal fun LocalTagEditorSheet(
                                 composer = composer,
                                 lyricist = lyricist,
                                 comment = comment,
-                                copyright = copyright
+                                copyright = copyright,
+                                artwork = artworkEdit,
+                                lyrics = lyrics.takeIf { embeddedLyrics != null && it != embeddedLyrics }
                             )
                         )
                     },
@@ -231,3 +331,5 @@ private fun TagField(
         textStyle = MaterialTheme.typography.bodyMedium
     )
 }
+
+private const val LYRICS_FIELD_MAX_CHARS = 128 * 1024

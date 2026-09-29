@@ -120,6 +120,11 @@ class LocalLibraryRepository private constructor(context: Context) {
         result
     }
 
+    suspend fun embeddedLyrics(identityKey: String): String {
+        val row = dao.byIdentityKey(identityKey) ?: return ""
+        return tagEditor.readEmbeddedLyrics(row)
+    }
+
     private suspend fun runScanLoop(initialMode: LocalScanMode, initialForce: Boolean) {
         var mode = initialMode
         var force = initialForce
