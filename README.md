@@ -93,6 +93,14 @@ The match uses more than the song title. Levyra also checks performers and artis
 When a match passes those checks, Levyra can play the audio directly from JioSaavn's CDN. If that source is temporarily unavailable, or Levyra cannot verify the recording safely, playback stays on the normal source. Successful matches can be remembered so Levyra does not have to start the lookup from scratch every time.
 Artwork, lyrics, queue position, listening history and recommendations still belong to the original Levyra track.
 
+### Levyra Enhanced Audio
+
+JioSaavn's 320 kbps streams already reach about 20 kHz, so little is missing from them and Levyra leaves them as they are. Enhanced Audio is meant for sources that lost more in encoding, such as a 128 kbps fallback where everything above 17 kHz was cut.
+
+When Levyra detects a cut like that, it rebuilds the missing top end from the band just below it, similar to the SBR technique some codecs use. It only does this when the drop is steep and the band above it is empty, and it keeps the rebuilt highs a little quieter than the original recording would have had them. FLAC and other lossless files are never processed.
+
+Enhanced Audio is on by default and can be turned off in Audio Settings. Technical Audio Info shows whether it is active on the current track or why it was skipped. A lossy stream stays lossy with Enhanced Audio on, and Levyra labels it that way.
+
 <div align="center">
   <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
   <sub>Levyra checks the actual stream quality before using it and falls back automatically when JioSaavn is not a safe match.</sub>
