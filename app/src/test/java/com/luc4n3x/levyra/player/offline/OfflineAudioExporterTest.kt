@@ -39,6 +39,24 @@ class OfflineAudioExporterTest {
     }
 
     @Test
+    fun verifiedFlacSignatureOutranksMetadataHttpMimeAndUrl() {
+        assertTrue(startsWithFlacSignature(byteArrayOf(0x66, 0x4C, 0x61, 0x43, 0x00)))
+        assertFalse(startsWithFlacSignature(byteArrayOf(0x66, 0x4C, 0x61)))
+        assertFalse(startsWithFlacSignature("ID3".toByteArray()))
+
+        val opaque = "https://cdn.example.com/stream/7f3a9c"
+        val verified = offlineSourceContentType(true, "audio/mp4", "application/octet-stream")
+        assertEquals("audio/flac", verified)
+        assertTrue(isFlacAudioSource(verified, opaque))
+        assertEquals("audio/flac", offlineSourceContentType(false, "audio/flac", "application/octet-stream"))
+        assertEquals("audio/flac", offlineSourceContentType(false, "audio/flac; codecs=flac", "audio/mpeg"))
+        assertEquals("audio/mp4", offlineSourceContentType(false, "", "audio/mp4"))
+        assertEquals("", offlineSourceContentType(false, "", "application/octet-stream"))
+        assertFalse(isSupportedOfflineSource(offlineSourceContentType(false, "", "application/octet-stream"), opaque))
+        assertTrue(isFlacAudioSource(offlineSourceContentType(false, "", "application/octet-stream"), "$opaque.flac"))
+    }
+
+    @Test
     fun incompatibleOfflineSourceErrorsAreDetectedWithoutRetryingTheSameUrl() {
         assertTrue(isUnsupportedOfflineAudioSource(IOException("Offline export requires an M4A audio source")))
         assertTrue(isUnsupportedOfflineAudioSource(IOException("Offline export received a non-audio MP4 source")))

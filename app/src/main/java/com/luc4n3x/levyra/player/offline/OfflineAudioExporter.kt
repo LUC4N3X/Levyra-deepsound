@@ -311,6 +311,22 @@ internal fun isFlacAudioSource(contentType: String, url: String): Boolean {
     return cleanPath.endsWith(".flac")
 }
 
+internal fun startsWithFlacSignature(bytes: ByteArray): Boolean =
+    bytes.size >= 4 &&
+        bytes[0] == 'f'.code.toByte() &&
+        bytes[1] == 'L'.code.toByte() &&
+        bytes[2] == 'a'.code.toByte() &&
+        bytes[3] == 'C'.code.toByte()
+
+internal fun offlineSourceContentType(verifiedFlac: Boolean, manifestMimeType: String, httpContentType: String): String {
+    if (verifiedFlac) return "audio/flac"
+    val manifestType = manifestMimeType.substringBefore(';').trim()
+    if (manifestType.isNotBlank()) return manifestType
+    return httpContentType.takeUnless {
+        it.substringBefore(';').trim().equals("application/octet-stream", ignoreCase = true)
+    }.orEmpty()
+}
+
 internal fun isMuxedMp4Source(contentType: String, url: String): Boolean {
     val normalizedType = contentType.substringBefore(';').trim().lowercase(Locale.US)
     if (normalizedType.isNotBlank()) return normalizedType == "video/mp4"
@@ -594,15 +610,14 @@ class OfflineAudioExporter(
         val sourceUrl = stripAudioRangeParameters(track.streamUrl)
         val probe = probeAudio(sourceUrl)
         val expectedLength = probe.contentLength
-        val contentType = probe.contentType
-            .takeUnless { it.substringBefore(';').trim().equals("application/octet-stream", ignoreCase = true) }
-            .orEmpty()
-            .ifBlank {
-                track.playbackManifest?.streams
-                    ?.firstOrNull { it.selected && it.url == track.streamUrl }
-                    ?.mimeType
-                    .orEmpty()
-            }
+        val contentType = offlineSourceContentType(
+            verifiedFlac = probe.verifiedFlac,
+            manifestMimeType = track.playbackManifest?.streams
+                ?.firstOrNull { it.selected && it.url == track.streamUrl }
+                ?.mimeType
+                .orEmpty(),
+            httpContentType = probe.contentType
+        )
         if (!isSupportedOfflineSource(contentType, sourceUrl)) {
             throw IOException("Offline export requires an M4A or FLAC audio source")
         }
@@ -1145,13 +1160,22 @@ class OfflineAudioExporter(
             .header("User-Agent", DEFAULT_STREAM_USER_AGENT)
             .header("Accept", "audio/*,*/*;q=0.8")
             .header("Accept-Encoding", "identity")
-            .apply { if (!rangeParamApplied) header("Range", "bytes=0-0") }
+            .apply { if (!rangeParamApplied) header("Range", "bytes=0-${SIGNATURE_PROBE_BYTES - 1}") }
             .build()
         return try {
             executeCancellable(request, PROBE_CALL_TIMEOUT_MS) { response ->
                 if (!response.isSuccessful) return@executeCancellable fallback
                 val contentRangeLength = audioContentLengthFromRangeHeader(response.header("Content-Range").orEmpty())
                 val bodyLength = response.body.contentLength()
+                val signature = ByteArray(SIGNATURE_PROBE_BYTES)
+                var signatureBytes = 0
+                response.body.byteStream().use { stream ->
+                    while (signatureBytes < signature.size) {
+                        val read = stream.read(signature, signatureBytes, signature.size - signatureBytes)
+                        if (read <= 0) break
+                        signatureBytes += read
+                    }
+                }
                 AudioProbe(
                     contentLength = when {
                         contentRangeLength > 0L -> contentRangeLength
@@ -1162,7 +1186,8 @@ class OfflineAudioExporter(
                         .substringBefore(';')
                         .trim()
                         .lowercase(Locale.US)
-                        .ifBlank { fallback.contentType }
+                        .ifBlank { fallback.contentType },
+                    verifiedFlac = startsWithFlacSignature(signature.copyOf(signatureBytes))
                 )
             }
         } catch (error: IOException) {
@@ -1190,7 +1215,8 @@ class OfflineAudioExporter(
                         .substringBefore(';')
                         .trim()
                         .lowercase(Locale.US)
-                        .ifBlank { fallback.contentType }
+                        .ifBlank { fallback.contentType },
+                    verifiedFlac = fallback.verifiedFlac
                 )
             }
         } catch (error: IOException) {
@@ -1621,10 +1647,7 @@ class OfflineAudioExporter(
         if (read < 4) throw IOException("Intestazione audio incompleta")
         val valid = when (container.extension) {
             "m4a" -> header.copyOf(read).toString(Charsets.ISO_8859_1).contains("ftyp")
-            "flac" -> header[0] == 'f'.code.toByte() &&
-                header[1] == 'L'.code.toByte() &&
-                header[2] == 'a'.code.toByte() &&
-                header[3] == 'C'.code.toByte()
+            "flac" -> startsWithFlacSignature(header)
             "webm" -> header[0] == 0x1A.toByte() && header[1] == 0x45.toByte() && header[2] == 0xDF.toByte() && header[3] == 0xA3.toByte()
             "mp3" -> header.copyOf(read).toString(Charsets.ISO_8859_1).startsWith("ID3") || (header[0].toInt() and 0xFF) == 0xFF
             else -> true
@@ -1739,6 +1762,7 @@ class OfflineAudioExporter(
         private const val MAX_ARTWORK_BYTES = 4 * 1024 * 1024
         private const val ARTWORK_CALL_TIMEOUT_MS = 8_000L
         private const val PROBE_CALL_TIMEOUT_MS = 4_000L
+        private const val SIGNATURE_PROBE_BYTES = 4
         private const val MIN_VALID_AUDIO_BYTES = 4L * 1024L
         private const val DOWNLOAD_BUFFER_BYTES = 1024 * 1024
         private const val COPY_BUFFER_BYTES = 1024 * 1024
@@ -1814,7 +1838,8 @@ private data class PreparedAudioFile(
 
 private data class AudioProbe(
     val contentLength: Long = -1L,
-    val contentType: String = ""
+    val contentType: String = "",
+    val verifiedFlac: Boolean = false
 )
 
 private data class AudioContainer(
