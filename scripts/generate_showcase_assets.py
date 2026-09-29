@@ -1,7 +1,14 @@
 import os
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
-SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshots"
+SCREENSHOT_DIR = os.environ.get(
+    "LEVYRA_SCREENSHOT_DIR",
+    os.path.join(os.path.expanduser("~"), "Desktop", "screenshots")
+)
+DOWNLOADS_DIR = os.environ.get(
+    "LEVYRA_DOWNLOADS_DIR",
+    os.path.join(os.path.expanduser("~"), "Downloads")
+)
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
 OUT_CARDS_DIR = os.path.join(OUT_SHOWCASE_DIR, "cards")
 LOGO_PATH = r"app\src\main\res\drawable\levyra_logo.png"
@@ -10,26 +17,26 @@ os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 
 SCREENS = {
-    "home": os.environ.get("LEVYRA_SCREEN_HOME", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_171253_LEVYRA.jpg"),
+    "home": os.environ.get("LEVYRA_SCREEN_HOME", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_171253_LEVYRA.jpg")),
     "charts": "screen-charts.jpg",
-    "genres": os.environ.get("LEVYRA_SCREEN_GENRES", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_194827_LEVYRA.jpg"),
-    "listening_pulse": os.environ.get("LEVYRA_SCREEN_PULSE", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193717_LEVYRA.jpg"),
+    "genres": os.environ.get("LEVYRA_SCREEN_GENRES", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_194827_LEVYRA.jpg")),
+    "listening_pulse": os.environ.get("LEVYRA_SCREEN_PULSE", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_193717_LEVYRA.jpg")),
     "lyrics": "screen-lyrics.jpg",
-    "now_playing": os.environ.get("LEVYRA_SCREEN_PLAYER", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193948_LEVYRA.jpg"),
+    "now_playing": os.environ.get("LEVYRA_SCREEN_PLAYER", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_193948_LEVYRA.jpg")),
     "search_artist": "screen-search-artist.jpg",
     "artist_discography": "screen-artist-discography.jpg",
-    "artist_profile": os.environ.get("LEVYRA_SCREEN_ARTIST", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194603_LEVYRA.jpg"),
-    "album": os.environ.get("LEVYRA_SCREEN_ALBUM", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194706_LEVYRA.jpg"),
-    "search": os.environ.get("LEVYRA_SCREEN_SEARCH", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194736_LEVYRA.jpg"),
-    "player_settings": os.environ.get("LEVYRA_SCREEN_SETTINGS", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194845_LEVYRA.jpg"),
-    "explore": os.environ.get("LEVYRA_SCREEN_EXPLORE", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_194853_LEVYRA.jpg"),
-    "new_releases": os.environ.get("LEVYRA_SCREEN_RELEASES", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_132248_LEVYRA.jpg"),
-    "collections": os.environ.get("LEVYRA_SCREEN_COLLECTIONS", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_132323_LEVYRA.jpg"),
-    "listening_rhythm": os.environ.get("LEVYRA_SCREEN_RHYTHM", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_131943_LEVYRA.jpg"),
-    "player_deck": os.environ.get("LEVYRA_SCREEN_PLAYER_DECK", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_195520_LEVYRA.jpg"),
-    "artist_playlists": os.environ.get("LEVYRA_SCREEN_ARTIST_PLAYLISTS", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_201454_LEVYRA.jpg"),
-    "settings_vault": os.environ.get("LEVYRA_SCREEN_SETTINGS_VAULT", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_194944_LEVYRA.jpg"),
-    "your_orbit": os.environ.get("LEVYRA_SCREEN_ORBIT", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_195235_LEVYRA.jpg"),
+    "artist_profile": os.environ.get("LEVYRA_SCREEN_ARTIST", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_194603_LEVYRA.jpg")),
+    "album": os.environ.get("LEVYRA_SCREEN_ALBUM", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_194706_LEVYRA.jpg")),
+    "search": os.environ.get("LEVYRA_SCREEN_SEARCH", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_194736_LEVYRA.jpg")),
+    "player_settings": os.environ.get("LEVYRA_SCREEN_SETTINGS", os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_194845_LEVYRA.jpg")),
+    "explore": os.environ.get("LEVYRA_SCREEN_EXPLORE", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_194853_LEVYRA.jpg")),
+    "new_releases": os.environ.get("LEVYRA_SCREEN_RELEASES", os.path.join(DOWNLOADS_DIR, "Screenshot_20260927_132248_LEVYRA.jpg")),
+    "collections": os.environ.get("LEVYRA_SCREEN_COLLECTIONS", os.path.join(DOWNLOADS_DIR, "Screenshot_20260927_132323_LEVYRA.jpg")),
+    "listening_rhythm": os.environ.get("LEVYRA_SCREEN_RHYTHM", os.path.join(DOWNLOADS_DIR, "Screenshot_20260927_131943_LEVYRA.jpg")),
+    "player_deck": os.environ.get("LEVYRA_SCREEN_PLAYER_DECK", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_195520_LEVYRA.jpg")),
+    "artist_playlists": os.environ.get("LEVYRA_SCREEN_ARTIST_PLAYLISTS", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_201454_LEVYRA.jpg")),
+    "settings_vault": os.environ.get("LEVYRA_SCREEN_SETTINGS_VAULT", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_194944_LEVYRA.jpg")),
+    "your_orbit": os.environ.get("LEVYRA_SCREEN_ORBIT", os.path.join(DOWNLOADS_DIR, "Screenshot_20260929_195235_LEVYRA.jpg")),
 }
 
 def get_screen_path(filename):
@@ -448,7 +455,7 @@ def main():
     print("Generating refined Levyra showcase assets...")
     try:
         generate_hero_panoramic_showcase()
-    except Exception as e:
+    except (FileNotFoundError, OSError) as e:
         print(f"Skipping hero panoramic showcase ({e})")
     generate_feature_cards()
     print("Showcase generation completed successfully!")
