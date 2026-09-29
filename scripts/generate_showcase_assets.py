@@ -12,7 +12,7 @@ os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 SCREENS = {
     "home": os.environ.get("LEVYRA_SCREEN_HOME", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_171253_LEVYRA.jpg"),
     "charts": "screen-charts.jpg",
-    "genres": "screen-genres.jpg",
+    "genres": os.environ.get("LEVYRA_SCREEN_GENRES", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_194827_LEVYRA.jpg"),
     "listening_pulse": os.environ.get("LEVYRA_SCREEN_PULSE", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193717_LEVYRA.jpg"),
     "lyrics": "screen-lyrics.jpg",
     "now_playing": os.environ.get("LEVYRA_SCREEN_PLAYER", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193948_LEVYRA.jpg"),
@@ -26,6 +26,10 @@ SCREENS = {
     "new_releases": os.environ.get("LEVYRA_SCREEN_RELEASES", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_132248_LEVYRA.jpg"),
     "collections": os.environ.get("LEVYRA_SCREEN_COLLECTIONS", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_132323_LEVYRA.jpg"),
     "listening_rhythm": os.environ.get("LEVYRA_SCREEN_RHYTHM", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_131943_LEVYRA.jpg"),
+    "player_deck": os.environ.get("LEVYRA_SCREEN_PLAYER_DECK", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_195520_LEVYRA.jpg"),
+    "explore_mix": os.environ.get("LEVYRA_SCREEN_EXPLORE_MIX", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_194853_LEVYRA.jpg"),
+    "settings_vault": os.environ.get("LEVYRA_SCREEN_SETTINGS_VAULT", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_194944_LEVYRA.jpg"),
+    "your_orbit": os.environ.get("LEVYRA_SCREEN_ORBIT", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260929_195235_LEVYRA.jpg"),
 }
 
 def get_screen_path(filename):
@@ -391,6 +395,10 @@ def generate_feature_cards():
         ("new_releases", "14", "Fresh off the stage", "New singles and albums\nupdated every week.", (245, 215, 210), (225, 115, 95)),
         ("collections", "15", "Curated for you", "Playlists and gems\naround what you love.", (226, 212, 244), (152, 95, 215)),
         ("listening_rhythm", "16", "Your listening rhythm", "Activity, peak hours,\nand listening habits.", (210, 238, 225), (72, 180, 135)),
+        ("player_deck", "17", "Pick your stage", "Same music, different stage.\nSwitching never interrupts.", (242, 218, 222), (195, 78, 98)),
+        ("explore_mix", "18", "Tune your mix", "Live stations, custom mix,\nand continuous discovery.", (210, 226, 245), (68, 126, 214)),
+        ("settings_vault", "19", "Tailor every detail", "Audio, design, gestures,\nand local Vault backups.", (220, 228, 234), (105, 142, 165)),
+        ("your_orbit", "20", "In your orbit", "The tracks and artists\nthat always return to you.", (235, 218, 240), (165, 102, 185)),
     ]
 
     label_font = get_font(19, bold=True)
@@ -398,6 +406,11 @@ def generate_feature_cards():
     subtitle_font = get_font(27, bold=False)
 
     for key, number, title, subtitle, background, accent in specs:
+        screen_file = get_screen_path(SCREENS[key])
+        if not os.path.exists(screen_file):
+            print(f"Skipping {key} ({number}): {screen_file} not found")
+            continue
+
         card = Image.new("RGBA", (card_w, card_h), (*background, 255))
         draw = ImageDraw.Draw(card)
         draw.polygon(
@@ -415,7 +428,7 @@ def generate_feature_cards():
             spacing=8,
         )
 
-        with Image.open(get_screen_path(SCREENS[key])) as source:
+        with Image.open(screen_file) as source:
             phone = create_phone_frame(source, target_height=1050)
         phone_x = (card_w - phone.width) // 2
         phone_y = 390
@@ -433,7 +446,10 @@ def generate_feature_cards():
 
 def main():
     print("Generating refined Levyra showcase assets...")
-    generate_hero_panoramic_showcase()
+    try:
+        generate_hero_panoramic_showcase()
+    except Exception as e:
+        print(f"Skipping hero panoramic showcase ({e})")
     generate_feature_cards()
     print("Showcase generation completed successfully!")
 
