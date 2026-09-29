@@ -14,7 +14,7 @@ import kotlin.math.tanh
  * Implements:
  * 1. Mid/Side stereo coherence protection (M = 0.5*(L+R), S = 0.5*(L-R)).
  * 2. Band-isolated harmonic extension with 2x oversampling on the residual branch
- *    to eliminate ultrasonic aliasing foldback into the audible spectrum.
+ *    to reduce ultrasonic aliasing foldback into the audible spectrum.
  * 3. Side excitation controlled by measured stereo coherence with complete
  *    anti-phase suppression and hard-panning isolation.
  * 4. Micro-transient envelope dynamics unmasking.
@@ -221,10 +221,10 @@ class DspRestorationEngine : EnhancedAudioEngine {
 
                 val resM = airMid * transientMultiplier
 
-                // Side processing (only if stereo and coherence > 0.05)
+                // Always advance the Side filters so silence/coherence gating cannot freeze stale IIR history.
+                val sideBand = filterSideSource(side)
+                val airSide = process2xHarmonicSide(sideBand, harmonicGain)
                 val resS = if (allowSide && abs(side) > 1e-6f) {
-                    val sideBand = filterSideSource(side)
-                    val airSide = process2xHarmonicSide(sideBand, harmonicGain)
                     airSide * transientMultiplier * sideScale
                 } else {
                     0f
