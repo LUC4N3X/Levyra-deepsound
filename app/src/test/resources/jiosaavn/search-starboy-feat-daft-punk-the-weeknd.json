@@ -1,0 +1,1031 @@
+{
+ "total": 72,
+ "start": 1,
+ "results": [
+  {
+   "id": "TcDP-KUl",
+   "title": "Starboy",
+   "type": "song",
+   "language": "english",
+   "year": "2021",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "The Highlights",
+    "duration": "230",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-TcDP-KUl",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "Paem2Kf1",
+   "title": "Starboy",
+   "type": "song",
+   "language": "english",
+   "year": "2016",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Starboy",
+    "duration": "230",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-Paem2Kf1",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "w7ms6NSk",
+   "title": "I Feel It Coming",
+   "type": "song",
+   "language": "english",
+   "year": "2016",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Starboy",
+    "duration": "269",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-w7ms6NSk",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Eric Chedeville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Eric Chedeville",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "YzC9zZTZ",
+   "title": "Starboy (Kygo Remix)",
+   "type": "song",
+   "language": "english",
+   "year": "2016",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "Starboy (Kygo Remix)",
+    "duration": "244",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-YzC9zZTZ",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "0y4Z8WU3",
+   "title": "Starboy",
+   "type": "song",
+   "language": "english",
+   "year": "2023",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "Starboy (Deluxe)",
+    "duration": "230",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-0y4Z8WU3",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "G5LMYLiK",
+   "title": "Starboy",
+   "type": "song",
+   "language": "english",
+   "year": "2016",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "Starboy",
+    "duration": "230",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-G5LMYLiK",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "3G6-BZY6",
+   "title": "Starboy",
+   "type": "song",
+   "language": "english",
+   "year": "2023",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "Starboy (Deluxe)",
+    "duration": "230",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-3G6-BZY6",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "dTyoC6L1",
+   "title": "Starboy",
+   "type": "song",
+   "language": "english",
+   "year": "2021",
+   "explicit_content": "0",
+   "more_info": {
+    "album": "The Highlights",
+    "duration": "230",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-dTyoC6L1",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "VxLxHN04",
+   "title": "Starboy",
+   "type": "song",
+   "language": "english",
+   "year": "2023",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "Canciones De Hace Un Tiempo - Pop",
+    "duration": "230",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-VxLxHN04",
+    "rights": {
+     "code": "0",
+     "cacheable": "false",
+     "delete_cached_object": "true",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "WbMNBMwj",
+   "title": "Starboy",
+   "type": "song",
+   "language": "english",
+   "year": "2024",
+   "explicit_content": "1",
+   "more_info": {
+    "album": "The Highlights (Deluxe)",
+    "duration": "230",
+    "320kbps": "true",
+    "encrypted_media_url": "fixture-token-WbMNBMwj",
+    "rights": {
+     "code": "0",
+     "cacheable": "true",
+     "delete_cached_object": "false",
+     "reason": ""
+    },
+    "artistMap": {
+     "primary_artists": [
+      {
+       "name": "The Weeknd",
+       "role": "primary_artists",
+       "type": "artist"
+      }
+     ],
+     "featured_artists": [
+      {
+       "name": "Daft Punk",
+       "role": "featured_artists",
+       "type": "artist"
+      }
+     ],
+     "artists": [
+      {
+       "name": "Abel Tesfaye",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "music",
+       "type": "artist"
+      },
+      {
+       "name": "The Weeknd",
+       "role": "singer",
+       "type": "artist"
+      },
+      {
+       "name": "Abel Tesfaye",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Thomas Bangalter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Guy-Manuel De Homem-Christo",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Martin Mckinney",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Henry Walter",
+       "role": "lyricist",
+       "type": "artist"
+      },
+      {
+       "name": "Jason Quenneville",
+       "role": "lyricist",
+       "type": "artist"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}
