@@ -33,9 +33,6 @@ class PlaybackManifestCodecTest {
                     bitrate = 160_000,
                     averageBitrate = 158_000,
                     sampleRate = 48_000,
-                    bitDepth = 24,
-                    channels = 2,
-                    isLossless = true,
                     itag = 251,
                     qualityLabel = "AUDIO_QUALITY_HIGH",
                     expiresAtMs = now + 3_600_000L,
@@ -86,9 +83,6 @@ class PlaybackManifestCodecTest {
         assertEquals(manifest.selectedAudioUrl, decoded.selectedAudioUrl)
         assertEquals(manifest.selectedVideoUrl, decoded.selectedVideoUrl)
         assertEquals("opus", decoded.streams.first { it.kind == PlaybackStreamKind.AUDIO }.codec)
-        assertEquals(24, decoded.streams.first { it.kind == PlaybackStreamKind.AUDIO }.bitDepth)
-        assertEquals(2, decoded.streams.first { it.kind == PlaybackStreamKind.AUDIO }.channels)
-        assertTrue(decoded.streams.first { it.kind == PlaybackStreamKind.AUDIO }.isLossless)
         assertEquals(1080, decoded.streams.first { it.kind == PlaybackStreamKind.VIDEO }.height)
         assertEquals(manifest.provenance, decoded.provenance)
         assertTrue(decoded.isFresh(now))

@@ -2,9 +2,6 @@ package com.luc4n3x.levyra.player
 
 import com.luc4n3x.levyra.domain.AlternativeAudioSource
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
-import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
-import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
-import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
@@ -73,36 +70,5 @@ class AlternativeStreamCacheKeyTest {
         val slash = track("https://aac.saavncdn.com/820/hash_320.mp4", 320, providerTrackId = "song/a")
         val question = track("https://aac.saavncdn.com/820/hash_320.mp4", 320, providerTrackId = "song?a")
         assertNotEquals(LevyraPlaybackCacheKey.stream(slash), LevyraPlaybackCacheKey.stream(question))
-    }
-
-    @Test
-    fun normalMuxedAudioKeepsUrlBasedAudioMimeInference() {
-        val url = "https://media.example.org/audio.mp4"
-        val normal = track(url, null).copy(
-            playbackManifest = ResolvedPlaybackManifest(
-                sourceVideoId = "4NRXx6U8ABQ",
-                provider = "YouTube",
-                resolvedAtMs = 0L,
-                expiresAtMs = 0L,
-                durationMs = 200_000L,
-                selectedAudioUrl = url,
-                selectedVideoUrl = "",
-                streams = listOf(
-                    PlaybackStreamDescriptor(
-                        url = url,
-                        kind = PlaybackStreamKind.MUXED,
-                        deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
-                        container = "mp4",
-                        mimeType = "video/mp4",
-                        selected = true
-                    )
-                ),
-                alternativeSource = null
-            )
-        )
-
-        val mimeType = LevyraMediaItemFactory.playbackMimeTypeFor(normal, url, videoMode = false)
-
-        assertEquals("audio/mp4", mimeType)
     }
 }

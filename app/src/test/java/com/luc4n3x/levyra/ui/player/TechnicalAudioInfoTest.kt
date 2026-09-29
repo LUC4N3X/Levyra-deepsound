@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.ui.player
 
 import com.luc4n3x.levyra.domain.AlternativeAudioSource
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
-import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
@@ -40,7 +39,6 @@ class TechnicalAudioInfoTest {
             averageBitrate = 160_000,
             sampleRate = 48_000,
             bitDepth = 24,
-            channels = 2,
             qualityLabel = "160 kbps"
         )
         val manifest = manifest(
@@ -50,9 +48,7 @@ class TechnicalAudioInfoTest {
                 providerTrackId = "private-provider-id",
                 bitrateKbps = 320,
                 verdict = AlternativeMatchVerdict.EXACT,
-                confidence = 98,
-                requestedQuality = AudioQualityPreference.HIGH,
-                deliveredQuality = "High · 320 kbps"
+                confidence = 98
             )
         )
         val rows = buildSourceRows(track(listOf(audio), manifest), audio, copy).toMap()
@@ -61,10 +57,6 @@ class TechnicalAudioInfoTest {
         assertEquals("160 kbps", rows[copy.bitrate])
         assertEquals("48 kHz", rows[copy.sampleRate])
         assertEquals("24-bit", rows[copy.bitDepth])
-        assertEquals("2", rows[copy.channels])
-        assertEquals("high", rows[copy.requested])
-        assertEquals("High · 320 kbps", rows[copy.delivered])
-        assertEquals(copy.lossy, rows[copy.format])
         assertEquals("itag 251", rows[copy.streamId])
         assertTrue(rows[copy.verifiedSource].orEmpty().contains("EXACT"))
         assertTrue(rows.values.none { it.contains("private-provider-id") })
@@ -206,7 +198,6 @@ class TechnicalAudioInfoTest {
         averageBitrate: Int = 0,
         sampleRate: Int = 0,
         bitDepth: Int = 0,
-        channels: Int = 0,
         qualityLabel: String = ""
     ) = PlaybackStreamDescriptor(
         url = "https://example.invalid/audio",
@@ -219,7 +210,6 @@ class TechnicalAudioInfoTest {
         averageBitrate = averageBitrate,
         sampleRate = sampleRate,
         bitDepth = bitDepth,
-        channels = channels,
         itag = itag,
         qualityLabel = qualityLabel,
         selected = true

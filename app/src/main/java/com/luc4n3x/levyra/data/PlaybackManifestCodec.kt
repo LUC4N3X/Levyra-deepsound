@@ -33,8 +33,6 @@ object PlaybackManifestCodec {
                     .put("qualityLabel", stream.qualityLabel)
                     .put("expiresAtMs", stream.expiresAtMs)
                     .put("selected", stream.selected)
-                    .put("channels", stream.channels)
-                    .put("isLossless", stream.isLossless)
             )
         }
         return JSONObject()
@@ -81,9 +79,7 @@ object PlaybackManifestCodec {
                         itag = json.optInt("itag", -1),
                         qualityLabel = json.optString("qualityLabel"),
                         expiresAtMs = json.optLong("expiresAtMs", 0L),
-                        selected = json.optBoolean("selected", false),
-                        channels = json.optInt("channels", 0),
-                        isLossless = json.optBoolean("isLossless", false)
+                        selected = json.optBoolean("selected", false)
                     )
                 )
             }
@@ -160,9 +156,6 @@ private fun AlternativeAudioSource.toJson(): JSONObject = JSONObject()
     .put("bitrateKbps", bitrateKbps)
     .put("verdict", verdict.name)
     .put("confidence", confidence)
-    .put("requestedQuality", requestedQuality.storageValue)
-    .put("deliveredQuality", deliveredQuality)
-    .put("isLossless", isLossless)
 
 private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
     val providerId = optString("providerId")
@@ -174,13 +167,7 @@ private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
         providerTrackId = providerTrackId,
         bitrateKbps = optInt("bitrateKbps", 0),
         verdict = verdict,
-        confidence = optInt("confidence", 0),
-        requestedQuality = com.luc4n3x.levyra.domain.AudioQualityPreference.fromStorage(
-            optString("requestedQuality"),
-            com.luc4n3x.levyra.domain.AudioQualityPreference.HIGH
-        ),
-        deliveredQuality = optString("deliveredQuality"),
-        isLossless = optBoolean("isLossless", false)
+        confidence = optInt("confidence", 0)
     )
 }
 

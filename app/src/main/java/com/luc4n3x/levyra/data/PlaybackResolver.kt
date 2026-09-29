@@ -19,7 +19,6 @@ import com.luc4n3x.levyra.data.hqaudio.HighQualityProviderHttpClient
 import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
-import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
@@ -1071,49 +1070,32 @@ class PlaybackResolver private constructor(private val context: Context) {
         reuseProvidedStream = true
     )
 
-    suspend fun resolveForOffline(
-        track: Track,
-        audioQualityOverride: String? = null,
-        alternativeQualityOverride: AudioQualityPreference? = null
-    ): Track {
+    suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
         val resolved = resolveWithLanguageRevisionRetry(track) { requestTrack, preferredLanguage ->
-            val request = highQualityPlayback.downloadRequest(
-                alternativeQualityOverride ?: AudioQualityPreference.HIGH
-            )
-            val query = highQualityPlayback.queryFor(requestTrack, false, quality, request)
-            suspend fun resolveNormalOffline(): Track {
-                val reel = if (preferredLanguage.isBlank()) {
-                    runCatchingPreservingCancellation {
-                        resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))
-                    }.onFailure { error ->
-                        Timber.d(error, "Offline Android Reel primary unavailable")
-                    }.getOrNull()
-                } else {
-                    null
-                }
-                val reelManifest = reel?.playbackManifest
-                return if (reel != null && reelManifest != null && supportsOfflineExport(reelManifest)) {
-                    reel
-                } else {
-                    resolveInternal(
-                        track = requestTrack,
-                        isVideoMode = false,
-                        timeoutMs = offlineResolveTimeoutMs,
-                        preferMp4Audio = true,
-                        requestKind = "offline",
-                        audioQuality = quality,
-                        reuseProvidedStream = audioQualityOverride == null
-                    )
-                }
+            val reel = if (preferredLanguage.isBlank()) {
+                runCatchingPreservingCancellation {
+                    resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))
+                }.onFailure { error ->
+                    Timber.d(error, "Offline Android Reel primary unavailable")
+                }.getOrNull()
+            } else {
+                null
             }
-            if (query == null) resolveNormalOffline() else highQualityPlayback.resolve(
-                track = requestTrack,
-                query = query,
-                provenance = ::basePlaybackProvenance,
-                request = request,
-                resolveNormal = ::resolveNormalOffline
-            )
+            val reelManifest = reel?.playbackManifest
+            if (reel != null && reelManifest != null && supportsOfflineExport(reelManifest)) {
+                reel
+            } else {
+                resolveInternal(
+                    track = requestTrack,
+                    isVideoMode = false,
+                    timeoutMs = offlineResolveTimeoutMs,
+                    preferMp4Audio = true,
+                    requestKind = "offline",
+                    audioQuality = quality,
+                    reuseProvidedStream = audioQualityOverride == null
+                )
+            }
         }
         return preserveEditorialArtwork(track, resolved)
     }

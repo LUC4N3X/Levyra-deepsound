@@ -1,9 +1,5 @@
 package com.luc4n3x.levyra.data.hqaudio
 
-import com.luc4n3x.levyra.domain.AudioQualityPreference
-import com.luc4n3x.levyra.domain.AudioQualityRequest
-import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
-
 enum class AudioQualityTier(val kbps: Int) {
     KBPS_320(320),
     KBPS_160(160),
@@ -46,52 +42,30 @@ data class ResolvedHighQualityStream(
     val providerId: String,
     val providerTrackId: String,
     val url: String,
-    val tier: AudioQualityTier?,
+    val tier: AudioQualityTier,
     val mimeType: String,
     val container: String,
     val codec: String,
     val contentLength: Long,
     val estimatedKbps: Int,
-    val expiresAtMs: Long,
-    val sampleRateHz: Int = 0,
-    val bitDepth: Int = 0,
-    val channels: Int = 0,
-    val isLossless: Boolean = false,
-    val deliveryMethod: PlaybackDeliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
-    val requestedQuality: AudioQualityPreference =
-        if (tier == AudioQualityTier.KBPS_96) AudioQualityPreference.DATA_SAVER else AudioQualityPreference.HIGH
+    val expiresAtMs: Long
 ) {
     val host: String
         get() = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
 
     val deliveredKbps: Int
-        get() = estimatedKbps.takeIf { it > 0 } ?: tier?.kbps ?: 0
+        get() = estimatedKbps.takeIf { it > 0 } ?: tier.kbps
 
     val displayKbps: Int
-        get() = if (matchesNominalTier) tier?.kbps ?: estimatedKbps else estimatedKbps
+        get() = if (matchesNominalTier) tier.kbps else estimatedKbps
 
     val qualityLabel: String
-        get() = when {
-            isLossless && bitDepth > 0 && sampleRateHz > 0 ->
-                "Lossless $bitDepth-bit / ${formatSampleRate(sampleRateHz)}"
-            isLossless -> "Lossless"
-            tier != null && matchesNominalTier -> "${tier.kbps} kbps"
-            estimatedKbps > 0 -> "~$estimatedKbps kbps"
-            else -> "Verified audio"
-        }
-
-    val deliveredQuality: String
-        get() = qualityLabel
+        get() = if (matchesNominalTier) "${tier.kbps} kbps" else "~$estimatedKbps kbps"
 
     private val matchesNominalTier: Boolean
-        get() = tier != null && (estimatedKbps <= 0 || ProviderStreamValidator.bitrateMatches(estimatedKbps, tier))
+        get() = estimatedKbps <= 0 || ProviderStreamValidator.bitrateMatches(estimatedKbps, tier)
 
     fun isFresh(nowMs: Long, marginMs: Long): Boolean = url.isNotBlank() && nowMs + marginMs < expiresAtMs
-
-    private fun formatSampleRate(value: Int): String = when {
-        value % 1_000 == 0 -> "${value / 1_000} kHz"
-        else -> "${value / 1_000.0} kHz"
-    }
 }
 
 data class ProviderBackendHealth(
@@ -116,9 +90,6 @@ interface HighQualityAudioProvider {
 
     suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome
 
-    suspend fun resolveStream(candidate: AlternativeTrackCandidate, request: AudioQualityRequest): ProviderStreamOutcome =
-        resolveStream(candidate)
-
     fun health(): List<ProviderBackendHealth> = emptyList()
 }
 
@@ -130,11 +101,5 @@ object HighQualityTierPolicy {
         if (!normalAvailable) return true
         val baseline = normalKbps?.takeIf { it > 0 } ?: ASSUMED_NORMAL_KBPS
         return alternativeKbps >= baseline + MINIMUM_GAIN_KBPS
-    }
-
-    fun accepts(stream: ResolvedHighQualityStream, normalKbps: Int?, normalAvailable: Boolean): Boolean {
-        if (stream.isLossless && stream.bitDepth >= 16 && stream.sampleRateHz >= 44_100) return true
-        if (stream.isLossless && !normalAvailable) return true
-        return accepts(stream.deliveredKbps, normalKbps, normalAvailable)
     }
 }

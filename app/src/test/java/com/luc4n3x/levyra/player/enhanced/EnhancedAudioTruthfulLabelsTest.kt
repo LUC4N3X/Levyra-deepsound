@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.player.enhanced
 
 import com.luc4n3x.levyra.domain.AlternativeAudioSource
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
-import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
@@ -34,7 +33,6 @@ class EnhancedAudioTruthfulLabelsTest {
             averageBitrate = 320_000,
             sampleRate = 44_100,
             bitDepth = 16,
-            channels = 2,
             qualityLabel = "320 kbps",
             itag = 140,
             selected = true
@@ -54,10 +52,7 @@ class EnhancedAudioTruthfulLabelsTest {
                 providerTrackId = "jio-12345",
                 bitrateKbps = 320,
                 verdict = AlternativeMatchVerdict.EXACT,
-                confidence = 96,
-                requestedQuality = AudioQualityPreference.HIGH,
-                deliveredQuality = "AAC · 320 kbps",
-                isLossless = false
+                confidence = 96
             )
         )
         val track = Track(
@@ -86,8 +81,6 @@ class EnhancedAudioTruthfulLabelsTest {
         assertEquals("jiosaavn", sourceRows[copy.provider])
         assertEquals("320 kbps", sourceRows[copy.bitrate])
         assertEquals(copy.no, sourceRows[copy.lossless])
-        assertEquals(copy.lossy, sourceRows[copy.format])
-        assertEquals("AAC · 320 kbps", sourceRows[copy.delivered])
 
         val allValues = sourceRows.values.joinToString(" ")
         assertFalse("Must never claim Lossless for lossy stream", allValues.contains("Lossless: Yes"))
@@ -162,7 +155,6 @@ class EnhancedAudioTruthfulLabelsTest {
             averageBitrate = 960_000,
             sampleRate = 48_000,
             bitDepth = 24,
-            channels = 2,
             qualityLabel = "Lossless · 960 kbps",
             selected = true
         )
@@ -180,10 +172,7 @@ class EnhancedAudioTruthfulLabelsTest {
                 providerTrackId = "flac-12345",
                 bitrateKbps = 960,
                 verdict = AlternativeMatchVerdict.EXACT,
-                confidence = 100,
-                requestedQuality = AudioQualityPreference.HIGH,
-                deliveredQuality = "FLAC · 24-bit 48 kHz",
-                isLossless = true
+                confidence = 100
             )
         )
         val track = Track(
@@ -210,7 +199,5 @@ class EnhancedAudioTruthfulLabelsTest {
         val rows = buildSourceRows(track, flacStream, copy).toMap()
 
         assertEquals(copy.yes, rows[copy.lossless])
-        assertEquals(copy.lossless, rows[copy.format])
-        assertEquals("FLAC · 24-bit 48 kHz", rows[copy.delivered])
     }
 }

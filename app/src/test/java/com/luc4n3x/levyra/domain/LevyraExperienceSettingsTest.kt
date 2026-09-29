@@ -51,15 +51,6 @@ class LevyraExperienceSettingsTest {
         assertEquals("High", LevyraDownloadSettings(preset = LevyraDownloadPreset.HighQuality).resolverAudioQuality)
         assertEquals("Low", LevyraDownloadSettings(preset = LevyraDownloadPreset.DataSaver).resolverAudioQuality)
         assertEquals(null, LevyraDownloadSettings(preset = LevyraDownloadPreset.Automatic).resolverAudioQuality)
-        assertEquals(
-            AudioQualityPreference.HIGH,
-            LevyraDownloadSettings(preset = LevyraDownloadPreset.Automatic).audioQualityPreference
-        )
-        assertEquals(
-            AudioQualityPreference.DATA_SAVER,
-            LevyraDownloadSettings(preset = LevyraDownloadPreset.DataSaver).audioQualityPreference
-        )
-        assertEquals(LevyraDownloadPreset.Automatic, LevyraDownloadPreset.from("MaxQuality"))
     }
 
     @Test

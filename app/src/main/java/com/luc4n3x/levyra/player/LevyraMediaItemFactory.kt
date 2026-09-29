@@ -31,7 +31,7 @@ object LevyraMediaItemFactory {
         } else if (cacheReadSpec != null) {
             cacheReadSpec.mimeType.takeIf { it.isNotBlank() }
         } else {
-            playbackMimeTypeFor(track, streamUrl, videoMode)
+            mimeTypeFor(streamUrl, videoMode)
         }
         val builder = MediaItem.Builder()
             .setUri(streamUrl)
@@ -70,12 +70,6 @@ object LevyraMediaItemFactory {
         return mediaItem
     }
 
-    internal fun playbackMimeTypeFor(track: Track, streamUrl: String, videoMode: Boolean): String? {
-        return selectedStreamMimeType(track, streamUrl).takeIf {
-            !videoMode && track.playbackManifest?.alternativeSource != null
-        } ?: mimeTypeFor(streamUrl, videoMode)
-    }
-
     internal fun mimeTypeFor(url: String, videoMode: Boolean): String? {
         val clean = url.substringBefore('#').lowercase()
         val path = clean.substringBefore('?')
@@ -92,21 +86,12 @@ object LevyraMediaItemFactory {
             clean.contains("mime=audio%2fmp4") || clean.contains("mime=audio/mp4") -> "audio/mp4"
             path.endsWith(".webm") -> if (videoMode) "video/webm" else "audio/webm"
             path.endsWith(".mp3") -> "audio/mpeg"
-            path.endsWith(".flac") -> "audio/flac"
             path.endsWith(".m4a") -> "audio/mp4"
             path.endsWith(".mp4") -> if (videoMode) "video/mp4" else "audio/mp4"
             videoMode -> "video/mp4"
             else -> "audio/mp4"
         }
     }
-
-    private fun selectedStreamMimeType(track: Track, url: String): String? = track.playbackManifest
-        ?.streams
-        ?.firstOrNull { it.selected && it.url == url }
-        ?.mimeType
-        ?.substringBefore(';')
-        ?.trim()
-        ?.takeIf(String::isNotBlank)
 
     internal fun liveRadioMimeTypeFor(url: String): String? = mimeTypeFor(url, false)
         ?.takeIf { it == MimeTypes.APPLICATION_M3U8 || it == MimeTypes.APPLICATION_MPD }

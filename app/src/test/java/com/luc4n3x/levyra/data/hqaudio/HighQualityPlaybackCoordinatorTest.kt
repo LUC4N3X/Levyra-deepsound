@@ -56,7 +56,7 @@ class HighQualityPlaybackCoordinatorTest {
         normal: suspend () -> Track = { normalTrack() }
     ): Track = runBlocking {
         val query = queryFor(requested, isVideoMode = false, audioQuality = "Auto") ?: error("not eligible")
-        resolve(requested, query, provenance, resolveNormal = normal)
+        resolve(requested, query, provenance, normal)
     }
 
     @Test

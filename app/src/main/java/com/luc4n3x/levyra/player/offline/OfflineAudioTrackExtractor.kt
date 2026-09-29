@@ -19,29 +19,12 @@ import kotlinx.coroutines.withContext
 internal object OfflineAudioTrackExtractor {
     suspend fun extractAudioTrack(context: Context, input: File, output: File) {
         try {
-            if (isFlacInput(input)) {
-                withContext(Dispatchers.IO) {
-                    input.copyTo(output, overwrite = true)
-                }
-                if (!output.isFile || output.length() <= 0L) {
-                    throw IOException("Offline FLAC passthrough produced an empty file")
-                }
-                return
-            }
             runExtraction(context, input, output)
         } catch (error: Throwable) {
             runCatching { output.delete() }
             throw error
         }
     }
-
-    private fun isFlacInput(input: File): Boolean = runCatching {
-        input.inputStream().use { stream ->
-            val signature = ByteArray(4)
-            stream.read(signature) == signature.size &&
-                signature.contentEquals(byteArrayOf('f'.code.toByte(), 'L'.code.toByte(), 'a'.code.toByte(), 'C'.code.toByte()))
-        }
-    }.getOrDefault(false)
 
     private suspend fun runExtraction(context: Context, input: File, output: File) {
         val failure = withContext(Dispatchers.Main) {

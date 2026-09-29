@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.AlternativeAudioSource
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
-import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
@@ -47,35 +46,11 @@ class AlternativeManifestCodecTest {
 
     @Test
     fun alternativeProvenanceSurvivesRoundTrip() {
-        val source = AlternativeAudioSource(
-            "jiosaavn",
-            "pW-kkdqr",
-            96,
-            AlternativeMatchVerdict.EXACT,
-            100,
-            requestedQuality = AudioQualityPreference.DATA_SAVER,
-            deliveredQuality = "96 kbps",
-            isLossless = false
-        )
+        val source = AlternativeAudioSource("jiosaavn", "pW-kkdqr", 320, AlternativeMatchVerdict.EXACT, 100)
         val decoded = PlaybackManifestCodec.decode(PlaybackManifestCodec.encode(manifest(source)))!!
         assertEquals(source, decoded.alternativeSource)
         assertTrue(decoded.isAlternativeSource)
         assertEquals("4NRXx6U8ABQ", decoded.sourceVideoId)
-    }
-
-    @Test
-    fun manifestsCachedWithRetiredRemoteLosslessFieldsStayReadable() {
-        val source = AlternativeAudioSource("jiosaavn", "pW-kkdqr", 320, AlternativeMatchVerdict.HIGH, 91)
-        val encoded = PlaybackManifestCodec.encode(manifest(source))
-        val legacy = encoded
-            .replace("\"requestedQuality\":\"high\"", "\"requestedQuality\":\"max_quality\",\"isAtmos\":true,\"isSpatial\":true")
-            .replace("\"channels\":", "\"isAtmos\":true,\"isSpatial\":true,\"channels\":")
-        assertTrue(legacy.contains("max_quality"))
-
-        val decoded = PlaybackManifestCodec.decode(legacy)!!
-
-        assertEquals(source, decoded.alternativeSource)
-        assertEquals(AudioQualityPreference.HIGH, decoded.alternativeSource?.requestedQuality)
     }
 
     @Test

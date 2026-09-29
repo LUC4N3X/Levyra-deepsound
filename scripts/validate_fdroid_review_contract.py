@@ -247,8 +247,8 @@ def collect_violations(
     ):
         forbid(exporter_path, exporter, forbidden, reason)
     for required, reason in (
-        ("isSupportedOfflineSource(", "provided streams must be checked as M4A or verified FLAC"),
-        ("AudioContainer(\"flac\", \"audio/flac\", false)", "verified FLAC downloads must preserve their real container"),
+        ("isMp4AudioExportUrl(track.streamUrl)", "provided streams must be checked as MP4/M4A"),
+        ("if (!downloaded.container.supportsEmbeddedMetadata)", "non-M4A downloads must fail"),
         ("LevyraM4aTagWriter.write", "M4A metadata must be embedded"),
         ("MediaStore.Audio.Media.EXTERNAL_CONTENT_URI", "audio must be registered in MediaStore.Audio"),
     ):

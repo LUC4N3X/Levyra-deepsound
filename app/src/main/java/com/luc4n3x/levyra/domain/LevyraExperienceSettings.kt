@@ -233,13 +233,6 @@ data class LevyraDownloadSettings(
             LevyraDownloadPreset.Automatic -> null
         }
 
-    val audioQualityPreference: AudioQualityPreference
-        get() = when (preset) {
-            LevyraDownloadPreset.HighQuality,
-            LevyraDownloadPreset.Automatic -> AudioQualityPreference.HIGH
-            LevyraDownloadPreset.DataSaver -> AudioQualityPreference.DATA_SAVER
-        }
-
     val storedPresetKey: String
         get() = preset.name
 

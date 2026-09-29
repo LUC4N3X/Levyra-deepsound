@@ -213,15 +213,10 @@ internal class OfflineExportPipeline(
         progress(4)
         val resolved = resolver.resolveForOffline(
             track.copy(streamUrl = ""),
-            settings.resolverAudioQuality,
-            settings.audioQualityPreference
+            settings.resolverAudioQuality
         )
         if (resolved.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
-        val selectedStream = resolved.playbackManifest?.streams?.firstOrNull { it.selected }
-        val verifiedAlternative = resolved.playbackManifest?.alternativeSource != null &&
-            selectedStream != null &&
-            isSupportedOfflineSource(selectedStream.mimeType, resolved.streamUrl)
-        if (!verifiedAlternative &&
+        if (
             !isAllowedOfflineReelSource(
                 source = resolved.source,
                 manifestProvider = resolved.playbackManifest?.provider.orEmpty(),

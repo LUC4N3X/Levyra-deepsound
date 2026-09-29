@@ -1,7 +1,5 @@
 package com.luc4n3x.levyra.domain
 
-import java.util.Locale
-
 enum class HighQualityAudioMode(val storageValue: String) {
     OFF("off"),
     AUTOMATIC("automatic"),
@@ -18,33 +16,6 @@ enum class HighQualityAudioMode(val storageValue: String) {
     }
 }
 
-enum class AudioQualityPreference(val storageValue: String) {
-    HIGH("high"),
-    DATA_SAVER("data_saver");
-
-    companion object {
-        fun fromStorage(value: String?, fallback: AudioQualityPreference = HIGH): AudioQualityPreference {
-            val clean = value.orEmpty().trim().lowercase(Locale.ROOT)
-            return entries.firstOrNull {
-                it.storageValue == clean || it.name.lowercase(Locale.ROOT) == clean
-            } ?: fallback
-        }
-    }
-}
-
-enum class AudioStreamPurpose {
-    PLAYBACK,
-    DOWNLOAD
-}
-
-data class AudioQualityRequest(
-    val preference: AudioQualityPreference = AudioQualityPreference.HIGH,
-    val purpose: AudioStreamPurpose = AudioStreamPurpose.PLAYBACK
-) {
-    val cacheKey: String
-        get() = "${purpose.name}:${preference.storageValue}"
-}
-
 enum class AlternativeMatchVerdict {
     EXACT,
     HIGH,
@@ -56,8 +27,5 @@ data class AlternativeAudioSource(
     val providerTrackId: String,
     val bitrateKbps: Int,
     val verdict: AlternativeMatchVerdict,
-    val confidence: Int,
-    val requestedQuality: AudioQualityPreference = AudioQualityPreference.HIGH,
-    val deliveredQuality: String = "",
-    val isLossless: Boolean = false
+    val confidence: Int
 )
