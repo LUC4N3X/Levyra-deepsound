@@ -10,7 +10,7 @@ os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 
 SCREENS = {
-    "home": "levyra-current.png",
+    "home": "Screenshot_20260926_171253_LEVYRA.jpg",
     "charts": "charts.png",
     "genres": "genres.png",
     "listening_pulse": "pulse.png",
