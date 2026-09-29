@@ -135,12 +135,6 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
   <a href="docs/assets/showcase/cards/16_listening_rhythm.webp"><img src="docs/assets/showcase/cards/16_listening_rhythm.webp" width="200" alt="Levyra listening rhythm and habits" /></a>
 </p>
 
-<a href="docs/assets/showcase/17_home_discovery.webp"><img src="docs/assets/showcase/17_home_discovery.webp" width="100%" alt="Levyra Home with artists, curated collections, and video" /></a>
-
-<p align="center">
-  <sub>Move naturally from personal radio to artists, curated collections, and video.</sub>
-</p>
-
 </div>
 
 ---
