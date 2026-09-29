@@ -160,6 +160,7 @@ internal fun AudioSettingsPanel(
     onVirtualizer: (Int) -> Unit,
     onPreamp: (Float) -> Unit,
     onLimiter: (Boolean) -> Unit,
+    onEnhancedAudio: (Boolean) -> Unit = {},
     onCrossfade: (Int) -> Unit,
     onDjSoft: (Boolean) -> Unit,
     onReplayGain: (Boolean) -> Unit,
@@ -486,6 +487,16 @@ internal fun AudioSettingsPanel(
                         range = 0f..100f,
                         icon = true,
                         onValue = { onVirtualizer(it.roundToInt()) }
+                    )
+                }
+
+                item { AudioSectionLabel(strings.audioSectionEnhancement) }
+                item {
+                    AudioToggleRow(
+                        title = strings.enhancedAudioTitle,
+                        subtitle = strings.enhancedAudioSubtitle,
+                        checked = audioSettings.enhancedAudioEnabled,
+                        onCheckedChange = onEnhancedAudio
                     )
                 }
 

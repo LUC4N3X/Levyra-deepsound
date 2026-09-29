@@ -100,6 +100,8 @@ import com.luc4n3x.levyra.player.sabr.SabrDataSource
 import com.luc4n3x.levyra.player.sabr.SabrStreamSpec
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.runtime.RuntimeSignal
+import com.luc4n3x.levyra.player.enhanced.EnhancedAudioMetrics
+import com.luc4n3x.levyra.player.enhanced.EnhancedAudioProcessor
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import kotlinx.coroutines.CoroutineScope
@@ -154,6 +156,7 @@ class PlaybackService : MediaLibraryService() {
     private var aaudioOutputRequested = false
     private var primaryAudioSink: AudioSink? = null
     private var currentAudioNormalization = false
+    private val enhancedAudioProcessor = EnhancedAudioProcessor()
     private val normalizationProcessor = NormalizationAudioProcessor()
     private val equalizerProcessor = LevyraEqualizerAudioProcessor()
     private val parametricEqualizerProcessor = LevyraParametricEqualizerAudioProcessor()
@@ -223,6 +226,7 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_REPLAY_GAIN_ALBUM_DB = "levyra.replayGain.albumDb"
         const val EXTRA_REPLAY_GAIN_TRACK_PEAK = "levyra.replayGain.trackPeak"
         const val EXTRA_REPLAY_GAIN_ALBUM_PEAK = "levyra.replayGain.albumPeak"
+        const val EXTRA_IS_LOSSLESS = "levyra.is_lossless"
         const val ACTION_GET_PLATFORM_TOKEN = "levyra.media.GET_PLATFORM_TOKEN"
         const val ACTION_SET_VIDEO_SUBTITLE = "levyra.media.SET_VIDEO_SUBTITLE"
         const val KEY_PLATFORM_TOKEN = "levyra.media.PLATFORM_TOKEN"
@@ -263,6 +267,9 @@ class PlaybackService : MediaLibraryService() {
 
         private val _liveRadioMetadataFlow = MutableStateFlow(LiveRadioStreamMetadata())
         internal val liveRadioMetadataFlow: StateFlow<LiveRadioStreamMetadata> = _liveRadioMetadataFlow.asStateFlow()
+
+        private val _enhancedAudioMetricsFlow = MutableStateFlow(EnhancedAudioMetrics())
+        val enhancedAudioMetricsFlow: StateFlow<EnhancedAudioMetrics> = _enhancedAudioMetricsFlow.asStateFlow()
 
         @Volatile
         var activePlayer: ExoPlayer? = null
@@ -409,6 +416,7 @@ class PlaybackService : MediaLibraryService() {
     ) {
         val normalized = settings.normalized()
         val parametricEnabled = normalized.parametricEqualizerEnabled && normalized.activeParametricProfile != null
+        enhancedAudioProcessor.userEnabled = normalized.enhancedAudioEnabled
         normalizationProcessor.enabled = audioNormalization || normalized.replayGainActive
         equalizerProcessor.enabled = normalized.equalizerEnabled && !parametricEnabled
         equalizerProcessor.setBandLevels(normalized.bandLevels)
@@ -715,6 +723,7 @@ class PlaybackService : MediaLibraryService() {
                     .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
                     .setAudioProcessors(
                         arrayOf(
+                            enhancedAudioProcessor,
                             normalizationProcessor,
                             equalizerProcessor,
                             parametricEqualizerProcessor,
@@ -762,6 +771,11 @@ class PlaybackService : MediaLibraryService() {
         RuntimeHooks.dsp(RuntimeSignal.DSP_CREATED)
         (getSystemService(Context.AUDIO_SERVICE) as AudioManager).registerAudioDeviceCallback(audioDeviceCallback, null)
         refreshAudioOutputProfile()
+        serviceScope.launch {
+            enhancedAudioProcessor.metricsState.collect {
+                _enhancedAudioMetricsFlow.value = it
+            }
+        }
 
         activePlayer = player
         player.addListener(object : Player.Listener {
@@ -792,6 +806,8 @@ class PlaybackService : MediaLibraryService() {
                     serviceRecoveryAttempts = 0
                 }
                 val extras = mediaItem?.mediaMetadata?.extras
+                enhancedAudioProcessor.isLosslessSource = extras?.getBoolean(EXTRA_IS_LOSSLESS, false) == true
+                enhancedAudioProcessor.isRemotePlayback = _remotePlaybackStateFlow.value.connected
                 val queueSnapshot = queueEngine.state.value
                 configureNormalizationProcessor(
                     processor = normalizationProcessor,
@@ -1918,6 +1934,12 @@ class PlaybackService : MediaLibraryService() {
                     currentAudioSettings.virtualizer > 0 ||
                     currentAudioSettings.replayGainActive || currentAudioNormalization)
         }
+        val isLossless = track.playbackManifest?.alternativeSource?.isLossless == true
+        val enhancedAudio = EnhancedAudioProcessor().apply {
+            userEnabled = currentAudioSettings.enhancedAudioEnabled
+            isLosslessSource = isLossless
+            isRemotePlayback = remotePlaybackStateFlow.value.connected
+        }
         val renderers = object : DefaultRenderersFactory(this) {
             override fun buildVideoRenderers(
                 context: Context,
@@ -1939,6 +1961,7 @@ class PlaybackService : MediaLibraryService() {
                 .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
                 .setAudioProcessors(
                     arrayOf(
+                        enhancedAudio,
                         normalization,
                         equalizer,
                         parametricEqualizer,

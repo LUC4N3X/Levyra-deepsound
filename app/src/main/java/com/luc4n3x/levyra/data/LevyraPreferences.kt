@@ -197,6 +197,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_PARAMETRIC_ENABLED] = normalizedAudio.parametricEqualizerEnabled
             mutable[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalizedAudio.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
             mutable[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalizedAudio.customParametricProfiles)
+            mutable[KEY_AUDIO_ENHANCED_AUDIO] = normalizedAudio.enhancedAudioEnabled
             mutable[KEY_UI_COMPACT_HOME] = normalizedInterface.compactHome
             mutable[KEY_UI_PERSONAL_ORBIT] = normalizedInterface.showPersonalOrbit
             mutable[KEY_UI_RESONANCE] = normalizedInterface.showResonance
@@ -491,6 +492,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_PARAMETRIC_ENABLED] = normalized.parametricEqualizerEnabled
             it[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalized.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
             it[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalized.customParametricProfiles)
+            it[KEY_AUDIO_ENHANCED_AUDIO] = normalized.enhancedAudioEnabled
         }
     }
 
@@ -919,7 +921,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             customPresets = customPresets,
             parametricEqualizerEnabled = preferences[KEY_AUDIO_PARAMETRIC_ENABLED] ?: false,
             activeParametricProfile = activeParametricProfile,
-            customParametricProfiles = customParametricProfiles
+            customParametricProfiles = customParametricProfiles,
+            enhancedAudioEnabled = preferences[KEY_AUDIO_ENHANCED_AUDIO] ?: true
         ).normalized()
     }
 
@@ -1096,6 +1099,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_PARAMETRIC_ENABLED = booleanPreferencesKey("audio_parametric_equalizer_enabled")
         val KEY_AUDIO_PARAMETRIC_ACTIVE = stringPreferencesKey("audio_parametric_active_profile")
         val KEY_AUDIO_PARAMETRIC_PROFILES = stringPreferencesKey("audio_parametric_profiles")
+        val KEY_AUDIO_ENHANCED_AUDIO = booleanPreferencesKey("audio_enhanced_audio_enabled")
         val KEY_LISTENING_PULSE_LAST_PRUNE = longPreferencesKey("listening_pulse_last_prune")
         val KEY_LISTENING_LIFETIME_BACKFILL = intPreferencesKey("listening_lifetime_backfill")
         val KEY_UI_COMPACT_HOME = booleanPreferencesKey("ui_compact_home")

@@ -43,7 +43,15 @@ internal data class TechnicalAudioInfoCopy(
     val format: String = "Format",
     val lossless: String = "Lossless",
     val lossy: String = "Lossy",
-    val spatial: String = "Spatial audio"
+    val spatial: String = "Spatial audio",
+    val enhancedAudio: String = "LEVYRA ENHANCED AUDIO",
+    val status: String = "Status",
+    val active: String = "Active",
+    val bypassed: String = "Bypassed",
+    val off: String = "Off",
+    val bypassReason: String = "Bypass reason",
+    val yes: String = "Yes",
+    val no: String = "No"
 )
 
 internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = when (code) {

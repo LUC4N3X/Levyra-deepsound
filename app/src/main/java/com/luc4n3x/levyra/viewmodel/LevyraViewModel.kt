@@ -4308,6 +4308,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateAudioSettings(_state.value.audioSettings.copy(limiterEnabled = value))
     }
 
+    fun setEnhancedAudioEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(enhancedAudioEnabled = value))
+    }
+
     fun setVirtualizer(value: Int) {
         val settings = _state.value.audioSettings
         updateAudioSettings(settings.copy(equalizerEnabled = !settings.parametricEqualizerEnabled, virtualizer = value))

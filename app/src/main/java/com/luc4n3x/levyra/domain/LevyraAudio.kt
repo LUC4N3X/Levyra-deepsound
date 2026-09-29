@@ -74,7 +74,8 @@ data class LevyraAudioSettings(
     val customPresets: List<LevyraAudioPreset> = emptyList(),
     val parametricEqualizerEnabled: Boolean = false,
     val activeParametricProfile: ParametricEqProfile? = null,
-    val customParametricProfiles: List<ParametricEqProfile> = emptyList()
+    val customParametricProfiles: List<ParametricEqProfile> = emptyList(),
+    val enhancedAudioEnabled: Boolean = true
 ) {
     val effectiveReplayGainMode: ReplayGainMode
         get() = if (replayGainMode == ReplayGainMode.OFF && replayGainEnabled) ReplayGainMode.SMART else replayGainMode

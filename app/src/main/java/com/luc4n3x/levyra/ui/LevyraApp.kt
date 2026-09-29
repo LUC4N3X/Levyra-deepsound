@@ -2588,6 +2588,7 @@ fun LevyraApp(
                     onVirtualizer = viewModel::setVirtualizer,
                     onPreamp = viewModel::setPreampDb,
                     onLimiter = viewModel::setLimiterEnabled,
+                    onEnhancedAudio = viewModel::setEnhancedAudioEnabled,
                     onCrossfade = viewModel::setCrossfadeSeconds,
                     onDjSoft = viewModel::setDjSoftMode,
                     onReplayGain = viewModel::setReplayGainEnabled,

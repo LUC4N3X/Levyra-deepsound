@@ -1647,6 +1647,7 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("customParametricProfiles", JSONArray().apply {
         value.customParametricProfiles.forEach { put(parametricProfileToJson(it)) }
     })
+    .put("enhancedAudioEnabled", value.enhancedAudioEnabled)
 
 internal fun backupAudioQualityFromJson(settings: JSONObject): String =
     LevyraAudioQuality.normalize(settings.optString("audioQuality"))
@@ -1699,7 +1700,8 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         customPresets = customPresets,
         parametricEqualizerEnabled = json.optBoolean("parametricEqualizerEnabled", false),
         activeParametricProfile = json.optJSONObject("activeParametricProfile")?.let(::parametricProfileFromJson),
-        customParametricProfiles = customParametricProfiles
+        customParametricProfiles = customParametricProfiles,
+        enhancedAudioEnabled = json.optBoolean("enhancedAudioEnabled", true)
     ).normalized()
 }
 
