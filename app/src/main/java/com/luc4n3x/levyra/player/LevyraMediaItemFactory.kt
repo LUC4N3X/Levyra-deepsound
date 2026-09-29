@@ -31,9 +31,7 @@ object LevyraMediaItemFactory {
         } else if (cacheReadSpec != null) {
             cacheReadSpec.mimeType.takeIf { it.isNotBlank() }
         } else {
-            selectedStreamMimeType(track, streamUrl).takeIf {
-                !videoMode && track.playbackManifest?.alternativeSource != null
-            } ?: mimeTypeFor(streamUrl, videoMode)
+            playbackMimeTypeFor(track, streamUrl, videoMode)
         }
         val builder = MediaItem.Builder()
             .setUri(streamUrl)
@@ -70,6 +68,12 @@ object LevyraMediaItemFactory {
             }
         }
         return mediaItem
+    }
+
+    internal fun playbackMimeTypeFor(track: Track, streamUrl: String, videoMode: Boolean): String? {
+        return selectedStreamMimeType(track, streamUrl).takeIf {
+            !videoMode && track.playbackManifest?.alternativeSource != null
+        } ?: mimeTypeFor(streamUrl, videoMode)
     }
 
     internal fun mimeTypeFor(url: String, videoMode: Boolean): String? {
