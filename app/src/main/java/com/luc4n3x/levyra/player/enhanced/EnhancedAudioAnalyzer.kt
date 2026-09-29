@@ -79,7 +79,7 @@ class EnhancedAudioAnalyzer(
 
         if (nyquist > 14_000.0) {
             val cutoffCenter = min(15_500.0, nyquist * 0.75)
-            val cutoffQ = 1.0
+            val cutoffQ = 3.7
             val w0C = 2.0 * PI * cutoffCenter / sr
             val alphaC = sin(w0C) / (2.0 * cutoffQ)
             val a0C = 1.0 + alphaC
