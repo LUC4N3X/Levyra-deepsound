@@ -134,6 +134,12 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
   <a href="docs/assets/showcase/cards/15_collections.webp"><img src="docs/assets/showcase/cards/15_collections.webp?v=original-a261d7ce" width="200" alt="Levyra curated collections and playlists" /></a>
   <a href="docs/assets/showcase/cards/16_listening_rhythm.webp"><img src="docs/assets/showcase/cards/16_listening_rhythm.webp?v=original-a261d7ce" width="200" alt="Levyra listening rhythm and habits" /></a>
 </p>
+<p align="center">
+  <a href="docs/assets/showcase/cards/17_player_deck.webp"><img src="docs/assets/showcase/cards/17_player_deck.webp?v=original-a261d7ce" width="200" alt="Levyra player deck" /></a>
+  <a href="docs/assets/showcase/cards/18_artist_playlists.webp"><img src="docs/assets/showcase/cards/18_artist_playlists.webp?v=original-a261d7ce" width="200" alt="Levyra artist playlists and collections" /></a>
+  <a href="docs/assets/showcase/cards/19_settings_vault.webp"><img src="docs/assets/showcase/cards/19_settings_vault.webp?v=original-a261d7ce" width="200" alt="Levyra player settings and vault" /></a>
+  <a href="docs/assets/showcase/cards/20_your_orbit.webp"><img src="docs/assets/showcase/cards/20_your_orbit.webp?v=original-a261d7ce" width="200" alt="Levyra orbit and favorite tracks" /></a>
+</p>
 
 </div>
 
