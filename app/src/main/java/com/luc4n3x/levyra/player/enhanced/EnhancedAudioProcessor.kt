@@ -116,10 +116,8 @@ class EnhancedAudioProcessor(
         val remaining = inputBuffer.remaining()
         inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
 
-        val bytesPerSample = bytesPerSample()
-        val frameSize = bytesPerSample * format.channelCount
+        val frameSize = bytesPerSample() * format.channelCount
         val frames = remaining / frameSize
-
         if (frames <= 0) {
             inputBuffer.position(inputLimit)
             outputBuffer = AudioProcessor.EMPTY_BUFFER
@@ -128,25 +126,44 @@ class EnhancedAudioProcessor(
 
         val bypassReason = currentBypassReason()
         if (bypassReason != null) {
-            if (isOverloadBypassed) {
-                cooldownRemainingBlocks--
-                if (cooldownRemainingBlocks <= 0) {
-                    isOverloadBypassed = false
-                    consecutiveOverruns = 0
-                }
-            }
-
-            val out = replaceOutputBuffer(remaining)
-            out.put(inputBuffer)
-            inputBuffer.position(inputLimit)
-            out.flip()
-
-            mutableMetrics.reset()
-            mutableMetrics.setBypass(bypassReason)
-            maybeEmitMetrics(mutableMetrics)
+            handleBypassPassthrough(inputBuffer, remaining, inputLimit, bypassReason)
             return
         }
 
+        processEnhancedAudio(inputBuffer, remaining, inputLimit, frames, frameSize)
+    }
+
+    private fun handleBypassPassthrough(
+        inputBuffer: ByteBuffer,
+        remaining: Int,
+        inputLimit: Int,
+        bypassReason: EnhancedAudioBypassReason
+    ) {
+        if (isOverloadBypassed) {
+            cooldownRemainingBlocks--
+            if (cooldownRemainingBlocks <= 0) {
+                isOverloadBypassed = false
+                consecutiveOverruns = 0
+            }
+        }
+
+        val out = replaceOutputBuffer(remaining)
+        out.put(inputBuffer)
+        inputBuffer.position(inputLimit)
+        out.flip()
+
+        mutableMetrics.reset()
+        mutableMetrics.setBypass(bypassReason)
+        maybeEmitMetrics(mutableMetrics)
+    }
+
+    private fun processEnhancedAudio(
+        inputBuffer: ByteBuffer,
+        remaining: Int,
+        inputLimit: Int,
+        frames: Int,
+        frameSize: Int
+    ) {
         val totalSamples = frames * format.channelCount
         ensureFloatCapacity(totalSamples)
 
@@ -154,16 +171,7 @@ class EnhancedAudioProcessor(
         val startTimeUs = blockStartNs / 1_000L
 
         try {
-            if (format.encoding == C.ENCODING_PCM_FLOAT) {
-                for (i in 0 until totalSamples) {
-                    floatInput[i] = inputBuffer.float
-                }
-            } else {
-                for (i in 0 until totalSamples) {
-                    floatInput[i] = inputBuffer.short / 32768f
-                }
-            }
-
+            readInputToFloats(inputBuffer, totalSamples)
             analyzer.analyze(floatInput, 0, frames, startTimeUs, mutableMetrics)
 
             val success = if (mutableMetrics.isActive) {
@@ -177,34 +185,12 @@ class EnhancedAudioProcessor(
                 System.arraycopy(floatInput, 0, floatOutput, 0, totalSamples)
             }
 
-            val out = replaceOutputBuffer(frames * frameSize)
-            if (format.encoding == C.ENCODING_PCM_FLOAT) {
-                for (i in 0 until totalSamples) {
-                    out.putFloat(floatOutput[i])
-                }
-            } else {
-                for (i in 0 until totalSamples) {
-                    val s = (floatOutput[i].coerceIn(-1f, 0.9999695f) * 32768f).roundToInt().toShort()
-                    out.putShort(s)
-                }
-            }
-            out.flip()
+            writeFloatsToOutput(totalSamples, frames, frameSize)
 
             val blockEndNs = timeProvider.nanoTime()
             val elapsedUs = (blockEndNs - blockStartNs) / 1_000L
             mutableMetrics.processingTimeUs = elapsedUs
-
-            // Watchdog hysteresis: only trigger bypass after consecutive overruns
-            if (elapsedUs > config.maxAllowedProcessingTimeUs) {
-                consecutiveOverruns++
-                if (consecutiveOverruns >= OVERRUN_HYSTERESIS_LIMIT) {
-                    isOverloadBypassed = true
-                    cooldownRemainingBlocks = RECOVERY_COOLDOWN_BLOCKS
-                    mutableMetrics.setBypass(EnhancedAudioBypassReason.CPU_OVERLOAD)
-                }
-            } else {
-                consecutiveOverruns = 0
-            }
+            evaluateWatchdogOverrun(elapsedUs)
 
             maybeEmitMetrics(mutableMetrics)
         } catch (error: Throwable) {
@@ -218,6 +204,46 @@ class EnhancedAudioProcessor(
             maybeEmitMetrics(mutableMetrics, force = true)
         } finally {
             inputBuffer.position(inputLimit)
+        }
+    }
+
+    private fun readInputToFloats(inputBuffer: ByteBuffer, totalSamples: Int) {
+        if (format.encoding == C.ENCODING_PCM_FLOAT) {
+            for (i in 0 until totalSamples) {
+                floatInput[i] = inputBuffer.float
+            }
+        } else {
+            for (i in 0 until totalSamples) {
+                floatInput[i] = inputBuffer.short / 32768f
+            }
+        }
+    }
+
+    private fun writeFloatsToOutput(totalSamples: Int, frames: Int, frameSize: Int) {
+        val out = replaceOutputBuffer(frames * frameSize)
+        if (format.encoding == C.ENCODING_PCM_FLOAT) {
+            for (i in 0 until totalSamples) {
+                out.putFloat(floatOutput[i])
+            }
+        } else {
+            for (i in 0 until totalSamples) {
+                val s = (floatOutput[i].coerceIn(-1f, 0.9999695f) * 32768f).roundToInt().toShort()
+                out.putShort(s)
+            }
+        }
+        out.flip()
+    }
+
+    private fun evaluateWatchdogOverrun(elapsedUs: Long) {
+        if (elapsedUs > config.maxAllowedProcessingTimeUs) {
+            consecutiveOverruns++
+            if (consecutiveOverruns >= OVERRUN_HYSTERESIS_LIMIT) {
+                isOverloadBypassed = true
+                cooldownRemainingBlocks = RECOVERY_COOLDOWN_BLOCKS
+                mutableMetrics.setBypass(EnhancedAudioBypassReason.CPU_OVERLOAD)
+            }
+        } else {
+            consecutiveOverruns = 0
         }
     }
 
@@ -280,7 +306,7 @@ class EnhancedAudioProcessor(
     private fun maybeEmitMetrics(metrics: MutableEnhancedAudioMetrics, force: Boolean = false) {
         val nowNs = timeProvider.nanoTime()
         val stateChanged = metrics.bypassed != lastEmittedBypassed || metrics.bypassReason != lastEmittedBypassReason
-        if (force || stateChanged || (nowNs - lastEmitTimeNs >= EMIT_INTERVAL_NS)) {
+        if (force || stateChanged || nowNs - lastEmitTimeNs >= EMIT_INTERVAL_NS) {
             lastEmitTimeNs = nowNs
             lastEmittedBypassed = metrics.bypassed
             lastEmittedBypassReason = metrics.bypassReason
@@ -290,7 +316,7 @@ class EnhancedAudioProcessor(
 
     private fun ensureFloatCapacity(required: Int) {
         if (floatInput.size < required) {
-            val newCapacity = max(required, (floatInput.size * 3) / 2).coerceAtLeast(4096)
+            val newCapacity = max(required, floatInput.size * 3 / 2).coerceAtLeast(4096)
             floatInput = FloatArray(newCapacity)
             floatOutput = FloatArray(newCapacity)
         }

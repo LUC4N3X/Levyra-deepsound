@@ -153,7 +153,7 @@ class EnhancedAudioProcessorTest {
             callCount++
             if (spike && callCount % 2 == 0) {
                 // End time spiked by 10ms
-                (callCount * 1_000_000L + 10_000_000L)
+                callCount * 1_000_000L + 10_000_000L
             } else {
                 callCount * 1_000_000L
             }

@@ -138,9 +138,9 @@ class DspRestorationEngine : EnhancedAudioEngine {
         val a0Interp = 1.0 + alphaInterp
         val cosInterp = cos(w0Interp)
 
-        bqInterpB0 = (((1.0 - cosInterp) * 0.5) / a0Interp).toFloat()
+        bqInterpB0 = ((1.0 - cosInterp) * 0.5 / a0Interp).toFloat()
         bqInterpB1 = ((1.0 - cosInterp) / a0Interp).toFloat()
-        bqInterpB2 = (((1.0 - cosInterp) * 0.5) / a0Interp).toFloat()
+        bqInterpB2 = ((1.0 - cosInterp) * 0.5 / a0Interp).toFloat()
         bqInterpA1 = (-2.0 * cosInterp / a0Interp).toFloat()
         bqInterpA2 = ((1.0 - alphaInterp) / a0Interp).toFloat()
 
@@ -164,9 +164,9 @@ class DspRestorationEngine : EnhancedAudioEngine {
         val a0Aa = 1.0 + alphaAa
         val cosAa = cos(w0Aa)
 
-        bqAaB0 = (((1.0 - cosAa) * 0.5) / a0Aa).toFloat()
+        bqAaB0 = ((1.0 - cosAa) * 0.5 / a0Aa).toFloat()
         bqAaB1 = ((1.0 - cosAa) / a0Aa).toFloat()
-        bqAaB2 = (((1.0 - cosAa) * 0.5) / a0Aa).toFloat()
+        bqAaB2 = ((1.0 - cosAa) * 0.5 / a0Aa).toFloat()
         bqAaA1 = (-2.0 * cosAa / a0Aa).toFloat()
         bqAaA2 = ((1.0 - alphaAa) / a0Aa).toFloat()
     }
