@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.hqaudio.StreamRejection
 import com.luc4n3x.levyra.domain.AudioQualityPreference
 import com.luc4n3x.levyra.domain.AudioQualityRequest
 import com.luc4n3x.levyra.domain.AudioStreamPurpose
+import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -124,6 +125,51 @@ class GenericLosslessAddonProviderTest {
         assertTrue(fallback.isLossless)
         assertTrue(!fallback.isAtmos)
         assertEquals(192_000, fallback.sampleRateHz)
+    }
+
+    @Test
+    fun probeTransportFailureContinuesToLowerQualityAttempt() = runBlocking {
+        val now = 1_800_000_000_000L
+        val exchange = ScriptedExchange { request ->
+            when {
+                request.url == "https://addon.example.org/manifest.json" -> json(
+                    """{"resources":["search","stream"],"allowedHosts":["cdn.example.org"]}"""
+                )
+                request.url.startsWith("https://addon.example.org/search?") -> json(
+                    """{"tracks":[{"id":"track-1","title":"Blinding Lights","artist":"The Weeknd","duration":200}]}"""
+                )
+                request.url.contains("/stream/track-1?") && request.url.contains("quality=hi_res") -> json(
+                    """{"url":"https://cdn.example.org/audio/track-1-hires.flac","expiresAtMs":${now + 600_000L}}"""
+                )
+                request.url.contains("/stream/track-1?") && request.url.contains("quality=lossless") -> json(
+                    """{"url":"https://cdn.example.org/audio/track-1-cd.flac","expiresAtMs":${now + 600_000L}}"""
+                )
+                request.url.contains("/stream/track-1?") -> ProviderHttpResponse(404, emptyMap(), ByteArray(0))
+                request.url.endsWith("track-1-hires.flac") -> throw IOException("temporary CDN failure")
+                request.url.endsWith("track-1-cd.flac") -> flacResponse(44_100, 16, 2)
+                else -> ProviderHttpResponse(404, emptyMap(), ByteArray(0))
+            }
+        }
+        val provider = GenericLosslessAddonProvider(
+            exchange = exchange,
+            enabled = { true },
+            baseUrl = { "https://addon.example.org" },
+            clock = { now }
+        )
+        val request = AudioQualityRequest(
+            preference = AudioQualityPreference.HI_RES,
+            losslessEnabled = true,
+            allowUpgrade = false
+        )
+        val candidate = (provider.search("Blinding Lights", request) as ProviderSearchOutcome.Found).candidates.single()
+
+        val stream = (provider.resolveStream(candidate, request) as ProviderStreamOutcome.Resolved).stream
+
+        assertTrue(stream.isLossless)
+        assertEquals(44_100, stream.sampleRateHz)
+        assertEquals(16, stream.bitDepth)
+        assertTrue(exchange.requests.any { it.url.endsWith("track-1-hires.flac") })
+        assertTrue(exchange.requests.any { it.url.endsWith("track-1-cd.flac") })
     }
 
     @Test
