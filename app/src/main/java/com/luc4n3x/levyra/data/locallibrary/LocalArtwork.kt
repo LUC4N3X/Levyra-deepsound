@@ -30,27 +30,37 @@ private val LEGACY_ALBUM_ART_URI by lazy(LazyThreadSafetyMode.NONE) {
     android.net.Uri.parse("content://media/external/audio/albumart")
 }
 
-fun localArtworkModel(contentUri: String, albumId: Long): String =
-    LOCAL_ARTWORK_PREFIX + "a=" + albumId.coerceAtLeast(0L) + "&u=" + contentUri
+fun localArtworkModel(contentUri: String, albumId: Long, revision: Long = 0L): String = buildString {
+    append(LOCAL_ARTWORK_PREFIX).append("a=").append(albumId.coerceAtLeast(0L))
+    if (revision > 0L) append("&v=").append(revision)
+    append("&u=").append(contentUri)
+}
 
 fun isLocalArtworkModel(value: String): Boolean = value.startsWith(LOCAL_ARTWORK_PREFIX)
 
-internal data class LocalArtworkReference(val contentUri: String, val albumId: Long)
+internal data class LocalArtworkReference(val contentUri: String, val albumId: Long, val revision: Long = 0L)
 
 internal fun parseLocalArtworkModel(value: String): LocalArtworkReference? {
     if (!isLocalArtworkModel(value)) return null
     val parameters = value.removePrefix(LOCAL_ARTWORK_PREFIX)
     val contentUri = parameters.substringAfter("&u=", "")
-    val albumId = parameters.substringBefore("&u=").removePrefix("a=").toLongOrNull() ?: 0L
     if (!contentUri.startsWith(MEDIA_STORE_URI_PREFIX, ignoreCase = true)) return null
-    return LocalArtworkReference(contentUri, albumId)
+    val fields = parameters.substringBefore("&u=")
+        .split('&')
+        .associate { field -> field.substringBefore('=') to field.substringAfter('=', "") }
+    val albumId = fields["a"]?.toLongOrNull() ?: 0L
+    val revision = fields["v"]?.toLongOrNull() ?: 0L
+    return LocalArtworkReference(contentUri, albumId, revision)
 }
 
 fun mediaSessionArtworkUri(artwork: String): android.net.Uri? {
     if (artwork.isBlank()) return null
     if (!isLocalArtworkModel(artwork)) return android.net.Uri.parse(artwork)
-    val albumId = parseLocalArtworkModel(artwork)?.albumId?.takeIf { it > 0L } ?: return null
-    return ContentUris.withAppendedId(LEGACY_ALBUM_ART_URI, albumId)
+    val reference = parseLocalArtworkModel(artwork) ?: return null
+    val albumId = reference.albumId.takeIf { it > 0L } ?: return null
+    val albumArt = ContentUris.withAppendedId(LEGACY_ALBUM_ART_URI, albumId)
+    if (reference.revision <= 0L) return albumArt
+    return albumArt.buildUpon().appendQueryParameter("v", reference.revision.toString()).build()
 }
 
 class LocalArtworkFetcher private constructor(
