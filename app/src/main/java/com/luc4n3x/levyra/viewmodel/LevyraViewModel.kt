@@ -928,6 +928,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var orbitArtworkJob: Job? = null
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
+    @Volatile private var motionArtworkRequestGeneration: Long = 0L
     private var motionArtworkPrefetchJob: Job? = null
     @Volatile private var motionArtworkPrefetchKey: String? = null
     @Volatile private var motionArtworkPrefetchToken = 0L
@@ -1042,7 +1043,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         return true
     }
-    private var playRequestId: Long = 0L
+    private val playbackGeneration = PlaybackGenerationGuard()
+    private val playRequestId: Long
+        get() = playbackGeneration.currentGeneration
     private var streamTransitionId: Long = 0L
     private var pendingSeekMs: Long = 0L
     private var queueIndex: Int = -1
@@ -5901,7 +5904,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(queueSwitching = true) }
         val loaded = try {
             playJob?.cancel()
-            playRequestId++
+            playbackGeneration.begin("")
             streamTransitionId++
             cancelResolutionSideJobs()
             player.pause()
@@ -8552,7 +8555,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val track = station.toTrack(streamUrl)
-        playRequestId++
+        playbackGeneration.begin(playbackIdentity(track))
         streamTransitionId++
         playJob?.cancel()
         cancelResolutionSideJobs()
@@ -8799,7 +8802,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         if (session == null) return
         samplesPlaybackSession = null
-        playRequestId++
+        playbackGeneration.begin("")
         streamTransitionId++
         playJob?.cancel()
         cancelResolutionSideJobs()
@@ -8872,7 +8875,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamTransitionId++
         cancelResolutionSideJobs(preserveMotionPrefetchKey = MotionArtworkIdentityKey.create(track))
         val engagementVideoId = youtubeEngagementVideoId(track)
-        val requestId = ++playRequestId
+        val requestId = playbackGeneration.begin(playbackIdentity(track)).generation
         val request = PlaybackResolveRequest(requestId, startPaused)
         playJob?.cancel()
         cancelBackgroundWarmups(cancelList = true)
@@ -9941,9 +9944,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             track.id.startsWith("chart-")
         ) return
         sponsorSkipTracker.beginPlayback(track.id)
+        val ticket = playbackGeneration.current()
         sponsorJob = viewModelScope.launch {
-            val result = runCatching { sponsorBlockRepository.segments(track.id) }.getOrDefault(emptyList())
-            if (_state.value.currentTrack?.id == track.id) sponsorSegments = result
+            val result = try {
+                sponsorBlockRepository.segments(track.id)
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                emptyList()
+            }
+            if (playbackGeneration.isCurrent(ticket) && _state.value.currentTrack?.id == track.id) sponsorSegments = result
         }
     }
 
@@ -10094,6 +10103,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun fetchLyrics(track: Track) {
         lyricsJob?.cancel()
         val requestGeneration = ++lyricsRequestGeneration
+        val ticket = playbackGeneration.current()
         val trackIdentity = playbackIdentity(track)
         val preserveVisibleLyrics = lyricsTrackId == trackIdentity && _state.value.lyrics.isNotEmpty()
         _state.update {
@@ -10129,7 +10139,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     translate = _state.value.lyricsTranslationEnabled
                 ).collect { result ->
                     val currentIdentity = _state.value.currentTrack?.let(::playbackIdentity)
-                    if (!isCurrentLyricsRequest(requestGeneration, lyricsRequestGeneration, trackIdentity, currentIdentity)) {
+                    if (!playbackGeneration.isCurrent(ticket) || !isCurrentLyricsRequest(requestGeneration, lyricsRequestGeneration, trackIdentity, currentIdentity)) {
                         return@collect
                     }
                     received = true
@@ -10156,7 +10166,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                     val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
                     val latestIdentity = _state.value.currentTrack?.let(::playbackIdentity)
-                    if (isCurrentLyricsRequest(requestGeneration, lyricsRequestGeneration, trackIdentity, latestIdentity)) {
+                    if (playbackGeneration.isCurrent(ticket) && isCurrentLyricsRequest(requestGeneration, lyricsRequestGeneration, trackIdentity, latestIdentity)) {
                         _state.update { it.copy(intelligenceSummary = intelligence) }
                     }
                 }
@@ -10199,14 +10209,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val expectedKey = MotionArtworkIdentityKey.create(current)
-        if (motionArtworkJob?.isActive == true && motionArtworkRequestKey == expectedKey) return
+        val ticket = playbackGeneration.current()
+        if (
+            motionArtworkJob?.isActive == true &&
+            motionArtworkRequestKey == expectedKey &&
+            motionArtworkRequestGeneration == ticket.generation
+        ) {
+            return
+        }
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = expectedKey
+        motionArtworkRequestGeneration = ticket.generation
         motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
             val publishForExpectedTrack: (MotionArtwork?) -> Unit = { artwork ->
                 _state.update { current ->
                     val activeTrack = current.currentTrack
-                    if (activeTrack != null && MotionArtworkIdentityKey.create(activeTrack) == expectedKey) {
+                    if (
+                        activeTrack != null &&
+                        playbackGeneration.isCurrent(ticket) &&
+                        MotionArtworkIdentityKey.create(activeTrack) == expectedKey
+                    ) {
                         current.copy(
                             motionArtwork = artwork,
                             motionArtworkLoading = false
@@ -10874,7 +10896,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         leaveLiveRadioQueue()
         loopCurrentQueueOnCompletion = false
         streamTransitionId++
-        playRequestId++
+        playbackGeneration.begin("")
         playJob?.cancel()
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
