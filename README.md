@@ -136,7 +136,7 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 </p>
 <p align="center">
   <a href="docs/assets/showcase/cards/17_player_deck.webp"><img src="docs/assets/showcase/cards/17_player_deck.webp?v=original-a261d7ce" width="200" alt="Levyra player deck" /></a>
-  <a href="docs/assets/showcase/cards/18_explore_mix.webp"><img src="docs/assets/showcase/cards/18_explore_mix.webp?v=original-a261d7ce" width="200" alt="Levyra tune your mix and live radio" /></a>
+  <a href="docs/assets/showcase/cards/18_artist_playlists.webp"><img src="docs/assets/showcase/cards/18_artist_playlists.webp?v=original-a261d7ce" width="200" alt="Levyra artist playlists and collections" /></a>
   <a href="docs/assets/showcase/cards/19_settings_vault.webp"><img src="docs/assets/showcase/cards/19_settings_vault.webp?v=original-a261d7ce" width="200" alt="Levyra player settings and vault" /></a>
   <a href="docs/assets/showcase/cards/20_your_orbit.webp"><img src="docs/assets/showcase/cards/20_your_orbit.webp?v=original-a261d7ce" width="200" alt="Levyra orbit and favorite tracks" /></a>
 </p>
