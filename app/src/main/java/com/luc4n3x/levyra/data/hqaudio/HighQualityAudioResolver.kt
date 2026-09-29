@@ -218,6 +218,8 @@ class HighQualityAudioResolver(
         request: AudioQualityRequest
     ): HighQualityResolution {
         var resolution: HighQualityResolution = HighQualityResolution.Fallback(HighQualityFallbackReason.NO_MATCH)
+        var sawExecutedLane = false
+        var allExecutedLanesDefinitiveMisses = true
         val startedNanos = System.nanoTime()
         val activeLanes = lanes.filter { lane ->
             lane.provider.isEnabled(request) &&
@@ -228,17 +230,30 @@ class HighQualityAudioResolver(
             val elapsedMs = (System.nanoTime() - startedNanos).coerceAtLeast(0L) / 1_000_000L
             val remainingMs = (lookupBudgetMs - elapsedMs).coerceAtLeast(0L)
             if (remainingMs == 0L) {
+                allExecutedLanesDefinitiveMisses = false
                 resolution = HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "overall budget")
                 break
             }
             resolution = withTimeoutOrNull(minOf(remainingMs, lane.provider.resolutionTimeoutMs)) {
                 lane.resolve(identityKey, query, request)
             } ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, lane.provider.id)
+            sawExecutedLane = true
             if (resolution is HighQualityResolution.Selected) break
+            if (
+                resolution is HighQualityResolution.Fallback &&
+                resolution.reason !in DEFINITIVE_MISSES
+            ) {
+                allExecutedLanesDefinitiveMisses = false
+            }
         }
         val key = resolutionKey(identityKey, request)
         if (resolution is HighQualityResolution.Selected && isActive(request)) rememberStream(key, resolution)
-        if (resolution is HighQualityResolution.Fallback && resolution.reason in DEFINITIVE_MISSES) {
+        if (
+            resolution is HighQualityResolution.Fallback &&
+            resolution.reason in DEFINITIVE_MISSES &&
+            sawExecutedLane &&
+            allExecutedLanesDefinitiveMisses
+        ) {
             quarantine(unmatchedIdentities, key, clock() + UNMATCHED_MEMORY_MS)
         }
         return resolution
