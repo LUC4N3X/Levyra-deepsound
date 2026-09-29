@@ -158,19 +158,6 @@ class EnhancedAudioProcessorTest {
     }
 
     @Test
-    fun neuralEngine_staysUnavailableUntilInferenceIsImplemented() {
-        val model = File.createTempFile("levyra-neural", ".onnx")
-        try {
-            model.writeBytes(byteArrayOf(1, 2, 3, 4))
-            val engine = NeuralRestorationEngine(model)
-
-            assertFalse(engine.isAvailable)
-        } finally {
-            model.delete()
-        }
-    }
-
-    @Test
     fun watchdog_singleSpike_doesNotTriggerBypass() {
         var callCount = 0
         var spike = false

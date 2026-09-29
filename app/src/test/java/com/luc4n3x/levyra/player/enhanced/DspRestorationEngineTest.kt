@@ -81,7 +81,6 @@ class DspRestorationEngineTest {
     @Test
     fun process_hotInputSignal_neverClipsCeiling() {
         val frames = 512
-        // Hot input right below 1.0 (0.98f)
         val input = FloatArray(frames * channels)
         for (i in 0 until frames) {
             val s = sin(2.0 * PI * 12_000.0 * i / sampleRate).toFloat() * 0.98f

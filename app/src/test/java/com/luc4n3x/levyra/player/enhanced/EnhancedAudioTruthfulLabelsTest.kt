@@ -89,7 +89,6 @@ class EnhancedAudioTruthfulLabelsTest {
         assertEquals(copy.lossy, sourceRows[copy.format])
         assertEquals("AAC · 320 kbps", sourceRows[copy.delivered])
 
-        // Verify truthful labelling: never claims Lossless or Hi-Res
         val allValues = sourceRows.values.joinToString(" ")
         assertFalse("Must never claim Lossless for lossy stream", allValues.contains("Lossless: Yes"))
         assertFalse("Must never claim Hi-Res for lossy AAC", allValues.contains("Hi-Res source"))

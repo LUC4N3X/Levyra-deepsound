@@ -11,28 +11,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * Clock interface for deterministic time injection in tests and profiling.
- */
 fun interface TimeProvider {
     fun nanoTime(): Long
 }
 
-/**
- * Media3 [AudioProcessor] integrating Levyra Enhanced Audio into the playback pipeline.
- *
- * Responsibilities:
- * 1. Safe, zero-allocation PCM processing (supports PCM 16-bit and PCM Float).
- * 2. Real-time deficit gating via [EnhancedAudioAnalyzer].
- * 3. Restoration execution via [EnhancedAudioEngine] (defaults to [DspRestorationEngine]).
- * 4. Comprehensive bypass management (Lossless source, remote playback, user disabled, low confidence, etc.).
- * 5. Latency/CPU overload watchdog with hysteresis and automatic recovery.
- * 6. Thread-safe, rate-limited diagnostics exposure for Technical Audio Info.
- */
 class EnhancedAudioProcessor(
     private var config: EnhancedAudioConfig = EnhancedAudioConfig(),
     private val dspEngine: EnhancedAudioEngine = DspRestorationEngine(),
-    private val neuralEngine: NeuralRestorationEngine = NeuralRestorationEngine(),
     private val timeProvider: TimeProvider = TimeProvider { System.nanoTime() }
 ) : AudioProcessor {
 
@@ -57,7 +42,7 @@ class EnhancedAudioProcessor(
             updateState()
         }
 
-    private var activeEngine: EnhancedAudioEngine = dspEngine
+    private val activeEngine: EnhancedAudioEngine = dspEngine
 
     val engineName: String
         get() = activeEngine.name
@@ -98,7 +83,6 @@ class EnhancedAudioProcessor(
         format = inputAudioFormat
         configured = true
 
-        activeEngine = if (neuralEngine.isAvailable) neuralEngine else dspEngine
         activeEngine.configure(inputAudioFormat.sampleRate, inputAudioFormat.channelCount, config)
         analyzer.configure(inputAudioFormat.sampleRate, inputAudioFormat.channelCount, config)
 

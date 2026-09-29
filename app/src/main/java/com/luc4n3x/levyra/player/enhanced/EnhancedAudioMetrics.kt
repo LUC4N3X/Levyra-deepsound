@@ -1,8 +1,5 @@
 package com.luc4n3x.levyra.player.enhanced
 
-/**
- * Real-time spectral and behavioral metrics computed by [EnhancedAudioAnalyzer].
- */
 data class EnhancedAudioMetrics(
     val spectralCutoffHz: Float = 0f,
     val hfEnergyRatio: Float = 0f,
@@ -21,9 +18,6 @@ data class EnhancedAudioMetrics(
         get() = !bypassed && deficitConfidence > 0f
 }
 
-/**
- * Reusable mutable metrics container to achieve zero heap allocations on the realtime audio thread.
- */
 class MutableEnhancedAudioMetrics(
     var spectralCutoffHz: Float = 0f,
     var hfEnergyRatio: Float = 0f,

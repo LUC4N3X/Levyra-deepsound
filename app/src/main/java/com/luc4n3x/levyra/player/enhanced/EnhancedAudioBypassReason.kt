@@ -1,11 +1,5 @@
 package com.luc4n3x.levyra.player.enhanced
 
-/**
- * Diagnostic reasons for bypassing Levyra Enhanced Audio.
- *
- * If any condition prevents safe, high-fidelity restoration, the processor
- * immediately bypasses to pristine passthrough of the decoded source.
- */
 enum class EnhancedAudioBypassReason(val label: String) {
     USER_DISABLED("Disabled by user"),
     UNSUPPORTED_FORMAT("Unsupported audio format"),
