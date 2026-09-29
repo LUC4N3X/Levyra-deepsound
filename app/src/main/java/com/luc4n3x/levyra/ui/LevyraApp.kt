@@ -2565,11 +2565,9 @@ fun LevyraApp(
                 val autoEqCatalog by viewModel.autoEqCatalog.collectAsStateWithLifecycle()
                 AudioSettingsPanel(
                     selected = state.audioQuality,
-                    preferredAudioLanguage = state.preferredAudioLanguage,
                     currentTrack = state.currentTrack,
                     audioSettings = state.audioSettings,
                     onSelect = viewModel::setAudioQuality,
-                    onPreferredAudioLanguage = viewModel::setPreferredAudioLanguage,
                     highQualityAudioMode = state.highQualityAudioMode,
                     onHighQualityAudioMode = viewModel::setHighQualityAudioMode,
                     onEqualizerEnabled = viewModel::setEqualizerEnabled,
@@ -2579,6 +2577,7 @@ fun LevyraApp(
                     onVirtualizer = viewModel::setVirtualizer,
                     onPreamp = viewModel::setPreampDb,
                     onLimiter = viewModel::setLimiterEnabled,
+                    onEnhancedAudio = viewModel::setEnhancedAudioEnabled,
                     onCrossfade = viewModel::setCrossfadeSeconds,
                     onDjSoft = viewModel::setDjSoftMode,
                     onReplayGain = viewModel::setReplayGainEnabled,

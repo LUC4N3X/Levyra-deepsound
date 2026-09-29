@@ -99,6 +99,9 @@ import com.luc4n3x.levyra.player.sabr.SabrDataSource
 import com.luc4n3x.levyra.player.sabr.SabrStreamSpec
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.runtime.RuntimeSignal
+import com.luc4n3x.levyra.player.enhanced.EnhancedAudioMetrics
+import com.luc4n3x.levyra.player.enhanced.EnhancedAudioProcessor
+import com.luc4n3x.levyra.player.enhanced.EnhancedAudioSourceFormatListener
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import kotlinx.coroutines.CoroutineScope
@@ -153,6 +156,7 @@ class PlaybackService : MediaLibraryService() {
     private var aaudioOutputRequested = false
     private var primaryAudioSink: AudioSink? = null
     private var currentAudioNormalization = false
+    private val enhancedAudioProcessor = EnhancedAudioProcessor()
     private val normalizationProcessor = NormalizationAudioProcessor()
     private val equalizerProcessor = LevyraEqualizerAudioProcessor()
     private val parametricEqualizerProcessor = LevyraParametricEqualizerAudioProcessor()
@@ -262,6 +266,9 @@ class PlaybackService : MediaLibraryService() {
 
         private val _liveRadioMetadataFlow = MutableStateFlow(LiveRadioStreamMetadata())
         internal val liveRadioMetadataFlow: StateFlow<LiveRadioStreamMetadata> = _liveRadioMetadataFlow.asStateFlow()
+
+        private val _enhancedAudioMetricsFlow = MutableStateFlow(EnhancedAudioMetrics())
+        val enhancedAudioMetricsFlow: StateFlow<EnhancedAudioMetrics> = _enhancedAudioMetricsFlow.asStateFlow()
 
         @Volatile
         var activePlayer: ExoPlayer? = null
@@ -413,6 +420,7 @@ class PlaybackService : MediaLibraryService() {
     ) {
         val normalized = settings.normalized()
         val parametricEnabled = normalized.parametricEqualizerEnabled && normalized.activeParametricProfile != null
+        enhancedAudioProcessor.userEnabled = normalized.enhancedAudioEnabled
         normalizationProcessor.enabled = audioNormalization || normalized.replayGainActive
         equalizerProcessor.enabled = normalized.equalizerEnabled && !parametricEnabled
         equalizerProcessor.setBandLevels(normalized.bandLevels)
@@ -420,9 +428,7 @@ class PlaybackService : MediaLibraryService() {
         equalizerProcessor.preampDb = normalized.preampDb
         parametricEqualizerProcessor.setConfiguration(parametricEnabled, normalized.activeParametricProfile)
         spatialAudioProcessor.strength = if (normalized.equalizerEnabled || parametricEnabled) normalized.virtualizer else 0
-        limiterProcessor.enabled = normalized.limiterEnabled &&
-            (normalized.equalizerEnabled || parametricEnabled || normalized.virtualizer > 0 ||
-                normalized.replayGainActive || audioNormalization)
+        limiterProcessor.enabled = truePeakLimiterRequired(normalized, parametricEnabled, audioNormalization)
         updateQueueTransitionSettings(normalized, audioNormalization)
         activePlayer?.currentMediaItem?.mediaMetadata?.extras?.let { extras ->
             val queueSnapshot = queueEngine.state.value
@@ -747,6 +753,7 @@ class PlaybackService : MediaLibraryService() {
                     .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
                     .setAudioProcessors(
                         arrayOf(
+                            enhancedAudioProcessor,
                             normalizationProcessor,
                             equalizerProcessor,
                             parametricEqualizerProcessor,
@@ -782,6 +789,7 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(stabilitySignals)
         player.addListener(loadControl)
         player.addAnalyticsListener(stabilitySignals)
+        player.addAnalyticsListener(EnhancedAudioSourceFormatListener(enhancedAudioProcessor, "primary"))
         RuntimeHooks.attachPlayer(player)
         RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
         RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_CREATE)
@@ -794,6 +802,11 @@ class PlaybackService : MediaLibraryService() {
         RuntimeHooks.dsp(RuntimeSignal.DSP_CREATED)
         (getSystemService(Context.AUDIO_SERVICE) as AudioManager).registerAudioDeviceCallback(audioDeviceCallback, null)
         refreshAudioOutputProfile()
+        serviceScope.launch {
+            enhancedAudioProcessor.metricsState.collect {
+                _enhancedAudioMetricsFlow.value = it
+            }
+        }
 
         activePlayer = player
         player.addListener(object : Player.Listener {
@@ -824,6 +837,7 @@ class PlaybackService : MediaLibraryService() {
                     serviceRecoveryAttempts = 0
                 }
                 val extras = mediaItem?.mediaMetadata?.extras
+                enhancedAudioProcessor.isRemotePlayback = _remotePlaybackStateFlow.value.connected
                 val queueSnapshot = queueEngine.state.value
                 configureNormalizationProcessor(
                     processor = normalizationProcessor,
@@ -1971,10 +1985,11 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         val limiter = TruePeakLimiterAudioProcessor().apply {
-            enabled = currentAudioSettings.limiterEnabled &&
-                (currentAudioSettings.equalizerEnabled || parametricActive ||
-                    currentAudioSettings.virtualizer > 0 ||
-                    currentAudioSettings.replayGainActive || currentAudioNormalization)
+            enabled = truePeakLimiterRequired(currentAudioSettings, parametricActive, currentAudioNormalization)
+        }
+        val enhancedAudio = EnhancedAudioProcessor().apply {
+            userEnabled = currentAudioSettings.enhancedAudioEnabled
+            isRemotePlayback = remotePlaybackStateFlow.value.connected
         }
         val renderers = object : DefaultRenderersFactory(this) {
             override fun buildVideoRenderers(
@@ -1997,6 +2012,7 @@ class PlaybackService : MediaLibraryService() {
                 .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
                 .setAudioProcessors(
                     arrayOf(
+                        enhancedAudio,
                         normalization,
                         equalizer,
                         parametricEqualizer,
@@ -2024,7 +2040,10 @@ class PlaybackService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(false)
             .build()
-            .also(RuntimeHooks::attachPlayer)
+            .also { transitionPlayer ->
+                transitionPlayer.addAnalyticsListener(EnhancedAudioSourceFormatListener(enhancedAudio, "transition"))
+                RuntimeHooks.attachPlayer(transitionPlayer)
+            }
     }
 
     private suspend fun fadePlayers(
@@ -2969,6 +2988,14 @@ private object LevyraPlaybackLoadErrorHandlingPolicy : LoadErrorHandlingPolicy {
 
     override fun getMinimumLoadableRetryCount(dataType: Int): Int = 0
 }
+
+internal fun truePeakLimiterRequired(
+    settings: LevyraAudioSettings,
+    parametricActive: Boolean,
+    audioNormalization: Boolean
+): Boolean = settings.limiterEnabled &&
+    (settings.equalizerEnabled || parametricActive || settings.virtualizer > 0 ||
+        settings.replayGainActive || audioNormalization)
 
 internal fun isLiveRadioMediaItem(mediaItem: MediaItem?): Boolean {
     if (mediaItem == null) return false
