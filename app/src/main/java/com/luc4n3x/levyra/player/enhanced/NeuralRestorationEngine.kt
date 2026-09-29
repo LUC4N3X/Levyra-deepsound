@@ -3,12 +3,10 @@ package com.luc4n3x.levyra.player.enhanced
 import java.io.File
 
 /**
- * Neural restoration backend designed for future on-device ML models (e.g. ONNX / Levyra Audio Restore).
+ * Neural restoration backend reserved for a future on-device inference model.
  *
- * If a trained neural model is present and initialized, this engine infers the super-resolved
- * waveform chunk and applies residual reconstruction. If the model is absent or fails to load,
- * it safely signals [isAvailable] = false, allowing [EnhancedAudioProcessor] to seamlessly
- * route through [DspRestorationEngine].
+ * Until real inference is implemented this engine stays unavailable so the
+ * processor always selects the production DSP restoration path.
  */
 class NeuralRestorationEngine(
     private val modelFile: File? = null
@@ -23,8 +21,8 @@ class NeuralRestorationEngine(
     private var config: EnhancedAudioConfig = EnhancedAudioConfig()
 
     init {
-        // Probe model availability
-        isAvailable = modelFile != null && modelFile.exists() && modelFile.length() > 0
+        // A model asset alone is not enough: inference is not implemented yet.
+        isAvailable = false
     }
 
     override fun configure(sampleRateHz: Int, channelCount: Int, config: EnhancedAudioConfig) {
@@ -40,17 +38,9 @@ class NeuralRestorationEngine(
         frames: Int,
         adaptiveResidualGain: Float,
         stereoCoherence: Float
-    ): Boolean {
-        if (!isAvailable) {
-            return false // Trigger fallback to DSP engine
-        }
-        // Future neural inference hook (ONNX Runtime / NNAPI)
-        return false
-    }
+    ): Boolean = false
 
-    override fun reset() {
-        // Reset neural hidden states
-    }
+    override fun reset() = Unit
 
     override fun release() {
         isAvailable = false
