@@ -113,7 +113,7 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
 <p align="center">
   <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp?v=grid4-20260929" width="200" alt="Levyra home and personalized radio" /></a>
   <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=grid4-20260929" width="200" alt="Levyra song and video player" /></a>
-  <a href="docs/assets/showcase/cards/03_now_playing.webp"><img src="docs/assets/showcase/cards/03_now_playing.webp?v=grid4-20260929" width="200" alt="Levyra synchronized lyrics and player" /></a>
+  <a href="docs/assets/showcase/cards/03_now_playing.webp"><img src="docs/assets/showcase/cards/03_now_playing.webp?v=lyrics-20260929" width="200" alt="Levyra synchronized lyrics" /></a>
   <a href="docs/assets/showcase/cards/04_player_deck.webp"><img src="docs/assets/showcase/cards/04_player_deck.webp?v=grid4-20260929" width="200" alt="Levyra customizable player decks" /></a>
 </p>
 <p align="center">
@@ -138,7 +138,7 @@ Artwork, lyrics, queue position, listening history and recommendations still bel
   <a href="docs/assets/showcase/cards/17_new_releases.webp"><img src="docs/assets/showcase/cards/17_new_releases.webp?v=grid4-20260929" width="200" alt="Levyra new releases" /></a>
   <a href="docs/assets/showcase/cards/18_fresh_currents.webp"><img src="docs/assets/showcase/cards/18_fresh_currents.webp?v=grid4-20260929" width="200" alt="Levyra discovery stream and fresh currents" /></a>
   <a href="docs/assets/showcase/cards/19_featured_artists.webp"><img src="docs/assets/showcase/cards/19_featured_artists.webp?v=grid4-20260929" width="200" alt="Levyra featured artists" /></a>
-  <a href="docs/assets/showcase/cards/20_soundstage.webp"><img src="docs/assets/showcase/cards/20_soundstage.webp?v=card20-20260929" width="200" alt="Levyra artist discography and shuffle" /></a>
+  <a href="docs/assets/showcase/cards/20_soundstage.webp"><img src="docs/assets/showcase/cards/20_soundstage.webp?v=soundstage-20260929" width="200" alt="Levyra lossless soundstage" /></a>
 </p>
 
 </div>
