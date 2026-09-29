@@ -79,7 +79,7 @@ class EnhancedAudioAnalyzer(
             sumRight += (right * right).toDouble()
             sumProduct += (left * right).toDouble()
             ring[ringPos] = (left + right) * 0.5f
-            ringPos = (ringPos + 1) and (FFT_SIZE - 1)
+            ringPos = ringPos + 1 and FFT_SIZE - 1
             samplesSinceFrame++
             if (samplesSinceFrame >= analysisHop()) {
                 samplesSinceFrame = 0
@@ -119,7 +119,7 @@ class EnhancedAudioAnalyzer(
     private fun analyzeFrame() {
         var energy = 0.0
         for (i in 0 until FFT_SIZE) {
-            val sample = ring[(ringPos + i) and (FFT_SIZE - 1)]
+            val sample = ring[ringPos + i and FFT_SIZE - 1]
             energy += (sample * sample).toDouble()
             re[i] = sample * window[i]
             im[i] = 0f
