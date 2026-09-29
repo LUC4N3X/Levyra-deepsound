@@ -1263,6 +1263,13 @@ class LevyraStrings private constructor(
     val localTagUnsupported: String get() = value("localTagUnsupported")
     val localTagTooLarge: String get() = value("localTagTooLarge")
     val localTagPermissionDenied: String get() = value("localTagPermissionDenied")
+    val localTagArtwork: String get() = value("localTagArtwork")
+    val localTagChangeArtwork: String get() = value("localTagChangeArtwork")
+    val localTagRemoveArtwork: String get() = value("localTagRemoveArtwork")
+    val localTagLyrics: String get() = value("localTagLyrics")
+    val localTagFileMissing: String get() = value("localTagFileMissing")
+    val localTagNoSpace: String get() = value("localTagNoSpace")
+    val localTagArtworkInvalid: String get() = value("localTagArtworkInvalid")
     fun formatReplayPeriod(days: Int): String {
         val value = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
             .format(days.coerceAtLeast(0))

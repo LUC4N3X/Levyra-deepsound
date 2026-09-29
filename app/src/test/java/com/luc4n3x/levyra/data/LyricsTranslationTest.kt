@@ -8,7 +8,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.supervisorScope
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -162,6 +164,25 @@ class LyricsTranslationTest {
 
         assertEquals(LyricsTranslationState.ON_DEVICE, restored?.translationState)
         assertEquals("Ciao", restored?.lines?.single()?.translated)
+    }
+
+    @Test
+    fun cachedPayloadFromAnOlderParserIsRejectedButStillDeserializable() {
+        val repository = LyricsRepository()
+        val original = LyricsRepository.LyricsResult(
+            synced = true,
+            lines = listOf(LyricLine(1_000L, 2_000L, "Hello")),
+            provider = "Provider",
+            confidence = 90,
+            cached = false
+        )
+        val current = repository.serializeResult(original)
+        val olderParser = JSONObject(current).apply { remove("parserRevision") }.toString()
+
+        assertTrue(repository.matchesParserRevision(current))
+        assertFalse(repository.matchesParserRevision(olderParser))
+        assertFalse(repository.matchesParserRevision("not json"))
+        assertEquals("Hello", repository.deserializeResult(olderParser)?.lines?.single()?.text)
     }
 
     @Test

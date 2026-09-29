@@ -7316,7 +7316,8 @@ private fun LyricsOverlay(
         bluetooth = audioOutputRoute?.bluetooth == true
     )
     var viewMode by remember(track?.id) { mutableStateOf(LyricsViewMode.CINEMA) }
-    var showRomanization by remember(track?.id) { mutableStateOf(true) }
+    var showRomanization by rememberSaveable { mutableStateOf(true) }
+    val showTranslation = state.lyricsTranslationEnabled
     var showSecondaryVoices by remember(track?.id) { mutableStateOf(true) }
     var lyricsOffsetMs by remember(track?.id) { mutableLongStateOf(storedLyricsOffsetMs) }
     var autoScrollEnabled by remember(track?.id) { mutableStateOf(true) }
@@ -7348,7 +7349,7 @@ private fun LyricsOverlay(
     fun selectedLyricsText(): String = selectedLines.joinToString("\n") { line ->
         buildString {
             append(line.text)
-            if (line.translated.isNotBlank()) append("\n").append(line.translated)
+            if (showTranslation && line.translated.isNotBlank()) append("\n").append(line.translated)
         }
     }
     fun shareSelectedLyrics(format: LyricsShareFormat) {
@@ -7972,6 +7973,7 @@ private fun LyricsOverlay(
                         animationsEnabled = lyricsAnimationsEnabled,
                         sectionLabel = sectionStarts[index]?.let { lyricSectionLabel(strings, it) },
                         showRomanization = showRomanization,
+                        showTranslation = showTranslation,
                         accentEnd = accentEnd,
                         selectionMode = selectionMode,
                         selected = selected,
@@ -8356,6 +8358,7 @@ private fun KaraokeLyricLine(
     animationsEnabled: Boolean,
     sectionLabel: String?,
     showRomanization: Boolean,
+    showTranslation: Boolean,
     accentEnd: Color,
     selectionMode: Boolean,
     selected: Boolean,
@@ -8549,6 +8552,7 @@ private fun KaraokeLyricLine(
         }
         if (line.words.isNotEmpty() && synced) {
             KaraokeWordTimedText(
+                lineText = line.text,
                 words = line.words,
                 positionProvider = positionProvider,
                 isActive = isActive,
@@ -8587,7 +8591,7 @@ private fun KaraokeLyricLine(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        if (line.translated.isNotBlank()) {
+        if (showTranslation && line.translated.isNotBlank()) {
             Text(
                 text = line.translated,
                 color = animatedTranslationColor,
@@ -8643,6 +8647,7 @@ private fun LyricsInstrumentalPulse(
 
 @Composable
 private fun KaraokeWordTimedText(
+    lineText: String,
     words: List<com.luc4n3x.levyra.domain.LyricWord>,
     positionProvider: () -> Long,
     isActive: Boolean,
@@ -8655,7 +8660,7 @@ private fun KaraokeWordTimedText(
     pendingColor: Color,
     fontWeight: FontWeight
 ) {
-    val timedText = remember(words) { buildTimedLyricText(words) }
+    val timedText = remember(lineText, words) { buildTimedLyricText(lineText, words) }
     val karaokeEasing = remember { CubicBezierEasing(0.18f, 0f, 0.20f, 1f) }
     val clipPath = remember { Path() }
     val contentAlignment = when (textAlign) {

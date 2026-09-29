@@ -26,8 +26,13 @@
     <string name="car_connecting_player">Connecting to player</string>
     <string name="car_now_playing">Now playing</string>
     <string name="car_queue">Queue</string>
-    <string name="notification_shuffle">Shuffle</string>
-    <string name="notification_favorite">Favorite</string>
+    <string name="notification_favorite_add">Add to favorites</string>
+    <string name="notification_favorite_remove">Remove from favorites</string>
+    <string name="notification_shuffle_enable">Enable shuffle</string>
+    <string name="notification_shuffle_disable">Disable shuffle</string>
+    <string name="notification_repeat_off">Repeat off</string>
+    <string name="notification_repeat_all">Repeat all</string>
+    <string name="notification_repeat_one">Repeat one</string>
     <string name="tile_recognize_music">Recognize music</string>
     <string name="tile_playback">Playback</string>
     <string name="tile_ambient" translatable="false">Ambient</string>

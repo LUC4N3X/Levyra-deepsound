@@ -51,7 +51,6 @@ import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.extractor.metadata.icy.IcyInfo
-import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
@@ -307,6 +306,12 @@ class PlaybackService : MediaLibraryService() {
             return true
         }
 
+        fun publishTrackMetadata(track: Track): Boolean {
+            val service = activeService ?: return false
+            service.serviceScope.launch { service.publishTrackMetadataInternal(track) }
+            return true
+        }
+
         fun publishSystemLyrics(
             track: Track,
             lines: List<LyricLine>,
@@ -405,8 +410,7 @@ class PlaybackService : MediaLibraryService() {
     private var routedOutputIsBluetooth = false
     private var lostRouteWasBluetooth = false
     private var deviceVolumeReceiverRegistered = false
-    private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
-    private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
+    private var systemMediaActions: SystemMediaActionController? = null
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
     private val videoSubtitleCommand by lazy { SessionCommand(ACTION_SET_VIDEO_SUBTITLE, Bundle.EMPTY) }
 
@@ -581,6 +585,34 @@ class PlaybackService : MediaLibraryService() {
             .build()
         val index = player.currentMediaItemIndex
         if (index in 0 until player.mediaItemCount) player.replaceMediaItem(index, updatedItem)
+    }
+
+    private fun publishTrackMetadataInternal(track: Track) {
+        val player = activePlayer ?: return
+        if (track.streamUrl.isBlank()) return
+        val fresh = LevyraMediaItemFactory.metadataOnly(track).mediaMetadata
+        for (index in 0 until player.mediaItemCount) {
+            val item = player.getMediaItemAt(index)
+            if (item.localConfiguration?.uri?.toString() != track.streamUrl) continue
+            val extras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY).apply {
+                putString("levyra.title", track.title)
+                putString("levyra.artist", track.artist)
+                putString("levyra.album", track.album)
+            }
+            val metadata = item.mediaMetadata
+                .buildUpon()
+                .setTitle(fresh.title)
+                .setDisplayTitle(fresh.displayTitle)
+                .setArtist(fresh.artist)
+                .setSubtitle(fresh.subtitle)
+                .setAlbumTitle(fresh.albumTitle)
+                .setArtworkUri(fresh.artworkUri)
+                .setExtras(extras)
+                .build()
+            if (metadata != item.mediaMetadata) {
+                player.replaceMediaItem(index, item.buildUpon().setMediaMetadata(metadata).build())
+            }
+        }
     }
 
     private fun publishSystemLyricsInternal(
@@ -945,16 +977,13 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
-        val queueShuffleButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-            .setDisplayName(getString(com.luc4n3x.levyra.R.string.notification_shuffle))
-            .setSessionCommand(queueShuffleCommand)
-            .setCustomIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_shuffle)
-            .build()
-        val queueLikeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-            .setDisplayName(getString(com.luc4n3x.levyra.R.string.notification_favorite))
-            .setSessionCommand(queueLikeCommand)
-            .setCustomIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_like)
-            .build()
+        val systemActions = SystemMediaActionController(
+            context = this,
+            scope = serviceScope,
+            queueState = queueEngine.state,
+            favoriteMembership = favoritesStore.observeMembership()
+        )
+        systemMediaActions = systemActions
 
         val callback = object : MediaLibrarySession.Callback {
             override fun onConnect(
@@ -963,8 +992,7 @@ class PlaybackService : MediaLibraryService() {
             ): MediaSession.ConnectionResult {
                 val commandBuilder = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                     .buildUpon()
-                    .add(queueShuffleCommand)
-                    .add(queueLikeCommand)
+                SystemMediaActionController.sessionCommands.forEach(commandBuilder::add)
                 if (controller.packageName == packageName) {
                     commandBuilder.add(platformTokenCommand)
                     commandBuilder.add(videoSubtitleCommand)
@@ -1044,27 +1072,9 @@ class PlaybackService : MediaLibraryService() {
                             Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                         }
                     }
-                    "levyra.queue.shuffle" -> {
-                        if (!isLiveRadioMediaItem(session.player.currentMediaItem)) {
-                            queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
-                        }
-                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-                    }
-                    "levyra.favorite.like" -> {
-                        if (isLiveRadioMediaItem(session.player.currentMediaItem)) {
-                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-                        } else {
-                            serviceScope.launch(Dispatchers.IO) {
-                                queueEngine.state.value.currentTrack?.let { track ->
-                                    if (!track.isLiveRadio()) {
-                                        favoritesStore.toggleFavorite(track)
-                                    }
-                                }
-                            }
-                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-                        }
-                    }
-                    else -> super.onCustomCommand(session, controller, customCommand, args)
+                    else -> SystemMediaCommand.fromCustomAction(customCommand.customAction)
+                        ?.let { command -> handleSystemMediaCommand(command, session.player) }
+                        ?: super.onCustomCommand(session, controller, customCommand, args)
                 }
             }
             override fun onGetLibraryRoot(
@@ -1254,8 +1264,9 @@ class PlaybackService : MediaLibraryService() {
 
         mediaSession = MediaLibrarySession.Builder(this, forwardingPlayer, callback)
             .setSessionActivity(sessionActivity)
-            .setMediaButtonPreferences(ImmutableList.of(queueShuffleButton, queueLikeButton))
+            .setMediaButtonPreferences(systemActions.initialButtons())
             .build()
+            .also(systemActions::attach)
 
         val notificationProvider = DefaultMediaNotificationProvider(this)
         setMediaNotificationProvider(notificationProvider)
@@ -1268,6 +1279,53 @@ class PlaybackService : MediaLibraryService() {
         super.onStartCommand(intent, flags, startId)
         if (intent == null && !scheduleStickyPlaybackRestore(startId)) return START_NOT_STICKY
         return START_STICKY
+    }
+
+    private fun handleSystemMediaCommand(
+        command: SystemMediaCommand,
+        sessionPlayer: Player
+    ): ListenableFuture<SessionResult> {
+        val queue = queueEngine.state.value
+        val sessionItem = systemMediaSessionItem(sessionPlayer.currentMediaItem)
+        val invalidState = Futures.immediateFuture(SessionResult(androidx.media3.session.SessionError.ERROR_INVALID_STATE))
+        when (command) {
+            SystemMediaCommand.AddFavorite, SystemMediaCommand.RemoveFavorite -> {
+                val target = systemFavoriteTarget(queue, sessionItem) ?: return invalidState
+                val favorite = command == SystemMediaCommand.AddFavorite
+                val result = SettableFuture.create<SessionResult>()
+                serviceScope.launch {
+                    try {
+                        favoritesStore.setFavorite(target, favorite)
+                        result.set(SessionResult(SessionResult.RESULT_SUCCESS))
+                    } catch (cancelled: CancellationException) {
+                        result.cancel(false)
+                        throw cancelled
+                    } catch (error: Exception) {
+                        Timber.w(error, "System favorite action failed")
+                        result.set(SessionResult(androidx.media3.session.SessionError.ERROR_UNKNOWN))
+                    }
+                }
+                return result
+            }
+            SystemMediaCommand.EnableShuffle, SystemMediaCommand.DisableShuffle -> {
+                if (!systemQueueControlsAvailable(queue, sessionItem)) return invalidState
+                queueEngine.setShuffle(command == SystemMediaCommand.EnableShuffle)
+                clearPreparedQueueNextIfStaleInternal()
+            }
+            SystemMediaCommand.SetRepeatOff, SystemMediaCommand.SetRepeatAll, SystemMediaCommand.SetRepeatOne -> {
+                val mode = command.repeatModeTarget
+                if (mode == null || !systemQueueControlsAvailable(queue, sessionItem)) return invalidState
+                queueEngine.setRepeatMode(mode)
+                val remote = sessionPlayer.deviceInfo.playbackType == DeviceInfo.PLAYBACK_TYPE_REMOTE
+                sessionPlayer.repeatMode = when {
+                    mode == com.luc4n3x.levyra.domain.RepeatMode.One -> Player.REPEAT_MODE_ONE
+                    mode == com.luc4n3x.levyra.domain.RepeatMode.All && remote -> Player.REPEAT_MODE_ALL
+                    else -> Player.REPEAT_MODE_OFF
+                }
+                clearPreparedQueueNextIfStaleInternal()
+            }
+        }
+        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
     }
 
     private fun canSkipToPreviousTrack(): Boolean {
@@ -2278,6 +2336,8 @@ class PlaybackService : MediaLibraryService() {
         queueTransitionMonitorJob?.cancel()
         sleepTimerStateJob?.cancel()
         automationSettingsJob?.cancel()
+        systemMediaActions?.detach()
+        systemMediaActions = null
         updateDeviceVolumeReceiver(false)
         sleepTimer.cancel()
         _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
@@ -2937,7 +2997,7 @@ internal fun truePeakLimiterRequired(
     (settings.equalizerEnabled || parametricActive || settings.virtualizer > 0 ||
         settings.replayGainActive || audioNormalization)
 
-private fun isLiveRadioMediaItem(mediaItem: MediaItem?): Boolean {
+internal fun isLiveRadioMediaItem(mediaItem: MediaItem?): Boolean {
     if (mediaItem == null) return false
     if (mediaItem.mediaId.startsWith("live-radio:")) return true
     if (mediaItem.mediaMetadata.mediaType == androidx.media3.common.MediaMetadata.MEDIA_TYPE_RADIO_STATION) return true

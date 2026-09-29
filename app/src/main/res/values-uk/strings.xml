@@ -24,8 +24,13 @@
     <string name="car_connecting_player">З’єднання з програвачем</string>
     <string name="car_now_playing">Зараз грає</string>
     <string name="car_queue">Черга</string>
-    <string name="notification_shuffle">Перемішати</string>
-    <string name="notification_favorite">До обраного</string>
+    <string name="notification_favorite_add">Додати до обраного</string>
+    <string name="notification_favorite_remove">Видалити з обраного</string>
+    <string name="notification_shuffle_enable">Увімкнути перемішування</string>
+    <string name="notification_shuffle_disable">Вимкнути перемішування</string>
+    <string name="notification_repeat_off">Повтор вимкнено</string>
+    <string name="notification_repeat_all">Повторювати все</string>
+    <string name="notification_repeat_one">Повторювати трек</string>
     <string name="tile_recognize_music">Розпізнати музику</string>
     <string name="tile_playback">Відтворення</string>
     <string name="shortcut_search">Пошук</string>
