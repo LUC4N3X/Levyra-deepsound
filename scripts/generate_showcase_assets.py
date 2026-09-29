@@ -1,7 +1,7 @@
 import os
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
-SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshots"
+SCREENSHOT_DIR = os.environ.get("LEVYRA_SCREEN_DIR", ".capture")
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
 OUT_CARDS_DIR = os.path.join(OUT_SHOWCASE_DIR, "cards")
 LOGO_PATH = r"app\src\main\res\drawable\levyra_logo.png"
@@ -10,22 +10,22 @@ os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 
 SCREENS = {
-    "home": os.environ.get("LEVYRA_SCREEN_HOME", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_171253_LEVYRA.jpg"),
-    "charts": "screen-charts.jpg",
-    "genres": "screen-genres.jpg",
-    "listening_pulse": os.environ.get("LEVYRA_SCREEN_PULSE", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193717_LEVYRA.jpg"),
-    "lyrics": "screen-lyrics.jpg",
-    "now_playing": os.environ.get("LEVYRA_SCREEN_PLAYER", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_193948_LEVYRA.jpg"),
-    "search_artist": "screen-search-artist.jpg",
-    "artist_discography": "screen-artist-discography.jpg",
-    "artist_profile": os.environ.get("LEVYRA_SCREEN_ARTIST", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194603_LEVYRA.jpg"),
-    "album": os.environ.get("LEVYRA_SCREEN_ALBUM", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194706_LEVYRA.jpg"),
-    "search": os.environ.get("LEVYRA_SCREEN_SEARCH", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194736_LEVYRA.jpg"),
-    "player_settings": os.environ.get("LEVYRA_SCREEN_SETTINGS", r"C:\Users\Luca Drogo\Desktop\screenshots\Screenshot_20260926_194845_LEVYRA.jpg"),
-    "explore": os.environ.get("LEVYRA_SCREEN_EXPLORE", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_140841_LEVYRA.jpg"),
-    "new_releases": os.environ.get("LEVYRA_SCREEN_RELEASES", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_132248_LEVYRA.jpg"),
-    "collections": os.environ.get("LEVYRA_SCREEN_COLLECTIONS", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_132323_LEVYRA.jpg"),
-    "listening_rhythm": os.environ.get("LEVYRA_SCREEN_RHYTHM", r"C:\Users\Luca Drogo\Downloads\Screenshot_20260927_131943_LEVYRA.jpg"),
+    "home": "Screenshot_20260926_171253_LEVYRA.jpg",
+    "charts": "charts.png",
+    "genres": "genres.png",
+    "listening_pulse": "pulse.png",
+    "lyrics": "lyrics.png",
+    "now_playing": "player.png",
+    "search_artist": "search-artist.png",
+    "artist_discography": "discography2.png",
+    "artist_profile": "artist-profile.png",
+    "album": "album.png",
+    "search": "search.png",
+    "player_settings": "player-settings.png",
+    "explore": "explore.png",
+    "new_releases": "new-releases.png",
+    "collections": "library.png",
+    "listening_rhythm": "rhythm.png",
 }
 
 def get_screen_path(filename):
@@ -386,10 +386,10 @@ def generate_feature_cards():
         ("artist_profile", "09", "Meet the artist", "Biography, audience,\nand popular tracks.", (228, 225, 204), (174, 163, 96)),
         ("album", "10", "Open the whole album", "Artwork, context,\nand a complete tracklist.", (238, 221, 203), (199, 151, 106)),
         ("search", "11", "Find it fast", "Recent music and artists,\nready when you return.", (205, 228, 231), (105, 177, 181)),
-        ("player_settings", "12", "Shape the playback", "Radio, sleep timer,\nquality, and more.", (232, 211, 226), (190, 127, 169)),
+        ("player_settings", "12", "Choose your stage", "Immersive Canvas, framed\nartwork, or a calm view.", (232, 211, 226), (190, 127, 169)),
         ("explore", "13", "Explore and mix", "Live stations, custom mixes,\nand fresh currents.", (205, 225, 245), (68, 138, 245)),
         ("new_releases", "14", "Fresh off the stage", "New singles and albums\nupdated every week.", (245, 215, 210), (225, 115, 95)),
-        ("collections", "15", "Curated for you", "Playlists and gems\naround what you love.", (226, 212, 244), (152, 95, 215)),
+        ("collections", "15", "Everything together", "Favorites, offline music,\nhistory, and playlists.", (226, 212, 244), (152, 95, 215)),
         ("listening_rhythm", "16", "Your listening rhythm", "Activity, peak hours,\nand listening habits.", (210, 238, 225), (72, 180, 135)),
     ]
 
