@@ -37,7 +37,9 @@ import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackState
 import com.luc4n3x.levyra.player.NativeAudioIntegration
 import com.luc4n3x.levyra.player.PlaybackService
+import com.luc4n3x.levyra.player.enhanced.EnhancedAudioMetrics
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import kotlin.math.roundToInt
 import com.luc4n3x.levyra.ui.i18n.TechnicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
@@ -89,6 +91,21 @@ internal fun TechnicalAudioInfoSheet(
 
     val sourceRows = remember(track.playbackManifest, track.source, copy) {
         buildSourceRows(track, source, copy)
+    }
+
+    val enhancedMetrics by PlaybackService.enhancedAudioMetricsFlow.collectAsStateWithLifecycle()
+    val enhancedRows = remember(
+        audioSettings.enhancedAudioEnabled,
+        enhancedMetrics,
+        effectiveRuntime.sampleRateHz,
+        copy
+    ) {
+        buildEnhancedAudioRows(
+            enabled = audioSettings.enhancedAudioEnabled,
+            metrics = enhancedMetrics,
+            sourceSampleRateHz = effectiveRuntime.sampleRateHz ?: source?.sampleRate,
+            copy = copy
+        )
     }
 
     val outputRows = remember(
@@ -148,6 +165,7 @@ internal fun TechnicalAudioInfoSheet(
 
             TechnicalAudioSection(copy.runtime, runtimeRows)
             TechnicalAudioSection(copy.source, sourceRows)
+            TechnicalAudioSection(copy.enhancedAudio, enhancedRows)
             TechnicalAudioSection(copy.outputAndDsp, outputRows)
         }
     }
@@ -309,9 +327,60 @@ internal fun buildSourceRows(
         manifest?.loudnessDb?.takeIf { it.isFinite() }?.let {
             add(copy.loudness to String.format(Locale.ROOT, "%+.1f dB", it))
         }
+        technicalLosslessState(stream)?.let { isLossless ->
+            add(copy.lossless to if (isLossless) copy.yes else copy.no)
+        }
         alternative?.let {
             add(copy.verifiedSource to "${it.providerId} · ${it.bitrateKbps} kbps · ${it.verdict.name}")
             add(copy.confidence to "${it.confidence.coerceIn(0, 100)}%")
+        }
+    }
+}
+
+private fun technicalLosslessState(stream: PlaybackStreamDescriptor?): Boolean? {
+    val descriptor = stream ?: return null
+
+    val codec = descriptor.codec.trim().lowercase(Locale.ROOT)
+    val container = descriptor.container.trim().lowercase(Locale.ROOT)
+    val mime = descriptor.mimeType.substringBefore(';').trim().lowercase(Locale.ROOT)
+    if (
+        codec.contains("flac") || codec.contains("alac") || codec.contains("pcm") ||
+        container == "flac" || container == "alac" || container == "wav" ||
+        mime == "audio/flac" || mime == "audio/x-flac" || mime == "audio/alac" || mime == "audio/wav"
+    ) {
+        return true
+    }
+
+    val knownLossy = codec.contains("mp4a") || codec.contains("aac") || codec.contains("opus") ||
+        codec.contains("vorbis") || codec.contains("mp3") || codec.contains("ac-3") || codec.contains("ec-3") ||
+        mime == "audio/mp4" || mime == "audio/mpeg" || mime == "audio/webm" || mime == "audio/aac" ||
+        mime == "audio/ogg"
+    return if (knownLossy) false else null
+}
+
+internal fun buildEnhancedAudioRows(
+    enabled: Boolean,
+    metrics: EnhancedAudioMetrics,
+    sourceSampleRateHz: Int?,
+    copy: TechnicalAudioInfoCopy
+): List<Pair<String, String>> = buildList {
+    if (!enabled) {
+        add(copy.status to copy.off)
+        return@buildList
+    }
+
+    if (metrics.bypassed) {
+        add(copy.status to copy.bypassed)
+        metrics.bypassReason?.let { reason ->
+            add(copy.bypassReason to reason.label)
+        }
+    } else {
+        add(copy.status to copy.active)
+        add(copy.engine to "Levyra Band Replication")
+        val processingRate = sourceSampleRateHz?.takeIf { it > 0 } ?: 44_100
+        add(copy.processing to "${formatTechnicalSampleRate(processingRate)} · 32-bit float")
+        if (metrics.deficitConfidence > 0f) {
+            add(copy.confidence to "${(metrics.deficitConfidence * 100).roundToInt()}%")
         }
     }
 }
