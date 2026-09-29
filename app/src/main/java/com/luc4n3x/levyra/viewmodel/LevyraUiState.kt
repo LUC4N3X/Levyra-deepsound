@@ -221,7 +221,6 @@ data class LevyraUiState(
     val shuffleEnabled: Boolean = false,
     val playbackSpeed: Float = 1f,
     val audioQuality: String = LevyraAudioQuality.DEFAULT,
-    val preferredAudioLanguage: String = "",
     val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.PREFER_320,
     val showAudioQualityPanel: Boolean = false,
     val audioNormalization: Boolean = false,
