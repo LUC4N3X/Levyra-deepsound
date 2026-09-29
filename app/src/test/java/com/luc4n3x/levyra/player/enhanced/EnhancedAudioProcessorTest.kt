@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.player.enhanced
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import org.junit.Assert.assertEquals
@@ -58,7 +59,6 @@ class EnhancedAudioProcessorTest {
         assertTrue(processor.metricsState.value.bypassed)
         assertEquals(sampleCount * 4, output.remaining())
 
-        // Verify exact byte equality
         buffer.position(0)
         while (buffer.hasRemaining()) {
             assertEquals(buffer.short, output.short)
@@ -146,13 +146,37 @@ class EnhancedAudioProcessorTest {
     }
 
     @Test
+    fun reset_resetsEngineWithoutReleasingReusableProcessorEngine() {
+        val engine = TrackingEngine()
+        val proc = EnhancedAudioProcessor(dspEngine = engine)
+        proc.configure(pcm16Format)
+
+        proc.reset()
+
+        assertEquals(1, engine.resetCount)
+        assertEquals(0, engine.releaseCount)
+    }
+
+    @Test
+    fun neuralEngine_staysUnavailableUntilInferenceIsImplemented() {
+        val model = File.createTempFile("levyra-neural", ".onnx")
+        try {
+            model.writeBytes(byteArrayOf(1, 2, 3, 4))
+            val engine = NeuralRestorationEngine(model)
+
+            assertFalse(engine.isAvailable)
+        } finally {
+            model.delete()
+        }
+    }
+
+    @Test
     fun watchdog_singleSpike_doesNotTriggerBypass() {
         var callCount = 0
         var spike = false
         val clock = TimeProvider {
             callCount++
             if (spike && callCount % 2 == 0) {
-                // End time spiked by 10ms
                 callCount * 1_000_000L + 10_000_000L
             } else {
                 callCount * 1_000_000L
@@ -164,20 +188,17 @@ class EnhancedAudioProcessorTest {
         val frames = 128
         val buffer = ByteBuffer.allocateDirect(frames * 2 * 2).order(ByteOrder.LITTLE_ENDIAN)
 
-        // Block 1: normal
         buffer.position(0)
         proc.queueInput(buffer)
         proc.output
         assertFalse(proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
 
-        // Block 2: spike
         spike = true
         buffer.position(0)
         proc.queueInput(buffer)
         proc.output
         assertFalse("Single spike must not trigger overload bypass", proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
 
-        // Block 3: back to normal
         spike = false
         buffer.position(0)
         proc.queueInput(buffer)
@@ -187,7 +208,7 @@ class EnhancedAudioProcessorTest {
 
     @Test
     fun watchdog_sustainedOverload_triggersCpuOverloadBypassAndRecovers() {
-        var simulatedBlockDurationNs = 10_000_000L // 10ms > 5ms budget
+        var simulatedBlockDurationNs = 10_000_000L
         var time = 0L
         val clock = TimeProvider {
             val t = time
@@ -200,7 +221,6 @@ class EnhancedAudioProcessorTest {
         val frames = 128
         val buffer = ByteBuffer.allocateDirect(frames * 2 * 2).order(ByteOrder.LITTLE_ENDIAN)
 
-        // Feed 4 overload blocks: should NOT trigger bypass yet (threshold is 5)
         repeat(4) {
             buffer.position(0)
             proc.queueInput(buffer)
@@ -208,25 +228,50 @@ class EnhancedAudioProcessorTest {
             assertFalse(proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
         }
 
-        // 5th overload block: triggers CPU_OVERLOAD
         buffer.position(0)
         proc.queueInput(buffer)
         proc.output
         assertEquals(EnhancedAudioBypassReason.CPU_OVERLOAD, proc.metricsState.value.bypassReason)
         assertTrue(proc.metricsState.value.bypassed)
 
-        // Process 50 cooldown blocks in bypass
         repeat(50) {
             buffer.position(0)
             proc.queueInput(buffer)
             proc.output
         }
 
-        // Recovery: after 50 cooldown blocks, overload clears
-        simulatedBlockDurationNs = 1_000_000L // back to 1ms
+        simulatedBlockDurationNs = 1_000_000L
         buffer.position(0)
         proc.queueInput(buffer)
         proc.output
         assertFalse(proc.metricsState.value.bypassReason == EnhancedAudioBypassReason.CPU_OVERLOAD)
+    }
+
+    private class TrackingEngine : EnhancedAudioEngine {
+        override val name: String = "tracking"
+        var resetCount = 0
+        var releaseCount = 0
+
+        override fun configure(sampleRateHz: Int, channelCount: Int, config: EnhancedAudioConfig) = Unit
+
+        override fun process(
+            input: FloatArray,
+            output: FloatArray,
+            offset: Int,
+            frames: Int,
+            adaptiveResidualGain: Float,
+            stereoCoherence: Float
+        ): Boolean {
+            System.arraycopy(input, offset, output, offset, frames * 2)
+            return true
+        }
+
+        override fun reset() {
+            resetCount++
+        }
+
+        override fun release() {
+            releaseCount++
+        }
     }
 }
