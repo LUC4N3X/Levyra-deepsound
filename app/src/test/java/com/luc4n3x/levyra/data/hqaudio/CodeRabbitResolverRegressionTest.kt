@@ -39,7 +39,7 @@ class CodeRabbitResolverRegressionTest {
             assertEquals(HighQualityFallbackReason.NO_MATCH, (first as HighQualityResolution.Fallback).reason)
             assertEquals(HighQualityFallbackReason.NO_MATCH, (second as HighQualityResolution.Fallback).reason)
             assertEquals(2, transient.searches.size)
-            assertEquals(2, definitiveMiss.searches.size)
+            assertEquals(2 * AlternativeSearchPlan.queries(query()).size, definitiveMiss.searches.size)
         } finally {
             scope.cancel()
         }
