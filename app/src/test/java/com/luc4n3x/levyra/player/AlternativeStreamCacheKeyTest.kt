@@ -101,8 +101,8 @@ class AlternativeStreamCacheKeyTest {
             )
         )
 
-        val item = LevyraMediaItemFactory.build(normal)
+        val mimeType = LevyraMediaItemFactory.playbackMimeTypeFor(normal, url, videoMode = false)
 
-        assertEquals("audio/mp4", item.localConfiguration?.mimeType)
+        assertEquals("audio/mp4", mimeType)
     }
 }
