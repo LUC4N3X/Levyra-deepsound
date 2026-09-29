@@ -448,18 +448,51 @@ internal object LocalEmbeddedTagWriter {
         edits.lyrics?.let(::cleanLyrics)?.takeIf { it.isNotEmpty() }?.let { add("LYRICS=$it") }
     }
 
-    fun verify(output: File, edits: LocalTagEdits): Boolean {
+    fun verify(output: File, edits: LocalTagEdits, artwork: LocalArtworkWrite = LocalArtworkWrite.Keep): Boolean {
         if (!output.isFile || output.length() <= 0L) return false
         val tags = LocalDeepTagReader.readTagMap(output)
-        fun matches(key: String, expected: String): Boolean {
-            val wanted = expected.verificationForm()
-            return wanted.isEmpty() || tags[key]?.verificationForm() == wanted
-        }
-        if (!matches("TITLE", edits.title) || !matches("ARTIST", edits.artist) || !matches("ALBUM", edits.album)) {
-            return false
-        }
-        val lyrics = edits.lyrics ?: return true
-        return LocalDeepTagReader.readEmbeddedLyrics(output) == cleanLyrics(lyrics)
+        val textMatches = listOf(
+            "TITLE" to edits.title,
+            "ARTIST" to edits.artist,
+            "ALBUM" to edits.album,
+            "ALBUMARTIST" to edits.albumArtist,
+            "DATE" to edits.year,
+            "GENRE" to edits.genre,
+            "COMPOSER" to edits.composer,
+            "LYRICIST" to edits.lyricist,
+            "COMMENT" to edits.comment,
+            "COPYRIGHT" to edits.copyright
+        ).all { (key, expected) -> tagMatches(tags[key], expected) }
+        val numbersMatch = numberMatches(tags["TRACKNUMBER"], edits.trackNumber, MAX_TRACK_NUMBER) &&
+            numberMatches(tags["DISCNUMBER"], edits.discNumber, MAX_DISC_NUMBER)
+        return textMatches && numbersMatch && lyricsMatch(output, edits.lyrics) && artworkMatches(output, tags, artwork)
+    }
+
+    private fun tagMatches(actual: String?, expected: String): Boolean {
+        val wanted = expected.verificationForm()
+        if (wanted.isEmpty()) return true
+        val found = actual?.verificationForm() ?: return false
+        return found == wanted || found.split("; ").any { it == wanted }
+    }
+
+    private fun numberMatches(actual: String?, expected: String, max: Int): Boolean {
+        val wanted = expected.trim().toIntOrNull()?.takeIf { it in 1..max } ?: return true
+        return actual?.substringBefore('/')?.trim()?.toIntOrNull() == wanted
+    }
+
+    private fun lyricsMatch(output: File, lyrics: String?): Boolean =
+        lyrics == null || LocalDeepTagReader.readEmbeddedLyrics(output) == cleanLyrics(lyrics)
+
+    private fun artworkMatches(
+        output: File,
+        tags: Map<String, String>,
+        artwork: LocalArtworkWrite
+    ): Boolean = when (artwork) {
+        LocalArtworkWrite.Keep -> true
+        LocalArtworkWrite.Remove ->
+            tags.keys.none { it in VORBIS_PICTURE_KEYS } && !LocalDeepTagReader.hasEmbeddedArtwork(output)
+        is LocalArtworkWrite.Embed -> LocalDeepTagReader.readEmbeddedArtwork(output)
+            ?.let { embedded -> imageMimeType(embedded) != null && embedded.contentEquals(artwork.bytes) } == true
     }
 
     private fun String.verificationForm(): String = replace(VERIFY_WHITESPACE, " ").trim().take(VERIFIED_TAG_CHARS)
@@ -575,6 +608,8 @@ internal object LocalEmbeddedTagWriter {
 
     private const val FRONT_COVER_PICTURE_TYPE = 3
     private const val VERIFIED_TAG_CHARS = 1_024
+    private const val MAX_TRACK_NUMBER = 9_999
+    private const val MAX_DISC_NUMBER = 999
     private val VERIFY_WHITESPACE = Regex("\\s+")
     private const val FLAC_PICTURE_BLOCK = 6
     private val VORBIS_LYRICS_KEYS = setOf("LYRICS", "UNSYNCEDLYRICS", "UNSYNCED LYRICS")

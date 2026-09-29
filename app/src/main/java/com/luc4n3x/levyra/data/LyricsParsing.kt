@@ -188,25 +188,33 @@ object LrcLyricsParser {
     }
 
     private fun mergeSameTimestampTranslations(sorted: List<RawLrcLine>): List<RawLrcLine> {
-        val merged = ArrayList<RawLrcLine>(sorted.size)
+        val groups = sameTimestampGroups(sorted)
+        val pairCount = groups.count(::isTranslationPair)
+        val translatedDocument = pairCount >= MIN_TRANSLATION_PAIRS &&
+            pairCount * 100 >= groups.size * MIN_TRANSLATION_PAIR_PERCENT
+        if (!translatedDocument) return sorted
+        return groups.flatMap { group ->
+            if (isTranslationPair(group)) listOf(group[0].copy(translation = group[1].content.trim())) else group
+        }
+    }
+
+    private fun sameTimestampGroups(sorted: List<RawLrcLine>): List<List<RawLrcLine>> {
+        val groups = ArrayList<List<RawLrcLine>>()
         var index = 0
         while (index < sorted.size) {
             var groupEnd = index + 1
             while (groupEnd < sorted.size && sorted[groupEnd].startMs == sorted[index].startMs) groupEnd++
-            val original = sorted[index]
-            val candidate = sorted.getOrNull(index + 1)
-            val translation = candidate?.content
-                ?.takeIf { groupEnd - index == 2 && !enhancedTimestampRegex.containsMatchIn(it) }
-                ?.trim()
-                ?.takeUnless { plainText(original.content).equals(it, ignoreCase = true) }
-            if (translation != null) {
-                merged += original.copy(translation = translation)
-            } else {
-                for (member in index until groupEnd) merged += sorted[member]
-            }
+            groups += sorted.subList(index, groupEnd)
             index = groupEnd
         }
-        return merged
+        return groups
+    }
+
+    private fun isTranslationPair(group: List<RawLrcLine>): Boolean {
+        if (group.size != 2) return false
+        val translation = group[1].content
+        if (enhancedTimestampRegex.containsMatchIn(translation)) return false
+        return !plainText(group[0].content).equals(translation.trim(), ignoreCase = true)
     }
 
     private fun plainText(content: String): String = enhancedTimestampRegex.replace(content, "").trim()
@@ -264,6 +272,9 @@ object LrcLyricsParser {
     }
 
     private data class RawLrcLine(val startMs: Long, val content: String, val translation: String = "")
+
+    private const val MIN_TRANSLATION_PAIRS = 2
+    private const val MIN_TRANSLATION_PAIR_PERCENT = 60
 
     private class LeadingTimestamps(val startsMs: List<Long>, val contentStart: Int)
 }
@@ -1297,21 +1308,21 @@ object LyricsMatcher {
     private fun knownSimilarity(candidate: String, requested: String): Int =
         if (candidate.isBlank() || requested.isBlank()) UNKNOWN_SCORE else similarity(candidate, requested)
 
-    private fun durationDifferenceSec(candidateSec: Long, requestedSec: Long): Long =
-        if (candidateSec > 0L && requestedSec > 0L) (candidateSec - requestedSec).absoluteValue else UNKNOWN_SCORE.toLong()
+    private fun durationDifferenceSec(candidateSec: Long, requestedSec: Long): Long? =
+        if (candidateSec > 0L && requestedSec > 0L) (candidateSec - requestedSec).absoluteValue else null
 
     private class MatchEvidence(
         val titleScore: Int,
         val artistScore: Int,
-        val durationDifference: Long,
+        val durationDifference: Long?,
         val versionMismatch: Boolean
     ) {
         private val titleKnown = titleScore != UNKNOWN_SCORE
         private val artistKnown = artistScore != UNKNOWN_SCORE
-        private val durationClose = durationDifference in 0L..MATCH_CLOSE_DURATION_SEC
+        private val durationClose = durationDifference != null && durationDifference <= MATCH_CLOSE_DURATION_SEC
 
         fun rejected(): Boolean {
-            if (durationDifference > MATCH_REJECT_DURATION_SEC) return true
+            if (durationDifference != null && durationDifference > MATCH_REJECT_DURATION_SEC) return true
             if (durationClose) return false
             val wrongTitle = titleKnown && titleScore < MATCH_REJECT_TITLE
             val wrongArtist = artistKnown && artistScore < MATCH_REJECT_ARTIST && titleScore < MATCH_STRONG_TITLE
@@ -1320,7 +1331,7 @@ object LyricsMatcher {
 
         fun strong(): Boolean {
             val artistMatches = !artistKnown || artistScore >= MATCH_STRONG_ARTIST
-            val durationMatches = durationDifference <= MATCH_STRONG_DURATION_SEC
+            val durationMatches = durationDifference != null && durationDifference <= MATCH_STRONG_DURATION_SEC
             return titleScore >= MATCH_STRONG_TITLE && artistMatches && durationMatches && !versionMismatch
         }
     }

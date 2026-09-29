@@ -226,18 +226,50 @@ class LyricsFormatRobustnessTest {
     }
 
     @Test
-    fun lrcSharedTimestampPairBecomesTranslation() {
+    fun lrcBilingualDocumentPairsBecomeTranslations() {
         val lines = UnifiedLyricsParser.parse(
             """
             [00:05.00]Ciao mondo
             [00:05.00]Hello world
-            [00:09.00]Solo
+            [00:09.00]Resta qui
+            [00:09.00]Stay here
+            [00:13.00]Per sempre
+            [00:13.00]Forever
             """.trimIndent()
         )
 
-        assertEquals(2, lines.size)
-        assertEquals("Ciao mondo", lines[0].text)
-        assertEquals("Hello world", lines[0].translated)
+        assertEquals(listOf("Ciao mondo", "Resta qui", "Per sempre"), lines.map { it.text })
+        assertEquals(listOf("Hello world", "Stay here", "Forever"), lines.map { it.translated })
+    }
+
+    @Test
+    fun lrcOccasionalSameTimestampVocalsStayAsSeparateLines() {
+        val lines = UnifiedLyricsParser.parse(
+            """
+            [00:01.00]First verse
+            [00:05.00]Lead vocal line
+            [00:05.00]Second singer line
+            [00:09.00]Chorus
+            [00:13.00]Bridge
+            """.trimIndent()
+        )
+
+        assertEquals(5, lines.size)
+        assertEquals(listOf("Lead vocal line", "Second singer line"), lines.filter { it.startMs == 5_000L }.map { it.text })
+        assertTrue(lines.all { it.translated.isEmpty() })
+    }
+
+    @Test
+    fun lrcSingleSameTimestampPairIsNotEnoughEvidenceForTranslation() {
+        val lines = UnifiedLyricsParser.parse(
+            """
+            [00:05.00]Ciao mondo
+            [00:05.00]Hello world
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("Ciao mondo", "Hello world"), lines.map { it.text })
+        assertTrue(lines.all { it.translated.isEmpty() })
     }
 
     @Test
@@ -245,6 +277,26 @@ class LyricsFormatRobustnessTest {
         val lines = UnifiedLyricsParser.parse("[00:05.00][00:05.00]Echo\n[00:07.00]Next")
 
         assertEquals(listOf("Echo", "Next"), lines.map { it.text })
+        assertTrue(lines.all { it.translated.isEmpty() })
+    }
+
+    @Test
+    fun lrcMoreThanTwoSameTimestampLinesArePreservedEvenInBilingualDocuments() {
+        val lines = UnifiedLyricsParser.parse(
+            """
+            [00:01.00]Uno
+            [00:01.00]One
+            [00:04.00]Due
+            [00:04.00]Two
+            [00:08.00]Tutti
+            [00:08.00]Everyone
+            [00:08.00]All together
+            """.trimIndent()
+        )
+
+        assertEquals("One", lines.first { it.text == "Uno" }.translated)
+        assertEquals(listOf("All together", "Everyone", "Tutti").sorted(), lines.filter { it.startMs == 8_000L }.map { it.text }.sorted())
+        assertTrue(lines.filter { it.startMs == 8_000L }.all { it.translated.isEmpty() })
     }
 
     @Test
@@ -376,6 +428,50 @@ class LyricsFormatRobustnessTest {
         val best = LyricsResultRanker.best(listOf(plausible), request)
 
         assertTrue((best?.confidence ?: 0) < 80)
+    }
+
+    @Test
+    fun unknownCandidateDurationIsNeverAStrongMatch() {
+        val request = LyricsRequest("Song", "Artist", 180L)
+        val candidate = candidate("Lyrics.ovh", title = "Song", artist = "Artist", durationSec = 0L, wordTimed = false)
+
+        assertEquals(LyricsMatchStrength.PLAUSIBLE, LyricsMatcher.matchStrength(candidate, request))
+    }
+
+    @Test
+    fun unknownRequestDurationIsNeverAStrongMatch() {
+        val request = LyricsRequest("Song", "Artist", 0L)
+        val candidate = candidate("LRCLIB Exact", title = "Song", artist = "Artist", durationSec = 180L, wordTimed = false)
+
+        assertEquals(LyricsMatchStrength.PLAUSIBLE, LyricsMatcher.matchStrength(candidate, request))
+    }
+
+    @Test
+    fun bothDurationsUnknownIsNeverAStrongMatch() {
+        val request = LyricsRequest("Song", "Artist", 0L)
+        val candidate = candidate("LRCLIB Exact", title = "Song", artist = "Artist", durationSec = 0L, wordTimed = false)
+
+        assertEquals(LyricsMatchStrength.PLAUSIBLE, LyricsMatcher.matchStrength(candidate, request))
+        assertTrue((LyricsResultRanker.best(listOf(candidate), request)?.confidence ?: 0) < 80)
+    }
+
+    @Test
+    fun knownDurationWithinFiveSecondsStaysStrong() {
+        val request = LyricsRequest("Song", "Artist", 180L)
+        val within = candidate("LRCLIB Exact", title = "Song", artist = "Artist", durationSec = 185L, wordTimed = false)
+        val outside = candidate("LRCLIB Exact", title = "Song", artist = "Artist", durationSec = 186L, wordTimed = false)
+
+        assertEquals(LyricsMatchStrength.STRONG, LyricsMatcher.matchStrength(within, request))
+        assertEquals(LyricsMatchStrength.PLAUSIBLE, LyricsMatcher.matchStrength(outside, request))
+    }
+
+    @Test
+    fun recordingIdentityStillDecidesWhenDurationsAreUnknown() {
+        val request = LyricsRequest("Song", "Artist", 0L, recordingId = "video")
+        val candidate = candidate("YouTube Music", title = "Song", artist = "Artist", durationSec = 0L, wordTimed = false)
+            .copy(recordingId = "video")
+
+        assertEquals(LyricsMatchStrength.STRONG, LyricsMatcher.matchStrength(candidate, request))
     }
 
     @Test

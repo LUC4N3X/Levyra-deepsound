@@ -234,6 +234,98 @@ class LocalTagEditorFormatsTest {
     }
 
     @Test
+    fun verificationChecksEveryEditedFieldAcrossFormats() {
+        val complete = edits(title = "Song").copy(
+            composer = "Composer",
+            lyricist = "Lyricist",
+            comment = "Comment",
+            copyright = "2026 Label"
+        )
+        writtenCopies(complete).forEach { (format, output) ->
+            assertTrue("$format should verify", LocalEmbeddedTagWriter.verify(output, complete))
+            listOf(
+                complete.copy(albumArtist = "Other Album Artist"),
+                complete.copy(year = "1999"),
+                complete.copy(trackNumber = "4"),
+                complete.copy(discNumber = "2"),
+                complete.copy(genre = "Jazz"),
+                complete.copy(composer = "Other Composer"),
+                complete.copy(lyricist = "Other Lyricist"),
+                complete.copy(comment = "Other Comment"),
+                complete.copy(copyright = "1999 Other")
+            ).forEach { stale ->
+                assertFalse("$format should reject $stale", LocalEmbeddedTagWriter.verify(output, stale))
+            }
+        }
+    }
+
+    @Test
+    fun verificationChecksArtworkReplacementRemovalAndKeep() {
+        val newCover = jpeg(8)
+        val otherCover = jpeg(9)
+        val replaceWith = LocalArtworkWrite.Embed(newCover, "image/jpeg", 400, 400)
+        writtenCopies(edits(title = "Song"), replaceWith).forEach { (format, replaced) ->
+            assertTrue("$format replaced cover", LocalEmbeddedTagWriter.verify(replaced, edits(title = "Song"), replaceWith))
+            assertFalse(
+                "$format stale cover",
+                LocalEmbeddedTagWriter.verify(replaced, edits(title = "Song"), LocalArtworkWrite.Embed(otherCover, "image/jpeg", 400, 400))
+            )
+            assertFalse("$format cover still present", LocalEmbeddedTagWriter.verify(replaced, edits(title = "Song"), LocalArtworkWrite.Remove))
+            assertTrue("$format keep", LocalEmbeddedTagWriter.verify(replaced, edits(title = "Song"), LocalArtworkWrite.Keep))
+            assertArrayEquals(newCover, LocalDeepTagReader.readEmbeddedArtwork(replaced))
+
+            val removed = temp(".${replaced.extension}")
+            assertTrue(LocalEmbeddedTagWriter.write(replaced, removed, format, edits(title = "Song"), LocalArtworkWrite.Remove).success)
+            assertTrue("$format removed cover", LocalEmbeddedTagWriter.verify(removed, edits(title = "Song"), LocalArtworkWrite.Remove))
+            assertFalse("$format missing cover", LocalEmbeddedTagWriter.verify(removed, edits(title = "Song"), replaceWith))
+
+            val kept = temp(".${replaced.extension}")
+            assertTrue(LocalEmbeddedTagWriter.write(replaced, kept, format, edits(title = "Other")).success)
+            assertTrue("$format kept cover", LocalEmbeddedTagWriter.verify(kept, edits(title = "Other"), LocalArtworkWrite.Keep))
+            assertArrayEquals(newCover, LocalDeepTagReader.readEmbeddedArtwork(kept))
+        }
+    }
+
+    @Test
+    fun removalVerificationRejectsCoversThatCannotBeFullyRead() {
+        val legacyFlac = temp(
+            ".flac",
+            "fLaC".toByteArray(StandardCharsets.ISO_8859_1) +
+                flacBlock(0, false, ByteArray(34)) +
+                flacBlock(4, true, vorbisComment("TITLE=Song", "METADATA_BLOCK_PICTURE=abc")) +
+                ByteArray(32)
+        )
+        val hugeCover = jpeg(11) + ByteArray(5 * 1024 * 1024)
+        val oversizedId3 = temp(".mp3", id3v24(textFrame("TIT2", "Song") + frame("APIC", apicPayload(hugeCover))) + mpegPayload())
+        val titleOnly = edits(title = "Song", artist = "", album = "").copy(
+            albumArtist = "",
+            genre = "",
+            year = "",
+            trackNumber = "",
+            discNumber = ""
+        )
+
+        assertFalse(LocalEmbeddedTagWriter.verify(legacyFlac, titleOnly, LocalArtworkWrite.Remove))
+        assertFalse(LocalEmbeddedTagWriter.verify(oversizedId3, titleOnly, LocalArtworkWrite.Remove))
+    }
+
+    @Test
+    fun verificationRejectsEmbeddedArtworkThatIsNotAnImage() {
+        val output = temp(".mp3", id3v24(textFrame("TIT2", "Song") + frame("APIC", apicPayload("not an image".toByteArray()))) + mpegPayload())
+        val titleOnly = edits(title = "Song", artist = "", album = "").copy(
+            albumArtist = "",
+            genre = "",
+            year = "",
+            trackNumber = "",
+            discNumber = ""
+        )
+        val claimed = LocalArtworkWrite.Embed("not an image".toByteArray(), "image/jpeg", 1, 1)
+
+        assertTrue(LocalEmbeddedTagWriter.verify(output, titleOnly))
+        assertFalse(LocalEmbeddedTagWriter.verify(output, titleOnly, claimed))
+    }
+
+    @Test
     fun failedReplacementRestoresTheOriginalBytes() {
         val original = temp(".mp3", ByteArray(4_096) { it.toByte() })
         val edited = temp(".mp3", ByteArray(8_192) { (it * 3).toByte() })
@@ -275,6 +367,34 @@ class LocalTagEditorFormatsTest {
         assertFalse(canEmbedOriginalArtwork("image/jpeg", 1_000, 1_000, orientationNormal = false))
         assertFalse(canEmbedOriginalArtwork("image/heic", 1_000, 1_000, orientationNormal = true))
         assertFalse(canEmbedOriginalArtwork("image/png", 4_000, 4_000, orientationNormal = true))
+    }
+
+    private fun writtenCopies(
+        changes: LocalTagEdits,
+        artwork: LocalArtworkWrite = LocalArtworkWrite.Keep
+    ): List<Pair<LocalEditableTagFormat, File>> {
+        val mp3 = temp(".mp3", id3v24(textFrame("TIT2", "Old") + frame("APIC", apicPayload(jpeg(10)))) + mpegPayload())
+        val flac = temp(
+            ".flac",
+            "fLaC".toByteArray(StandardCharsets.ISO_8859_1) +
+                flacBlock(0, false, ByteArray(34)) +
+                flacBlock(4, false, vorbisComment("TITLE=Old")) +
+                flacBlock(6, false, flacPicturePayload(jpeg(10))) +
+                flacBlock(1, true, ByteArray(16)) +
+                ByteArray(32) { it.toByte() }
+        )
+        val base = temp(".m4a", atom("ftyp", "M4A ".toByteArray(StandardCharsets.US_ASCII)) + atom("moov", byteArrayOf()) + atom("mdat", ByteArray(64)))
+        val m4a = temp(".m4a")
+        assertTrue(LevyraM4aTagWriter.write(base, m4a, LevyraM4aMetadata(title = "Old", artist = "Old", album = "Old", artworkData = jpeg(10))).success)
+        return listOf(
+            LocalEditableTagFormat.Mp3 to mp3,
+            LocalEditableTagFormat.Flac to flac,
+            LocalEditableTagFormat.M4a to m4a
+        ).map { (format, input) ->
+            val output = temp(".${input.extension}")
+            assertTrue("$format write", LocalEmbeddedTagWriter.write(input, output, format, changes, artwork).success)
+            format to output
+        }
     }
 
     private fun edits(title: String, artist: String = "Artist", album: String = "Album") = LocalTagEdits(

@@ -64,6 +64,8 @@ internal object LocalDeepTagReader {
     private const val MAX_CUSTOM_VALUE = 4_096
     private const val MAX_CUSTOM_TEXT = 24_000
     private const val MAX_LYRICS_BYTES = 512L * 1024L
+    private const val MAX_ARTWORK_BYTES = 8 * 1024 * 1024
+    private const val FLAC_PICTURE_BLOCK = 6
     const val MAX_LYRICS_CHARS = 128 * 1024
 
     fun read(context: Context, row: LocalMediaEntity): LocalDeepTags {
@@ -120,6 +122,37 @@ internal object LocalDeepTagReader {
             ChannelTagSource(ParcelFileDescriptor.AutoCloseInputStream(descriptor)).use(::readLyricsSource)
         }.getOrDefault("")
     }
+
+    internal fun readEmbeddedArtwork(file: File): ByteArray? =
+        runCatching {
+            RandomAccessTagSource(RandomAccessFile(file, "r")).use { source ->
+                when (containerOf(source)) {
+                    TagContainer.Id3 -> {
+                        var found: ByteArray? = null
+                        walkId3(source) { id, frame ->
+                            if (found == null && id == "APIC") found = id3PictureData(frame)
+                        }
+                        found
+                    }
+                    TagContainer.Flac ->
+                        readFlacBlock(source, FLAC_PICTURE_BLOCK, MAX_ARTWORK_BYTES)?.let(::flacPictureData)
+                    TagContainer.Mp4 -> readMp4Artwork(source)
+                    TagContainer.Ogg, TagContainer.Unknown -> null
+                }
+            }
+        }.getOrNull()
+
+    internal fun hasEmbeddedArtwork(file: File): Boolean =
+        runCatching {
+            RandomAccessTagSource(RandomAccessFile(file, "r")).use { source ->
+                when (containerOf(source)) {
+                    TagContainer.Id3 -> id3HasPicture(source)
+                    TagContainer.Flac -> locateFlacBlock(source, FLAC_PICTURE_BLOCK) != null
+                    TagContainer.Mp4 -> findMp4Cover(source) != null
+                    TagContainer.Ogg, TagContainer.Unknown -> false
+                }
+            }
+        }.getOrDefault(true)
 
     internal fun readEmbeddedLyrics(file: File): String =
         runCatching {
@@ -335,6 +368,63 @@ internal object LocalDeepTagReader {
         return result
     }
 
+    private fun id3HasPicture(source: SeekableTagSource): Boolean {
+        source.seek(0L)
+        val header = ByteArray(10)
+        if (source.read(header) != header.size || syncSafeInt(header, 6) > MAX_ID3_BYTES) return true
+        var found = false
+        walkId3(source) { id, _ -> if (id == "APIC") found = true }
+        return found
+    }
+
+    private fun readFlacBlock(source: SeekableTagSource, wantedType: Int, maxBytes: Int): ByteArray? {
+        val size = locateFlacBlock(source, wantedType) ?: return null
+        return if (size > maxBytes) null else ByteArray(size).also(source::readFully)
+    }
+
+    private fun locateFlacBlock(source: SeekableTagSource, wantedType: Int): Int? {
+        source.seek(0L)
+        val magic = ByteArray(4)
+        if (source.read(magic) != 4 || !startsWith(magic, "fLaC")) return null
+        var last = false
+        var blocks = 0
+        while (!last && blocks++ < 128 && source.position + 4 <= source.length) {
+            val header = ByteArray(4)
+            source.readFully(header)
+            last = header[0].toInt() and 0x80 != 0
+            val size = int32be(header, 0) and 0x00FF_FFFF
+            if (source.position + size > source.length) return null
+            if (header[0].toInt() and 0x7F == wantedType) return size
+            source.seek(source.position + size)
+        }
+        return null
+    }
+
+    private fun flacPictureData(block: ByteArray): ByteArray? {
+        fun lengthAt(offset: Long): Int? =
+            if (offset < 0L || offset + 4 > block.size) null else int32be(block, offset.toInt()).takeIf { it >= 0 }
+        val mimeLength = lengthAt(4L) ?: return null
+        val descriptionOffset = 8L + mimeLength
+        val descriptionLength = lengthAt(descriptionOffset) ?: return null
+        val dataLengthOffset = descriptionOffset + 4L + descriptionLength + 16L
+        val dataLength = lengthAt(dataLengthOffset) ?: return null
+        val dataStart = dataLengthOffset + 4L
+        if (dataStart + dataLength > block.size) return null
+        return block.copyOfRange(dataStart.toInt(), (dataStart + dataLength).toInt())
+    }
+
+    private fun id3PictureData(frame: ByteArray): ByteArray? {
+        if (frame.size < 4) return null
+        val encoding = frame[0].toInt() and 0xFF
+        var mimeEnd = 1
+        while (mimeEnd < frame.size && frame[mimeEnd] != 0.toByte()) mimeEnd++
+        val descriptionStart = mimeEnd + 2
+        if (descriptionStart >= frame.size) return null
+        val descriptionEnd = id3TerminatorEnd(frame.copyOfRange(descriptionStart, frame.size), encoding)
+        if (descriptionEnd < 0) return null
+        return frame.copyOfRange(descriptionStart + descriptionEnd, frame.size)
+    }
+
     private fun walkFlacComments(source: SeekableTagSource, visit: (String, String) -> Unit) {
         source.seek(0L)
         val magic = ByteArray(4)
@@ -415,14 +505,49 @@ internal object LocalDeepTagReader {
         while (cursor + 8 <= ilst.end) {
             val item = readMp4Box(source, cursor, ilst.end) ?: break
             val textKey = MP4_TEXT_KEYS[item.type]
+            val pairKey = MP4_PAIR_KEYS[item.type]
             if (textKey != null) {
                 mp4DataText(source, item)?.let { putTag(result, textKey, it) }
+            } else if (pairKey != null) {
+                mp4PairNumber(source, item)?.let { putTag(result, pairKey, it.toString()) }
             } else if (item.type == MP4_FREEFORM) {
                 mp4Freeform(source, item)?.let { (name, value) -> putTag(result, name.uppercase(Locale.ROOT), value) }
             }
             cursor = item.end
         }
         return result
+    }
+
+    private fun mp4PairNumber(source: SeekableTagSource, parent: Mp4Box): Int? {
+        val data = findChild(source, parent.payloadStart, parent.end, MP4_DATA) ?: return null
+        val start = data.payloadStart + 8
+        if (start + 4 > data.end) return null
+        val bytes = ByteArray(4)
+        source.seek(start)
+        source.readFully(bytes)
+        return (int32be(bytes, 0) and 0xFFFF).takeIf { it > 0 }
+    }
+
+    private fun readMp4Artwork(source: SeekableTagSource): ByteArray? {
+        val item = findMp4Cover(source) ?: return null
+        val data = findChild(source, item.payloadStart, item.end, MP4_DATA) ?: return null
+        val start = data.payloadStart + 8
+        if (start >= data.end || data.end - start > MAX_ARTWORK_BYTES) return null
+        val bytes = ByteArray((data.end - start).toInt())
+        source.seek(start)
+        source.readFully(bytes)
+        return bytes
+    }
+
+    private fun findMp4Cover(source: SeekableTagSource): Mp4Box? {
+        val moov = findChild(source, 0L, source.length, MP4_MOOV) ?: return null
+        val udta = findChild(source, moov.payloadStart, moov.end, MP4_UDTA)
+        val meta = when {
+            udta != null -> findChild(source, udta.payloadStart, udta.end, MP4_META)
+            else -> findChild(source, moov.payloadStart, moov.end, MP4_META)
+        } ?: return null
+        val ilst = findChild(source, (meta.payloadStart + 4).coerceAtMost(meta.end), meta.end, MP4_ILST) ?: return null
+        return findChild(source, ilst.payloadStart, ilst.end, MP4_COVER)
     }
 
     private fun readMp4Lyrics(source: SeekableTagSource): String {
@@ -744,15 +869,20 @@ internal object LocalDeepTagReader {
     private val MP4_TITLE = fourCc(0xA9, 'n'.code, 'a'.code, 'm'.code)
     private val MP4_ARTIST = fourCc(0xA9, 'A'.code, 'R'.code, 'T'.code)
     private val MP4_ALBUM = fourCc(0xA9, 'a'.code, 'l'.code, 'b'.code)
+    private val MP4_COVER = ascii4("covr")
     private val MP4_TEXT_KEYS = mapOf(
         MP4_TITLE to "TITLE",
         MP4_ARTIST to "ARTIST",
         MP4_ALBUM to "ALBUM",
+        ascii4("aART") to "ALBUMARTIST",
+        fourCc(0xA9, 'd'.code, 'a'.code, 'y'.code) to "DATE",
+        fourCc(0xA9, 'g'.code, 'e'.code, 'n'.code) to "GENRE",
         MP4_COMPOSER to "COMPOSER",
         MP4_COMMENT to "COMMENT",
         MP4_COPYRIGHT to "COPYRIGHT",
         MP4_COPYRIGHT_ALT to "COPYRIGHT"
     )
+    private val MP4_PAIR_KEYS = mapOf(ascii4("trkn") to "TRACKNUMBER", ascii4("disk") to "DISCNUMBER")
     private val VORBIS_LYRICS_KEYS = setOf("LYRICS", "UNSYNCEDLYRICS", "UNSYNCED LYRICS")
 
     private enum class TagContainer { Id3, Flac, Ogg, Mp4, Unknown }

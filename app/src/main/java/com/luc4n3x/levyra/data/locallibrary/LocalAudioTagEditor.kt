@@ -115,7 +115,7 @@ internal class LocalAudioTagEditor(context: Context) {
             }
         }
         writerFailure(writerResult, session.output)?.let { return it }
-        if (!LocalEmbeddedTagWriter.verify(session.output, edits)) {
+        if (!LocalEmbeddedTagWriter.verify(session.output, edits, artwork)) {
             Timber.w("Local tag working copy failed validation for %s", row.identityKey)
             return LocalTagWriteResult.Failed
         }
