@@ -2,19 +2,34 @@ import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
-SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshots"
+SCREENSHOT_DIR = os.environ.get("LEVYRA_SCREENSHOT_DIR", os.path.join("docs", "screenshots"))
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
 OUT_CARDS_DIR = os.path.join(OUT_SHOWCASE_DIR, "cards")
-LOGO_PATH = r"C:\Users\Luca Drogo\Downloads\ChatGPT Image 5 set 2026, 19_28_06.png"
+LOGO_PATH = os.environ.get(
+    "LEVYRA_LOGO_PATH",
+    os.path.join("app", "src", "main", "res", "drawable", "levyra_logo.png")
+)
 
 os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_CARDS_DIR, exist_ok=True)
 
 def get_font(size, bold=False):
-    font_path = r"C:\Windows\Fonts\segoeuib.ttf" if bold else r"C:\Windows\Fonts\segoeui.ttf"
-    if not os.path.exists(font_path):
-        font_path = r"C:\Windows\Fonts\arialbd.ttf" if bold else r"C:\Windows\Fonts\arial.ttf"
-    return ImageFont.truetype(font_path, size)
+    candidates = [
+        r"C:\Windows\Fonts\segoeuib.ttf" if bold else r"C:\Windows\Fonts\segoeui.ttf",
+        r"C:\Windows\Fonts\arialbd.ttf" if bold else r"C:\Windows\Fonts\arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/SFCompactText-Bold.ttf" if bold else "/System/Library/Fonts/SFCompactText.ttf",
+    ]
+    for font_path in candidates:
+        if os.path.exists(font_path):
+            try:
+                return ImageFont.truetype(font_path, size)
+            except OSError:
+                continue
+    try:
+        return ImageFont.load_default(size)
+    except TypeError:
+        return ImageFont.load_default()
 
 def enhance_screenshot(img):
     img = img.convert("RGB")
@@ -73,15 +88,15 @@ def create_studio_shadow(phone, blur=48, opacity=115, offset_y=28):
     pad = blur * 2 + abs(offset_y)
     sw = phone.width + pad * 2
     sh = phone.height + pad * 2
-    shadow = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
-    sdraw = ImageDraw.Draw(shadow)
 
-    sdraw.rounded_rectangle(
-        (pad + 8, pad + 10, pad + phone.width - 8, pad + phone.height + 6),
-        radius=int(phone.width * 0.12),
-        fill=(8, 12, 20, opacity)
-    )
-    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
+    alpha = phone.getchannel("A")
+    shadow_mask = Image.new("L", (sw, sh), 0)
+    shadow_mask.paste(alpha, (pad, pad + offset_y))
+    shadow_mask = shadow_mask.filter(ImageFilter.GaussianBlur(blur))
+    shadow_mask = shadow_mask.point(lambda value: value * opacity // 255)
+
+    shadow = Image.new("RGBA", (sw, sh), (8, 12, 20, 0))
+    shadow.putalpha(shadow_mask)
     return shadow, pad
 
 def create_delicate_bg(width, height, top_tint, accent_tone, glow_tone=None, y_start=920, y_end=660):
@@ -197,7 +212,7 @@ def generate_hero_panoramic_showcase():
         canvas.paste(shadow, (px - pad, py - pad), shadow)
         canvas.paste(rotated, (px, py), rotated)
 
-    # Left branding: Large 3D Logo + concise punchy title (NO long paragraphs)
+    # Left branding: Large 3D Logo + concise punchy title (NO long descriptions)
     logo_file = LOGO_PATH if os.path.exists(LOGO_PATH) else r"app\src\main\res\drawable\levyra_logo.png"
     with Image.open(logo_file) as l_src:
         logo = l_src.convert("RGBA")
