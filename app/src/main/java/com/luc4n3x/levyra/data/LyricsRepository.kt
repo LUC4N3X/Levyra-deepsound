@@ -977,6 +977,10 @@ class LyricsRepository(context: Context? = null) {
                     runCatching { dao.delete(entity.cacheKey) }
                     return null
                 }
+                if (!matchesParserRevision(entity.payload)) {
+                    runCatching { dao.delete(entity.cacheKey) }
+                    return null
+                }
                 val result = deserializeResult(entity.payload)?.copy(
                     synced = entity.synced,
                     provider = entity.provider,
@@ -1204,6 +1208,7 @@ class LyricsRepository(context: Context? = null) {
             }
         return JSONObject()
             .put("version", CACHE_VERSION)
+            .put("parserRevision", PARSER_REVISION)
             .put("synced", result.synced)
             .put("provider", result.provider)
             .put("confidence", result.confidence)
@@ -1212,6 +1217,9 @@ class LyricsRepository(context: Context? = null) {
             .put("sections", sectionsJson)
             .toString()
     }
+
+    internal fun matchesParserRevision(payload: String): Boolean =
+        runCatching { JSONObject(payload).optInt("parserRevision", -1) == PARSER_REVISION }.getOrDefault(false)
 
     internal fun deserializeResult(payload: String): LyricsResult? {
         if (payload.isBlank()) return null
