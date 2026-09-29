@@ -35,17 +35,12 @@ class PlaybackResolverGenerationContractTest {
     }
 
     @Test
-    fun `language changes rotate generation without destroying unrelated playback state`() {
+    fun `runtime audio language stays original default regardless of stored preferences`() {
         val resolver = readResolverSource()
-        val setter = resolver
-            .substringAfter("fun setPreferredAudioLanguage")
-            .substringBefore("fun preferredAudioLanguage")
 
-        assertTrue(setter.contains("audioLanguageRevision.incrementAndGet()"))
-        assertTrue(setter.contains("resolverGeneration.incrementAndGet()"))
-        assertFalse(setter.contains("streamCache.clear()"))
-        assertFalse(setter.contains("sourceMatchStore.clearOnline()"))
-        assertFalse(setter.contains("YoutubeStreamClientIdentityRegistry.clear()"))
+        assertTrue(resolver.contains("private val selectedPreferredAudioLanguage = \"\""))
+        assertFalse(resolver.contains("preferredAudioLanguage()"))
+        assertFalse(resolver.contains("fun setPreferredAudioLanguage"))
     }
 
     @Test
