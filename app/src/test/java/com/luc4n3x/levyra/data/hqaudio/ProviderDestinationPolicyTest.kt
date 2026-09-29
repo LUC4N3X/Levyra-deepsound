@@ -56,13 +56,16 @@ class ProviderDestinationPolicyTest {
     }
 
     @Test
-    fun playbackPolicyCarriesAllowlistToChildHostsAndExpires() {
+    fun playbackPolicyCarriesAllowlistToChildHostsAndFailsClosedAfterExpiry() {
         val now = 1_800_000_000_000L
         val allowed = setOf("cdn.example.org", "segments.example.org")
-        ConfigurableProviderPlaybackPolicy.register(
-            "https://cdn.example.org/manifest.mpd".toHttpUrl(),
-            allowed,
-            now + 60_000L
+        assertTrue(
+            ConfigurableProviderPlaybackPolicy.register(
+                "https://cdn.example.org/manifest.mpd".toHttpUrl(),
+                allowed,
+                now + 60_000L,
+                now
+            )
         )
 
         assertEquals(
@@ -78,7 +81,8 @@ class ProviderDestinationPolicyTest {
                 now
             )
         )
-        assertNull(
+        assertEquals(
+            emptySet<String>(),
             ConfigurableProviderPlaybackPolicy.allowedHostsFor(
                 "https://segments.example.org/audio/0001.m4s",
                 now + 60_001L
