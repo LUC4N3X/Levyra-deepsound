@@ -235,7 +235,8 @@ class PlaylistImportController(
         val runGeneration = ++generation
         job?.cancel()
         job = scope.launch {
-            val resumable = runCatching { store.resumable(clock()) }.getOrDefault(emptyList())
+            val resumable = resumableSessions()
+            if (runGeneration != generation) return@launch
             val existing = resumable.firstOrNull { it.inputHash == hash }
             if (existing != null) {
                 resumeInternal(existing.id, runGeneration)
@@ -252,15 +253,19 @@ class PlaylistImportController(
     }
 
     fun cancel() {
-        generation++
+        val runGeneration = ++generation
         job?.cancel()
         job = null
         searchJob?.cancel()
         val snapshot = session
         scope.launch {
+            if (runGeneration != generation) return@launch
             if (snapshot != null && working.isNotEmpty()) persistNow()
+            if (runGeneration != generation) return@launch
             clearWorking()
-            _state.value = PlaylistImportUiState(visible = true, resumable = runCatching { store.resumable(clock()) }.getOrDefault(emptyList()))
+            val resumable = resumableSessions()
+            if (runGeneration != generation) return@launch
+            _state.value = PlaylistImportUiState(visible = true, resumable = resumable)
         }
     }
 
@@ -449,6 +454,7 @@ class PlaylistImportController(
         hash: String,
         runGeneration: Long
     ) {
+        if (runGeneration != generation) return
         clearWorking()
         _state.update {
             it.copy(
@@ -742,9 +748,18 @@ class PlaylistImportController(
         _state.update { it.copy(visible = true, step = PlaylistImportStep.FAILED, failure = kind, failureSource = source) }
     }
 
+    private suspend fun resumableSessions(): List<PlaylistImportSessionSummary> = try {
+        store.resumable(clock())
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Timber.w(error, "Unable to list resumable imports")
+        emptyList()
+    }
+
     private fun refreshResumable() {
         scope.launch {
-            val resumable = runCatching { store.resumable(clock()) }.getOrDefault(emptyList())
+            val resumable = resumableSessions()
             _state.update { it.copy(resumable = resumable) }
         }
     }
