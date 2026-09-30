@@ -23,7 +23,7 @@ class VideoFrameShapeTest {
     fun fullBleedVideoFrameIsNotPillarboxed() {
         val random = Random(11)
         val pixels = frame { x, y ->
-            jitter(rgb((x * 2) % 256, (y * 3) % 256, (x + y) % 256), random, 30)
+            jitter(rgb(x * 2 % 256, y * 3 % 256, (x + y) % 256), random, 30)
         }
         assertFalse(isPillarboxedVideoFrame(pixels, width, height))
     }
