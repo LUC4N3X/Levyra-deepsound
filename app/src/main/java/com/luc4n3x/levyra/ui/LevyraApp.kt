@@ -18,6 +18,12 @@ import com.luc4n3x.levyra.ui.components.dockLerpHeight
 import com.luc4n3x.levyra.ui.components.dockLerpSize
 import com.luc4n3x.levyra.ui.components.rememberLevyraDockState
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import com.luc4n3x.levyra.ui.components.LevyraIonicons
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsLink
 import com.luc4n3x.levyra.ui.components.PlaybackDiagnosticsDialog
@@ -7003,7 +7009,8 @@ private fun LyricsOverlay(
     var autoScrollEnabled by remember(track?.id) { mutableStateOf(true) }
     val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
     var lyricsFocusMode by remember(track?.id) { mutableStateOf(lyricsAnimationsEnabled) }
-    var autoScrolling by remember { mutableStateOf(false) }
+    var userScrollGeneration by remember { mutableIntStateOf(0) }
+    var showLyricsOptions by remember(track?.id) { mutableStateOf(false) }
     var initialLyricsPositioned by remember(track?.id) { mutableStateOf(false) }
     var selectionMode by remember(track?.id) { mutableStateOf(false) }
     var selectedRange by remember(track?.id) { mutableStateOf<IntRange?>(null) }
@@ -7098,7 +7105,7 @@ private fun LyricsOverlay(
     val instrumentalGap = remember(instrumentalGaps, lyricsPositionProvider) {
         derivedStateOf { activeLyricsInstrumentalGap(lyricsPositionProvider(), instrumentalGaps) }
     }.value
-    val lyricsStartIndex = 4
+    val lyricsStartIndex = 3
     val hasRomanization = state.lyrics.any { it.romanized.isNotBlank() || it.words.any { word -> word.romanized.isNotBlank() } }
     val hasMultipleVoices = state.lyrics.any { it.role != LyricVocalRole.MAIN }
     val sectionStarts = remember(state.lyricsSections, visibleLyrics) {
@@ -7140,11 +7147,26 @@ private fun LyricsOverlay(
         LyricsViewMode.COMPACT -> 0.50f
     }
 
-    LaunchedEffect(listState.isScrollInProgress, autoScrolling) {
-        if (listState.isScrollInProgress && !autoScrolling) {
-            autoScrollEnabled = false
-        } else if (!listState.isScrollInProgress && !autoScrolling && !autoScrollEnabled) {
-            delay(3_500L)
+    val userScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput) {
+                    autoScrollEnabled = false
+                    userScrollGeneration++
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                userScrollGeneration++
+                return Velocity.Zero
+            }
+        }
+    }
+
+    LaunchedEffect(userScrollGeneration, listState.isScrollInProgress) {
+        if (!autoScrollEnabled && !listState.isScrollInProgress) {
+            delay(LYRICS_AUTO_SCROLL_RESUME_MS)
             autoScrollEnabled = true
         }
     }
@@ -7153,7 +7175,6 @@ private fun LyricsOverlay(
 
     LaunchedEffect(scrollFocusIndex, lyricsStartIndex, autoScrollEnabled, viewMode, visibleLyrics.size) {
         if (scrollFocusIndex >= 0 && autoScrollEnabled) {
-            autoScrolling = true
             runCatching {
                 val targetIndex = lyricsStartIndex + scrollFocusIndex
                 val targetVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
@@ -7165,13 +7186,11 @@ private fun LyricsOverlay(
                 )
                 initialLyricsPositioned = true
             }
-            autoScrolling = false
         }
     }
 
     LaunchedEffect(requestedLyricIndex, lyricsStartIndex, viewMode) {
         val requested = requestedLyricIndex ?: return@LaunchedEffect
-        autoScrolling = true
         runCatching {
             centerLyricsItem(
                 listState = listState,
@@ -7180,7 +7199,6 @@ private fun LyricsOverlay(
                 anchorFraction = anchorFraction
             )
         }
-        autoScrolling = false
         requestedLyricIndex = null
     }
 
@@ -7258,7 +7276,8 @@ private fun LyricsOverlay(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
+                .statusBarsPadding()
+                .nestedScroll(userScrollConnection),
             contentPadding = PaddingValues(
                 start = if (viewMode == LyricsViewMode.COMPACT) 18.dp else 22.dp,
                 end = if (viewMode == LyricsViewMode.COMPACT) 18.dp else 22.dp,
@@ -7317,24 +7336,6 @@ private fun LyricsOverlay(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    if (canShareLyrics) {
-                        CircleIconButton(
-                            icon = Icons.Rounded.Share,
-                            tint = if (selectionMode) LevyraCyan else Color.White,
-                            background = if (selectionMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.13f),
-                            onClick = { toggleShareMode() },
-                            contentDescription = strings.shareLyrics
-                        )
-                    }
-                    if (state.intelligenceSummary.available && viewMode != LyricsViewMode.COMPACT) {
-                        CircleIconButton(
-                            icon = Icons.Rounded.Insights,
-                            tint = LevyraViolet,
-                            background = LevyraViolet.copy(alpha = 0.14f),
-                            onClick = { showIntelligenceDialog = true },
-                            contentDescription = strings.openLyricsAnalysis
-                        )
-                    }
                     CircleIconButton(
                         icon = Icons.Rounded.Close,
                         tint = Color.White,
@@ -7350,197 +7351,42 @@ private fun LyricsOverlay(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (visibleLyrics.isNotEmpty() && viewMode != LyricsViewMode.COMPACT) {
-                        LyricsStatusRow(
-                            provider = state.lyricsProvider,
-                            synced = state.lyricsSynced,
-                            cached = state.lyricsCached,
-                            confidence = state.lyricsConfidence,
-                            syncedLabel = strings.synced
-                        )
-                    } else if (activeSection != null) {
-                        Text(
-                            text = lyricSectionLabel(strings, activeSection),
-                            color = accentEnd.copy(alpha = 0.90f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 0.7.sp,
-                            maxLines = 1
-                        )
-                    }
-                    if (hasMultipleVoices) {
-                        LyricsControlChip(
-                            label = strings.lyricsDuet,
-                            selected = showSecondaryVoices,
-                            icon = Icons.Rounded.GraphicEq,
-                            onClick = { showSecondaryVoices = !showSecondaryVoices }
-                        )
-                    }
-                }
-            }
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)
-                ) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val modeLabel = when (viewMode) {
-                            LyricsViewMode.CINEMA -> strings.lyricsCinema
-                            LyricsViewMode.PAGE -> strings.lyricsPage
-                            LyricsViewMode.COMPACT -> strings.lyricsCompact
-                        }
-                        val modeIcon = when (viewMode) {
-                            LyricsViewMode.CINEMA -> Icons.Rounded.GraphicEq
-                            LyricsViewMode.PAGE -> Icons.AutoMirrored.Rounded.Subject
-                            LyricsViewMode.COMPACT -> Icons.Rounded.ViewCompact
-                        }
-                        LyricsControlChip(
-                            label = modeLabel,
-                            selected = true,
-                            icon = modeIcon,
-                            onClick = {
-                                viewMode = when (viewMode) {
-                                    LyricsViewMode.CINEMA -> LyricsViewMode.PAGE
-                                    LyricsViewMode.PAGE -> LyricsViewMode.COMPACT
-                                    LyricsViewMode.COMPACT -> LyricsViewMode.CINEMA
-                                }
-                                initialLyricsPositioned = false
-                            }
-                        )
-                        LyricsControlChip(
-                            label = strings.lyricsFocus,
-                            selected = lyricsFocusMode,
-                            icon = Icons.Rounded.Visibility,
-                            onClick = { lyricsFocusMode = !lyricsFocusMode }
-                        )
-                        val translationLabel = when (state.lyricsTranslationState) {
-                            LyricsTranslationState.ON_DEVICE -> "${strings.automaticTranslation} · ${strings.offline}"
-                            LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED -> "${strings.automaticTranslation} · ${strings.download}"
-                            LyricsTranslationState.MODEL_DOWNLOADING -> "${strings.automaticTranslation} · ${strings.updateDownloading}"
-                            LyricsTranslationState.UNAVAILABLE,
-                            LyricsTranslationState.FAILED -> strings.lyricsUnavailable
-                            LyricsTranslationState.DISABLED,
-                            LyricsTranslationState.PENDING,
-                            LyricsTranslationState.PROVIDER,
-                            LyricsTranslationState.SAME_LANGUAGE -> strings.automaticTranslation
-                        }
-                        LyricsControlChip(
-                            label = translationLabel,
-                            selected = state.lyricsTranslationEnabled,
-                            icon = Icons.Rounded.Translate,
-                            onClick = { onTranslation(!state.lyricsTranslationEnabled) }
-                        )
-                        LyricsControlChip(
-                            label = strings.changeLyrics,
-                            selected = state.lyricsManualSelection,
-                            icon = Icons.Rounded.LibraryMusic,
-                            onClick = {
-                                showVersions = true
-                                onLoadVersions()
-                            }
-                        )
-                        if (state.lyricsSynced) {
-                            LyricsControlChip(
-                                label = strings.lyricsCalibrate,
-                                selected = calibrateMode,
-                                icon = Icons.Rounded.Schedule,
-                                onClick = {
-                                    calibrateMode = !calibrateMode
-                                    if (calibrateMode) {
-                                        selectionMode = false
-                                        selectedRange = null
-                                    }
-                                }
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (visibleLyrics.isNotEmpty() && viewMode != LyricsViewMode.COMPACT) {
+                            LyricsStatusRow(
+                                provider = state.lyricsProvider,
+                                synced = state.lyricsSynced,
+                                cached = state.lyricsCached,
+                                confidence = state.lyricsConfidence,
+                                syncedLabel = strings.synced
+                            )
+                        } else if (activeSection != null) {
+                            Text(
+                                text = lyricSectionLabel(strings, activeSection),
+                                color = accentEnd.copy(alpha = 0.90f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.7.sp,
+                                maxLines = 1
                             )
                         }
-                        if (hasRomanization) {
-                            LyricsControlChip(
-                                label = strings.lyricsRomanization,
-                                selected = showRomanization,
-                                icon = Icons.Rounded.Language,
-                                onClick = { showRomanization = !showRomanization }
-                            )
-                        }
-                        if (state.lyricsSynced) {
-                            LyricsOffsetStepper(
-                                offsetMs = lyricsOffsetMs,
-                                onAdjust = { delta ->
-                                    lyricsOffsetMs = adjustLyricsOffset(lyricsOffsetMs, delta)
-                                },
-                                onReset = { lyricsOffsetMs = 0L }
-                            )
-                        }
-                        if (lyricsOffsetMs != storedLyricsOffsetMs) {
-                            val profileLabel = audioOutputRoute
-                                ?.takeIf { route -> route.bluetooth && route.stableKey != null }
-                                ?.displayName
-                                ?.ifBlank { strings.connected }
-                            LyricsControlChip(
-                                label = profileLabel?.let { "${strings.save} · $it" } ?: strings.save,
-                                selected = false,
-                                icon = Icons.Rounded.Check,
-                                onClick = {
-                                    onSaveLatencyOffset(
-                                        audioOutputRoute?.stableKey,
-                                        audioOutputRoute?.bluetooth == true,
-                                        lyricsOffsetMs
-                                    )
-                                }
-                            )
-                        }
-                        audioOutputRoute
-                            ?.takeIf { route ->
-                                route.bluetooth && route.stableKey?.let(latencyProfiles.deviceOffsetsMs::containsKey) == true
-                            }
-                            ?.let { route ->
-                                val stableKey = checkNotNull(route.stableKey)
-                                LyricsControlChip(
-                                    label = "${strings.delete} · ${route.displayName.ifBlank { strings.connected }}",
-                                    selected = false,
-                                    icon = Icons.Rounded.Delete,
-                                    onClick = {
-                                        lyricsOffsetMs = latencyProfiles.globalOffsetMs
-                                        onClearLatencyOffset(stableKey)
-                                    }
-                                )
-                            }
                     }
-                    if (state.lyricsSections.isNotEmpty()) {
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(7.dp),
-                            contentPadding = PaddingValues(end = 12.dp)
-                        ) {
-                            items(
-                                items = state.lyricsSections,
-                                key = { section -> "${section.type}-${section.ordinal}-${section.startMs}" },
-                                contentType = { "lyrics-section-chip" }
-                            ) { section ->
-                                LyricsSectionChip(
-                                    label = lyricSectionLabel(strings, section),
-                                    selected = activeSection?.let { active ->
-                                        active.type == section.type && active.ordinal == section.ordinal
-                                    } == true,
-                                    onClick = {
-                                        val targetIndex = visibleLyrics.indexOfFirst { line ->
-                                            line.role != LyricVocalRole.BACKGROUND && line.startMs >= section.startMs
-                                        }.takeIf { it >= 0 } ?: visibleLyrics.indexOfLast { line -> line.startMs <= section.startMs }
-                                        if (targetIndex >= 0) {
-                                            requestedLyricIndex = targetIndex
-                                            autoScrollEnabled = true
-                                            if (state.lyricsSynced) {
-                                                onSeekToMs((section.startMs + lyricsOffsetMs).coerceAtLeast(0L))
-                                            }
-                                        }
-                                    }
-                                )
-                            }
-                        }
+                    if (canShareLyrics) {
+                        CircleIconButton(
+                            icon = Icons.Rounded.Share,
+                            tint = if (selectionMode) LevyraCyan else Color.White,
+                            background = if (selectionMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
+                            onClick = { toggleShareMode() },
+                            contentDescription = strings.shareLyrics
+                        )
                     }
+                    CircleIconButton(
+                        icon = Icons.Rounded.Tune,
+                        tint = if (calibrateMode) LevyraCyan else Color.White,
+                        background = if (calibrateMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
+                        onClick = { showLyricsOptions = true },
+                        contentDescription = strings.options
+                    )
                 }
             }
             item {
@@ -7595,6 +7441,7 @@ private fun LyricsOverlay(
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
                         distanceFromActive = when {
+                            !autoScrollEnabled -> 0
                             lineInstrumentalGap != null -> 0
                             visualActiveIndex >= 0 -> kotlin.math.abs(index - visualActiveIndex)
                             else -> 0
@@ -7682,6 +7529,170 @@ private fun LyricsOverlay(
                 null
             }
         )
+    }
+    if (showLyricsOptions) {
+        ModalBottomSheet(
+            onDismissRequest = { showLyricsOptions = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            Text(
+                text = strings.options,
+                color = LevyraText,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                val modeLabel = when (viewMode) {
+                    LyricsViewMode.CINEMA -> strings.lyricsCinema
+                    LyricsViewMode.PAGE -> strings.lyricsPage
+                    LyricsViewMode.COMPACT -> strings.lyricsCompact
+                }
+                val modeIcon = when (viewMode) {
+                    LyricsViewMode.CINEMA -> Icons.Rounded.GraphicEq
+                    LyricsViewMode.PAGE -> Icons.AutoMirrored.Rounded.Subject
+                    LyricsViewMode.COMPACT -> Icons.Rounded.ViewCompact
+                }
+                LyricsControlChip(
+                    label = modeLabel,
+                    selected = true,
+                    icon = modeIcon,
+                    onClick = {
+                        viewMode = when (viewMode) {
+                            LyricsViewMode.CINEMA -> LyricsViewMode.PAGE
+                            LyricsViewMode.PAGE -> LyricsViewMode.COMPACT
+                            LyricsViewMode.COMPACT -> LyricsViewMode.CINEMA
+                        }
+                        initialLyricsPositioned = false
+                    }
+                )
+                LyricsControlChip(
+                    label = strings.lyricsFocus,
+                    selected = lyricsFocusMode,
+                    icon = Icons.Rounded.Visibility,
+                    onClick = { lyricsFocusMode = !lyricsFocusMode }
+                )
+                val translationLabel = when (state.lyricsTranslationState) {
+                    LyricsTranslationState.ON_DEVICE -> "${strings.automaticTranslation} · ${strings.offline}"
+                    LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED -> "${strings.automaticTranslation} · ${strings.download}"
+                    LyricsTranslationState.MODEL_DOWNLOADING -> "${strings.automaticTranslation} · ${strings.updateDownloading}"
+                    LyricsTranslationState.UNAVAILABLE,
+                    LyricsTranslationState.FAILED -> strings.lyricsUnavailable
+                    LyricsTranslationState.DISABLED,
+                    LyricsTranslationState.PENDING,
+                    LyricsTranslationState.PROVIDER,
+                    LyricsTranslationState.SAME_LANGUAGE -> strings.automaticTranslation
+                }
+                LyricsControlChip(
+                    label = translationLabel,
+                    selected = state.lyricsTranslationEnabled,
+                    icon = Icons.Rounded.Translate,
+                    onClick = { onTranslation(!state.lyricsTranslationEnabled) }
+                )
+                LyricsControlChip(
+                    label = strings.changeLyrics,
+                    selected = state.lyricsManualSelection,
+                    icon = Icons.Rounded.LibraryMusic,
+                    onClick = {
+                        showLyricsOptions = false
+                        showVersions = true
+                        onLoadVersions()
+                    }
+                )
+                if (state.lyricsSynced) {
+                    LyricsControlChip(
+                        label = strings.lyricsCalibrate,
+                        selected = calibrateMode,
+                        icon = Icons.Rounded.Schedule,
+                        onClick = {
+                            calibrateMode = !calibrateMode
+                            if (calibrateMode) {
+                                selectionMode = false
+                                selectedRange = null
+                                showLyricsOptions = false
+                            }
+                        }
+                    )
+                }
+                if (hasRomanization) {
+                    LyricsControlChip(
+                        label = strings.lyricsRomanization,
+                        selected = showRomanization,
+                        icon = Icons.Rounded.Language,
+                        onClick = { showRomanization = !showRomanization }
+                    )
+                }
+                if (hasMultipleVoices) {
+                    LyricsControlChip(
+                        label = strings.lyricsDuet,
+                        selected = showSecondaryVoices,
+                        icon = Icons.Rounded.GraphicEq,
+                        onClick = { showSecondaryVoices = !showSecondaryVoices }
+                    )
+                }
+                if (state.intelligenceSummary.available) {
+                    LyricsControlChip(
+                        label = strings.lyricsAnalysis,
+                        selected = false,
+                        icon = Icons.Rounded.Insights,
+                        onClick = {
+                            showLyricsOptions = false
+                            showIntelligenceDialog = true
+                        }
+                    )
+                }
+                if (state.lyricsSynced) {
+                    LyricsOffsetStepper(
+                        offsetMs = lyricsOffsetMs,
+                        onAdjust = { delta ->
+                            lyricsOffsetMs = adjustLyricsOffset(lyricsOffsetMs, delta)
+                        },
+                        onReset = { lyricsOffsetMs = 0L }
+                    )
+                }
+                if (lyricsOffsetMs != storedLyricsOffsetMs) {
+                    val profileLabel = audioOutputRoute
+                        ?.takeIf { route -> route.bluetooth && route.stableKey != null }
+                        ?.displayName
+                        ?.ifBlank { strings.connected }
+                    LyricsControlChip(
+                        label = profileLabel?.let { "${strings.save} · $it" } ?: strings.save,
+                        selected = false,
+                        icon = Icons.Rounded.Check,
+                        onClick = {
+                            onSaveLatencyOffset(
+                                audioOutputRoute?.stableKey,
+                                audioOutputRoute?.bluetooth == true,
+                                lyricsOffsetMs
+                            )
+                        }
+                    )
+                }
+                audioOutputRoute
+                    ?.takeIf { route ->
+                        route.bluetooth && route.stableKey?.let(latencyProfiles.deviceOffsetsMs::containsKey) == true
+                    }
+                    ?.let { route ->
+                        val stableKey = checkNotNull(route.stableKey)
+                        LyricsControlChip(
+                            label = "${strings.delete} · ${route.displayName.ifBlank { strings.connected }}",
+                            selected = false,
+                            icon = Icons.Rounded.Delete,
+                            onClick = {
+                                lyricsOffsetMs = latencyProfiles.globalOffsetMs
+                                onClearLatencyOffset(stableKey)
+                            }
+                        )
+                    }
+            }
+        }
     }
     shareSnapshot?.let { snapshot ->
         LyricsShareSheet(
@@ -7914,6 +7925,8 @@ private fun LyricsVersionDialog(
     }
 }
 
+private const val LYRICS_AUTO_SCROLL_RESUME_MS = 3_500L
+
 private suspend fun centerLyricsItem(
     listState: LazyListState,
     index: Int,
@@ -7967,28 +7980,6 @@ private fun lyricSectionLabel(strings: LevyraStrings, section: LyricSection): St
         "$base ${section.ordinal}"
     } else {
         base
-    }
-}
-
-@Composable
-private fun LyricsSectionChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        color = if (selected) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.055f),
-        border = BorderStroke(1.dp, if (selected) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.07f)),
-        shape = CircleShape,
-        modifier = Modifier.pressable(onClick = onClick)
-    ) {
-        Text(
-            text = label,
-            color = if (selected) Color.White else Color.White.copy(alpha = 0.58f),
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-        )
     }
 }
 
@@ -8663,7 +8654,7 @@ private fun LyricsStatusRow(provider: String, synced: Boolean, cached: Boolean, 
         border = BorderStroke(1.dp, if (synced) LevyraCyan.copy(alpha = 0.28f) else LevyraViolet.copy(alpha = 0.26f)),
         shape = CircleShape
     ) {
-        Text(label, color = if (synced) LevyraCyan else LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+        Text(label, color = if (synced) LevyraCyan else LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
     }
 }
 
