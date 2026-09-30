@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import java.io.IOException
@@ -198,6 +199,27 @@ class LevyraPreferencesStoreTest {
         val (_, preferences) = open()
 
         assertEquals(LevyraVisualPerformance.Full, preferences.interfaceSettings().visualPerformance)
+    }
+
+    @Test
+    fun chartMarketIsUnsetUntilChosenAndSurvivesRecreation() {
+        val (store, preferences) = open()
+        assertEquals("", preferences.chartRegionId())
+
+        preferences.setChartRegionId("ru")
+        assertEquals("ru", preferences.chartRegionId())
+        flush(store)
+
+        val reopened = reopen()
+        assertEquals("ru", reopened.chartRegionId())
+        assertEquals(
+            "ru",
+            ChartsCatalog.startupRegion(
+                storedRegionId = reopened.chartRegionId(),
+                deviceCountry = "IT",
+                languageCode = reopened.languageCode()
+            ).id
+        )
     }
 
     @Test
