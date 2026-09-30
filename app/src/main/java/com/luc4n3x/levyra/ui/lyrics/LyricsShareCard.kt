@@ -10,8 +10,10 @@ import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextDirectionHeuristics
@@ -23,263 +25,295 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.Track
 import java.io.File
 import java.io.FileOutputStream
-import java.util.Locale
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Builds a private, local-only image for the Android share sheet.
+ * Renders the lyric share card locally and hands it to the Android share sheet.
  *
- * The file lives under cache/share/lyrics and is exposed only through the
+ * Exported files live under cache/share/lyrics and are exposed only through the
  * dedicated non-exported FileProvider declared in AndroidManifest.xml.
  */
-internal enum class LyricsShareFormat(val widthPx: Int, val heightPx: Int) {
-    SQUARE(1080, 1080),
-    STORY(1080, 1920)
-}
-
 internal object LyricsShareCard {
+    const val EXPORT_WIDTH_PX = 1080
+    const val PREVIEW_WIDTH_PX = 540
+
+    private const val ASPECT_WIDTH = 4
+    private const val ASPECT_HEIGHT = 5
     private const val DESIGN_WIDTH = 1440f
-    private const val MAX_SELECTED_LINES = 8
-    private const val MAX_TEXT_CODE_POINTS = 900
-    private const val MAX_CACHE_FILES = 10
-    private const val MAX_LAYOUT_LINES = 14
+    private const val DESIGN_HEIGHT = DESIGN_WIDTH * ASPECT_HEIGHT / ASPECT_WIDTH
+    private const val MARGIN = 120f
+    private const val COVER_SIZE = 220f
+    private const val COVER_RADIUS = 44f
+    private const val LYRICS_TOP = 430f
+    private const val LYRICS_BOTTOM = 1540f
+    private const val FOOTER_BASELINE = 1690f
+    private const val LYRICS_START_SIZE = 96f
+    private const val LYRICS_MIN_SIZE = 52f
+    private const val LYRICS_SIZE_STEP = 4f
+    private const val LYRICS_MAX_LAYOUT_LINES = 12
+    private const val LYRICS_LINE_SPACING = 1.30f
+    private const val BLUR_STEP_WIDTH = 72
+    private const val BLUR_STEP_HEIGHT = 90
+    private const val BLUR_FINAL_WIDTH = 18
+    private const val BLUR_FINAL_HEIGHT = 23
+    private const val COVER_TARGET_SIZE = 300
+    private const val ARTWORK_TIMEOUT_MS = 6_000L
+    private const val MAX_CACHE_FILES = 4
+    private const val MAX_CACHE_AGE_MS = 24L * 60L * 60L * 1000L
+    private const val SHARE_DIRECTORY = "share/lyrics"
     private const val BRAND = "LEVYRA"
+    private const val FALLBACK_START = 0xFF26B2D6.toInt()
+    private const val FALLBACK_END = 0xFF6F4CFF.toInt()
+    private const val MINIMAL_BACKGROUND = 0xFF0C0D12.toInt()
+
+    fun heightFor(widthPx: Int): Int = widthPx * ASPECT_HEIGHT / ASPECT_WIDTH
+
+    suspend fun loadArtwork(
+        context: Context,
+        track: Track,
+        into: LyricsShareResource<Bitmap>
+    ): Unit = withContext(Dispatchers.IO) {
+        ensureActive()
+        val file = LevyraArtworkCache.localFile(context, track, highRes = true)
+            ?: LevyraArtworkCache.localFile(context, track, highRes = false)
+            ?: run {
+                withTimeoutOrNull(ARTWORK_TIMEOUT_MS) {
+                    LevyraArtworkCache.cachePersistent(context, listOf(track), limit = 1)
+                }
+                LevyraArtworkCache.localFile(context, track, highRes = true)
+                    ?: LevyraArtworkCache.localFile(context, track, highRes = false)
+            }
+        ensureActive()
+        val cover = file?.takeIf(File::isFile)?.let(::decodeCover)
+        if (cover != null) into.set(cover)
+    }
 
     suspend fun createShareIntent(
         context: Context,
-        track: Track,
-        selectedLyrics: String,
-        format: LyricsShareFormat = LyricsShareFormat.SQUARE
+        content: LyricsShareCardContent,
+        artwork: LyricsShareResource<Bitmap>,
+        style: LyricsShareCardStyle,
+        accents: Pair<Int, Int>
     ): Intent? = withContext(Dispatchers.IO) {
-        val text = boundedLyricsShareText(selectedLyrics, MAX_TEXT_CODE_POINTS)
-        if (text.isBlank()) return@withContext null
-
-        val directory = File(context.cacheDir, "share/lyrics")
-        if (!directory.exists() && !directory.mkdirs()) return@withContext null
+        if (content.lyrics.isEmpty()) return@withContext null
+        val directory = File(context.cacheDir, SHARE_DIRECTORY)
+        if (!directory.isDirectory && !directory.mkdirs()) return@withContext null
         prune(directory)
 
-        currentCoroutineContext().ensureActive()
-        val coverFile = LevyraArtworkCache.localFile(context, track, highRes = true)
-            ?: run {
-                LevyraArtworkCache.cachePersistent(context, listOf(track), limit = 1)
-                LevyraArtworkCache.localFile(context, track, highRes = true)
-            }
-        val cover = coverFile
-            ?.takeIf(File::isFile)
-            ?.let(::decodeCover)
-        val file = File(directory, "lyrics-${format.name.lowercase(Locale.ROOT)}-${System.currentTimeMillis()}.png")
+        val file = File(directory, "lyrics-${System.currentTimeMillis()}.png")
         var bitmap: Bitmap? = null
-        val written = try {
-            currentCoroutineContext().ensureActive()
-            bitmap = render(track, text, cover, format)
-            FileOutputStream(file).use { output ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+        var written = false
+        try {
+            ensureActive()
+            val rendered = artwork.use { cover ->
+                render(content, cover, style, accents, EXPORT_WIDTH_PX)
+            }
+            bitmap = rendered
+            ensureActive()
+            written = rendered != null && FileOutputStream(file).use { output ->
+                rendered.compress(Bitmap.CompressFormat.PNG, 100, output)
             }
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (_: OutOfMemoryError) {
-            false
-        } catch (_: Exception) {
-            false
+        } catch (_: IOException) {
+            written = false
         } finally {
-            cover?.recycle()
             bitmap?.recycle()
+            if (!written || !file.isFile || file.length() <= 0L) {
+                written = false
+                file.delete()
+            }
         }
-        if (!written || !file.isFile || file.length() <= 0L) {
-            runCatching { file.delete() }
+        if (!written) return@withContext null
+
+        val uri = try {
+            FileProvider.getUriForFile(context, "${context.packageName}.share-files", file)
+        } catch (_: IllegalArgumentException) {
+            file.delete()
             return@withContext null
         }
-
-        val uri = runCatching {
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.share-files",
-                file
-            )
-        }.getOrNull() ?: return@withContext null
 
         Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_TEXT, buildShareCaption(track, text))
+            putExtra(Intent.EXTRA_TEXT, lyricsShareCaption(content))
             clipData = ClipData.newUri(context.contentResolver, "lyrics", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
 
-    internal fun render(
-        track: Track,
-        selectedLyrics: String,
-        cover: Bitmap?,
-        format: LyricsShareFormat
-    ): Bitmap {
-        val bitmap = Bitmap.createBitmap(format.widthPx, format.heightPx, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val cardScale = format.widthPx / DESIGN_WIDTH
-        val designHeight = format.heightPx / cardScale
-        canvas.scale(cardScale, cardScale)
-
-        val (accentStart, accentEnd) = resolveAccents(track, cover)
-        drawBackground(canvas, designHeight, accentStart, accentEnd)
-        drawPanel(canvas, designHeight)
-        drawHeader(canvas, track, cover, format)
-        drawLyrics(canvas, selectedLyrics, designHeight, format)
-        drawFooter(canvas, designHeight)
-        return bitmap
+    fun resolveAccents(track: Track, artwork: Bitmap?): Pair<Int, Int> {
+        val start = LyricsShareCardColors.background(track.accentStart, FALLBACK_START)
+        val end = LyricsShareCardColors.background(track.accentEnd, FALLBACK_END)
+        val palette = artwork?.let {
+            ArtworkPaletteCache.extract(bitmap = it, fallbackStart = start, fallbackEnd = end)
+        } ?: return start to end
+        return LyricsShareCardColors.background(palette.start, start) to
+            LyricsShareCardColors.background(palette.end, end)
     }
 
-    private fun resolveAccents(track: Track, cover: Bitmap?): Pair<Int, Int> {
-        val palette = cover?.let {
-            ArtworkPaletteCache.extract(
-                bitmap = it,
-                fallbackStart = opaque(track.accentStart, Color.rgb(38, 178, 214)),
-                fallbackEnd = opaque(track.accentEnd, Color.rgb(111, 76, 255))
-            )
+    fun render(
+        content: LyricsShareCardContent,
+        artwork: Bitmap?,
+        style: LyricsShareCardStyle,
+        accents: Pair<Int, Int>,
+        widthPx: Int
+    ): Bitmap? {
+        val bitmap = try {
+            Bitmap.createBitmap(widthPx, heightFor(widthPx), Bitmap.Config.ARGB_8888)
+        } catch (_: OutOfMemoryError) {
+            return null
         }
-        val accentStart = opaque(palette?.start ?: track.accentStart, Color.rgb(38, 178, 214))
-        val accentEnd = opaque(palette?.end ?: track.accentEnd, Color.rgb(111, 76, 255))
-        return accentStart to accentEnd
+        var completed = false
+        try {
+            val canvas = Canvas(bitmap)
+            canvas.scale(widthPx / DESIGN_WIDTH, widthPx / DESIGN_WIDTH)
+            val showArtwork = artwork != null && style != LyricsShareCardStyle.MINIMAL
+            drawBackground(canvas, style, artwork, accents)
+            drawHeader(canvas, content, artwork.takeIf { showArtwork })
+            drawLyrics(canvas, content.lyrics)
+            drawFooter(canvas)
+            completed = true
+            return bitmap
+        } finally {
+            if (!completed) bitmap.recycle()
+        }
     }
 
-    private fun drawBackground(canvas: Canvas, designHeight: Float, accentStart: Int, accentEnd: Int) {
-        val background = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(
-                0f,
-                0f,
-                DESIGN_WIDTH,
-                designHeight,
-                darken(accentStart, 0.70f),
-                darken(accentEnd, 0.82f),
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawRect(0f, 0f, DESIGN_WIDTH, designHeight, background)
-
-        val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = android.graphics.RadialGradient(
-                DESIGN_WIDTH * 0.76f,
-                designHeight * 0.18f,
-                DESIGN_WIDTH * 0.72f,
-                withAlpha(accentStart, 92),
-                Color.TRANSPARENT,
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawCircle(DESIGN_WIDTH * 0.76f, designHeight * 0.18f, DESIGN_WIDTH * 0.72f, glow)
-
-        val lowerGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = android.graphics.RadialGradient(
-                DESIGN_WIDTH * 0.16f,
-                designHeight * 0.82f,
-                DESIGN_WIDTH * 0.82f,
-                withAlpha(accentEnd, 72),
-                Color.TRANSPARENT,
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawCircle(DESIGN_WIDTH * 0.16f, designHeight * 0.82f, DESIGN_WIDTH * 0.82f, lowerGlow)
-    }
-
-    private fun drawPanel(canvas: Canvas, designHeight: Float) {
-        val panel = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(62, 255, 255, 255) }
-        canvas.drawRoundRect(
-            RectF(92f, 92f, DESIGN_WIDTH - 92f, designHeight - 92f),
-            76f,
-            76f,
-            panel
-        )
-
-        val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(190, 255, 255, 255)
-            textSize = 37f
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-        }
-        canvas.drawText(BRAND, 150f, 176f, brandPaint)
-    }
-
-    private fun drawHeader(
+    private fun drawBackground(
         canvas: Canvas,
-        track: Track,
-        cover: Bitmap?,
-        format: LyricsShareFormat
+        style: LyricsShareCardStyle,
+        artwork: Bitmap?,
+        accents: Pair<Int, Int>
     ) {
+        val (start, end) = accents
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        if (style == LyricsShareCardStyle.MINIMAL) {
+            canvas.drawColor(MINIMAL_BACKGROUND)
+            paint.shader = RadialGradient(
+                DESIGN_WIDTH * 0.85f,
+                0f,
+                DESIGN_WIDTH * 0.9f,
+                withAlpha(start, 70),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(0f, 0f, DESIGN_WIDTH, DESIGN_HEIGHT, paint)
+            return
+        }
+        paint.shader = LinearGradient(
+            0f, 0f, DESIGN_WIDTH, DESIGN_HEIGHT, start, end, Shader.TileMode.CLAMP
+        )
+        canvas.drawRect(0f, 0f, DESIGN_WIDTH, DESIGN_HEIGHT, paint)
+
+        if (style == LyricsShareCardStyle.ARTWORK && artwork != null) {
+            drawSoftArtwork(canvas, artwork)
+        } else {
+            paint.shader = RadialGradient(
+                DESIGN_WIDTH * 0.80f,
+                DESIGN_HEIGHT * 0.12f,
+                DESIGN_WIDTH * 0.75f,
+                withAlpha(lighten(start), 90),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(0f, 0f, DESIGN_WIDTH, DESIGN_HEIGHT, paint)
+        }
+
+        paint.shader = RadialGradient(
+            DESIGN_WIDTH / 2f,
+            DESIGN_HEIGHT / 2f,
+            DESIGN_HEIGHT * 0.78f,
+            Color.TRANSPARENT,
+            Color.argb(120, 0, 0, 0),
+            Shader.TileMode.CLAMP
+        )
+        canvas.drawRect(0f, 0f, DESIGN_WIDTH, DESIGN_HEIGHT, paint)
+    }
+
+    private fun drawSoftArtwork(canvas: Canvas, artwork: Bitmap) {
+        var stepped: Bitmap? = null
+        var soft: Bitmap? = null
+        try {
+            stepped = Bitmap.createScaledBitmap(artwork, BLUR_STEP_WIDTH, BLUR_STEP_HEIGHT, true)
+            soft = Bitmap.createScaledBitmap(stepped, BLUR_FINAL_WIDTH, BLUR_FINAL_HEIGHT, true)
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = 115 }
+            canvas.drawBitmap(soft, null, RectF(0f, 0f, DESIGN_WIDTH, DESIGN_HEIGHT), paint)
+            canvas.drawColor(Color.argb(100, 0, 0, 0))
+        } catch (_: OutOfMemoryError) {
+            canvas.drawColor(Color.argb(60, 0, 0, 0))
+        } finally {
+            if (stepped != null && stepped !== artwork && stepped !== soft) stepped.recycle()
+            if (soft != null && soft !== artwork) soft.recycle()
+        }
+    }
+
+    private fun drawHeader(canvas: Canvas, content: LyricsShareCardContent, artwork: Bitmap?) {
         val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 54f
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            textSize = 60f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val artistPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(184, 255, 255, 255)
-            textSize = 34f
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
+            color = Color.argb(200, 255, 255, 255)
+            textSize = 42f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         }
-        val story = format == LyricsShareFormat.STORY
-        val titleY = if (story) 1_010f else 266f
-        val artistY = if (story) 1_068f else 318f
-        val metadataWidth = if (story || cover == null) DESIGN_WIDTH - 300f else 820f
-        drawEllipsized(canvas, track.title.ifBlank { BRAND }, titlePaint, 150f, titleY, metadataWidth)
-        drawEllipsized(canvas, track.artist, artistPaint, 150f, artistY, metadataWidth)
-        if (cover != null) {
-            val target = if (story) {
-                RectF(420f, 250f, 1_020f, 850f)
-            } else {
-                RectF(DESIGN_WIDTH - 444f, 144f, DESIGN_WIDTH - 144f, 444f)
-            }
-            drawCover(canvas, cover, target, if (story) 64f else 42f)
+        val textX = if (artwork != null) MARGIN + COVER_SIZE + 44f else MARGIN
+        val textWidth = DESIGN_WIDTH - MARGIN - textX
+        val hasArtist = content.artist.isNotBlank()
+        val titleBaseline = if (artwork != null) {
+            MARGIN + COVER_SIZE / 2f + if (hasArtist) -6f else 20f
+        } else {
+            MARGIN + 70f
+        }
+        drawEllipsized(canvas, content.title.ifBlank { BRAND }, titlePaint, textX, titleBaseline, textWidth)
+        if (hasArtist) {
+            drawEllipsized(canvas, content.artist, artistPaint, textX, titleBaseline + 62f, textWidth)
+        }
+        artwork?.let {
+            drawCover(canvas, it, RectF(MARGIN, MARGIN, MARGIN + COVER_SIZE, MARGIN + COVER_SIZE))
         }
     }
 
-    private fun drawLyrics(
-        canvas: Canvas,
-        selectedLyrics: String,
-        designHeight: Float,
-        format: LyricsShareFormat
-    ) {
-        val story = format == LyricsShareFormat.STORY
-        val rawLines = selectedLyrics.lineSequence()
-            .map(String::trim)
-            .filter(String::isNotBlank)
-            .take(MAX_SELECTED_LINES)
-            .toList()
-        val lyricPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+    private fun drawLyrics(canvas: Canvas, lines: List<String>) {
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
-        val availableWidth = DESIGN_WIDTH - 300f
-        val lyricTop = if (story) 1_230f else 465f
-        val lyricBottom = if (story) designHeight - 300f else designHeight - 260f
-        val availableHeight = lyricBottom - lyricTop
-        val lyricsLayout = fitLyrics(
-            source = rawLines.joinToString("\n"),
-            paint = lyricPaint,
-            maxWidth = availableWidth,
-            maxHeight = availableHeight,
-            startSize = if (story) 86f else 70f,
-            minimumSize = if (story) 46f else 42f,
-            maxLines = if (story) 18 else MAX_LAYOUT_LINES
-        )
-        val y = (lyricTop + (availableHeight - lyricsLayout.height) / 2f).coerceAtLeast(lyricTop)
+        val width = (DESIGN_WIDTH - MARGIN * 2f).toInt()
+        val availableHeight = LYRICS_BOTTOM - LYRICS_TOP
+        val text = lines.joinToString("\n")
+        val layout = fitLyrics(text, paint, width, availableHeight)
+        val top = LYRICS_TOP + ((availableHeight - layout.height) / 2f).coerceAtLeast(0f)
         canvas.save()
-        canvas.translate(150f, y)
-        lyricsLayout.draw(canvas)
+        canvas.translate(MARGIN, top)
+        layout.draw(canvas)
         canvas.restore()
     }
 
-    private fun drawFooter(canvas: Canvas, designHeight: Float) {
-        val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(145, 255, 255, 255)
-            textSize = 27f
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
+    private fun drawFooter(canvas: Canvas) {
+        val divider = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(46, 255, 255, 255)
+            strokeWidth = 2f
         }
-        canvas.drawText(BRAND, 150f, designHeight - 146f, footerPaint)
+        canvas.drawLine(MARGIN, FOOTER_BASELINE - 78f, DESIGN_WIDTH - MARGIN, FOOTER_BASELINE - 78f, divider)
+        val brand = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(190, 255, 255, 255)
+            textSize = 40f
+            letterSpacing = 0.22f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        canvas.drawText(BRAND, MARGIN, FOOTER_BASELINE, brand)
     }
 
-    private fun drawCover(canvas: Canvas, cover: Bitmap, target: RectF, radius: Float) {
-        val path = Path().apply { addRoundRect(target, radius, radius, Path.Direction.CW) }
+    private fun drawCover(canvas: Canvas, cover: Bitmap, target: RectF) {
+        val path = Path().apply { addRoundRect(target, COVER_RADIUS, COVER_RADIUS, Path.Direction.CW) }
         canvas.save()
         canvas.clipPath(path)
         canvas.drawBitmap(cover, null, target, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
@@ -289,35 +323,22 @@ internal object LyricsShareCard {
             strokeWidth = 2f
             color = Color.argb(70, 255, 255, 255)
         }
-        canvas.drawRoundRect(target, radius, radius, border)
+        canvas.drawRoundRect(target, COVER_RADIUS, COVER_RADIUS, border)
     }
 
-    private fun fitLyrics(
-        source: String,
-        paint: TextPaint,
-        maxWidth: Float,
-        maxHeight: Float,
-        startSize: Float,
-        minimumSize: Float,
-        maxLines: Int
-    ): StaticLayout {
-        var size = startSize
-        while (size >= minimumSize) {
+    private fun fitLyrics(text: String, paint: TextPaint, width: Int, maxHeight: Float): StaticLayout {
+        var size = LYRICS_START_SIZE
+        while (size >= LYRICS_MIN_SIZE) {
             paint.textSize = size
-            val layout = buildLyricsLayout(source, paint, maxWidth.toInt())
-            if (layout.lineCount <= maxLines && layout.height <= maxHeight) return layout
-            size -= 4f
+            val layout = buildLyricsLayout(text, paint, width, Int.MAX_VALUE)
+            if (layout.lineCount <= LYRICS_MAX_LAYOUT_LINES && layout.height <= maxHeight) return layout
+            size -= LYRICS_SIZE_STEP
         }
-        paint.textSize = minimumSize
-        return buildLyricsLayout(source, paint, maxWidth.toInt(), maxLines = maxLines)
+        paint.textSize = LYRICS_MIN_SIZE
+        return buildLyricsLayout(text, paint, width, LYRICS_MAX_LAYOUT_LINES)
     }
 
-    private fun buildLyricsLayout(
-        text: String,
-        paint: TextPaint,
-        width: Int,
-        maxLines: Int = Int.MAX_VALUE
-    ): StaticLayout {
+    private fun buildLyricsLayout(text: String, paint: TextPaint, width: Int, maxLines: Int): StaticLayout {
         val builder = StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setTextDirection(
@@ -325,7 +346,7 @@ internal object LyricsShareCard {
                 else TextDirectionHeuristics.FIRSTSTRONG_LTR
             )
             .setIncludePad(false)
-            .setLineSpacing(0f, 1.36f)
+            .setLineSpacing(0f, LYRICS_LINE_SPACING)
             .setMaxLines(maxLines)
         if (maxLines != Int.MAX_VALUE) {
             builder.setEllipsize(TextUtils.TruncateAt.END).setEllipsizedWidth(width)
@@ -336,14 +357,15 @@ internal object LyricsShareCard {
     private fun decodeCover(file: File): Bitmap? = try {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.absolutePath, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        val options = BitmapFactory.Options().apply {
-            inSampleSize = coverSampleSize(bounds.outWidth, bounds.outHeight)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            null
+        } else {
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = coverSampleSize(bounds.outWidth, bounds.outHeight)
+            }
+            BitmapFactory.decodeFile(file.absolutePath, options)
         }
-        BitmapFactory.decodeFile(file.absolutePath, options)
     } catch (_: OutOfMemoryError) {
-        null
-    } catch (_: Exception) {
         null
     }
 
@@ -369,30 +391,22 @@ internal object LyricsShareCard {
         paint.textAlign = Paint.Align.LEFT
     }
 
-    private fun buildShareCaption(track: Track, lyrics: String): String = buildString {
-        append(track.title)
-        if (track.artist.isNotBlank()) append(" — ").append(track.artist)
-        append("\n\n")
-        append(lyrics)
-    }
-
     private fun prune(directory: File) {
+        val now = System.currentTimeMillis()
         directory.listFiles()
             ?.filter(File::isFile)
             ?.sortedByDescending(File::lastModified)
-            ?.drop(MAX_CACHE_FILES - 1)
-            ?.forEach { runCatching { it.delete() } }
+            ?.forEachIndexed { position, file ->
+                if (position >= MAX_CACHE_FILES - 1 || now - file.lastModified() > MAX_CACHE_AGE_MS) {
+                    file.delete()
+                }
+            }
     }
 
-    private fun opaque(color: Int, fallback: Int): Int {
-        val candidate = if (color == 0) fallback else color
-        return Color.rgb(Color.red(candidate), Color.green(candidate), Color.blue(candidate))
-    }
-
-    private fun darken(color: Int, factor: Float): Int = Color.rgb(
-        (Color.red(color) * factor).toInt().coerceIn(0, 255),
-        (Color.green(color) * factor).toInt().coerceIn(0, 255),
-        (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+    private fun lighten(color: Int): Int = Color.rgb(
+        (Color.red(color) + 70).coerceAtMost(255),
+        (Color.green(color) + 70).coerceAtMost(255),
+        (Color.blue(color) + 70).coerceAtMost(255)
     )
 
     private fun withAlpha(color: Int, alpha: Int): Int = Color.argb(
@@ -401,8 +415,6 @@ internal object LyricsShareCard {
         Color.green(color),
         Color.blue(color)
     )
-
-    private const val COVER_TARGET_SIZE = 300
 }
 
 internal fun boundedLyricsShareText(source: String, maxCodePoints: Int): String {
