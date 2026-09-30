@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-30T05:37:31Z",
+  "generatedAt": "2026-09-30T12:40:27Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -525,6 +525,13 @@
       "artist": "Sam Fender, Olivia Dean",
       "album": "People Watching (Deluxe Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/6zlR5ttMfMNmwf2lecU9Cc/video/c376916e9524470db551c735393b9866.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2390,13 +2397,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Sömnmolnet",
       "artist": "Humlan Djojj, Josefine Götestam",
       "album": "Sov med Humlan Djojj",
@@ -4067,6 +4067,13 @@
       "artist": "Minh Huy, Pinny",
       "album": "Ngày Rời Chuyến Bay",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/d1a0575b4df9460495256c51e1783ebf.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Mơ",
+      "artist": "Vũ Cát Tường",
+      "album": "Mơ",
+      "url": "https://canvaz.scdn.co/upload/artist/7yquVKfxBuNFJbG9cy2R8A/video/923f40a449df422f8d6cc135a922f4ef.cnvs.mp4",
       "scope": "track"
     },
     {
