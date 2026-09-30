@@ -25,6 +25,11 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
+    fun stackedCanvasUsesLongReferenceDissolve() {
+        assertEquals(0.42f, PlayerCinematicStackedFade, 0f)
+    }
+
+    @Test
     fun phonePortraitImmersiveCanvasStopsAtHeroBottom() {
         val geometry = playerCinematicGeometry(
             pane = LevyraPlayerPane.Stacked,
