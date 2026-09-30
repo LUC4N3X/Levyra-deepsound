@@ -990,6 +990,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private val detailBackStack = ArrayDeque<DetailPage>()
 
+    private class DetailFlags(
+        val showAlbum: Boolean,
+        val showArtist: Boolean,
+        val albumLoading: Boolean,
+        val artistLoading: Boolean
+    )
+
+    private class PlayerReturnDetail(
+        val flags: DetailFlags,
+        val openPlaylistId: String?,
+        val playlistHitPreview: PlaylistHitPreview?,
+        val detailReturnTarget: DetailReturnTarget,
+        val backStack: List<DetailPage>
+    )
+
+    private var playerReturnDetail: PlayerReturnDetail? = null
+
     private fun pushDetailPage(page: DetailPage) {
         detailBackStack.addLast(page)
         while (detailBackStack.size > 12) {
@@ -3526,6 +3543,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openPlaylist(playlistId: String) {
+        playerReturnDetail = null
         viewModelScope.launch {
             val pl = playlistStore.load(playlistId)
             _state.update { it.copy(openPlaylist = pl) }
@@ -6973,6 +6991,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun openArtistReference(name: String, browseId: String, artworkHint: String = "") {
+        playerReturnDetail = null
         val clean = name.trim()
         val normalizedBrowseId = browseId.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
@@ -7170,6 +7189,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
+        playerReturnDetail = null
         albumJob?.cancel()
         albumMotionJob?.cancel()
         if (returnTarget != DetailReturnTarget.Artist) {
@@ -7285,6 +7305,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openPlayerScreen() {
+        playerReturnDetail = playerReturnDetailOf(_state.value)
         albumJob?.cancel()
         playlistHitJob?.cancel()
         artistJob?.cancel()
@@ -7306,6 +7327,68 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         moveToTab(LevyraTab.Player, rememberCurrent = true)
         _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+    }
+
+    private fun playerReturnDetailOf(state: LevyraUiState): PlayerReturnDetail? {
+        val detailVisible = state.showAlbum || state.showArtist ||
+            state.openPlaylist != null || state.playlistHitPreview != null
+        return if (detailVisible) {
+            PlayerReturnDetail(
+                flags = DetailFlags(
+                    showAlbum = state.showAlbum,
+                    showArtist = state.showArtist,
+                    albumLoading = state.albumLoading,
+                    artistLoading = state.artistLoading
+                ),
+                openPlaylistId = state.openPlaylist?.id,
+                playlistHitPreview = state.playlistHitPreview,
+                detailReturnTarget = state.detailReturnTarget,
+                backStack = detailBackStack.toList()
+            )
+        } else {
+            null
+        }
+    }
+
+    fun revealPlayerReturnDetail() = restorePlayerReturnDetail()
+
+    private fun restorePlayerReturnDetail() {
+        val saved = playerReturnDetail ?: return
+        playerReturnDetail = null
+        val current = _state.value
+        val detailVisible = current.showAlbum || current.showArtist ||
+            current.openPlaylist != null || current.playlistHitPreview != null
+        if (detailVisible) return
+        detailBackStack.clear()
+        saved.backStack.forEach(detailBackStack::addLast)
+        _state.update { state ->
+            state.copy(
+                showAlbum = saved.flags.showAlbum,
+                showArtist = saved.flags.showArtist,
+                openPlaylist = saved.openPlaylistId?.let { id -> state.playlists.firstOrNull { it.id == id } },
+                playlistHitPreview = saved.playlistHitPreview,
+                detailReturnTarget = saved.detailReturnTarget
+            )
+        }
+        resumeRestoredDetailLoads(saved)
+        refreshPageMotionArtwork()
+    }
+
+    private fun resumeRestoredDetailLoads(saved: PlayerReturnDetail) {
+        val restored = _state.value
+        if (saved.flags.showArtist) {
+            restored.artistProfile?.let { profile ->
+                if (saved.flags.artistLoading) {
+                    openArtistReference(profile.name, profile.browseId, profile.thumbnailUrl)
+                } else {
+                    startArtistLore(profile)
+                }
+            }
+        }
+        if (saved.flags.showAlbum && saved.flags.albumLoading) {
+            restored.albumDetail?.album?.let { album -> openAlbumInternal(album, saved.detailReturnTarget) }
+        }
+        saved.playlistHitPreview?.takeIf { it.loading }?.let { preview -> openPlaylistHit(preview.hit) }
     }
 
     fun playAlbumSong(track: Track) {
@@ -7406,6 +7489,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openPlaylistHit(playlist: PlaylistHit) {
+        playerReturnDetail = null
         val playlistId = playlist.playlistId.ifBlank { return }
         playlistHitJob?.cancel()
         _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist)) }
@@ -7994,6 +8078,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         _state.update { it.copy(selectedTab = tab) }
+        if (current == LevyraTab.Player) restorePlayerReturnDetail()
     }
 
     private fun previousTab(current: LevyraTab): LevyraTab {
@@ -10973,6 +11058,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         flushListenSession()
         player.stop()
         queueEngine.clear()
+        val leavingPlayer = _state.value.selectedTab == LevyraTab.Player
         _state.update {
             it.copy(
                 selectedTab = if (it.selectedTab == LevyraTab.Player) LevyraTab.Home else it.selectedTab,
@@ -11009,6 +11095,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 lyricsTranslationState = LyricsTranslationState.DISABLED,
                 activeLyric = null
             )
+        }
+        if (leavingPlayer) {
+            restorePlayerReturnDetail()
+        } else {
+            playerReturnDetail = null
         }
         lastPlaybackSaveJob?.cancel()
         lastPlaybackSaveJob = viewModelScope.launch(Dispatchers.IO) {
