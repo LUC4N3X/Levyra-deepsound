@@ -11245,7 +11245,11 @@ private fun HomeMusicVideoArtwork(item: HomeVideoCardItem) {
             fit = detectVideoFrameFit(context, frameVideoId) ?: VideoFrameFit.Full
         }
     }
-    val frameFit = fit ?: return
+    val frameFit = fit
+    if (frameFit == null) {
+        InstantArtworkPlaceholder(track = item.track, modifier = Modifier.fillMaxSize())
+        return
+    }
     val squareArtwork = item.squareArtwork
     val showArtwork = squareArtwork != null && (frameVideoId == null || frameFit.squareContent)
     CoverImage(
