@@ -87,16 +87,19 @@ def sharpen_orbit(block: str) -> str:
     return re.sub(pattern, "val shape = RoundedCornerShape(2.dp)", block, count=1)
 
 
-def inspect_collection(block: str) -> str:
-    print("--- HOME_COLLECTION_FUNCTION ---")
-    print(block)
-    raise RuntimeError("Collection diagnostic complete")
+def sharpen_collection_corner(text: str) -> str:
+    pattern = r"private val HOME_COLLECTION_CARD_CORNER = \d+(?:\.\d+)?\.dp"
+    matches = re.findall(pattern, text)
+    if len(matches) != 1:
+        raise RuntimeError(f"Collections: expected one corner constant, found {len(matches)}")
+    return re.sub(pattern, "private val HOME_COLLECTION_CARD_CORNER = 8.dp", text, count=1)
 
 
 text = APP.read_text(encoding="utf-8")
 text = rewrite_function(text, "private fun PersonalOrbitSpeedDialCard(", sharpen_orbit)
-text = rewrite_function(text, "private fun HomeEditorialCollectionCard(", inspect_collection)
+text = sharpen_collection_corner(text)
 APP.write_text(text, encoding="utf-8")
 
+# The helper and one-shot workflow must never remain in the PR.
 SELF.unlink(missing_ok=True)
 WORKFLOW.unlink(missing_ok=True)
