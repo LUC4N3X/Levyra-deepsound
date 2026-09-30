@@ -846,6 +846,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val listeningRecapRepository = ListeningRecapRepository(listeningPulseStore)
     private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
+    private val startupChartRegion = ChartsCatalog.startupRegion(
+        storedRegionId = preferences.chartRegionId(),
+        deviceCountry = Locale.getDefault().country,
+        languageCode = startupSettings.languageCode
+    )
     private val vaultRuntimeState = preferences.vaultRuntimeState()
     private val startupMoods = moodEngine.moodsForLanguage(startupSettings.languageCode)
     private val _integrationAuthorizationUrls = MutableSharedFlow<String>(extraBufferCapacity = 1)
@@ -856,7 +861,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             tastes = moodEngine.tastesForLanguage(startupSettings.languageCode),
             quickPickSeeds = LevyraStartupCatalog.quickPickSeeds(startupSettings.languageCode),
             chartRegions = ChartsCatalog.regions,
-            selectedChartId = ChartsCatalog.defaultRegionForLanguage(startupSettings.languageCode).id,
+            selectedChartId = startupChartRegion.id,
             selectedMood = startupMoods.firstOrNull(),
             isSearching = false,
             embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
@@ -1299,7 +1304,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .map(LevyraPersonalOrbit::withoutVideoArtwork)
             .distinctBy(LevyraPersonalOrbit::identityKey)
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-        val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(settings.languageCode)
         val instantSnapshot = homeSnapshotCache.load(settings.languageCode)
         val cachedHomeSections = instantSnapshot?.homeSections?.takeIf { it.isNotEmpty() } ?: preferences.loadHomeSections(settings.languageCode)
         val startupHomeSections = LevyraStartupCatalog.repairHomeSections(
@@ -1318,15 +1322,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .distinctBy { it.browseId.lowercase() }
             .take(HOME_ARTIST_SHELF_SIZE)
         val snapshotCharts = instantSnapshot
-            ?.takeIf { it.chartRegionId == defaultChartRegion.id }
+            ?.takeIf { it.chartRegionId == startupChartRegion.id }
             ?.charts
             .orEmpty()
         val cachedCharts = snapshotCharts.ifEmpty {
-            preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
+            preferences.loadChartTracks(settings.languageCode, startupChartRegion.id)
         }
         val startupCharts = LevyraStartupCatalog.repairTracks(cachedCharts, settings.languageCode)
         if (startupCharts.isNotEmpty()) {
-            chartsByRegion[chartsCacheKey(settings.languageCode, defaultChartRegion.id)] = startupCharts
+            chartsByRegion[chartsCacheKey(settings.languageCode, startupChartRegion.id)] = startupCharts
         }
         val startupResonanceTracks = instantSnapshot?.resonanceTracks.orEmpty()
         val startupResonanceUpdatedAt = instantSnapshot?.resonanceUpdatedAt ?: 0L
@@ -1397,7 +1401,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 queue = initialQueue,
                 searchResults = initialTracks.take(12),
                 charts = startupCharts,
-                selectedChartId = defaultChartRegion.id,
+                selectedChartId = startupChartRegion.id,
                 isSearching = false,
                 isLoadingCharts = startupCharts.isEmpty(),
                 cacheReport = repository.cacheReport(),
@@ -6452,9 +6456,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectChart(regionId: String) {
-        val normalizedRegionId = ChartsCatalog.region(regionId).id
-        if (normalizedRegionId == _state.value.selectedChartId && _state.value.charts.isNotEmpty()) return
-        val languageCode = _state.value.languageCode
+        val normalizedRegionId = ChartsCatalog.supportedRegion(regionId)?.id ?: return
+        if (preferences.chartRegionId() != normalizedRegionId) preferences.setChartRegionId(normalizedRegionId)
+        val current = _state.value
+        if (
+            !ChartsCatalog.requiresReload(
+                requestedId = normalizedRegionId,
+                currentId = current.selectedChartId,
+                hasCharts = current.charts.isNotEmpty(),
+                isLoading = current.isLoadingCharts
+            )
+        ) return
+        val languageCode = current.languageCode
         val cached = chartsByRegion[chartsCacheKey(languageCode, normalizedRegionId)].orEmpty()
         _state.update {
             it.copy(
