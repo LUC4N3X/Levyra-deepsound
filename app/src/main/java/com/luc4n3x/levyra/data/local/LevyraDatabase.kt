@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 23
+const val LEVYRA_DATABASE_VERSION = 24
 
 @Database(
     entities = [
@@ -126,7 +126,6 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
-
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -180,7 +179,6 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
-
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -210,7 +208,6 @@ abstract class LevyraDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_lyrics_cache_titleKey_artistKey_durationBucket_languageCode_translate ON lyrics_cache(titleKey, artistKey, durationBucket, languageCode, translate)")
             }
         }
-
 
         private val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -336,8 +333,6 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
-
-
         private val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE listen_events ADD COLUMN artistBrowseIds TEXT NOT NULL DEFAULT ''")
@@ -407,7 +402,6 @@ abstract class LevyraDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_playback_source_matches_updatedAt ON playback_source_matches(updatedAt)")
             }
         }
-
 
         private val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -693,6 +687,78 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS playlist_tracks_v24 (
+                        entryId TEXT NOT NULL PRIMARY KEY,
+                        playlistId TEXT NOT NULL,
+                        trackId TEXT NOT NULL,
+                        position INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        album TEXT NOT NULL,
+                        durationMs INTEGER NOT NULL,
+                        videoUrl TEXT NOT NULL,
+                        thumbnailUrl TEXT NOT NULL,
+                        largeThumbnailUrl TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        accentStart INTEGER NOT NULL,
+                        accentEnd INTEGER NOT NULL,
+                        youtubeLoudnessDb REAL,
+                        youtubePerceptualLoudnessDb REAL,
+                        isrc TEXT NOT NULL,
+                        upc TEXT NOT NULL,
+                        releaseDate TEXT NOT NULL,
+                        year TEXT NOT NULL,
+                        trackNumber INTEGER NOT NULL,
+                        discNumber INTEGER NOT NULL,
+                        explicit INTEGER NOT NULL,
+                        albumBrowseId TEXT NOT NULL,
+                        artistBrowseIds TEXT NOT NULL,
+                        counterpartVideoId TEXT NOT NULL,
+                        videoType TEXT NOT NULL,
+                        metadataProvider TEXT NOT NULL,
+                        metadataConfidence INTEGER NOT NULL,
+                        canonicalAlbumUrl TEXT NOT NULL,
+                        addedAt INTEGER NOT NULL,
+                        FOREIGN KEY(playlistId) REFERENCES playlists(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO playlist_tracks_v24 (
+                        entryId, playlistId, trackId, position, title, artist, album, durationMs,
+                        videoUrl, thumbnailUrl, largeThumbnailUrl, source, accentStart, accentEnd,
+                        youtubeLoudnessDb, youtubePerceptualLoudnessDb, isrc, upc, releaseDate, year,
+                        trackNumber, discNumber, explicit, albumBrowseId, artistBrowseIds,
+                        counterpartVideoId, videoType, metadataProvider, metadataConfidence,
+                        canonicalAlbumUrl, addedAt
+                    )
+                    SELECT
+                        playlistId || ':' || trackId,
+                        playlistId, trackId, position, title, artist, album, durationMs,
+                        videoUrl, thumbnailUrl, largeThumbnailUrl, source, accentStart, accentEnd,
+                        youtubeLoudnessDb, youtubePerceptualLoudnessDb, isrc, upc, releaseDate, year,
+                        trackNumber, discNumber, explicit, albumBrowseId, artistBrowseIds,
+                        counterpartVideoId, videoType, metadataProvider, metadataConfidence,
+                        canonicalAlbumUrl, addedAt
+                    FROM playlist_tracks
+                    ORDER BY playlistId, position
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE playlist_tracks")
+                db.execSQL("ALTER TABLE playlist_tracks_v24 RENAME TO playlist_tracks")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_playlist_tracks_playlistId ON playlist_tracks(playlistId)")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_playlist_tracks_playlistId_trackId " +
+                        "ON playlist_tracks(playlistId, trackId)"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -715,7 +781,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_19_20,
             MIGRATION_20_21,
             MIGRATION_21_22,
-            MIGRATION_22_23
+            MIGRATION_22_23,
+            MIGRATION_23_24
         )
 
         fun get(context: Context): LevyraDatabase {
@@ -725,7 +792,6 @@ abstract class LevyraDatabase : RoomDatabase() {
                     LevyraDatabase::class.java,
                     "levyra.db"
                 )
-
                     .addMigrations(*MIGRATIONS)
                     .build()
                     .also { instance = it }

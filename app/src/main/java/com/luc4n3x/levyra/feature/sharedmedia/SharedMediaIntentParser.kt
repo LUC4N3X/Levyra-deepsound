@@ -2,12 +2,15 @@ package com.luc4n3x.levyra.feature.sharedmedia
 
 import android.content.Intent
 import android.net.Uri
+import com.luc4n3x.levyra.nexus.playlistimport.DetectedPlaylistInput
+import com.luc4n3x.levyra.nexus.playlistimport.PlaylistInputDetector
 
 object SharedMediaIntentParser {
     private val videoIdRegex = Regex("^[A-Za-z0-9_-]{6,20}$")
 
     fun parse(intent: Intent?): SharedMediaRequest? {
         intent ?: return null
+        playlistFileRequest(intent)?.let { return it }
         val candidates = buildList {
             intent.dataString?.let(::add)
             intent.getStringExtra(Intent.EXTRA_TEXT)?.let(::add)
@@ -53,7 +56,15 @@ object SharedMediaIntentParser {
         val uri = runCatching { Uri.parse(rawUrl) }.getOrNull() ?: return null
         val host = uri.host.orEmpty().lowercase().removePrefix("www.")
         if (host !in supportedHosts) {
-            return SharedMediaRequest(rawText = cleanText, url = rawUrl, kind = SharedMediaKind.Unsupported)
+            val external = PlaylistInputDetector.detectUrl(rawUrl)
+            val kind = if (
+                external is DetectedPlaylistInput.RemotePlaylist || external is DetectedPlaylistInput.UnsupportedRemote
+            ) {
+                SharedMediaKind.ExternalPlaylist
+            } else {
+                SharedMediaKind.Unsupported
+            }
+            return SharedMediaRequest(rawText = cleanText, url = rawUrl, kind = kind)
         }
         val segments = uri.pathSegments.filter { it.isNotBlank() }
         val playlistId = uri.getQueryParameter("list").orEmpty().trim()
@@ -78,6 +89,23 @@ object SharedMediaIntentParser {
             query = cleanText.replace(rawUrl, " ").replace(Regex("\\s+"), " ").trim().take(300)
         )
     }
+
+    internal fun playlistFileRequest(intent: Intent): SharedMediaRequest? {
+        if (intent.action != Intent.ACTION_VIEW) return null
+        val data = intent.data ?: return null
+        if (!data.scheme.equals("content", ignoreCase = true)) return null
+        val mime = intent.type?.lowercase().orEmpty()
+        val extension = data.lastPathSegment.orEmpty().substringAfterLast('.', "").lowercase()
+        if (mime !in playlistFileMimeTypes && extension !in playlistFileExtensions) return null
+        return SharedMediaRequest(rawText = "", url = data.toString(), kind = SharedMediaKind.PlaylistFile)
+    }
+
+    private val playlistFileMimeTypes = setOf(
+        "audio/x-mpegurl", "audio/mpegurl", "application/vnd.apple.mpegurl", "application/x-mpegurl",
+        "audio/x-scpls", "application/xspf+xml"
+    )
+
+    private val playlistFileExtensions = setOf("m3u", "m3u8", "pls", "xspf")
 
     private fun extractVideoId(host: String, uri: Uri, segments: List<String>): String {
         val candidate = when {

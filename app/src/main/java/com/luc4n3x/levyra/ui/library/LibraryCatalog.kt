@@ -492,6 +492,7 @@ internal fun libraryTrackKey(track: Track): String {
 }
 
 internal fun playlistEntryKey(track: Track): String {
+    track.playlistEntryId.trim().takeIf(String::isNotBlank)?.let { return "playlist-entry:$it" }
     return track.id.trim().takeIf(String::isNotBlank)?.let { "track-id:$it" }
         ?: "track-fallback:${libraryTrackKey(track)}"
 }
