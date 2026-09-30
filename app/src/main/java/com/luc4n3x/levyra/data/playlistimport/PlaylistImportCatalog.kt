@@ -12,6 +12,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import timber.log.Timber
 
 data class CatalogCandidate(
     val candidate: MatchCandidate,
@@ -113,10 +114,17 @@ class PlaylistImportCatalog(
     override suspend fun search(query: String, origin: CandidateOrigin): List<CatalogCandidate> {
         val clean = query.trim()
         if (clean.length < 2) return emptyList()
-        return when (origin) {
-            CandidateOrigin.ONLINE -> onlineSearch(clean, 16)
-            CandidateOrigin.LOCAL -> localSearch(clean)
-        }.distinctBy { it.id }.map { it.toMatchCandidate() }
+        return try {
+            when (origin) {
+                CandidateOrigin.ONLINE -> onlineSearch(clean, 16)
+                CandidateOrigin.LOCAL -> localSearch(clean)
+            }.distinctBy { it.id }.map { it.toMatchCandidate() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.w(error, "Playlist replacement search failed")
+            emptyList()
+        }
     }
 
     private suspend fun onlineSearch(query: String, limit: Int): List<Track> {
