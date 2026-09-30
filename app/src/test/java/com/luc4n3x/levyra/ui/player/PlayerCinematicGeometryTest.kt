@@ -52,6 +52,22 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
+    fun fullscreenCanvasKeepsReferenceControlDim() {
+        assertEquals(0.5f, playerCinematicFullscreenDimAlpha(fullscreenCanvas = true), 0f)
+        assertEquals(0f, playerCinematicFullscreenDimAlpha(fullscreenCanvas = false), 0f)
+    }
+
+    @Test
+    fun wideStackedLayoutKeepsReferenceSideFade() {
+        assertEquals(
+            PlayerCinematicSideDissolveFraction,
+            playerCinematicResolvedSideFade(sideDissolve = true),
+            0f
+        )
+        assertEquals(0f, playerCinematicResolvedSideFade(sideDissolve = false), 0f)
+    }
+
+    @Test
     fun spotifyCanvasUsesFullscreenPhonePresentationOnly() {
         val spotifyCanvas = "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4"
 
