@@ -6974,7 +6974,7 @@ private enum class LyricsViewMode {
     COMPACT
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun LyricsOverlay(
     state: LevyraUiState,
