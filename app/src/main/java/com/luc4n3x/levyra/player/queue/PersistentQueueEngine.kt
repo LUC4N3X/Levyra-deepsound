@@ -1098,6 +1098,10 @@ class PersistentQueueEngine internal constructor(
     private fun advancePlayNextIntent(current: PlaybackQueueSnapshot, targetIndex: Int) {
         val intent = reconciledPlayNextIntent(current) ?: return
         val targetIdentity = current.tracks.getOrNull(targetIndex)?.let(::playbackQueueIdentity)
+            ?: run {
+                playNextIntent = null
+                return
+            }
         if (targetIdentity != intent.pendingIdentities.firstOrNull()) {
             playNextIntent = null
             return
