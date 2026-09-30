@@ -284,6 +284,7 @@ class PlaybackService : MediaLibraryService() {
         private const val TRANSITION_STEP_MS = 50L
         private const val SEEK_TOLERANCE_MS = 1_500L
         private const val AUDIO_ROUTE_SELECTION_VERIFY_MS = 1_200L
+        private const val AUDIO_ROUTE_FAILURE_FEEDBACK_MS = 4_000L
         private val ONLINE_RECOVERY_DELAYS_MS = longArrayOf(500L, 2_000L, 5_000L, 10_000L)
         private val LOCAL_RECOVERY_DELAYS_MS = longArrayOf(250L, 750L, 1_500L, 3_000L, 5_000L, 10_000L)
 
@@ -453,6 +454,7 @@ class PlaybackService : MediaLibraryService() {
     private var deviceVolumeReceiverRegistered = false
     private var audioRouteVolumeReceiverRegistered = false
     private var audioRouteSelectionJob: Job? = null
+    private var audioRouteFeedbackResetJob: Job? = null
     private var preferredAudioRouteKey: String? = null
     private var audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
     private var systemMediaActions: SystemMediaActionController? = null
@@ -1013,6 +1015,7 @@ class PlaybackService : MediaLibraryService() {
         }
         automationSettingsJob?.cancel()
         audioRouteSelectionJob?.cancel()
+        audioRouteFeedbackResetJob?.cancel()
         automationSettingsJob = serviceScope.launch {
             prefs.automationSettingsFlow.collect { settings ->
                 automationSettings = settings
@@ -1212,6 +1215,7 @@ class PlaybackService : MediaLibraryService() {
                 if (deviceInfo.playbackType == DeviceInfo.PLAYBACK_TYPE_REMOTE) {
                     audioRouteSelectionJob?.cancel()
                     audioRouteSelectionJob = null
+                    audioRouteFeedbackResetJob?.cancel()
                     clearPreferredAudioOutput()
                     audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
                     cancelQueueTransition()
@@ -2503,6 +2507,7 @@ class PlaybackService : MediaLibraryService() {
         if (requested != null && snapshot.connected.none { it.routeKey == requested }) {
             clearPreferredAudioOutput()
             audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
             snapshot = queryLevyraAudioOutputState(
                 audioManager,
                 mediaRouter,
@@ -2527,8 +2532,10 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private suspend fun selectAudioOutput(routeKey: String?) {
+        audioRouteFeedbackResetJob?.cancel()
         if (!directAudioRouteSelectionAvailable()) {
             audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
             refreshAudioRouteCenterState()
             return
         }
@@ -2542,6 +2549,7 @@ class PlaybackService : MediaLibraryService() {
         if (device == null) {
             preferredAudioRouteKey = null
             audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
             refreshAudioRouteCenterState()
             return
         }
@@ -2555,6 +2563,7 @@ class PlaybackService : MediaLibraryService() {
         if (!applied) {
             clearPreferredAudioOutput()
             audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
             refreshAudioRouteCenterState()
             return
         }
@@ -2571,8 +2580,20 @@ class PlaybackService : MediaLibraryService() {
         } else {
             clearPreferredAudioOutput()
             audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
         }
         refreshAudioRouteCenterState()
+    }
+
+    private fun scheduleAudioRouteFailureFeedbackReset() {
+        audioRouteFeedbackResetJob?.cancel()
+        audioRouteFeedbackResetJob = serviceScope.launch {
+            delay(AUDIO_ROUTE_FAILURE_FEEDBACK_MS)
+            if (audioRouteSelectionState == LevyraAudioRouteSelectionState.Failed) {
+                audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
+                refreshAudioRouteCenterState()
+            }
+        }
     }
 
     private fun directAudioRouteSelectionAvailable(): Boolean =
