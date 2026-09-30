@@ -79,13 +79,8 @@ object PlaylistInputDetector {
     }
 
     fun detectUrl(rawUrl: String): DetectedPlaylistInput {
-        val uri = runCatching { URI(rawUrl.trim().replace(" ", "%20")) }.getOrNull()
-            ?: return DetectedPlaylistInput.Unrecognized
-        val scheme = uri.scheme?.lowercase(Locale.ROOT)
-        if (scheme != "https" && scheme != "http") return DetectedPlaylistInput.Unrecognized
-        if (uri.rawUserInfo != null) return DetectedPlaylistInput.Unrecognized
-        if (uri.port != -1 && uri.port != 443 && uri.port != 80) return DetectedPlaylistInput.Unrecognized
-        val host = uri.host?.lowercase(Locale.ROOT)?.trimEnd('.') ?: return DetectedPlaylistInput.Unrecognized
+        val uri = parseSafeUri(rawUrl) ?: return DetectedPlaylistInput.Unrecognized
+        val host = uri.host.lowercase(Locale.ROOT).trimEnd('.')
         val segments = uri.rawPath.orEmpty().split('/').filter { it.isNotBlank() }.map(::decode)
         val https = "https://$host${uri.rawPath.orEmpty()}${uri.rawQuery?.let { "?$it" }.orEmpty()}"
         return when {
@@ -97,30 +92,52 @@ object PlaylistInputDetector {
             host in deezerHosts -> detectDeezer(segments)
             host in deezerShortHosts && segments.isNotEmpty() ->
                 DetectedPlaylistInput.RemotePlaylist(PlaylistImportSource.DEEZER, "", https)
-            host in tidalHosts -> if (segments.contains("playlist") || segments.contains("mix")) {
-                DetectedPlaylistInput.UnsupportedRemote(PlaylistImportSource.TIDAL, UnsupportedPlaylistReason.AUTHENTICATION_REQUIRED)
-            } else {
-                DetectedPlaylistInput.NotAPlaylist(PlaylistImportSource.TIDAL)
-            }
-            host in soundCloudHosts -> if (host == "on.soundcloud.com" || segments.getOrNull(1) == "sets") {
-                DetectedPlaylistInput.UnsupportedRemote(PlaylistImportSource.SOUNDCLOUD, UnsupportedPlaylistReason.AUTHENTICATION_REQUIRED)
-            } else {
-                DetectedPlaylistInput.NotAPlaylist(PlaylistImportSource.SOUNDCLOUD)
-            }
-            host in jioSaavnHosts -> detectJioSaavn(segments, https)
-            host.startsWith("music.amazon.") -> if (segments.any { it == "playlists" || it == "user-playlists" }) {
-                DetectedPlaylistInput.UnsupportedRemote(PlaylistImportSource.AMAZON_MUSIC, UnsupportedPlaylistReason.NO_PUBLIC_ACCESS)
-            } else {
-                DetectedPlaylistInput.NotAPlaylist(PlaylistImportSource.AMAZON_MUSIC)
-            }
-            bandcampHost.matches(host) -> if (segments.firstOrNull() == "album" && segments.size >= 2) {
-                val slug = safeSegment(segments[1])
-                DetectedPlaylistInput.RemotePlaylist(PlaylistImportSource.BANDCAMP, "$host/album/$slug", "https://$host/album/$slug")
-            } else {
-                DetectedPlaylistInput.NotAPlaylist(PlaylistImportSource.BANDCAMP)
-            }
-            else -> DetectedPlaylistInput.Unrecognized
+            else -> detectOtherHost(host, segments, https)
         }
+    }
+
+    private fun detectOtherHost(host: String, segments: List<String>, https: String): DetectedPlaylistInput = when {
+        host in tidalHosts -> accountOnly(
+            PlaylistImportSource.TIDAL,
+            segments.contains("playlist") || segments.contains("mix"),
+            UnsupportedPlaylistReason.AUTHENTICATION_REQUIRED
+        )
+        host in soundCloudHosts -> accountOnly(
+            PlaylistImportSource.SOUNDCLOUD,
+            host == "on.soundcloud.com" || segments.getOrNull(1) == "sets",
+            UnsupportedPlaylistReason.AUTHENTICATION_REQUIRED
+        )
+        host in jioSaavnHosts -> detectJioSaavn(segments, https)
+        host.startsWith("music.amazon.") -> accountOnly(
+            PlaylistImportSource.AMAZON_MUSIC,
+            segments.any { it == "playlists" || it == "user-playlists" },
+            UnsupportedPlaylistReason.NO_PUBLIC_ACCESS
+        )
+        bandcampHost.matches(host) -> detectBandcamp(host, segments)
+        else -> DetectedPlaylistInput.Unrecognized
+    }
+
+    private fun accountOnly(
+        source: PlaylistImportSource,
+        playlist: Boolean,
+        reason: UnsupportedPlaylistReason
+    ): DetectedPlaylistInput =
+        if (playlist) DetectedPlaylistInput.UnsupportedRemote(source, reason) else DetectedPlaylistInput.NotAPlaylist(source)
+
+    private fun detectBandcamp(host: String, segments: List<String>): DetectedPlaylistInput {
+        if (segments.firstOrNull() != "album" || segments.size < 2) {
+            return DetectedPlaylistInput.NotAPlaylist(PlaylistImportSource.BANDCAMP)
+        }
+        val slug = safeSegment(segments[1])
+        return DetectedPlaylistInput.RemotePlaylist(PlaylistImportSource.BANDCAMP, "$host/album/$slug", "https://$host/album/$slug")
+    }
+
+    private fun parseSafeUri(rawUrl: String): URI? {
+        val uri = runCatching { URI(rawUrl.trim().replace(" ", "%20")) }.getOrNull() ?: return null
+        val scheme = uri.scheme?.lowercase(Locale.ROOT)
+        val schemeAllowed = scheme == "https" || scheme == "http"
+        val portAllowed = uri.port == -1 || uri.port == 443 || uri.port == 80
+        return uri.takeIf { schemeAllowed && portAllowed && it.rawUserInfo == null && it.host != null }
     }
 
     fun formatFromFileName(fileName: String?): PlaylistTextFormat? {

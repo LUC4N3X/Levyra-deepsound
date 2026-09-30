@@ -157,58 +157,70 @@ object PlaylistMatchEngine {
 
         val sourceTitle = MusicIdentityText.title(source.title)
         val candidateTitle = MusicIdentityText.title(candidate.title)
+        val titleScore = scoreTitle(sourceTitle, candidateTitle, reasons, limit)
+            ?: return MatchEvaluation(candidate, score.coerceIn(0, 20), reasons)
+        score += titleScore
+        score += scoreArtists(source, sourceTitle, candidate, candidateTitle, reasons, limit)
+        score += scoreVersion(sourceTitle, candidateTitle, reasons, limit)
+        score += scoreExplicit(
+            source.explicit ?: sourceTitle.explicitHint,
+            candidate.explicit ?: candidateTitle.explicitHint,
+            reasons,
+            limit
+        )
+        score += scoreDuration(source.durationMs, candidate.durationMs, reasons, limit)
+        score += scoreAlbum(source, sourceTitle, candidate, candidateTitle, reasons)
+        score += scoreKind(candidate, reasons, limit)
+        return MatchEvaluation(candidate, score.coerceIn(0, cap), reasons)
+    }
+
+    private fun scoreTitle(
+        sourceTitle: TitleIdentity,
+        candidateTitle: TitleIdentity,
+        reasons: MutableList<MatchReason>,
+        limit: (Int) -> Unit
+    ): Int? {
         val similarity = titleSimilarity(sourceTitle, candidateTitle)
         val short = isShortTitle(sourceTitle.core)
-        when {
-            sourceTitle.core.isNotEmpty() && sourceTitle.core == candidateTitle.core -> {
-                score += 45
-                reasons += MatchReason(MatchSignal.TITLE_EXACT)
-            }
-            similarity >= 0.85 && !short -> {
-                score += 32
-                reasons += MatchReason(MatchSignal.TITLE_CLOSE)
-            }
+        return when {
+            sourceTitle.core.isNotEmpty() && sourceTitle.core == candidateTitle.core ->
+                45.also { reasons += MatchReason(MatchSignal.TITLE_EXACT) }
+            similarity >= 0.85 && !short -> 32.also { reasons += MatchReason(MatchSignal.TITLE_CLOSE) }
             similarity >= 0.6 && !short -> {
-                score += 18
                 reasons += MatchReason(MatchSignal.TITLE_WEAK)
                 limit(79)
+                18
             }
             else -> {
                 reasons += MatchReason(MatchSignal.TITLE_MISMATCH)
-                return MatchEvaluation(candidate, score.coerceIn(0, 20), reasons)
+                null
             }
         }
+    }
 
-        score += scoreArtists(source, sourceTitle, candidate, candidateTitle, reasons, limit)
-        score += scoreVersion(sourceTitle, candidateTitle, reasons, limit)
+    private fun scoreExplicit(
+        sourceExplicit: Boolean?,
+        candidateExplicit: Boolean?,
+        reasons: MutableList<MatchReason>,
+        limit: (Int) -> Unit
+    ): Int {
+        if (sourceExplicit == null || candidateExplicit == null || sourceExplicit == candidateExplicit) return 0
+        reasons += MatchReason(MatchSignal.EXPLICIT_CONFLICT, detail = if (sourceExplicit) "explicit" else "clean")
+        limit(79)
+        return -12
+    }
 
-        val sourceExplicit = source.explicit ?: sourceTitle.explicitHint
-        val candidateExplicit = candidate.explicit ?: candidateTitle.explicitHint
-        if (sourceExplicit != null && candidateExplicit != null && sourceExplicit != candidateExplicit) {
-            reasons += MatchReason(MatchSignal.EXPLICIT_CONFLICT, detail = if (sourceExplicit) "explicit" else "clean")
-            score -= 12
-            limit(79)
-        }
-
-        score += scoreDuration(source.durationMs, candidate.durationMs, reasons, limit)
-        score += scoreAlbum(source, sourceTitle, candidate, candidateTitle, reasons)
-
-        when (candidate.kind) {
-            CandidateKind.SONG -> {
-                score += 3
-                reasons += MatchReason(MatchSignal.SONG_ENTITY)
-            }
-            CandidateKind.USER_VIDEO -> {
-                score -= 6
-                reasons += MatchReason(MatchSignal.VIDEO_UPLOAD)
-            }
-            CandidateKind.OFFICIAL_VIDEO, CandidateKind.UNKNOWN -> Unit
+    private fun scoreKind(candidate: MatchCandidate, reasons: MutableList<MatchReason>, limit: (Int) -> Unit): Int {
+        val score = when (candidate.kind) {
+            CandidateKind.SONG -> 3.also { reasons += MatchReason(MatchSignal.SONG_ENTITY) }
+            CandidateKind.USER_VIDEO -> -6.also { reasons += MatchReason(MatchSignal.VIDEO_UPLOAD) }
+            CandidateKind.OFFICIAL_VIDEO, CandidateKind.UNKNOWN -> 0
         }
         if (!candidate.available) {
             reasons += MatchReason(MatchSignal.UNAVAILABLE)
             limit(50)
         }
-        return MatchEvaluation(candidate, score.coerceIn(0, cap), reasons)
+        return score
     }
 
     fun select(
@@ -341,7 +353,7 @@ object PlaylistMatchEngine {
         reasons: MutableList<MatchReason>,
         limit: (Int) -> Unit
     ): Int {
-        val difference = (sourceTitle.markers - candidateTitle.markers) + (candidateTitle.markers - sourceTitle.markers)
+        val difference = sourceTitle.markers.union(candidateTitle.markers) - sourceTitle.markers.intersect(candidateTitle.markers)
         val hard = difference.filter { it in hardMarkers }
         val medium = difference.filter { it in mediumMarkers }
         val soft = difference.filter { it in softMarkers }

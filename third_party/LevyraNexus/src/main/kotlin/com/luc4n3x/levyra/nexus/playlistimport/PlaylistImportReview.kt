@@ -53,7 +53,7 @@ data class ImportReviewCounts(
     val mergedRepeats: Int = 0
 ) {
     val matchPercent: Int
-        get() = if (total == 0) 0 else ((matched + review) * 100 / total)
+        get() = if (total == 0) 0 else (matched + review) * 100 / total
 }
 
 object PlaylistImportReview {
