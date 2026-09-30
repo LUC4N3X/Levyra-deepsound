@@ -175,110 +175,95 @@ def create_delicate_bg(width, height, top_tint, accent_tone, glow_tone=None, y_s
 
 def generate_hero_panoramic_showcase():
     """
-    Generates 00_levyra_hero_wall_player.webp with majestic 2400x1160 proportions,
-    authentic Spotify-grade -20° cascading phone flight, deep carbon-graphite foundation
-    (Charcoal Carbon to Obsidian, ZERO green, ZERO purple behind logo), diagonal parallel
-    titanium hairline rim, acoustic sound pressure rings, dynamic audio spectrum visualizer,
-    and clean editorial typography (ZERO badges).
+    Generates 00_levyra_hero_wall_player.webp with compact cinematic proportions (2400x880) matching main,
+    a fluid organic brand wave in rich Cosmic Sapphire Blue (ZERO purple on left), prominent 3D Levyra DeepSound
+    logo, clean minimal typography (ZERO badges), and an authentic -20° cascading phone flight in Spotify style.
     """
-    canvas_w, canvas_h = 2400, 1160
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (7, 8, 13, 255))
+    canvas_w, canvas_h = 2400, 880
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (8, 10, 16, 255))
 
-    # 1. Subtle, high-end studio background bloom behind the phones (Warm Amber, Deep Sapphire, Ice Cyan - ZERO green!)
-    amb = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    adraw = ImageDraw.Draw(amb)
-    adraw.ellipse((1400, 150, 2150, 950), fill=(225, 110, 20, 52))
-    adraw.ellipse((950, 200, 1600, 980), fill=(35, 90, 210, 48))
-    adraw.ellipse((1800, 150, 2400, 900), fill=(0, 180, 220, 42))
-    amb = amb.filter(ImageFilter.GaussianBlur(180))
-    canvas = Image.alpha_composite(canvas, amb)
+    # Fluid organic wave on the left (Levyra Cosmic Sapphire brand wave in pure rich blue)
+    w_canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    steps = 140
+    t = np.linspace(0, 1, steps)
+    x_start = 720
+    x_end = 450
+    c1_x = 880
+    c2_x = 380
+    xs = (1 - t)**3 * x_start + 3 * (1 - t)**2 * t * c1_x + 3 * (1 - t) * t**2 * c2_x + t**3 * x_end
+    ys = np.linspace(0, canvas_h, steps)
 
-    # 2. Sleek Diagonal Carbon Stage Transition on Left (Parallel to -20° Phone Flight)
-    poly_carbon = [(0, 0), (820, 0), (380, canvas_h), (0, canvas_h)]
-    carbon_mask = Image.new("L", (canvas_w, canvas_h), 0)
-    cm_draw = ImageDraw.Draw(carbon_mask)
-    cm_draw.polygon(poly_carbon, fill=255)
+    poly = [(0, 0)]
+    for x, y in zip(xs, ys):
+        poly.append((int(x), int(y)))
+    poly.extend([(0, canvas_h)])
 
-    # Brushed Carbon-Graphite Gradient on Left: Charcoal Carbon (24, 28, 38) to Deep Obsidian (9, 11, 15)
-    cg_arr = np.zeros((canvas_h, canvas_w, 4), dtype=np.uint8)
+    wave_mask = Image.new("L", (canvas_w, canvas_h), 0)
+    wmdraw = ImageDraw.Draw(wave_mask)
+    wmdraw.polygon(poly, fill=255)
+
+    # Rich Sapphire Blue Gradient (Top: 22, 54, 126 -> Bottom: 14, 28, 72 - ZERO purple!)
+    wg_arr = np.zeros((canvas_h, canvas_w, 4), dtype=np.uint8)
     for row in range(canvas_h):
         ratio = row / float(canvas_h)
-        cg_arr[row, :, 0] = int(24 * (1 - ratio) + 9 * ratio)
-        cg_arr[row, :, 1] = int(28 * (1 - ratio) + 11 * ratio)
-        cg_arr[row, :, 2] = int(38 * (1 - ratio) + 16 * ratio)
-        cg_arr[row, :, 3] = 252
-    carbon_layer = Image.fromarray(cg_arr, mode="RGBA")
-    carbon_canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    carbon_canvas.paste(carbon_layer, (0, 0), carbon_mask)
+        wg_arr[row, :, 0] = int(22 * (1 - ratio) + 14 * ratio)
+        wg_arr[row, :, 1] = int(54 * (1 - ratio) + 28 * ratio)
+        wg_arr[row, :, 2] = int(126 * (1 - ratio) + 72 * ratio)
+        wg_arr[row, :, 3] = 255
+    wave_grad = Image.fromarray(wg_arr, mode="RGBA")
+    w_canvas.paste(wave_grad, (0, 0), wave_mask)
 
-    # Diagonal Illuminated Hairline Rim (Electric Cyan -> Cool Titanium Silver)
-    rim_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    rdraw = ImageDraw.Draw(rim_layer)
-    p_top = (820, 0)
-    p_bot = (380, canvas_h)
-    rdraw.line([p_top, p_bot], fill=(56, 189, 248, 85), width=10)
-    rim_layer = rim_layer.filter(ImageFilter.GaussianBlur(8))
-    rdraw2 = ImageDraw.Draw(rim_layer)
-    rdraw2.line([p_top, p_bot], fill=(148, 163, 184, 160), width=3)
-    rdraw2.line([p_top, p_bot], fill=(225, 235, 250, 220), width=1)
-    carbon_canvas = Image.alpha_composite(carbon_canvas, rim_layer)
+    # Ambient glows behind wave: Electric Cyan + Deep Sapphire (ZERO purple!)
+    w_glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    gdraw = ImageDraw.Draw(w_glow)
+    gdraw.ellipse((350, 80, 880, 800), fill=(26, 115, 235, 90))
+    gdraw.ellipse((80, 120, 560, 600), fill=(20, 85, 215, 80))
+    w_glow = w_glow.filter(ImageFilter.GaussianBlur(130))
 
-    # Acoustic Resonance Circles radiating from the 3D logo into the stage
-    ring_center = (280, 310)
-    ring_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    rndraw = ImageDraw.Draw(ring_layer)
-    for radius, alpha in [(200, 24), (320, 18), (460, 14), (620, 9), (800, 6)]:
-        rndraw.arc(
-            (ring_center[0] - radius, ring_center[1] - radius, ring_center[0] + radius, ring_center[1] + radius),
-            start=290, end=430,
-            fill=(56, 189, 248, alpha),
-            width=2
-        )
-    ring_layer = ring_layer.filter(ImageFilter.GaussianBlur(2))
-    carbon_canvas = Image.alpha_composite(carbon_canvas, ring_layer)
+    # Ambient stage bloom behind phones (Warm Amber for The Weeknd, Deep Blue, Cyan)
+    r_glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    rgdraw = ImageDraw.Draw(r_glow)
+    rgdraw.ellipse((1350, 100, 2050, 720), fill=(225, 110, 20, 52))
+    rgdraw.ellipse((950, 160, 1500, 780), fill=(25, 75, 185, 45))
+    rgdraw.ellipse((1800, 120, 2380, 720), fill=(0, 180, 220, 42))
+    r_glow = r_glow.filter(ImageFilter.GaussianBlur(150))
 
-    canvas = Image.alpha_composite(canvas, carbon_canvas)
+    canvas = Image.alpha_composite(canvas, w_canvas)
+    canvas = Image.alpha_composite(canvas, w_glow)
+    canvas = Image.alpha_composite(canvas, r_glow)
 
-    # 3. Dynamic -20° Cascading Phone Flight (AUTHENTIC SPOTIFY STYLE)
+    # Cascading Phone Flight (-20° tilt - exactly as on main!)
     rot_angle = -20
 
     phones_spec = [
-        # --- UPPER / BACKGROUND ROW ---
-        ("Screenshot_20260927_140841_LEVYRA.jpg", 720, 840, -100, 1, (20, 110, 220)),
-        ("Screenshot_20260926_194706_LEVYRA.jpg", 750, 1380, -140, 2, (210, 135, 35)),
-        ("Screenshot_20260929_194827_LEVYRA.jpg", 720, 1920, -110, 1, (40, 80, 180)),
+        # Back / Upper Row
+        ("Screenshot_20260927_140841_LEVYRA.jpg", 640, 880, -110, 1),
+        ("Screenshot_20260926_194706_LEVYRA.jpg", 660, 1360, -160, 2),
+        ("Screenshot_20260929_194827_LEVYRA.jpg", 640, 1840, -120, 1),
 
-        # --- CENTER HERO ROW (In Front, Full Scale!) ---
-        ("Screenshot_20260926_171253_LEVYRA.jpg", 820, 940, 360, 4, (50, 90, 200)),
-        ("Screenshot_20260926_193948_LEVYRA.jpg", 900, 1480, 260, 5, (235, 105, 20)),
-        ("Screenshot_20260926_194603_LEVYRA.jpg", 820, 2020, 300, 4, (0, 185, 215)),
+        # Middle / Center Row
+        ("Screenshot_20260926_171253_LEVYRA.jpg", 710, 960, 300, 4),
+        ("Screenshot_20260926_193948_LEVYRA.jpg", 760, 1450, 210, 5),
+        ("Screenshot_20260926_194603_LEVYRA.jpg", 710, 1950, 250, 4),
 
-        # --- LOWER ACCENTS ---
-        ("Screenshot_20260929_195520_LEVYRA.jpg", 730, 1620, 820, 3, (80, 100, 180)),
+        # Bottom / Accents
+        ("Screenshot_20260929_195520_LEVYRA.jpg", 650, 1560, 650, 3),
+        ("Screenshot_20260929_201454_LEVYRA.jpg", 650, 2060, 680, 3),
     ]
-
     phones_spec.sort(key=lambda s: s[4])
 
-    for filename, height, px, py, z, amb_col in phones_spec:
+    for filename, height, px, py, z in phones_spec:
         s_path = resolve_screenshot_path(filename)
         if not s_path:
             continue
         with Image.open(s_path) as src:
             phone = create_clean_phone(src, target_height=height)
         rotated = phone.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
-
-        glow, gpad = create_colored_glow(rotated, amb_col, blur=56, opacity=65, offset_y=18)
-        canvas.paste(glow, (px - gpad, py - gpad), glow)
-
-        shadow, pad = create_studio_shadow(rotated, blur=48, opacity=160, offset_y=28)
+        shadow, pad = create_studio_shadow(rotated, blur=40, opacity=145, offset_y=24)
         canvas.paste(shadow, (px - pad, py - pad), shadow)
-
         canvas.paste(rotated, (px, py), rotated)
 
-    # 4. Creative Minimal Left Branding (Pure Carbon & Titanium - ZERO BADGES, ZERO PURPLE!)
-    draw = ImageDraw.Draw(canvas)
-
-    # 3D Logo Lockup
+    # Left branding: Large 3D Logo + concise punchy title (NO long descriptions, NO badges)
     logo_file = LOGO_PATH if os.path.exists(LOGO_PATH) else r"app\src\main\res\drawable\levyra_logo.png"
     with Image.open(logo_file) as l_src:
         logo = l_src.convert("RGBA")
@@ -290,29 +275,14 @@ def generate_hero_panoramic_showcase():
         logo_res = logo_crop.resize((target_logo_w, target_logo_h), Image.Resampling.LANCZOS)
 
     logo_x = 90
-    logo_y = 130
+    logo_y = (canvas_h - target_logo_h - 70) // 2
     canvas.paste(logo_res, (logo_x, logo_y), logo_res)
 
-    # Dynamic Audio Spectrum Visualizer (Acoustic equalizer accent!)
-    spec_x = logo_x + 10
-    spec_y = logo_y + target_logo_h + 40
-    bars_data = [16, 26, 42, 32, 54, 70, 48, 30, 40, 60, 76, 58, 42, 50, 66, 38, 26, 36, 22, 14]
-    for i, bh in enumerate(bars_data):
-        bx = spec_x + i * 16
-        by = spec_y + (80 - bh)
-        b_ratio = i / float(len(bars_data))
-        cr = int(56 * (1 - b_ratio) + 160 * b_ratio)
-        cg = int(189 * (1 - b_ratio) + 175 * b_ratio)
-        cb = int(248 * (1 - b_ratio) + 195 * b_ratio)
-        draw.rounded_rectangle((bx, by, bx + 6, spec_y + 80), radius=3, fill=(cr, cg, cb, 235))
-
-    # Bold Editorial Headline & Micro-signature
-    text_y = spec_y + 105
-    draw.text((logo_x + 10, text_y), "MUSIC, KEPT PERSONAL.", font=get_font(32, bold=True), fill=(255, 255, 255, 255))
-    text_y += 46
-    draw.text((logo_x + 10, text_y), "Native high-res playback · Zero ads · 100% on device", font=get_font(21, bold=False), fill=(170, 195, 225, 235))
-    text_y += 38
-    draw.text((logo_x + 10, text_y), "ANDROID • WINDOWS", font=get_font(18, bold=True), fill=(120, 145, 175, 200))
+    draw = ImageDraw.Draw(canvas)
+    text_y = logo_y + target_logo_h + 24
+    draw.text((logo_x + 10, text_y), "MUSIC, KEPT PERSONAL.", font=get_font(28, bold=True), fill=(56, 189, 248, 255))
+    text_y += 42
+    draw.text((logo_x + 10, text_y), "ANDROID • WINDOWS", font=get_font(18, bold=True), fill=(185, 205, 230, 200))
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=95, method=6)
