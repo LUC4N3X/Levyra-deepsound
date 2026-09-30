@@ -755,7 +755,7 @@ private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
 private val HOME_DENSE_SHELF_END_PADDING = 38.dp
 private val HOME_COLLECTION_CARD_WIDTH = 154.dp
 private val HOME_COLLECTION_CARD_HEIGHT = 140.dp
-private val HOME_COLLECTION_CARD_CORNER = 18.dp
+private val HOME_COLLECTION_CARD_CORNER = 8.dp
 private val HOME_COLLECTION_COMPACT_WIDTH = 168.dp
 private val HOME_COLLECTION_ART_SIZE = 58.dp
 private val HOME_COLLECTION_ART_INSET = 10.dp
@@ -11827,7 +11827,7 @@ private fun PersonalOrbitSpeedDialCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = RoundedCornerShape(2.dp)
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
     val interaction = remember { MutableInteractionSource() }
