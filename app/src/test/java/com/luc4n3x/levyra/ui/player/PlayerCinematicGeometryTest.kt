@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
@@ -27,6 +28,19 @@ class PlayerCinematicGeometryTest {
     @Test
     fun stackedCanvasUsesLongReferenceDissolve() {
         assertEquals(0.42f, PlayerCinematicStackedFade, 0f)
+    }
+
+    @Test
+    fun stackedCanvasDissolveMatchesLinearReferenceMask() {
+        val stops = playerCinematicDissolveStops(PlayerCinematicStackedFade)
+
+        assertEquals(3, stops.size)
+        assertEquals(0f, stops[0].first, 0f)
+        assertEquals(Color.Black, stops[0].second)
+        assertEquals(0.58f, stops[1].first, 0.0001f)
+        assertEquals(Color.Black, stops[1].second)
+        assertEquals(1f, stops[2].first, 0f)
+        assertEquals(Color.Transparent, stops[2].second)
     }
 
     @Test
