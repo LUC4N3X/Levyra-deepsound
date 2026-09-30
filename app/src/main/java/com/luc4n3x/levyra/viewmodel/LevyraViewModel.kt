@@ -990,6 +990,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private val detailBackStack = ArrayDeque<DetailPage>()
 
+    private class PlayerReturnDetail(
+        val showAlbum: Boolean,
+        val showArtist: Boolean,
+        val openPlaylistId: String?,
+        val playlistHitPreview: PlaylistHitPreview?,
+        val detailReturnTarget: DetailReturnTarget,
+        val backStack: List<DetailPage>
+    )
+
+    private var playerReturnDetail: PlayerReturnDetail? = null
+
     private fun pushDetailPage(page: DetailPage) {
         detailBackStack.addLast(page)
         while (detailBackStack.size > 12) {
@@ -7285,10 +7296,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openPlayerScreen() {
-        albumJob?.cancel()
-        playlistHitJob?.cancel()
-        artistJob?.cancel()
-        artistLoreJob?.cancel()
+        val returnDetail = playerReturnDetailOf(_state.value)
+        playerReturnDetail = returnDetail
+        if (returnDetail == null) {
+            albumJob?.cancel()
+            playlistHitJob?.cancel()
+            artistJob?.cancel()
+            artistLoreJob?.cancel()
+        }
         cancelPageMotion()
         detailBackStack.clear()
         _state.update {
@@ -7297,8 +7312,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 showArtist = false,
                 openPlaylist = null,
                 playlistHitPreview = null,
-                albumLoading = false,
-                artistLoading = false,
+                albumLoading = returnDetail != null && it.albumLoading,
+                artistLoading = returnDetail != null && it.artistLoading,
                 albumMotionArtwork = null,
                 artistMotionArtwork = null,
                 detailReturnTarget = DetailReturnTarget.None
@@ -7306,6 +7321,44 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         moveToTab(LevyraTab.Player, rememberCurrent = true)
         _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+    }
+
+    private fun playerReturnDetailOf(state: LevyraUiState): PlayerReturnDetail? {
+        val detailVisible = state.showAlbum || state.showArtist ||
+            state.openPlaylist != null || state.playlistHitPreview != null
+        return if (detailVisible) {
+            PlayerReturnDetail(
+                showAlbum = state.showAlbum,
+                showArtist = state.showArtist,
+                openPlaylistId = state.openPlaylist?.id,
+                playlistHitPreview = state.playlistHitPreview,
+                detailReturnTarget = state.detailReturnTarget,
+                backStack = detailBackStack.toList()
+            )
+        } else {
+            null
+        }
+    }
+
+    private fun restorePlayerReturnDetail() {
+        val saved = playerReturnDetail ?: return
+        playerReturnDetail = null
+        val current = _state.value
+        val detailVisible = current.showAlbum || current.showArtist ||
+            current.openPlaylist != null || current.playlistHitPreview != null
+        if (detailVisible) return
+        detailBackStack.clear()
+        saved.backStack.forEach(detailBackStack::addLast)
+        _state.update { state ->
+            state.copy(
+                showAlbum = saved.showAlbum,
+                showArtist = saved.showArtist,
+                openPlaylist = saved.openPlaylistId?.let { id -> state.playlists.firstOrNull { it.id == id } },
+                playlistHitPreview = saved.playlistHitPreview,
+                detailReturnTarget = saved.detailReturnTarget
+            )
+        }
+        refreshPageMotionArtwork()
     }
 
     fun playAlbumSong(track: Track) {
@@ -7994,6 +8047,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         _state.update { it.copy(selectedTab = tab) }
+        if (current == LevyraTab.Player) restorePlayerReturnDetail()
     }
 
     private fun previousTab(current: LevyraTab): LevyraTab {
