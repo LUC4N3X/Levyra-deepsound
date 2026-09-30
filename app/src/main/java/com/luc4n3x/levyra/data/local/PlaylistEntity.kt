@@ -5,8 +5,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.PlaylistCoverMode
+import com.luc4n3x.levyra.domain.Track
+import java.util.UUID
 
 @Entity(tableName = "playlists")
 data class PlaylistEntity(
@@ -21,7 +22,6 @@ data class PlaylistEntity(
 
 @Entity(
     tableName = "playlist_tracks",
-    primaryKeys = ["playlistId", "trackId"],
     foreignKeys = [
         ForeignKey(
             entity = PlaylistEntity::class,
@@ -30,9 +30,10 @@ data class PlaylistEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("playlistId")]
+    indices = [Index("playlistId"), Index(value = ["playlistId", "trackId"])]
 )
 data class PlaylistTrackEntity(
+    @PrimaryKey val entryId: String,
     val playlistId: String,
     val trackId: String,
     val position: Int,
@@ -101,8 +102,14 @@ fun PlaylistTrackEntity.toTrack(): Track = Track(
     canonicalAlbumUrl = canonicalAlbumUrl
 )
 
-fun Track.toPlaylistTrackEntity(playlistId: String, position: Int, addedAt: Long): PlaylistTrackEntity =
+fun Track.toPlaylistTrackEntity(
+    playlistId: String,
+    position: Int,
+    addedAt: Long,
+    entryId: String = UUID.randomUUID().toString()
+): PlaylistTrackEntity =
     PlaylistTrackEntity(
+        entryId = entryId,
         playlistId = playlistId,
         trackId = id,
         position = position,
