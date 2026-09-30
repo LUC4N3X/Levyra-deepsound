@@ -12,6 +12,8 @@ enum class SharedMediaKind {
     Search,
     LevyraPlaylist,
     BulkLinks,
+    ExternalPlaylist,
+    PlaylistFile,
     Unsupported
 }
 

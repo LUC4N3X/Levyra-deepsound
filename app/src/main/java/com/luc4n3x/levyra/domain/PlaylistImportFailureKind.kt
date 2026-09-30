@@ -7,5 +7,11 @@ enum class PlaylistImportFailureKind {
     NO_MATCHES,
     NETWORK,
     PROVIDER_CHANGED,
-    STORAGE
+    STORAGE,
+    UNSUPPORTED_SOURCE,
+    AUTH_REQUIRED,
+    NOT_A_PLAYLIST,
+    RATE_LIMITED,
+    FILE_MALFORMED,
+    NO_USABLE_TRACKS
 }
