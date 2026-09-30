@@ -9270,11 +9270,16 @@ private fun HomeScreen(
                         HomeMusicVideoShelf(
                             title = strings.video,
                             tracks = homeVideoTracks,
-                            currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
-                            isPlaying = state.isPlaying,
-                            isResolving = state.isResolving,
-                            onPlay = { track -> viewModel.playVideoFrom(homeVideoTracks, track) },
-                            onToggleCurrent = viewModel::togglePlay
+                            playback = HomeVideoShelfPlayback(
+                                currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving
+                            ),
+                            actions = HomeVideoShelfActions(
+                                onPlay = { track -> viewModel.playVideoFrom(homeVideoTracks, track) },
+                                onPlayAll = { first -> viewModel.playVideoQueue(homeVideoTracks, first) },
+                                onToggleCurrent = viewModel::togglePlay
+                            )
                         )
                     }
                 }
@@ -11125,23 +11130,17 @@ private fun ResonanceCommentShimmer() {
 private fun HomeMusicVideoShelf(
     title: String,
     tracks: List<Track>,
-    currentId: String?,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    onPlay: (Track) -> Unit,
-    onToggleCurrent: () -> Unit
+    playback: HomeVideoShelfPlayback,
+    actions: HomeVideoShelfActions
 ) {
+    val currentId = playback.currentId
     val videos = remember(tracks) {
         LevyraPersonalOrbit.distinctRecordings(tracks)
             .take(10)
             .map(::homeMusicVideoCardItem)
     }
     if (videos.isEmpty()) return
-    val playAll = {
-        val first = videos.first().track
-        val firstActive = currentId != null && first.id == currentId
-        if (!firstActive || !(isPlaying || isResolving)) onPlay(first)
-    }
+    val playAll = { actions.onPlayAll(videos.first().track) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionInset { HomeSectionHeader(title, onPlayAll = playAll) }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -11163,22 +11162,36 @@ private fun HomeMusicVideoShelf(
                 ) { _, item ->
                     val track = item.track
                     val active = currentId != null && track.id == currentId
-                    val activeResolving = active && isResolving
+                    val activeResolving = active && playback.isResolving
                     HomeMusicVideoCard(
                         item = item,
                         width = videoCardWidth,
                         playback = HomeVideoCardPlayback(
                             active = active,
-                            isPlaying = active && isPlaying,
+                            isPlaying = active && playback.isPlaying,
                             isResolving = activeResolving
                         ),
-                        onClick = { if (active && !activeResolving) onToggleCurrent() else onPlay(track) }
+                        onClick = {
+                            if (active && !activeResolving) actions.onToggleCurrent() else actions.onPlay(track)
+                        }
                     )
                 }
             }
         }
     }
 }
+
+private data class HomeVideoShelfPlayback(
+    val currentId: String?,
+    val isPlaying: Boolean,
+    val isResolving: Boolean
+)
+
+private class HomeVideoShelfActions(
+    val onPlay: (Track) -> Unit,
+    val onPlayAll: (Track) -> Unit,
+    val onToggleCurrent: () -> Unit
+)
 
 private data class HomeVideoCardPlayback(
     val active: Boolean,
