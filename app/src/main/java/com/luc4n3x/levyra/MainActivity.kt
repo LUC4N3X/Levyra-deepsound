@@ -50,6 +50,7 @@ import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
 import com.luc4n3x.levyra.domain.AppUpdateInfo
+import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
@@ -159,6 +160,17 @@ class MainActivity : ComponentActivity() {
 
             LevyraTheme(fontPreset = activityUiState.fontPreset) {
                 var listenedPlaybackMs by rememberSaveable { mutableLongStateOf(0L) }
+                var previousLanguageCode by remember { mutableStateOf(activityUiState.languageCode) }
+
+                LaunchedEffect(activityUiState.languageCode) {
+                    val currentLanguageCode = activityUiState.languageCode
+                    if (currentLanguageCode == previousLanguageCode) return@LaunchedEffect
+                    previousLanguageCode = currentLanguageCode
+                    val defaultRegionId = ChartsCatalog.defaultRegionForLanguage(currentLanguageCode).id
+                    if (viewModel.state.value.selectedChartId != defaultRegionId) {
+                        viewModel.selectChart(defaultRegionId)
+                    }
+                }
 
                 LaunchedEffect(activityUiState.isPlaying) {
                     if (!activityUiState.isPlaying) return@LaunchedEffect

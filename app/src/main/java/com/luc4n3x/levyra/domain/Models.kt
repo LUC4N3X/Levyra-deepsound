@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.domain
 
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import java.util.Locale
 import kotlin.math.absoluteValue
 
 data class VideoSubtitleTrack(
@@ -140,8 +141,21 @@ object ChartsCatalog {
 
     fun region(id: String): ChartRegion = regions.firstOrNull { it.id == id } ?: regions.first()
 
+    fun supportedRegion(id: String): ChartRegion? {
+        val normalized = id.trim().lowercase(Locale.ROOT)
+        return regions.firstOrNull { it.id == normalized }
+    }
+
     fun defaultRegionForLanguage(languageCode: String): ChartRegion =
         region(LevyraContentLocales.forLanguage(languageCode).chartRegionId)
+
+    fun startupRegion(storedRegionId: String, deviceCountry: String, languageCode: String): ChartRegion =
+        supportedRegion(storedRegionId)
+            ?: supportedRegion(deviceCountry)
+            ?: defaultRegionForLanguage(languageCode)
+
+    fun requiresReload(requestedId: String, currentId: String, hasCharts: Boolean, isLoading: Boolean): Boolean =
+        requestedId != currentId || (!hasCharts && !isLoading)
 }
 
 enum class LyricVocalRole {
