@@ -61,8 +61,8 @@ internal fun isPillarboxedVideoFrame(pixels: IntArray, width: Int, height: Int):
     if (width < 16 || height < 16 || pixels.size < width * height) return false
     val top = (height * 0.30f).toInt()
     val bottom = (height * 0.70f).toInt()
-    val left = sideStats(pixels, width, (width * 0.03f).toInt(), (width * 0.16f).toInt(), top, bottom)
-    val right = sideStats(pixels, width, (width * 0.84f).toInt(), (width * 0.97f).toInt(), top, bottom)
+    val left = sideStats(pixels, width, FrameRegion((width * 0.03f).toInt(), (width * 0.16f).toInt(), top, bottom))
+    val right = sideStats(pixels, width, FrameRegion((width * 0.84f).toInt(), (width * 0.97f).toInt(), top, bottom))
     val sidesMatch = left.uniform && right.uniform &&
         channelDistance(left.mean, right.mean) <= SIDE_MATCH_TOLERANCE
     return sidesMatch && centerContrasts(pixels, width, top, bottom, averageColor(left.mean, right.mean))
@@ -82,13 +82,15 @@ private fun centerContrasts(pixels: IntArray, width: Int, top: Int, bottom: Int,
 
 private class SideStats(val mean: Int, val uniform: Boolean)
 
-private fun sideStats(pixels: IntArray, width: Int, fromX: Int, toX: Int, top: Int, bottom: Int): SideStats {
+private class FrameRegion(val fromX: Int, val toX: Int, val top: Int, val bottom: Int)
+
+private fun sideStats(pixels: IntArray, width: Int, region: FrameRegion): SideStats {
     var red = 0L
     var green = 0L
     var blue = 0L
     var count = 0
-    for (y in top until bottom) {
-        for (x in fromX until toX) {
+    for (y in region.top until region.bottom) {
+        for (x in region.fromX until region.toX) {
             val color = pixels[y * width + x]
             red += (color shr 16) and 0xFF
             green += (color shr 8) and 0xFF
@@ -99,8 +101,8 @@ private fun sideStats(pixels: IntArray, width: Int, fromX: Int, toX: Int, top: I
     if (count == 0) return SideStats(0, false)
     val mean = rgb((red / count).toInt(), (green / count).toInt(), (blue / count).toInt())
     var close = 0
-    for (y in top until bottom) {
-        for (x in fromX until toX) {
+    for (y in region.top until region.bottom) {
+        for (x in region.fromX until region.toX) {
             if (channelDistance(pixels[y * width + x], mean) <= SIDE_UNIFORM_TOLERANCE) close += 1
         }
     }

@@ -11167,9 +11167,11 @@ private fun HomeMusicVideoShelf(
                     HomeMusicVideoCard(
                         item = item,
                         width = videoCardWidth,
-                        active = active,
-                        isPlaying = active && isPlaying,
-                        isResolving = activeResolving,
+                        playback = HomeVideoCardPlayback(
+                            active = active,
+                            isPlaying = active && isPlaying,
+                            isResolving = activeResolving
+                        ),
                         onClick = { if (active && !activeResolving) onToggleCurrent() else onPlay(track) }
                     )
                 }
@@ -11178,39 +11180,19 @@ private fun HomeMusicVideoShelf(
     }
 }
 
+private data class HomeVideoCardPlayback(
+    val active: Boolean,
+    val isPlaying: Boolean,
+    val isResolving: Boolean
+)
+
 @Composable
 private fun HomeMusicVideoCard(
     item: HomeVideoCardItem,
     width: Dp,
-    active: Boolean,
-    isPlaying: Boolean,
-    isResolving: Boolean,
+    playback: HomeVideoCardPlayback,
     onClick: () -> Unit
 ) {
-    val track = item.track
-    val strings = LocalLevyraStrings.current
-    val context = LocalContext.current
-    val frameVideoId = item.frameVideoId
-    var pillarboxed by remember(frameVideoId) {
-        mutableStateOf(if (frameVideoId == null) false else VideoFrameShapeCache.get(frameVideoId))
-    }
-    LaunchedEffect(frameVideoId) {
-        if (frameVideoId != null && pillarboxed == null) {
-            pillarboxed = detectPillarboxedVideoFrame(context, frameVideoId) ?: false
-        }
-    }
-    val durationLabel = remember(track.durationMs) {
-        if (track.durationMs > 0L) formatSeekbarMillis(track.durationMs) else ""
-    }
-    val metadata = remember(track.artist, track.youtubeViewCount, strings.code, strings.pulsePlays) {
-        val plays = formatSearchViewCount(track.youtubeViewCount, strings.code)
-            .takeIf(String::isNotBlank)
-            ?.let { count -> "$count ${strings.pulsePlays}" }
-            .orEmpty()
-        listOf(track.artist.trim(), plays)
-            .filter(String::isNotBlank)
-            .joinToString(" • ")
-    }
     Column(
         modifier = Modifier
             .width(width)
@@ -11225,93 +11207,128 @@ private fun HomeMusicVideoCard(
                 .clip(RectangleShape)
                 .background(LevyraAdaptiveTrack)
                 .then(
-                    if (active) {
+                    if (playback.active) {
                         Modifier.border(1.5.dp, LevyraCyan.copy(alpha = 0.86f), RectangleShape)
                     } else {
                         Modifier
                     }
                 )
         ) {
-            when (pillarboxed) {
-                null -> Unit
-                true -> {
-                    val squareArtwork = item.squareArtwork
-                    CoverImage(
-                        track = squareArtwork ?: track,
-                        modifier = Modifier.fillMaxSize(),
-                        highRes = true,
-                        zoom = if (squareArtwork != null) 1f else HOME_VIDEO_PILLARBOX_ZOOM
-                    )
-                }
-                false -> CoverImage(
-                    track = if (frameVideoId == null) item.squareArtwork ?: track else track,
-                    modifier = Modifier.fillMaxSize(),
-                    highRes = true,
-                    zoom = 1f
+            HomeMusicVideoArtwork(item)
+            HomeMusicVideoBadge(
+                durationMs = item.track.durationMs,
+                playback = playback,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+            )
+        }
+        HomeMusicVideoCaption(track = item.track, active = playback.active)
+    }
+}
+
+@Composable
+private fun HomeMusicVideoArtwork(item: HomeVideoCardItem) {
+    val context = LocalContext.current
+    val frameVideoId = item.frameVideoId
+    var pillarboxed by remember(frameVideoId) {
+        mutableStateOf(if (frameVideoId == null) false else VideoFrameShapeCache.get(frameVideoId))
+    }
+    LaunchedEffect(frameVideoId) {
+        if (frameVideoId != null && pillarboxed == null) {
+            pillarboxed = detectPillarboxedVideoFrame(context, frameVideoId) ?: false
+        }
+    }
+    val shape = pillarboxed ?: return
+    val squareArtwork = item.squareArtwork
+    val artworkTrack = when {
+        shape || frameVideoId == null -> squareArtwork ?: item.track
+        else -> item.track
+    }
+    CoverImage(
+        track = artworkTrack,
+        modifier = Modifier.fillMaxSize(),
+        highRes = true,
+        zoom = if (shape && squareArtwork == null) HOME_VIDEO_PILLARBOX_ZOOM else 1f
+    )
+}
+
+@Composable
+private fun HomeMusicVideoBadge(durationMs: Long, playback: HomeVideoCardPlayback, modifier: Modifier) {
+    val durationLabel = remember(durationMs) {
+        if (durationMs > 0L) formatSeekbarMillis(durationMs) else ""
+    }
+    if (durationLabel.isBlank() && !playback.active) return
+    Surface(
+        color = Color.Black.copy(alpha = 0.68f),
+        shape = RoundedCornerShape(6.dp),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            when {
+                playback.isResolving -> CircularProgressIndicator(
+                    modifier = Modifier.size(10.dp),
+                    strokeWidth = 1.5.dp,
+                    color = LevyraCyan
+                )
+                playback.active -> ActiveTrackEqualizer(
+                    color = LevyraCyan,
+                    isPlaying = playback.isPlaying,
+                    width = 11.dp,
+                    height = 9.dp
                 )
             }
-            if (durationLabel.isNotBlank() || active) {
-                Surface(
-                    color = Color.Black.copy(alpha = 0.68f),
-                    shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        when {
-                            isResolving -> CircularProgressIndicator(
-                                modifier = Modifier.size(10.dp),
-                                strokeWidth = 1.5.dp,
-                                color = LevyraCyan
-                            )
-                            active -> ActiveTrackEqualizer(
-                                color = LevyraCyan,
-                                isPlaying = isPlaying,
-                                width = 11.dp,
-                                height = 9.dp
-                            )
-                        }
-                        if (durationLabel.isNotBlank()) {
-                            Text(
-                                text = durationLabel,
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.2.sp,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
+            if (durationLabel.isNotBlank()) {
+                Text(
+                    text = durationLabel,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.2.sp,
+                    maxLines = 1
+                )
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = track.title,
-                color = if (active) LevyraCyan else LevyraText,
-                fontSize = 16.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.15).sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = metadata,
-                color = LevyraMuted,
-                fontSize = 13.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+    }
+}
+
+@Composable
+private fun HomeMusicVideoCaption(track: Track, active: Boolean) {
+    val strings = LocalLevyraStrings.current
+    val metadata = remember(track.artist, track.youtubeViewCount, strings.code, strings.pulsePlays) {
+        val plays = formatSearchViewCount(track.youtubeViewCount, strings.code)
+            .takeIf(String::isNotBlank)
+            ?.let { count -> "$count ${strings.pulsePlays}" }
+            .orEmpty()
+        listOf(track.artist.trim(), plays)
+            .filter(String::isNotBlank)
+            .joinToString(" • ")
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = track.title,
+            color = if (active) LevyraCyan else LevyraText,
+            fontSize = 16.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.15).sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = metadata,
+            color = LevyraMuted,
+            fontSize = 13.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
