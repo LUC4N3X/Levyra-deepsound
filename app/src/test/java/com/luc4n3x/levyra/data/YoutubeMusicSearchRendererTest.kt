@@ -201,6 +201,22 @@ class YoutubeMusicSearchRendererTest {
     }
 
     @Test
+    fun `two row carousel skips numeric collaborating artist before view count`() {
+        val track = repository.parseCarouselItem(
+            carouselItem(
+                artistRun("50 Cent", "UC_FIFTY"),
+                textRun(" & "),
+                artistRun("Coldplay", "UC_COLDPLAY"),
+                textRun(" • "),
+                textRun("7 Mln di visualizzazioni")
+            )
+        )
+
+        requireNotNull(track)
+        assertEquals(7_000_000L, track.youtubeViewCount)
+    }
+
+    @Test
     fun `carousel item keeps every collaborating artist`() {
         val track = repository.parseCarouselItem(
             carouselItem(

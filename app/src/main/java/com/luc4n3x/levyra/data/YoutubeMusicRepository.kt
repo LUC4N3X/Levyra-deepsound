@@ -2772,7 +2772,12 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             source = "YouTube Music",
             artistBrowseIds = artistReferences.map { it.browseId },
             youtubeViewCount = tokens.asSequence()
-                .filterNot { token -> artist.contains(token, ignoreCase = true) }
+                .filterNot { token ->
+                    artist.contains(token, ignoreCase = true) ||
+                        artistReferences.any { reference ->
+                            reference.name.isNotBlank() && token.contains(reference.name, ignoreCase = true)
+                        }
+                }
                 .map(::parseCompactViewCount)
                 .firstOrNull { it >= 0L }
                 ?: -1L
