@@ -224,10 +224,12 @@ internal fun toLevyraAudioOutputRoute(device: AudioDeviceInfo): LevyraAudioOutpu
     )
 }
 
-private val mediaAudioAttributes = AudioAttributes.Builder()
-    .setUsage(AudioAttributes.USAGE_MEDIA)
-    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-    .build()
+private val mediaAudioAttributes by lazy {
+    AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+        .build()
+}
 
 private val bluetoothOutputTypes = setOf(
     AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
