@@ -2119,7 +2119,12 @@ fun LevyraApp(
                     .background(LevyraBlack)
             ) {
             val dockState = rememberLevyraDockState()
-            val dockGlass = rememberGlassBackdropState(enabled = state.animationsEnabled && rememberGlassBlurAllowed())
+            val glassBlurAllowed = rememberGlassBlurAllowed()
+            val dockGlass = rememberGlassBackdropState(
+                enabled = state.interfaceSettings.liquidGlassEnabled &&
+                    state.animationsEnabled &&
+                    glassBlurAllowed
+            )
 
             val homeListState = rememberLazyListState()
             val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
