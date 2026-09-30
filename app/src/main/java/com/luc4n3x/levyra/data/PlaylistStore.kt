@@ -181,6 +181,7 @@ class PlaylistStore(context: Context) {
         dao.replaceTrackInPlace(
             playlistId,
             oldTrackId,
+            replacement.playlistEntryId.takeIf(String::isNotBlank),
             replacement.copy(streamUrl = "").toPlaylistTrackEntity(playlistId, 0, System.currentTimeMillis())
         )
     }
