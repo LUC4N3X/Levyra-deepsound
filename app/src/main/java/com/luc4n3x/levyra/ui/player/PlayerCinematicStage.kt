@@ -133,8 +133,10 @@ internal fun playerCinematicTopScrimAlpha(artworkLuminance: Float?): Float {
 
 internal fun playerCinematicUsesFullscreenCanvas(
     layout: PlayerCinematicLayout,
+    sideDissolve: Boolean,
     motionUrl: String
 ): Boolean = layout == PlayerCinematicLayout.Stacked &&
+    !sideDissolve &&
     motionUrl.lowercase(Locale.ROOT).contains(SpotifyCanvasHostMarker)
 
 @Composable
@@ -157,8 +159,9 @@ internal fun PlayerCinematicStage(
 ) {
     val stacked = geometry.layout == PlayerCinematicLayout.Stacked
     val fullscreenCanvas = motionEnabled && playerCinematicUsesFullscreenCanvas(
-        geometry.layout,
-        motionArtwork?.url.orEmpty()
+        layout = geometry.layout,
+        sideDissolve = geometry.sideDissolve,
+        motionUrl = motionArtwork?.url.orEmpty()
     )
     val sideColorField = !stacked &&
         (backgroundMode == PlayerBackgroundMode.Dynamic || backgroundMode == PlayerBackgroundMode.Blur)
