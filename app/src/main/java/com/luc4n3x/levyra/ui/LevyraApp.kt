@@ -57,8 +57,14 @@ import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
 import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
-import com.luc4n3x.levyra.ui.lyrics.LyricsShareCard
-import com.luc4n3x.levyra.ui.lyrics.LyricsShareFormat
+import com.luc4n3x.levyra.ui.lyrics.LYRICS_SHARE_MAX_LINES
+import com.luc4n3x.levyra.ui.lyrics.LyricsShareSheet
+import com.luc4n3x.levyra.ui.lyrics.LyricsShareSnapshot
+import com.luc4n3x.levyra.ui.lyrics.isLyricsShareSelectable
+import com.luc4n3x.levyra.ui.lyrics.lyricsShareSelectableCount
+import com.luc4n3x.levyra.ui.lyrics.lyricsShareSelectedLines
+import com.luc4n3x.levyra.ui.lyrics.lyricsShareSnapshot
+import com.luc4n3x.levyra.ui.lyrics.toggleLyricsShareSelection
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsAudioOutputRoute
 import com.luc4n3x.levyra.ui.lyrics.KARAOKE_VISUAL_LEAD_MS
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_INSTRUMENTAL_DOT_COUNT
@@ -102,6 +108,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -6976,7 +6985,6 @@ private fun LyricsOverlay(
     val haptics = LocalLevyraHaptics.current
     val clipboard = LocalClipboard.current
     val clipboardScope = rememberCoroutineScope()
-    val shareContext = LocalContext.current
     val latencyProfiles = state.lyricsLatencyProfiles
     val audioOutputRoute = rememberLyricsAudioOutputRoute()
     val storedLyricsOffsetMs = latencyProfiles.resolve(
@@ -6994,7 +7002,8 @@ private fun LyricsOverlay(
     var autoScrolling by remember { mutableStateOf(false) }
     var initialLyricsPositioned by remember(track?.id) { mutableStateOf(false) }
     var selectionMode by remember(track?.id) { mutableStateOf(false) }
-    var selectedVerseKeys by remember(track?.id) { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedRange by remember(track?.id) { mutableStateOf<IntRange?>(null) }
+    var shareSnapshot by remember(track?.id) { mutableStateOf<LyricsShareSnapshot?>(null) }
     var showVersions by remember(track?.id) { mutableStateOf(false) }
     var calibrateMode by remember(track?.id) { mutableStateOf(false) }
     LaunchedEffect(track?.id, audioOutputRoute?.stableKey, storedLyricsOffsetMs) {
@@ -7008,40 +7017,16 @@ private fun LyricsOverlay(
         }
     }
     LaunchedEffect(state.lyrics, showSecondaryVoices) {
-        selectedVerseKeys = emptySet()
+        selectedRange = null
         selectionMode = false
     }
-    val selectedLines = remember(visibleLyrics, selectedVerseKeys) {
-        visibleLyrics.filterIndexed { index, line -> lyricSelectionKey(index, line) in selectedVerseKeys }
+    val selectedLines = remember(visibleLyrics, selectedRange) {
+        lyricsShareSelectedLines(selectedRange, visibleLyrics)
     }
     fun selectedLyricsText(): String = selectedLines.joinToString("\n") { line ->
         buildString {
             append(line.text)
             if (showTranslation && line.translated.isNotBlank()) append("\n").append(line.translated)
-        }
-    }
-    fun shareSelectedLyrics(format: LyricsShareFormat) {
-        val selectedText = selectedLyricsText()
-        val selectedTrack = track
-        if (selectedTrack == null) {
-            val fallback = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, selectedText)
-            }
-            shareContext.startActivity(Intent.createChooser(fallback, strings.shareVia))
-            return
-        }
-        clipboardScope.launch {
-            val shareIntent = LyricsShareCard.createShareIntent(
-                context = shareContext,
-                track = selectedTrack,
-                selectedLyrics = selectedText,
-                format = format
-            ) ?: Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, selectedText)
-            }
-            shareContext.startActivity(Intent.createChooser(shareIntent, strings.shareVia))
         }
     }
     val syncedLyrics = state.lyricsSynced
@@ -7442,22 +7427,32 @@ private fun LyricsOverlay(
                                     calibrateMode = !calibrateMode
                                     if (calibrateMode) {
                                         selectionMode = false
-                                        selectedVerseKeys = emptySet()
+                                        selectedRange = null
                                     }
                                 }
                             )
                         }
                         LyricsControlChip(
-                            label = if (selectionMode) "${strings.selectVerses} · ${selectedVerseKeys.size}" else strings.selectVerses,
+                            label = if (selectionMode) {
+                                "${strings.shareLyrics} · ${lyricsShareSelectableCount(selectedRange, visibleLyrics)}/$LYRICS_SHARE_MAX_LINES"
+                            } else {
+                                strings.shareLyrics
+                            },
                             selected = selectionMode,
-                            icon = Icons.Rounded.Check,
+                            icon = Icons.Rounded.Share,
                             onClick = {
                                 selectionMode = !selectionMode
-                                if (selectionMode) calibrateMode = false
-                                if (!selectionMode) selectedVerseKeys = emptySet()
+                                if (selectionMode) {
+                                    calibrateMode = false
+                                    selectedRange = timedActiveIndex
+                                        .takeIf { syncedLyrics && it >= 0 }
+                                        ?.let { toggleLyricsShareSelection(null, it, visibleLyrics) }
+                                } else {
+                                    selectedRange = null
+                                }
                             }
                         )
-                        if (selectionMode && selectedVerseKeys.isNotEmpty()) {
+                        if (selectionMode && selectedLines.isNotEmpty()) {
                             LyricsControlChip(
                                 label = strings.copyVerses,
                                 selected = false,
@@ -7471,24 +7466,22 @@ private fun LyricsOverlay(
                                     }
                                 }
                             )
-                            LyricsControlChip(
-                                label = "${strings.shareVerses} · 1:1",
-                                selected = false,
-                                icon = Icons.Rounded.Share,
-                                onClick = { shareSelectedLyrics(LyricsShareFormat.SQUARE) }
-                            )
-                            LyricsControlChip(
-                                label = "${strings.shareVerses} · 9:16",
-                                selected = false,
-                                icon = Icons.Rounded.Share,
-                                onClick = { shareSelectedLyrics(LyricsShareFormat.STORY) }
-                            )
+                            if (!state.lyricsLoading) {
+                                LyricsControlChip(
+                                    label = strings.shareLyricsContinue,
+                                    selected = true,
+                                    icon = Icons.Rounded.Share,
+                                    onClick = {
+                                        shareSnapshot = lyricsShareSnapshot(track, selectedLines)
+                                    }
+                                )
+                            }
                             LyricsControlChip(
                                 label = strings.cancel,
                                 selected = false,
                                 icon = Icons.Rounded.Close,
                                 onClick = {
-                                    selectedVerseKeys = emptySet()
+                                    selectedRange = null
                                     selectionMode = false
                                 }
                             )
@@ -7619,8 +7612,7 @@ private fun LyricsOverlay(
                     items = visibleLyrics,
                     key = { index, line -> "${line.startMs}-${line.role.name}-$index" }
                 ) { index, line ->
-                    val selectionKey = lyricSelectionKey(index, line)
-                    val selected = selectionKey in selectedVerseKeys
+                    val selected = selectedRange?.contains(index) == true && isLyricsShareSelectable(line)
                     val timedActive = syncedLyrics && (index == timedActiveIndex || index == backgroundActiveIndex)
                     val lineInstrumentalGap = instrumentalGap?.takeIf { it.nextLineIndex == index }
                     KaraokeLyricLine(
@@ -7645,9 +7637,10 @@ private fun LyricsOverlay(
                         accentEnd = accentEnd,
                         selectionMode = selectionMode,
                         selected = selected,
+                        selectable = isLyricsShareSelectable(line),
                         onClick = {
                             if (selectionMode) {
-                                selectedVerseKeys = if (selected) selectedVerseKeys - selectionKey else selectedVerseKeys + selectionKey
+                                selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
                             } else if (calibrateMode && state.lyricsSynced) {
                                 lyricsOffsetMs = adjustLyricsOffset(
@@ -7664,11 +7657,8 @@ private fun LyricsOverlay(
                         },
                         onLongClick = {
                             selectionMode = true
-                            selectedVerseKeys = if (selected) {
-                                selectedVerseKeys - selectionKey
-                            } else {
-                                selectedVerseKeys + selectionKey
-                            }
+                            calibrateMode = false
+                            selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
                             haptics.perform(LevyraHapticAction.TrackSwipe)
                         }
                     )
@@ -7693,6 +7683,12 @@ private fun LyricsOverlay(
             }
         )
     }
+    shareSnapshot?.let { snapshot ->
+        LyricsShareSheet(
+            snapshot = snapshot,
+            onDismiss = { shareSnapshot = null }
+        )
+    }
     if (showVersions) {
         LyricsVersionDialog(
             versions = state.lyricsVersions,
@@ -7710,9 +7706,6 @@ private fun LyricsOverlay(
         )
     }
 }
-
-private fun lyricSelectionKey(index: Int, line: LyricLine): String =
-    "$index:${line.startMs}:${line.role.name}:${line.text.hashCode()}"
 
 @Composable
 private fun LyricsVersionDialog(
@@ -8030,6 +8023,7 @@ private fun KaraokeLyricLine(
     accentEnd: Color,
     selectionMode: Boolean,
     selected: Boolean,
+    selectable: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -8037,9 +8031,10 @@ private fun KaraokeLyricLine(
     val compact = viewMode == LyricsViewMode.COMPACT
     val strings = LocalLevyraStrings.current
     val currentLongClick by rememberUpdatedState(onLongClick)
-    val lineAccessibilityActions = remember(strings.selectVerses) {
+    val selectionIndicator = rememberVectorPainter(Icons.Rounded.CheckCircle)
+    val lineAccessibilityActions = remember(strings.shareLyrics) {
         listOf(
-            CustomAccessibilityAction(strings.selectVerses) {
+            CustomAccessibilityAction(strings.shareLyrics) {
                 currentLongClick()
                 true
             }
@@ -8183,14 +8178,28 @@ private fun KaraokeLyricLine(
                     else -> TransformOrigin(0f, 0.5f)
                 }
             }
+            .drawWithContent {
+                drawContent()
+                if (selected) {
+                    val indicator = 20.dp.toPx()
+                    val inset = 8.dp.toPx()
+                    val left = if (layoutDirection == LayoutDirection.Rtl) inset else size.width - indicator - inset
+                    translate(left = left, top = inset) {
+                        with(selectionIndicator) {
+                            draw(Size(indicator, indicator), colorFilter = ColorFilter.tint(Color.White))
+                        }
+                    }
+                }
+            }
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
-                onLongClickLabel = strings.selectVerses
+                onLongClickLabel = strings.shareLyrics
             )
             .semantics {
-                if (selectionMode) {
+                if (selectionMode && selectable) {
                     this.selected = selected
+                    stateDescription = if (selected) strings.shareLyricsLineSelected else strings.shareLyricsLineNotSelected
                 }
                 customActions = lineAccessibilityActions
             },
