@@ -87,19 +87,16 @@ def sharpen_orbit(block: str) -> str:
     return re.sub(pattern, "val shape = RoundedCornerShape(2.dp)", block, count=1)
 
 
-def sharpen_collection(block: str) -> str:
-    pattern = r"val shape = RoundedCornerShape\(\d+(?:\.\d+)?\.dp\)"
-    matches = re.findall(pattern, block)
-    if len(matches) != 1:
-        raise RuntimeError(f"Collections: expected one outer card shape, found {len(matches)}")
-    return re.sub(pattern, "val shape = RoundedCornerShape(8.dp)", block, count=1)
+def inspect_collection(block: str) -> str:
+    print("--- HOME_COLLECTION_FUNCTION ---")
+    print(block)
+    raise RuntimeError("Collection diagnostic complete")
 
 
 text = APP.read_text(encoding="utf-8")
 text = rewrite_function(text, "private fun PersonalOrbitSpeedDialCard(", sharpen_orbit)
-text = rewrite_function(text, "private fun HomeEditorialCollectionCard(", sharpen_collection)
+text = rewrite_function(text, "private fun HomeEditorialCollectionCard(", inspect_collection)
 APP.write_text(text, encoding="utf-8")
 
-# The helper and one-shot workflow must never remain in the PR.
 SELF.unlink(missing_ok=True)
 WORKFLOW.unlink(missing_ok=True)
