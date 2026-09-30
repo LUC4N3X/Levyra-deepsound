@@ -6,6 +6,7 @@ docs/assets/levyra-signature.png
 docs/assets/levyra-signature.webp
 docs/assets/showcase/00_levyra_hero_wall_player.webp
 docs/assets/showcase/levyra_hero_cinematic_chatgpt.png
+docs/assets/showcase/apple_music_loft_dancer_bg.jpg
 docs/assets/showcase/cards/01_home.webp
 docs/assets/showcase/cards/02_stay_with_the_song.webp
 docs/assets/showcase/cards/03_now_playing.webp
