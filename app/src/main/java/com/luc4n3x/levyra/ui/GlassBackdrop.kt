@@ -113,8 +113,11 @@ fun Modifier.glassFrost(
     onDrawFrosted: DrawScope.() -> Unit,
     onDrawFallback: DrawScope.() -> Unit
 ): Modifier = composed {
-    val active = state.enabled && state.layer != null && blurSupported
-    if (!active) {
+    if (
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+        !state.enabled ||
+        state.layer == null
+    ) {
         return@composed this.drawWithContent {
             onDrawFallback()
             drawContent()
