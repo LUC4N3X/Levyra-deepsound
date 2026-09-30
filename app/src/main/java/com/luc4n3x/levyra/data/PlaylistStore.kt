@@ -191,9 +191,7 @@ class PlaylistStore(context: Context) {
                 return@withContext existing.toPlaylist(dao.tracksOf(playlistId).map { it.toTrack() }, emptyList())
             }
         }
-        val cleanTracks = tracks
-            .filter { it.id.isNotBlank() && it.title.isNotBlank() }
-            .distinctBy { it.id }
+        val cleanTracks = validPlaylistTracks(tracks)
         require(cleanTracks.isNotEmpty()) { "Cannot create a playlist without valid tracks" }
 
         val now = System.currentTimeMillis()
@@ -203,9 +201,7 @@ class PlaylistStore(context: Context) {
             track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)
         }.orEmpty()
         val entity = PlaylistEntity(id, cleanName, cover, now, now)
-        val trackEntities = cleanTracks.mapIndexed { index, track ->
-            track.toPlaylistTrackEntity(id, index, now)
-        }
+        val trackEntities = buildPlaylistRows(id, cleanTracks, emptyList(), now)
 
         dao.createPlaylistWithTracks(entity, trackEntities)
         Playlist(id, cleanName, cover, cleanTracks, now, now)
@@ -225,23 +221,33 @@ class PlaylistStore(context: Context) {
         }
     }
 
-    suspend fun addTrack(playlistId: String, track: Track) = withContext(Dispatchers.IO) {
-        val now = System.currentTimeMillis()
-        val nextPos = (dao.maxPosition(playlistId) ?: -1) + 1
-        dao.insertTracks(listOf(track.toPlaylistTrackEntity(playlistId, nextPos, now)))
-        val cover = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
-        if (cover.isNotBlank()) dao.updateAutomaticCover(playlistId, cover, now) else dao.touch(playlistId, now)
-    }
+    suspend fun addTrack(playlistId: String, track: Track) = addTracks(playlistId, listOf(track))
 
     suspend fun addTracks(playlistId: String, tracks: List<Track>) = withContext(Dispatchers.IO) {
-        val cleanTracks = tracks
-            .filter { it.id.isNotBlank() && it.title.isNotBlank() }
-            .distinctBy { it.id }
+        val cleanTracks = validPlaylistTracks(tracks)
         if (cleanTracks.isEmpty()) return@withContext
-        val existingIds = dao.tracksOf(playlistId).mapTo(hashSetOf()) { it.trackId }
-        val pending = cleanTracks.filterNot { it.id in existingIds }
-        if (pending.isEmpty()) return@withContext
+        val existing = dao.tracksOf(playlistId)
         val now = System.currentTimeMillis()
+
+        if (existing.isNotEmpty() && cleanTracks.size > existing.size && existingOccurrencesFit(existing, cleanTracks)) {
+            val rows = buildPlaylistRows(playlistId, cleanTracks, existing, now)
+            dao.replaceTracks(playlistId, rows)
+            val cover = cleanTracks.firstNotNullOfOrNull { track ->
+                track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)
+            }.orEmpty()
+            if (cover.isNotBlank()) dao.updateAutomaticCover(playlistId, cover, now)
+            return@withContext
+        }
+
+        val existingCounts = existing.groupingBy { it.trackId }.eachCount()
+        val seenIncoming = HashMap<String, Int>()
+        val pending = cleanTracks.filter { track ->
+            val occurrence = (seenIncoming[track.id] ?: 0) + 1
+            seenIncoming[track.id] = occurrence
+            occurrence > (existingCounts[track.id] ?: 0)
+        }
+        if (pending.isEmpty()) return@withContext
+
         val startPosition = (dao.maxPosition(playlistId) ?: -1) + 1
         dao.insertTracks(pending.mapIndexed { index, track ->
             track.toPlaylistTrackEntity(playlistId, startPosition + index, now)
@@ -300,14 +306,10 @@ class PlaylistStore(context: Context) {
 
     suspend fun applyStudioEdit(playlistId: String, name: String, tracks: List<Track>): Boolean =
         withContext(Dispatchers.IO) {
-            val cleanTracks = tracks
-                .filter { it.id.isNotBlank() && it.title.isNotBlank() }
-                .distinctBy { it.id }
+            val cleanTracks = validPlaylistTracks(tracks)
             val now = System.currentTimeMillis()
-            val addedAtById = dao.tracksOf(playlistId).associate { it.trackId to it.addedAt }
-            val entities = cleanTracks.mapIndexed { index, track ->
-                track.toPlaylistTrackEntity(playlistId, index, addedAtById[track.id] ?: now)
-            }
+            val existing = dao.tracksOf(playlistId)
+            val entities = buildPlaylistRows(playlistId, cleanTracks, existing, now)
             val automaticCover = cleanTracks.firstNotNullOfOrNull { track ->
                 track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)
             }.orEmpty()
@@ -350,11 +352,14 @@ class PlaylistStore(context: Context) {
     suspend fun updateTrackMetadata(playlists: List<Playlist>) = withContext(Dispatchers.IO) {
         runCatching {
             playlists.distinctBy { it.id }.forEach { playlist ->
-                val existing = dao.tracksOf(playlist.id).associateBy { it.trackId }
-                val updates = playlist.tracks.mapNotNull { track ->
-                    existing[track.id]?.let { stored ->
-                        track.toPlaylistTrackEntity(playlist.id, stored.position, stored.addedAt)
-                    }
+                val latestById = playlist.tracks.associateBy { it.id }
+                val updates = dao.tracksOf(playlist.id).mapNotNull { stored ->
+                    latestById[stored.trackId]?.toPlaylistTrackEntity(
+                        playlistId = playlist.id,
+                        position = stored.position,
+                        addedAt = stored.addedAt,
+                        entryId = stored.entryId
+                    )
                 }
                 if (updates.isNotEmpty()) dao.insertTracks(updates)
             }
@@ -365,6 +370,37 @@ class PlaylistStore(context: Context) {
         tracks: List<Track>,
         tags: List<PlaylistTag> = emptyList()
     ): Playlist = Playlist(id, name, coverUrl, tracks, createdAt, updatedAt, tags, hidden, PlaylistCoverMode.from(coverMode))
+}
+
+private fun validPlaylistTracks(tracks: List<Track>): List<Track> =
+    tracks.filter { it.id.isNotBlank() && it.title.isNotBlank() }
+
+private fun existingOccurrencesFit(existing: List<PlaylistTrackEntity>, requested: List<Track>): Boolean {
+    val existingCounts = existing.groupingBy { it.trackId }.eachCount()
+    val requestedCounts = requested.groupingBy { it.id }.eachCount()
+    return existingCounts.all { (trackId, count) -> count <= (requestedCounts[trackId] ?: 0) }
+}
+
+private fun buildPlaylistRows(
+    playlistId: String,
+    tracks: List<Track>,
+    existing: List<PlaylistTrackEntity>,
+    now: Long
+): List<PlaylistTrackEntity> {
+    val pools = existing
+        .groupBy { it.trackId }
+        .mapValues { (_, rows) -> rows.sortedBy { it.position }.toMutableList() }
+        .toMutableMap()
+    return tracks.mapIndexed { index, track ->
+        val bucket = pools[track.id]
+        val previous = if (bucket != null && bucket.isNotEmpty()) bucket.removeAt(0) else null
+        track.toPlaylistTrackEntity(
+            playlistId = playlistId,
+            position = index,
+            addedAt = previous?.addedAt ?: now,
+            entryId = previous?.entryId ?: UUID.randomUUID().toString()
+        )
+    }
 }
 
 private fun PlaylistTagEntity.toDomain() = PlaylistTag(
