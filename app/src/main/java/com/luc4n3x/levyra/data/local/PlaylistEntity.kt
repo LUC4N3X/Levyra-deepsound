@@ -99,7 +99,8 @@ fun PlaylistTrackEntity.toTrack(): Track = Track(
     videoType = videoType,
     metadataProvider = metadataProvider,
     metadataConfidence = metadataConfidence.coerceIn(0, 100),
-    canonicalAlbumUrl = canonicalAlbumUrl
+    canonicalAlbumUrl = canonicalAlbumUrl,
+    playlistEntryId = entryId
 )
 
 fun Track.toPlaylistTrackEntity(
