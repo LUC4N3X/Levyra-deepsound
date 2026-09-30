@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -73,31 +74,44 @@ internal fun PlayerIcon(
     )
 }
 
+/**
+ * Compatibility entry point for existing player/media controls. Call sites keep their current
+ * layout and fallback colors while the shared Liquid Glass system decides the rendering path.
+ */
 fun Modifier.playerGlass(
     shape: Shape,
     fill: Color = LevyraPlayerDesign.GlassFill,
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
     gradientBorder: Boolean = false
-): Modifier = this
-    .background(fill, shape)
-    .then(
-        if (gradientBorder) {
-            Modifier.border(
-                BorderStroke(
-                    LevyraPlayerDesign.Hairline,
-                    Brush.verticalGradient(listOf(borderTop, borderBottom))
-                ),
-                shape
+): Modifier = composed {
+    val fallbackBorder = borderTop.playerMix(borderBottom, 0.5f)
+    if (!LocalLevyraLiquidGlassEnabled.current) {
+        return@composed this
+            .background(fill, shape)
+            .then(
+                if (gradientBorder) {
+                    Modifier.border(
+                        BorderStroke(
+                            LevyraPlayerDesign.Hairline,
+                            Brush.verticalGradient(listOf(borderTop, borderBottom))
+                        ),
+                        shape
+                    )
+                } else {
+                    Modifier.border(LevyraPlayerDesign.Hairline, fallbackBorder, shape)
+                }
             )
-        } else {
-            Modifier.border(
-                LevyraPlayerDesign.Hairline,
-                borderTop.playerMix(borderBottom, 0.5f),
-                shape
-            )
-        }
+    }
+
+    this.levyraGlass(
+        shape = shape,
+        baseTint = fill.copy(alpha = 1f),
+        fallbackColor = fill,
+        fallbackBorderColor = fallbackBorder,
+        intensity = LevyraGlassIntensity.Standard
     )
+}
 
 @Composable
 fun PlayerGlassIconButton(
@@ -118,8 +132,6 @@ fun PlayerGlassIconButton(
     SpringIconButton(
         onClick = onClick,
         modifier = modifier.sizeIn(
-            // Dense player rows keep the full 48dp vertical target without reserving an
-            // invisible 48dp column around every 36–40dp circular control.
             minWidth = maxOf(size, DensePlayerHorizontalTouchTarget),
             minHeight = LevyraPlayerDesign.MinimumTouchTarget
         ),
