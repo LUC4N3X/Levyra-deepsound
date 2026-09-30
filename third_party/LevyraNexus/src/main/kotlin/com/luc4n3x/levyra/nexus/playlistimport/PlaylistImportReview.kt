@@ -154,19 +154,15 @@ object PlaylistImportReview {
             local = local,
             online = online,
             ready = ready,
-            mergedRepeats = matched - ready
+            mergedRepeats = 0
         )
     }
 
-    fun commitSelection(entries: List<ImportEntry>): List<MatchCandidate> {
-        val seen = HashSet<String>()
-        return entries
-            .asSequence()
-            .filter { it.status == ImportEntryStatus.MATCHED }
-            .mapNotNull { it.selected?.candidate }
-            .filter { seen.add(it.id) }
-            .toList()
-    }
+    fun commitSelection(entries: List<ImportEntry>): List<MatchCandidate> = entries
+        .asSequence()
+        .filter { it.status == ImportEntryStatus.MATCHED }
+        .mapNotNull { it.selected?.candidate }
+        .toList()
 
     private fun mergeAlternatives(current: List<MatchEvaluation>, fresh: List<MatchEvaluation>): List<MatchEvaluation> =
         (current + fresh).distinctBy { it.candidate.id }.take(PlaylistMatchEngine.MAX_ALTERNATIVES + 1)
