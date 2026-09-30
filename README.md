@@ -117,6 +117,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <p align="center">
   <sub>Browse radio and charts, open an artist, switch to video or follow synced lyrics. Your listening stats stay on your device.</sub>
 </p>
+
 <p align="center">
   <a href="docs/assets/showcase/cards/01_home.webp"><img src="docs/assets/showcase/cards/01_home.webp?v=grid4-20260929" width="200" alt="Levyra home and personalized radio" /></a>
   <a href="docs/assets/showcase/cards/02_stay_with_the_song.webp"><img src="docs/assets/showcase/cards/02_stay_with_the_song.webp?v=grid4-20260929" width="200" alt="Levyra song and video player" /></a>
@@ -237,6 +238,7 @@ Levyra builds on ideas and work from several open-source projects:
 App logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525).
 
 Contributions and bug reports are welcome. Technical documentation and architecture notes are in the [project documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+
 ---
 
 ## ✦ Author & credits
