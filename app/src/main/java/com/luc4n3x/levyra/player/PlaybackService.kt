@@ -10,6 +10,7 @@ import android.content.SharedPreferences
 import android.media.AudioManager
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
+import android.media.MediaRouter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -92,6 +93,10 @@ import com.luc4n3x.levyra.feature.cast.RemotePlaybackBackendProvider
 import com.luc4n3x.levyra.feature.cast.RemotePlaybackState
 import com.luc4n3x.levyra.feature.cast.CastHandoffConverter
 import com.luc4n3x.levyra.feature.cast.LocalPlaybackSnapshot
+import com.luc4n3x.levyra.feature.audio.LevyraAudioOutputRepository
+import com.luc4n3x.levyra.feature.audio.LevyraAudioRouteSelectionState
+import com.luc4n3x.levyra.feature.audio.findLevyraAudioOutputDevice
+import com.luc4n3x.levyra.feature.audio.queryLevyraAudioOutputState
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
@@ -166,6 +171,8 @@ class PlaybackService : MediaLibraryService() {
     private val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
     private lateinit var playbackWakeLock: PowerManager.WakeLock
     private lateinit var playbackStateStore: SharedPreferences
+    private lateinit var audioManager: AudioManager
+    private lateinit var mediaRouter: MediaRouter
     private var serviceRecoveryAttempts = 0
     private var serviceRecoveryExhausted = false
     private var watchdogPositionMs = C.TIME_UNSET
@@ -191,6 +198,7 @@ class PlaybackService : MediaLibraryService() {
     private val audioDeviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
             refreshAudioOutputProfile()
+            refreshAudioRouteCenterState()
             if (addedDevices.any { it.isSink && isBluetoothOutputType(it.type) }) {
                 resumeAfterRouteReconnect()
             }
@@ -201,6 +209,29 @@ class PlaybackService : MediaLibraryService() {
                 lostRouteWasBluetooth = true
             }
             refreshAudioOutputProfile()
+            refreshAudioRouteCenterState()
+        }
+    }
+
+    private val mediaRouteCallback = object : MediaRouter.SimpleCallback() {
+        override fun onRouteSelected(router: MediaRouter, type: Int, info: MediaRouter.RouteInfo) {
+            refreshAudioRouteCenterState()
+        }
+
+        override fun onRouteUnselected(router: MediaRouter, type: Int, info: MediaRouter.RouteInfo) {
+            refreshAudioRouteCenterState()
+        }
+
+        override fun onRouteChanged(router: MediaRouter, info: MediaRouter.RouteInfo) {
+            refreshAudioRouteCenterState()
+        }
+    }
+
+    private val audioRouteVolumeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val streamType = intent?.getIntExtra(EXTRA_VOLUME_STREAM_TYPE, AudioManager.STREAM_MUSIC)
+                ?: AudioManager.STREAM_MUSIC
+            if (streamType == AudioManager.STREAM_MUSIC) refreshAudioRouteCenterState()
         }
     }
 
@@ -252,6 +283,8 @@ class PlaybackService : MediaLibraryService() {
         private const val PRIMARY_HANDOFF_SYNC_LEAD_MS = 120L
         private const val TRANSITION_STEP_MS = 50L
         private const val SEEK_TOLERANCE_MS = 1_500L
+        private const val AUDIO_ROUTE_SELECTION_VERIFY_MS = 1_200L
+        private const val AUDIO_ROUTE_FAILURE_FEEDBACK_MS = 4_000L
         private val ONLINE_RECOVERY_DELAYS_MS = longArrayOf(500L, 2_000L, 5_000L, 10_000L)
         private val LOCAL_RECOVERY_DELAYS_MS = longArrayOf(250L, 750L, 1_500L, 3_000L, 5_000L, 10_000L)
 
@@ -351,6 +384,15 @@ class PlaybackService : MediaLibraryService() {
             return true
         }
 
+        fun requestAudioOutput(routeKey: String?): Boolean {
+            val service = activeService ?: return false
+            service.audioRouteSelectionJob?.cancel()
+            service.audioRouteSelectionJob = service.serviceScope.launch {
+                service.selectAudioOutput(routeKey)
+            }
+            return true
+        }
+
         fun prepareQueueNext(track: com.luc4n3x.levyra.domain.Track): Boolean =
             activeService?.prepareQueueNextInternal(track) == true
 
@@ -410,6 +452,11 @@ class PlaybackService : MediaLibraryService() {
     private var routedOutputIsBluetooth = false
     private var lostRouteWasBluetooth = false
     private var deviceVolumeReceiverRegistered = false
+    private var audioRouteVolumeReceiverRegistered = false
+    private var audioRouteSelectionJob: Job? = null
+    private var audioRouteFeedbackResetJob: Job? = null
+    private var preferredAudioRouteKey: String? = null
+    private var audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
     private var systemMediaActions: SystemMediaActionController? = null
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
     private val videoSubtitleCommand by lazy { SessionCommand(ACTION_SET_VIDEO_SUBTITLE, Bundle.EMPTY) }
@@ -661,6 +708,8 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        mediaRouter = getSystemService(Context.MEDIA_ROUTER_SERVICE) as MediaRouter
         playbackStateStore = getSharedPreferences(PLAYBACK_STATE_PREFS, Context.MODE_PRIVATE)
         playbackWakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:PlaybackService")
@@ -800,8 +849,15 @@ class PlaybackService : MediaLibraryService() {
         player.skipSilenceEnabled = snapshot.skipSilence
         applyPremiumAudioSettingsInternal(snapshot.audioSettings, snapshot.audioNormalization)
         RuntimeHooks.dsp(RuntimeSignal.DSP_CREATED)
-        (getSystemService(Context.AUDIO_SERVICE) as AudioManager).registerAudioDeviceCallback(audioDeviceCallback, null)
+        audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
+        mediaRouter.addCallback(
+            MediaRouter.ROUTE_TYPE_LIVE_AUDIO,
+            mediaRouteCallback,
+            MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS
+        )
+        registerAudioRouteVolumeReceiver()
         refreshAudioOutputProfile()
+        refreshAudioRouteCenterState()
         serviceScope.launch {
             enhancedAudioProcessor.metricsState.collect {
                 _enhancedAudioMetricsFlow.value = it
@@ -958,6 +1014,8 @@ class PlaybackService : MediaLibraryService() {
             sleepTimer.state.collect { state -> _sleepTimerStateFlow.value = state }
         }
         automationSettingsJob?.cancel()
+        audioRouteSelectionJob?.cancel()
+        audioRouteFeedbackResetJob?.cancel()
         automationSettingsJob = serviceScope.launch {
             prefs.automationSettingsFlow.collect { settings ->
                 automationSettings = settings
@@ -1155,6 +1213,11 @@ class PlaybackService : MediaLibraryService() {
         sessionPlayer.addListener(object : Player.Listener {
             override fun onDeviceInfoChanged(deviceInfo: DeviceInfo) {
                 if (deviceInfo.playbackType == DeviceInfo.PLAYBACK_TYPE_REMOTE) {
+                    audioRouteSelectionJob?.cancel()
+                    audioRouteSelectionJob = null
+                    audioRouteFeedbackResetJob?.cancel()
+                    clearPreferredAudioOutput()
+                    audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
                     cancelQueueTransition()
                     cancelServicePrefetch()
                     clearPreparedQueueNextInternal()
@@ -1162,6 +1225,7 @@ class PlaybackService : MediaLibraryService() {
                 } else {
                     castHandoffJob?.cancel()
                 }
+                refreshAudioRouteCenterState()
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -1271,6 +1335,7 @@ class PlaybackService : MediaLibraryService() {
         val notificationProvider = DefaultMediaNotificationProvider(this)
         setMediaNotificationProvider(notificationProvider)
         activateServiceAndApplyPendingAudioSettings()
+        refreshAudioRouteCenterState()
         startQueueTransitionMonitor(player)
         startMemoryGuard(player)
     }
@@ -2041,6 +2106,9 @@ class PlaybackService : MediaLibraryService() {
             .setHandleAudioBecomingNoisy(false)
             .build()
             .also { transitionPlayer ->
+                preferredAudioRouteKey
+                    ?.let { findLevyraAudioOutputDevice(audioManager, it) }
+                    ?.let(transitionPlayer::setPreferredAudioDevice)
                 transitionPlayer.addAnalyticsListener(EnhancedAudioSourceFormatListener(enhancedAudio, "transition"))
                 RuntimeHooks.attachPlayer(transitionPlayer)
             }
@@ -2358,8 +2426,11 @@ class PlaybackService : MediaLibraryService() {
         activePlayer = null
         mediaSession = null
         runCatching {
-            (getSystemService(Context.AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(audioDeviceCallback)
+            audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         }
+        runCatching { mediaRouter.removeCallback(mediaRouteCallback) }
+        unregisterAudioRouteVolumeReceiver()
+        LevyraAudioOutputRepository.reset()
         super.onDestroy()
     }
 
@@ -2412,8 +2483,8 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun refreshAudioOutputProfile() {
-        val manager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-        val types = routedOutputTypes(manager)
+        if (!::audioManager.isInitialized) return
+        val types = routedOutputTypes(audioManager)
         routedOutputIsBluetooth = types.any(::isBluetoothOutputType)
         equalizerProcessor.outputProfile = when {
             types.any { it == AudioDeviceInfo.TYPE_USB_DEVICE || it == AudioDeviceInfo.TYPE_USB_HEADSET || it == AudioDeviceInfo.TYPE_USB_ACCESSORY } -> LevyraEqualizerAudioProcessor.OutputProfile.USB
@@ -2421,6 +2492,139 @@ class PlaybackService : MediaLibraryService() {
             types.any(::isBluetoothOutputType) -> LevyraEqualizerAudioProcessor.OutputProfile.BLUETOOTH
             else -> LevyraEqualizerAudioProcessor.OutputProfile.SPEAKER
         }
+    }
+
+    private fun refreshAudioRouteCenterState() {
+        if (!::audioManager.isInitialized || !::mediaRouter.isInitialized) return
+        var snapshot = queryLevyraAudioOutputState(
+            audioManager = audioManager,
+            mediaRouter = mediaRouter,
+            directSelectionAvailable = directAudioRouteSelectionAvailable(),
+            requestedRouteKey = preferredAudioRouteKey,
+            selectionState = audioRouteSelectionState
+        )
+        val requested = preferredAudioRouteKey
+        if (requested != null && snapshot.connected.none { it.routeKey == requested }) {
+            clearPreferredAudioOutput()
+            audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
+            snapshot = queryLevyraAudioOutputState(
+                audioManager,
+                mediaRouter,
+                directAudioRouteSelectionAvailable(),
+                preferredAudioRouteKey,
+                audioRouteSelectionState
+            )
+        } else if (requested != null && snapshot.active?.routeKey == requested) {
+            audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
+            snapshot = snapshot.copy(selectionState = audioRouteSelectionState)
+        } else if (requested != null && audioRouteSelectionState == LevyraAudioRouteSelectionState.Idle) {
+            clearPreferredAudioOutput()
+            snapshot = queryLevyraAudioOutputState(
+                audioManager,
+                mediaRouter,
+                directAudioRouteSelectionAvailable(),
+                preferredAudioRouteKey,
+                audioRouteSelectionState
+            )
+        }
+        LevyraAudioOutputRepository.publish(snapshot)
+    }
+
+    private suspend fun selectAudioOutput(routeKey: String?) {
+        audioRouteFeedbackResetJob?.cancel()
+        if (!directAudioRouteSelectionAvailable()) {
+            audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
+            refreshAudioRouteCenterState()
+            return
+        }
+        if (routeKey == null) {
+            clearPreferredAudioOutput()
+            audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
+            refreshAudioRouteCenterState()
+            return
+        }
+        val device = findLevyraAudioOutputDevice(audioManager, routeKey)
+        if (device == null) {
+            preferredAudioRouteKey = null
+            audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
+            refreshAudioRouteCenterState()
+            return
+        }
+        preferredAudioRouteKey = routeKey
+        audioRouteSelectionState = LevyraAudioRouteSelectionState.Applying
+        refreshAudioRouteCenterState()
+        val applied = runCatching {
+            activePlayer?.setPreferredAudioDevice(device)
+            transitionPlayer?.setPreferredAudioDevice(device)
+        }.onFailure { Timber.w(it, "Audio output preference failed") }.isSuccess
+        if (!applied) {
+            clearPreferredAudioOutput()
+            audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
+            refreshAudioRouteCenterState()
+            return
+        }
+        delay(AUDIO_ROUTE_SELECTION_VERIFY_MS)
+        val activeRouteKey = queryLevyraAudioOutputState(
+            audioManager,
+            mediaRouter,
+            directSelectionAvailable = true,
+            requestedRouteKey = preferredAudioRouteKey,
+            selectionState = audioRouteSelectionState
+        ).active?.routeKey
+        if (activeRouteKey == routeKey) {
+            audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
+        } else {
+            clearPreferredAudioOutput()
+            audioRouteSelectionState = LevyraAudioRouteSelectionState.Failed
+            scheduleAudioRouteFailureFeedbackReset()
+        }
+        refreshAudioRouteCenterState()
+    }
+
+    private fun scheduleAudioRouteFailureFeedbackReset() {
+        audioRouteFeedbackResetJob?.cancel()
+        audioRouteFeedbackResetJob = serviceScope.launch {
+            delay(AUDIO_ROUTE_FAILURE_FEEDBACK_MS)
+            if (audioRouteSelectionState == LevyraAudioRouteSelectionState.Failed) {
+                audioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
+                refreshAudioRouteCenterState()
+            }
+        }
+    }
+
+    private fun directAudioRouteSelectionAvailable(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            activePlayer != null &&
+            mediaSession?.player?.deviceInfo?.playbackType != DeviceInfo.PLAYBACK_TYPE_REMOTE
+
+    private fun clearPreferredAudioOutput() {
+        preferredAudioRouteKey = null
+        runCatching { activePlayer?.setPreferredAudioDevice(null) }
+            .onFailure { Timber.w(it, "Unable to clear preferred audio output") }
+        runCatching { transitionPlayer?.setPreferredAudioDevice(null) }
+            .onFailure { Timber.w(it, "Unable to clear transition audio output") }
+    }
+
+    private fun registerAudioRouteVolumeReceiver() {
+        if (audioRouteVolumeReceiverRegistered) return
+        val filter = IntentFilter(VOLUME_CHANGED_ACTION)
+        audioRouteVolumeReceiverRegistered = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(audioRouteVolumeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(audioRouteVolumeReceiver, filter)
+            }
+        }.isSuccess
+    }
+
+    private fun unregisterAudioRouteVolumeReceiver() {
+        if (!audioRouteVolumeReceiverRegistered) return
+        runCatching { unregisterReceiver(audioRouteVolumeReceiver) }
+        audioRouteVolumeReceiverRegistered = false
     }
 
     private fun isBluetoothOutputType(type: Int): Boolean =

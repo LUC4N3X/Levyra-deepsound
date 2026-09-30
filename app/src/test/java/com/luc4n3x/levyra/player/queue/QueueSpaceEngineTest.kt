@@ -442,6 +442,92 @@ class QueueSpaceEngineTest {
         assertFalse(tombstones.isAutomatic("a", tracks[7]))
     }
 
+    @Test
+    fun consecutivePlayNextCallsRemainFifo() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("current"), track("normal-1"), track("normal-2")))
+
+        engine.playNext(track("a"))
+        engine.playNext(track("b"))
+        engine.playNext(listOf(track("c"), track("d")))
+
+        assertEquals(
+            listOf("current", "a", "b", "c", "d", "normal-1", "normal-2"),
+            engine.state.value.tracks.map { it.id }
+        )
+    }
+
+    @Test
+    fun advancingConsumesOnlyThePlayedPendingItem() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("current"), track("normal")))
+        engine.playNext(listOf(track("a"), track("b")))
+
+        assertEquals("a", engine.next()?.id)
+        engine.playNext(track("c"))
+
+        assertEquals(listOf("current", "a", "b", "c", "normal"), engine.state.value.tracks.map { it.id })
+        assertEquals(listOf("b", "c", "normal"), engine.upcoming(3).map { it.id })
+    }
+
+    @Test
+    fun removingPendingItemsRebasesTheRemainingIntent() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("current"), track("normal")))
+        engine.playNext(listOf(track("a"), track("b"), track("c")))
+
+        engine.remove(2)
+        engine.playNext(track("d"))
+
+        assertEquals(listOf("current", "a", "c", "d", "normal"), engine.state.value.tracks.map { it.id })
+    }
+
+    @Test
+    fun directSelectionInvalidatesThePreviousPendingRegion() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("current"), track("normal-1"), track("normal-2")))
+        engine.playNext(listOf(track("a"), track("b")))
+
+        engine.select(3)
+        engine.playNext(track("c"))
+
+        assertEquals(
+            listOf("current", "a", "b", "normal-1", "c", "normal-2"),
+            engine.state.value.tracks.map { it.id }
+        )
+    }
+
+    @Test
+    fun restoringASnapshotDoesNotRestoreTransientPlayNextIntent() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("current"), track("normal")))
+        val queued = engine.playNext(listOf(track("a"), track("b")))
+
+        engine.restoreSnapshot(queued)
+        engine.playNext(track("c"))
+
+        assertEquals(listOf("current", "c", "a", "b", "normal"), engine.state.value.tracks.map { it.id })
+    }
+
+    @Test
+    fun shuffleTraversalKeepsThePendingRegionFifoAndComplete() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("current"), track("normal-1"), track("normal-2")))
+        engine.setShuffle(true)
+
+        engine.playNext(listOf(track("a"), track("b")))
+        val updated = engine.playNext(track("c"))
+
+        assertEquals(listOf("a", "b", "c"), engine.upcoming(3).map { it.id })
+        assertEquals(updated.tracks.indices.toSet(), updated.shuffleOrder.toSet())
+        assertEquals(updated.tracks.size, updated.shuffleOrder.size)
+    }
+
+    @Test
+    fun anEmptyQueueTreatsTheFirstBatchItemAsTheNewAnchor() = runBlocking {
+        val engine = restoredEngine("a", emptyList())
+
+        engine.playNext(listOf(track("a"), track("b")))
+        engine.playNext(track("c"))
+
+        assertEquals(listOf("a", "b", "c"), engine.state.value.tracks.map { it.id })
+        assertEquals("a", engine.state.value.currentTrack?.id)
+    }
+
     private suspend fun restoredEngine(spaceId: String, tracks: List<Track>): PersistentQueueEngine {
         val storage = FakeQueueSpaceStorage()
         storage.put(persisted(spaceId, tracks, currentIndex = 0, positionMs = 0L))
