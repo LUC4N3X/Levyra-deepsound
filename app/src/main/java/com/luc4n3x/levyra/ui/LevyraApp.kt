@@ -1915,6 +1915,8 @@ fun LevyraApp(
     val panelExit = LevyraMotion.panelExit(state.animationsEnabled)
     val pageEnter = LevyraMotion.pageEnter(state.animationsEnabled)
     val pageExit = LevyraMotion.pageExit(state.animationsEnabled)
+    val detailUnderPlayer = state.selectedTab == LevyraTab.Player
+    val detailEnter = if (detailUnderPlayer) EnterTransition.None else pageEnter
     val miniEnter = if (state.animationsEnabled) {
         slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing), initialOffsetY = { it / 2 }) + fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing))
     } else {
@@ -2163,6 +2165,7 @@ fun LevyraApp(
                         if (state.selectedTab != LevyraTab.Player) viewModel.selectTab(LevyraTab.Player)
                         playerExpansion.animateTo(1f, LevyraPlayerDesign.expandSpring())
                     } else {
+                        viewModel.revealPlayerReturnDetail()
                         playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
                         if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                     }
@@ -2170,6 +2173,7 @@ fun LevyraApp(
             }
             val yourSoundAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
             val collapsePlayer: () -> Unit = {
+                viewModel.revealPlayerReturnDetail()
                 expansionScope.launch {
                     if (state.animationsEnabled) {
                         playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
@@ -2205,6 +2209,7 @@ fun LevyraApp(
                             playerPredictiveBackExpansion(startExpansion, backEvent.progress)
                         )
                     }
+                    viewModel.revealPlayerReturnDetail()
                     playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
                     if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                 } catch (cancelled: CancellationException) {
@@ -2378,8 +2383,10 @@ fun LevyraApp(
                 val playerSurfaceCornerPx = with(rootDensity) { LevyraPlayerDesign.DockTrayCorner.toPx() }
                 val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
                 val playerScreenState by playerViewModel.state.collectAsStateWithLifecycle()
+                val playerAboveDetail = detailUnderPlayer && (state.showAlbum || state.showArtist || state.openPlaylist != null || state.playlistHitPreview != null)
                 Box(
                     modifier = Modifier
+                        .then(if (playerAboveDetail) Modifier.zIndex(41f) else Modifier)
                         .fillMaxSize()
                         .graphicsLayer {
                             val expansion = expansionProvider()
@@ -2732,7 +2739,7 @@ fun LevyraApp(
                 )
             }
 
-            AnimatedVisibility(visible = state.showAlbum, modifier = Modifier.zIndex(40f), enter = pageEnter, exit = pageExit) {
+            AnimatedVisibility(visible = state.showAlbum, modifier = Modifier.zIndex(40f), enter = detailEnter, exit = pageExit) {
                 AlbumOverlay(
                     state = state,
                     onPlayAll = viewModel::playCurrentAlbum,
@@ -2761,7 +2768,7 @@ fun LevyraApp(
                 )
             }
 
-            AnimatedVisibility(visible = state.showArtist, enter = pageEnter, exit = pageExit) {
+            AnimatedVisibility(visible = state.showArtist, enter = detailEnter, exit = pageExit) {
                 ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
@@ -2783,12 +2790,12 @@ fun LevyraApp(
                 )
             }
 
-            AnimatedVisibility(visible = state.openPlaylist != null, enter = pageEnter, exit = pageExit) {
+            AnimatedVisibility(visible = state.openPlaylist != null, enter = detailEnter, exit = pageExit) {
                 LevyraPlaylistDetailScreen(viewModel = viewModel, state = state)
             }
 
             val lastPlaylistHitPreview = rememberLastNonNull(state.playlistHitPreview)
-            AnimatedVisibility(visible = state.playlistHitPreview != null, enter = pageEnter, exit = pageExit) {
+            AnimatedVisibility(visible = state.playlistHitPreview != null, enter = detailEnter, exit = pageExit) {
                 lastPlaylistHitPreview?.let { preview ->
                     PlaylistHitOverlay(
                         preview = preview,

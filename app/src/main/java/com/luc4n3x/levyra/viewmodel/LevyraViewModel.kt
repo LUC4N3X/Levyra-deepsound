@@ -7350,6 +7350,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun revealPlayerReturnDetail() = restorePlayerReturnDetail()
+
     private fun restorePlayerReturnDetail() {
         val saved = playerReturnDetail ?: return
         playerReturnDetail = null
