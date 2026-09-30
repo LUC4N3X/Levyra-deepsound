@@ -176,14 +176,28 @@ class PlaylistStore(context: Context) {
         Playlist(id, name.trim().ifBlank { "Playlist" }, cover, tracks, now, now)
     }
 
-    suspend fun createWithTracks(name: String, tracks: List<Track>): Playlist = withContext(Dispatchers.IO) {
+    suspend fun replaceTrack(playlistId: String, oldTrackId: String, replacement: Track): Boolean = withContext(Dispatchers.IO) {
+        if (replacement.id.isBlank() || replacement.title.isBlank()) return@withContext false
+        dao.replaceTrackInPlace(
+            playlistId,
+            oldTrackId,
+            replacement.copy(streamUrl = "").toPlaylistTrackEntity(playlistId, 0, System.currentTimeMillis())
+        )
+    }
+
+    suspend fun createWithTracks(name: String, tracks: List<Track>, playlistId: String? = null): Playlist = withContext(Dispatchers.IO) {
+        if (playlistId != null) {
+            dao.playlist(playlistId)?.let { existing ->
+                return@withContext existing.toPlaylist(dao.tracksOf(playlistId).map { it.toTrack() }, emptyList())
+            }
+        }
         val cleanTracks = tracks
             .filter { it.id.isNotBlank() && it.title.isNotBlank() }
             .distinctBy { it.id }
         require(cleanTracks.isNotEmpty()) { "Cannot create a playlist without valid tracks" }
 
         val now = System.currentTimeMillis()
-        val id = UUID.randomUUID().toString()
+        val id = playlistId ?: UUID.randomUUID().toString()
         val cleanName = name.trim().ifBlank { "Playlist" }
         val cover = cleanTracks.firstNotNullOfOrNull { track ->
             track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)

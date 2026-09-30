@@ -38,7 +38,7 @@ class SharedMediaResolver(
             SharedMediaKind.LevyraPlaylist -> resolveLevyraPlaylist(request, languageCode)
             SharedMediaKind.BulkLinks -> resolveBulkLinks(request, languageCode)
             SharedMediaKind.Artist, SharedMediaKind.Channel, SharedMediaKind.Search -> resolveSearch(request, languageCode)
-            SharedMediaKind.Unsupported -> SharedMediaPreview(
+            SharedMediaKind.ExternalPlaylist, SharedMediaKind.PlaylistFile, SharedMediaKind.Unsupported -> SharedMediaPreview(
                 request = request,
                 title = "Link non supportato",
                 subtitle = request.url,

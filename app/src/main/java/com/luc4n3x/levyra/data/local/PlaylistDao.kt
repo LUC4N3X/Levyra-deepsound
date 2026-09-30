@@ -126,6 +126,17 @@ abstract class PlaylistDao {
     }
 
     @Transaction
+    open suspend fun replaceTrackInPlace(playlistId: String, oldTrackId: String, replacement: PlaylistTrackEntity): Boolean {
+        val current = tracksOf(playlistId)
+        val previous = current.firstOrNull { it.trackId == oldTrackId } ?: return false
+        if (replacement.trackId != oldTrackId && current.any { it.trackId == replacement.trackId }) return false
+        removeTrack(playlistId, oldTrackId)
+        insertTracks(listOf(replacement.copy(playlistId = playlistId, position = previous.position, addedAt = previous.addedAt)))
+        touch(playlistId, System.currentTimeMillis())
+        return true
+    }
+
+    @Transaction
     open suspend fun removeTracksAndCompact(playlistId: String, trackIds: Set<String>) {
         if (trackIds.isEmpty()) return
         val remaining = tracksOf(playlistId).filterNot { it.trackId in trackIds }

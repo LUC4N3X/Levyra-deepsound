@@ -2498,6 +2498,13 @@ fun LevyraApp(
                 }
             }
 
+            val playlistImportState by viewModel.playlistImport.state.collectAsStateWithLifecycle()
+            com.luc4n3x.levyra.ui.playlistimport.PlaylistImportHub(
+                state = playlistImportState,
+                controller = viewModel.playlistImport,
+                onPickFile = viewModel::importPlaylistFile
+            )
+
             state.sharedMediaPreview?.let { preview ->
                 SharedMediaPreviewDialog(
                     preview = preview,
