@@ -168,15 +168,17 @@ class YoutubePlaylistAdapter(
     override suspend fun read(input: PlaylistImportInput, detected: DetectedPlaylistInput, progress: PlaylistReadProgress): PlaylistSourceResult {
         val remote = detected as? DetectedPlaylistInput.RemotePlaylist
             ?: throw PlaylistImportException(PlaylistImportFailureKind.INVALID_INPUT, "Not a YouTube playlist")
-        val detail = repository.playlistForImport(remote.id, languageCode(), MAX_PLAYLIST_IMPORT_TRACKS) { read ->
-            progress.onRead(read, null)
+        val detail = repository.playlistForImport(remote.id, languageCode(), MAX_PLAYLIST_IMPORT_TRACKS + 1) { read ->
+            progress.onRead(read.coerceAtMost(MAX_PLAYLIST_IMPORT_TRACKS), null)
         } ?: throw PlaylistImportException(PlaylistImportFailureKind.NOT_AVAILABLE, "YouTube playlist unavailable")
         if (detail.tracks.isEmpty()) throw PlaylistImportException(PlaylistImportFailureKind.NOT_AVAILABLE, "YouTube playlist empty")
-        val identities = detail.tracks.mapIndexed { index, track -> track.toImportIdentity(index) }
-        val completeness = if (detail.continuation.isBlank()) {
-            PlaylistImportCompleteness.Complete
-        } else {
-            PlaylistImportCompleteness.Incomplete(identities.size, null, IncompleteReason.PAGINATION_STOPPED)
+        val capped = detail.tracks.size > MAX_PLAYLIST_IMPORT_TRACKS
+        val tracks = detail.tracks.take(MAX_PLAYLIST_IMPORT_TRACKS)
+        val identities = tracks.mapIndexed { index, track -> track.toImportIdentity(index) }
+        val completeness = when {
+            capped -> PlaylistImportCompleteness.Incomplete(identities.size, null, IncompleteReason.PAGINATION_STOPPED)
+            detail.continuation.isBlank() -> PlaylistImportCompleteness.Complete
+            else -> PlaylistImportCompleteness.Incomplete(identities.size, null, IncompleteReason.PAGINATION_STOPPED)
         }
         return PlaylistSourceResult(
             ParsedPlaylist(
@@ -191,7 +193,7 @@ class YoutubePlaylistAdapter(
                 identities,
                 completeness
             ),
-            directTracks = detail.tracks.associateBy { it.id }
+            directTracks = tracks.associateBy { it.id }
         )
     }
 }
