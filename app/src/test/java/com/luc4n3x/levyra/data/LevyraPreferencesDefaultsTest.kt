@@ -25,6 +25,26 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
+    fun liquidGlassDefaultsToDisabledEverywhere() {
+        assertFalse(LevyraInterfaceSettings().liquidGlassEnabled)
+        assertFalse(LevyraUiState().interfaceSettings.liquidGlassEnabled)
+        assertFalse(backupInterfaceSettingsFromJson(JSONObject()).liquidGlassEnabled)
+        assertFalse(backupInterfaceSettingsFromJson(null).liquidGlassEnabled)
+    }
+
+    @Test
+    fun backupRoundTripPreservesLiquidGlassChoice() {
+        listOf(true, false).forEach { enabled ->
+            assertEquals(
+                enabled,
+                backupInterfaceSettingsFromJson(
+                    backupInterfaceSettingsToJson(LevyraInterfaceSettings(liquidGlassEnabled = enabled))
+                ).liquidGlassEnabled
+            )
+        }
+    }
+
+    @Test
     fun backupRoundTripPreservesPreampAndLimiterSettings() {
         val restored = backupAudioSettingsFromJson(
             backupAudioSettingsToJson(

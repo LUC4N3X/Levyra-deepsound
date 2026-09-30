@@ -274,6 +274,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
@@ -18474,6 +18475,7 @@ private fun SettingsOverlay(
                 SettingsSearchEntry(strings.themeStudio, strings.themeStudioSubtitle, "${strings.theme} ${strings.themeAccent}", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.animations, strings.animationsSubtitle, strings.motionArtwork, "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.visualPerformance, strings.visualPerformanceFullSubtitle, "${strings.visualPerformanceAuto} ${strings.visualPerformanceSmooth} performance", "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.liquidGlass, strings.liquidGlassSubtitle, "glass blur transparency", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.dynamicColor, strings.dynamicColorSubtitle, strings.design, "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.appFont, strings.appFontSubtitle, "font typography text", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.pureBlack, strings.pureBlackSubtitle, "amoled black", "home", categoryTitle(strings.homeInterfaceSection)),
@@ -18729,6 +18731,17 @@ private fun SettingsOverlay(
                                         onInterfaceSettings(
                                             interfaceSettings.copy(visualPerformance = LevyraVisualPerformance.from(value))
                                         )
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.BlurOn,
+                                    title = strings.liquidGlass,
+                                    subtitle = strings.liquidGlassSubtitle,
+                                    checked = interfaceSettings.liquidGlassEnabled,
+                                    onCheckedChange = { value ->
+                                        onInterfaceSettings(interfaceSettings.copy(liquidGlassEnabled = value))
                                     }
                                 )
                             }
