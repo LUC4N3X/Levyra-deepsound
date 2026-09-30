@@ -536,11 +536,6 @@ class PlaylistImportController(
                 heal()
             }
             _state.update { it.copy(activity = PlaylistImportActivity.PREPARING) }
-            if (looksOffline()) {
-                persistNow(PlaylistImportPhase.MATCHING)
-                fail(PlaylistImportFailureKind.NETWORK, _state.value.descriptor?.source)
-                return
-            }
             enterReview(ImportReviewFilter.ALL)
         } catch (error: CancellationException) {
             throw error
@@ -554,9 +549,6 @@ class PlaylistImportController(
         _state.update { it.copy(step = PlaylistImportStep.REVIEW, filter = filter) }
         persistNow(if (session?.phase == PlaylistImportPhase.COMMITTED) PlaylistImportPhase.COMMITTED else PlaylistImportPhase.REVIEW)
     }
-
-    private fun looksOffline(): Boolean =
-        working.size >= OFFLINE_SAMPLE && working.none { it.alternatives.isNotEmpty() }
 
     private suspend fun resolvePositions(positions: List<Int>, broad: Boolean, runGeneration: Long) {
         if (positions.isEmpty()) return
@@ -599,8 +591,7 @@ class PlaylistImportController(
         val candidates = try {
             val direct = identity.directTrack(synchronized(trackCache) { trackCache[identity.directCatalogId] })
             val found = if (direct == null || broad) catalog.candidates(identity, broad) else emptyList()
-            val all = listOfNotNull(direct?.toMatchCandidate()) + found
-            all
+            listOfNotNull(direct?.toMatchCandidate()) + found
         } catch (error: CancellationException) {
             throw error
         } catch (error: IOException) {
@@ -779,7 +770,6 @@ class PlaylistImportController(
         private const val PROGRESS_INTERVAL_MS = 150L
         private const val PERSIST_EVERY = 100
         private const val PERSIST_DEBOUNCE_MS = 1_200L
-        private const val OFFLINE_SAMPLE = 5
         private const val MAX_NAME_LENGTH = 120
         private const val MAX_LABEL_LENGTH = 300
         private const val DEFAULT_NAME = "Imported playlist"
