@@ -32,29 +32,54 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toIntSize
-import com.luc4n3x.levyra.ui.components.LocalLevyraLiquidGlassEnabled
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import com.luc4n3x.levyra.ui.theme.rememberPowerSaveMode
 
 /**
- * Lightweight backdrop sampler used by Levyra's shared Liquid Glass surfaces.
+ * Lightweight, dependency-free backdrop-blur system for Levyra "real glass" panels.
  *
- * A host records only the backdrop/content that sits behind glass into one shared [GraphicsLayer].
- * Consumers sample that layer later, so a glass surface never records itself and cannot create a
- * rendering feedback loop. Full blur is allocated only when the user preference, platform and
- * visual-performance policy all allow it.
+ * The backdrop composable records itself into a shared [GraphicsLayer] via
+ * [glassBackdropSource]. Each glass panel then re-samples that layer, translated to its
+ * own on-screen position, into a private frost layer carrying a blur [AndroidRenderEffect],
+ * producing genuine frosted glass that shows the blurred backdrop underneath — instead of the
+ * previous flat translucent overlay.
+ *
+ * Everything degrades gracefully: on Android < 12 (no RenderEffect), when the shared layer is
+ * unavailable, or when the caller disables the effect (animation preference / battery saver),
+ * panels fall back to the classic translucent tint. No work runs off the main thread here; the
+ * cost is a per-frame layer record scoped to a single screen, gated by [GlassBackdropState.enabled].
  */
 @Stable
 class GlassBackdropState {
+    /** Whether real blur sampling is active. False keeps every panel on the translucent fallback. */
     var enabled: Boolean by mutableStateOf(false)
+
+    /** Shared layer holding the recorded backdrop pixels. Null until the source composes. */
     var layer: GraphicsLayer? by mutableStateOf(null)
+
+    /** Position of the backdrop source in the composition root, used to align panel samples. */
     var sourceOrigin: Offset by mutableStateOf(Offset.Zero)
 }
 
+/** Provides the active [GlassBackdropState] to descendants so panels can opt in without plumbing. */
 val LocalGlassBackdrop = compositionLocalOf<GlassBackdropState?> { null }
 
 private val blurSupported: Boolean
     get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+@Composable
+fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
+    val state = remember { GlassBackdropState() }
+    if (enabled && blurSupported) {
+        state.layer = rememberGraphicsLayer()
+        state.enabled = true
+    } else {
+        state.enabled = false
+        state.layer = null
+        state.sourceOrigin = Offset.Zero
+    }
+    return state
+}
 
 @Composable
 fun rememberGlassBlurAllowed(): Boolean {
@@ -68,27 +93,10 @@ fun rememberGlassBlurAllowed(): Boolean {
 }
 
 /**
- * Creates the shared backdrop layer only for the full Liquid Glass path. The global product toggle
- * is checked here as the final safety gate so legacy call sites cannot keep capture work alive after
- * the user switches Liquid Glass off.
+ * Marks the receiver as the blur source. Records its drawn content (backdrop gradients, aurora,
+ * motion artwork) into the shared layer every frame and draws that layer so the backdrop stays
+ * visible. Apply as the last modifier on the backdrop so it captures the inner draws.
  */
-@Composable
-fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
-    val liquidGlassEnabled = LocalLevyraLiquidGlassEnabled.current
-    val fullGlassAllowed = liquidGlassEnabled && enabled && rememberGlassBlurAllowed()
-    val state = remember { GlassBackdropState() }
-    if (fullGlassAllowed) {
-        val layer = rememberGraphicsLayer()
-        state.layer = layer
-        state.enabled = true
-    } else {
-        state.enabled = false
-        state.layer = null
-        state.sourceOrigin = Offset.Zero
-    }
-    return state
-}
-
 fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
     if (!state.enabled || state.layer == null) return this
     return this
@@ -106,6 +114,10 @@ fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
         }
 }
 
+/**
+ * Draws the blurred backdrop sample behind the receiver's content with [onDrawFrosted] on top of
+ * it. Without real blur only [onDrawFallback] is drawn, so the surface keeps a solid material.
+ */
 fun Modifier.glassFrost(
     state: GlassBackdropState,
     blurRadius: Dp = 26.dp,
@@ -157,6 +169,11 @@ fun Modifier.glassFrost(
         }
 }
 
+/**
+ * Renders the receiver as a frosted-glass surface: blurred backdrop sample + [tint] + [borderColor]
+ * outline, clipped to [shape]. Replaces a `.background(...).border(...)` pair on a panel.
+ * Falls back to a flat [fallbackColor] fill when real blur is unavailable.
+ */
 fun Modifier.glassSurface(
     state: GlassBackdropState,
     shape: Shape,

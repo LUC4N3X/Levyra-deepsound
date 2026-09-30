@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.LocalGlassBackdrop
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
@@ -74,10 +75,6 @@ internal fun PlayerIcon(
     )
 }
 
-/**
- * Compatibility entry point for existing player/media controls. Call sites keep their current
- * layout and fallback colors while the shared Liquid Glass system decides the rendering path.
- */
 fun Modifier.playerGlass(
     shape: Shape,
     fill: Color = LevyraPlayerDesign.GlassFill,
@@ -104,12 +101,14 @@ fun Modifier.playerGlass(
             )
     }
 
-    this.levyraGlass(
+    this.resolvedLevyraGlass(
+        backdrop = LocalGlassBackdrop.current,
         shape = shape,
         baseTint = fill.copy(alpha = 1f),
-        fallbackColor = fill,
         fallbackBorderColor = fallbackBorder,
-        intensity = LevyraGlassIntensity.Standard
+        intensity = LevyraGlassIntensity.Standard,
+        artworkTint = null,
+        borderWidth = LevyraPlayerDesign.Hairline
     )
 }
 
@@ -132,6 +131,8 @@ fun PlayerGlassIconButton(
     SpringIconButton(
         onClick = onClick,
         modifier = modifier.sizeIn(
+            // Dense player rows keep the full 48dp vertical target without reserving an
+            // invisible 48dp column around every 36–40dp circular control.
             minWidth = maxOf(size, DensePlayerHorizontalTouchTarget),
             minHeight = LevyraPlayerDesign.MinimumTouchTarget
         ),

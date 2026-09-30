@@ -18,13 +18,13 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.GlassBackdropState
 import com.luc4n3x.levyra.ui.LocalGlassBackdrop
 import com.luc4n3x.levyra.ui.glassSurface
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
-/** Global product preference. The root provides the persisted value once for the whole UI tree. */
-val LocalLevyraLiquidGlassEnabled = staticCompositionLocalOf { true }
+val LocalLevyraLiquidGlassEnabled = staticCompositionLocalOf { false }
 
 enum class LevyraGlassIntensity {
     Subtle,
@@ -71,13 +71,6 @@ object LevyraGlassDefaults {
     }
 }
 
-/**
- * Shared Liquid Glass modifier used by navigation, player chrome and media-page controls.
- *
- * OFF returns the supplied Levyra/Material fallback styling exactly and never enters the backdrop
- * path. ON uses the shared backdrop when available, otherwise a lightweight translucent tint and
- * edge highlight. Artwork tint is deliberately harmonized at a low weight so contrast wins.
- */
 fun Modifier.levyraGlass(
     shape: Shape,
     baseTint: Color,
@@ -92,7 +85,26 @@ fun Modifier.levyraGlass(
             .background(fallbackColor, shape)
             .border(borderWidth, fallbackBorderColor, shape)
     }
+    this.resolvedLevyraGlass(
+        backdrop = LocalGlassBackdrop.current,
+        shape = shape,
+        baseTint = baseTint,
+        fallbackBorderColor = fallbackBorderColor,
+        intensity = intensity,
+        artworkTint = artworkTint,
+        borderWidth = borderWidth
+    )
+}
 
+internal fun Modifier.resolvedLevyraGlass(
+    backdrop: GlassBackdropState?,
+    shape: Shape,
+    baseTint: Color,
+    fallbackBorderColor: Color,
+    intensity: LevyraGlassIntensity,
+    artworkTint: Color?,
+    borderWidth: Dp
+): Modifier {
     val tokens = LevyraGlassDefaults.tokens(intensity)
     val harmonizedTint = artworkTint
         ?.let { baseTint.playerMix(it, 0.10f) }
@@ -101,9 +113,8 @@ fun Modifier.levyraGlass(
     val lightweightFallback = harmonizedTint.copy(alpha = tokens.fallbackTintAlpha)
     val highlight = Color.White.copy(alpha = tokens.highlightAlpha)
     val border = fallbackBorderColor.playerMix(highlight, 0.45f)
-    val backdrop = LocalGlassBackdrop.current
 
-    if (backdrop?.enabled == true && backdrop.layer != null) {
+    return if (backdrop?.enabled == true && backdrop.layer != null) {
         this.glassSurface(
             state = backdrop,
             shape = shape,

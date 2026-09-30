@@ -25,20 +25,23 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
-    fun liquidGlassDefaultsToEnabledEverywhere() {
-        assertTrue(LevyraInterfaceSettings().liquidGlassEnabled)
-        assertTrue(LevyraUiState().interfaceSettings.liquidGlassEnabled)
-        assertTrue(backupInterfaceSettingsFromJson(JSONObject()).liquidGlassEnabled)
-        assertTrue(backupInterfaceSettingsFromJson(null).liquidGlassEnabled)
+    fun liquidGlassDefaultsToDisabledEverywhere() {
+        assertFalse(LevyraInterfaceSettings().liquidGlassEnabled)
+        assertFalse(LevyraUiState().interfaceSettings.liquidGlassEnabled)
+        assertFalse(backupInterfaceSettingsFromJson(JSONObject()).liquidGlassEnabled)
+        assertFalse(backupInterfaceSettingsFromJson(null).liquidGlassEnabled)
     }
 
     @Test
     fun backupRoundTripPreservesLiquidGlassChoice() {
-        assertFalse(
-            backupInterfaceSettingsFromJson(
-                backupInterfaceSettingsToJson(LevyraInterfaceSettings(liquidGlassEnabled = false))
-            ).liquidGlassEnabled
-        )
+        listOf(true, false).forEach { enabled ->
+            assertEquals(
+                enabled,
+                backupInterfaceSettingsFromJson(
+                    backupInterfaceSettingsToJson(LevyraInterfaceSettings(liquidGlassEnabled = enabled))
+                ).liquidGlassEnabled
+            )
+        }
     }
 
     @Test
