@@ -1,46 +1,67 @@
 package com.luc4n3x.levyra.feature.audio
 
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.media.AudioAttributes
-import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaRouter
 import android.media.MediaRouter2
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import java.security.MessageDigest
 import java.util.Locale
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class LevyraAudioOutputRoute(
     val stableKey: String?,
     val displayName: String,
     val type: Int,
-    val bluetooth: Boolean
+    val bluetooth: Boolean,
+    val deviceId: Int = -1,
+    val sampleRates: List<Int> = emptyList(),
+    val channelCounts: List<Int> = emptyList(),
+    val encodings: List<Int> = emptyList()
 ) {
+    val routeKey: String get() = stableKey ?: "device:$deviceId:$type"
     val wired: Boolean get() = type in wiredOutputTypes
     val external: Boolean get() = type in externalOutputTypes
     val speaker: Boolean get() = type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
 }
 
+enum class LevyraAudioRouteSelectionState {
+    Idle,
+    Applying,
+    Failed
+}
+
 data class LevyraAudioOutputState(
-    val active: LevyraAudioOutputRoute?,
-    val connected: List<LevyraAudioOutputRoute>,
-    val volumePercent: Int,
-    val systemSwitcherAvailable: Boolean
+    val active: LevyraAudioOutputRoute? = null,
+    val connected: List<LevyraAudioOutputRoute> = emptyList(),
+    val volumePercent: Int = 0,
+    val systemSwitcherAvailable: Boolean = false,
+    val directSelectionAvailable: Boolean = false,
+    val requestedRouteKey: String? = null,
+    val selectionState: LevyraAudioRouteSelectionState = LevyraAudioRouteSelectionState.Idle
 )
+
+object LevyraAudioOutputRepository {
+    private val _state = MutableStateFlow(LevyraAudioOutputState())
+    val state: StateFlow<LevyraAudioOutputState> = _state.asStateFlow()
+
+    internal fun publish(state: LevyraAudioOutputState) {
+        _state.value = state
+    }
+
+    internal fun reset() {
+        _state.value = LevyraAudioOutputState()
+    }
+}
 
 internal fun selectLevyraAudioOutputRoute(
     routes: List<LevyraAudioOutputRoute>,
@@ -69,46 +90,7 @@ internal fun stableLevyraAudioRouteKey(type: Int, address: String?): String? {
 
 @Composable
 fun rememberLevyraAudioOutputState(): LevyraAudioOutputState {
-    val context = LocalContext.current.applicationContext
-    val audioManager = remember(context) { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val mediaRouter = remember(context) { context.getSystemService(Context.MEDIA_ROUTER_SERVICE) as MediaRouter }
-    var state by remember(audioManager, mediaRouter) {
-        mutableStateOf(queryLevyraAudioOutputState(audioManager, mediaRouter))
-    }
-
-    DisposableEffect(context, audioManager, mediaRouter) {
-        val refresh = { state = queryLevyraAudioOutputState(audioManager, mediaRouter) }
-        val deviceCallback = object : AudioDeviceCallback() {
-            override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) = refresh()
-            override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = refresh()
-        }
-        val routeCallback = object : MediaRouter.SimpleCallback() {
-            override fun onRouteSelected(router: MediaRouter, type: Int, info: MediaRouter.RouteInfo) = refresh()
-            override fun onRouteUnselected(router: MediaRouter, type: Int, info: MediaRouter.RouteInfo) = refresh()
-            override fun onRouteChanged(router: MediaRouter, info: MediaRouter.RouteInfo) = refresh()
-        }
-        val volumeReceiver = object : BroadcastReceiver() {
-            override fun onReceive(receiverContext: Context?, intent: Intent?) {
-                val streamType = intent?.getIntExtra(EXTRA_VOLUME_STREAM_TYPE, AudioManager.STREAM_MUSIC)
-                    ?: AudioManager.STREAM_MUSIC
-                if (streamType == AudioManager.STREAM_MUSIC) refresh()
-            }
-        }
-
-        audioManager.registerAudioDeviceCallback(deviceCallback, Handler(Looper.getMainLooper()))
-        mediaRouter.addCallback(
-            MediaRouter.ROUTE_TYPE_LIVE_AUDIO,
-            routeCallback,
-            MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS
-        )
-        context.registerReceiver(volumeReceiver, IntentFilter(VOLUME_CHANGED_ACTION))
-
-        onDispose {
-            audioManager.unregisterAudioDeviceCallback(deviceCallback)
-            mediaRouter.removeCallback(routeCallback)
-            runCatching { context.unregisterReceiver(volumeReceiver) }
-        }
-    }
+    val state by LevyraAudioOutputRepository.state.collectAsState()
     return state
 }
 
@@ -128,18 +110,25 @@ fun openLevyraSystemOutputSwitcher(context: Context): Boolean {
     }.getOrDefault(false)
 }
 
-private fun queryLevyraAudioOutputState(
+internal fun queryLevyraAudioOutputState(
     audioManager: AudioManager,
-    mediaRouter: MediaRouter
+    mediaRouter: MediaRouter,
+    directSelectionAvailable: Boolean,
+    requestedRouteKey: String?,
+    selectionState: LevyraAudioRouteSelectionState
 ): LevyraAudioOutputState {
     val systemOrdered = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-    val devices = queryOutputDevices(audioManager, systemOrdered)
+    val devices = queryOutputDevices(audioManager)
     val routes = devices
         .filter(AudioDeviceInfo::isSink)
         .map(::toLevyraAudioOutputRoute)
-        .distinctBy { it.stableKey ?: "${it.type}:${it.displayName.lowercase(Locale.ROOT)}" }
+        .distinctBy(LevyraAudioOutputRoute::routeKey)
     val active = if (systemOrdered) {
-        selectLevyraAudioOutputRoute(routes, systemOrdered = true)
+        val routed = queryRoutedOutputDevices(audioManager)
+        routed.firstNotNullOfOrNull { device ->
+            routes.firstOrNull { route -> route.deviceId == device.id }
+                ?: toLevyraAudioOutputRoute(device)
+        }
     } else {
         val selected = mediaRouter.getSelectedRoute(MediaRouter.ROUTE_TYPE_LIVE_AUDIO)
         resolveLevyraPreTiramisuAudioOutputRoute(routes, selected.name?.toString(), selected.deviceType)
@@ -150,22 +139,32 @@ private fun queryLevyraAudioOutputState(
         active = active,
         connected = routes,
         volumePercent = (current.toFloat() / maximum.toFloat() * 100f).toInt().coerceIn(0, 100),
-        systemSwitcherAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+        systemSwitcherAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE,
+        directSelectionAvailable = directSelectionAvailable,
+        requestedRouteKey = requestedRouteKey,
+        selectionState = selectionState
     )
 }
 
-private fun queryOutputDevices(audioManager: AudioManager, systemOrdered: Boolean): List<AudioDeviceInfo> =
+private fun queryOutputDevices(audioManager: AudioManager): List<AudioDeviceInfo> =
     runCatching {
-        if (systemOrdered && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val attributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build()
-            audioManager.getAudioDevicesForAttributes(attributes)
-        } else {
-            audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).toList()
-        }
+        audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).toList()
     }.getOrDefault(emptyList())
+
+private fun queryRoutedOutputDevices(audioManager: AudioManager): List<AudioDeviceInfo> =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        runCatching {
+            audioManager.getAudioDevicesForAttributes(mediaAudioAttributes)
+        }.getOrDefault(emptyList())
+    } else {
+        emptyList()
+    }
+
+internal fun findLevyraAudioOutputDevice(
+    audioManager: AudioManager,
+    routeKey: String
+): AudioDeviceInfo? = queryOutputDevices(audioManager)
+    .firstOrNull { device -> toLevyraAudioOutputRoute(device).routeKey == routeKey }
 
 internal fun resolveLevyraPreTiramisuAudioOutputRoute(
     routes: List<LevyraAudioOutputRoute>,
@@ -206,7 +205,7 @@ internal fun resolveLevyraPreTiramisuAudioOutputRoute(
     }
 }
 
-private fun toLevyraAudioOutputRoute(device: AudioDeviceInfo): LevyraAudioOutputRoute {
+internal fun toLevyraAudioOutputRoute(device: AudioDeviceInfo): LevyraAudioOutputRoute {
     val name = device.productName.toString().trim()
     val address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         runCatching { device.address }.getOrNull().orEmpty()
@@ -215,14 +214,20 @@ private fun toLevyraAudioOutputRoute(device: AudioDeviceInfo): LevyraAudioOutput
     }
     return LevyraAudioOutputRoute(
         stableKey = stableLevyraAudioRouteKey(device.type, address),
-        displayName = name.ifBlank { "Audio" },
+        displayName = name,
         type = device.type,
-        bluetooth = device.type in bluetoothOutputTypes
+        bluetooth = device.type in bluetoothOutputTypes,
+        deviceId = device.id,
+        sampleRates = device.sampleRates.filter { it > 0 }.distinct().sorted(),
+        channelCounts = device.channelCounts.filter { it > 0 }.distinct().sorted(),
+        encodings = device.encodings.filter { it > 0 }.distinct().sorted()
     )
 }
 
-private const val VOLUME_CHANGED_ACTION = "android.media.VOLUME_CHANGED_ACTION"
-private const val EXTRA_VOLUME_STREAM_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
+private val mediaAudioAttributes = AudioAttributes.Builder()
+    .setUsage(AudioAttributes.USAGE_MEDIA)
+    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+    .build()
 
 private val bluetoothOutputTypes = setOf(
     AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,

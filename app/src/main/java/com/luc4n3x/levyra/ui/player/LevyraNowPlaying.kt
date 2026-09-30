@@ -125,6 +125,7 @@ import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
 import com.luc4n3x.levyra.ui.levyraFoldAwareGutterDp
@@ -252,11 +253,16 @@ fun LevyraNowPlaying(
             repeat = strings.repeat
         )
     }
+    val systemPlayerCopy = remember(strings) { strings.systemPlayerCopy() }
     var showActions by remember { mutableStateOf(false) }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
+    var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isVideoMode, track == null) {
-        if (state.isVideoMode || track == null) showDeck = false
+        if (state.isVideoMode || track == null) {
+            showDeck = false
+            showAudioRouteCenter = false
+        }
     }
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableIntStateOf(0) }
@@ -409,6 +415,7 @@ fun LevyraNowPlaying(
 
         val headerTrailingCount = listOf(
             !state.isVideoMode && !liveRadio,
+            !state.isVideoMode && track != null,
             state.isVideoMode,
             state.isVideoMode && track?.videoSubtitleTracks?.isNotEmpty() == true,
             state.isVideoMode && state.videoQuality.available,
@@ -458,6 +465,18 @@ fun LevyraNowPlaying(
         val headerTrailing: @Composable () -> Unit = {
             if (!state.isVideoMode && !liveRadio) {
                 CastRouteButton(modifier = Modifier.size(headerButtonSize))
+            }
+            if (!state.isVideoMode && track != null) {
+                PlayerGlassIconButton(
+                    icon = Icons.AutoMirrored.Rounded.VolumeUp,
+                    contentDescription = systemPlayerCopy.outputTitle,
+                    size = headerButtonSize,
+                    iconSize = 20.dp,
+                    fill = headerButtonFill,
+                    borderTop = headerButtonBorder,
+                    borderBottom = headerButtonBorder,
+                    onClick = { showAudioRouteCenter = true }
+                )
             }
             if (state.isVideoMode) {
                 if (track?.videoSubtitleTracks?.isNotEmpty() == true) {
@@ -1269,6 +1288,14 @@ fun LevyraNowPlaying(
                 audioSettings = state.audioSettings,
                 audioNormalization = state.audioNormalization,
                 onDismiss = { showTechnicalAudioInfo = false }
+            )
+        }
+
+        if (showAudioRouteCenter && track != null && !state.isVideoMode) {
+            AudioRouteCenterSheet(
+                surfaces = surfaces,
+                animated = animated,
+                onDismiss = { showAudioRouteCenter = false }
             )
         }
 
