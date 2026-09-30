@@ -1,58 +1,26 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
-import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
-import com.luc4n3x.levyra.domain.Playlist
-import com.luc4n3x.levyra.feature.sharedmedia.LevyraSharedPlaylist
-import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
+import com.luc4n3x.levyra.data.playlistimport.toImportIdentity
+import com.luc4n3x.levyra.data.playlistimport.toMatchCandidate
 import com.luc4n3x.levyra.domain.Track
-import java.io.IOException
+import com.luc4n3x.levyra.feature.sharedmedia.LevyraSharedPlaylist
+import com.luc4n3x.levyra.nexus.playlistimport.ImportedTrackIdentity
+import com.luc4n3x.levyra.nexus.playlistimport.PlaylistMatchEngine
+import com.luc4n3x.levyra.nexus.playlistimport.PlaylistTextParsers
 import java.net.InetAddress
-import java.net.URI
-import java.net.URLDecoder
-import java.net.UnknownHostException
-import java.text.Normalizer
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.TimeUnit
-import kotlin.math.abs
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.Dns
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
 import timber.log.Timber
-
-sealed class PlaylistImportResult {
-    data class Success(
-        val playlist: Playlist,
-        val importedCount: Int,
-        val requestedCount: Int = importedCount,
-        val unmatched: List<String> = emptyList()
-    ) : PlaylistImportResult()
-
-    data class Failure(
-        val kind: PlaylistImportFailureKind,
-        val limit: Int? = null
-    ) : PlaylistImportResult()
-}
 
 internal data class SpotifyPlaylistPage(
     val title: String,
@@ -67,14 +35,8 @@ internal data class SpotifyTrackMetadata(
     val artworkUrl: String
 )
 
-internal const val MAX_JSON_IMPORT_TRACKS = 500
-private const val MAX_SPOTIFY_IMPORT_TRACKS = 100
-private const val MAX_IMPORT_INPUT_CHARS = 2_000_000
-private const val IMPORT_RESOLUTION_CONCURRENCY = 4
-private const val IMPORT_CANDIDATE_LIMIT = 5
-private const val MIN_IMPORT_CANDIDATE_SCORE = 170
-private const val MAX_SPOTIFY_REDIRECTS = 4
-private const val MAX_SPOTIFY_HTML_BYTES = 768L * 1024L
+private const val SHARED_RESOLUTION_CONCURRENCY = 4
+private const val SHARED_CANDIDATE_LIMIT = 8
 private val YOUTUBE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 private val META_TAG_PATTERN = Regex("""<meta\b[^>]*>""", RegexOption.IGNORE_CASE)
 private val META_ATTRIBUTE_PATTERN = Regex(
@@ -83,19 +45,6 @@ private val META_ATTRIBUTE_PATTERN = Regex(
 )
 private val DECIMAL_HTML_ENTITY = Regex("""&#(\d+);""")
 private val HEX_HTML_ENTITY = Regex("&#x([0-9A-Fa-f]+);")
-private val IMPORT_VARIANT_MARKERS = listOf(
-    "live",
-    "remix",
-    "cover",
-    "karaoke",
-    "instrumental",
-    "sped up",
-    "slowed",
-    "nightcore",
-    "acoustic",
-    "remaster",
-    "radio edit"
-)
 
 internal fun parseSpotifyPlaylistPage(html: String): SpotifyPlaylistPage {
     val title = spotifyMetaValues(html, "og:title")
@@ -151,16 +100,6 @@ private fun spotifyArtistFromDescription(twitter: String, generic: String, title
     }
     return genericParts.firstOrNull().orEmpty().trim().takeUnless { it.equals(title, ignoreCase = true) }.orEmpty()
 }
-
-internal fun importedDurationMs(item: JSONObject): Long {
-    val explicitMs = item.optLong("durationMs", 0L)
-    if (explicitMs > 0L) return explicitMs
-    val duration = item.optLong("duration", 0L)
-    if (duration <= 0L) return 0L
-    return if (duration > 86_400L) duration else duration * 1000L
-}
-
-internal fun jsonImportTrackCountAccepted(count: Int): Boolean = count in 0..MAX_JSON_IMPORT_TRACKS
 
 internal fun validateSpotifyImportUrl(value: String): HttpUrl? {
     val url = value.trim().toHttpUrlOrNull() ?: return null
@@ -231,609 +170,71 @@ private fun decodeHtmlEntities(value: String): String {
 private fun codePointToString(codePoint: Int): String =
     runCatching { String(Character.toChars(codePoint)) }.getOrDefault("")
 
-internal fun playlistImportCandidateScore(
-    sourceTitle: String,
-    sourceArtist: String,
-    sourceDurationMs: Long,
-    candidate: Track
-): Int {
-    val titleSimilarity = importTextSimilarity(sourceTitle, candidate.title)
-    if (titleSimilarity < 52) return Int.MIN_VALUE
-
-    val hasArtistSignal = sourceArtist.isNotBlank()
-    val artistSimilarity = if (hasArtistSignal) importTextSimilarity(sourceArtist, candidate.artist) else 60
-    if (hasArtistSignal && artistSimilarity < 35) return Int.MIN_VALUE
-
-    var score = titleSimilarity * 2 + artistSimilarity
-    if (sourceDurationMs > 0L && candidate.durationMs > 0L) {
-        score += when (abs(sourceDurationMs - candidate.durationMs)) {
-            in 0L..3_000L -> 30
-            in 3_001L..8_000L -> 20
-            in 8_001L..15_000L -> 10
-            in 30_001L..Long.MAX_VALUE -> -25
-            else -> 0
-        }
-    }
-
-    val sourceVariants = importVariantFlags(sourceTitle)
-    val candidateVariants = importVariantFlags(candidate.title)
-    score -= (sourceVariants union candidateVariants).count { marker ->
-        (marker in sourceVariants) != (marker in candidateVariants)
-    } * 35
-    return score
-}
-
 internal fun bestPlaylistImportCandidate(
-    sourceTitle: String,
-    sourceArtist: String,
-    sourceDurationMs: Long,
+    identity: ImportedTrackIdentity,
     candidates: List<Track>
-): Track? = candidates
-    .map { candidate -> candidate to playlistImportCandidateScore(sourceTitle, sourceArtist, sourceDurationMs, candidate) }
-    .maxByOrNull { it.second }
-    ?.takeIf { it.second >= MIN_IMPORT_CANDIDATE_SCORE }
-    ?.first
-
-private fun importTextSimilarity(left: String, right: String): Int {
-    val a = normalizeImportText(left)
-    val b = normalizeImportText(right)
-    if (a.isBlank() || b.isBlank()) return 0
-    if (a == b) return 100
-    val aTokens = a.split(' ').filter(String::isNotBlank).toSet()
-    val bTokens = b.split(' ').filter(String::isNotBlank).toSet()
-    if (aTokens.isEmpty() || bTokens.isEmpty()) return 0
-    val intersection = aTokens.intersect(bTokens).size.toDouble()
-    val f1 = (2.0 * intersection / (aTokens.size + bTokens.size).toDouble() * 100.0).toInt()
-    val containment = if (a.contains(b) || b.contains(a)) 72 else 0
-    return maxOf(f1, containment).coerceIn(0, 100)
+): Track? {
+    val tracksById = candidates.associateBy { it.id }
+    val outcome = PlaylistMatchEngine.select(identity, candidates.map { it.toMatchCandidate().candidate })
+    return outcome.selected?.takeIf { outcome.confidence.autoAccepted }?.candidate?.id?.let(tracksById::get)
 }
-
-private fun normalizeImportText(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
-    .replace(Regex("""\p{M}+"""), "")
-    .lowercase(Locale.ROOT)
-    .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
-    .replace(Regex("""\s+"""), " ")
-    .trim()
-
-private fun importVariantFlags(value: String): Set<String> {
-    val normalized = normalizeImportText(value)
-    return IMPORT_VARIANT_MARKERS.filterTo(linkedSetOf()) { marker -> normalized.contains(marker) }
-}
-
-private class PlaylistImportException(
-    val kind: PlaylistImportFailureKind,
-    message: String,
-    cause: Throwable? = null
-) : IOException(message, cause)
 
 class UniversalPlaylistImporter(
     context: Context,
     private val playlistStore: PlaylistStore = PlaylistStore(context),
-    private val youtubeRepository: YoutubeMusicRepository = YoutubeMusicRepository(context),
-    httpClient: OkHttpClient = LevyraHttpClientFactory.media(context.applicationContext)
+    private val youtubeRepository: YoutubeMusicRepository = YoutubeMusicRepository(context)
 ) {
-    private val baseSpotifyDns = httpClient.dns
-    private val spotifyHttpClient = httpClient.newBuilder()
-        .dns(object : Dns {
-            override fun lookup(hostname: String): List<InetAddress> {
-                val host = hostname.lowercase(Locale.ROOT)
-                if (!isAllowedSpotifyHost(host)) throw UnknownHostException("Spotify host not allowed")
-                val addresses = baseSpotifyDns.lookup(hostname)
-                if (addresses.isEmpty() || addresses.any { !isPublicNetworkAddress(it) }) {
-                    throw UnknownHostException("Spotify destination is not public")
-                }
-                return addresses
-            }
-        })
-        .followRedirects(false)
-        .followSslRedirects(false)
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .writeTimeout(8, TimeUnit.SECONDS)
-        .callTimeout(15, TimeUnit.SECONDS)
-        .build()
-
-    suspend fun importFromUrlOrJson(
-        input: String,
-        customName: String? = null,
-        languageCode: String = "en"
-    ): PlaylistImportResult = withContext(Dispatchers.IO) {
-        val trimmed = input.trim()
-        if (trimmed.isBlank()) return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
-        if (trimmed.length > MAX_IMPORT_INPUT_CHARS) {
-            return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.TOO_LARGE)
-        }
-
-        try {
-            when {
-                trimmed.startsWith("{") || trimmed.startsWith("[") -> importFromJson(trimmed, customName, languageCode)
-                isYoutubeUrl(trimmed) -> importFromYoutubeUrl(trimmed, customName, languageCode)
-                isSpotifyUrl(trimmed) -> importFromSpotifyUrl(trimmed, customName, languageCode)
-                else -> PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
-            }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: PlaylistImportException) {
-            Timber.w(error, "Playlist import provider failure")
-            PlaylistImportResult.Failure(error.kind)
-        } catch (error: JSONException) {
-            Timber.d(error, "Invalid playlist JSON")
-            PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
-        } catch (error: IOException) {
-            Timber.w(error, "Playlist import network failure")
-            PlaylistImportResult.Failure(PlaylistImportFailureKind.NETWORK)
-        } catch (error: Throwable) {
-            Timber.w(error, "Playlist import failed")
-            PlaylistImportResult.Failure(PlaylistImportFailureKind.PROVIDER_CHANGED)
-        }
-    }
-
-    private suspend fun importFromYoutubeUrl(
-        url: String,
-        customName: String?,
-        languageCode: String
-    ): PlaylistImportResult {
-        val listId = extractQueryParam(url, "list")
-        if (listId.isBlank()) return PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
-
-        val fetchedPlaylist = youtubeRepository.playlist(listId, languageCode, 300)
-            ?: return PlaylistImportResult.Failure(PlaylistImportFailureKind.NOT_AVAILABLE)
-        if (fetchedPlaylist.tracks.isEmpty()) {
-            return PlaylistImportResult.Failure(PlaylistImportFailureKind.NOT_AVAILABLE)
-        }
-
-        val name = customName?.ifBlank { null } ?: fetchedPlaylist.title.ifBlank { "YouTube Playlist" }
-        return persistPlaylist(name, fetchedPlaylist.tracks, fetchedPlaylist.tracks.size)
-    }
-
-    private suspend fun importFromSpotifyUrl(
-        url: String,
-        customName: String?,
-        languageCode: String
-    ): PlaylistImportResult {
-        val page = parseSpotifyPlaylistPage(fetchSpotifyText(url))
-        if (page.trackUrls.isEmpty()) {
-            return PlaylistImportResult.Failure(PlaylistImportFailureKind.NOT_AVAILABLE)
-        }
-
-        val requestedCount = maxOf(page.declaredTrackCount ?: 0, page.trackUrls.size)
-        val limiter = Semaphore(IMPORT_RESOLUTION_CONCURRENCY)
-        val resolvedTracks = coroutineScope {
-            page.trackUrls.take(MAX_SPOTIFY_IMPORT_TRACKS).map { trackUrl ->
-                async {
-                    limiter.withPermit {
-                        try {
-                            val metadata = parseSpotifyTrackPage(fetchSpotifyText(trackUrl)) ?: return@withPermit null
-                            val resolved = resolveBestTrack(
-                                metadata.title,
-                                metadata.artist,
-                                metadata.durationMs,
-                                languageCode
-                            ) ?: return@withPermit null
-                            resolved.copy(
-                                thumbnailUrl = resolved.thumbnailUrl.ifBlank { metadata.artworkUrl },
-                                largeThumbnailUrl = resolved.largeThumbnailUrl.ifBlank {
-                                    resolved.thumbnailUrl.ifBlank { metadata.artworkUrl }
-                                },
-                                durationMs = resolved.durationMs.takeIf { it > 0L } ?: metadata.durationMs,
-                                source = "Spotify import"
-                            )
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (error: Throwable) {
-                            Timber.d(error, "Skipping unresolved Spotify track %s", trackUrl)
-                            null
-                        }
-                    }
-                }
-            }.awaitAll().filterNotNull()
-        }
-
-        if (resolvedTracks.isEmpty()) {
-            return PlaylistImportResult.Failure(PlaylistImportFailureKind.NO_MATCHES)
-        }
-        val name = customName?.ifBlank { null } ?: page.title
-        return persistPlaylist(name, resolvedTracks, requestedCount.coerceAtLeast(resolvedTracks.size))
-    }
-
-    private suspend fun importFromJson(
-        jsonText: String,
-        customName: String?,
-        languageCode: String
-    ): PlaylistImportResult {
-        val rawTracks = mutableListOf<Track>()
-        var extractedName: String? = null
-        val requestedCount: Int
-
-        if (jsonText.startsWith("[")) {
-            val array = JSONArray(jsonText)
-            requestedCount = array.length()
-            if (!jsonImportTrackCountAccepted(requestedCount)) {
-                return PlaylistImportResult.Failure(PlaylistImportFailureKind.TOO_LARGE, MAX_JSON_IMPORT_TRACKS)
-            }
-            parseJsonArrayToTracks(array, rawTracks)
-        } else {
-            val obj = JSONObject(jsonText)
-            extractedName = obj.optString("name").ifBlank { obj.optString("title").ifBlank { null } }
-            val tracksArray = obj.optJSONArray("tracks")
-                ?: obj.optJSONArray("songs")
-                ?: obj.optJSONArray("queue")
-                ?: return PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
-            requestedCount = tracksArray.length()
-            if (!jsonImportTrackCountAccepted(requestedCount)) {
-                return PlaylistImportResult.Failure(PlaylistImportFailureKind.TOO_LARGE, MAX_JSON_IMPORT_TRACKS)
-            }
-            parseJsonArrayToTracks(tracksArray, rawTracks)
-        }
-
-        if (rawTracks.isEmpty()) return PlaylistImportResult.Failure(PlaylistImportFailureKind.NO_MATCHES)
-        val playableTracks = resolveImportedTracks(rawTracks, languageCode)
-        if (playableTracks.isEmpty()) return PlaylistImportResult.Failure(PlaylistImportFailureKind.NO_MATCHES)
-        val name = customName?.ifBlank { null } ?: extractedName ?: "Imported Playlist"
-        return persistPlaylist(name, playableTracks, requestedCount)
-    }
-
     suspend fun resolveSharedPlaylistTracks(
         playlist: LevyraSharedPlaylist,
         languageCode: String = "en"
     ): List<Track> = withContext(Dispatchers.IO) {
-        resolveImportedTracks(sharedPlaylistTracks(playlist), languageCode)
-    }
-
-    suspend fun importSharedPlaylist(
-        playlist: LevyraSharedPlaylist,
-        customName: String? = null,
-        languageCode: String = "en"
-    ): PlaylistImportResult = withContext(Dispatchers.IO) {
-        if (!jsonImportTrackCountAccepted(playlist.tracks.size)) {
-            return@withContext PlaylistImportResult.Failure(
-                PlaylistImportFailureKind.TOO_LARGE,
-                MAX_JSON_IMPORT_TRACKS
-            )
-        }
-        val rawTracks = sharedPlaylistTracks(playlist)
-        if (rawTracks.isEmpty()) {
-            return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
-        }
-        try {
-            val playableTracks = resolveImportedTracks(rawTracks, languageCode)
-            if (playableTracks.isEmpty()) {
-                return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.NO_MATCHES)
-            }
-            val name = customName?.ifBlank { null }
-                ?: playlist.title.ifBlank { null }
-                ?: "Levyra Playlist"
-            persistPlaylist(name, playableTracks, rawTracks.size)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: IOException) {
-            Timber.w(error, "Shared playlist import network failure")
-            PlaylistImportResult.Failure(PlaylistImportFailureKind.NETWORK)
-        } catch (error: Throwable) {
-            Timber.w(error, "Shared playlist import failure")
-            PlaylistImportResult.Failure(PlaylistImportFailureKind.NOT_AVAILABLE)
-        }
-    }
-
-    suspend fun importFromSpotifyCsv(
-        csvText: String,
-        customName: String? = null,
-        languageCode: String = "en",
-        onProgress: (Int, Int) -> Unit = { _, _ -> }
-    ): PlaylistImportResult = withContext(Dispatchers.IO) {
-        if (csvText.length > MAX_IMPORT_INPUT_CHARS) {
-            return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.TOO_LARGE)
-        }
-        val entries = parseSpotifyCsv(csvText)
-        if (entries.isEmpty()) {
-            return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
-        }
-        if (entries.size > MAX_JSON_IMPORT_TRACKS) {
-            return@withContext PlaylistImportResult.Failure(
-                PlaylistImportFailureKind.TOO_LARGE,
-                MAX_JSON_IMPORT_TRACKS
-            )
-        }
-
-        try {
-            val processed = AtomicInteger(0)
-            val limiter = Semaphore(IMPORT_RESOLUTION_CONCURRENCY)
-            val matches = coroutineScope {
-                entries.map { entry ->
+        val limiter = Semaphore(SHARED_RESOLUTION_CONCURRENCY)
+        coroutineScope {
+            playlist.tracks
+                .filter { it.id.isNotBlank() }
+                .distinctBy { it.id }
+                .mapIndexed { index, shared ->
                     async {
-                        val resolved = limiter.withPermit {
+                        if (YOUTUBE_VIDEO_ID.matches(shared.id)) return@async sharedTrack(shared.id, shared.title, shared.artist)
+                        limiter.withPermit {
                             try {
-                                resolveBestTrack(entry.title, entry.artist, entry.durationMs, languageCode)
+                                val identity = ImportedTrackIdentity(index, shared.title, PlaylistTextParsers.splitArtists(shared.artist))
+                                val query = listOf(shared.title, identity.primaryArtist).filter(String::isNotBlank).joinToString(" ")
+                                if (query.length < 2) return@withPermit null
+                                bestPlaylistImportCandidate(identity, youtubeRepository.search(query, SHARED_CANDIDATE_LIMIT, languageCode))
                             } catch (error: CancellationException) {
                                 throw error
-                            } catch (error: Throwable) {
-                                Timber.d(error, "Skipping unresolved CSV entry")
+                            } catch (error: Exception) {
+                                Timber.d(error, "Shared playlist entry could not be resolved")
                                 null
                             }
                         }
-                        onProgress(processed.incrementAndGet(), entries.size)
-                        entry to resolved
-                    }
-                }.awaitAll()
-            }
-
-            val resolvedTracks = matches.mapNotNull { (entry, track) ->
-                track?.copy(
-                    durationMs = track.durationMs.takeIf { it > 0L } ?: entry.durationMs,
-                    source = "Spotify import"
-                )
-            }
-            val unmatched = matches.filter { it.second == null }.map { spotifyCsvEntryLabel(it.first) }
-            if (resolvedTracks.isEmpty()) {
-                return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.NO_MATCHES)
-            }
-
-            val name = customName?.trim()?.ifBlank { null } ?: "Spotify Import"
-            when (val persisted = persistPlaylist(name, resolvedTracks, entries.size)) {
-                is PlaylistImportResult.Success -> persisted.copy(unmatched = unmatched)
-                is PlaylistImportResult.Failure -> persisted
-            }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: IOException) {
-            Timber.w(error, "Spotify CSV import network failure")
-            PlaylistImportResult.Failure(PlaylistImportFailureKind.NETWORK)
-        } catch (error: Throwable) {
-            Timber.w(error, "Spotify CSV import failed")
-            PlaylistImportResult.Failure(PlaylistImportFailureKind.NOT_AVAILABLE)
-        }
-    }
-
-    private suspend fun resolveImportedTracks(tracks: List<Track>, languageCode: String): List<Track> {
-        val limiter = Semaphore(IMPORT_RESOLUTION_CONCURRENCY)
-        return coroutineScope {
-            tracks.take(MAX_JSON_IMPORT_TRACKS).map { track ->
-                async {
-                    if (YOUTUBE_VIDEO_ID.matches(track.id)) return@async track
-                    limiter.withPermit {
-                        try {
-                            val resolved = resolveBestTrack(
-                                track.title,
-                                track.artist,
-                                track.durationMs,
-                                languageCode
-                            ) ?: return@withPermit null
-                            resolved.copy(
-                                thumbnailUrl = track.thumbnailUrl.ifBlank { resolved.thumbnailUrl },
-                                largeThumbnailUrl = track.largeThumbnailUrl.ifBlank {
-                                    track.thumbnailUrl.ifBlank { resolved.largeThumbnailUrl.ifBlank { resolved.thumbnailUrl } }
-                                },
-                                durationMs = resolved.durationMs.takeIf { it > 0L } ?: track.durationMs,
-                                source = "Imported playlist"
-                            )
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (_: Throwable) {
-                            null
-                        }
                     }
                 }
-            }.awaitAll().filterNotNull()
+                .awaitAll()
+                .filterNotNull()
         }
     }
 
-    private suspend fun resolveBestTrack(
-        title: String,
-        artist: String,
-        durationMs: Long,
-        languageCode: String
-    ): Track? {
-        val query = listOf(title, artist).filter(String::isNotBlank).joinToString(" ")
-        if (query.isBlank()) return null
-        val candidates = youtubeRepository.search(query, IMPORT_CANDIDATE_LIMIT, languageCode)
-        return bestPlaylistImportCandidate(title, artist, durationMs, candidates)
-    }
-
-    private fun sharedPlaylistTracks(playlist: LevyraSharedPlaylist): List<Track> = playlist.tracks
-        .asSequence()
-        .filter { it.id.isNotBlank() }
-        .distinctBy { it.id }
-        .take(MAX_JSON_IMPORT_TRACKS)
-        .map { shared ->
-            Track(
-                id = shared.id,
-                title = shared.title.ifBlank { shared.id },
-                artist = shared.artist,
-                album = "",
-                durationMs = 0L,
-                streamUrl = "",
-                videoUrl = if (YOUTUBE_VIDEO_ID.matches(shared.id)) {
-                    "https://www.youtube.com/watch?v=${shared.id}"
-                } else {
-                    ""
-                },
-                thumbnailUrl = "",
-                largeThumbnailUrl = "",
-                source = "Levyra playlist",
-                moodTags = setOf("music", "shared"),
-                energy = 50,
-                vocal = 50,
-                replayScore = 50,
-                cacheScore = 50,
-                accentStart = 0,
-                accentEnd = 0
-            )
-        }
-        .toList()
-
-    private fun parseJsonArrayToTracks(array: JSONArray, outTracks: MutableList<Track>) {
-        val boundedLength = minOf(array.length(), MAX_JSON_IMPORT_TRACKS)
-        for (index in 0 until boundedLength) {
-            val item = array.optJSONObject(index) ?: continue
-            val id = item.optString("videoId").ifBlank { item.optString("id") }.trim()
-            val title = item.optString("title").ifBlank { item.optString("name") }.trim()
-            if (id.isBlank() || title.isBlank()) continue
-
-            val artist = importedArtist(item)
-            val album = item.optString("album").ifBlank { item.optString("albumName") }.trim()
-            val thumb = item.optString("thumbnailUrl")
-                .ifBlank { item.optString("artworkUrl") }
-                .ifBlank { item.optString("thumbnail") }
-                .trim()
-            outTracks += Track(
-                id = id,
-                title = title,
-                artist = artist,
-                album = album,
-                durationMs = importedDurationMs(item),
-                streamUrl = "",
-                videoUrl = if (YOUTUBE_VIDEO_ID.matches(id)) "https://www.youtube.com/watch?v=$id" else "",
-                thumbnailUrl = thumb,
-                largeThumbnailUrl = thumb,
-                source = "Imported playlist",
-                moodTags = setOf("music", "imported"),
-                energy = 50,
-                vocal = 50,
-                replayScore = 50,
-                cacheScore = 50,
-                accentStart = 0,
-                accentEnd = 0
-            )
-        }
-    }
-
-    private fun importedArtist(item: JSONObject): String {
-        val direct = item.optString("artist").ifBlank { item.optString("artistName") }.trim()
-        if (direct.isNotBlank()) return direct
-        val artists = item.optJSONArray("artists") ?: return ""
-        return buildList {
-            for (index in 0 until artists.length()) {
-                val value = artists.opt(index)
-                val name = when (value) {
-                    is JSONObject -> value.optString("name")
-                    is String -> value
-                    else -> ""
-                }.trim()
-                if (name.isNotBlank()) add(name)
-            }
-        }.distinct().joinToString(", ")
-    }
-
-    private suspend fun persistPlaylist(
-        name: String,
-        tracks: List<Track>,
-        requestedCount: Int
-    ): PlaylistImportResult {
-        val cleanTracks = tracks
-            .filter { it.id.isNotBlank() && it.title.isNotBlank() }
-            .distinctBy { it.id }
-        if (cleanTracks.isEmpty()) return PlaylistImportResult.Failure(PlaylistImportFailureKind.NO_MATCHES)
-
-        return try {
-            val created = playlistStore.createWithTracks(name, cleanTracks)
-            PlaylistImportResult.Success(created, cleanTracks.size, requestedCount.coerceAtLeast(cleanTracks.size))
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            Timber.w(error, "Unable to persist imported playlist")
-            PlaylistImportResult.Failure(PlaylistImportFailureKind.STORAGE)
-        }
-    }
-
-    private suspend fun fetchSpotifyText(url: String): String {
-        var currentUrl = validateSpotifyImportUrl(url)
-            ?: throw PlaylistImportException(PlaylistImportFailureKind.INVALID_INPUT, "Invalid Spotify URL")
-        var redirectCount = 0
-
-        while (true) {
-            val request = Request.Builder()
-                .url(currentUrl)
-                .header("User-Agent", "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36")
-                .header("Accept", "text/html,application/xhtml+xml")
-                .get()
-                .build()
-            val response = executeSpotifyRequest(request)
-            try {
-                if (response.code in SPOTIFY_REDIRECT_CODES) {
-                    if (redirectCount >= MAX_SPOTIFY_REDIRECTS) {
-                        throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Too many Spotify redirects")
-                    }
-                    val location = response.header("Location")
-                        ?: throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Missing Spotify redirect location")
-                    val next = currentUrl.resolve(location)
-                        ?: throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Invalid Spotify redirect")
-                    currentUrl = validateSpotifyImportUrl(next.toString())
-                        ?: throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Spotify redirect not allowed")
-                    redirectCount += 1
-                    continue
-                }
-
-                if (response.code == 403 || response.code == 404) {
-                    throw PlaylistImportException(PlaylistImportFailureKind.NOT_AVAILABLE, "Spotify playlist unavailable")
-                }
-                if (response.code == 429 || response.code >= 500) {
-                    throw PlaylistImportException(PlaylistImportFailureKind.NETWORK, "Spotify service temporarily unavailable")
-                }
-                if (!response.isSuccessful) {
-                    throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Unexpected Spotify response ${response.code}")
-                }
-
-                val body = response.body
-                if (!spotifyHtmlContentTypeAccepted(body.contentType()?.toString())) {
-                    throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Spotify response is not HTML")
-                }
-                val declaredLength = body.contentLength()
-                if (declaredLength > MAX_SPOTIFY_HTML_BYTES) {
-                    throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Spotify response is too large")
-                }
-                val html = body.byteStream().use { input ->
-                    readUtf8Bounded(input, MAX_SPOTIFY_HTML_BYTES)
-                        ?: throw PlaylistImportException(PlaylistImportFailureKind.PROVIDER_CHANGED, "Spotify response is too large")
-                }
-                return spotifyHeadOnly(html)
-            } finally {
-                response.close()
-            }
-        }
-    }
-
-    private suspend fun executeSpotifyRequest(request: Request): Response = suspendCancellableCoroutine { continuation ->
-        val call = spotifyHttpClient.newCall(request)
-        continuation.invokeOnCancellation { call.cancel() }
-        call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                if (continuation.isActive) {
-                    continuation.resumeWithException(e)
-                }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                if (!continuation.isActive) {
-                    response.close()
-                    return
-                }
-                continuation.resume(response) { _, value, _ -> value.close() }
-            }
-        })
-    }
-
-    private fun isYoutubeUrl(value: String): Boolean {
-        val uri = runCatching { URI(value) }.getOrNull() ?: return false
-        if (!uri.scheme.equals("https", ignoreCase = true)) return false
-        val host = uri.host.orEmpty().lowercase(Locale.ROOT)
-        return host == "youtube.com" || host.endsWith(".youtube.com") || host == "youtu.be"
-    }
-
-    private fun isSpotifyUrl(value: String): Boolean = validateSpotifyImportUrl(value) != null
-
-    private fun extractQueryParam(url: String, key: String): String {
-        val rawQuery = runCatching { URI(url).rawQuery.orEmpty() }.getOrDefault("")
-        if (rawQuery.isBlank()) return ""
-        return rawQuery.split('&')
-            .mapNotNull { part ->
-                val separator = part.indexOf('=')
-                if (separator < 0) null else part.substring(0, separator) to part.substring(separator + 1)
-            }
-            .firstOrNull { (name, _) -> name == key }
-            ?.second
-            ?.let { encoded -> runCatching { URLDecoder.decode(encoded, "UTF-8") }.getOrDefault(encoded) }
-            .orEmpty()
-    }
+    private fun sharedTrack(id: String, title: String, artist: String) = Track(
+        id = id,
+        title = title.ifBlank { id },
+        artist = artist,
+        album = "",
+        durationMs = 0L,
+        streamUrl = "",
+        videoUrl = "https://www.youtube.com/watch?v=$id",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "Levyra playlist",
+        moodTags = setOf("music", "shared"),
+        energy = 50,
+        vocal = 50,
+        replayScore = 50,
+        cacheScore = 50,
+        accentStart = 0,
+        accentEnd = 0
+    )
 }
 
 internal fun spotifyHeadOnly(html: String): String {

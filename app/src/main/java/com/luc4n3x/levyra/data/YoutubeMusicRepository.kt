@@ -1486,6 +1486,35 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         result
     }
 
+    suspend fun playlistForImport(
+        playlistId: String,
+        languageCode: String,
+        maxTracks: Int,
+        onPage: (Int) -> Unit = {}
+    ): YoutubeMusicPlaylistDetail? = withContext(Dispatchers.IO) {
+        val cleanPlaylistId = playlistId.trim().removePrefix("VL")
+        if (cleanPlaylistId.isBlank()) return@withContext null
+        val initial = requestMusicBrowseRoot(languageCode, "VL$cleanPlaylistId") ?: return@withContext null
+        val tracks = ArrayList<Track>()
+        tracks += parsePlaylistTrackRenderers(playlistShelfRenderers(initial), cleanPlaylistId)
+        onPage(tracks.size)
+        var continuation = findPlaylistContinuation(initial)
+        val requested = mutableSetOf<String>()
+        val maxPages = maxTracks / 50 + 4
+        var page = 0
+        while (tracks.size < maxTracks && continuation.isNotBlank() && page < maxPages) {
+            if (!requested.add(continuation)) break
+            val next = requestMusicBrowseRoot(languageCode, "", continuation = continuation) ?: break
+            val renderers = playlistShelfRenderers(next)
+            if (renderers.isEmpty()) break
+            tracks += parsePlaylistTrackRenderers(renderers, cleanPlaylistId)
+            onPage(tracks.size)
+            continuation = findPlaylistContinuation(next).takeUnless { it in requested }.orEmpty()
+            page++
+        }
+        parsePlaylistHeader(initial, cleanPlaylistId).copy(tracks = tracks.take(maxTracks), continuation = continuation)
+    }
+
     suspend fun playlistRadio(
         playlistId: String,
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
