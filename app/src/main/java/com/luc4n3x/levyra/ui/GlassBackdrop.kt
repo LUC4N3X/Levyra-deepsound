@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toIntSize
+import com.luc4n3x.levyra.ui.components.LocalLevyraLiquidGlassEnabled
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import com.luc4n3x.levyra.ui.theme.rememberPowerSaveMode
 
@@ -45,13 +46,8 @@ import com.luc4n3x.levyra.ui.theme.rememberPowerSaveMode
  */
 @Stable
 class GlassBackdropState {
-    /** True only while full backdrop sampling is active. */
     var enabled: Boolean by mutableStateOf(false)
-
-    /** Shared recorded backdrop. Null for disabled and lightweight-fallback paths. */
     var layer: GraphicsLayer? by mutableStateOf(null)
-
-    /** Root position of the source, used to align consumer samples. */
     var sourceOrigin: Offset by mutableStateOf(Offset.Zero)
 }
 
@@ -72,15 +68,14 @@ fun rememberGlassBlurAllowed(): Boolean {
 }
 
 /**
- * Creates the shared backdrop layer only for the full Liquid Glass path.
- *
- * When Liquid Glass is disabled, or the device is on a safe fallback path, this deliberately keeps
- * [GlassBackdropState.layer] null. That means no hidden backdrop capture or glass GPU allocation
- * continues behind the standard/fallback UI.
+ * Creates the shared backdrop layer only for the full Liquid Glass path. The global product toggle
+ * is checked here as the final safety gate so legacy call sites cannot keep capture work alive after
+ * the user switches Liquid Glass off.
  */
 @Composable
 fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
-    val fullGlassAllowed = enabled && rememberGlassBlurAllowed()
+    val liquidGlassEnabled = LocalLevyraLiquidGlassEnabled.current
+    val fullGlassAllowed = liquidGlassEnabled && enabled && rememberGlassBlurAllowed()
     val state = remember { GlassBackdropState() }
     if (fullGlassAllowed) {
         val layer = rememberGraphicsLayer()
@@ -94,11 +89,6 @@ fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
     return state
 }
 
-/**
- * Records the backdrop before glass consumers are drawn. Consumers must be siblings/descendants
- * drawn outside this modifier's recorded content; never apply this modifier to a container that
- * also draws the consuming glass surfaces.
- */
 fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
     if (!state.enabled || state.layer == null) return this
     return this
@@ -116,11 +106,6 @@ fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
         }
 }
 
-/**
- * Samples and blurs the shared source behind this consumer. The disabled/fallback branch is built
- * before any private frost layer or RenderEffect is remembered, keeping Liquid Glass OFF genuinely
- * allocation-free with respect to blur resources.
- */
 fun Modifier.glassFrost(
     state: GlassBackdropState,
     blurRadius: Dp = 26.dp,
