@@ -14,7 +14,7 @@ class VideoFrameShapeTest {
     fun artTrackFrameWithSolidSideBarsIsPillarboxed() {
         val random = Random(7)
         val pixels = frame { x, _ ->
-            if (x < 26 || x >= 94) jitter(0x1E4D55, random, 6) else rgb(random.nextInt(256), random.nextInt(256), random.nextInt(256))
+            if (x < 26 || x >= 94) jitter(0x1E4D55, random, 6) else randomColor(random)
         }
         assertTrue(isPillarboxedVideoFrame(pixels, width, height))
     }
@@ -41,7 +41,7 @@ class VideoFrameShapeTest {
             when {
                 x < 26 -> rgb(200, 20, 20)
                 x >= 94 -> rgb(20, 20, 200)
-                else -> rgb(random.nextInt(256), random.nextInt(256), random.nextInt(256))
+                else -> randomColor(random)
             }
         }
         assertFalse(isPillarboxedVideoFrame(pixels, width, height))
@@ -60,6 +60,9 @@ class VideoFrameShapeTest {
         fun channel(value: Int) = (value + random.nextInt(-amount, amount + 1)).coerceIn(0, 255)
         return rgb(channel((base shr 16) and 0xFF), channel((base shr 8) and 0xFF), channel(base and 0xFF))
     }
+
+    private fun randomColor(random: Random): Int =
+        rgb(random.nextInt(256), random.nextInt(256), random.nextInt(256))
 
     private fun rgb(red: Int, green: Int, blue: Int): Int =
         (0xFF shl 24) or (red shl 16) or (green shl 8) or blue

@@ -8,10 +8,8 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.bitmapConfig
 import coil3.toBitmap
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -35,38 +33,26 @@ internal object VideoFrameShapeCache {
     }
 }
 
-internal suspend fun detectPillarboxedVideoFrame(context: Context, videoId: String): Boolean? {
-    VideoFrameShapeCache.get(videoId)?.let { return it }
-    val pixels = withContext(Dispatchers.IO) {
-        val request = ImageRequest.Builder(context)
-            .data("https://i.ytimg.com/vi/$videoId/default.jpg")
-            .size(120, 90)
-            .allowHardware(false)
-            .bitmapConfig(Bitmap.Config.ARGB_8888)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .memoryCachePolicy(CachePolicy.DISABLED)
-            .build()
-        val bitmap = try {
-            SingletonImageLoader.get(context).execute(request).image?.toBitmap()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            Timber.d(error, "Video frame shape probe failed")
-            null
-        } ?: return@withContext null
-        FramePixels(
-            IntArray(bitmap.width * bitmap.height).also { buffer ->
-                bitmap.getPixels(buffer, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-            },
-            bitmap.width,
-            bitmap.height
-        )
-    } ?: return null
-    val pillarboxed = withContext(Dispatchers.Default) {
-        isPillarboxedVideoFrame(pixels.values, pixels.width, pixels.height)
+internal suspend fun detectPillarboxedVideoFrame(context: Context, videoId: String): Boolean? =
+    VideoFrameShapeCache.get(videoId) ?: probeVideoFrame(context, videoId)?.let { frame ->
+        withContext(Dispatchers.Default) { isPillarboxedVideoFrame(frame.values, frame.width, frame.height) }
+            .also { pillarboxed -> VideoFrameShapeCache.put(videoId, pillarboxed) }
     }
-    VideoFrameShapeCache.put(videoId, pillarboxed)
-    return pillarboxed
+
+private suspend fun probeVideoFrame(context: Context, videoId: String): FramePixels? = withContext(Dispatchers.IO) {
+    val request = ImageRequest.Builder(context)
+        .data("https://i.ytimg.com/vi/$videoId/default.jpg")
+        .size(120, 90)
+        .allowHardware(false)
+        .bitmapConfig(Bitmap.Config.ARGB_8888)
+        .diskCachePolicy(CachePolicy.ENABLED)
+        .memoryCachePolicy(CachePolicy.DISABLED)
+        .build()
+    SingletonImageLoader.get(context).execute(request).image?.toBitmap()?.let { bitmap ->
+        val values = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(values, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        FramePixels(values, bitmap.width, bitmap.height)
+    }
 }
 
 private class FramePixels(val values: IntArray, val width: Int, val height: Int)
@@ -77,9 +63,12 @@ internal fun isPillarboxedVideoFrame(pixels: IntArray, width: Int, height: Int):
     val bottom = (height * 0.70f).toInt()
     val left = sideStats(pixels, width, (width * 0.03f).toInt(), (width * 0.16f).toInt(), top, bottom)
     val right = sideStats(pixels, width, (width * 0.84f).toInt(), (width * 0.97f).toInt(), top, bottom)
-    if (!left.uniform || !right.uniform) return false
-    if (channelDistance(left.mean, right.mean) > SIDE_MATCH_TOLERANCE) return false
-    val sideMean = averageColor(left.mean, right.mean)
+    val sidesMatch = left.uniform && right.uniform &&
+        channelDistance(left.mean, right.mean) <= SIDE_MATCH_TOLERANCE
+    return sidesMatch && centerContrasts(pixels, width, top, bottom, averageColor(left.mean, right.mean))
+}
+
+private fun centerContrasts(pixels: IntArray, width: Int, top: Int, bottom: Int, sideMean: Int): Boolean {
     var contrasting = 0
     var total = 0
     for (y in top until bottom) {
