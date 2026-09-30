@@ -189,6 +189,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
             root.playAudioFrom(list, track, loopOnCompletion)
         }
     }
+    fun playVideoQueue(list: List<Track>, first: Track) = root.playVideoFrom(list, first)
     fun playVideoFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         val current = root.state.value
         if (current.isVideoMode && current.currentTrack?.id == track.id) {

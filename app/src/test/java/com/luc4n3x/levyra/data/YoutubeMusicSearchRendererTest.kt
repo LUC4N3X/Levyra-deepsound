@@ -172,6 +172,51 @@ class YoutubeMusicSearchRendererTest {
     }
 
     @Test
+    fun `two row carousel keeps localized view count`() {
+        val track = repository.parseCarouselItem(
+            carouselItem(
+                artistRun("Coldplay", "UC_COLDPLAY"),
+                textRun(" • "),
+                textRun("19 Mln di visualizzazioni")
+            )
+        )
+
+        requireNotNull(track)
+        assertEquals(19_000_000L, track.youtubeViewCount)
+    }
+
+    @Test
+    fun `two row carousel does not read numeric artist name as view count`() {
+        val track = repository.parseCarouselItem(
+            carouselItem(
+                textRun("Video"),
+                textRun(" • "),
+                artistRun("50 Cent", "UC_FIFTY")
+            )
+        )
+
+        requireNotNull(track)
+        assertEquals("50 Cent", track.artist)
+        assertEquals(-1L, track.youtubeViewCount)
+    }
+
+    @Test
+    fun `two row carousel skips numeric collaborating artist before view count`() {
+        val track = repository.parseCarouselItem(
+            carouselItem(
+                artistRun("50 Cent", "UC_FIFTY"),
+                textRun(" & "),
+                artistRun("Coldplay", "UC_COLDPLAY"),
+                textRun(" • "),
+                textRun("7 Mln di visualizzazioni")
+            )
+        )
+
+        requireNotNull(track)
+        assertEquals(7_000_000L, track.youtubeViewCount)
+    }
+
+    @Test
     fun `carousel item keeps every collaborating artist`() {
         val track = repository.parseCarouselItem(
             carouselItem(
