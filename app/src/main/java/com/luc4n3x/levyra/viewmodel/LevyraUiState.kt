@@ -279,7 +279,6 @@ data class LevyraUiState(
     val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
     val backupSettings: LevyraBackupSettings = LevyraBackupSettings(),
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
-    val spotifyCsvImport: SpotifyCsvImportState? = null,
     val vaultStatus: LevyraVaultStatus = LevyraVaultStatus.Idle,
     val backupPreview: VaultPreview? = null,
     val pendingRestoreUri: Uri? = null,
@@ -317,17 +316,4 @@ data class LevyraUiState(
     val listeningRecapPeriod: ListeningRecapPeriod = ListeningRecapPeriod.Days30,
     val listeningRecap: ListeningRecapSummary = ListeningRecapSummary(period = ListeningRecapPeriod.Days30),
     val listeningRecapLoading: Boolean = false
-)
-
-@Immutable
-data class SpotifyCsvImportState(
-    val running: Boolean = false,
-    val processed: Int = 0,
-    val total: Int = 0,
-    val matched: Int = 0,
-    val requested: Int = 0,
-    val unmatched: List<String> = emptyList(),
-    val playlistName: String = "",
-    val failureKind: PlaylistImportFailureKind? = null,
-    val completed: Boolean = false
 )

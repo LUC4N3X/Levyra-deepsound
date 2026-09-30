@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
@@ -96,6 +97,7 @@ internal fun LibraryTrackRow(
     onEditTags: (() -> Unit)? = null,
     onDeleteDownload: (() -> Unit)? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    onChangeMatch: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -260,6 +262,18 @@ internal fun LibraryTrackRow(
                                 onClick = {
                                     menuExpanded = false
                                     onDownload()
+                                }
+                            )
+                        }
+                        if (onChangeMatch != null) {
+                            DropdownMenuItem(
+                                text = { Text(com.luc4n3x.levyra.ui.i18n.playlistImportHubCopy(strings.code)["changeMatch"], color = LevyraText) },
+                                leadingIcon = {
+                                    Icon(Icons.Rounded.SwapHoriz, contentDescription = null, tint = LevyraCyan)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onChangeMatch()
                                 }
                             )
                         }

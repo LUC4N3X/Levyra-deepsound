@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.nexus.playlistimport.ImportedTrackIdentity
 import java.io.ByteArrayInputStream
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -91,32 +92,19 @@ class UniversalPlaylistImporterTest {
     @Test
     fun candidateScoringRejectsWrongLiveVersionAndPrefersStudioMatch() {
         val studio = track("studio", "My Song", "The Artist", 201_000L)
-        val live = track("live", "My Song Live", "The Artist", 240_000L)
+        val live = track("live", "My Song (Live)", "The Artist", 240_000L)
         val wrongArtist = track("wrong", "My Song", "Other Artist", 201_000L)
+        val identity = ImportedTrackIdentity(0, "My Song", listOf("The Artist"), durationMs = 201_000L)
 
-        val best = bestPlaylistImportCandidate("My Song", "The Artist", 201_000L, listOf(live, wrongArtist, studio))
-
-        assertEquals(studio, best)
-        assertTrue(playlistImportCandidateScore("My Song", "The Artist", 201_000L, studio) > playlistImportCandidateScore("My Song", "The Artist", 201_000L, live))
+        assertEquals(studio, bestPlaylistImportCandidate(identity, listOf(live, wrongArtist, studio)))
+        assertNull(bestPlaylistImportCandidate(identity, listOf(live, wrongArtist)))
     }
 
     @Test
     fun candidateScoringRejectsUnrelatedFirstSearchResult() {
         val unrelated = track("wrong", "Completely Different", "Someone Else", 201_000L)
-        assertNull(bestPlaylistImportCandidate("My Song", "The Artist", 201_000L, listOf(unrelated)))
-    }
-
-    @Test
-    fun prefersExplicitDurationMsAndSupportsSecondOrMillisecondExports() {
-        assertEquals(201_234L, importedDurationMs(JSONObject().put("durationMs", 201_234L).put("duration", 10L)))
-        assertEquals(201_000L, importedDurationMs(JSONObject().put("duration", 201L)))
-        assertEquals(201_234L, importedDurationMs(JSONObject().put("duration", 201_234L)))
-    }
-
-    @Test
-    fun rejectsJsonImportAboveConfiguredTrackLimit() {
-        assertTrue(jsonImportTrackCountAccepted(MAX_JSON_IMPORT_TRACKS))
-        assertFalse(jsonImportTrackCountAccepted(MAX_JSON_IMPORT_TRACKS + 1))
+        val identity = ImportedTrackIdentity(0, "My Song", listOf("The Artist"), durationMs = 201_000L)
+        assertNull(bestPlaylistImportCandidate(identity, listOf(unrelated)))
     }
 
     @Test
