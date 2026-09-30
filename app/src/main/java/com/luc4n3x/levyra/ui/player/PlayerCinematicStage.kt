@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -65,11 +67,13 @@ internal const val PlayerCinematicStackedFade = 0.42f
 internal const val PlayerCinematicSideFade = 0.34f
 internal const val PlayerCinematicMaxStackedAspect = 1.2f
 internal const val PlayerCinematicSideDissolveFraction = 0.16f
+internal const val PlayerCinematicFullscreenCanvasDimAlpha = 0.5f
 private const val PlayerCinematicBloomReach = 0.42f
 private const val PlayerCinematicBloomAlpha = 0.46f
 private const val PlayerCinematicBloomEdgeAlpha = 0.32f
 private const val PlayerCinematicTopScrimMinAlpha = 0.16f
 private const val PlayerCinematicTopScrimMaxAlpha = 0.65f
+private const val PlayerCinematicFullscreenDimAnimationMs = 180
 private const val SpotifyCanvasHostMarker = "://canvaz.scdn.co/"
 private val PlayerCinematicChromeScrim: Dp = 104.dp
 
@@ -131,6 +135,12 @@ internal fun playerCinematicTopScrimAlpha(artworkLuminance: Float?): Float {
         (PlayerCinematicTopScrimMaxAlpha - PlayerCinematicTopScrimMinAlpha) * luminance
 }
 
+internal fun playerCinematicFullscreenDimAlpha(fullscreenCanvas: Boolean): Float =
+    if (fullscreenCanvas) PlayerCinematicFullscreenCanvasDimAlpha else 0f
+
+internal fun playerCinematicResolvedSideFade(sideDissolve: Boolean): Float =
+    if (sideDissolve) PlayerCinematicSideDissolveFraction else 0f
+
 internal fun playerCinematicUsesFullscreenCanvas(
     layout: PlayerCinematicLayout,
     sideDissolve: Boolean,
@@ -174,6 +184,11 @@ internal fun PlayerCinematicStage(
     } else {
         ambience.tint
     }
+    val fullscreenDimAlpha by animateFloatAsState(
+        targetValue = playerCinematicFullscreenDimAlpha(fullscreenCanvas),
+        animationSpec = if (animationsEnabled) tween(PlayerCinematicFullscreenDimAnimationMs) else snap(),
+        label = "player-cinematic-fullscreen-dim"
+    )
     val topBandLuminance = livingArtwork?.tones?.firstOrNull()?.luminance() ?: ambience.primary.luminance()
     val topScrimAlpha = playerCinematicTopScrimAlpha(topBandLuminance)
 
@@ -196,12 +211,15 @@ internal fun PlayerCinematicStage(
         }
 
         val dissolveModifier = if (stacked) {
-            Modifier.playerCinematicBottomDissolve(PlayerCinematicStackedFade)
+            Modifier.playerCinematicBottomDissolve(
+                fadeFraction = PlayerCinematicStackedFade,
+                sideFadeFraction = playerCinematicResolvedSideFade(geometry.sideDissolve)
+            )
         } else {
             Modifier.artworkDissolve(
                 edge = ArtworkDissolveEdge.End,
                 fadeFraction = PlayerCinematicSideFade,
-                sideFadeFraction = if (geometry.sideDissolve) PlayerCinematicSideDissolveFraction else 0f
+                sideFadeFraction = playerCinematicResolvedSideFade(geometry.sideDissolve)
             )
         }
 
@@ -250,6 +268,15 @@ internal fun PlayerCinematicStage(
             ) { }
         }
 
+        if (fullscreenCanvas || fullscreenDimAlpha > 0.001f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = fullscreenDimAlpha }
+                    .background(Color.Black)
+            )
+        }
+
         PlayerCinematicChromeScrim(
             alpha = topScrimAlpha,
             modifier = Modifier.align(Alignment.TopCenter)
@@ -257,17 +284,32 @@ internal fun PlayerCinematicStage(
     }
 }
 
-private fun Modifier.playerCinematicBottomDissolve(fadeFraction: Float): Modifier = this
+private fun Modifier.playerCinematicBottomDissolve(
+    fadeFraction: Float,
+    sideFadeFraction: Float = 0f
+): Modifier = this
     .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
     .drawWithCache {
-        val mask = Brush.verticalGradient(
+        val bottomMask = Brush.verticalGradient(
             colorStops = playerCinematicDissolveStops(fadeFraction),
             startY = 0f,
             endY = size.height
         )
+        val sideMask = sideFadeFraction.takeIf { it > 0f }?.let { fraction ->
+            val side = fraction.coerceIn(0.01f, 0.5f)
+            Brush.horizontalGradient(
+                0f to Color.Transparent,
+                side to Color.Black,
+                1f - side to Color.Black,
+                1f to Color.Transparent
+            )
+        }
         onDrawWithContent {
             drawContent()
-            drawRect(brush = mask, blendMode = BlendMode.DstIn)
+            drawRect(brush = bottomMask, blendMode = BlendMode.DstIn)
+            if (sideMask != null) {
+                drawRect(brush = sideMask, blendMode = BlendMode.DstIn)
+            }
         }
     }
 
