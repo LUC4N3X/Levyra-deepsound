@@ -32,8 +32,8 @@ object LevyraHomeDesign {
     val ShelfCorner: Dp = 2.dp
     val ArtworkCorner: Dp = 6.dp
     val ThumbCorner: Dp = 4.dp
-    val ArtworkCardWidth: Dp = 154.dp
-    val ArtworkGridCardWidth: Dp = 120.dp
+    val ArtworkCardWidth: Dp = 156.dp
+    val ArtworkGridCardWidth: Dp = 122.dp
     val ShelfItemGap: Dp = 8.dp
     val TrackRowHeight: Dp = 60.dp
     val TrackThumbSize: Dp = 48.dp
