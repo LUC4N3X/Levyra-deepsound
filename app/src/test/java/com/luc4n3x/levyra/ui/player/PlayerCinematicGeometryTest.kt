@@ -52,6 +52,28 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
+    fun spotifyCanvasUsesFullscreenPhonePresentation() {
+        assertTrue(
+            playerCinematicUsesFullscreenCanvas(
+                PlayerCinematicLayout.Stacked,
+                "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4"
+            )
+        )
+        assertFalse(
+            playerCinematicUsesFullscreenCanvas(
+                PlayerCinematicLayout.SideBySide,
+                "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4"
+            )
+        )
+        assertFalse(
+            playerCinematicUsesFullscreenCanvas(
+                PlayerCinematicLayout.Stacked,
+                "https://resources.tidal.com/video-cover/example.mp4"
+            )
+        )
+    }
+
+    @Test
     fun phonePortraitImmersiveCanvasStopsAtHeroBottom() {
         val geometry = playerCinematicGeometry(
             pane = LevyraPlayerPane.Stacked,
