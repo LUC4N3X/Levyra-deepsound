@@ -61,18 +61,22 @@ fun PlaylistChangeMatchSheet(
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { playlistImportHubCopy(strings.code) }
-    var query by rememberSaveable(track.id) { mutableStateOf("${track.title} ${track.artist}".trim()) }
-    var origin by rememberSaveable(track.id) { mutableStateOf(CandidateOrigin.ONLINE) }
-    var loading by remember(track.id) { mutableStateOf(true) }
-    var results by remember(track.id) { mutableStateOf<List<Pair<MatchEvaluation, Track>>>(emptyList()) }
+    var query by rememberSaveable(track.id, track.playlistEntryId) { mutableStateOf("${track.title} ${track.artist}".trim()) }
+    var origin by rememberSaveable(track.id, track.playlistEntryId) { mutableStateOf(CandidateOrigin.ONLINE) }
+    var loading by remember(track.id, track.playlistEntryId) { mutableStateOf(true) }
+    var results by remember(track.id, track.playlistEntryId) { mutableStateOf<List<Pair<MatchEvaluation, Track>>>(emptyList()) }
+    var requestId by remember(track.id, track.playlistEntryId) { mutableStateOf(0) }
     fun search() {
+        val id = ++requestId
         loading = true
         onSearch(query, origin) {
-            results = it
-            loading = false
+            if (id == requestId) {
+                results = it
+                loading = false
+            }
         }
     }
-    LaunchedEffect(track.id, origin) { search() }
+    LaunchedEffect(track.id, track.playlistEntryId, origin) { search() }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -124,7 +128,7 @@ fun PlaylistChangeMatchSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(ImportRowShape)
-                            .clickable { onReplace(candidate) }
+                            .clickable { onReplace(candidate.copy(playlistEntryId = track.playlistEntryId)) }
                             .heightIn(min = 64.dp)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
