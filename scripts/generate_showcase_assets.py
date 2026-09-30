@@ -1,6 +1,7 @@
 import os
+import math
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance, ImageChops
 
 SCREENSHOT_DIR = os.environ.get(
     "LEVYRA_SCREENSHOT_DIR",
@@ -176,65 +177,169 @@ def create_delicate_bg(width, height, top_tint, accent_tone, glow_tone=None, y_s
 def generate_hero_panoramic_showcase():
     """
     Generates 00_levyra_hero_wall_player.webp with compact cinematic proportions (2400x880) matching main,
-    a fluid organic brand wave in rich Cosmic Sapphire Blue (ZERO purple on left), prominent 3D Levyra DeepSound
-    logo, clean minimal typography (ZERO badges), and an authentic -20° cascading phone flight in Spotify style.
+    a volumetric Cosmic Sapphire Blue brand stage with fluid sonic aurora ribbons, holographic acoustic
+    sound disc halo, illuminated neon laser rim (ZERO purple on left), prominent 3D Levyra DeepSound
+    logo, clean editorial typography (ZERO badges), and an authentic -20° cascading phone flight in Spotify style.
     """
     canvas_w, canvas_h = 2400, 880
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (8, 10, 16, 255))
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (7, 10, 18, 255))
 
-    # Fluid organic wave on the left (Levyra Cosmic Sapphire brand wave in pure rich blue)
-    w_canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    steps = 140
+    # 1. Ambient Background Lighting
+    bg_ambient = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    bdraw = ImageDraw.Draw(bg_ambient)
+    bdraw.ellipse((-50, -150, 950, 900), fill=(24, 75, 180, 120))
+    bdraw.ellipse((80, 180, 1050, 980), fill=(18, 55, 145, 110))
+    bdraw.ellipse((1100, 60, 2200, 850), fill=(24, 65, 150, 50))
+    bg_ambient = bg_ambient.filter(ImageFilter.GaussianBlur(140))
+    canvas = Image.alpha_composite(canvas, bg_ambient)
+
+    # 2. Multi-tier Volumetric Wave Curves
+    steps = 180
     t = np.linspace(0, 1, steps)
-    x_start = 720
-    x_end = 450
-    c1_x = 880
-    c2_x = 380
-    xs = (1 - t)**3 * x_start + 3 * (1 - t)**2 * t * c1_x + 3 * (1 - t) * t**2 * c2_x + t**3 * x_end
-    ys = np.linspace(0, canvas_h, steps)
 
-    poly = [(0, 0)]
-    for x, y in zip(xs, ys):
-        poly.append((int(x), int(y)))
-    poly.extend([(0, canvas_h)])
+    # Layer 1: Back Frosted Glass Wave (Deep Cobalt, offset)
+    x1_start, x1_end = 870, 560
+    c1_x1, c1_x2 = 1010, 490
+    xs1 = (1 - t)**3 * x1_start + 3 * (1 - t)**2 * t * c1_x1 + 3 * (1 - t) * t**2 * c1_x2 + t**3 * x1_end
+    ys1 = np.linspace(0, canvas_h, steps)
+    poly1 = [(0, 0)] + [(int(x), int(y)) for x, y in zip(xs1, ys1)] + [(0, canvas_h)]
 
-    wave_mask = Image.new("L", (canvas_w, canvas_h), 0)
-    wmdraw = ImageDraw.Draw(wave_mask)
-    wmdraw.polygon(poly, fill=255)
+    back_mask = Image.new("L", (canvas_w, canvas_h), 0)
+    bmdraw = ImageDraw.Draw(back_mask)
+    bmdraw.polygon(poly1, fill=255)
 
-    # Rich Sapphire Blue Gradient (Top: 22, 54, 126 -> Bottom: 14, 28, 72 - ZERO purple!)
+    back_wave = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    bw_arr = np.zeros((canvas_h, canvas_w, 4), dtype=np.uint8)
+    for row in range(canvas_h):
+        r_ratio = row / float(canvas_h)
+        for col in range(int(x1_start + 180)):
+            red = int(24 * (1 - r_ratio) + 14 * r_ratio)
+            green = int(68 * (1 - r_ratio) + 42 * r_ratio)
+            blue = int(170 * (1 - r_ratio) + 115 * r_ratio)
+            bw_arr[row, col] = [red, green, blue, 140]
+    back_wave = Image.fromarray(bw_arr, mode="RGBA")
+    back_wave.putalpha(back_mask)
+    back_wave = back_wave.filter(ImageFilter.GaussianBlur(8))
+    canvas = Image.alpha_composite(canvas, back_wave)
+
+    # Layer 2: Hero Cosmic Sapphire Wave (Rich Vibrant Blue)
+    x2_start, x2_end = 770, 480
+    c2_x1, c2_x2 = 910, 410
+    xs2 = (1 - t)**3 * x2_start + 3 * (1 - t)**2 * t * c2_x1 + 3 * (1 - t) * t**2 * c2_x2 + t**3 * x2_end
+    ys2 = np.linspace(0, canvas_h, steps)
+    poly2 = [(0, 0)] + [(int(x), int(y)) for x, y in zip(xs2, ys2)] + [(0, canvas_h)]
+
+    hero_mask = Image.new("L", (canvas_w, canvas_h), 0)
+    hmdraw = ImageDraw.Draw(hero_mask)
+    hmdraw.polygon(poly2, fill=255)
+
+    # Saturated, rich Cosmic Sapphire Gradient (LUMINOUS ROYAL BLUE)
     wg_arr = np.zeros((canvas_h, canvas_w, 4), dtype=np.uint8)
     for row in range(canvas_h):
-        ratio = row / float(canvas_h)
-        wg_arr[row, :, 0] = int(22 * (1 - ratio) + 14 * ratio)
-        wg_arr[row, :, 1] = int(54 * (1 - ratio) + 28 * ratio)
-        wg_arr[row, :, 2] = int(126 * (1 - ratio) + 72 * ratio)
-        wg_arr[row, :, 3] = 255
-    wave_grad = Image.fromarray(wg_arr, mode="RGBA")
-    w_canvas.paste(wave_grad, (0, 0), wave_mask)
+        r_ratio = row / float(canvas_h)
+        for col in range(int(x2_start + 200)):
+            c_ratio = col / float(x2_start + 200)
+            red = int((36 * (1 - r_ratio) + 18 * r_ratio) * (1 - c_ratio * 0.15))
+            green = int((92 * (1 - r_ratio) + 48 * r_ratio) * (1 - c_ratio * 0.15))
+            blue = int((210 * (1 - r_ratio) + 130 * r_ratio) * (1 - c_ratio * 0.15))
+            wg_arr[row, col] = [red, green, blue, 255]
+    hero_wave = Image.fromarray(wg_arr, mode="RGBA")
+    hero_wave.putalpha(hero_mask)
+    canvas = Image.alpha_composite(canvas, hero_wave)
 
-    # Ambient glows behind wave: Electric Cyan + Deep Sapphire (ZERO purple!)
-    w_glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    gdraw = ImageDraw.Draw(w_glow)
-    gdraw.ellipse((350, 80, 880, 800), fill=(26, 115, 235, 90))
-    gdraw.ellipse((80, 120, 560, 600), fill=(20, 85, 215, 80))
-    w_glow = w_glow.filter(ImageFilter.GaussianBlur(130))
+    # 3. Fluid Volumetric Sonic Aurora Ribbons
+    ribbon_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    rib_draw = ImageDraw.Draw(ribbon_layer)
+    t_rib = np.linspace(0, 1, 140)
 
-    # Ambient stage bloom behind phones (Warm Amber for The Weeknd, Deep Blue, Cyan)
+    # Ribbon 1: Electric Cyan acoustic stream
+    pts_rib1 = []
+    for val in t_rib:
+        rx = 30 + val * 740
+        ry = 150 + math.sin(val * math.pi * 1.6) * 130 + val * 210
+        pts_rib1.append((rx, ry))
+    for i in range(len(pts_rib1) - 1):
+        rib_draw.line([pts_rib1[i], pts_rib1[i+1]], fill=(56, 189, 248, 120), width=10)
+
+    # Ribbon 2: Luminous Azure flow
+    pts_rib2 = []
+    for val in t_rib:
+        rx = 10 + val * 760
+        ry = 310 + math.sin(val * math.pi * 1.9 + 0.5) * 150 + val * 170
+        pts_rib2.append((rx, ry))
+    for i in range(len(pts_rib2) - 1):
+        rib_draw.line([pts_rib2[i], pts_rib2[i+1]], fill=(0, 225, 255, 95), width=7)
+
+    # Ribbon 3: Deep Royal harmonic foundation
+    pts_rib3 = []
+    for val in t_rib:
+        rx = 50 + val * 720
+        ry = 490 + math.sin(val * math.pi * 1.4 - 0.4) * 120 + val * 140
+        pts_rib3.append((rx, ry))
+    for i in range(len(pts_rib3) - 1):
+        rib_draw.line([pts_rib3[i], pts_rib3[i+1]], fill=(37, 99, 235, 130), width=14)
+
+    ribbon_layer = ribbon_layer.filter(ImageFilter.GaussianBlur(12))
+    r_alpha = ImageChops.multiply(ribbon_layer.getchannel("A"), hero_mask)
+    ribbon_layer.putalpha(r_alpha)
+    canvas = Image.alpha_composite(canvas, ribbon_layer)
+
+    # 4. Holographic Acoustic Sound Disc / Vinyl Halo Behind Logo
+    logo_cx, logo_cy = 305, 345
+    disc_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    ddraw = ImageDraw.Draw(disc_layer)
+    groove_radii = [130, 165, 205, 250, 300, 355, 415, 480, 550, 625]
+    for idx, gr in enumerate(groove_radii):
+        alpha = int(75 * (1 - idx / float(len(groove_radii))))
+        w = 1 if idx % 2 == 0 else 2
+        col = (56, 189, 248, alpha) if idx % 2 == 0 else (120, 195, 255, alpha)
+        bbox = (logo_cx - gr, logo_cy - gr * 0.92, logo_cx + gr, logo_cy + gr * 0.92)
+        ddraw.arc(bbox, start=-88, end=88, fill=col, width=w)
+
+    disc_layer = disc_layer.filter(ImageFilter.GaussianBlur(1.2))
+    d_alpha = ImageChops.multiply(disc_layer.getchannel("A"), hero_mask)
+    disc_layer.putalpha(d_alpha)
+    canvas = Image.alpha_composite(canvas, disc_layer)
+
+    # 5. Illuminated Neon Laser Rim along Wave Edge
+    rim_bloom = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    rb_draw = ImageDraw.Draw(rim_bloom)
+    pts = [(int(x), int(y)) for x, y in zip(xs2, ys2)]
+    rb_draw.line(pts, fill=(56, 189, 248, 170), width=16)
+    rim_bloom = rim_bloom.filter(ImageFilter.GaussianBlur(8))
+    canvas = Image.alpha_composite(canvas, rim_bloom)
+
+    rim_mid = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    rm_draw = ImageDraw.Draw(rim_mid)
+    rm_draw.line(pts, fill=(0, 220, 255, 210), width=5)
+    rim_mid = rim_mid.filter(ImageFilter.GaussianBlur(2))
+    canvas = Image.alpha_composite(canvas, rim_mid)
+
+    rim_core = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    rc_draw = ImageDraw.Draw(rim_core)
+    rc_draw.line(pts, fill=(245, 252, 255, 245), width=2)
+    rim_core = rim_core.filter(ImageFilter.GaussianBlur(0.8))
+    canvas = Image.alpha_composite(canvas, rim_core)
+
+    # 6. Pure Sapphire Logo Backlight Halo (ZERO Purple!)
+    logo_halo = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    lh_draw = ImageDraw.Draw(logo_halo)
+    lh_draw.ellipse((logo_cx - 270, logo_cy - 270, logo_cx + 270, logo_cy + 270), fill=(30, 115, 250, 120))
+    lh_draw.ellipse((logo_cx - 160, logo_cy - 160, logo_cx + 160, logo_cy + 160), fill=(56, 189, 248, 90))
+    logo_halo = logo_halo.filter(ImageFilter.GaussianBlur(95))
+    canvas = Image.alpha_composite(canvas, logo_halo)
+
+    # 7. Screen Ambilight Blooms (Behind Phones)
     r_glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
     rgdraw = ImageDraw.Draw(r_glow)
-    rgdraw.ellipse((1350, 100, 2050, 720), fill=(225, 110, 20, 52))
-    rgdraw.ellipse((950, 160, 1500, 780), fill=(25, 75, 185, 45))
-    rgdraw.ellipse((1800, 120, 2380, 720), fill=(0, 180, 220, 42))
-    r_glow = r_glow.filter(ImageFilter.GaussianBlur(150))
-
-    canvas = Image.alpha_composite(canvas, w_canvas)
-    canvas = Image.alpha_composite(canvas, w_glow)
+    rgdraw.ellipse((1350, 100, 2050, 720), fill=(225, 110, 20, 52))   # Amber (The Weeknd)
+    rgdraw.ellipse((950, 160, 1500, 780), fill=(25, 75, 185, 48))    # Deep Blue
+    rgdraw.ellipse((1800, 120, 2380, 720), fill=(0, 180, 220, 42))   # Cyan (Billie)
+    r_glow = r_glow.filter(ImageFilter.GaussianBlur(140))
     canvas = Image.alpha_composite(canvas, r_glow)
 
-    # Cascading Phone Flight (-20° tilt - exactly as on main!)
+    # 8. Spotify Cascading Phone Flight (-20° tilt)
     rot_angle = -20
-
     phones_spec = [
         # Back / Upper Row
         ("Screenshot_20260927_140841_LEVYRA.jpg", 640, 880, -110, 1),
@@ -258,12 +363,32 @@ def generate_hero_panoramic_showcase():
             continue
         with Image.open(s_path) as src:
             phone = create_clean_phone(src, target_height=height)
+
+            # Subtle glass reflection
+            sheen = Image.new("RGBA", phone.size, (0, 0, 0, 0))
+            s_draw = ImageDraw.Draw(sheen)
+            pw, ph = phone.size
+            sheen_poly = [
+                (int(pw * 0.1), 0),
+                (int(pw * 0.42), 0),
+                (int(pw * 0.1), ph),
+                (0, ph)
+            ]
+            s_draw.polygon(sheen_poly, fill=(255, 255, 255, 12))
+            sheen = sheen.filter(ImageFilter.GaussianBlur(16))
+            phone_alpha = phone.getchannel("A")
+            sheen.putalpha(ImageEnhance.Brightness(phone_alpha).enhance(0.5))
+            phone = Image.alpha_composite(phone, sheen)
+
         rotated = phone.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
-        shadow, pad = create_studio_shadow(rotated, blur=40, opacity=145, offset_y=24)
-        canvas.paste(shadow, (px - pad, py - pad), shadow)
+        contact_shadow, c_pad = create_studio_shadow(rotated, blur=18, opacity=160, offset_y=12)
+        ambient_shadow, a_pad = create_studio_shadow(rotated, blur=48, opacity=120, offset_y=28)
+
+        canvas.paste(ambient_shadow, (px - a_pad, py - a_pad), ambient_shadow)
+        canvas.paste(contact_shadow, (px - c_pad, py - c_pad), contact_shadow)
         canvas.paste(rotated, (px, py), rotated)
 
-    # Left branding: Large 3D Logo + concise punchy title (NO long descriptions, NO badges)
+    # 9. Left Branding: 3D Logo + High-Visibility Editorial Typography
     logo_file = LOGO_PATH if os.path.exists(LOGO_PATH) else r"app\src\main\res\drawable\levyra_logo.png"
     with Image.open(logo_file) as l_src:
         logo = l_src.convert("RGBA")
@@ -275,14 +400,27 @@ def generate_hero_panoramic_showcase():
         logo_res = logo_crop.resize((target_logo_w, target_logo_h), Image.Resampling.LANCZOS)
 
     logo_x = 90
-    logo_y = (canvas_h - target_logo_h - 70) // 2
+    logo_y = (canvas_h - target_logo_h - 110) // 2
     canvas.paste(logo_res, (logo_x, logo_y), logo_res)
 
     draw = ImageDraw.Draw(canvas)
-    text_y = logo_y + target_logo_h + 24
+    text_y = logo_y + target_logo_h + 22
+
+    # Tagline in Electric Cyan
     draw.text((logo_x + 10, text_y), "MUSIC, KEPT PERSONAL.", font=get_font(28, bold=True), fill=(56, 189, 248, 255))
     text_y += 42
-    draw.text((logo_x + 10, text_y), "ANDROID • WINDOWS", font=get_font(18, bold=True), fill=(185, 205, 230, 200))
+
+    # Fine acoustic spectrum divider line
+    wave_x = logo_x + 10
+    wave_y = text_y + 4
+    wave_w = 380
+    draw.line([(wave_x, wave_y), (wave_x + wave_w, wave_y)], fill=(56, 189, 248, 90), width=1)
+
+    text_y += 16
+    # Bold, high-legibility specs (NO badges, clean typography)
+    draw.text((logo_x + 10, text_y), "HIGH-FIDELITY  •  PRIVATE  •  UNLIMITED", font=get_font(17, bold=True), fill=(241, 245, 249, 240))
+    text_y += 28
+    draw.text((logo_x + 10, text_y), "ANDROID  •  WINDOWS", font=get_font(16, bold=True), fill=(147, 197, 253, 210))
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
     canvas.convert("RGB").save(out_path, "WEBP", quality=95, method=6)
