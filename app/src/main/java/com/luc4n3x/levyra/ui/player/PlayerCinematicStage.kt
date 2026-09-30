@@ -45,6 +45,7 @@ import com.luc4n3x.levyra.ui.artwork.ArtworkDissolveEdge
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
 import com.luc4n3x.levyra.ui.artwork.artworkDissolve
+import java.util.Locale
 
 internal enum class PlayerCinematicLayout {
     Stacked,
@@ -69,6 +70,7 @@ private const val PlayerCinematicBloomAlpha = 0.46f
 private const val PlayerCinematicBloomEdgeAlpha = 0.32f
 private const val PlayerCinematicTopScrimMinAlpha = 0.16f
 private const val PlayerCinematicTopScrimMaxAlpha = 0.65f
+private const val SpotifyCanvasHostMarker = "://canvaz.scdn.co/"
 private val PlayerCinematicChromeScrim: Dp = 104.dp
 
 internal fun playerCinematicStackedHeroBottom(
@@ -129,6 +131,12 @@ internal fun playerCinematicTopScrimAlpha(artworkLuminance: Float?): Float {
         (PlayerCinematicTopScrimMaxAlpha - PlayerCinematicTopScrimMinAlpha) * luminance
 }
 
+internal fun playerCinematicUsesFullscreenCanvas(
+    layout: PlayerCinematicLayout,
+    motionUrl: String
+): Boolean = layout == PlayerCinematicLayout.Stacked &&
+    motionUrl.lowercase(Locale.ROOT).contains(SpotifyCanvasHostMarker)
+
 @Composable
 internal fun PlayerCinematicStage(
     track: Track,
@@ -148,6 +156,10 @@ internal fun PlayerCinematicStage(
     modifier: Modifier = Modifier
 ) {
     val stacked = geometry.layout == PlayerCinematicLayout.Stacked
+    val fullscreenCanvas = motionEnabled && playerCinematicUsesFullscreenCanvas(
+        geometry.layout,
+        motionArtwork?.url.orEmpty()
+    )
     val sideColorField = !stacked &&
         (backgroundMode == PlayerBackgroundMode.Dynamic || backgroundMode == PlayerBackgroundMode.Blur)
     val sideBloom = if (sideColorField) {
@@ -202,7 +214,7 @@ internal fun PlayerCinematicStage(
                 .then(dissolveModifier)
         ) {
             MotionArtworkLayer(
-                artwork = motionArtwork,
+                artwork = if (fullscreenCanvas) null else motionArtwork,
                 enabled = motionEnabled,
                 isPlaying = isPlaying,
                 cornerRadius = 0.dp,
@@ -215,6 +227,24 @@ internal fun PlayerCinematicStage(
                     InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
                 }
             }
+        }
+
+        if (fullscreenCanvas) {
+            MotionArtworkLayer(
+                artwork = motionArtwork,
+                enabled = true,
+                isPlaying = isPlaying,
+                cornerRadius = 0.dp,
+                presentation = MotionArtworkPresentation.Cinematic,
+                quality = canvasQuality,
+                livingArtwork = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = if (morphActive) morphAnchors.stageRevealAlpha() else 1f
+                        translationX = swipeOffset() * 0.32f
+                    }
+            ) { }
         }
 
         PlayerCinematicChromeScrim(
