@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.ChartMarketDirectory
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.isExcludableArtist
@@ -1226,6 +1227,75 @@ private fun HomeSectionHeader(
 }
 
 @Composable
+private fun ChartMarketHeader(
+    title: String,
+    refreshing: Boolean,
+    onChangeMarket: () -> Unit,
+    onPlayAll: (() -> Unit)?
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            Row(
+                modifier = Modifier
+                    .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+                    .levyraPressable(
+                        onClick = onChangeMarket,
+                        pressedScale = LevyraPressScale.Control,
+                        role = Role.Button,
+                        onClickLabel = strings.chartMarketChange
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = title,
+                    color = LevyraText,
+                    fontSize = LevyraHomeDesign.SectionTitleSize,
+                    lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.SectionTitleSize),
+                    letterSpacing = (-0.35).sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(CircleShape)
+                        .background(LevyraAdaptiveChipSelected),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (refreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 1.75.dp,
+                            color = LevyraCyan
+                        )
+                    } else {
+                        Icon(
+                            Icons.Rounded.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = LevyraText,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+        onPlayAll?.let { action ->
+            HomeOutlinedAction(label = strings.playAll, onClick = action)
+        }
+    }
+}
+
+@Composable
 private fun HomeOutlinedAction(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
@@ -1261,7 +1331,6 @@ private fun HomeChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    leading: String? = null,
     exposeSelectionState: Boolean = true
 ) {
     val background = when {
@@ -1292,7 +1361,6 @@ private fun HomeChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            leading?.let { symbol -> Text(symbol, fontSize = 14.sp, maxLines = 1) }
             Text(
                 text = label,
                 color = content,
@@ -8620,6 +8688,7 @@ private fun HomeScreen(
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
     var selectedHomeCollectionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var chartMarketSheetOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
         viewModel.refreshHomeArtists()
     }
@@ -9309,42 +9378,29 @@ private fun HomeScreen(
             }
 
             if (showDeferredHomeSections && state.interfaceSettings.showCharts) {
-                if (state.charts.isNotEmpty()) {
-                    item(key = "home-chart-title", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                        val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-                        HomeSectionLead(compactHome) {
-                            HomeSectionInset {
-                                SectionHeaderAction(
-                                    "Top ${state.charts.size.coerceAtMost(50)} ${region?.label ?: "Global"}",
-                                    onPlayAll = { viewModel.playAll(state.charts) }
-                                )
-                            }
-                        }
+                item(key = "home-chart-title", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                    val marketName = remember(state.chartRegions, state.selectedChartId, state.languageCode) {
+                        state.chartRegions
+                            .firstOrNull { it.id == state.selectedChartId }
+                            ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }
+                            .orEmpty()
                     }
-                }
-                item(key = "home-chart-regions", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                    if (state.charts.isEmpty()) {
-                        HomeSectionLead(compactHome) {
-                            ChartRegionRow(
-                                regions = state.chartRegions,
-                                selectedId = state.selectedChartId,
-                                loading = state.isLoadingCharts,
-                                onSelect = viewModel::selectChart
+                    val chartCount = state.charts.size.takeIf { it > 0 }?.coerceAtMost(50) ?: 50
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset {
+                            ChartMarketHeader(
+                                title = strings.chartMarketTitle(chartCount, marketName),
+                                refreshing = state.isLoadingCharts && state.charts.isNotEmpty(),
+                                onChangeMarket = { chartMarketSheetOpen = true },
+                                onPlayAll = if (state.charts.isEmpty()) null else { { viewModel.playAll(state.charts) } }
                             )
                         }
-                    } else {
-                        ChartRegionRow(
-                            regions = state.chartRegions,
-                            selectedId = state.selectedChartId,
-                            loading = state.isLoadingCharts,
-                            onSelect = viewModel::selectChart
-                        )
                     }
                 }
-                if (state.charts.isEmpty() && (showChartShimmer || !state.isLoadingCharts)) {
+                if (state.charts.isEmpty()) {
                     item(key = "home-chart-empty", contentType = "home-card") {
                         HomeSectionInset {
-                            if (showChartShimmer) {
+                            if (state.isLoadingCharts) {
                                 ChartLoadingSkeleton()
                             } else {
                                 GlassMessage(strings.top50Unavailable, LevyraOrange)
@@ -9361,7 +9417,7 @@ private fun HomeScreen(
                             (availableWidth - LevyraHomeDesign.HorizontalInset - LevyraHomeDesign.TrackColumnPeek)
                                 .coerceIn(280.dp, 360.dp)
                         }
-                        val chartRowState = rememberLazyListState()
+                        val chartRowState = key(state.selectedChartId) { rememberLazyListState() }
                         LazyRow(
                             state = chartRowState,
                             modifier = Modifier.fillMaxWidth(),
@@ -9410,6 +9466,16 @@ private fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (chartMarketSheetOpen) {
+        ChartMarketSheet(
+            regions = state.chartRegions,
+            selectedId = state.selectedChartId,
+            languageCode = state.languageCode,
+            onSelect = viewModel::selectChart,
+            onDismiss = { chartMarketSheetOpen = false }
+        )
     }
 
     addTarget?.let { track ->
@@ -12234,46 +12300,6 @@ private fun TrackOverflowMenu(
                     expanded = false
                     onOffline()
                 }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ChartRegionRow(
-    regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
-    selectedId: String,
-    loading: Boolean,
-    onSelect: (String) -> Unit
-) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(
-            start = HomeHorizontalInset,
-            end = HomeHorizontalShelfEndPadding
-        ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if (loading) {
-            item(key = "chart-region-loading", contentType = "chart-region-loading") {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                    color = LevyraCyan
-                )
-            }
-        }
-        items(
-            items = regions,
-            key = { region -> region.id },
-            contentType = { "chart-region-chip" }
-        ) { region ->
-            HomeChip(
-                label = region.label,
-                selected = region.id == selectedId,
-                leading = region.emoji,
-                onClick = { onSelect(region.id) }
             )
         }
     }
