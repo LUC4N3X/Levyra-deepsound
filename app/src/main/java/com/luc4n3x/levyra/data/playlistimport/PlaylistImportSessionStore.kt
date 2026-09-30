@@ -101,9 +101,9 @@ class PlaylistImportSessionStore(private val directory: File) {
                     session
                 }
             }.sortedByDescending { it.updatedAt }
-            sessions.drop(MAX_SESSIONS).forEach { file(it.id).delete() }
-            sessions.take(MAX_SESSIONS)
-                .filter { it.phase != PlaylistImportPhase.COMMITTED }
+            val open = sessions.filter { it.phase != PlaylistImportPhase.COMMITTED }
+            open.drop(MAX_SESSIONS).forEach { file(it.id).delete() }
+            open.take(MAX_SESSIONS)
                 .map { session ->
                     PlaylistImportSessionSummary(
                         id = session.id,
