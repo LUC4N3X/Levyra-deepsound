@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.ui
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
 class GlassBackdropPolicyTest {
     @Test

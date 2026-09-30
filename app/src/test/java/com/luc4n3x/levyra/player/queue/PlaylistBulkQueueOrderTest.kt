@@ -34,7 +34,10 @@ class PlaylistBulkQueueOrderTest {
         )
 
         assertEquals(listOf("X", "A", "B", "C", "D", "E", "Y", "Z"), second.tracks.map { it.id })
-        assertEquals(listOf("A", "B", "C", "D", "E"), second.pendingIdentities)
+        assertEquals(
+            listOf("A", "B", "C", "D", "E").map { playbackQueueIdentity(track(it)) },
+            second.pendingIdentities
+        )
     }
 
     @Test
