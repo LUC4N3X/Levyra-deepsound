@@ -62,7 +62,8 @@ data class Track(
     val youtubeLikeCount: Long = -1L,
     val youtubeViewCount: Long = -1L,
     val playbackManifest: ResolvedPlaybackManifest? = null,
-    val videoSubtitleTracks: List<VideoSubtitleTrack> = emptyList()
+    val videoSubtitleTracks: List<VideoSubtitleTrack> = emptyList(),
+    val playlistEntryId: String = ""
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()
@@ -249,7 +250,6 @@ data class SmartMusicProfile(
     val artistQueries: List<String>
         get() = topArtists.map { it.query }
 }
-
 
 enum class LevyraTab {
     Home,
