@@ -716,6 +716,7 @@ class LevyraStrings private constructor(
     val shareLyricsFailed: String get() = value("shareLyricsFailed")
     val shareLyricsLineSelected: String get() = value("shareLyricsLineSelected")
     val shareLyricsLineNotSelected: String get() = value("shareLyricsLineNotSelected")
+    val shareLyricsHint: String get() = value("shareLyricsHint")
     val lyricsVersions: String get() = value("lyricsVersions")
     val lyricsSections: String get() = value("lyricsSections")
     val lyricsSectionIntro: String get() = value("lyricsSectionIntro")

@@ -57,11 +57,11 @@ import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaTopBar
 import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
+import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_SHARE_MAX_LINES
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareSheet
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareSnapshot
 import com.luc4n3x.levyra.ui.lyrics.isLyricsShareSelectable
-import com.luc4n3x.levyra.ui.lyrics.lyricsShareSelectableCount
 import com.luc4n3x.levyra.ui.lyrics.lyricsShareSelectedLines
 import com.luc4n3x.levyra.ui.lyrics.lyricsShareSnapshot
 import com.luc4n3x.levyra.ui.lyrics.toggleLyricsShareSelection
@@ -108,6 +108,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -332,6 +334,8 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.ViewCompact
 import androidx.compose.material.icons.rounded.TextFields
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -7051,6 +7055,18 @@ private fun LyricsOverlay(
             if (syncedLyrics) activeLyricIndex(lyricsPositionProvider(), visibleLyrics) else -1
         }
     }.value
+    val canShareLyrics = remember(visibleLyrics) { visibleLyrics.any(::isLyricsShareSelectable) }
+    fun toggleShareMode() {
+        selectionMode = !selectionMode
+        if (selectionMode) {
+            calibrateMode = false
+            selectedRange = timedActiveIndex
+                .takeIf { syncedLyrics && it >= 0 }
+                ?.let { toggleLyricsShareSelection(null, it, visibleLyrics) }
+        } else {
+            selectedRange = null
+        }
+    }
     val visualActiveIndex = remember(visibleLyrics, syncedLyrics, lyricsAnimationsEnabled, lyricsPositionProvider) {
         derivedStateOf {
             if (syncedLyrics) {
@@ -7301,6 +7317,15 @@ private fun LyricsOverlay(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                    if (canShareLyrics) {
+                        CircleIconButton(
+                            icon = Icons.Rounded.Share,
+                            tint = if (selectionMode) LevyraCyan else Color.White,
+                            background = if (selectionMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.13f),
+                            onClick = { toggleShareMode() },
+                            contentDescription = strings.shareLyrics
+                        )
+                    }
                     if (state.intelligenceSummary.available && viewMode != LyricsViewMode.COMPACT) {
                         CircleIconButton(
                             icon = Icons.Rounded.Insights,
@@ -7429,60 +7454,6 @@ private fun LyricsOverlay(
                                         selectionMode = false
                                         selectedRange = null
                                     }
-                                }
-                            )
-                        }
-                        LyricsControlChip(
-                            label = if (selectionMode) {
-                                "${strings.shareLyrics} · ${lyricsShareSelectableCount(selectedRange, visibleLyrics)}/$LYRICS_SHARE_MAX_LINES"
-                            } else {
-                                strings.shareLyrics
-                            },
-                            selected = selectionMode,
-                            icon = Icons.Rounded.Share,
-                            onClick = {
-                                selectionMode = !selectionMode
-                                if (selectionMode) {
-                                    calibrateMode = false
-                                    selectedRange = timedActiveIndex
-                                        .takeIf { syncedLyrics && it >= 0 }
-                                        ?.let { toggleLyricsShareSelection(null, it, visibleLyrics) }
-                                } else {
-                                    selectedRange = null
-                                }
-                            }
-                        )
-                        if (selectionMode && selectedLines.isNotEmpty()) {
-                            LyricsControlChip(
-                                label = strings.copyVerses,
-                                selected = false,
-                                icon = Icons.Rounded.ContentCopy,
-                                onClick = {
-                                    val text = selectedLyricsText()
-                                    clipboardScope.launch {
-                                        clipboard.setClipEntry(
-                                            ClipEntry(ClipData.newPlainText("lyrics", text))
-                                        )
-                                    }
-                                }
-                            )
-                            if (!state.lyricsLoading) {
-                                LyricsControlChip(
-                                    label = strings.shareLyricsContinue,
-                                    selected = true,
-                                    icon = Icons.Rounded.Share,
-                                    onClick = {
-                                        shareSnapshot = lyricsShareSnapshot(track, selectedLines)
-                                    }
-                                )
-                            }
-                            LyricsControlChip(
-                                label = strings.cancel,
-                                selected = false,
-                                icon = Icons.Rounded.Close,
-                                onClick = {
-                                    selectedRange = null
-                                    selectionMode = false
                                 }
                             )
                         }
@@ -7665,6 +7636,33 @@ private fun LyricsOverlay(
                 }
             }
         }
+        AnimatedVisibility(
+            visible = selectionMode,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            LyricsShareBar(
+                selectedCount = selectedLines.size,
+                maxCount = LYRICS_SHARE_MAX_LINES,
+                canContinue = selectedLines.isNotEmpty() && !state.lyricsLoading,
+                accent = accentEnd,
+                onCopy = {
+                    val text = selectedLyricsText()
+                    clipboardScope.launch {
+                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("lyrics", text)))
+                    }
+                },
+                onCancel = {
+                    selectedRange = null
+                    selectionMode = false
+                },
+                onContinue = { shareSnapshot = lyricsShareSnapshot(track, selectedLines) }
+            )
+        }
     }
 
     if (showIntelligenceDialog) {
@@ -7704,6 +7702,91 @@ private fun LyricsOverlay(
             },
             onDismiss = { showVersions = false }
         )
+    }
+}
+
+@Composable
+private fun LyricsShareBar(
+    selectedCount: Int,
+    maxCount: Int,
+    canContinue: Boolean,
+    accent: Color,
+    onCopy: () -> Unit,
+    onCancel: () -> Unit,
+    onContinue: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = Color.Black.copy(alpha = 0.78f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+        shape = RoundedCornerShape(26.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+            ) {
+                if (selectedCount == 0) {
+                    Text(
+                        text = strings.shareLyricsHint,
+                        color = Color.White.copy(alpha = 0.78f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        text = "$selectedCount/$maxCount",
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = strings.linesLabel,
+                        color = Color.White.copy(alpha = 0.62f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            if (selectedCount > 0) {
+                CircleIconButton(
+                    icon = Icons.Rounded.ContentCopy,
+                    tint = Color.White,
+                    background = Color.White.copy(alpha = 0.13f),
+                    onClick = onCopy,
+                    contentDescription = strings.copyVerses
+                )
+            }
+            CircleIconButton(
+                icon = Icons.Rounded.Close,
+                tint = Color.White,
+                background = Color.White.copy(alpha = 0.13f),
+                onClick = onCancel,
+                contentDescription = strings.cancel
+            )
+            Button(
+                onClick = onContinue,
+                enabled = canContinue,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = LevyraCyan,
+                    contentColor = LevyraOnAccent,
+                    disabledContainerColor = Color.White.copy(alpha = 0.10f),
+                    disabledContentColor = Color.White.copy(alpha = 0.40f)
+                ),
+                shape = CircleShape,
+                modifier = Modifier.heightIn(min = 46.dp)
+            ) {
+                Text(strings.shareLyricsContinue, fontWeight = FontWeight.Black, maxLines = 1)
+            }
+        }
     }
 }
 
