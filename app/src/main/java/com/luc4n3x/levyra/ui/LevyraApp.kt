@@ -7627,10 +7627,12 @@ private fun LyricsOverlay(
                             }
                         },
                         onLongClick = {
-                            selectionMode = true
-                            calibrateMode = false
-                            selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
-                            haptics.perform(LevyraHapticAction.TrackSwipe)
+                            if (isLyricsShareSelectable(line)) {
+                                selectionMode = true
+                                calibrateMode = false
+                                selectedRange = toggleLyricsShareSelection(selectedRange, index, visibleLyrics)
+                                haptics.perform(LevyraHapticAction.TrackSwipe)
+                            }
                         }
                     )
                 }
@@ -8115,13 +8117,17 @@ private fun KaraokeLyricLine(
     val strings = LocalLevyraStrings.current
     val currentLongClick by rememberUpdatedState(onLongClick)
     val selectionIndicator = rememberVectorPainter(Icons.Rounded.CheckCircle)
-    val lineAccessibilityActions = remember(strings.shareLyrics) {
-        listOf(
-            CustomAccessibilityAction(strings.shareLyrics) {
-                currentLongClick()
-                true
-            }
-        )
+    val lineAccessibilityActions = remember(strings.shareLyrics, selectable) {
+        if (selectable) {
+            listOf(
+                CustomAccessibilityAction(strings.shareLyrics) {
+                    currentLongClick()
+                    true
+                }
+            )
+        } else {
+            emptyList()
+        }
     }
     val sectionLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     val alignment = when (line.role) {
@@ -8276,8 +8282,8 @@ private fun KaraokeLyricLine(
             }
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick,
-                onLongClickLabel = strings.shareLyrics
+                onLongClick = if (selectable) onLongClick else null,
+                onLongClickLabel = if (selectable) strings.shareLyrics else null
             )
             .semantics {
                 if (selectionMode && selectable) {

@@ -73,7 +73,11 @@ internal object LyricsShareCard {
 
     fun heightFor(widthPx: Int): Int = widthPx * ASPECT_HEIGHT / ASPECT_WIDTH
 
-    suspend fun loadArtwork(context: Context, track: Track): Bitmap? = withContext(Dispatchers.IO) {
+    suspend fun loadArtwork(
+        context: Context,
+        track: Track,
+        into: LyricsShareResource<Bitmap>
+    ): Unit = withContext(Dispatchers.IO) {
         ensureActive()
         val file = LevyraArtworkCache.localFile(context, track, highRes = true)
             ?: LevyraArtworkCache.localFile(context, track, highRes = false)
@@ -85,13 +89,14 @@ internal object LyricsShareCard {
                     ?: LevyraArtworkCache.localFile(context, track, highRes = false)
             }
         ensureActive()
-        file?.takeIf(File::isFile)?.let(::decodeCover)
+        val cover = file?.takeIf(File::isFile)?.let(::decodeCover)
+        if (cover != null) into.set(cover)
     }
 
     suspend fun createShareIntent(
         context: Context,
         content: LyricsShareCardContent,
-        artwork: Bitmap?,
+        artwork: LyricsShareResource<Bitmap>,
         style: LyricsShareCardStyle,
         accents: Pair<Int, Int>
     ): Intent? = withContext(Dispatchers.IO) {
@@ -105,7 +110,9 @@ internal object LyricsShareCard {
         var written = false
         try {
             ensureActive()
-            val rendered = render(content, artwork, style, accents, EXPORT_WIDTH_PX)
+            val rendered = artwork.use { cover ->
+                render(content, cover, style, accents, EXPORT_WIDTH_PX)
+            }
             bitmap = rendered
             ensureActive()
             written = rendered != null && FileOutputStream(file).use { output ->
@@ -162,14 +169,20 @@ internal object LyricsShareCard {
         } catch (_: OutOfMemoryError) {
             return null
         }
-        val canvas = Canvas(bitmap)
-        canvas.scale(widthPx / DESIGN_WIDTH, widthPx / DESIGN_WIDTH)
-        val showArtwork = artwork != null && style != LyricsShareCardStyle.MINIMAL
-        drawBackground(canvas, style, artwork, accents)
-        drawHeader(canvas, content, artwork.takeIf { showArtwork })
-        drawLyrics(canvas, content.lyrics)
-        drawFooter(canvas)
-        return bitmap
+        var completed = false
+        try {
+            val canvas = Canvas(bitmap)
+            canvas.scale(widthPx / DESIGN_WIDTH, widthPx / DESIGN_WIDTH)
+            val showArtwork = artwork != null && style != LyricsShareCardStyle.MINIMAL
+            drawBackground(canvas, style, artwork, accents)
+            drawHeader(canvas, content, artwork.takeIf { showArtwork })
+            drawLyrics(canvas, content.lyrics)
+            drawFooter(canvas)
+            completed = true
+            return bitmap
+        } finally {
+            if (!completed) bitmap.recycle()
+        }
     }
 
     private fun drawBackground(

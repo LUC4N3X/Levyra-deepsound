@@ -34,10 +34,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -45,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -65,8 +66,6 @@ import kotlinx.coroutines.withContext
 private const val PREVIEW_ASPECT = 4f / 5f
 private val PREVIEW_MAX_HEIGHT = 420.dp
 
-private class PreparedShareArtwork(val artwork: Bitmap?, val accents: Pair<Int, Int>)
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun LyricsShareSheet(
@@ -78,49 +77,73 @@ internal fun LyricsShareSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var style by rememberSaveable { mutableStateOf(LyricsShareCardStyle.ARTWORK) }
     var mode by remember(snapshot) { mutableStateOf(LyricsShareTextMode.ORIGINAL) }
-    var prepared by remember(snapshot) { mutableStateOf<PreparedShareArtwork?>(null) }
-    var preview by remember(snapshot) { mutableStateOf<ImageBitmap?>(null) }
-    var previewFailed by remember(snapshot) { mutableStateOf(false) }
+    val artwork = remember(snapshot) { LyricsShareResource<Bitmap>(Bitmap::recycle) }
+    var accents by remember(snapshot) { mutableStateOf<Pair<Int, Int>?>(null) }
+    var previewState by remember(snapshot) { mutableStateOf<LyricsSharePreviewState<Bitmap>?>(null) }
     var exportRequest by remember(snapshot) { mutableIntStateOf(0) }
     var exporting by remember(snapshot) { mutableStateOf(false) }
     var exportFailed by remember(snapshot) { mutableStateOf(false) }
     val content = remember(snapshot, mode) { lyricsShareCardContent(snapshot, mode) }
+    val previewKey = remember(content, style) { LyricsSharePreviewKey(content, style) }
+    val preview = previewState.readyFor(previewKey)?.takeUnless(Bitmap::isRecycled)
+    val previewFailed = previewState.failedFor(previewKey)
 
-    LaunchedEffect(snapshot) {
-        val artwork = LyricsShareCard.loadArtwork(context, snapshot.track)
-        val accents = withContext(Dispatchers.Default) {
-            LyricsShareCard.resolveAccents(snapshot.track, artwork)
+    val latestPreviewState by rememberUpdatedState(previewState)
+    DisposableEffect(artwork) {
+        onDispose {
+            artwork.close()
+            val latest = latestPreviewState
+            if (latest is LyricsSharePreviewState.Ready) latest.image.recycle()
         }
-        prepared = PreparedShareArtwork(artwork, accents)
     }
 
-    LaunchedEffect(content, style, prepared) {
-        val ready = prepared ?: return@LaunchedEffect
-        val bitmap = withContext(Dispatchers.Default) {
-            LyricsShareCard.render(
-                content = content,
-                artwork = ready.artwork,
-                style = style,
-                accents = ready.accents,
-                widthPx = LyricsShareCard.PREVIEW_WIDTH_PX
-            )
+    LaunchedEffect(artwork) {
+        LyricsShareCard.loadArtwork(context, snapshot.track, artwork)
+        accents = withContext(Dispatchers.Default) {
+            artwork.use { cover -> LyricsShareCard.resolveAccents(snapshot.track, cover) }
         }
-        previewFailed = bitmap == null
-        if (bitmap != null) preview = bitmap.asImageBitmap()
+    }
+
+    LaunchedEffect(previewKey, accents) {
+        previewState = null
+        val resolvedAccents = accents ?: return@LaunchedEffect
+        var rendered: Bitmap? = null
+        try {
+            withContext(Dispatchers.Default) {
+                rendered = artwork.use { cover ->
+                    LyricsShareCard.render(
+                        content = previewKey.content,
+                        artwork = cover,
+                        style = previewKey.style,
+                        accents = resolvedAccents,
+                        widthPx = LyricsShareCard.PREVIEW_WIDTH_PX
+                    )
+                }
+            }
+            val bitmap = rendered
+            previewState = if (bitmap == null) {
+                LyricsSharePreviewState.Failed(previewKey)
+            } else {
+                rendered = null
+                LyricsSharePreviewState.Ready(previewKey, bitmap)
+            }
+        } finally {
+            rendered?.recycle()
+        }
     }
 
     LaunchedEffect(exportRequest) {
         if (exportRequest == 0) return@LaunchedEffect
-        val ready = prepared ?: return@LaunchedEffect
+        val resolvedAccents = accents ?: return@LaunchedEffect
         exporting = true
         exportFailed = false
         try {
             val intent = LyricsShareCard.createShareIntent(
                 context = context,
                 content = content,
-                artwork = ready.artwork,
+                artwork = artwork,
                 style = style,
-                accents = ready.accents
+                accents = resolvedAccents
             )
             exportFailed = intent == null || !startChooser(context, intent, strings.shareVia)
         } finally {
@@ -188,7 +211,7 @@ internal fun LyricsShareSheet(
             }
             Button(
                 onClick = { exportRequest += 1 },
-                enabled = prepared != null && !exporting && content.lyrics.isNotEmpty(),
+                enabled = accents != null && !exporting && content.lyrics.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = LevyraCyan,
                     contentColor = LevyraOnAccent
@@ -219,7 +242,7 @@ internal fun LyricsShareSheet(
 
 @Composable
 private fun SharePreview(
-    preview: ImageBitmap?,
+    preview: Bitmap?,
     failed: Boolean,
     description: String,
     failedText: String
@@ -236,11 +259,7 @@ private fun SharePreview(
             contentAlignment = Alignment.Center
         ) {
             when {
-                preview != null -> Image(
-                    bitmap = preview,
-                    contentDescription = description,
-                    modifier = Modifier.fillMaxSize()
-                )
+                preview != null -> SharePreviewImage(preview, description)
                 failed -> Text(
                     text = failedText,
                     color = LevyraMuted,
@@ -255,6 +274,19 @@ private fun SharePreview(
             }
         }
     }
+}
+
+@Composable
+private fun SharePreviewImage(bitmap: Bitmap, description: String) {
+    val image = remember(bitmap) { bitmap.asImageBitmap() }
+    DisposableEffect(bitmap) {
+        onDispose { bitmap.recycle() }
+    }
+    Image(
+        bitmap = image,
+        contentDescription = description,
+        modifier = Modifier.fillMaxSize()
+    )
 }
 
 @Composable
