@@ -364,22 +364,6 @@ def generate_hero_panoramic_showcase():
         with Image.open(s_path) as src:
             phone = create_clean_phone(src, target_height=height)
 
-            # Subtle glass reflection
-            sheen = Image.new("RGBA", phone.size, (0, 0, 0, 0))
-            s_draw = ImageDraw.Draw(sheen)
-            pw, ph = phone.size
-            sheen_poly = [
-                (int(pw * 0.1), 0),
-                (int(pw * 0.42), 0),
-                (int(pw * 0.1), ph),
-                (0, ph)
-            ]
-            s_draw.polygon(sheen_poly, fill=(255, 255, 255, 12))
-            sheen = sheen.filter(ImageFilter.GaussianBlur(16))
-            phone_alpha = phone.getchannel("A")
-            sheen.putalpha(ImageEnhance.Brightness(phone_alpha).enhance(0.5))
-            phone = Image.alpha_composite(phone, sheen)
-
         rotated = phone.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
         contact_shadow, c_pad = create_studio_shadow(rotated, blur=18, opacity=160, offset_y=12)
         ambient_shadow, a_pad = create_studio_shadow(rotated, blur=48, opacity=120, offset_y=28)
