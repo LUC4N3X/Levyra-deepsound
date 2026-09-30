@@ -500,6 +500,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = mode.storageValue }
     }
 
+    fun chartRegionId(): String = read { it[KEY_CHART_REGION_ID].orEmpty() }
+
+    fun setChartRegionId(regionId: String) {
+        write { it[KEY_CHART_REGION_ID] = regionId }
+    }
+
     fun dismissedUpdateVersion(): String = read { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
 
     fun setDismissedUpdateVersion(version: String) {
@@ -1024,6 +1030,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         val KEY_HOME_SECTIONS = stringPreferencesKey("home_sections")
         val KEY_CHART_TRACKS = stringPreferencesKey("chart_tracks")
+        val KEY_CHART_REGION_ID = stringPreferencesKey("chart_region_id")
         val KEY_PERSONAL_ORBIT_TRACKS = stringPreferencesKey("personal_orbit_tracks")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
