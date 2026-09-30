@@ -721,7 +721,9 @@ private val HOME_COLLECTION_ART_INSET = 10.dp
 private val HOME_COLLECTION_TEXT_END_PADDING = 12.dp
 private val HOME_COLLECTION_ART_TEXT_KEEPOUT =
     HOME_COLLECTION_ART_SIZE + HOME_COLLECTION_ART_INSET - HOME_COLLECTION_TEXT_END_PADDING + 4.dp
-private val HOME_VIDEO_CARD_WIDTH = 218.dp
+private val HOME_VIDEO_CARD_WIDTH_FRACTION = 0.84f
+private val HOME_VIDEO_CARD_MAX_WIDTH = 420.dp
+private val HOME_VIDEO_CARD_CORNER = 16.dp
 private val HOME_ALBUM_CARD_WIDTH = 154.dp
 private val HOME_ARTIST_CARD_WIDTH = 148.dp
 private val HOME_ARTIST_ARTWORK_SIZE = 140.dp
@@ -11075,14 +11077,24 @@ private fun HomeMusicVideoShelf(
             .map(::homeMusicVideoPreviewTrack)
     }
     if (videos.isEmpty()) return
+    val playAll = {
+        val first = videos.first()
+        val firstActive = currentId != null && first.id == currentId
+        if (!firstActive || !(isPlaying || isResolving)) onPlay(first)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        HomeSectionInset { HomeSectionHeader(title) }
+        HomeSectionInset { HomeSectionHeader(title, onPlayAll = playAll) }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val videoCardWidth = rememberShelfItemWidth(maxWidth, HOME_VIDEO_CARD_WIDTH)
+            val videoCardWidth = remember(maxWidth) {
+                (maxWidth * HOME_VIDEO_CARD_WIDTH_FRACTION).coerceAtMost(HOME_VIDEO_CARD_MAX_WIDTH)
+            }
+            val rowState = rememberLazyListState()
             LazyRow(
+                state = rowState,
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
-                contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
+                contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding),
+                flingBehavior = rememberSnapFlingBehavior(rowState)
             ) {
                 itemsIndexed(
                     items = videos,
@@ -11090,123 +11102,130 @@ private fun HomeMusicVideoShelf(
                     contentType = { _, _ -> "home-video-card" }
                 ) { _, track ->
                     val active = currentId != null && track.id == currentId
-                    val shape = RoundedCornerShape(15.dp)
-                    val durationLabel = remember(track.durationMs) {
-                        if (track.durationMs > 0L) formatSeekbarMillis(track.durationMs) else ""
-                    }
-                    Column(
-                        modifier = Modifier
-                            .width(videoCardWidth)
-                            .semantics(mergeDescendants = true) { role = Role.Button }
-                            .pressable(onClick = { if (active && !isResolving) onToggleCurrent() else onPlay(track) }),
-                        verticalArrangement = Arrangement.spacedBy(9.dp)
+                    val activeResolving = active && isResolving
+                    HomeMusicVideoCard(
+                        track = track,
+                        width = videoCardWidth,
+                        active = active,
+                        isPlaying = active && isPlaying,
+                        isResolving = activeResolving,
+                        onClick = { if (active && !activeResolving) onToggleCurrent() else onPlay(track) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeMusicVideoCard(
+    track: Track,
+    width: Dp,
+    active: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onClick: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val shape = RoundedCornerShape(HOME_VIDEO_CARD_CORNER)
+    val durationLabel = remember(track.durationMs) {
+        if (track.durationMs > 0L) formatSeekbarMillis(track.durationMs) else ""
+    }
+    val metadata = remember(track.artist, track.youtubeViewCount, strings.code, strings.pulsePlays) {
+        val plays = formatSearchViewCount(track.youtubeViewCount, strings.code)
+            .takeIf(String::isNotBlank)
+            ?.let { count -> "$count ${strings.pulsePlays}" }
+            .orEmpty()
+        listOf(track.artist.trim(), plays)
+            .filter(String::isNotBlank)
+            .joinToString(" • ")
+    }
+    Column(
+        modifier = Modifier
+            .width(width)
+            .semantics(mergeDescendants = true) { role = Role.Button }
+            .pressable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(shape)
+                .background(LevyraAdaptiveTrack)
+                .border(
+                    if (active) 1.5.dp else Dp.Hairline,
+                    if (active) LevyraCyan.copy(alpha = 0.86f) else LevyraAdaptiveSoftHairline,
+                    shape
+                )
+        ) {
+            CoverImage(
+                track = track,
+                modifier = Modifier.fillMaxSize(),
+                highRes = true,
+                zoom = 1f
+            )
+            if (durationLabel.isNotBlank() || active) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.68f),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(16f / 9f)
-                                .clip(shape)
-                                .border(
-                                    if (active) 1.5.dp else Dp.Hairline,
-                                    if (active) LevyraCyan.copy(alpha = 0.86f) else LevyraAdaptiveSoftHairline,
-                                    shape
-                                )
-                        ) {
-                            CoverImage(
-                                track = track,
-                                modifier = Modifier.fillMaxSize(),
-                                highRes = true,
-                                zoom = 1f
+                        when {
+                            isResolving -> CircularProgressIndicator(
+                                modifier = Modifier.size(10.dp),
+                                strokeWidth = 1.5.dp,
+                                color = LevyraCyan
                             )
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            colorStops = arrayOf(
-                                                0f to Color.Black.copy(alpha = 0.04f),
-                                                0.56f to Color.Transparent,
-                                                1f to Color.Black.copy(alpha = 0.58f)
-                                            )
-                                        )
-                                    )
+                            active -> ActiveTrackEqualizer(
+                                color = LevyraCyan,
+                                isPlaying = isPlaying,
+                                width = 11.dp,
+                                height = 9.dp
                             )
-                            if (durationLabel.isNotBlank()) {
-                                Surface(
-                                    color = Color.Black.copy(alpha = 0.66f),
-                                    shape = RoundedCornerShape(7.dp),
-                                    modifier = Modifier
-                                        .align(Alignment.BottomStart)
-                                        .padding(9.dp)
-                                ) {
-                                    Text(
-                                        text = durationLabel,
-                                        color = Color.White,
-                                        fontSize = 10.5.sp,
-                                        lineHeight = LevyraTypeRhythm.lineHeight(10.5.sp),
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.2.sp,
-                                        maxLines = 1,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                                    )
-                                }
-                            }
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.70f),
-                                border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.18f)),
-                                shape = CircleShape,
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(9.dp)
-                                    .size(38.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    when {
-                                        active && isResolving -> CircularProgressIndicator(
-                                            modifier = Modifier.size(17.dp),
-                                            strokeWidth = 2.dp,
-                                            color = LevyraCyan
-                                        )
-                                        active && isPlaying -> ActiveTrackEqualizer(
-                                            color = LevyraCyan,
-                                            isPlaying = true,
-                                            width = 16.dp,
-                                            height = 12.dp
-                                        )
-                                        else -> Icon(
-                                            imageVector = Icons.Rounded.PlayArrow,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
-                                }
-                            }
                         }
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        if (durationLabel.isNotBlank()) {
                             Text(
-                                text = track.title,
-                                color = if (active) LevyraCyan else LevyraText,
-                                fontSize = 14.5.sp,
-                                lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = (-0.15).sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = track.artist,
-                                color = LevyraMuted,
-                                fontSize = 11.5.sp,
-                                lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                text = durationLabel,
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.2.sp,
+                                maxLines = 1
                             )
                         }
                     }
                 }
             }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = track.title,
+                color = if (active) LevyraCyan else LevyraText,
+                fontSize = 15.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(15.5.sp),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.15).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = metadata,
+                color = LevyraMuted,
+                fontSize = 12.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
