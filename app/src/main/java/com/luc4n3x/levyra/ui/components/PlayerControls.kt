@@ -12,12 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.LocalGlassBackdrop
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
@@ -79,25 +81,36 @@ fun Modifier.playerGlass(
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
     gradientBorder: Boolean = false
-): Modifier = this
-    .background(fill, shape)
-    .then(
-        if (gradientBorder) {
-            Modifier.border(
-                BorderStroke(
-                    LevyraPlayerDesign.Hairline,
-                    Brush.verticalGradient(listOf(borderTop, borderBottom))
-                ),
-                shape
+): Modifier = composed {
+    val fallbackBorder = borderTop.playerMix(borderBottom, 0.5f)
+    if (!LocalLevyraLiquidGlassEnabled.current) {
+        return@composed this
+            .background(fill, shape)
+            .then(
+                if (gradientBorder) {
+                    Modifier.border(
+                        BorderStroke(
+                            LevyraPlayerDesign.Hairline,
+                            Brush.verticalGradient(listOf(borderTop, borderBottom))
+                        ),
+                        shape
+                    )
+                } else {
+                    Modifier.border(LevyraPlayerDesign.Hairline, fallbackBorder, shape)
+                }
             )
-        } else {
-            Modifier.border(
-                LevyraPlayerDesign.Hairline,
-                borderTop.playerMix(borderBottom, 0.5f),
-                shape
-            )
-        }
+    }
+
+    this.resolvedLevyraGlass(
+        backdrop = LocalGlassBackdrop.current,
+        shape = shape,
+        baseTint = fill.copy(alpha = 1f),
+        fallbackBorderColor = fallbackBorder,
+        intensity = LevyraGlassIntensity.Standard,
+        artworkTint = null,
+        borderWidth = LevyraPlayerDesign.Hairline
     )
+}
 
 @Composable
 fun PlayerGlassIconButton(
