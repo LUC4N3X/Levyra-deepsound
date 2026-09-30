@@ -221,6 +221,12 @@ fun playlistImportFailureMessage(
         PlaylistImportFailureKind.NETWORK -> copy.network
         PlaylistImportFailureKind.PROVIDER_CHANGED -> copy.providerChanged
         PlaylistImportFailureKind.STORAGE -> copy.storage
+        PlaylistImportFailureKind.UNSUPPORTED_SOURCE,
+        PlaylistImportFailureKind.AUTH_REQUIRED -> playlistImportHubCopy(code)["fUnsupported"]
+        PlaylistImportFailureKind.NOT_A_PLAYLIST -> playlistImportHubCopy(code)["fNotPlaylist"]
+        PlaylistImportFailureKind.RATE_LIMITED -> playlistImportHubCopy(code)["fRateLimited"]
+        PlaylistImportFailureKind.FILE_MALFORMED -> playlistImportHubCopy(code)["fMalformed"]
+        PlaylistImportFailureKind.NO_USABLE_TRACKS -> playlistImportHubCopy(code)["fNoTracks"]
     }
     val limitText = limit?.let { value ->
         when (code) {

@@ -257,12 +257,7 @@ internal fun LevyraLibraryScreen(
     var addToPlaylistTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
     var confirmDelete by remember { mutableStateOf(false) }
     var pendingDownloadDelete by remember { mutableStateOf<DownloadedTrack?>(null) }
-    var showImportPlaylist by remember { mutableStateOf(false) }
     var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
-    var pendingCsvPlaylistName by rememberSaveable { mutableStateOf("") }
-    val spotifyCsvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) viewModel.importSpotifyCsv(uri, pendingCsvPlaylistName)
-    }
     var openSmartCollectionName by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTagIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
     var showHiddenPlaylists by rememberSaveable { mutableStateOf(false) }
@@ -704,11 +699,11 @@ internal fun LevyraLibraryScreen(
                     item(key = "playlist-import-action") {
                         if (showImportPlaylistCard) {
                             LibraryImportPlaylistCard(
-                                onClick = { showImportPlaylist = true },
+                                onClick = { viewModel.openPlaylistImport() },
                                 onDismiss = { showImportPlaylistCard = false }
                             )
                         } else {
-                            LibraryImportPlaylistCompactAction(onClick = { showImportPlaylist = true })
+                            LibraryImportPlaylistCompactAction(onClick = { viewModel.openPlaylistImport() })
                         }
                     }
                     if (visiblePlaylists.isEmpty()) {
@@ -1107,29 +1102,6 @@ internal fun LevyraLibraryScreen(
         )
     }
 
-    if (showImportPlaylist) {
-        LibraryImportPlaylistDialog(
-            onDismiss = { showImportPlaylist = false },
-            onImport = { input ->
-                viewModel.importPlaylist(input)
-                showImportPlaylist = false
-            },
-            onPickSpotifyCsv = { name ->
-                pendingCsvPlaylistName = name
-                spotifyCsvLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "application/octet-stream"))
-                showImportPlaylist = false
-            }
-        )
-    }
-
-    state.spotifyCsvImport?.let { importState ->
-        LibrarySpotifyCsvImportDialog(
-            importState = importState,
-            onCancel = viewModel::cancelSpotifyCsvImport,
-            onDismiss = viewModel::dismissSpotifyCsvImport
-        )
-    }
-
     if (addToPlaylistTracks.isNotEmpty()) {
         AddTracksToPlaylistDialog(
             tracks = addToPlaylistTracks,
@@ -1215,6 +1187,7 @@ internal fun LevyraPlaylistDetailScreen(
     var tagEditorOpen by remember(playlist.id) { mutableStateOf(false) }
     var tracksToRemove by remember(playlist.id) { mutableStateOf<List<Track>>(emptyList()) }
     var addTracksDialog by remember { mutableStateOf(false) }
+    var changeMatchTrack by remember(playlist.id) { mutableStateOf<Track?>(null) }
     var coverSource by remember(playlist.id) { mutableStateOf<android.net.Uri?>(null) }
     val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) coverSource = uri
@@ -1445,7 +1418,8 @@ internal fun LevyraPlaylistDetailScreen(
                         },
                         onFavorite = { viewModel.toggleFavorite(track) },
                         onDownload = { viewModel.exportTrack(track) },
-                        onRemoveFromPlaylist = { tracksToRemove = listOf(track) }
+                        onRemoveFromPlaylist = { tracksToRemove = listOf(track) },
+                        onChangeMatch = { changeMatchTrack = track }
                     )
                 }
             }
@@ -1503,6 +1477,18 @@ internal fun LevyraPlaylistDetailScreen(
                     .padding(14.dp)
             )
         }
+    }
+
+    changeMatchTrack?.let { target ->
+        com.luc4n3x.levyra.ui.playlistimport.PlaylistChangeMatchSheet(
+            track = target,
+            onSearch = { query, origin, onResult -> viewModel.searchPlaylistReplacements(target, query, origin, onResult) },
+            onReplace = { replacement ->
+                viewModel.replacePlaylistTrack(playlist.id, target.id, replacement)
+                changeMatchTrack = null
+            },
+            onDismiss = { changeMatchTrack = null }
+        )
     }
 
     if (tagEditorOpen) {
