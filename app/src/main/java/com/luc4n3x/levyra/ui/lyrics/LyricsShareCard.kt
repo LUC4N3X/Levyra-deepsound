@@ -255,7 +255,7 @@ internal object LyricsShareCard {
         val textWidth = DESIGN_WIDTH - MARGIN - textX
         val hasArtist = content.artist.isNotBlank()
         val titleBaseline = if (artwork != null) {
-            MARGIN + COVER_SIZE / 2f + (if (hasArtist) -6f else 20f)
+            MARGIN + COVER_SIZE / 2f + if (hasArtist) -6f else 20f
         } else {
             MARGIN + 70f
         }

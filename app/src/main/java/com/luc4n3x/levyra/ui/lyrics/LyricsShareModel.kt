@@ -159,7 +159,7 @@ internal object LyricsShareCardColors {
         var red = (opaque shr 16) and 0xFF
         var green = (opaque shr 8) and 0xFF
         var blue = opaque and 0xFF
-        while (luminance(red, green, blue) > MAX_BACKGROUND_LUMINANCE && (red + green + blue) > 0) {
+        while (luminance(red, green, blue) > MAX_BACKGROUND_LUMINANCE && red + green + blue > 0) {
             red = (red * STEP).toInt()
             green = (green * STEP).toInt()
             blue = (blue * STEP).toInt()
