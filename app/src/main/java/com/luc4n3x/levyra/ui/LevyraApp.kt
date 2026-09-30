@@ -467,6 +467,7 @@ import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.data.AppleArtistArtworkRepository
 import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
+import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
 import com.luc4n3x.levyra.data.buildPersonalizedHomeAlbumShelf
 import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
 import com.luc4n3x.levyra.data.findVerifiedTopResultArtist
@@ -619,6 +620,7 @@ import com.luc4n3x.levyra.viewmodel.HomeViewModel
 import com.luc4n3x.levyra.viewmodel.LevyraScreenViewModelFactory
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
+import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import com.luc4n3x.levyra.viewmodel.SearchViewModel
@@ -723,7 +725,6 @@ private val HOME_COLLECTION_ART_TEXT_KEEPOUT =
     HOME_COLLECTION_ART_SIZE + HOME_COLLECTION_ART_INSET - HOME_COLLECTION_TEXT_END_PADDING + 4.dp
 private val HOME_VIDEO_CARD_WIDTH_FRACTION = 0.84f
 private val HOME_VIDEO_CARD_MAX_WIDTH = 420.dp
-private val HOME_VIDEO_CARD_CORNER = 16.dp
 private val HOME_ALBUM_CARD_WIDTH = 154.dp
 private val HOME_ARTIST_CARD_WIDTH = 148.dp
 private val HOME_ARTIST_ARTWORK_SIZE = 140.dp
@@ -11127,7 +11128,6 @@ private fun HomeMusicVideoCard(
     onClick: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val shape = RoundedCornerShape(HOME_VIDEO_CARD_CORNER)
     val durationLabel = remember(track.durationMs) {
         if (track.durationMs > 0L) formatSeekbarMillis(track.durationMs) else ""
     }
@@ -11151,12 +11151,14 @@ private fun HomeMusicVideoCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .clip(shape)
+                .clip(RectangleShape)
                 .background(LevyraAdaptiveTrack)
-                .border(
-                    if (active) 1.5.dp else Dp.Hairline,
-                    if (active) LevyraCyan.copy(alpha = 0.86f) else LevyraAdaptiveSoftHairline,
-                    shape
+                .then(
+                    if (active) {
+                        Modifier.border(1.5.dp, LevyraCyan.copy(alpha = 0.86f), RectangleShape)
+                    } else {
+                        Modifier
+                    }
                 )
         ) {
             CoverImage(
@@ -11210,8 +11212,8 @@ private fun HomeMusicVideoCard(
             Text(
                 text = track.title,
                 color = if (active) LevyraCyan else LevyraText,
-                fontSize = 15.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(15.5.sp),
+                fontSize = 16.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.15).sp,
                 maxLines = 1,
@@ -11220,8 +11222,8 @@ private fun HomeMusicVideoCard(
             Text(
                 text = metadata,
                 color = LevyraMuted,
-                fontSize = 12.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                fontSize = 13.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -11233,21 +11235,19 @@ private fun HomeMusicVideoCard(
 private val HomeVideoIdPattern = Regex("[A-Za-z0-9_-]{11}")
 
 private fun homeMusicVideoPreviewTrack(track: Track): Track {
-    val videoId = PlaybackSourceIdentity.sourceVideoId(track)
-        .trim()
-        .takeIf(HomeVideoIdPattern::matches)
-        ?: track.counterpartVideoId
-            .trim()
-            .takeIf(HomeVideoIdPattern::matches)
+    val playableVideoId = youtubePlayableTrack(track, preferVideo = true)
+        ?.let { playable -> PlaybackSourceIdentity.extractYoutubeVideoId(playable.videoUrl) }
+        .orEmpty()
+    val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
+        .takeUnless { YoutubeMusicVideoType.isArtTrack(track.videoType) }
+        .orEmpty()
+    val videoId = sequenceOf(playableVideoId, sourceVideoId)
+        .map(String::trim)
+        .firstOrNull(HomeVideoIdPattern::matches)
         ?: return track
-    val stableVideoThumbnail = "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
-    val fallbackThumbnail = track.thumbnailUrl
-        .trim()
-        .ifBlank { track.largeThumbnailUrl.trim() }
-        .ifBlank { "https://i.ytimg.com/vi/$videoId/mqdefault.jpg" }
     return track.copy(
-        thumbnailUrl = fallbackThumbnail,
-        largeThumbnailUrl = stableVideoThumbnail
+        thumbnailUrl = "https://i.ytimg.com/vi/$videoId/hqdefault.jpg",
+        largeThumbnailUrl = "https://i.ytimg.com/vi/$videoId/hq720.jpg"
     )
 }
 
