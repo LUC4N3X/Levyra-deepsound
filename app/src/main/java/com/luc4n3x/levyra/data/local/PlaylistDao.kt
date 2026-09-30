@@ -43,6 +43,9 @@ abstract class PlaylistDao {
     @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND trackId = :trackId")
     abstract suspend fun removeTrack(playlistId: String, trackId: String)
 
+    @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND entryId = :entryId")
+    abstract suspend fun removeEntry(playlistId: String, entryId: String)
+
     @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId")
     abstract suspend fun clearTracks(playlistId: String)
 
@@ -67,8 +70,8 @@ abstract class PlaylistDao {
     @Query("UPDATE playlists SET hidden = :hidden, updatedAt = :updatedAt WHERE id = :playlistId")
     abstract suspend fun setHidden(playlistId: String, hidden: Boolean, updatedAt: Long)
 
-    @Query("UPDATE playlist_tracks SET position = :position WHERE playlistId = :playlistId AND trackId = :trackId")
-    abstract suspend fun updateTrackPosition(playlistId: String, trackId: String, position: Int)
+    @Query("UPDATE playlist_tracks SET position = :position WHERE playlistId = :playlistId AND entryId = :entryId")
+    abstract suspend fun updateEntryPosition(playlistId: String, entryId: String, position: Int)
 
     @Transaction
     open suspend fun createPlaylistWithTracks(
@@ -81,20 +84,29 @@ abstract class PlaylistDao {
 
     /**
      * Applica un nuovo ordine aggiornando soltanto le righe la cui posizione cambia.
-     * Mantiene la semantica MOVE: gli elementi attraversati scorrono di una posizione,
-     * senza cancellare e reinserire l'intera playlist.
+     * Le occorrenze duplicate dello stesso trackId restano righe distinte grazie a entryId.
      */
     @Transaction
     open suspend fun reorderTracks(playlistId: String, orderedTrackIds: List<String>) {
         val existing = tracksOf(playlistId)
-        if (orderedTrackIds.size != existing.size || orderedTrackIds.distinct().size != orderedTrackIds.size) return
-        val existingById = existing.associateBy { it.trackId }
-        if (orderedTrackIds.any { it !in existingById }) return
+        if (orderedTrackIds.size != existing.size) return
+
+        val pools = existing
+            .groupBy { it.trackId }
+            .mapValues { (_, rows) -> rows.sortedBy { it.position }.toMutableList() }
+            .toMutableMap()
+        val orderedEntries = ArrayList<PlaylistTrackEntity>(orderedTrackIds.size)
+        for (trackId in orderedTrackIds) {
+            val bucket = pools[trackId] ?: return
+            if (bucket.isEmpty()) return
+            orderedEntries += bucket.removeAt(0)
+        }
+        if (pools.values.any { it.isNotEmpty() }) return
 
         var changed = false
-        orderedTrackIds.forEachIndexed { position, trackId ->
-            if (existingById.getValue(trackId).position != position) {
-                updateTrackPosition(playlistId, trackId, position)
+        orderedEntries.forEachIndexed { position, entry ->
+            if (entry.position != position) {
+                updateEntryPosition(playlistId, entry.entryId, position)
                 changed = true
             }
         }
@@ -122,6 +134,32 @@ abstract class PlaylistDao {
         clearTracks(playlistId)
         if (tracks.isNotEmpty()) insertTracks(tracks)
         updateAutomaticCover(playlistId, automaticCover, updatedAt)
+        return true
+    }
+
+    @Transaction
+    open suspend fun replaceTrackInPlace(
+        playlistId: String,
+        oldTrackId: String,
+        oldEntryId: String?,
+        replacement: PlaylistTrackEntity
+    ): Boolean {
+        val current = tracksOf(playlistId)
+        val previous = oldEntryId?.takeIf(String::isNotBlank)?.let { entryId ->
+            current.firstOrNull { it.entryId == entryId }
+        } ?: current.firstOrNull { it.trackId == oldTrackId } ?: return false
+        removeEntry(playlistId, previous.entryId)
+        insertTracks(
+            listOf(
+                replacement.copy(
+                    entryId = previous.entryId,
+                    playlistId = playlistId,
+                    position = previous.position,
+                    addedAt = previous.addedAt
+                )
+            )
+        )
+        touch(playlistId, System.currentTimeMillis())
         return true
     }
 

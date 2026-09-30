@@ -370,13 +370,19 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun exportOpenPlaylist() = root.exportOpenPlaylist()
     fun exportTrack(track: Track) = root.exportTrack(track)
     fun exportTracks(tracks: List<Track>, label: String) = root.exportTracks(tracks, label)
-    fun importPlaylist(input: String) = root.importPlaylist(input)
+    fun openPlaylistImport(prefill: String? = null) = root.openPlaylistImport(prefill)
 
-    fun importSpotifyCsv(uri: android.net.Uri, playlistName: String) = root.importSpotifyCsv(uri, playlistName)
+    fun importPlaylistFile(uri: android.net.Uri) = root.importPlaylistFile(uri)
 
-    fun cancelSpotifyCsvImport() = root.cancelSpotifyCsvImport()
+    fun replacePlaylistTrack(playlistId: String, oldTrackId: String, replacement: Track) =
+        root.replacePlaylistTrack(playlistId, oldTrackId, replacement)
 
-    fun dismissSpotifyCsvImport() = root.dismissSpotifyCsvImport()
+    fun searchPlaylistReplacements(
+        reference: Track,
+        query: String,
+        origin: com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin,
+        onResult: (List<Pair<com.luc4n3x.levyra.nexus.playlistimport.MatchEvaluation, Track>>) -> Unit
+    ) = root.searchPlaylistReplacements(reference, query, origin, onResult)
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openArtist(track: Track) = root.openArtist(track)
     fun openArtistByName(name: String) = root.openArtistByName(name)
@@ -1254,7 +1260,6 @@ internal data class LibraryProjection(
     val recentListens: List<Track>,
     val librarySort: LibrarySort,
     val librarySortDirection: LibrarySortDirection,
-    val spotifyCsvImport: SpotifyCsvImportState?,
     val localLibrary: LocalLibraryUiState,
     val queueUnavailableUris: Set<String>
 )
@@ -1277,7 +1282,6 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     openPlaylist = state.openPlaylist,
     playlists = state.playlists,
     playlistTags = state.playlistTags,
-    spotifyCsvImport = state.spotifyCsvImport,
     recentListens = state.recentListens,
     librarySort = state.interfaceSettings.librarySort,
     librarySortDirection = state.interfaceSettings.librarySortDirection,
