@@ -33,7 +33,7 @@ data class PlaylistEntity(
     indices = [Index("playlistId"), Index(value = ["playlistId", "trackId"])]
 )
 data class PlaylistTrackEntity(
-    @PrimaryKey val entryId: String,
+    @PrimaryKey val entryId: String = UUID.randomUUID().toString(),
     val playlistId: String,
     val trackId: String,
     val position: Int,
