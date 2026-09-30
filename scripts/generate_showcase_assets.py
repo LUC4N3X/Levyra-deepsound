@@ -1,14 +1,37 @@
 import os
+import math
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance, ImageChops, ImageOps
 
-SCREENSHOT_DIR = os.environ.get("LEVYRA_SCREENSHOT_DIR", os.path.join("docs", "screenshots"))
+SCREENSHOT_DIR = os.environ.get(
+    "LEVYRA_SCREENSHOT_DIR",
+    r"C:\Users\Luca Drogo\Desktop\screenshots" if os.path.exists(r"C:\Users\Luca Drogo\Desktop\screenshots")
+    else os.path.join("docs", "screenshots")
+)
 OUT_SHOWCASE_DIR = r"docs\assets\showcase"
 OUT_CARDS_DIR = os.path.join(OUT_SHOWCASE_DIR, "cards")
 LOGO_PATH = os.environ.get(
     "LEVYRA_LOGO_PATH",
-    os.path.join("app", "src", "main", "res", "drawable", "levyra_logo.png")
+    r"C:\Users\Luca Drogo\Downloads\ChatGPT Image 5 set 2026, 19_28_06.png" if os.path.exists(r"C:\Users\Luca Drogo\Downloads\ChatGPT Image 5 set 2026, 19_28_06.png")
+    else os.path.join("app", "src", "main", "res", "drawable", "levyra_logo.png")
 )
+
+def resolve_screenshot_path(filename):
+    if not filename:
+        return None
+    if os.path.isabs(filename) and os.path.exists(filename):
+        return filename
+    candidates = [
+        os.path.join(SCREENSHOT_DIR, filename),
+        os.path.join(r"C:\Users\Luca Drogo\Desktop\screenshots", filename),
+        os.path.join(r"C:\Users\Luca Drogo\Downloads", filename),
+        os.path.join(r"C:\Users\Luca Drogo\Pictures\levyra\screenshots", filename),
+        os.path.join("docs", "screenshots", filename),
+    ]
+    for cand in candidates:
+        if os.path.exists(cand):
+            return cand
+    return None
 
 os.makedirs(OUT_SHOWCASE_DIR, exist_ok=True)
 os.makedirs(OUT_CARDS_DIR, exist_ok=True)
@@ -99,6 +122,21 @@ def create_studio_shadow(phone, blur=48, opacity=115, offset_y=28):
     shadow.putalpha(shadow_mask)
     return shadow, pad
 
+def create_colored_glow(phone, color, blur=50, opacity=85, offset_y=18):
+    pad = blur * 2 + abs(offset_y)
+    gw = phone.width + pad * 2
+    gh = phone.height + pad * 2
+
+    alpha = phone.getchannel("A")
+    glow_mask = Image.new("L", (gw, gh), 0)
+    glow_mask.paste(alpha, (pad, pad + offset_y))
+    glow_mask = glow_mask.filter(ImageFilter.GaussianBlur(blur))
+    glow_mask = glow_mask.point(lambda value: value * opacity // 255)
+
+    glow = Image.new("RGBA", (gw, gh), (*color, 0))
+    glow.putalpha(glow_mask)
+    return glow, pad
+
 def create_delicate_bg(width, height, top_tint, accent_tone, glow_tone=None, y_start=920, y_end=660):
     """
     Renders an organic, supersampled soft S-curve separating a delicate tinted canvas
@@ -138,102 +176,169 @@ def create_delicate_bg(width, height, top_tint, accent_tone, glow_tone=None, y_s
 
 def generate_hero_panoramic_showcase():
     """
-    Generates 00_levyra_hero_wall_player.webp with compact cinematic proportions (2400x880),
-    a fluid organic brand wave, prominent 3D Levyra DeepSound logo (no long descriptions),
-    and a dynamic -20° cascading phone flight inspired by modern product showcases.
+    Generates 00_levyra_hero_wall_player.webp with compact cinematic proportions (2400x880) matching main,
+    an evocative Apple Music-inspired cinematic loft background with expressive motion blur choreography,
+    masterfully graded in Cosmic Sapphire Blue (velvety midnight shadows, rich royal sapphire midtones, and
+    ice-cyan specular highlights), a prominent 3D Levyra DeepSound logo, refined editorial typography, and an
+    authentic -20° cascading phone flight in Spotify style with crystal-clear unclouded screens.
     """
     canvas_w, canvas_h = 2400, 880
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (8, 10, 16, 255))
 
-    # Fluid organic wave on the left (Levyra Cosmic Sapphire brand wave)
-    w_canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    wdraw = ImageDraw.Draw(w_canvas)
+    candidates = [
+        os.path.join(OUT_SHOWCASE_DIR, "levyra_hero_cinematic_chatgpt.png"),
+        r"C:\Users\Luca Drogo\Downloads\Immagine ChatGPT 30 set 2026, 21_37_37.png",
+        r"C:\Users\Luca Drogo\Downloads\Immagine ChatGPT 30 set 2026, 21_31_11.png",
+        resolve_screenshot_path("levyra_hero_cinematic_chatgpt.png"),
+    ]
+    src_file = next((c for c in candidates if c and os.path.exists(c)), None)
+    if src_file:
+        with Image.open(src_file) as im:
+            im = im.convert("RGB")
+            out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
+            im.save(out_path, "WEBP", quality=95, method=6)
+            print(f"Generated Panoramic Hero Showcase at original dimensions {im.size}:", out_path)
+            return
 
-    steps = 120
-    t = np.linspace(0, 1, steps)
-    x_start = 720
-    x_end = 450
-    c1_x = 880
-    c2_x = 380
-    xs = (1 - t)**3 * x_start + 3 * (1 - t)**2 * t * c1_x + 3 * (1 - t) * t**2 * c2_x + t**3 * x_end
-    ys = np.linspace(0, canvas_h, steps)
+    # 1. Load and prepare cinematic motion photography background
+    bg_file = os.path.join(OUT_SHOWCASE_DIR, "apple_music_loft_dancer_bg.jpg")
+    if not os.path.exists(bg_file):
+        bg_file = resolve_screenshot_path("apple_music_loft_dancer_bg.jpg")
 
-    poly = [(0, 0)]
-    for x, y in zip(xs, ys):
-        poly.append((int(x), int(y)))
-    poly.extend([(0, canvas_h)])
+    if bg_file and os.path.exists(bg_file):
+        with Image.open(bg_file) as d_img:
+            d_img = d_img.convert("RGB")
+            d_img = ImageOps.mirror(d_img)
+            # Scale width to 2600 to provide horizontal framing leeway
+            scale = 2600 / float(d_img.width)
+            new_h = int(d_img.height * scale)
+            d_resized = d_img.resize((2600, new_h), Image.Resampling.LANCZOS)
+            # Crop so dancer is centered at x ~ 720 in clear open air
+            crop_x = 420
+            crop_y = int((new_h - canvas_h) * 0.45)
+            d_crop = d_resized.crop((crop_x, crop_y, crop_x + canvas_w, crop_y + canvas_h))
 
-    wdraw.polygon(poly, fill=(18, 38, 88, 255))
+        # 3-Way Hollywood Split-Tone Grade for Cosmic Sapphire Blue:
+        gray = np.array(d_crop.convert("L"), dtype=np.float32) / 255.0
+        r_arr = np.clip((gray**1.28) * 235 + (1 - gray) * 6, 0, 255).astype(np.uint8)
+        g_arr = np.clip((gray**1.08) * 250 + (1 - gray) * 12, 0, 255).astype(np.uint8)
+        b_arr = np.clip((gray**0.80) * 255 + (1 - gray) * 36, 0, 255).astype(np.uint8)
 
-    # Ambient glows behind wave and phones
-    w_glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    gdraw = ImageDraw.Draw(w_glow)
-    gdraw.ellipse((350, 80, 880, 800), fill=(26, 92, 215, 85))
-    gdraw.ellipse((100, 500, 600, 950), fill=(110, 25, 145, 60))
-    w_glow = w_glow.filter(ImageFilter.GaussianBlur(130))
+        graded_arr = np.stack([r_arr, g_arr, b_arr, np.full_like(r_arr, 255)], axis=2)
+        graded_bg = Image.fromarray(graded_arr, mode="RGBA")
+        graded_bg = ImageEnhance.Contrast(graded_bg).enhance(1.22)
+        graded_bg = ImageEnhance.Brightness(graded_bg).enhance(1.05)
+        canvas = graded_bg
+    else:
+        canvas = Image.new("RGBA", (canvas_w, canvas_h), (7, 10, 18, 255))
 
-    canvas = Image.alpha_composite(canvas, w_canvas)
-    canvas = Image.alpha_composite(canvas, w_glow)
+    # 2. Studio Vignette (dark on left edge, open on dancer, smooth darkening under phones)
+    vignette = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    vdraw = ImageDraw.Draw(vignette)
+    for col in range(canvas_w):
+        if col < 450:
+            alpha = int(40 * (1 - col / 450.0) + 10)
+        elif col < 1050:
+            alpha = 8  # Dancer in clear light
+        else:
+            p = (col - 1050) / float(canvas_w - 1050)
+            alpha = int(20 + (p**1.3) * 155)
+        vdraw.line([(col, 0), (col, canvas_h)], fill=(5, 8, 16, alpha))
 
+    canvas = Image.alpha_composite(canvas, vignette)
+
+    # 3. Subtle Studio Volumetric Atmosphere / Light Pools
+    vol_light = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    vldraw = ImageDraw.Draw(vol_light)
+    vldraw.ellipse((600, 80, 1150, 720), fill=(28, 110, 245, 55))  # Dancer highlight aura
+    vldraw.ellipse((80, 100, 500, 680), fill=(20, 80, 210, 75))   # Logo aura
+    vol_light = vol_light.filter(ImageFilter.GaussianBlur(120))
+    canvas = Image.alpha_composite(canvas, vol_light)
+
+    # 4. Screen Ambilight Blooms (Behind Phones)
+    shift_phone_x = 110
     r_glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
     rgdraw = ImageDraw.Draw(r_glow)
-    rgdraw.ellipse((1350, 120, 2250, 820), fill=(50, 25, 115, 65))
+    rgdraw.ellipse((1350 + shift_phone_x, 100, 2050 + shift_phone_x, 720), fill=(225, 110, 20, 48))
+    rgdraw.ellipse((950 + shift_phone_x, 160, 1500 + shift_phone_x, 780), fill=(25, 75, 185, 45))
+    rgdraw.ellipse((1800 + shift_phone_x, 120, 2380 + shift_phone_x, 720), fill=(0, 180, 220, 40))
     r_glow = r_glow.filter(ImageFilter.GaussianBlur(140))
     canvas = Image.alpha_composite(canvas, r_glow)
 
-    ROT_ANGLE = -20
-
+    # 5. Spotify Cascading Phone Flight (-20° tilt, shifted for clearance)
+    rot_angle = -20
     phones_spec = [
         # Back / Upper Row
-        ("Screenshot_20260927_140841_LEVYRA.jpg", 640, 880, -110, 1),
-        ("Screenshot_20260926_194706_LEVYRA.jpg", 660, 1360, -160, 2),
-        ("Screenshot_20260929_194827_LEVYRA.jpg", 640, 1840, -120, 1),
+        ("Screenshot_20260927_140841_LEVYRA.jpg", 640, 880 + shift_phone_x, -110, 1),
+        ("Screenshot_20260926_194706_LEVYRA.jpg", 660, 1360 + shift_phone_x, -160, 2),
+        ("Screenshot_20260929_194827_LEVYRA.jpg", 640, 1840 + shift_phone_x, -120, 1),
 
         # Middle / Center Row
-        ("Screenshot_20260926_171253_LEVYRA.jpg", 710, 960, 300, 4),
-        ("Screenshot_20260926_193948_LEVYRA.jpg", 760, 1450, 210, 5),
-        ("Screenshot_20260926_194603_LEVYRA.jpg", 710, 1950, 250, 4),
+        ("Screenshot_20260926_171253_LEVYRA.jpg", 710, 960 + shift_phone_x, 300, 4),
+        ("Screenshot_20260926_193948_LEVYRA.jpg", 760, 1450 + shift_phone_x, 210, 5),
+        ("Screenshot_20260926_194603_LEVYRA.jpg", 710, 1950 + shift_phone_x, 250, 4),
 
         # Bottom / Accents
-        ("Screenshot_20260929_195520_LEVYRA.jpg", 650, 1560, 650, 3),
-        ("Screenshot_20260929_201454_LEVYRA.jpg", 650, 2060, 680, 3),
+        ("Screenshot_20260929_195520_LEVYRA.jpg", 650, 1560 + shift_phone_x, 650, 3),
+        ("Screenshot_20260929_201454_LEVYRA.jpg", 650, 2060 + shift_phone_x, 680, 3),
     ]
-
     phones_spec.sort(key=lambda s: s[4])
 
     for filename, height, px, py, z in phones_spec:
-        s_path = os.path.join(SCREENSHOT_DIR, filename)
-        if not os.path.exists(s_path):
+        s_path = resolve_screenshot_path(filename)
+        if not s_path:
             continue
         with Image.open(s_path) as src:
             phone = create_clean_phone(src, target_height=height)
-        rotated = phone.rotate(ROT_ANGLE, resample=Image.Resampling.BICUBIC, expand=True)
-        shadow, pad = create_studio_shadow(rotated, blur=40, opacity=145, offset_y=24)
-        canvas.paste(shadow, (px - pad, py - pad), shadow)
+
+        rotated = phone.rotate(rot_angle, resample=Image.Resampling.BICUBIC, expand=True)
+        contact_shadow, c_pad = create_studio_shadow(rotated, blur=18, opacity=175, offset_y=12)
+        ambient_shadow, a_pad = create_studio_shadow(rotated, blur=48, opacity=135, offset_y=28)
+
+        canvas.paste(ambient_shadow, (px - a_pad, py - a_pad), ambient_shadow)
+        canvas.paste(contact_shadow, (px - c_pad, py - c_pad), contact_shadow)
         canvas.paste(rotated, (px, py), rotated)
 
-    # Left branding: Large 3D Logo + concise punchy title (NO long descriptions)
+    # 6. Left Branding: 3D Logo + Bold Apple Music Editorial Typography
     logo_file = LOGO_PATH if os.path.exists(LOGO_PATH) else r"app\src\main\res\drawable\levyra_logo.png"
     with Image.open(logo_file) as l_src:
         logo = l_src.convert("RGBA")
         bbox = logo.getbbox()
         logo_crop = logo.crop(bbox)
         target_logo_w = 440
-        target_logo_h = int(logo_crop.height * (target_logo_w / logo_crop.width))
+        ratio = target_logo_w / float(logo_crop.width)
+        target_logo_h = int(logo_crop.height * ratio)
         logo_res = logo_crop.resize((target_logo_w, target_logo_h), Image.Resampling.LANCZOS)
 
     logo_x = 90
-    logo_y = (canvas_h - target_logo_h - 70) // 2
+    logo_y = (canvas_h - target_logo_h - 110) // 2
+
+    # Subtle sapphire halo behind logo
+    logo_halo = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    lh_draw = ImageDraw.Draw(logo_halo)
+    lh_draw.ellipse((logo_x - 30, logo_y - 30, logo_x + target_logo_w + 30, logo_y + target_logo_h + 30), fill=(26, 95, 230, 85))
+    logo_halo = logo_halo.filter(ImageFilter.GaussianBlur(85))
+    canvas = Image.alpha_composite(canvas, logo_halo)
+
     canvas.paste(logo_res, (logo_x, logo_y), logo_res)
 
     draw = ImageDraw.Draw(canvas)
-    text_y = logo_y + target_logo_h + 24
-    draw.text((logo_x + 10, text_y), "MUSIC, KEPT PERSONAL.", font=get_font(28, bold=True), fill=(56, 189, 248, 255))
-    text_y += 42
-    draw.text((logo_x + 10, text_y), "ANDROID • WINDOWS", font=get_font(18, bold=True), fill=(185, 205, 230, 200))
+    text_y = logo_y + target_logo_h + 22
+
+    # Tagline in Electric Cyan (size 30 bold)
+    draw.text((logo_x + 10, text_y), "MUSIC, KEPT PERSONAL.", font=get_font(30, bold=True), fill=(56, 189, 248, 255))
+    text_y += 46
+
+    # Minimal accent divider line
+    draw.line([(logo_x + 10, text_y), (logo_x + 390, text_y)], fill=(56, 189, 248, 100), width=1)
+    text_y += 18
+
+    # Bold Apple-style secondary text (clean, large, perfectly readable on GitHub!)
+    draw.text((logo_x + 10, text_y), "ALL THE WAYS YOU LOVE MUSIC.", font=get_font(20, bold=True), fill=(245, 250, 255, 245))
+    text_y += 30
+    draw.text((logo_x + 10, text_y), "HIGH-FIDELITY  •  PRIVATE  •  ANDROID & WINDOWS", font=get_font(16, bold=True), fill=(147, 197, 253, 220))
 
     out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
-    canvas.convert("RGB").save(out_path, "WEBP", quality=94, method=6)
+    canvas.convert("RGB").save(out_path, "WEBP", quality=95, method=6)
     print("Generated Panoramic Hero Showcase:", out_path)
 
 def generate_feature_cards():
@@ -257,7 +362,10 @@ def generate_feature_cards():
         y_end=620
     )
 
-    home_file = os.path.join(SCREENSHOT_DIR, "Screenshot_20260926_171253_LEVYRA.jpg")
+    home_file = resolve_screenshot_path("Screenshot_20260926_171253_LEVYRA.jpg")
+    if not home_file:
+        print("Skipping hero cards: home screenshot not found")
+        return
     with Image.open(home_file) as source:
         phone_hero = create_clean_phone(source, target_height=1400)
 
@@ -335,21 +443,9 @@ def generate_feature_cards():
     ]
 
     for filename, screenshot_name, title, subtitle, palette in single_specs:
-        if os.path.isabs(screenshot_name):
-            screen_file = screenshot_name
-        else:
-            screen_file = os.path.join(SCREENSHOT_DIR, screenshot_name)
-            if not os.path.exists(screen_file):
-                for fallback_dir in [
-                    r"C:\Users\Luca Drogo\Downloads",
-                    r"C:\Users\Luca Drogo\Pictures\levyra\screenshots"
-                ]:
-                    cand = os.path.join(fallback_dir, screenshot_name)
-                    if os.path.exists(cand):
-                        screen_file = cand
-                        break
-        if not os.path.exists(screen_file):
-            print(f"Skipping {filename}: {screen_file} not found")
+        screen_file = resolve_screenshot_path(screenshot_name)
+        if not screen_file:
+            print(f"Skipping {filename}: {screenshot_name} not found")
             continue
 
         with Image.open(screen_file) as source:

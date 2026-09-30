@@ -300,7 +300,7 @@ import com.luc4n3x.levyra.player.queue.mergePendingQueueDestinationTracks
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
-import com.luc4n3x.levyra.player.queue.queueTracksAfterPlayNext
+import com.luc4n3x.levyra.player.queue.queueAfterPlayNextIntent
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
@@ -1121,6 +1121,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     )
     private var samplesPlaybackSession: SamplesPlaybackSession? = null
     private var liveRadioQueueSnapshot: PlaybackQueueSnapshot? = null
+    private var liveRadioPlayNextPendingIdentities: List<String> = emptyList()
     private var liveRadioRecoveryAttempt = 0
     private var liveRadioArtworkJob: Job? = null
     private var liveRadioArtwork = ""
@@ -6085,14 +6086,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             routeJamAction(JamAction.PlayNextTracks(cleanTracks.map(::toJamTrack)))
             return
         }
-        val preserved = liveRadioQueueSnapshot
-        if (preserved != null) {
-            val updatedTracks = queueTracksAfterPlayNext(preserved.tracks, preserved.currentIndex, cleanTracks)
-            liveRadioQueueSnapshot = preserved.copy(
-                tracks = updatedTracks,
-                generation = preserved.generation + 1L
-            )
-        } else {
+        if (!playNextInPreservedLiveRadioQueue(cleanTracks)) {
             queueEngine.playNext(cleanTracks)
             refreshQueuePrefetch()
         }
@@ -6107,19 +6101,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             routeJamAction(JamAction.PlayNextTracks(listOf(toJamTrack(track))))
             return
         }
-        val preserved = liveRadioQueueSnapshot
-        if (preserved != null) {
-            val updatedTracks = queueTracksAfterPlayNext(preserved.tracks, preserved.currentIndex, listOf(track))
-            liveRadioQueueSnapshot = preserved.copy(
-                tracks = updatedTracks,
-                generation = preserved.generation + 1L
-            )
-        } else {
+        if (!playNextInPreservedLiveRadioQueue(listOf(track))) {
             queueEngine.playNext(track)
             refreshQueuePrefetch()
         }
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update { it.copy(offlineExportMessage = "${strings.playNext}: ${track.title}") }
+    }
+
+    private fun playNextInPreservedLiveRadioQueue(additions: List<Track>): Boolean {
+        val preserved = liveRadioQueueSnapshot ?: return false
+        val mutation = queueAfterPlayNextIntent(
+            current = preserved.tracks,
+            currentIndex = preserved.currentIndex,
+            pendingIdentities = liveRadioPlayNextPendingIdentities,
+            additions = additions
+        )
+        liveRadioPlayNextPendingIdentities = mutation.pendingIdentities
+        liveRadioQueueSnapshot = preserved.copy(
+            tracks = mutation.tracks,
+            currentIndex = mutation.currentIndex,
+            generation = preserved.generation + 1L
+        )
+        return true
     }
 
     fun removeFromQueue(index: Int) {
@@ -8589,6 +8593,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         liveRadioArtwork = ""
         if (liveRadioQueueSnapshot == null) {
             liveRadioQueueSnapshot = queueEngine.state.value
+            liveRadioPlayNextPendingIdentities = emptyList()
             queueEngine.beginTransientPlayback(liveRadioQueueSnapshot!!, listOf(track), 0)
         } else {
             queueEngine.replaceTransient(listOf(track), 0)
@@ -8711,6 +8716,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun leaveLiveRadioQueue() {
         val preserved = liveRadioQueueSnapshot ?: return
         liveRadioQueueSnapshot = null
+        liveRadioPlayNextPendingIdentities = emptyList()
         liveRadioRecoveryAttempt = 0
         streamRecoveryJob?.cancel()
         liveRadioArtworkJob?.cancel()
