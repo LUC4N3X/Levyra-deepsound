@@ -18,13 +18,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -57,15 +60,15 @@ internal data class PlayerCinematicGeometry(
 )
 
 internal val PlayerCinematicTitleOverlap: Dp = 20.dp
-internal const val PlayerCinematicStackedFade = 0.32f
+internal const val PlayerCinematicStackedFade = 0.42f
 internal const val PlayerCinematicSideFade = 0.34f
 internal const val PlayerCinematicMaxStackedAspect = 1.2f
 internal const val PlayerCinematicSideDissolveFraction = 0.16f
 private const val PlayerCinematicBloomReach = 0.42f
 private const val PlayerCinematicBloomAlpha = 0.46f
 private const val PlayerCinematicBloomEdgeAlpha = 0.32f
-private const val PlayerCinematicLowerVeilStart = 0.42f
-private const val PlayerCinematicLowerVeilMid = 0.72f
+private const val PlayerCinematicTopScrimMinAlpha = 0.16f
+private const val PlayerCinematicTopScrimMaxAlpha = 0.65f
 private val PlayerCinematicChromeScrim: Dp = 104.dp
 
 internal fun playerCinematicStackedHeroBottom(
@@ -110,6 +113,22 @@ internal fun playerCinematicGeometry(
     }
 }
 
+internal fun playerCinematicDissolveStops(fadeFraction: Float): Array<Pair<Float, Color>> {
+    val fade = fadeFraction.coerceIn(0.05f, 1f)
+    val start = 1f - fade
+    return arrayOf(
+        0f to Color.Black,
+        start to Color.Black,
+        1f to Color.Transparent
+    )
+}
+
+internal fun playerCinematicTopScrimAlpha(artworkLuminance: Float?): Float {
+    val luminance = artworkLuminance?.coerceIn(0f, 1f) ?: 0f
+    return PlayerCinematicTopScrimMinAlpha +
+        (PlayerCinematicTopScrimMaxAlpha - PlayerCinematicTopScrimMinAlpha) * luminance
+}
+
 @Composable
 internal fun PlayerCinematicStage(
     track: Track,
@@ -129,13 +148,19 @@ internal fun PlayerCinematicStage(
     modifier: Modifier = Modifier
 ) {
     val stacked = geometry.layout == PlayerCinematicLayout.Stacked
-    val colorField = backgroundMode == PlayerBackgroundMode.Dynamic ||
-        backgroundMode == PlayerBackgroundMode.Blur
-    val bloom = animateColorAsState(
-        targetValue = ambience.tint,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-cinematic-bloom"
-    )
+    val sideColorField = !stacked &&
+        (backgroundMode == PlayerBackgroundMode.Dynamic || backgroundMode == PlayerBackgroundMode.Blur)
+    val sideBloom = if (sideColorField) {
+        animateColorAsState(
+            targetValue = ambience.tint,
+            animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
+            label = "player-cinematic-bloom"
+        ).value
+    } else {
+        ambience.tint
+    }
+    val topBandLuminance = livingArtwork?.tones?.firstOrNull()?.luminance() ?: ambience.primary.luminance()
+    val topScrimAlpha = playerCinematicTopScrimAlpha(topBandLuminance)
 
     DisposableEffect(morphAnchors) {
         morphAnchors.updateStageActive(true)
@@ -143,17 +168,25 @@ internal fun PlayerCinematicStage(
     }
 
     Box(modifier = modifier) {
-        if (colorField) {
+        if (sideColorField) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .drawBehind {
-                        if (stacked) {
-                            drawStackedCinematicField(ambience)
-                        } else {
-                            drawSideCinematicBloom(bloom.value, geometry.heroWidth.toPx())
+                    .drawWithCache {
+                        onDrawBehind {
+                            drawSideCinematicBloom(sideBloom, geometry.heroWidth.toPx())
                         }
                     }
+            )
+        }
+
+        val dissolveModifier = if (stacked) {
+            Modifier.playerCinematicBottomDissolve(PlayerCinematicStackedFade)
+        } else {
+            Modifier.artworkDissolve(
+                edge = ArtworkDissolveEdge.End,
+                fadeFraction = PlayerCinematicSideFade,
+                sideFadeFraction = if (geometry.sideDissolve) PlayerCinematicSideDissolveFraction else 0f
             )
         }
 
@@ -166,11 +199,7 @@ internal fun PlayerCinematicStage(
                     alpha = if (morphActive) morphAnchors.stageRevealAlpha() else 1f
                     translationX = swipeOffset() * 0.32f
                 }
-                .artworkDissolve(
-                    edge = if (stacked) ArtworkDissolveEdge.Bottom else ArtworkDissolveEdge.End,
-                    fadeFraction = if (stacked) PlayerCinematicStackedFade else PlayerCinematicSideFade,
-                    sideFadeFraction = if (geometry.sideDissolve) PlayerCinematicSideDissolveFraction else 0f
-                )
+                .then(dissolveModifier)
         ) {
             MotionArtworkLayer(
                 artwork = motionArtwork,
@@ -188,57 +217,32 @@ internal fun PlayerCinematicStage(
             }
         }
 
-        if (stacked && colorField) {
-            PlayerCinematicLowerVeil(
-                primary = ambience.primary,
-                secondary = ambience.secondary,
-                base = ambience.base,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        PlayerCinematicChromeScrim(modifier = Modifier.align(Alignment.TopCenter))
+        PlayerCinematicChromeScrim(
+            alpha = topScrimAlpha,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 
-@Composable
-private fun PlayerCinematicLowerVeil(
-    primary: Color,
-    secondary: Color,
-    base: Color,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier.drawBehind {
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(primary.copy(alpha = 0.14f), Color.Transparent),
-                    center = Offset(size.width * 0.12f, size.height * 0.72f),
-                    radius = size.maxDimension * 0.58f
-                )
-            )
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(secondary.copy(alpha = 0.12f), Color.Transparent),
-                    center = Offset(size.width * 0.92f, size.height * 0.64f),
-                    radius = size.maxDimension * 0.52f
-                )
-            )
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to Color.Transparent,
-                        PlayerCinematicLowerVeilStart to Color.Transparent,
-                        PlayerCinematicLowerVeilMid to base.copy(alpha = 0.24f),
-                        1f to Color.Black.copy(alpha = 0.70f)
-                    )
-                )
-            )
+private fun Modifier.playerCinematicBottomDissolve(fadeFraction: Float): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithCache {
+        val mask = Brush.verticalGradient(
+            colorStops = playerCinematicDissolveStops(fadeFraction),
+            startY = 0f,
+            endY = size.height
+        )
+        onDrawWithContent {
+            drawContent()
+            drawRect(brush = mask, blendMode = BlendMode.DstIn)
         }
-    )
-}
+    }
 
 @Composable
-private fun PlayerCinematicChromeScrim(modifier: Modifier = Modifier) {
+private fun PlayerCinematicChromeScrim(
+    alpha: Float,
+    modifier: Modifier = Modifier
+) {
     val height = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + PlayerCinematicChromeScrim
     Box(
         modifier = modifier
@@ -246,35 +250,11 @@ private fun PlayerCinematicChromeScrim(modifier: Modifier = Modifier) {
             .height(height)
             .background(
                 Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.52f),
-                    0.55f to Color.Black.copy(alpha = 0.22f),
+                    0f to Color.Black.copy(alpha = alpha),
+                    0.55f to Color.Black.copy(alpha = alpha * 0.45f),
                     1f to Color.Transparent
                 )
             )
-    )
-}
-
-private fun DrawScope.drawStackedCinematicField(ambience: PlayerAmbience) {
-    drawRect(
-        brush = Brush.radialGradient(
-            colors = listOf(ambience.primary.copy(alpha = 0.34f), Color.Transparent),
-            center = Offset(size.width * 0.18f, size.height * 0.70f),
-            radius = size.maxDimension * 0.72f
-        )
-    )
-    drawRect(
-        brush = Brush.radialGradient(
-            colors = listOf(ambience.secondary.copy(alpha = 0.28f), Color.Transparent),
-            center = Offset(size.width * 0.88f, size.height * 0.58f),
-            radius = size.maxDimension * 0.64f
-        )
-    )
-    drawRect(
-        brush = Brush.verticalGradient(
-            0f to Color.Transparent,
-            0.56f to Color.Transparent,
-            1f to Color.Black.copy(alpha = 0.62f)
-        )
     )
 }
 
