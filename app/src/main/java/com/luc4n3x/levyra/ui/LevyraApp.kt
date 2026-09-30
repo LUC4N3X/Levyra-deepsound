@@ -92,6 +92,14 @@ import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalGaps
 import com.luc4n3x.levyra.ui.lyrics.lyricsInstrumentalProgress
 import com.luc4n3x.levyra.ui.lyrics.lyricsLineFocusPositionMs
 import com.luc4n3x.levyra.ui.lyrics.rememberLyricsPlaybackClock
+import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_CHROME_HEIGHT_DP
+import com.luc4n3x.levyra.ui.lyrics.LYRICS_LANDSCAPE_PANE_GAP_DP
+import com.luc4n3x.levyra.ui.lyrics.LyricsImmersiveSystemBars
+import com.luc4n3x.levyra.ui.lyrics.LyricsLandscapeArtworkPane
+import com.luc4n3x.levyra.ui.lyrics.LyricsLandscapeBackdrop
+import com.luc4n3x.levyra.ui.lyrics.LyricsLandscapeChromeScrim
+import com.luc4n3x.levyra.ui.lyrics.lyricsLandscapeLayoutActive
+import com.luc4n3x.levyra.ui.lyrics.lyricsLandscapeMetrics
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerShapes
@@ -222,6 +230,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBars
@@ -2425,6 +2437,7 @@ fun LevyraApp(
                         }
                         .playerMorphContainer(morphAnchors)
                 ) {
+                    val lyricsLandscapeActive = lyricsLandscapeLayoutActive(LocalConfiguration.current)
                     PlayerScreen(
                         viewModel = playerViewModel,
                         state = playerScreenState,
@@ -2436,7 +2449,7 @@ fun LevyraApp(
                             drag = onExpansionDrag,
                             dragEnd = { velocity -> settleExpansion(velocity, true) }
                         ),
-                        motionSuspended = state.showAlbum || state.showArtist
+                        motionSuspended = state.showAlbum || state.showArtist || (state.showLyrics && lyricsLandscapeActive)
                     )
                 }
             }
@@ -2662,6 +2675,9 @@ fun LevyraApp(
                     onSeekToMs = { positionMs ->
                         viewModel.seekTo(progressOf(positionMs, state.durationMs))
                     },
+                    onPrevious = viewModel::previous,
+                    onTogglePlay = viewModel::togglePlay,
+                    onNext = viewModel::next,
                     onClose = viewModel::closeLyrics
                 )
             }
@@ -6989,10 +7005,24 @@ private fun LyricsOverlay(
     onSaveLatencyOffset: (String?, Boolean, Long) -> Unit,
     onClearLatencyOffset: (String) -> Unit,
     onSeekToMs: (Long) -> Unit,
+    onPrevious: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onNext: () -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
+    val overlayConfiguration = LocalConfiguration.current
+    val landscapeLayout = lyricsLandscapeLayoutActive(overlayConfiguration)
+    val landscapeMetrics = if (landscapeLayout) {
+        lyricsLandscapeMetrics(
+            widthDp = overlayConfiguration.screenWidthDp.toFloat(),
+            heightDp = overlayConfiguration.screenHeightDp.toFloat()
+        )
+    } else {
+        null
+    }
+    LyricsImmersiveSystemBars(active = landscapeLayout)
     val accentStart = if (track != null) Color(track.accentStart) else LevyraCyan
     val accentEnd = if (track != null) Color(track.accentEnd) else LevyraViolet
     val listState = rememberLazyListState()
@@ -7179,7 +7209,7 @@ private fun LyricsOverlay(
 
     val followActiveLine = lyricsShouldFollowActiveLine(autoScrollEnabled, selectionMode)
 
-    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, followActiveLine, viewMode, visibleLyrics.size) {
+    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, followActiveLine, viewMode, visibleLyrics.size, landscapeLayout) {
         if (scrollFocusIndex >= 0 && followActiveLine) {
             runCatching {
                 val targetIndex = lyricsStartIndex + scrollFocusIndex
@@ -7208,96 +7238,193 @@ private fun LyricsOverlay(
         requestedLyricIndex = null
     }
 
+    val lyricsActionRow: @Composable (Modifier, Boolean) -> Unit = { rowModifier, includeClose ->
+        Row(
+            modifier = rowModifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                if (visibleLyrics.isNotEmpty() && viewMode != LyricsViewMode.COMPACT) {
+                    LyricsSyncStatus(
+                        synced = state.lyricsSynced,
+                        syncedLabel = strings.lyricsSyncedStatus,
+                        unsyncedLabel = strings.lyricsUnsyncedStatus
+                    )
+                } else if (activeSection != null) {
+                    Text(
+                        text = lyricSectionLabel(strings, activeSection),
+                        color = accentEnd.copy(alpha = 0.90f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.7.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+            if (canShareLyrics) {
+                CircleIconButton(
+                    icon = Icons.Rounded.Share,
+                    tint = if (selectionMode) LevyraCyan else Color.White,
+                    background = if (selectionMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
+                    onClick = { toggleShareMode() },
+                    contentDescription = strings.shareLyrics
+                )
+            }
+            CircleIconButton(
+                icon = Icons.Rounded.Tune,
+                tint = if (calibrateMode) LevyraCyan else Color.White,
+                background = if (calibrateMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
+                onClick = { showLyricsOptions = true },
+                contentDescription = strings.options
+            )
+            if (includeClose) {
+                CircleIconButton(
+                    icon = Icons.Rounded.Close,
+                    tint = Color.White,
+                    background = Color.White.copy(alpha = 0.13f),
+                    onClick = onClose,
+                    contentDescription = strings.closeLyrics
+                )
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .consumeOverlayTouches()
     ) {
-        LevyraBackground()
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Color.Black.copy(
-                        alpha = when (viewMode) {
-                            LyricsViewMode.CINEMA -> 0.68f
-                            LyricsViewMode.PAGE -> 0.76f
-                            LyricsViewMode.COMPACT -> 0.86f
-                        }
+        if (landscapeLayout) {
+            LyricsLandscapeBackdrop(
+                track = track,
+                accentStart = accentStart,
+                accentEnd = accentEnd,
+                artworkAlpha = lyricsBackdropAlpha(lyricsFocusMode, cinema = true)
+            )
+        } else {
+            LevyraBackground()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Color.Black.copy(
+                            alpha = when (viewMode) {
+                                LyricsViewMode.CINEMA -> 0.68f
+                                LyricsViewMode.PAGE -> 0.76f
+                                LyricsViewMode.COMPACT -> 0.86f
+                            }
+                        )
                     )
-                )
-        )
-        if (viewMode == LyricsViewMode.CINEMA) {
-            val backdropAlpha = lyricsBackdropAlpha(lyricsFocusMode, cinema = true)
-            if (track != null && backdropAlpha > 0f) {
-                val backdropContext = LocalContext.current
-                val backdropRequest = remember(backdropContext, track.id, track.largeThumbnailUrl, track.thumbnailUrl) {
-                    ImageRequest.Builder(backdropContext)
-                        .data(track.largeThumbnailUrl.ifBlank { track.thumbnailUrl })
-                        .size(LYRICS_BACKDROP_DECODE_PX, LYRICS_BACKDROP_DECODE_PX)
-                        .crossfade(false)
-                        .build()
+            )
+            if (viewMode == LyricsViewMode.CINEMA) {
+                val backdropAlpha = lyricsBackdropAlpha(lyricsFocusMode, cinema = true)
+                if (track != null && backdropAlpha > 0f) {
+                    val backdropContext = LocalContext.current
+                    val backdropRequest = remember(backdropContext, track.id, track.largeThumbnailUrl, track.thumbnailUrl) {
+                        ImageRequest.Builder(backdropContext)
+                            .data(track.largeThumbnailUrl.ifBlank { track.thumbnailUrl })
+                            .size(LYRICS_BACKDROP_DECODE_PX, LYRICS_BACKDROP_DECODE_PX)
+                            .crossfade(false)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = backdropRequest,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        filterQuality = FilterQuality.High,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = backdropAlpha
+                                scaleX = 1.22f
+                                scaleY = 1.22f
+                            }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.Black.copy(alpha = 0.62f),
+                                        Color.Black.copy(alpha = 0.40f),
+                                        Color.Black.copy(alpha = 0.78f)
+                                    )
+                                )
+                            )
+                    )
                 }
-                AsyncImage(
-                    model = backdropRequest,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    filterQuality = FilterQuality.High,
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = backdropAlpha
-                            scaleX = 1.22f
-                            scaleY = 1.22f
-                        }
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(accentStart.copy(alpha = 0.12f), Color.Transparent),
+                                radius = 1_250f
+                            )
+                        )
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                listOf(
-                                    Color.Black.copy(alpha = 0.62f),
-                                    Color.Black.copy(alpha = 0.40f),
-                                    Color.Black.copy(alpha = 0.78f)
-                                )
+                                colors = listOf(Color.Black.copy(alpha = 0.18f), Color.Transparent, Color.Black.copy(alpha = 0.55f))
                             )
                         )
                 )
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(accentStart.copy(alpha = 0.12f), Color.Transparent),
-                            radius = 1_250f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.18f), Color.Transparent, Color.Black.copy(alpha = 0.55f))
-                        )
-                    )
-            )
         }
 
+        if (landscapeMetrics != null) {
+            LyricsLandscapeArtworkPane(
+                track = track,
+                fallbackTitle = strings.lyrics,
+                artworkSize = landscapeMetrics.artworkSizeDp.dp,
+                motionArtwork = state.motionArtwork,
+                motionEnabled = state.animationsEnabled && state.motionArtworkEnabled && !state.isVideoMode,
+                isPlaying = state.isPlaying,
+                canvasQuality = state.interfaceSettings.canvasQuality,
+                accent = accentStart,
+                animationsEnabled = lyricsAnimationsEnabled,
+                onPrevious = onPrevious,
+                onTogglePlay = onTogglePlay,
+                onNext = onNext,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
+                    .width(landscapeMetrics.artworkPaneWidthDp.dp)
+            )
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                .then(
+                    if (landscapeMetrics != null) {
+                        Modifier
+                            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                            .padding(start = landscapeMetrics.artworkPaneWidthDp.dp)
+                    } else {
+                        Modifier.statusBarsPadding()
+                    }
+                )
                 .nestedScroll(userScrollConnection),
-            contentPadding = PaddingValues(
-                start = if (viewMode == LyricsViewMode.COMPACT) 18.dp else 22.dp,
-                end = if (viewMode == LyricsViewMode.COMPACT) 18.dp else 22.dp,
-                top = if (viewMode == LyricsViewMode.COMPACT) 8.dp else 14.dp,
-                bottom = if (viewMode == LyricsViewMode.COMPACT) 96.dp else 150.dp
-            ),
+            contentPadding = when {
+                landscapeMetrics != null -> PaddingValues(
+                    start = LYRICS_LANDSCAPE_PANE_GAP_DP.dp,
+                    end = 28.dp,
+                    top = LYRICS_LANDSCAPE_CHROME_HEIGHT_DP.dp,
+                    bottom = 120.dp
+                )
+                else -> PaddingValues(
+                    start = if (viewMode == LyricsViewMode.COMPACT) 18.dp else 22.dp,
+                    end = if (viewMode == LyricsViewMode.COMPACT) 18.dp else 22.dp,
+                    top = if (viewMode == LyricsViewMode.COMPACT) 8.dp else 14.dp,
+                    bottom = if (viewMode == LyricsViewMode.COMPACT) 96.dp else 150.dp
+                )
+            },
             verticalArrangement = Arrangement.spacedBy(
                 when (viewMode) {
                     LyricsViewMode.CINEMA -> 14.dp
@@ -7307,107 +7434,71 @@ private fun LyricsOverlay(
             )
         ) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(if (viewMode == LyricsViewMode.COMPACT) 9.dp else 12.dp)
-                ) {
-                    if (track != null) {
-                        AsyncImage(
-                            model = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(
-                                    when (viewMode) {
-                                        LyricsViewMode.CINEMA -> 62.dp
-                                        LyricsViewMode.PAGE -> 52.dp
-                                        LyricsViewMode.COMPACT -> 44.dp
-                                    }
-                                )
-                                .clip(RoundedCornerShape(if (viewMode == LyricsViewMode.COMPACT) 12.dp else 16.dp))
+                if (!landscapeLayout) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(if (viewMode == LyricsViewMode.COMPACT) 9.dp else 12.dp)
+                    ) {
+                        if (track != null) {
+                            AsyncImage(
+                                model = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(
+                                        when (viewMode) {
+                                            LyricsViewMode.CINEMA -> 62.dp
+                                            LyricsViewMode.PAGE -> 52.dp
+                                            LyricsViewMode.COMPACT -> 44.dp
+                                        }
+                                    )
+                                    .clip(RoundedCornerShape(if (viewMode == LyricsViewMode.COMPACT) 12.dp else 16.dp))
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = track?.title ?: strings.lyrics,
+                                color = Color.White,
+                                fontSize = when (viewMode) {
+                                    LyricsViewMode.CINEMA -> 23.sp
+                                    LyricsViewMode.PAGE -> 21.sp
+                                    LyricsViewMode.COMPACT -> 18.sp
+                                },
+                                fontWeight = FontWeight.Black,
+                                maxLines = if (viewMode == LyricsViewMode.COMPACT) 1 else 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = track?.artist.orEmpty(),
+                                color = Color.White.copy(alpha = 0.67f),
+                                fontSize = if (viewMode == LyricsViewMode.COMPACT) 12.sp else 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        CircleIconButton(
+                            icon = Icons.Rounded.Close,
+                            tint = Color.White,
+                            background = Color.White.copy(alpha = 0.13f),
+                            onClick = onClose,
+                            contentDescription = strings.closeLyrics
                         )
                     }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = track?.title ?: strings.lyrics,
-                            color = Color.White,
-                            fontSize = when (viewMode) {
-                                LyricsViewMode.CINEMA -> 23.sp
-                                LyricsViewMode.PAGE -> 21.sp
-                                LyricsViewMode.COMPACT -> 18.sp
-                            },
-                            fontWeight = FontWeight.Black,
-                            maxLines = if (viewMode == LyricsViewMode.COMPACT) 1 else 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = track?.artist.orEmpty(),
-                            color = Color.White.copy(alpha = 0.67f),
-                            fontSize = if (viewMode == LyricsViewMode.COMPACT) 12.sp else 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = Color.White,
-                        background = Color.White.copy(alpha = 0.13f),
-                        onClick = onClose,
-                        contentDescription = strings.closeLyrics
-                    )
                 }
             }
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (visibleLyrics.isNotEmpty() && viewMode != LyricsViewMode.COMPACT) {
-                            LyricsSyncStatus(
-                                synced = state.lyricsSynced,
-                                syncedLabel = strings.lyricsSyncedStatus,
-                                unsyncedLabel = strings.lyricsUnsyncedStatus
-                            )
-                        } else if (activeSection != null) {
-                            Text(
-                                text = lyricSectionLabel(strings, activeSection),
-                                color = accentEnd.copy(alpha = 0.90f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 0.7.sp,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                    if (canShareLyrics) {
-                        CircleIconButton(
-                            icon = Icons.Rounded.Share,
-                            tint = if (selectionMode) LevyraCyan else Color.White,
-                            background = if (selectionMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
-                            onClick = { toggleShareMode() },
-                            contentDescription = strings.shareLyrics
-                        )
-                    }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Tune,
-                        tint = if (calibrateMode) LevyraCyan else Color.White,
-                        background = if (calibrateMode) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
-                        onClick = { showLyricsOptions = true },
-                        contentDescription = strings.options
-                    )
-                }
+                if (!landscapeLayout) lyricsActionRow(Modifier.fillMaxWidth(), false)
             }
             item {
                 Spacer(
                     modifier = Modifier.height(
-                        when (viewMode) {
-                            LyricsViewMode.CINEMA -> 30.dp
-                            LyricsViewMode.PAGE -> 6.dp
-                            LyricsViewMode.COMPACT -> 2.dp
+                        when {
+                            landscapeLayout -> 4.dp
+                            viewMode == LyricsViewMode.CINEMA -> 30.dp
+                            viewMode == LyricsViewMode.PAGE -> 6.dp
+                            else -> 2.dp
                         }
                     )
                 )
@@ -7459,6 +7550,7 @@ private fun LyricsOverlay(
                             else -> 0
                         },
                         focusMode = lyricsFocusMode,
+                        layoutWidthDp = landscapeMetrics?.lyricsPaneWidthDp?.toInt(),
                         blurEnabled = lyricsAnimationsEnabled,
                         animationsEnabled = lyricsAnimationsEnabled,
                         sectionLabel = sectionStarts[index]?.let { lyricSectionLabel(strings, it) },
@@ -7497,6 +7589,23 @@ private fun LyricsOverlay(
                 }
             }
         }
+        if (landscapeMetrics != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
+                    .width(landscapeMetrics.lyricsPaneWidthDp.dp)
+                    .height((LYRICS_LANDSCAPE_CHROME_HEIGHT_DP + 18).dp)
+            ) {
+                LyricsLandscapeChromeScrim(modifier = Modifier.matchParentSize())
+                lyricsActionRow(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = LYRICS_LANDSCAPE_PANE_GAP_DP.dp, end = 20.dp, top = 8.dp),
+                    true
+                )
+            }
+        }
         AnimatedVisibility(
             visible = selectionMode,
             enter = fadeIn() + slideInVertically { it / 2 },
@@ -7504,6 +7613,7 @@ private fun LyricsOverlay(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
+                .padding(start = landscapeMetrics?.artworkPaneWidthDp?.dp ?: 0.dp)
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             LyricsShareBar(
@@ -8113,6 +8223,7 @@ private fun KaraokeLyricLine(
     viewMode: LyricsViewMode,
     distanceFromActive: Int,
     focusMode: Boolean,
+    layoutWidthDp: Int?,
     blurEnabled: Boolean,
     animationsEnabled: Boolean,
     sectionLabel: String?,
@@ -8193,17 +8304,18 @@ private fun KaraokeLyricLine(
     } * roleScale
     val configuration = LocalConfiguration.current
     val fontScale = LocalDensity.current.fontScale
+    val lineWidthDp = layoutWidthDp ?: configuration.screenWidthDp
     val resolvedFontSizeSp = remember(
         baseFontSizeSp,
         line.text,
-        configuration.screenWidthDp,
+        lineWidthDp,
         configuration.screenHeightDp,
         fontScale
     ) {
         adaptiveLyricFontSizeSp(
             baseSizeSp = baseFontSizeSp,
             characterCount = line.text.length,
-            availableWidthDp = (configuration.screenWidthDp - LYRICS_HORIZONTAL_GUTTER_DP).toFloat(),
+            availableWidthDp = (lineWidthDp - LYRICS_HORIZONTAL_GUTTER_DP).toFloat(),
             availableHeightDp = configuration.screenHeightDp.toFloat(),
             fontScale = fontScale
         )
