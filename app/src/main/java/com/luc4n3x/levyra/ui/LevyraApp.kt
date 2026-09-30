@@ -622,8 +622,9 @@ import com.luc4n3x.levyra.viewmodel.LevyraScreenViewModelFactory
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
-import com.luc4n3x.levyra.ui.artwork.VideoFrameShapeCache
-import com.luc4n3x.levyra.ui.artwork.detectPillarboxedVideoFrame
+import com.luc4n3x.levyra.ui.artwork.VideoFrameFit
+import com.luc4n3x.levyra.ui.artwork.VideoFrameFitCache
+import com.luc4n3x.levyra.ui.artwork.detectVideoFrameFit
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import com.luc4n3x.levyra.viewmodel.SearchViewModel
@@ -8875,7 +8876,6 @@ private fun HomeScreen(
     val chartChunks = homeDerivedState.chartChunks
     val spotlightHeroData = remember(
         spotlightCandidate?.track?.id,
-        spotlightTracks,
         soundtrackArtistPool,
         spotlightDayKey,
         state.languageCode
@@ -8906,14 +8906,7 @@ private fun HomeScreen(
             ?.let(::homeSoundtrackPrimaryArtist)
             ?.takeIf { it.isNotBlank() }
             ?: homeSoundtrackPrimaryArtist(heroTrack.artist).takeIf { it.isNotBlank() }
-        val heroQueueIndex = spotlightTracks.indexOfFirst { it.id == heroTrack.id }
-        val upcomingArtists = spotlightTracks
-            .drop(if (heroQueueIndex >= 0) heroQueueIndex + 1 else 0)
-            .map { track -> homeSoundtrackPrimaryArtist(track.artist) }
-        val soundtrackArtists = (listOfNotNull(heroArtistName) + upcomingArtists)
-            .filter(String::isNotBlank)
-            .distinctBy { artist -> artist.lowercase(Locale.ROOT) }
-            .take(3)
+        val soundtrackArtists = listOfNotNull(heroArtistName)
         val heroArtistArtworkUrl = heroPortraitArtist?.third
             .orEmpty()
             .trim()
@@ -11244,25 +11237,22 @@ private fun HomeMusicVideoCard(
 private fun HomeMusicVideoArtwork(item: HomeVideoCardItem) {
     val context = LocalContext.current
     val frameVideoId = item.frameVideoId
-    var pillarboxed by remember(frameVideoId) {
-        mutableStateOf(if (frameVideoId == null) false else VideoFrameShapeCache.get(frameVideoId))
+    var fit by remember(frameVideoId) {
+        mutableStateOf(if (frameVideoId == null) VideoFrameFit.Full else VideoFrameFitCache.get(frameVideoId))
     }
     LaunchedEffect(frameVideoId) {
-        if (frameVideoId != null && pillarboxed == null) {
-            pillarboxed = detectPillarboxedVideoFrame(context, frameVideoId) ?: false
+        if (frameVideoId != null && fit == null) {
+            fit = detectVideoFrameFit(context, frameVideoId) ?: VideoFrameFit.Full
         }
     }
-    val shape = pillarboxed ?: return
+    val frameFit = fit ?: return
     val squareArtwork = item.squareArtwork
-    val artworkTrack = when {
-        shape || frameVideoId == null -> squareArtwork ?: item.track
-        else -> item.track
-    }
+    val showArtwork = squareArtwork != null && (frameVideoId == null || frameFit.squareContent)
     CoverImage(
-        track = artworkTrack,
+        track = if (showArtwork) squareArtwork ?: item.track else item.track,
         modifier = Modifier.fillMaxSize(),
         highRes = true,
-        zoom = if (shape && squareArtwork == null) HOME_VIDEO_PILLARBOX_ZOOM else 1f
+        zoom = if (showArtwork) 1f else frameFit.zoom
     )
 }
 
@@ -11352,8 +11342,6 @@ private class HomeVideoCardItem(
     val frameVideoId: String?,
     val squareArtwork: Track?
 )
-
-private const val HOME_VIDEO_PILLARBOX_ZOOM = 16f / 9f
 
 private fun homeMusicVideoCardItem(track: Track): HomeVideoCardItem {
     val playableVideoId = youtubePlayableTrack(track, preferVideo = true)
