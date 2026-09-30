@@ -38,25 +38,55 @@ internal fun queueTracksAfterPlayNext(
     current: List<Track>,
     currentIndex: Int,
     additions: List<Track>
-): List<Track> {
-    if (additions.isEmpty()) return current
+): List<Track> = queueAfterPlayNextIntent(
+    current = current,
+    currentIndex = currentIndex,
+    pendingIdentities = emptyList(),
+    additions = additions
+).tracks
+
+internal data class PlayNextQueueMutation(
+    val tracks: List<Track>,
+    val currentIndex: Int,
+    val pendingIdentities: List<String>
+)
+
+internal fun queueAfterPlayNextIntent(
+    current: List<Track>,
+    currentIndex: Int,
+    pendingIdentities: List<String>,
+    additions: List<Track>
+): PlayNextQueueMutation {
     val currentTrack = current.getOrNull(currentIndex)
     val currentIdentity = currentTrack?.let(::playbackQueueIdentity)
-    val ordered = additions
+    val currentByIdentity = current.associateBy(::playbackQueueIdentity)
+    val retainedPending = pendingIdentities
+        .distinct()
+        .mapNotNull(currentByIdentity::get)
+        .filterNot { playbackQueueIdentity(it) == currentIdentity }
+    val retainedIdentities = retainedPending.mapTo(hashSetOf(), ::playbackQueueIdentity)
+    val appended = additions
         .distinctBy(::playbackQueueIdentity)
         .filterNot { playbackQueueIdentity(it) == currentIdentity }
-    if (ordered.isEmpty()) return current
-    val pendingIdentities = ordered.mapTo(hashSetOf(), ::playbackQueueIdentity)
+        .filterNot { playbackQueueIdentity(it) in retainedIdentities }
+        .map(Track::queueStoredCopy)
+    val ordered = retainedPending + appended
+    if (ordered.isEmpty()) {
+        return PlayNextQueueMutation(current, currentIndex, emptyList())
+    }
+    val nextPendingIdentities = ordered.map(::playbackQueueIdentity)
+    val pendingIdentitySet = nextPendingIdentities.toHashSet()
     val withoutPending = current.filterNot { track ->
-        playbackQueueIdentity(track) in pendingIdentities && playbackQueueIdentity(track) != currentIdentity
+        playbackQueueIdentity(track) in pendingIdentitySet && playbackQueueIdentity(track) != currentIdentity
     }
     val baseIndex = currentIdentity
         ?.let { identity -> withoutPending.indexOfFirst { playbackQueueIdentity(it) == identity } }
         ?.takeIf { it >= 0 }
         ?: currentIndex.coerceIn(-1, withoutPending.lastIndex)
-    return withoutPending.toMutableList().apply {
-        addAll((baseIndex + 1).coerceIn(0, size), ordered.map(Track::queueStoredCopy))
+    val tracks = withoutPending.toMutableList().apply {
+        addAll((baseIndex + 1).coerceIn(0, size), ordered)
     }
+    return PlayNextQueueMutation(tracks, baseIndex, nextPendingIdentities)
 }
 
 internal fun queuePersistenceAllowed(transientPlaybackActive: Boolean): Boolean =
@@ -215,6 +245,7 @@ class PersistentQueueEngine internal constructor(
     private var persistJob: Job? = null
     private var positionPersistJob: Job? = null
     private var undoRemoval: QueueRemoval? = null
+    private var playNextIntent: PlayNextIntent? = null
     private val tombstones = AutoQueueTombstones()
     @Volatile private var transientPlaybackActive: Boolean = false
 
@@ -246,6 +277,7 @@ class PersistentQueueEngine internal constructor(
         ).copy(spaceId = spaceId)
         val restoredState = synchronized(lock) {
             undoRemoval = null
+            playNextIntent = null
             snapshot.copy(generation = maxOf(snapshot.generation, _state.value.generation + 1L), undoAvailable = false)
                 .also { _state.value = it }
         }
@@ -281,6 +313,7 @@ class PersistentQueueEngine internal constructor(
                     val latest = _state.value
                     if (latest !== outgoing && latest.spaceId == outgoing.spaceId) lateOutgoing = latest
                     undoRemoval = null
+                    playNextIntent = null
                     target.toRuntimeSnapshot()
                         .copy(generation = maxOf(latest.generation, target.generation) + 1L)
                         .also { _state.value = it }
@@ -373,6 +406,7 @@ class PersistentQueueEngine internal constructor(
     fun clear(): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         tombstones.clear(current.spaceId)
         undoRemoval = null
+        playNextIntent = null
         PlaybackQueueSnapshot(
             spaceId = current.spaceId,
             tracks = emptyList(),
@@ -398,6 +432,7 @@ class PersistentQueueEngine internal constructor(
         radioEnabled: Boolean? = null
     ): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         tombstones.resetAutomatic(current.spaceId)
+        playNextIntent = null
         val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
         val safeIndex = if (normalized.isEmpty()) -1 else currentIndex.coerceIn(0, normalized.lastIndex)
         val previousIdentity = current.currentTrack?.let(::playbackQueueIdentity)
@@ -430,6 +465,7 @@ class PersistentQueueEngine internal constructor(
         positionPersistJob?.cancel()
         val durableSnapshot = preservedSnapshot.toPersistent()
         transientPlaybackActive = true
+        synchronized(lock) { playNextIntent = null }
         scope.launch {
             persistMutex.withLock {
                 runCatching { store.save(durableSnapshot) }
@@ -446,6 +482,7 @@ class PersistentQueueEngine internal constructor(
     ): PlaybackQueueSnapshot {
         check(transientPlaybackActive) { "Transient playback must be started before replacement" }
         return mutate(structural = true, immediatePersist = false) { current ->
+            playNextIntent = null
             val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
             val safeIndex = if (normalized.isEmpty()) -1 else currentIndex.coerceIn(0, normalized.lastIndex)
             buildSnapshot(
@@ -468,6 +505,7 @@ class PersistentQueueEngine internal constructor(
     fun restoreSnapshot(snapshot: PlaybackQueueSnapshot): PlaybackQueueSnapshot =
         mutate(structural = true, immediatePersist = true) { current ->
             undoRemoval = null
+            playNextIntent = null
             val tracks = snapshot.tracks.map { it.queueStoredCopy() }
             val currentIndex = if (tracks.isEmpty()) -1 else snapshot.currentIndex.coerceIn(0, tracks.lastIndex)
             val validShuffleOrder = snapshot.shuffleOrder
@@ -503,6 +541,7 @@ class PersistentQueueEngine internal constructor(
         var selected: Track? = null
         mutate(immediatePersist = true) { current ->
             if (index !in current.tracks.indices) return@mutate current
+            playNextIntent = null
             selected = current.tracks[index]
             selectSnapshot(current, index, positionMs, rememberCurrent)
         }
@@ -524,31 +563,31 @@ class PersistentQueueEngine internal constructor(
         rebuildAfterStructureChange(current, nextTracks, current.currentIndex)
     }
 
-    fun playNext(track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
-        tombstones.markManual(current.spaceId, listOf(track))
-        val identity = playbackQueueIdentity(track)
-        val withoutDuplicate = current.tracks.filterNot { playbackQueueIdentity(it) == identity }
-        val currentTrackIdentity = current.currentTrack?.let(::playbackQueueIdentity)
-        val baseIndex = currentTrackIdentity?.let { key -> withoutDuplicate.indexOfFirst { playbackQueueIdentity(it) == key } }
-            ?.takeIf { it >= 0 }
-            ?: current.currentIndex.coerceIn(-1, withoutDuplicate.lastIndex)
-        val insertionIndex = (baseIndex + 1).coerceIn(0, withoutDuplicate.size)
-        val nextTracks = withoutDuplicate.toMutableList().apply {
-            add(insertionIndex, track.queueStoredCopy())
-        }
-        rebuildAfterStructureChange(current, nextTracks, baseIndex)
-    }
+    fun playNext(track: Track): PlaybackQueueSnapshot = playNext(listOf(track))
 
     fun playNext(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        if (tracks.isEmpty()) return@mutate current
         tombstones.markManual(current.spaceId, tracks)
-        val nextTracks = queueTracksAfterPlayNext(current.tracks, current.currentIndex, tracks)
-        if (nextTracks == current.tracks) return@mutate current
+        val activeIntent = reconciledPlayNextIntent(current)
+        val mutation = queueAfterPlayNextIntent(
+            current = current.tracks,
+            currentIndex = current.currentIndex,
+            pendingIdentities = activeIntent?.pendingIdentities.orEmpty(),
+            additions = tracks
+        )
+        if (mutation.pendingIdentities.isEmpty()) return@mutate current
         val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
-        val nextCurrentIndex = currentIdentity
-            ?.let { identity -> nextTracks.indexOfFirst { playbackQueueIdentity(it) == identity } }
-            ?.takeIf { it >= 0 }
-            ?: current.currentIndex.coerceIn(-1, nextTracks.lastIndex)
-        rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex)
+        val anchorIdentity = currentIdentity ?: mutation.tracks.firstOrNull()?.let(::playbackQueueIdentity)
+        val pendingIdentities = if (currentIdentity == null) {
+            mutation.pendingIdentities.drop(1)
+        } else {
+            mutation.pendingIdentities
+        }
+        playNextIntent = anchorIdentity
+            ?.takeIf { pendingIdentities.isNotEmpty() }
+            ?.let { PlayNextIntent(current.spaceId, it, pendingIdentities) }
+        if (mutation.tracks == current.tracks) return@mutate current
+        rebuildAfterStructureChange(current, mutation.tracks, mutation.currentIndex)
     }
 
     fun remove(index: Int): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
@@ -594,6 +633,7 @@ class PersistentQueueEngine internal constructor(
 
     fun move(from: Int, to: Int): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         if (from !in current.tracks.indices || to !in current.tracks.indices || from == to) return@mutate current
+        playNextIntent = null
         val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
         val nextTracks = current.tracks.toMutableList()
         val moved = nextTracks.removeAt(from)
@@ -659,6 +699,7 @@ class PersistentQueueEngine internal constructor(
 
     fun setShuffle(enabled: Boolean): PlaybackQueueSnapshot = mutate(immediatePersist = true) { current ->
         if (current.shuffleEnabled == enabled) return@mutate current
+        playNextIntent = null
         if (!enabled) {
             current.copy(shuffleEnabled = false, shuffleOrder = emptyList(), shuffleCursor = -1, generation = current.generation + 1L)
         } else {
@@ -702,6 +743,7 @@ class PersistentQueueEngine internal constructor(
             val replacement = resolvedQueueTrackForHandoff(selected, expectedNextIdentity, resolved)
                 ?: return@mutate current
 
+            advancePlayNextIntent(current, target)
             val advanced = selectSnapshot(current, target, 0L, rememberCurrent = true)
             val updatedTracks = advanced.tracks.toMutableList().apply {
                 set(target, replacement.queueStoredCopy())
@@ -725,6 +767,7 @@ class PersistentQueueEngine internal constructor(
             val target = nextTargetIndex(current) ?: return@mutate current
             val selected = current.tracks[target]
             if (expectedIdentity != null && playbackQueueIdentity(selected) != expectedIdentity) return@mutate current
+            advancePlayNextIntent(current, target)
             result = selected
             selectSnapshot(current, target, 0L, rememberCurrent = true)
         }
@@ -769,6 +812,7 @@ class PersistentQueueEngine internal constructor(
                 }
             }
             val index = target ?: return@mutate current.copy(history = history)
+            playNextIntent = null
             result = current.tracks[index]
             selectSnapshot(current.copy(history = history), index, 0L, rememberCurrent = false)
         }
@@ -840,11 +884,11 @@ class PersistentQueueEngine internal constructor(
             .take(minOf(RADIO_BATCH_SIZE, available))
             .map { it.queueStoredCopy() }
         if (additions.isEmpty()) return@mutate current
-        val insertionIndex = radioInsertionIndex(
-            currentIndex = prepared.currentIndex,
-            queueSize = prepared.tracks.size,
-            afterCurrent = afterCurrent
-        )
+        val insertionIndex = if (afterCurrent) {
+            playNextTailInsertionIndex(prepared)
+        } else {
+            radioInsertionIndex(prepared.currentIndex, prepared.tracks.size, afterCurrent = false)
+        }
         val nextTracks = prepared.tracks.toMutableList().apply { addAll(insertionIndex, additions) }
         tombstones.markAutomatic(prepared.spaceId, additions)
         rebuildAfterStructureChange(prepared, nextTracks, prepared.currentIndex)
@@ -927,6 +971,7 @@ class PersistentQueueEngine internal constructor(
                 generation = if (structural && transformed.generation <= before.generation) before.generation + 1L else transformed.generation.coerceAtLeast(1L),
                 undoAvailable = undoRemoval != null
             )
+            reconcilePlayNextIntent(normalized)
             _state.value = normalized
             normalized
         }
@@ -1002,7 +1047,7 @@ class PersistentQueueEngine internal constructor(
     ): PlaybackQueueSnapshot {
         val previousIdentity = current.currentTrack?.let(::playbackQueueIdentity)
         val nextIdentity = tracks.getOrNull(currentIndex)?.let(::playbackQueueIdentity)
-        return buildSnapshot(
+        val rebuilt = buildSnapshot(
             tracks = tracks,
             currentIndex = currentIndex,
             positionMs = replacementQueuePositionMs(
@@ -1016,6 +1061,104 @@ class PersistentQueueEngine internal constructor(
             radioEnabled = current.radioEnabled,
             generation = current.generation + 1L,
             history = remapHistory(current, tracks)
+        )
+        return applyPlayNextShuffleOrder(current, rebuilt)
+    }
+
+    private fun reconciledPlayNextIntent(current: PlaybackQueueSnapshot): PlayNextIntent? {
+        val intent = playNextIntent ?: return null
+        if (intent.spaceId != current.spaceId || current.currentTrack?.let(::playbackQueueIdentity) != intent.anchorIdentity) {
+            playNextIntent = null
+            return null
+        }
+        val identities = current.tracks.map(::playbackQueueIdentity)
+        val retained = intent.pendingIdentities.filter(identities::contains)
+        if (retained.isEmpty()) {
+            playNextIntent = null
+            return null
+        }
+        val traversal = if (current.shuffleEnabled) {
+            val order = normalizedShuffleOrder(current)
+            val cursor = order.indexOf(current.currentIndex)
+            if (cursor < 0) emptyList() else order.drop(cursor + 1).mapNotNull(identities::getOrNull)
+        } else {
+            identities.drop((current.currentIndex + 1).coerceAtLeast(0))
+        }
+        if (traversal.take(retained.size) != retained) {
+            playNextIntent = null
+            return null
+        }
+        return intent.copy(pendingIdentities = retained).also { playNextIntent = it }
+    }
+
+    private fun reconcilePlayNextIntent(current: PlaybackQueueSnapshot) {
+        reconciledPlayNextIntent(current)
+    }
+
+    private fun advancePlayNextIntent(current: PlaybackQueueSnapshot, targetIndex: Int) {
+        val intent = reconciledPlayNextIntent(current) ?: return
+        val targetIdentity = current.tracks.getOrNull(targetIndex)?.let(::playbackQueueIdentity)
+            ?: run {
+                playNextIntent = null
+                return
+            }
+        if (targetIdentity != intent.pendingIdentities.firstOrNull()) {
+            playNextIntent = null
+            return
+        }
+        val remaining = intent.pendingIdentities.drop(1)
+        playNextIntent = if (remaining.isEmpty()) {
+            null
+        } else {
+            intent.copy(anchorIdentity = targetIdentity, pendingIdentities = remaining)
+        }
+    }
+
+    private fun playNextTailInsertionIndex(current: PlaybackQueueSnapshot): Int {
+        val pendingCount = reconciledPlayNextIntent(current)?.pendingIdentities?.size ?: 0
+        return (current.currentIndex + 1 + pendingCount).coerceIn(0, current.tracks.size)
+    }
+
+    private fun applyPlayNextShuffleOrder(
+        previous: PlaybackQueueSnapshot,
+        rebuilt: PlaybackQueueSnapshot
+    ): PlaybackQueueSnapshot {
+        if (!rebuilt.shuffleEnabled) return rebuilt
+        val intent = playNextIntent ?: return rebuilt
+        val nextIndexByIdentity = rebuilt.tracks
+            .mapIndexed { index, track -> playbackQueueIdentity(track) to index }
+            .toMap()
+        val pendingIndices = intent.pendingIdentities.mapNotNull(nextIndexByIdentity::get)
+        if (pendingIndices.isEmpty() || rebuilt.currentIndex !in rebuilt.tracks.indices) return rebuilt
+        val previousOrder = if (previous.shuffleEnabled) {
+            normalizedShuffleOrder(previous)
+        } else {
+            previous.tracks.indices.toList()
+        }
+        val previousCursor = previousOrder.indexOf(previous.currentIndex)
+        val traversalOrder = if (previousCursor >= 0) {
+            previousOrder.drop(previousCursor + 1) + previousOrder.take(previousCursor)
+        } else {
+            previousOrder
+        }
+        val previousTraversal = traversalOrder.mapNotNull { index ->
+            previous.tracks.getOrNull(index)?.let(::playbackQueueIdentity)?.let(nextIndexByIdentity::get)
+        }
+        val seen = BooleanArray(rebuilt.tracks.size)
+        val order = ArrayList<Int>(rebuilt.tracks.size)
+        fun append(index: Int) {
+            if (index in seen.indices && !seen[index]) {
+                seen[index] = true
+                order += index
+            }
+        }
+        append(rebuilt.currentIndex)
+        pendingIndices.forEach(::append)
+        previousTraversal.forEach(::append)
+        rebuilt.tracks.indices.forEach(::append)
+        return rebuilt.copy(
+            shuffleOrder = order,
+            shuffleCursor = order.indexOf(rebuilt.currentIndex).coerceAtLeast(0)
         )
     }
 
@@ -1089,6 +1232,12 @@ class PersistentQueueEngine internal constructor(
     )
 
     private data class QueueRemoval(val track: Track, val index: Int, val automatic: Boolean)
+
+    private data class PlayNextIntent(
+        val spaceId: String,
+        val anchorIdentity: String,
+        val pendingIdentities: List<String>
+    )
 
     companion object {
         private const val RADIO_BATCH_SIZE = 5

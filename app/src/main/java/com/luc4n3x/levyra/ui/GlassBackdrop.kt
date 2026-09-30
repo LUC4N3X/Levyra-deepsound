@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -30,10 +31,12 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toIntSize
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import com.luc4n3x.levyra.ui.theme.rememberPowerSaveMode
+import kotlin.math.ceil
 
 /**
  * Lightweight, dependency-free backdrop-blur system for Levyra "real glass" panels.
@@ -66,6 +69,23 @@ val LocalGlassBackdrop = compositionLocalOf<GlassBackdropState?> { null }
 
 private val blurSupported: Boolean
     get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+internal enum class GlassBackdropQuality(val resolutionScale: Float) {
+    Native(1f),
+    Balanced(0.75f),
+    Efficient(0.5f)
+}
+
+internal fun resolveGlassBackdropQuality(blurRadiusDp: Float): GlassBackdropQuality = when {
+    blurRadiusDp <= 20f -> GlassBackdropQuality.Native
+    blurRadiusDp <= 26f -> GlassBackdropQuality.Balanced
+    else -> GlassBackdropQuality.Efficient
+}
+
+internal fun glassBackdropLayerDimension(nativePixels: Float, resolutionScale: Float): Int =
+    ceil(nativePixels.coerceAtLeast(0f) * resolutionScale.coerceIn(0.01f, 1f))
+        .toInt()
+        .coerceAtLeast(1)
 
 @Composable
 fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
@@ -137,7 +157,9 @@ fun Modifier.glassFrost(
     }
 
     val density = LocalDensity.current
-    val blurPx = with(density) { blurRadius.toPx() }
+    val quality = remember(blurRadius) { resolveGlassBackdropQuality(blurRadius.value) }
+    val resolutionScale = quality.resolutionScale
+    val blurPx = with(density) { blurRadius.toPx() * resolutionScale }
     val blurEffect = remember(blurPx) {
         AndroidRenderEffect
             .createBlurEffect(blurPx, blurPx, AndroidShader.TileMode.CLAMP)
@@ -155,12 +177,20 @@ fun Modifier.glassFrost(
                 val dy = state.sourceOrigin.y - panelOrigin.y
                 if (groundColor.alpha > 0f) drawRect(groundColor)
                 frost.renderEffect = blurEffect
-                frost.record(size = size.toIntSize()) {
-                    translate(dx, dy) {
-                        drawLayer(source)
+                val backdropLayerSize = IntSize(
+                    glassBackdropLayerDimension(size.width, resolutionScale),
+                    glassBackdropLayerDimension(size.height, resolutionScale)
+                )
+                frost.record(size = backdropLayerSize) {
+                    scale(resolutionScale, pivot = Offset.Zero) {
+                        translate(dx, dy) {
+                            drawLayer(source)
+                        }
                     }
                 }
-                drawLayer(frost)
+                scale(1f / resolutionScale, pivot = Offset.Zero) {
+                    drawLayer(frost)
+                }
                 onDrawFrosted()
             } else {
                 onDrawFallback()
