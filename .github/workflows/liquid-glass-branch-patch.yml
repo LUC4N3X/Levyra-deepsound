@@ -1,0 +1,22 @@
+name: Liquid Glass branch patch
+on:
+  push:
+    branches: [feat/global-liquid-glass-ui]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/global-liquid-glass-ui
+          fetch-depth: 0
+      - run: python3 scripts/liquid_glass_branch_patch.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat(ui): persist and expose liquid glass setting [glass-patcher]"
+          git push origin HEAD:feat/global-liquid-glass-ui
