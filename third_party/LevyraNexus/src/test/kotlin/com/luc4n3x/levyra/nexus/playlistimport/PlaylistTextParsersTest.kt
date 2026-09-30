@@ -231,7 +231,7 @@ class PlaylistInputDetectorTest {
     }
 }
 
-class PlaylistImportReviewTest {
+class PlaylistImportHealerTest {
     private fun identity(position: Int, title: String, artist: String = "Artist", sourceId: String = "") =
         ImportedTrackIdentity(position, title, listOf(artist), durationMs = 200_000L, sourceTrackId = sourceId)
 
@@ -252,8 +252,8 @@ class PlaylistImportReviewTest {
         assertEquals(ImportEntryStatus.MATCHED, healed[1].status)
         val counts = PlaylistImportReview.counts(healed)
         assertEquals(2, counts.matched)
-        assertEquals(1, counts.ready)
-        assertEquals(1, counts.mergedRepeats)
+        assertEquals(2, counts.ready)
+        assertEquals(0, counts.mergedRepeats)
     }
 
     @Test
