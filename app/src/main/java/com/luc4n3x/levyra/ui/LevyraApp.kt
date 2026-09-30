@@ -622,6 +622,8 @@ import com.luc4n3x.levyra.viewmodel.LevyraScreenViewModelFactory
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
+import com.luc4n3x.levyra.ui.artwork.VideoFrameShapeCache
+import com.luc4n3x.levyra.ui.artwork.detectPillarboxedVideoFrame
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import com.luc4n3x.levyra.viewmodel.SearchViewModel
@@ -9992,14 +9994,14 @@ private fun Modifier.homeHeroBlend(
         startY = fadeStart,
         endY = size.height
     )
-    val textScrimTop = fadeStart + fadeLength * 0.30f
-    val textScrim = Brush.horizontalGradient(
+    val textScrim = Brush.radialGradient(
         colorStops = arrayOf(
-            0f to canvas.copy(alpha = if (isLight) 0.34f else 0.30f),
-            0.72f to canvas.copy(alpha = 0f)
+            0f to canvas.copy(alpha = if (isLight) 0.36f else 0.32f),
+            0.55f to canvas.copy(alpha = if (isLight) 0.18f else 0.16f),
+            1f to canvas.copy(alpha = 0f)
         ),
-        startX = 0f,
-        endX = size.width
+        center = Offset(0f, size.height),
+        radius = maxOf(size.width * 0.95f, fadeLength)
     )
     val topFadeHeight = HOME_HERO_TOP_FADE.toPx().coerceAtMost(size.height)
     val topFade = Brush.verticalGradient(
@@ -10012,11 +10014,7 @@ private fun Modifier.homeHeroBlend(
     )
     onDrawBehind {
         drawRect(brush = bottomFade, topLeft = Offset(0f, fadeStart), size = Size(size.width, fadeLength))
-        drawRect(
-            brush = textScrim,
-            topLeft = Offset(0f, textScrimTop),
-            size = Size(size.width, size.height - textScrimTop)
-        )
+        drawRect(brush = textScrim)
         if (fadeTop) drawRect(brush = topFade, size = Size(size.width, topFadeHeight))
     }
 }
@@ -11136,11 +11134,11 @@ private fun HomeMusicVideoShelf(
     val videos = remember(tracks) {
         LevyraPersonalOrbit.distinctRecordings(tracks)
             .take(10)
-            .map(::homeMusicVideoPreviewTrack)
+            .map(::homeMusicVideoCardItem)
     }
     if (videos.isEmpty()) return
     val playAll = {
-        val first = videos.first()
+        val first = videos.first().track
         val firstActive = currentId != null && first.id == currentId
         if (!firstActive || !(isPlaying || isResolving)) onPlay(first)
     }
@@ -11160,13 +11158,14 @@ private fun HomeMusicVideoShelf(
             ) {
                 itemsIndexed(
                     items = videos,
-                    key = { index, track -> "home-video-$index-${LevyraPersonalOrbit.identityKey(track)}" },
+                    key = { index, item -> "home-video-$index-${LevyraPersonalOrbit.identityKey(item.track)}" },
                     contentType = { _, _ -> "home-video-card" }
-                ) { _, track ->
+                ) { _, item ->
+                    val track = item.track
                     val active = currentId != null && track.id == currentId
                     val activeResolving = active && isResolving
                     HomeMusicVideoCard(
-                        track = track,
+                        item = item,
                         width = videoCardWidth,
                         active = active,
                         isPlaying = active && isPlaying,
@@ -11181,14 +11180,25 @@ private fun HomeMusicVideoShelf(
 
 @Composable
 private fun HomeMusicVideoCard(
-    track: Track,
+    item: HomeVideoCardItem,
     width: Dp,
     active: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     onClick: () -> Unit
 ) {
+    val track = item.track
     val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
+    val frameVideoId = item.frameVideoId
+    var pillarboxed by remember(frameVideoId) {
+        mutableStateOf(if (frameVideoId == null) false else VideoFrameShapeCache.get(frameVideoId))
+    }
+    LaunchedEffect(frameVideoId) {
+        if (frameVideoId != null && pillarboxed == null) {
+            pillarboxed = detectPillarboxedVideoFrame(context, frameVideoId) ?: false
+        }
+    }
     val durationLabel = remember(track.durationMs) {
         if (track.durationMs > 0L) formatSeekbarMillis(track.durationMs) else ""
     }
@@ -11222,12 +11232,24 @@ private fun HomeMusicVideoCard(
                     }
                 )
         ) {
-            CoverImage(
-                track = track,
-                modifier = Modifier.fillMaxSize(),
-                highRes = true,
-                zoom = 1f
-            )
+            when (pillarboxed) {
+                null -> Unit
+                true -> {
+                    val squareArtwork = item.squareArtwork
+                    CoverImage(
+                        track = squareArtwork ?: track,
+                        modifier = Modifier.fillMaxSize(),
+                        highRes = true,
+                        zoom = if (squareArtwork != null) 1f else HOME_VIDEO_PILLARBOX_ZOOM
+                    )
+                }
+                false -> CoverImage(
+                    track = if (frameVideoId == null) item.squareArtwork ?: track else track,
+                    modifier = Modifier.fillMaxSize(),
+                    highRes = true,
+                    zoom = 1f
+                )
+            }
             if (durationLabel.isNotBlank() || active) {
                 Surface(
                     color = Color.Black.copy(alpha = 0.68f),
@@ -11295,22 +11317,41 @@ private fun HomeMusicVideoCard(
 
 private val HomeVideoIdPattern = Regex("[A-Za-z0-9_-]{11}")
 
-private fun homeMusicVideoPreviewTrack(track: Track): Track {
+private class HomeVideoCardItem(
+    val track: Track,
+    val frameVideoId: String?,
+    val squareArtwork: Track?
+)
+
+private const val HOME_VIDEO_PILLARBOX_ZOOM = 16f / 9f
+
+private fun homeMusicVideoCardItem(track: Track): HomeVideoCardItem {
     val playableVideoId = youtubePlayableTrack(track, preferVideo = true)
         ?.let { playable -> PlaybackSourceIdentity.extractYoutubeVideoId(playable.videoUrl) }
         .orEmpty()
     val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
         .takeUnless { YoutubeMusicVideoType.isArtTrack(track.videoType) }
         .orEmpty()
+    val squareArtwork = sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl)
+        .map(String::trim)
+        .firstOrNull { url -> url.isNotBlank() && !isYoutubeVideoFrameUrl(url) }
+        ?.let { url -> track.copy(thumbnailUrl = url, largeThumbnailUrl = url) }
     val videoId = sequenceOf(playableVideoId, sourceVideoId)
         .map(String::trim)
         .firstOrNull(HomeVideoIdPattern::matches)
-        ?: return track
-    return track.copy(
-        thumbnailUrl = "https://i.ytimg.com/vi/$videoId/hqdefault.jpg",
-        largeThumbnailUrl = "https://i.ytimg.com/vi/$videoId/hq720.jpg"
+        ?: return HomeVideoCardItem(track = track, frameVideoId = null, squareArtwork = squareArtwork)
+    return HomeVideoCardItem(
+        track = track.copy(
+            thumbnailUrl = "https://i.ytimg.com/vi/$videoId/hqdefault.jpg",
+            largeThumbnailUrl = "https://i.ytimg.com/vi/$videoId/hq720.jpg"
+        ),
+        frameVideoId = videoId,
+        squareArtwork = squareArtwork
     )
 }
+
+private fun isYoutubeVideoFrameUrl(url: String): Boolean =
+    url.contains("ytimg.com/", ignoreCase = true) || url.contains("img.youtube.com/", ignoreCase = true)
 
 private fun isMusicVideoSectionTitle(title: String, strings: LevyraStrings): Boolean {
     val normalized = title.trim().lowercase(java.util.Locale.ROOT)
