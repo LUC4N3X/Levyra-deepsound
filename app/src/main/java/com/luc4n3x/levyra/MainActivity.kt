@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -56,6 +57,7 @@ import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
+import com.luc4n3x.levyra.ui.components.LocalLevyraLiquidGlassEnabled
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
@@ -83,6 +85,7 @@ import timber.log.Timber
 
 private data class MainActivityUiSlice(
     val fontPreset: LevyraFontPreset,
+    val liquidGlassEnabled: Boolean,
     val isPlaying: Boolean,
     val showSettings: Boolean,
     val showOnboarding: Boolean,
@@ -94,6 +97,7 @@ private data class MainActivityUiSlice(
 
 private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainActivityUiSlice(
     fontPreset = interfaceSettings.fontPreset,
+    liquidGlassEnabled = interfaceSettings.liquidGlassEnabled,
     isPlaying = isPlaying,
     showSettings = showSettings,
     showOnboarding = showOnboarding,
@@ -183,12 +187,16 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LevyraApp(
-                    viewModel = viewModel,
-                    isInPictureInPicture = pipMode.value,
-                    onRetryPreUpdateBackup = ::retryPreUpdateBackup,
-                    onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
-                )
+                CompositionLocalProvider(
+                    LocalLevyraLiquidGlassEnabled provides activityUiState.liquidGlassEnabled
+                ) {
+                    LevyraApp(
+                        viewModel = viewModel,
+                        isInPictureInPicture = pipMode.value,
+                        onRetryPreUpdateBackup = ::retryPreUpdateBackup,
+                        onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
+                    )
+                }
                 RemoteAnnouncementGate(
                     enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings,
                     languageCode = activityUiState.languageCode,
