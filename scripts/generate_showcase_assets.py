@@ -186,6 +186,7 @@ def generate_hero_panoramic_showcase():
 
     candidates = [
         os.path.join(OUT_SHOWCASE_DIR, "levyra_hero_cinematic_chatgpt.png"),
+        r"C:\Users\Luca Drogo\Downloads\Immagine ChatGPT 30 set 2026, 21_37_37.png",
         r"C:\Users\Luca Drogo\Downloads\Immagine ChatGPT 30 set 2026, 21_31_11.png",
         resolve_screenshot_path("levyra_hero_cinematic_chatgpt.png"),
     ]
@@ -193,10 +194,9 @@ def generate_hero_panoramic_showcase():
     if src_file:
         with Image.open(src_file) as im:
             im = im.convert("RGB")
-            res = im.resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
             out_path = os.path.join(OUT_SHOWCASE_DIR, "00_levyra_hero_wall_player.webp")
-            res.save(out_path, "WEBP", quality=95, method=6)
-            print("Generated Panoramic Hero Showcase:", out_path)
+            im.save(out_path, "WEBP", quality=95, method=6)
+            print(f"Generated Panoramic Hero Showcase at original dimensions {im.size}:", out_path)
             return
 
     # 1. Load and prepare cinematic motion photography background
