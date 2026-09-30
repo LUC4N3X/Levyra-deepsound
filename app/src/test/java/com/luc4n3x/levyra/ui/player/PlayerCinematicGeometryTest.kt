@@ -52,23 +52,35 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
-    fun spotifyCanvasUsesFullscreenPhonePresentation() {
+    fun spotifyCanvasUsesFullscreenPhonePresentationOnly() {
+        val spotifyCanvas = "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4"
+
         assertTrue(
             playerCinematicUsesFullscreenCanvas(
-                PlayerCinematicLayout.Stacked,
-                "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4"
+                layout = PlayerCinematicLayout.Stacked,
+                sideDissolve = false,
+                motionUrl = spotifyCanvas
             )
         )
         assertFalse(
             playerCinematicUsesFullscreenCanvas(
-                PlayerCinematicLayout.SideBySide,
-                "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4"
+                layout = PlayerCinematicLayout.Stacked,
+                sideDissolve = true,
+                motionUrl = spotifyCanvas
             )
         )
         assertFalse(
             playerCinematicUsesFullscreenCanvas(
-                PlayerCinematicLayout.Stacked,
-                "https://resources.tidal.com/video-cover/example.mp4"
+                layout = PlayerCinematicLayout.SideBySide,
+                sideDissolve = false,
+                motionUrl = spotifyCanvas
+            )
+        )
+        assertFalse(
+            playerCinematicUsesFullscreenCanvas(
+                layout = PlayerCinematicLayout.Stacked,
+                sideDissolve = false,
+                motionUrl = "https://resources.tidal.com/video-cover/example.mp4"
             )
         )
     }
