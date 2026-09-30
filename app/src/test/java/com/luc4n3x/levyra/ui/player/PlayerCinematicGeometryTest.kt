@@ -44,6 +44,14 @@ class PlayerCinematicGeometryTest {
     }
 
     @Test
+    fun chromeScrimUsesReferenceLuminanceRange() {
+        assertEquals(0.16f, playerCinematicTopScrimAlpha(null), 0.0001f)
+        assertEquals(0.16f, playerCinematicTopScrimAlpha(0f), 0.0001f)
+        assertEquals(0.65f, playerCinematicTopScrimAlpha(1f), 0.0001f)
+        assertEquals(0.405f, playerCinematicTopScrimAlpha(0.5f), 0.0001f)
+    }
+
+    @Test
     fun phonePortraitImmersiveCanvasStopsAtHeroBottom() {
         val geometry = playerCinematicGeometry(
             pane = LevyraPlayerPane.Stacked,
