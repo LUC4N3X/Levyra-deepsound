@@ -69,10 +69,15 @@ private val blurSupported: Boolean
 
 @Composable
 fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
-    val layer = rememberGraphicsLayer()
     val state = remember { GlassBackdropState() }
-    state.layer = layer
-    state.enabled = enabled && blurSupported
+    if (enabled && blurSupported) {
+        state.layer = rememberGraphicsLayer()
+        state.enabled = true
+    } else {
+        state.enabled = false
+        state.layer = null
+        state.sourceOrigin = Offset.Zero
+    }
     return state
 }
 
@@ -93,7 +98,7 @@ fun rememberGlassBlurAllowed(): Boolean {
  * visible. Apply as the last modifier on the backdrop so it captures the inner draws.
  */
 fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
-    if (!state.enabled) return this
+    if (!state.enabled || state.layer == null) return this
     return this
         .onGloballyPositioned { state.sourceOrigin = it.positionInRoot() }
         .drawWithContent {
@@ -120,17 +125,23 @@ fun Modifier.glassFrost(
     onDrawFrosted: DrawScope.() -> Unit,
     onDrawFallback: DrawScope.() -> Unit
 ): Modifier = composed {
+    if (
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+        !state.enabled ||
+        state.layer == null
+    ) {
+        return@composed this.drawWithContent {
+            onDrawFallback()
+            drawContent()
+        }
+    }
+
     val density = LocalDensity.current
     val blurPx = with(density) { blurRadius.toPx() }
-    val active = state.enabled && blurSupported
-    val blurEffect = remember(blurPx, active) {
-        if (active) {
-            AndroidRenderEffect
-                .createBlurEffect(blurPx, blurPx, AndroidShader.TileMode.CLAMP)
-                .asComposeRenderEffect()
-        } else {
-            null
-        }
+    val blurEffect = remember(blurPx) {
+        AndroidRenderEffect
+            .createBlurEffect(blurPx, blurPx, AndroidShader.TileMode.CLAMP)
+            .asComposeRenderEffect()
     }
     val frost = rememberGraphicsLayer()
     var panelOrigin by remember { mutableStateOf(Offset.Zero) }
@@ -139,7 +150,7 @@ fun Modifier.glassFrost(
         .onGloballyPositioned { panelOrigin = it.positionInRoot() }
         .drawWithContent {
             val source = state.layer
-            if (active && source != null && blurEffect != null) {
+            if (source != null) {
                 val dx = state.sourceOrigin.x - panelOrigin.x
                 val dy = state.sourceOrigin.y - panelOrigin.y
                 if (groundColor.alpha > 0f) drawRect(groundColor)

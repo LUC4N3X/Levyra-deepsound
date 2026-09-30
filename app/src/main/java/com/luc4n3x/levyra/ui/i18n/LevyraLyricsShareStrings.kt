@@ -15,7 +15,10 @@ internal val lyricsShareKeys = setOf(
     "shareLyricsFailed",
     "shareLyricsLineSelected",
     "shareLyricsLineNotSelected",
-    "shareLyricsHint"
+    "shareLyricsHint",
+    "lyricsSyncedStatus",
+    "lyricsUnsyncedStatus",
+    "lyricsSource"
 )
 
 private fun lyricsShare(
@@ -33,7 +36,10 @@ private fun lyricsShare(
     v11: String,
     v12: String,
     v13: String,
-    v14: String
+    v14: String,
+    v15: String,
+    v16: String,
+    v17: String
 ): Map<String, String> = mapOf(
     "shareLyrics" to v0,
     "shareLyricsContinue" to v1,
@@ -49,7 +55,10 @@ private fun lyricsShare(
     "shareLyricsFailed" to v11,
     "shareLyricsLineSelected" to v12,
     "shareLyricsLineNotSelected" to v13,
-    "shareLyricsHint" to v14
+    "shareLyricsHint" to v14,
+    "lyricsSyncedStatus" to v15,
+    "lyricsUnsyncedStatus" to v16,
+    "lyricsSource" to v17
 )
 
 private val lyricsShareBundles: Map<String, Map<String, String>> = mapOf(
@@ -68,7 +77,10 @@ private val lyricsShareBundles: Map<String, Map<String, String>> = mapOf(
         "Couldn't create the image. Try again.",
         "Selected",
         "Not selected",
-        "Tap the lines you want to share"
+        "Tap the lines you want to share",
+        "Synced",
+        "Not synced",
+        "Source"
     ),
     "it" to lyricsShare(
         "Condividi testo",
@@ -85,7 +97,10 @@ private val lyricsShareBundles: Map<String, Map<String, String>> = mapOf(
         "Impossibile creare l'immagine. Riprova.",
         "Selezionato",
         "Non selezionato",
-        "Tocca i versi da condividere"
+        "Tocca i versi da condividere",
+        "Sincronizzato",
+        "Non sincronizzato",
+        "Fonte"
     ),
     "es" to lyricsShare(
         "Compartir letra",
@@ -102,7 +117,10 @@ private val lyricsShareBundles: Map<String, Map<String, String>> = mapOf(
         "No se pudo crear la imagen. Inténtalo de nuevo.",
         "Seleccionado",
         "No seleccionado",
-        "Toca los versos que quieres compartir"
+        "Toca los versos que quieres compartir",
+        "Sincronizada",
+        "Sin sincronizar",
+        "Fuente"
     ),
     "fr" to lyricsShare(
         "Partager les paroles",
@@ -119,7 +137,10 @@ private val lyricsShareBundles: Map<String, Map<String, String>> = mapOf(
         "Impossible de créer l'image. Réessayez.",
         "Sélectionné",
         "Non sélectionné",
-        "Touchez les lignes à partager"
+        "Touchez les lignes à partager",
+        "Synchronisé",
+        "Non synchronisé",
+        "Source"
     ),
     "de" to lyricsShare(
         "Liedtext teilen",
@@ -136,7 +157,10 @@ private val lyricsShareBundles: Map<String, Map<String, String>> = mapOf(
         "Das Bild konnte nicht erstellt werden. Versuche es erneut.",
         "Ausgewählt",
         "Nicht ausgewählt",
-        "Tippe auf die Zeilen zum Teilen"
+        "Tippe auf die Zeilen zum Teilen",
+        "Synchronisiert",
+        "Nicht synchronisiert",
+        "Quelle"
     ),
     "pt" to lyricsShare(
         "Compartilhar letra",
@@ -153,7 +177,10 @@ private val lyricsShareBundles: Map<String, Map<String, String>> = mapOf(
         "Não foi possível criar a imagem. Tente novamente.",
         "Selecionado",
         "Não selecionado",
-        "Toque nos versos que quer compartilhar"
+        "Toque nos versos que quer compartilhar",
+        "Sincronizada",
+        "Sem sincronização",
+        "Fonte"
     )
 )
 

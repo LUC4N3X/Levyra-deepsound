@@ -65,6 +65,8 @@ import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
 import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_SHARE_MAX_LINES
+import com.luc4n3x.levyra.ui.lyrics.lyricsProviderDisplayName
+import com.luc4n3x.levyra.ui.lyrics.lyricsShouldFollowActiveLine
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareSheet
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareSnapshot
 import com.luc4n3x.levyra.ui.lyrics.isLyricsShareSelectable
@@ -291,6 +293,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
@@ -421,6 +424,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -7164,8 +7168,8 @@ private fun LyricsOverlay(
         }
     }
 
-    LaunchedEffect(userScrollGeneration, listState.isScrollInProgress) {
-        if (!autoScrollEnabled && !listState.isScrollInProgress) {
+    LaunchedEffect(userScrollGeneration, listState.isScrollInProgress, selectionMode) {
+        if (!autoScrollEnabled && !listState.isScrollInProgress && !selectionMode) {
             delay(LYRICS_AUTO_SCROLL_RESUME_MS)
             autoScrollEnabled = true
         }
@@ -7173,8 +7177,10 @@ private fun LyricsOverlay(
 
     val scrollFocusIndex = instrumentalGap?.nextLineIndex ?: visualActiveIndex
 
-    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, autoScrollEnabled, viewMode, visibleLyrics.size) {
-        if (scrollFocusIndex >= 0 && autoScrollEnabled) {
+    val followActiveLine = lyricsShouldFollowActiveLine(autoScrollEnabled, selectionMode)
+
+    LaunchedEffect(scrollFocusIndex, lyricsStartIndex, followActiveLine, viewMode, visibleLyrics.size) {
+        if (scrollFocusIndex >= 0 && followActiveLine) {
             runCatching {
                 val targetIndex = lyricsStartIndex + scrollFocusIndex
                 val targetVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
@@ -7224,13 +7230,21 @@ private fun LyricsOverlay(
         if (viewMode == LyricsViewMode.CINEMA) {
             val backdropAlpha = lyricsBackdropAlpha(lyricsFocusMode, cinema = true)
             if (track != null && backdropAlpha > 0f) {
+                val backdropContext = LocalContext.current
+                val backdropRequest = remember(backdropContext, track.id, track.largeThumbnailUrl, track.thumbnailUrl) {
+                    ImageRequest.Builder(backdropContext)
+                        .data(track.largeThumbnailUrl.ifBlank { track.thumbnailUrl })
+                        .size(LYRICS_BACKDROP_DECODE_PX, LYRICS_BACKDROP_DECODE_PX)
+                        .crossfade(false)
+                        .build()
+                }
                 AsyncImage(
-                    model = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                    model = backdropRequest,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    filterQuality = FilterQuality.High,
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(58.dp)
                         .graphicsLayer {
                             alpha = backdropAlpha
                             scaleX = 1.22f
@@ -7353,12 +7367,10 @@ private fun LyricsOverlay(
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
                         if (visibleLyrics.isNotEmpty() && viewMode != LyricsViewMode.COMPACT) {
-                            LyricsStatusRow(
-                                provider = state.lyricsProvider,
+                            LyricsSyncStatus(
                                 synced = state.lyricsSynced,
-                                cached = state.lyricsCached,
-                                confidence = state.lyricsConfidence,
-                                syncedLabel = strings.synced
+                                syncedLabel = strings.lyricsSyncedStatus,
+                                unsyncedLabel = strings.lyricsUnsyncedStatus
                             )
                         } else if (activeSection != null) {
                             Text(
@@ -7441,7 +7453,7 @@ private fun LyricsOverlay(
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
                         distanceFromActive = when {
-                            !autoScrollEnabled -> 0
+                            !followActiveLine -> 0
                             lineInstrumentalGap != null -> 0
                             visualActiveIndex >= 0 -> kotlin.math.abs(index - visualActiveIndex)
                             else -> 0
@@ -7542,6 +7554,15 @@ private fun LyricsOverlay(
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
+            lyricsProviderDisplayName(state.lyricsProvider).takeIf(String::isNotBlank)?.let { source ->
+                Text(
+                    text = "${strings.lyricsSource} · $source",
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 2.dp)
+                )
+            }
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -7926,6 +7947,7 @@ private fun LyricsVersionDialog(
 }
 
 private const val LYRICS_AUTO_SCROLL_RESUME_MS = 3_500L
+private const val LYRICS_BACKDROP_DECODE_PX = 96
 
 private suspend fun centerLyricsItem(
     listState: LazyListState,
@@ -8638,23 +8660,24 @@ private fun LyricsIntelligenceDialog(
 }
 
 @Composable
-private fun LyricsStatusRow(provider: String, synced: Boolean, cached: Boolean, confidence: Int, syncedLabel: String) {
-    val label = buildString {
-        if (synced) {
-            append(syncedLabel)
-            if (provider.isNotBlank()) append(" • ").append(provider)
-        } else {
-            append(provider.ifBlank { "Lyrics" })
-        }
-        if (cached) append(" • cache")
-        if (confidence > 0) append(" • ").append(confidence).append("%")
-    }
-    Surface(
-        color = if (synced) LevyraCyan.copy(alpha = 0.18f) else LevyraViolet.copy(alpha = 0.16f),
-        border = BorderStroke(1.dp, if (synced) LevyraCyan.copy(alpha = 0.28f) else LevyraViolet.copy(alpha = 0.26f)),
-        shape = CircleShape
+private fun LyricsSyncStatus(synced: Boolean, syncedLabel: String, unsyncedLabel: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(label, color = if (synced) LevyraCyan else LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .background(if (synced) LevyraCyan else Color.White.copy(alpha = 0.40f), CircleShape)
+        )
+        Text(
+            text = if (synced) syncedLabel else unsyncedLabel,
+            color = Color.White.copy(alpha = 0.66f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -18563,6 +18586,7 @@ private fun SettingsOverlay(
                 SettingsSearchEntry(strings.themeStudio, strings.themeStudioSubtitle, "${strings.theme} ${strings.themeAccent}", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.animations, strings.animationsSubtitle, strings.motionArtwork, "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.visualPerformance, strings.visualPerformanceFullSubtitle, "${strings.visualPerformanceAuto} ${strings.visualPerformanceSmooth} performance", "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.liquidGlass, strings.liquidGlassSubtitle, "glass blur transparency", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.dynamicColor, strings.dynamicColorSubtitle, strings.design, "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.appFont, strings.appFontSubtitle, "font typography text", "design", categoryTitle(strings.design)),
                 SettingsSearchEntry(strings.pureBlack, strings.pureBlackSubtitle, "amoled black", "home", categoryTitle(strings.homeInterfaceSection)),
@@ -18818,6 +18842,17 @@ private fun SettingsOverlay(
                                         onInterfaceSettings(
                                             interfaceSettings.copy(visualPerformance = LevyraVisualPerformance.from(value))
                                         )
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.BlurOn,
+                                    title = strings.liquidGlass,
+                                    subtitle = strings.liquidGlassSubtitle,
+                                    checked = interfaceSettings.liquidGlassEnabled,
+                                    onCheckedChange = { value ->
+                                        onInterfaceSettings(interfaceSettings.copy(liquidGlassEnabled = value))
                                     }
                                 )
                             }

@@ -67,6 +67,26 @@ class LevyraNewFeatureLocalizationTest {
     }
 
     @Test
+    fun liquidGlassCoversEveryCatalogLanguageWithoutEnglishFallback() {
+        val codes = LevyraLanguageCatalog.languages.map { it.code }
+        assertEquals(codes.toSet(), liquidGlassLocalizationCodes())
+        val english = liquidGlassLocalizationEntries("en")
+        codes.forEach { code ->
+            val entries = liquidGlassLocalizationEntries(code)
+            assertEquals(liquidGlassKeys, entries.keys)
+            entries.forEach { (key, value) -> assertTrue("$code/$key is blank", value.isNotBlank()) }
+            if (code != "en") {
+                assertNotEquals(
+                    "$code/liquidGlassSubtitle falls back to English",
+                    english.getValue("liquidGlassSubtitle"),
+                    entries.getValue("liquidGlassSubtitle")
+                )
+            }
+            assertTrue(LevyraStrings.forCode(code).liquidGlassSubtitle.isNotBlank())
+        }
+    }
+
+    @Test
     fun placeholdersStaySafeAcrossLanguages() {
         LevyraLanguageCatalog.languages.map { it.code }.forEach { code ->
             val strings = LevyraStrings.forCode(code)
