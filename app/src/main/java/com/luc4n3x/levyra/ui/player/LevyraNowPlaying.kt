@@ -125,6 +125,7 @@ import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
 import com.luc4n3x.levyra.ui.levyraFoldAwareGutterDp
@@ -254,9 +255,13 @@ fun LevyraNowPlaying(
     }
     var showActions by remember { mutableStateOf(false) }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
+    var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isVideoMode, track == null) {
-        if (state.isVideoMode || track == null) showDeck = false
+        if (state.isVideoMode || track == null) {
+            showDeck = false
+            showAudioRouteCenter = false
+        }
     }
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableIntStateOf(0) }
@@ -406,18 +411,18 @@ fun LevyraNowPlaying(
         val headerButtonFill = surfaces.controlQuiet
         val headerButtonBorder = if (surfaces.amoled) surfaces.outline else Color.Transparent
         val headerButtonSize = if (compactPlayer) LevyraPlayerDesign.HeaderButtonCompact else LevyraPlayerDesign.HeaderButton
-
-        val headerTrailingCount = listOf(
-            !state.isVideoMode && !liveRadio,
-            state.isVideoMode,
-            state.isVideoMode && track?.videoSubtitleTracks?.isNotEmpty() == true,
-            state.isVideoMode && state.videoQuality.available,
-            track != null
-        ).count { it }
         val headerSlotWidth = maxOf(headerButtonSize, HeaderButtonMinimumWidth)
-        val headerTrailingWidth = headerSlotWidth * headerTrailingCount +
-            LevyraPlayerDesign.SpaceXs * (headerTrailingCount - 1).coerceAtLeast(0)
-        val headerCentered = headerTrailingWidth <= HeaderSideReserve
+        val headerPolicy = playerHeaderPolicy(
+            isVideoMode = state.isVideoMode,
+            isLiveRadio = liveRadio,
+            hasTrack = track != null,
+            hasSubtitles = track?.videoSubtitleTracks?.isNotEmpty() == true,
+            videoQualityAvailable = state.videoQuality.available,
+            slotWidthDp = headerSlotWidth.value,
+            spacingDp = LevyraPlayerDesign.SpaceXs.value,
+            sideReserveDp = HeaderSideReserve.value
+        )
+        val headerCentered = headerPolicy.centerLocked
 
         val headerLeading: @Composable () -> Unit = {
             PlayerGlassIconButton(
@@ -430,19 +435,6 @@ fun LevyraNowPlaying(
                 borderBottom = headerButtonBorder,
                 onClick = collapseActions.collapse
             )
-            if (deckMode == PlayerVisualMode.CanvasImmersive && !state.isVideoMode) {
-                PlayerGlassIconButton(
-                    icon = Icons.Rounded.CloseFullscreen,
-                    contentDescription = strings.exitImmersive,
-                    size = headerButtonSize,
-                    iconSize = 20.dp,
-                    tint = surfaces.activeContent,
-                    fill = headerButtonFill,
-                    borderTop = headerButtonBorder,
-                    borderBottom = headerButtonBorder,
-                    onClick = { viewModel.setPlayerVisualMode(PlayerVisualMode.CanvasCard) }
-                )
-            }
         }
         val headerCenter: @Composable () -> Unit = {
             if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
@@ -1235,6 +1227,10 @@ fun LevyraNowPlaying(
                 onSleepTimer = viewModel::openSleepTimer,
                 onSpeed = viewModel::cycleSpeed,
                 onNormalization = viewModel::toggleAudioNormalization,
+                onAudioOutput = {
+                    showActions = false
+                    showAudioRouteCenter = true
+                },
                 onAudioSettings = viewModel::openAudioQualityPanel,
                 onTechnicalAudioInfo = {
                     showActions = false
@@ -1269,6 +1265,14 @@ fun LevyraNowPlaying(
                 audioSettings = state.audioSettings,
                 audioNormalization = state.audioNormalization,
                 onDismiss = { showTechnicalAudioInfo = false }
+            )
+        }
+
+        if (showAudioRouteCenter && track != null && !state.isVideoMode) {
+            AudioRouteCenterSheet(
+                surfaces = surfaces,
+                animated = animated,
+                onDismiss = { showAudioRouteCenter = false }
             )
         }
 
@@ -1484,6 +1488,7 @@ private fun playerSheetActions(
     onSleepTimer: () -> Unit,
     onSpeed: () -> Unit,
     onNormalization: () -> Unit,
+    onAudioOutput: () -> Unit,
     onAudioSettings: () -> Unit,
     onTechnicalAudioInfo: () -> Unit,
     onAmbient: () -> Unit,
@@ -1502,6 +1507,21 @@ private fun playerSheetActions(
         active = sleepActive,
         onClick = onSleepTimer
     )
+    val audioOutputAction = if (
+        playerAudioRoutePlacement(
+            isVideoMode = state.isVideoMode,
+            hasTrack = true
+        ) == PlayerAudioRoutePlacement.Overflow
+    ) {
+        PlayerSheetAction(
+            key = "audio-output",
+            icon = Icons.AutoMirrored.Rounded.VolumeUp,
+            label = strings.systemPlayerCopy().outputTitle,
+            onClick = onAudioOutput
+        )
+    } else {
+        null
+    }
     val audioAction = PlayerSheetAction(
         key = "audio",
         icon = Icons.Rounded.Tune,
@@ -1520,10 +1540,18 @@ private fun playerSheetActions(
         label = strings.ambientMode,
         onClick = onAmbient
     )
-    if (track.isLiveRadio()) return listOf(sleepAction, audioAction, technicalAudioAction, ambientAction)
+    if (track.isLiveRadio()) {
+        return listOfNotNull(
+            sleepAction,
+            audioOutputAction,
+            audioAction,
+            technicalAudioAction,
+            ambientAction
+        )
+    }
 
     val canStartRadio = !state.jam.isActive || state.jam.isHost
-    return listOf(
+    return listOfNotNull(
         PlayerSheetAction(
             key = "playlist",
             icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
@@ -1562,6 +1590,7 @@ private fun playerSheetActions(
             keepsSheetOpen = true,
             onClick = onNormalization
         ),
+        audioOutputAction,
         audioAction,
         technicalAudioAction,
         ambientAction,
