@@ -17,6 +17,30 @@ class PlaylistBulkQueueOrderTest {
     }
 
     @Test
+    fun consecutivePlayNextBatchesAppendToThePendingRegion() {
+        val current = listOf(track("X"), track("Y"), track("Z"))
+        val first = queueAfterPlayNextIntent(
+            current = current,
+            currentIndex = 0,
+            pendingIdentities = emptyList(),
+            additions = listOf(track("A"), track("B"), track("C"))
+        )
+
+        val second = queueAfterPlayNextIntent(
+            current = first.tracks,
+            currentIndex = first.currentIndex,
+            pendingIdentities = first.pendingIdentities,
+            additions = listOf(track("D"), track("E"))
+        )
+
+        assertEquals(listOf("X", "A", "B", "C", "D", "E", "Y", "Z"), second.tracks.map { it.id })
+        assertEquals(
+            listOf("A", "B", "C", "D", "E").map { playbackQueueIdentity(track(it)) },
+            second.pendingIdentities
+        )
+    }
+
+    @Test
     fun addToQueuePreservesOrderAndDoesNotDuplicateExistingTracks() {
         val current = listOf(track("X"), track("B"))
         val selected = listOf(track("B"), track("D"), track("E"), track("D"))
