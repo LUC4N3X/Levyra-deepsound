@@ -46,7 +46,7 @@ Levyra requests only the permissions required for core audio functionality:
 | --- | --- | --- |
 | Network | `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE` | Streaming music, fetching lyrics, and checking updates |
 | Playback | Foreground media service, `WAKE_LOCK` | Keeping playback running smoothly with screen turned off |
-| Notifications | `POST_NOTIFICATIONS` | Displaying media controls in the Android notification shade |
+| Notifications | `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS` | Displaying media controls in the Android notification shade and Android 16 Live Updates for playback and downloads |
 | Local files | `READ_MEDIA_AUDIO` (or storage access on older Android) | Reading and organizing local music files stored on device |
 | Song recognition | `RECORD_AUDIO`, microphone foreground service | Listening for audio snippets during music identification |
 | Internal capture | MediaProjection foreground service | Capturing internal audio on supported Android releases |
