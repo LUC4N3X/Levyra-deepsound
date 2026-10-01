@@ -227,6 +227,72 @@ class LibraryCatalogTest {
     }
 
     @Test
+    fun offlineDownloadWithForeignIdMatchesKnownTrackByNormalizedMetadata() {
+        val known = track(id = "yt-1", title = "Però", artist = "Lazza", album = "Sirio")
+        val download = downloaded(
+            id = 7L,
+            track = track(id = "provider-x", title = "PERO", artist = "lazza", album = "Sirio"),
+            fileName = "pero.m4a"
+        )
+
+        val catalog = buildLibraryCatalog(
+            favorites = listOf(known),
+            playlists = emptyList(),
+            downloads = listOf(download),
+            recentListens = emptyList(),
+            followedArtists = emptyList()
+        )
+
+        assertEquals("yt-1", catalog.offlineItems.single().track.id)
+        assertEquals(7L, catalog.recencyOf(known))
+    }
+
+    @Test
+    fun offlineMetadataMatchKeepsFirstKnownTrackThatPassesAlbumAndDurationChecks() {
+        val wrongAlbum = track(id = "a", title = "Song", artist = "Band", album = "Live")
+        val wrongDuration = track(id = "b", title = "Song", artist = "Band", album = "Studio").copy(durationMs = 240_000L)
+        val firstMatch = track(id = "c", title = "song", artist = "BAND", album = "Studio")
+        val secondMatch = track(id = "d", title = "Song!", artist = "Band", album = "Studio")
+        val download = downloaded(
+            id = 3L,
+            track = track(id = "", title = "Song", artist = "Band", album = "Studio"),
+            fileName = "song.m4a"
+        )
+
+        val catalog = buildLibraryCatalog(
+            favorites = listOf(wrongAlbum, wrongDuration, firstMatch, secondMatch),
+            playlists = emptyList(),
+            downloads = listOf(download),
+            recentListens = emptyList(),
+            followedArtists = emptyList()
+        )
+
+        assertEquals("c", catalog.offlineItems.single().track.id)
+    }
+
+    @Test
+    fun offlineDownloadWithoutKnownMatchFallsBackToDownloadMetadata() {
+        val download = downloaded(
+            id = 9L,
+            track = track(id = "orphan", title = "Orphan", artist = "Nobody"),
+            fileName = "orphan.m4a"
+        )
+
+        val catalog = buildLibraryCatalog(
+            favorites = listOf(track(id = "other", title = "Other", artist = "Someone")),
+            playlists = emptyList(),
+            downloads = listOf(download),
+            recentListens = emptyList(),
+            followedArtists = emptyList()
+        )
+
+        val item = catalog.offlineItems.single()
+        assertEquals("orphan", item.track.id)
+        assertEquals("Offline", item.track.source)
+        assertEquals(9L, catalog.recencyOf(item.track))
+    }
+
+    @Test
     fun trackRecencyCombinesFavoritesDownloadsAndPlaylistsTakingMax() {
         val t1 = track(id = "fav-only", title = "Favorite")
         val t2 = track(id = "multi", title = "Multi Source")
