@@ -133,6 +133,8 @@ data class LevyraUiState(
     val networkErrors: List<LevyraNetworkSettingsError> = emptyList(),
     val dynamicColor: Boolean = true,
     val userName: String = "",
+    val profilePhotoPath: String = "",
+    val profilePhotoVersion: Long = 0L,
     val languageCode: String = "en",
     val selectedMood: Mood? = null,
     val tracks: List<Track> = emptyList(),

@@ -149,6 +149,7 @@ import android.provider.DocumentsContract
 import android.widget.Toast
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
@@ -1894,6 +1895,9 @@ fun LevyraApp(
     var liveRadioOpen by rememberSaveable { mutableStateOf(false) }
     var trackActionTarget by remember { mutableStateOf<Track?>(null) }
     var trackActionPlaylistTarget by remember { mutableStateOf<Track?>(null) }
+    val profilePhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let(viewModel::setProfilePhoto)
+    }
     val createBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         uri?.let(viewModel::createBackup)
     }
@@ -2668,6 +2672,13 @@ fun LevyraApp(
                     onSaveAudD = viewModel::saveAudDToken,
                     onClearAudD = viewModel::clearAudDToken,
                     onRedoQuestionnaire = viewModel::restartOnboarding,
+                    profilePhotoSet = state.profilePhotoPath.isNotBlank(),
+                    onPickProfilePhoto = {
+                        profilePhotoLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    onRemoveProfilePhoto = viewModel::clearProfilePhoto,
                     onClose = viewModel::closeSettings
                 )
             }
@@ -9412,6 +9423,8 @@ private fun HomeScreen(
                         PersonalListeningShelf(
                             tracks = visiblePersonalTracks,
                             userName = state.userName,
+                            profilePhotoPath = state.profilePhotoPath,
+                            profilePhotoVersion = state.profilePhotoVersion,
                             currentId = state.currentTrack?.id,
                             isPlaying = state.isPlaying,
                             isResolving = state.isResolving,
@@ -11718,9 +11731,15 @@ private fun HomeCompactPlayAllHeader(
 }
 
 @Composable
-private fun HomeOrbitHeader(userName: String, onPlayAll: () -> Unit) {
+private fun HomeOrbitHeader(
+    userName: String,
+    profilePhotoPath: String,
+    profilePhotoVersion: Long,
+    onPlayAll: () -> Unit
+) {
     val strings = LocalLevyraStrings.current
-    val initial = remember(userName) { homePersonalOrbitInitial(userName) }
+    val displayName = userName.trim()
+    val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
 
     Row(
         modifier = Modifier
@@ -11729,43 +11748,21 @@ private fun HomeOrbitHeader(userName: String, onPlayAll: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (initial != null) {
-            Box(
-                modifier = Modifier
-                    .size(LevyraHomeDesign.OrbitAvatarSize)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = 0.32f),
-                                LevyraViolet.copy(alpha = 0.32f)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = initial,
-                    color = LevyraText,
-                    fontSize = 17.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
+            HomeOrbitAvatar(
+                initial = initial,
+                photoPath = profilePhotoPath,
+                photoVersion = profilePhotoVersion
+            )
+            Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
         }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(1.dp)
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
             if (initial != null) {
                 Text(
-                    text = userName.trim().uppercase(),
+                    text = displayName.uppercase(),
                     color = LevyraMuted,
-                    fontSize = 12.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
-                    letterSpacing = 0.6.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = LevyraHomeDesign.OrbitHeaderNameSize,
+                    lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderNameSize),
+                    fontWeight = FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -11773,9 +11770,8 @@ private fun HomeOrbitHeader(userName: String, onPlayAll: () -> Unit) {
             Text(
                 text = strings.personalOrbitTitle,
                 color = LevyraText,
-                fontSize = LevyraHomeDesign.SectionTitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.SectionTitleSize),
-                letterSpacing = (-0.35).sp,
+                fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -11788,9 +11784,57 @@ private fun HomeOrbitHeader(userName: String, onPlayAll: () -> Unit) {
 }
 
 @Composable
+private fun HomeOrbitAvatar(initial: String, photoPath: String, photoVersion: Long) {
+    val context = LocalContext.current
+    val photoRequest = remember(context, photoPath, photoVersion) {
+        photoPath.takeIf(String::isNotBlank)?.let { path ->
+            ImageRequest.Builder(context)
+                .data(File(path))
+                .memoryCacheKey("levyra-profile-photo-$photoVersion")
+                .diskCachePolicy(CachePolicy.DISABLED)
+                .crossfade(false)
+                .build()
+        }
+    }
+    Box(
+        modifier = Modifier
+            .size(LevyraHomeDesign.OrbitAvatarSize)
+            .clip(CircleShape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = 0.32f),
+                        LevyraViolet.copy(alpha = 0.32f)
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = initial,
+            color = LevyraText,
+            fontSize = 15.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
+        if (photoRequest != null) {
+            AsyncImage(
+                model = photoRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@Composable
 private fun PersonalListeningShelf(
     tracks: List<Track>,
     userName: String,
+    profilePhotoPath: String,
+    profilePhotoVersion: Long,
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
@@ -11810,7 +11854,10 @@ private fun PersonalListeningShelf(
     }
     val orbitPage: @Composable (Int, Modifier) -> Unit = { pageIndex, pageModifier ->
         Column(
-            modifier = pageModifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
+            modifier = pageModifier.padding(
+                start = LevyraHomeDesign.HorizontalInset,
+                end = LevyraHomeDesign.OrbitPageEndInset
+            ),
             verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
         ) {
             pages[pageIndex].forEach { rowTracks ->
@@ -11839,9 +11886,14 @@ private fun PersonalListeningShelf(
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitHeaderGap)) {
         HomeSectionInset {
-            HomeOrbitHeader(userName = userName, onPlayAll = onPlayAll)
+            HomeOrbitHeader(
+                userName = userName,
+                profilePhotoPath = profilePhotoPath,
+                profilePhotoVersion = profilePhotoVersion,
+                onPlayAll = onPlayAll
+            )
         }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val wall = maxWidth >= LevyraHomeDesign.OrbitWallMinWidth
@@ -11858,7 +11910,7 @@ private fun PersonalListeningShelf(
                     }
                 }
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitDotsTopGap)) {
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxWidth(),
@@ -11869,17 +11921,22 @@ private fun PersonalListeningShelf(
                     if (pages.size > 1) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
+                            horizontalArrangement = Arrangement.spacedBy(
+                                LevyraHomeDesign.OrbitDotGap,
+                                Alignment.CenterHorizontally
+                            ),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             pages.indices.forEach { index ->
-                                val isSelected = pagerState.currentPage == index
                                 Box(
                                     modifier = Modifier
-                                        .padding(horizontal = 4.dp)
-                                        .size(if (isSelected) 7.dp else 6.dp)
+                                        .size(LevyraHomeDesign.OrbitDotSize)
                                         .background(
-                                            if (isSelected) LevyraText else LevyraText.copy(alpha = 0.28f),
+                                            if (pagerState.currentPage == index) {
+                                                LevyraText
+                                            } else {
+                                                LevyraText.copy(alpha = 0.30f)
+                                            },
                                             CircleShape
                                         )
                                 )
@@ -11926,13 +11983,13 @@ private fun PersonalOrbitTile(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.5f)
+                .fillMaxHeight(0.45f)
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
                         listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.74f)
+                            Color.Black.copy(alpha = 0.68f)
                         )
                     )
                 )
@@ -11947,7 +12004,11 @@ private fun PersonalOrbitTile(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 10.dp, end = 10.dp, bottom = 9.dp)
+                .padding(
+                    start = LevyraHomeDesign.OrbitTileTitleInset,
+                    end = LevyraHomeDesign.OrbitTileTitleInset,
+                    bottom = 7.dp
+                )
         )
         if (isCurrent) {
             Box(
@@ -18722,6 +18783,9 @@ private fun SettingsOverlay(
     onSaveAudD: (String) -> Unit,
     onClearAudD: () -> Unit,
     onRedoQuestionnaire: () -> Unit,
+    profilePhotoSet: Boolean,
+    onPickProfilePhoto: () -> Unit,
+    onRemoveProfilePhoto: () -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -19954,6 +20018,28 @@ private fun SettingsOverlay(
                                     subtitle = strings.redoQuestionnaireSubtitle,
                                     onClick = onRedoQuestionnaire
                                 )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Person,
+                                    title = strings.profilePhoto,
+                                    subtitle = if (profilePhotoSet) {
+                                        strings.profilePhotoChangeSubtitle
+                                    } else {
+                                        strings.profilePhotoAddSubtitle
+                                    },
+                                    onClick = onPickProfilePhoto
+                                )
+                            }
+                            if (profilePhotoSet) {
+                                item {
+                                    SettingsButton(
+                                        icon = Icons.Rounded.Delete,
+                                        title = strings.profilePhotoRemove,
+                                        subtitle = strings.profilePhoto,
+                                        onClick = onRemoveProfilePhoto
+                                    )
+                                }
                             }
                             item {
                                 SettingsButton(

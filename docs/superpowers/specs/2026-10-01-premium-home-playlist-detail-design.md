@@ -51,11 +51,11 @@ Preserve the current section set and existing data sources. Rebalance presentati
 
 #### La tua orbita
 
-Owner decision (revised): render Orbit as a paged 3x3 artwork grid modeled on YouTube Music's "Selezione rapida", so it stays visually distinct from the compact Scelte rapide rows.
+Owner decision (revised): render Orbit as a paged 3x3 artwork grid modeled on YouTube Music's "Selezione rapida", so it stays visually distinct from the compact Scelte rapide rows. Proportions follow measurements of the YouTube Music screen: about 121dp tiles on a 412dp phone, 7dp corners, 4.5dp gaps, 15sp tile titles, a 24sp section title and 8dp page indicators.
 
 The Orbit presentation should:
 
-- show a header with the listener's initial and name above the `La tua orbita` title, and keep `Riproduci tutto`;
+- show a header with the listener's profile photo (or initial) and name above the `La tua orbita` title only when a name is set, and keep `Riproduci tutto`; the photo is picked in Settings, cropped to 256px and stored only in app-private storage;
 - lay tracks out as 3x3 pages of square artwork tiles with a single-line bold title over a bottom scrim;
 - page horizontally with page indicators on compact widths;
 - place pages side by side on wide windows (600dp and up) instead of enlarging the tiles;

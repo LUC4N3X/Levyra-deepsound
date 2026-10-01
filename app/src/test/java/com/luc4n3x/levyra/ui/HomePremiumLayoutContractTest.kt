@@ -45,10 +45,12 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
-    fun `orbit header shows the listener and keeps play all`() {
+    fun `orbit header shows the listener only when a name is set`() {
         val header = functionBlock("private fun HomeOrbitHeader(")
 
         assertTrue(header.contains("homePersonalOrbitInitial"))
+        assertTrue(header.contains("if (initial != null)"))
+        assertTrue(header.indexOf("if (initial != null)") < header.indexOf("HomeOrbitAvatar("))
         assertTrue(header.contains("personalOrbitTitle"))
         assertTrue(header.contains("heading()"))
         assertTrue(header.contains("HomeOutlinedAction"))
@@ -56,17 +58,45 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
-    fun `orbit grid proportions stay readable on wide windows`() {
+    fun `orbit avatar prefers the profile photo over the initial`() {
+        val avatar = functionBlock("private fun HomeOrbitAvatar(")
+
+        assertTrue(avatar.contains("photoPath.takeIf(String::isNotBlank)"))
+        assertTrue(avatar.contains("AsyncImage("))
+        assertTrue(avatar.contains("ContentScale.Crop"))
+        assertTrue(avatar.contains("CachePolicy.DISABLED"))
+        assertTrue(avatar.indexOf("text = initial") < avatar.indexOf("AsyncImage("))
+    }
+
+    @Test
+    fun `orbit grid follows the youtube music selezione rapida proportions`() {
+        val phoneTile = (
+            412f -
+                LevyraHomeDesign.HorizontalInset.value -
+                LevyraHomeDesign.OrbitPageEndInset.value -
+                LevyraHomeDesign.OrbitTileGap.value * 2
+            ) / 3f
+
+        assertTrue(phoneTile in 118f..125f)
+        assertTrue(LevyraHomeDesign.OrbitTileCorner.value in 6f..8f)
+        assertTrue(LevyraHomeDesign.OrbitTileGap.value in 4f..5f)
+        assertTrue(LevyraHomeDesign.OrbitTileTitleSize.value in 14f..16f)
+        assertTrue(LevyraHomeDesign.OrbitHeaderTitleSize.value in 22f..26f)
+        assertTrue(LevyraHomeDesign.OrbitAvatarSize.value in 32f..36f)
+        assertTrue(LevyraHomeDesign.OrbitDotSize.value in 7f..9f)
+    }
+
+    @Test
+    fun `orbit grid stays readable on wide windows`() {
         val wallTile = (
             LevyraHomeDesign.OrbitWallPageWidth.value -
-                LevyraHomeDesign.HorizontalInset.value * 2 -
+                LevyraHomeDesign.HorizontalInset.value -
+                LevyraHomeDesign.OrbitPageEndInset.value -
                 LevyraHomeDesign.OrbitTileGap.value * 2
             ) / 3f
 
         assertTrue(wallTile >= 96f)
         assertTrue(LevyraHomeDesign.OrbitWallPageWidth < LevyraHomeDesign.OrbitWallMinWidth)
-        assertTrue(LevyraHomeDesign.OrbitTileTitleSize.value >= 14f)
-        assertTrue(LevyraHomeDesign.OrbitAvatarSize.value >= 32f)
     }
 
     @Test
