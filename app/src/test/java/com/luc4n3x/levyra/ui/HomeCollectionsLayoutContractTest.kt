@@ -21,6 +21,14 @@ class HomeCollectionsLayoutContractTest {
         return match.groupValues[1].toFloat()
     }
 
+    private fun collectionsShelfBlock(): String {
+        val start = source.indexOf("private fun HomeEditorialCollectionsShelf(")
+        require(start >= 0) { "HomeEditorialCollectionsShelf not found" }
+        val end = source.indexOf("@Composable\nprivate fun HomeEditorialCollectionCard(", start)
+        require(end > start) { "HomeEditorialCollectionCard boundary not found" }
+        return source.substring(start, end)
+    }
+
     private fun collectionCardBlock(): String {
         val start = source.indexOf("private fun HomeEditorialCollectionCard(")
         require(start >= 0) { "HomeEditorialCollectionCard not found" }
@@ -31,8 +39,9 @@ class HomeCollectionsLayoutContractTest {
 
     @Test
     fun `collections shelf is a single substantial editorial row`() {
-        assertFalse(source.contains(".chunked(2)"))
-        assertTrue(source.contains("items = collections"))
+        val shelf = collectionsShelfBlock()
+        assertFalse(shelf.contains(".chunked(2)"))
+        assertTrue(shelf.contains("items = collections"))
 
         val width = dpConstant("HOME_COLLECTION_CARD_WIDTH")
         val height = dpConstant("HOME_COLLECTION_CARD_HEIGHT")
