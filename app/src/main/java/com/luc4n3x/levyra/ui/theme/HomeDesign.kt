@@ -39,11 +39,11 @@ object LevyraHomeDesign {
     val TrackThumbSize: Dp = 48.dp
     val TrackColumnPeek: Dp = 28.dp
     val TrackColumnGap: Dp = 6.dp
-    val OrbitRowHeight: Dp = 64.dp
-    val OrbitThumbSize: Dp = 56.dp
-    val OrbitRowGap: Dp = 4.dp
-    val OrbitColumnPeek: Dp = 18.dp
-    val OrbitColumnMaxWidth: Dp = 400.dp
+    val OrbitTileGap: Dp = 6.dp
+    val OrbitTileCorner: Dp = 8.dp
+    val OrbitAvatarSize: Dp = 40.dp
+    val OrbitWallMinWidth: Dp = 600.dp
+    val OrbitWallPageWidth: Dp = 360.dp
     const val TRACK_COLUMN_ROWS: Int = 4
     const val SPEED_DIAL_COLUMNS: Int = 3
     const val SPEED_DIAL_PAGE_SIZE: Int = 9
@@ -51,8 +51,7 @@ object LevyraHomeDesign {
     val SectionTitleSize = 21.sp
     val CardTitleSize = 14.sp
     val CardSubtitleSize = 12.sp
-    val OrbitTitleSize = 15.sp
-    val OrbitSubtitleSize = 13.sp
+    val OrbitTileTitleSize = 15.sp
 
     val HeaderShape = RoundedCornerShape(HeaderCorner)
     val SettingsShape = RoundedCornerShape(14.dp)

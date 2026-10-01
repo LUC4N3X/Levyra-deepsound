@@ -51,21 +51,17 @@ Preserve the current section set and existing data sources. Rebalance presentati
 
 #### La tua orbita
 
-Replace the large 3-column artwork grid presentation with a dense quick-pick shelf inspired by YouTube Music's compact discovery rows.
+Owner decision (revised): render Orbit as a paged 3x3 artwork grid modeled on YouTube Music's "Selezione rapida", so it stays visually distinct from the compact Scelte rapide rows.
 
-The new Orbit presentation should:
+The Orbit presentation should:
 
-- render in a horizontally scrollable set of compact columns;
-- use multiple track rows per column;
-- show artwork, title, artist, and the existing overflow action;
+- show a header with the listener's initial and name above the `La tua orbita` title, and keep `Riproduci tutto`;
+- lay tracks out as 3x3 pages of square artwork tiles with a single-line bold title over a bottom scrim;
+- page horizontally with page indicators on compact widths;
+- place pages side by side on wide windows (600dp and up) instead of enlarging the tiles;
+- keep long-press for the existing track actions and the now-playing indicator on the current track;
 - preserve stable track identity and the existing Orbit source/order;
-- preserve `Riproduci tutto` behavior;
-- show a partial next column where width permits to signal horizontal scrolling;
-- keep touch targets accessible even though the visual row is compact;
-- avoid forcing title/artist text over artwork;
-- handle long titles and translations with bounded wrapping or truncation consistent with existing compact track rows.
-
-Orbit must stop looking like a large album-art gallery and instead behave like a high-value discovery shelf.
+- show only full pages once there is more than one page.
 
 #### Scelte rapide and other shelves
 
@@ -183,8 +179,8 @@ Not in scope:
 
 Add or update UI/layout contract tests to verify:
 
-- Orbit is no longer the old 3-column artwork grid;
-- Orbit uses the compact multi-row horizontal shelf contract;
+- Orbit uses the paged 3x3 artwork grid contract;
+- Orbit tiles keep playback, long-press actions and the now-playing indicator;
 - stable item keys remain present;
 - Home section spacing/tokens remain within the intended hierarchy;
 - playlist header retains Play and Shuffle actions;
@@ -219,7 +215,7 @@ Runtime visual quality, TalkBack behavior, and frame performance remain unverifi
 The change is accepted when:
 
 1. The first Home viewport exposes useful music sooner than the current oversized composition.
-2. `La tua orbita` reads as a premium quick-pick shelf, not a large 3x3 artwork gallery.
+2. `La tua orbita` reads as a YouTube Music style "Selezione rapida" grid that stays readable on compact and wide windows.
 3. Section spacing, thumbnails, titles, and peeking behavior feel internally consistent across Home.
 4. Levyra Collections remains visually distinct and readable.
 5. Opening a playlist presents a large artwork-led header with tonal background, clear metadata, compact actions, and a prominent Play control.

@@ -39,12 +39,12 @@
 **Interfaces:**
 - Produces: `internal fun playlistDetailArtworkUrl(playlist: Playlist): String`
 - Produces: `internal fun playlistDetailPaletteKey(playlist: Playlist, artworkUrl: String): String`
-- Artwork precedence: non-blank `playlist.coverUrl`, then first track `largeThumbnailUrl`, then first track `thumbnailUrl`, else empty string.
+- Artwork precedence: non-blank `playlist.coverUrl` when `playlist.coverMode` is `PlaylistCoverMode.CUSTOM` (matching `PlaylistCoverArt`), then first track `largeThumbnailUrl`, then first track `thumbnailUrl`, else empty string.
 - Palette key: empty when artwork URL is empty; otherwise `ArtworkPaletteCache.key(trackId = "playlist:${playlist.id}", thumbnailUrl = artworkUrl, largeThumbnailUrl = artworkUrl)`.
 
 - [ ] **Step 1: Write failing tests**
 
-Cover custom cover, first-track fallback, empty playlist, and deterministic palette-key behavior.
+Cover custom cover, a non-blank `coverUrl` with `coverMode = AUTO` falling back to the first track, first-track fallback, empty playlist, and deterministic palette-key behavior.
 
 - [ ] **Step 2: Run focused test and verify RED**
 

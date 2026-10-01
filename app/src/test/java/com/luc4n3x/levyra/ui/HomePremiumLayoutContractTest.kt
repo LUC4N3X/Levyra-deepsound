@@ -17,17 +17,56 @@ class HomePremiumLayoutContractTest {
     }
 
     @Test
-    fun `personal orbit is a compact horizontal quick shelf`() {
+    fun `personal orbit is a paged three by three artwork grid`() {
         val shelf = functionBlock("private fun PersonalListeningShelf(")
 
-        assertTrue(shelf.contains("LazyRow"))
-        assertTrue(shelf.contains("homePersonalOrbitColumns"))
-        assertTrue(shelf.contains("HomeTrackRow"))
+        assertTrue(shelf.contains("homePersonalOrbitPages"))
+        assertTrue(shelf.contains("PersonalOrbitTile"))
+        assertTrue(shelf.contains("HorizontalPager"))
+        assertTrue(shelf.contains("HOME_PERSONAL_ORBIT_GRID_COLUMNS"))
+        assertTrue(shelf.contains("OrbitWallMinWidth"))
         assertTrue(shelf.contains("onPlayAll"))
         assertTrue(shelf.contains("onTrackActions"))
-        assertFalse(shelf.contains("HorizontalPager"))
-        assertFalse(shelf.contains("SPEED_DIAL_COLUMNS"))
-        assertFalse(shelf.contains("PersonalOrbitSpeedDialCard"))
+        assertFalse(shelf.contains("HomeTrackRow"))
+        assertFalse(shelf.contains("LazyRow"))
+        assertFalse(shelf.contains("columnIndex"))
+    }
+
+    @Test
+    fun `orbit tiles keep playback actions and a single line title`() {
+        val tile = functionBlock("private fun PersonalOrbitTile(")
+
+        assertTrue(tile.contains("aspectRatio(1f)"))
+        assertTrue(tile.contains("levyraPressable("))
+        assertTrue(tile.contains("onLongClick = onActions"))
+        assertTrue(tile.contains("strings.songOptions"))
+        assertTrue(tile.contains("maxLines = 1"))
+        assertTrue(tile.contains("ActiveTrackEqualizer"))
+    }
+
+    @Test
+    fun `orbit header shows the listener and keeps play all`() {
+        val header = functionBlock("private fun HomeOrbitHeader(")
+
+        assertTrue(header.contains("homePersonalOrbitInitial"))
+        assertTrue(header.contains("personalOrbitTitle"))
+        assertTrue(header.contains("heading()"))
+        assertTrue(header.contains("HomeOutlinedAction"))
+        assertFalse(header.contains("personalOrbitSubtitle"))
+    }
+
+    @Test
+    fun `orbit grid proportions stay readable on wide windows`() {
+        val wallTile = (
+            LevyraHomeDesign.OrbitWallPageWidth.value -
+                LevyraHomeDesign.HorizontalInset.value * 2 -
+                LevyraHomeDesign.OrbitTileGap.value * 2
+            ) / 3f
+
+        assertTrue(wallTile >= 96f)
+        assertTrue(LevyraHomeDesign.OrbitWallPageWidth < LevyraHomeDesign.OrbitWallMinWidth)
+        assertTrue(LevyraHomeDesign.OrbitTileTitleSize.value >= 14f)
+        assertTrue(LevyraHomeDesign.OrbitAvatarSize.value >= 32f)
     }
 
     @Test
@@ -35,33 +74,6 @@ class HomePremiumLayoutContractTest {
         assertTrue(LevyraHomeDesign.TrackRowHeight.value >= 48f)
         assertTrue(LevyraHomeDesign.TrackThumbSize < LevyraHomeDesign.TrackRowHeight)
         assertTrue(LevyraHomeDesign.TrackColumnPeek.value > 0f)
-    }
-
-    @Test
-    fun `orbit rows follow the quick picks proportions`() {
-        assertTrue(LevyraHomeDesign.OrbitThumbSize.value >= 56f)
-        assertTrue(LevyraHomeDesign.OrbitThumbSize < LevyraHomeDesign.OrbitRowHeight)
-        assertTrue(LevyraHomeDesign.OrbitRowHeight.value >= 48f)
-        assertTrue(LevyraHomeDesign.OrbitTitleSize.value > LevyraHomeDesign.OrbitSubtitleSize.value)
-        assertTrue(LevyraHomeDesign.OrbitSubtitleSize.value >= 13f)
-        assertTrue(LevyraHomeDesign.OrbitColumnPeek.value in 12f..28f)
-        assertTrue(LevyraHomeDesign.OrbitColumnMaxWidth.value >= 360f)
-    }
-
-    @Test
-    fun `orbit shelf applies the orbit proportions and keeps a single line header`() {
-        val shelf = functionBlock("private fun PersonalListeningShelf(")
-        assertTrue(shelf.contains("OrbitThumbSize"))
-        assertTrue(shelf.contains("OrbitRowHeight"))
-        assertTrue(shelf.contains("OrbitTitleSize"))
-        assertTrue(shelf.contains("OrbitColumnPeek"))
-        assertTrue(shelf.contains("OrbitColumnMaxWidth"))
-        assertFalse(shelf.contains("HOME_DENSE_SHELF_MAX_WIDTH"))
-
-        val header = functionBlock("private fun HomeOrbitHeader(")
-        assertTrue(header.contains("personalOrbitTitle"))
-        assertTrue(header.contains("HomeOutlinedAction"))
-        assertFalse(header.contains("personalOrbitSubtitle"))
     }
 
     private fun functionBlock(signature: String): String {

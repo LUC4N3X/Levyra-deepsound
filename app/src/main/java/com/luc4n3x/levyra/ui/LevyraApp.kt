@@ -749,7 +749,9 @@ private val HOME_QUICK_ACCESS_CARD_HEIGHT = 58.dp
 private val HOME_QUICK_ACCESS_PAGE_PEEK = 28.dp
 private const val HOME_ARTWORK_GRID_CONTENT_TYPE = "home-artwork-grid"
 private const val ORBIT_TRACKS_PER_PAGE = 4
+private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
+private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
 private val HOME_DENSE_SHELF_END_PADDING = 38.dp
 private val HOME_COLLECTION_CARD_WIDTH = 196.dp
 private val HOME_COLLECTION_CARD_HEIGHT = 178.dp
@@ -1598,16 +1600,12 @@ private fun HomeTrackRow(
     modifier: Modifier = Modifier,
     leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
-    onActions: (() -> Unit)? = null,
-    rowHeight: Dp = LevyraHomeDesign.TrackRowHeight,
-    thumbSize: Dp = LevyraHomeDesign.TrackThumbSize,
-    titleSize: TextUnit = LevyraHomeDesign.CardTitleSize,
-    subtitleSize: TextUnit = LevyraHomeDesign.CardSubtitleSize
+    onActions: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(rowHeight)
+            .height(LevyraHomeDesign.TrackRowHeight)
             .clip(RoundedCornerShape(6.dp))
             .pressable(onClick = onPlay)
             .padding(horizontal = 4.dp),
@@ -1616,7 +1614,7 @@ private fun HomeTrackRow(
         leadingContent?.invoke()
         Box(
             modifier = Modifier
-                .size(thumbSize)
+                .size(LevyraHomeDesign.TrackThumbSize)
                 .clip(LevyraHomeDesign.ThumbShape)
                 .background(LevyraPanel),
             contentAlignment = Alignment.Center
@@ -1642,8 +1640,8 @@ private fun HomeTrackRow(
             Text(
                 text = track.title,
                 color = if (isCurrent) LevyraCyan else LevyraText,
-                fontSize = titleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
+                fontSize = LevyraHomeDesign.CardTitleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.CardTitleSize),
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1652,8 +1650,8 @@ private fun HomeTrackRow(
             Text(
                 text = track.artist,
                 color = LevyraMuted,
-                fontSize = subtitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(subtitleSize),
+                fontSize = LevyraHomeDesign.CardSubtitleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.CardSubtitleSize),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1668,7 +1666,7 @@ private fun HomeTrackRow(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = null,
+                        contentDescription = "${LocalLevyraStrings.current.songOptions}, ${track.title}",
                         tint = LevyraMuted,
                         modifier = Modifier.size(20.dp)
                     )
@@ -9413,6 +9411,7 @@ private fun HomeScreen(
                     HomeSectionLead(compactHome) {
                         PersonalListeningShelf(
                             tracks = visiblePersonalTracks,
+                            userName = state.userName,
                             currentId = state.currentTrack?.id,
                             isPlaying = state.isPlaying,
                             isResolving = state.isResolving,
@@ -11719,27 +11718,70 @@ private fun HomeCompactPlayAllHeader(
 }
 
 @Composable
-private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
+private fun HomeOrbitHeader(userName: String, onPlayAll: () -> Unit) {
     val strings = LocalLevyraStrings.current
+    val initial = remember(userName) { homePersonalOrbitInitial(userName) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = strings.personalOrbitTitle,
-            color = LevyraText,
-            fontSize = LevyraHomeDesign.SectionTitleSize,
-            lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.SectionTitleSize),
-            letterSpacing = (-0.35).sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        if (initial != null) {
+            Box(
+                modifier = Modifier
+                    .size(LevyraHomeDesign.OrbitAvatarSize)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                LevyraCyan.copy(alpha = 0.32f),
+                                LevyraViolet.copy(alpha = 0.32f)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initial,
+                    color = LevyraText,
+                    fontSize = 17.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(1.dp)
+        ) {
+            if (initial != null) {
+                Text(
+                    text = userName.trim().uppercase(),
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                    letterSpacing = 0.6.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = strings.personalOrbitTitle,
+                color = LevyraText,
+                fontSize = LevyraHomeDesign.SectionTitleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.SectionTitleSize),
+                letterSpacing = (-0.35).sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
+            )
+        }
         Spacer(modifier = Modifier.width(12.dp))
         HomeOutlinedAction(label = strings.playAll, onClick = onPlayAll)
     }
@@ -11748,6 +11790,7 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
 @Composable
 private fun PersonalListeningShelf(
     tracks: List<Track>,
+    userName: String,
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
@@ -11755,55 +11798,90 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    val columns = remember(tracks) { homePersonalOrbitColumns(tracks) }
-    if (columns.isEmpty()) return
+    val pages = remember(tracks) { homePersonalOrbitPages(tracks) }
+    if (pages.isEmpty()) return
+    val pagerState = rememberPagerState(pageCount = { pages.size })
+    val pageKey: (Int) -> String = { pageIndex ->
+        pages[pageIndex].firstOrNull()?.firstOrNull()
+            ?.let(LevyraPersonalOrbit::identityKey)
+            ?.takeIf(String::isNotBlank)
+            ?.let { "orbit-page-$it" }
+            ?: "orbit-page-index-$pageIndex"
+    }
+    val orbitPage: @Composable (Int, Modifier) -> Unit = { pageIndex, pageModifier ->
+        Column(
+            modifier = pageModifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
+            verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+        ) {
+            pages[pageIndex].forEach { rowTracks ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
+                ) {
+                    rowTracks.forEach { track ->
+                        key(LevyraPersonalOrbit.identityKey(track)) {
+                            PersonalOrbitTile(
+                                track = track,
+                                isCurrent = track.id == currentId,
+                                isPlaying = isPlaying && track.id == currentId,
+                                isResolving = isResolving && track.id == currentId,
+                                onPlay = { onPlay(track) },
+                                onActions = { onTrackActions(track) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    repeat(HOME_PERSONAL_ORBIT_GRID_COLUMNS - rowTracks.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionInset {
-            HomeOrbitHeader(onPlayAll = onPlayAll)
+            HomeOrbitHeader(userName = userName, onPlayAll = onPlayAll)
         }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val columnWidth = (
-                maxWidth -
-                    LevyraHomeDesign.HorizontalInset -
-                    LevyraHomeDesign.TrackColumnGap -
-                    LevyraHomeDesign.OrbitColumnPeek
-                ).coerceIn(HOME_DENSE_SHELF_MIN_WIDTH, LevyraHomeDesign.OrbitColumnMaxWidth)
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(
-                    start = LevyraHomeDesign.HorizontalInset,
-                    end = HOME_DENSE_SHELF_END_PADDING
-                ),
-                horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.TrackColumnGap)
-            ) {
-                itemsIndexed(
-                    items = columns,
-                    key = { columnIndex, column ->
-                        val identity = column.firstOrNull()
-                            ?.let(LevyraPersonalOrbit::identityKey)
-                            .orEmpty()
-                        "orbit-column-$columnIndex-$identity"
-                    },
-                    contentType = { _, _ -> HOME_DENSE_SHELF_CONTENT_TYPE }
-                ) { _, columnTracks ->
-                    Column(
-                        modifier = Modifier.width(columnWidth),
-                        verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitRowGap)
-                    ) {
-                        columnTracks.forEach { track ->
-                            key(LevyraPersonalOrbit.identityKey(track)) {
-                                HomeTrackRow(
-                                    track = track,
-                                    isCurrent = track.id == currentId,
-                                    isPlaying = isPlaying && track.id == currentId,
-                                    isResolving = isResolving && track.id == currentId,
-                                    onPlay = { onPlay(track) },
-                                    onActions = { onTrackActions(track) },
-                                    rowHeight = LevyraHomeDesign.OrbitRowHeight,
-                                    thumbSize = LevyraHomeDesign.OrbitThumbSize,
-                                    titleSize = LevyraHomeDesign.OrbitTitleSize,
-                                    subtitleSize = LevyraHomeDesign.OrbitSubtitleSize
+            val wall = maxWidth >= LevyraHomeDesign.OrbitWallMinWidth
+            if (wall) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                ) {
+                    pages.indices.forEach { pageIndex ->
+                        key(pageKey(pageIndex)) {
+                            orbitPage(pageIndex, Modifier.width(LevyraHomeDesign.OrbitWallPageWidth))
+                        }
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxWidth(),
+                        key = pageKey
+                    ) { pageIndex ->
+                        orbitPage(pageIndex, Modifier.fillMaxWidth())
+                    }
+                    if (pages.size > 1) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            pages.indices.forEach { index ->
+                                val isSelected = pagerState.currentPage == index
+                                Box(
+                                    modifier = Modifier
+                                        .padding(horizontal = 4.dp)
+                                        .size(if (isSelected) 7.dp else 6.dp)
+                                        .background(
+                                            if (isSelected) LevyraText else LevyraText.copy(alpha = 0.28f),
+                                            CircleShape
+                                        )
                                 )
                             }
                         }
@@ -11814,7 +11892,90 @@ private fun PersonalListeningShelf(
     }
 }
 
+@Composable
+private fun PersonalOrbitTile(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: () -> Unit,
+    onActions: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalLevyraStrings.current
+    val shape = RoundedCornerShape(LevyraHomeDesign.OrbitTileCorner)
 
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(shape)
+            .background(LevyraPanel)
+            .levyraPressable(
+                onClick = onPlay,
+                pressedScale = LevyraPressScale.Tile,
+                role = Role.Button,
+                onLongClick = onActions,
+                onLongClickLabel = strings.songOptions
+            )
+    ) {
+        CoverImage(
+            track = track,
+            modifier = Modifier.fillMaxSize(),
+            highRes = true
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.5f)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.74f)
+                        )
+                    )
+                )
+        )
+        Text(
+            text = track.title,
+            color = if (isCurrent) LevyraCyan else Color.White,
+            fontSize = LevyraHomeDesign.OrbitTileTitleSize,
+            lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 10.dp, end = 10.dp, bottom = 9.dp)
+        )
+        if (isCurrent) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .size(24.dp)
+                    .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isResolving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        strokeWidth = 1.5.dp,
+                        color = LevyraCyan
+                    )
+                } else {
+                    ActiveTrackEqualizer(
+                        color = LevyraCyan,
+                        isPlaying = isPlaying,
+                        width = 12.dp,
+                        height = 9.dp
+                    )
+                }
+            }
+        }
+    }
+}
 
 private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
     title = track.album.trim(),

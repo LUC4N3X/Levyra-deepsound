@@ -21,6 +21,8 @@ jobs:
       ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
