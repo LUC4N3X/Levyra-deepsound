@@ -37,6 +37,33 @@ class HomePremiumLayoutContractTest {
         assertTrue(LevyraHomeDesign.TrackColumnPeek.value > 0f)
     }
 
+    @Test
+    fun `orbit rows follow the quick picks proportions`() {
+        assertTrue(LevyraHomeDesign.OrbitThumbSize.value >= 56f)
+        assertTrue(LevyraHomeDesign.OrbitThumbSize < LevyraHomeDesign.OrbitRowHeight)
+        assertTrue(LevyraHomeDesign.OrbitRowHeight.value >= 48f)
+        assertTrue(LevyraHomeDesign.OrbitTitleSize.value > LevyraHomeDesign.OrbitSubtitleSize.value)
+        assertTrue(LevyraHomeDesign.OrbitSubtitleSize.value >= 13f)
+        assertTrue(LevyraHomeDesign.OrbitColumnPeek.value in 12f..28f)
+        assertTrue(LevyraHomeDesign.OrbitColumnMaxWidth.value >= 360f)
+    }
+
+    @Test
+    fun `orbit shelf applies the orbit proportions and keeps a single line header`() {
+        val shelf = functionBlock("private fun PersonalListeningShelf(")
+        assertTrue(shelf.contains("OrbitThumbSize"))
+        assertTrue(shelf.contains("OrbitRowHeight"))
+        assertTrue(shelf.contains("OrbitTitleSize"))
+        assertTrue(shelf.contains("OrbitColumnPeek"))
+        assertTrue(shelf.contains("OrbitColumnMaxWidth"))
+        assertFalse(shelf.contains("HOME_DENSE_SHELF_MAX_WIDTH"))
+
+        val header = functionBlock("private fun HomeOrbitHeader(")
+        assertTrue(header.contains("personalOrbitTitle"))
+        assertTrue(header.contains("HomeOutlinedAction"))
+        assertFalse(header.contains("personalOrbitSubtitle"))
+    }
+
     private fun functionBlock(signature: String): String {
         val start = source.indexOf(signature)
         require(start >= 0) { "$signature not found" }

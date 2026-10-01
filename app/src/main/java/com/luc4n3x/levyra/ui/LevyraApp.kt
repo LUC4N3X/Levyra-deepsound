@@ -749,9 +749,7 @@ private val HOME_QUICK_ACCESS_CARD_HEIGHT = 58.dp
 private val HOME_QUICK_ACCESS_PAGE_PEEK = 28.dp
 private const val HOME_ARTWORK_GRID_CONTENT_TYPE = "home-artwork-grid"
 private const val ORBIT_TRACKS_PER_PAGE = 4
-private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
-private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
 private val HOME_DENSE_SHELF_END_PADDING = 38.dp
 private val HOME_COLLECTION_CARD_WIDTH = 196.dp
 private val HOME_COLLECTION_CARD_HEIGHT = 178.dp
@@ -1600,12 +1598,16 @@ private fun HomeTrackRow(
     modifier: Modifier = Modifier,
     leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
-    onActions: (() -> Unit)? = null
+    onActions: (() -> Unit)? = null,
+    rowHeight: Dp = LevyraHomeDesign.TrackRowHeight,
+    thumbSize: Dp = LevyraHomeDesign.TrackThumbSize,
+    titleSize: TextUnit = LevyraHomeDesign.CardTitleSize,
+    subtitleSize: TextUnit = LevyraHomeDesign.CardSubtitleSize
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(LevyraHomeDesign.TrackRowHeight)
+            .height(rowHeight)
             .clip(RoundedCornerShape(6.dp))
             .pressable(onClick = onPlay)
             .padding(horizontal = 4.dp),
@@ -1614,7 +1616,7 @@ private fun HomeTrackRow(
         leadingContent?.invoke()
         Box(
             modifier = Modifier
-                .size(LevyraHomeDesign.TrackThumbSize)
+                .size(thumbSize)
                 .clip(LevyraHomeDesign.ThumbShape)
                 .background(LevyraPanel),
             contentAlignment = Alignment.Center
@@ -1640,8 +1642,8 @@ private fun HomeTrackRow(
             Text(
                 text = track.title,
                 color = if (isCurrent) LevyraCyan else LevyraText,
-                fontSize = LevyraHomeDesign.CardTitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.CardTitleSize),
+                fontSize = titleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1650,8 +1652,8 @@ private fun HomeTrackRow(
             Text(
                 text = track.artist,
                 color = LevyraMuted,
-                fontSize = LevyraHomeDesign.CardSubtitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.CardSubtitleSize),
+                fontSize = subtitleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(subtitleSize),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -11727,28 +11729,17 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = strings.personalOrbitTitle,
-                color = LevyraText,
-                fontSize = LevyraHomeDesign.SectionTitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.SectionTitleSize),
-                letterSpacing = (-0.35).sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = strings.personalOrbitSubtitle,
-                color = LevyraMuted,
-                fontSize = 13.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-                fontWeight = FontWeight.Medium
-            )
-        }
+        Text(
+            text = strings.personalOrbitTitle,
+            color = LevyraText,
+            fontSize = LevyraHomeDesign.SectionTitleSize,
+            lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.SectionTitleSize),
+            letterSpacing = (-0.35).sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         HomeOutlinedAction(label = strings.playAll, onClick = onPlayAll)
     }
@@ -11772,8 +11763,12 @@ private fun PersonalListeningShelf(
             HomeOrbitHeader(onPlayAll = onPlayAll)
         }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val columnWidth = (maxWidth - HOME_DENSE_SHELF_PEEK)
-                .coerceIn(HOME_DENSE_SHELF_MIN_WIDTH, HOME_DENSE_SHELF_MAX_WIDTH)
+            val columnWidth = (
+                maxWidth -
+                    LevyraHomeDesign.HorizontalInset -
+                    LevyraHomeDesign.TrackColumnGap -
+                    LevyraHomeDesign.OrbitColumnPeek
+                ).coerceIn(HOME_DENSE_SHELF_MIN_WIDTH, LevyraHomeDesign.OrbitColumnMaxWidth)
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(
@@ -11794,7 +11789,7 @@ private fun PersonalListeningShelf(
                 ) { _, columnTracks ->
                     Column(
                         modifier = Modifier.width(columnWidth),
-                        verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.TrackColumnGap)
+                        verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitRowGap)
                     ) {
                         columnTracks.forEach { track ->
                             key(LevyraPersonalOrbit.identityKey(track)) {
@@ -11804,7 +11799,11 @@ private fun PersonalListeningShelf(
                                     isPlaying = isPlaying && track.id == currentId,
                                     isResolving = isResolving && track.id == currentId,
                                     onPlay = { onPlay(track) },
-                                    onActions = { onTrackActions(track) }
+                                    onActions = { onTrackActions(track) },
+                                    rowHeight = LevyraHomeDesign.OrbitRowHeight,
+                                    thumbSize = LevyraHomeDesign.OrbitThumbSize,
+                                    titleSize = LevyraHomeDesign.OrbitTitleSize,
+                                    subtitleSize = LevyraHomeDesign.OrbitSubtitleSize
                                 )
                             }
                         }
