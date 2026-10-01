@@ -34,8 +34,8 @@ import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.PlayerIcon
-import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
+import com.luc4n3x.levyra.feature.settings.SettingsSearchResult
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
@@ -582,6 +582,9 @@ import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
 import com.luc4n3x.levyra.ui.settings.NetworkSettingsPanel
+import com.luc4n3x.levyra.ui.settings.SETTINGS_CATEGORY_AUDIO
+import com.luc4n3x.levyra.ui.settings.settingsCategoryTitle
+import com.luc4n3x.levyra.ui.settings.settingsSearchEntries
 import com.luc4n3x.levyra.feature.sharedmedia.BulkLinkCaptureSummary
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
@@ -635,7 +638,6 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.BulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
-import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.personalizedSearchCopy
 import com.luc4n3x.levyra.ui.i18n.personalizedSearchPromptText
 import com.luc4n3x.levyra.ui.i18n.queueSectionCopy
@@ -2598,10 +2600,7 @@ fun LevyraApp(
                         viewModel.closeSettings()
                         viewModel.openThemeStudio()
                     },
-                    onOpenAudioSettings = {
-                        viewModel.closeSettings()
-                        viewModel.openAudioQualityPanel()
-                    },
+                    onOpenAudioSettings = viewModel::openAudioQualityPanel,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onAmbientSettings = viewModel::updateAmbientSettings,
                     onOpenAmbient = {
@@ -18793,7 +18792,6 @@ private fun SettingsOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val automationCopy = strings.automationCopy()
-    val parametricCopy = strings.parametricEqCopy()
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var settingsQuery by rememberSaveable { mutableStateOf("") }
@@ -18823,9 +18821,7 @@ private fun SettingsOverlay(
     }
     BackHandler(enabled = activeCategory != null) { activeCategory = null }
     val categoryLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
-    fun categoryTitle(value: String): String = value.trim().lowercase(categoryLocale).replaceFirstChar { character ->
-        if (character.isLowerCase()) character.titlecase(categoryLocale) else character.toString()
-    }
+    fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
     val categories = remember(strings.code) {
         listOf(
             SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
@@ -18844,54 +18840,11 @@ private fun SettingsOverlay(
     }
     val settingsSearchIndex = remember(strings.code) {
         SettingsSearchIndex(
-            entries = listOf(
-                SettingsSearchEntry(strings.themeStudio, strings.themeStudioSubtitle, "${strings.theme} ${strings.themeAccent}", "design", categoryTitle(strings.design)),
-                SettingsSearchEntry(strings.animations, strings.animationsSubtitle, strings.motionArtwork, "design", categoryTitle(strings.design)),
-                SettingsSearchEntry(strings.visualPerformance, strings.visualPerformanceFullSubtitle, "${strings.visualPerformanceAuto} ${strings.visualPerformanceSmooth} performance", "design", categoryTitle(strings.design)),
-                SettingsSearchEntry(strings.liquidGlass, strings.liquidGlassSubtitle, "glass blur transparency", "design", categoryTitle(strings.design)),
-                SettingsSearchEntry(strings.dynamicColor, strings.dynamicColorSubtitle, strings.design, "design", categoryTitle(strings.design)),
-                SettingsSearchEntry(strings.appFont, strings.appFontSubtitle, "font typography text", "design", categoryTitle(strings.design)),
-                SettingsSearchEntry(strings.pureBlack, strings.pureBlackSubtitle, "amoled black", "home", categoryTitle(strings.homeInterfaceSection)),
-                SettingsSearchEntry(strings.compactHome, strings.compactHomeSubtitle, "home releases charts", "home", categoryTitle(strings.homeInterfaceSection)),
-                SettingsSearchEntry(strings.yourOrbitSetting, strings.showPersonalListening, "personal orbit listening", "home", categoryTitle(strings.homeInterfaceSection)),
-                SettingsSearchEntry(strings.newReleases, strings.homeInterfaceSection, "releases", "home", categoryTitle(strings.homeInterfaceSection)),
-                SettingsSearchEntry(strings.top50Charts, strings.homeInterfaceSection, "charts", "home", categoryTitle(strings.homeInterfaceSection)),
-                SettingsSearchEntry(strings.audioEngine, strings.audioEngineSubtitle, "audio sound autoeq parametric eq normalization limiter bluetooth output", "audio", strings.audioEngine),
-                SettingsSearchEntry(
-                    strings.equalizer,
-                    strings.equalizerSubtitle,
-                    "${parametricCopy.graphicEq} ${parametricCopy.parametricEq} autoeq preamp bands",
-                    "audio",
-                    strings.audioEngine
-                ),
-                SettingsSearchEntry(strings.crossfade, strings.audioEngineSubtitle, "transition dj soft gapless", "audio", strings.audioEngine),
-                SettingsSearchEntry(strings.replayGain, strings.audioEngineSubtitle, "normalization loudness clipping headroom", "audio", strings.audioEngine),
-                SettingsSearchEntry(strings.gapless, strings.audioEngineSubtitle, "seamless playback", "audio", strings.audioEngine),
-                SettingsSearchEntry(strings.advancedGestures, strings.advancedGesturesSubtitle, strings.player, "player", categoryTitle(strings.player)),
-                SettingsSearchEntry(strings.playerVisualMode, strings.playerVisualModeSubtitle, "canvas artwork immersive player", "player", categoryTitle(strings.player)),
-                SettingsSearchEntry(strings.canvasQuality, strings.canvasQualitySubtitle, "canvas video quality", "player", categoryTitle(strings.player)),
-                SettingsSearchEntry(strings.canvasSource, strings.canvasSourceSubtitle, "canvas provider apple tidal", "player", categoryTitle(strings.player)),
-                SettingsSearchEntry(strings.continuousRadio, strings.continuousRadioSubtitle, "radio autoplay", "player", categoryTitle(strings.player)),
-                SettingsSearchEntry(strings.sponsorBlock, strings.sponsorBlockSubtitle, "segments", "player", categoryTitle(strings.player)),
-                SettingsSearchEntry(strings.skipSilence, strings.skipSilenceSubtitle, "silence", "player", categoryTitle(strings.player)),
-                SettingsSearchEntry(strings.downloadLocation, strings.downloadLocationSubtitle, "folder sd card storage", "downloads", categoryTitle(strings.downloads)),
-                SettingsSearchEntry(strings.downloadQualityPreset, strings.downloadQualityPresetSubtitle, "quality bitrate audio", "downloads", categoryTitle(strings.downloads)),
-                SettingsSearchEntry(strings.downloadSpeedLimit, strings.downloadSpeedLimitSubtitle, "speed bandwidth", "downloads", categoryTitle(strings.downloads)),
-                SettingsSearchEntry(strings.wifiOnly, strings.wifiOnlySubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
-                SettingsSearchEntry(strings.chargingOnly, strings.chargingOnlySubtitle, "battery download", "downloads", categoryTitle(strings.downloads)),
-                SettingsSearchEntry(strings.simultaneousDownloads, strings.simultaneousDownloadsSubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
-                SettingsSearchEntry(strings.downloadEngineSection, strings.downloadTrackHint, "cache offline storage", "downloads", categoryTitle(strings.downloads)),
-                SettingsSearchEntry(strings.lyricsAnalysisSection, strings.lyricsAnalysisCompactSubtitle, strings.lyrics, "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
-                SettingsSearchEntry(strings.automaticLyrics, strings.lyrics, "synced provider", "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
-                SettingsSearchEntry(strings.lyricsRomanization, strings.lyrics, "romanized transliteration", "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
-                SettingsSearchEntry(strings.createDataBackup, strings.createDataBackupSubtitle, "backup", "backup", strings.vaultTitle),
-                SettingsSearchEntry(strings.restoreBackup, strings.restoreBackupSubtitle, "backup", "backup", strings.vaultTitle),
-                SettingsSearchEntry(strings.batteryUnrestricted, strings.batteryUnrestrictedSubtitle, "battery", "system", categoryTitle(strings.preferences)),
-                SettingsSearchEntry(strings.language, strings.languageSubtitle, "locale", "system", categoryTitle(strings.preferences)),
-                SettingsSearchEntry(strings.updates, strings.checkNewVersions, "version", "app", categoryTitle(strings.app))
-                , SettingsSearchEntry(strings.integrations, "Last.fm ListenBrainz AudD", "scrobbling recognition", "integrations", categoryTitle(strings.integrations))
-                , SettingsSearchEntry(strings.networkTitle, strings.networkSubtitle, "dns proxy doh jiosaavn youtube provider", "network", categoryTitle(strings.networkTitle))
-                , SettingsSearchEntry(strings.jamTitle, strings.jamSubtitle, "jam session listen together", "jam", categoryTitle(strings.jamTitle))
+            entries = settingsSearchEntries(
+                strings = strings,
+                locale = categoryLocale,
+                updatesAvailable = BuildConfig.UPSTREAM_UPDATES_ENABLED,
+                aaudioOutputAvailable = NativeAudioIntegration.isAaudioOutputSupported()
             ),
             locale = categoryLocale
         )
@@ -18957,7 +18910,7 @@ private fun SettingsOverlay(
                             cursorBrush = SolidColor(LevyraCyan),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .semantics { contentDescription = strings.search }
+                                .semantics { contentDescription = strings.settingsSearchPlaceholder }
                                 .background(LevyraAdaptiveCardDeep, RoundedCornerShape(16.dp))
                                 .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(16.dp))
                                 .padding(horizontal = 14.dp, vertical = 13.dp),
@@ -18965,7 +18918,7 @@ private fun SettingsOverlay(
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Icon(Icons.Rounded.Search, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
                                     Box(modifier = Modifier.weight(1f)) {
-                                        if (settingsQuery.isBlank()) Text(strings.search, color = LevyraMuted, fontSize = 15.sp)
+                                        if (settingsQuery.isBlank()) Text(strings.settingsSearchPlaceholder, color = LevyraMuted, fontSize = 15.sp)
                                         innerTextField()
                                     }
                                     if (settingsQuery.isNotBlank()) {
@@ -18979,14 +18932,27 @@ private fun SettingsOverlay(
                         Spacer(modifier = Modifier.height(10.dp))
                     }
                     if (settingsQuery.isNotBlank()) {
-                        items(settingsSearchResults, key = { result -> "${result.categoryId}:${result.title}" }) { result ->
+                        if (settingsSearchResults.isEmpty()) {
+                            item(key = "settings_search_empty") {
+                                Text(
+                                    strings.settingsSearchEmpty,
+                                    color = LevyraMuted,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                        items(settingsSearchResults, key = SettingsSearchResult::id) { result ->
                             SettingsSearchResultRow(result.title, result.description, result.categoryLabel) {
-                                if (result.categoryId == "audio") {
+                                if (result.categoryId == SETTINGS_CATEGORY_AUDIO) {
                                     onOpenAudioSettings()
                                 } else {
                                     activeCategory = result.categoryId
                                 }
-                                settingsQuery = ""
                             }
                         }
                     } else {
