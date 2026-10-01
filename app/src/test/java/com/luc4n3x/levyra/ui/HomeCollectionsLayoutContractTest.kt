@@ -47,11 +47,9 @@ class HomeCollectionsLayoutContractTest {
     @Test
     fun `collection text wraps without ellipsis and keeps clear of artwork`() {
         val card = collectionCardBlock()
-        val textColumnWidth = dpConstant("HOME_COLLECTION_TEXT_COLUMN_WIDTH")
 
         assertFalse(card.contains("TextOverflow.Ellipsis"))
         assertTrue(card.contains("maxLines = 2"))
-        assertTrue(card.contains("HOME_COLLECTION_TEXT_COLUMN_WIDTH"))
-        assertTrue(textColumnWidth >= 88f)
+        assertTrue(card.contains("HOME_COLLECTION_ART_TEXT_KEEPOUT"))
     }
 }
