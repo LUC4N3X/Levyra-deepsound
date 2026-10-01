@@ -120,13 +120,13 @@ class OfflineExportWorker(
             }
         }
 
-        val storedTask = taskDao.byKey(taskKey)
-        val previousProgress = storedTask?.progress?.coerceIn(1, 99) ?: 1
+        val previousProgress = taskDao.byKey(taskKey)?.progress?.coerceIn(1, 99) ?: 1
         if (taskDao.updateStateForWork(taskKey, workId, "RUNNING", previousProgress, "", System.currentTimeMillis()) == 0) {
             return Result.failure(errorData(ERROR_SUPERSEDED))
         }
-        val batchKey = storedTask?.batchKey.orEmpty()
-        val batchTitle = storedTask?.batchTitle.orEmpty()
+        val batchTask = if (LiveUpdatePolicy.isSupported()) taskDao.byKey(taskKey) else null
+        val batchKey = batchTask?.batchKey.orEmpty()
+        val batchTitle = batchTask?.batchTitle.orEmpty()
         return try {
             setProgress(workDataOf(KEY_PROGRESS to previousProgress))
             setForeground(
