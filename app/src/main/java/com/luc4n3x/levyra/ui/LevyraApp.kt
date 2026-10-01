@@ -753,10 +753,10 @@ private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
 private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
 private val HOME_DENSE_SHELF_END_PADDING = 38.dp
-private val HOME_COLLECTION_CARD_WIDTH = 164.dp
-private val HOME_COLLECTION_CARD_HEIGHT = 150.dp
-private val HOME_COLLECTION_CARD_CORNER = 12.dp
-private val HOME_COLLECTION_COMPACT_WIDTH = 160.dp
+private val HOME_COLLECTION_CARD_WIDTH = 180.dp
+private val HOME_COLLECTION_CARD_HEIGHT = 96.dp
+private val HOME_COLLECTION_CARD_CORNER = 8.dp
+private val HOME_COLLECTION_COMPACT_WIDTH = 188.dp
 private val HOME_COLLECTION_ART_SIZE = 64.dp
 private val HOME_COLLECTION_ART_INSET = 10.dp
 private val HOME_COLLECTION_TEXT_END_PADDING = 12.dp
@@ -10320,46 +10320,32 @@ private fun HomeEditorialCollectionsShelf(
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val indexedColumns = remember(collections) {
-        collections.mapIndexed { index, collection -> index to collection }.chunked(2)
-    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
             subtitle = strings.collectionsSubtitle,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val cardWidth = ((maxWidth - (HomeHorizontalInset * 2) - LevyraHomeDesign.ShelfItemGap) / 2f)
-                .coerceIn(HOME_COLLECTION_CARD_WIDTH, 188.dp)
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
-                contentPadding = PaddingValues(
-                    start = HomeHorizontalInset,
-                    end = HOME_COLLECTION_SHELF_END_PADDING
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
+            contentPadding = PaddingValues(
+                start = HomeHorizontalInset,
+                end = HOME_COLLECTION_SHELF_END_PADDING
+            )
+        ) {
+            itemsIndexed(
+                items = collections,
+                key = { _, collection -> "home-collection-${collection.id}" },
+                contentType = { _, _ -> "home-collection-card" }
+            ) { visualIndex, collection ->
+                HomeEditorialCollectionCard(
+                    collection = collection,
+                    visualIndex = visualIndex,
+                    cardWidth = HOME_COLLECTION_CARD_WIDTH,
+                    animationsEnabled = animationsEnabled,
+                    onOpen = { onOpen(collection) }
                 )
-            ) {
-                itemsIndexed(
-                    items = indexedColumns,
-                    key = { _, column -> column.joinToString(prefix = "home-collection-column-") { it.second.id } },
-                    contentType = { _, _ -> "home-collection-column" }
-                ) { _, column ->
-                    Column(
-                        modifier = Modifier.width(cardWidth),
-                        verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap)
-                    ) {
-                        column.forEach { (visualIndex, collection) ->
-                            HomeEditorialCollectionCard(
-                                collection = collection,
-                                visualIndex = visualIndex,
-                                cardWidth = cardWidth,
-                                animationsEnabled = animationsEnabled,
-                                onOpen = { onOpen(collection) }
-                            )
-                        }
-                    }
-                }
             }
         }
     }
