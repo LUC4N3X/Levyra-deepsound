@@ -772,6 +772,7 @@ private val HOME_COLLECTION_SHELF_END_PADDING = 42.dp
 private val LevyraTabBarHeight = 76.dp
 private val LevyraTabBarCompactHeight = 54.dp
 private val LevyraMiniPlayerHeight = 77.dp
+private const val LevyraLandscapeDockMiniWeight = 1.1f
 private val LevyraBottomContentGap = 16.dp
 private val LevyraTabIndicatorTop = 11.dp
 private val LevyraTabIndicatorHeight = 36.dp
@@ -2131,6 +2132,7 @@ fun LevyraApp(
             val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
             val rootDensity = LocalDensity.current
             val rootLayoutMode = resolveLevyraLayoutMode(maxWidth.value, maxHeight.value)
+            val dockSideBySide = levyraWindowIsCompactLandscape()
             val expansionTravelPx = with(rootDensity) { maxHeight.toPx() }.coerceAtLeast(1f)
             val expansionScope = rememberCoroutineScope()
             val playerExpansion = remember {
@@ -2288,7 +2290,11 @@ fun LevyraApp(
                 },
                 label = "levyra-page-transition"
             ) { tab ->
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(LevyraHorizontalSafeInsets)
+                ) {
                     when (tab) {
                         LevyraTab.Home -> {
                             val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
@@ -2335,6 +2341,7 @@ fun LevyraApp(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
+                        .windowInsetsPadding(LevyraHorizontalSafeInsets)
                         .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -2342,6 +2349,74 @@ fun LevyraApp(
                     BottomTabsScrim()
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
+                    val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
+                    val miniPlayerSlot: @Composable () -> Unit = {
+                        AnimatedVisibility(
+                            visible = miniPlayerVisible,
+                            enter = miniEnter,
+                            exit = miniExit
+                        ) {
+                            state.currentTrack?.let { track ->
+                                val miniStepDirection = rememberTrackStepDirection(
+                                    trackId = track.id,
+                                    queue = state.queue,
+                                    queueIndex = state.queueCurrentIndex
+                                )
+                                Box(
+                                    modifier = if (miniMaxWidth.isFinite()) {
+                                        Modifier.widthIn(max = miniMaxWidth.dp)
+                                    } else {
+                                        Modifier
+                                    }
+                                ) {
+                                    MiniPlayer(
+                                        model = MiniPlayerModel(
+                                            track = track,
+                                            isPlaying = state.isPlaying,
+                                            isResolving = state.isResolving,
+                                            progress = progressOf(state.positionMs, state.durationMs),
+                                            bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
+                                            liveNowPlaying = state.liveRadioNowPlaying,
+                                            animated = state.animationsEnabled,
+                                            gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
+                                            swipeTrackChangeEnabled = state.interfaceSettings.swipeTrackChangeEnabled,
+                                            stepDirection = miniStepDirection
+                                        ),
+                                        morphAnchors = morphAnchors,
+                                        compaction = compactionProvider,
+                                        artworkHidden = { artworkMorphActive },
+                                        playbackActions = MiniPlayerPlaybackActions(
+                                            open = { viewModel.selectTab(LevyraTab.Player) },
+                                            toggle = viewModel::togglePlay,
+                                            next = viewModel::next,
+                                            previous = viewModel::previous,
+                                            close = viewModel::closePlayer
+                                        ),
+                                        expansionActions = MiniPlayerExpansionActions(
+                                            start = onExpansionDragStart,
+                                            drag = onExpansionDrag,
+                                            end = { velocity -> settleExpansion(velocity, false) }
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    val bottomTabsSlot: @Composable () -> Unit = {
+                        Box(
+                            modifier = if (miniMaxWidth.isFinite()) {
+                                Modifier.widthIn(max = miniMaxWidth.dp)
+                            } else {
+                                Modifier
+                            }
+                        ) {
+                            BottomTabs(
+                                selected = backgroundTab,
+                                compaction = compactionProvider,
+                                onSelect = viewModel::selectTab
+                            )
+                        }
+                    }
                     LevyraAdaptiveDockSurface(
                         glass = dockGlass,
                         modifier = if (miniMaxWidth.isFinite()) {
@@ -2350,69 +2425,18 @@ fun LevyraApp(
                             Modifier.fillMaxWidth()
                         }
                     ) {
-                    AnimatedVisibility(
-                        visible = state.currentTrack != null && !state.isSamplesOpen,
-                        enter = miniEnter,
-                        exit = miniExit
-                    ) {
-                        state.currentTrack?.let { track ->
-                            val miniStepDirection = rememberTrackStepDirection(
-                                trackId = track.id,
-                                queue = state.queue,
-                                queueIndex = state.queueCurrentIndex
-                            )
-                            Box(
-                                modifier = if (miniMaxWidth.isFinite()) {
-                                    Modifier.widthIn(max = miniMaxWidth.dp)
-                                } else {
-                                    Modifier
-                                }
+                        if (dockSideBySide && miniPlayerVisible) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top
                             ) {
-                                MiniPlayer(
-                                    model = MiniPlayerModel(
-                                        track = track,
-                                        isPlaying = state.isPlaying,
-                                        isResolving = state.isResolving,
-                                        progress = progressOf(state.positionMs, state.durationMs),
-                                        bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
-                                        liveNowPlaying = state.liveRadioNowPlaying,
-                                        animated = state.animationsEnabled,
-                                        gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
-                                        swipeTrackChangeEnabled = state.interfaceSettings.swipeTrackChangeEnabled,
-                                        stepDirection = miniStepDirection
-                                    ),
-                                    morphAnchors = morphAnchors,
-                                    compaction = compactionProvider,
-                                    artworkHidden = { artworkMorphActive },
-                                    playbackActions = MiniPlayerPlaybackActions(
-                                        open = { viewModel.selectTab(LevyraTab.Player) },
-                                        toggle = viewModel::togglePlay,
-                                        next = viewModel::next,
-                                        previous = viewModel::previous,
-                                        close = viewModel::closePlayer
-                                    ),
-                                    expansionActions = MiniPlayerExpansionActions(
-                                        start = onExpansionDragStart,
-                                        drag = onExpansionDrag,
-                                        end = { velocity -> settleExpansion(velocity, false) }
-                                    )
-                                )
+                                Box(modifier = Modifier.weight(LevyraLandscapeDockMiniWeight)) { miniPlayerSlot() }
+                                Box(modifier = Modifier.weight(1f)) { bottomTabsSlot() }
                             }
-                        }
-                    }
-                    Box(
-                        modifier = if (miniMaxWidth.isFinite()) {
-                            Modifier.widthIn(max = miniMaxWidth.dp)
                         } else {
-                            Modifier
+                            miniPlayerSlot()
+                            bottomTabsSlot()
                         }
-                    ) {
-                        BottomTabs(
-                            selected = backgroundTab,
-                            compaction = compactionProvider,
-                            onSelect = viewModel::selectTab
-                        )
-                    }
                     }
                 }
             }
@@ -2491,7 +2515,7 @@ fun LevyraApp(
                     .zIndex(18f)
                     .padding(horizontal = 22.dp)
                     .navigationBarsPadding()
-                    .padding(bottom = downloadHudBottomPadding(state)),
+                    .padding(bottom = downloadHudBottomPadding(state, dockSideBySide)),
                 enter = miniEnter,
                 exit = miniExit
             ) {
@@ -3377,10 +3401,10 @@ private fun LevyraUiState.activeDownloadHudItem(strings: LevyraStrings): Downloa
     return DownloadHudItem(taskKey = primaryId, progress = progress, title = title, count = ids.size)
 }
 
-private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
+private fun downloadHudBottomPadding(state: LevyraUiState, dockSideBySide: Boolean): Dp {
     return when {
         state.selectedTab == LevyraTab.Player -> 24.dp
-        state.currentTrack != null -> 154.dp
+        state.currentTrack != null && !dockSideBySide -> 154.dp
         else -> 96.dp
     }
 }
@@ -3389,9 +3413,14 @@ private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
 private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val collapsed = LevyraTabBarHeight + navigationBarInset + LevyraBottomContentGap
+    val miniPlayerExtra = if (levyraWindowIsCompactLandscape()) {
+        (LevyraMiniPlayerHeight - LevyraTabBarHeight).coerceAtLeast(0.dp)
+    } else {
+        LevyraMiniPlayerHeight
+    }
     return animatedBottomContentInset(
         collapsed = collapsed,
-        expanded = collapsed + LevyraMiniPlayerHeight,
+        expanded = collapsed + miniPlayerExtra,
         miniPlayerVisible = miniPlayerVisible,
         animationsEnabled = animationsEnabled
     )
@@ -4021,6 +4050,7 @@ private fun AlbumOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(stage.base)
+            .windowInsetsPadding(LevyraHorizontalSafeInsets)
     ) {
         val split = resolvePlayerPane(maxWidth.value, maxHeight.value) == LevyraPlayerPane.SideBySide
         val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -4887,6 +4917,7 @@ private fun ArtistOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
+            .windowInsetsPadding(LevyraHorizontalSafeInsets)
     ) {
         val density = LocalDensity.current
         val heroCap = minOf(ArtistHeroMaxHeight, maxHeight * ArtistHeroViewportShare)
@@ -6627,6 +6658,7 @@ private fun QueueOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
+            .windowInsetsPadding(LevyraHorizontalSafeInsets)
     ) {
         LazyColumn(
             modifier = Modifier
@@ -9982,6 +10014,11 @@ private fun HomeEditorialSpotlight(
     val heroInk = if (isLight) LevyraText else Color.White
     val heroInkSoft = if (isLight) LevyraText.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.90f)
     val staged = header != null
+    val heroBodyHeight = levyraCompactLandscapeHeight(
+        preferred = if (staged) HOME_HERO_STAGE_BODY_HEIGHT else LevyraHomeDesign.HeroHeight,
+        viewportShare = HOME_HERO_LANDSCAPE_VIEWPORT_SHARE,
+        minimum = HOME_HERO_LANDSCAPE_MIN_HEIGHT
+    )
 
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -10022,7 +10059,7 @@ private fun HomeEditorialSpotlight(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (staged) HOME_HERO_STAGE_BODY_HEIGHT else LevyraHomeDesign.HeroHeight)
+                    .height(heroBodyHeight)
                     .clickable(
                         interactionSource = interaction,
                         indication = null,
@@ -10198,6 +10235,8 @@ private fun HomeStatusBarScrim(listState: LazyListState, height: Dp, canvas: Col
 }
 
 private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 88.dp
+private const val HOME_HERO_LANDSCAPE_VIEWPORT_SHARE = 0.62f
+private val HOME_HERO_LANDSCAPE_MIN_HEIGHT = 236.dp
 private val HOME_HERO_FADE_LENGTH = 360.dp
 private val HOME_HERO_TOP_FADE = 72.dp
 private val HOME_HERO_HEADER_SCRIM_TAIL = 72.dp
@@ -17982,6 +18021,7 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .windowInsetsPadding(LevyraHorizontalSafeInsets)
         ) {
             if (onboardingShowsChrome(step)) {
                 OnboardingTopBar(step = step, backLabel = strings.back, onBack = { step = step.previous() })
@@ -18636,6 +18676,7 @@ private fun SettingsOverlay(
         modifier = Modifier
         .fillMaxSize()
         .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
+        .windowInsetsPadding(LevyraHorizontalSafeInsets)
     ) {
         AnimatedContent(
             targetState = activeCategory,
