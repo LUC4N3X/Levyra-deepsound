@@ -1073,6 +1073,8 @@ internal data class HomeProjection(
     val similarArtists: List<ArtistHit>,
     val tracks: List<Track>,
     val userName: String,
+    val profilePhotoPath: String,
+    val profilePhotoVersion: Long,
     val interfaceSettings: LevyraInterfaceSettings,
     val speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin>,
     val localSongs: List<Track>?
@@ -1117,6 +1119,8 @@ internal fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjecti
     similarArtists = state.similarArtists,
     tracks = state.tracks,
     userName = state.userName,
+    profilePhotoPath = state.profilePhotoPath,
+    profilePhotoVersion = state.profilePhotoVersion,
     interfaceSettings = state.interfaceSettings,
     speedDialPins = state.speedDialPins,
     localSongs = state.localLibrary.completedScanSongs()
