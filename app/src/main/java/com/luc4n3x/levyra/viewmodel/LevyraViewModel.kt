@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.SystemClock
+import android.widget.Toast
 import android.app.Application
 import android.net.ConnectivityManager
 import java.util.Locale
@@ -30,6 +31,7 @@ import com.luc4n3x.levyra.data.PlaylistCoverCrop
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.ProfilePhotoStore
 import com.luc4n3x.levyra.data.LyricsLatencyProfiles
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
@@ -874,6 +876,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     )
     private val preferences = LevyraPreferences(application.applicationContext)
+    private val profilePhotoStore = ProfilePhotoStore(application.applicationContext)
     private val audioSettingsPersistence = AudioSettingsPersistenceCoordinator(preferences::setAudioSettings)
     private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
     private val smartMusicProfileStore = LevyraSmartMusicProfileStore(application.applicationContext)
@@ -1308,6 +1311,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         viewModelScope.launch {
             searchEngine.state.collect(::applySearchSnapshot)
+        }
+        viewModelScope.launch {
+            val stored = withContext(Dispatchers.IO) { profilePhotoStore.current() }
+            if (stored != null) {
+                _state.update {
+                    it.copy(profilePhotoPath = stored.absolutePath, profilePhotoVersion = stored.lastModified())
+                }
+            }
         }
         viewModelScope.launch {
             preferences.lyricsLatencyProfilesFlow.collect { profiles ->
@@ -4357,6 +4368,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun cancelSleepTimer() {
         PlaybackService.cancelSleepTimer()
+    }
+
+    fun setProfilePhoto(uri: Uri) {
+        viewModelScope.launch {
+            val saved = withContext(Dispatchers.IO) {
+                runCatching { profilePhotoStore.save(uri) }
+                    .onFailure { Timber.w(it, "Profile photo import failed") }
+                    .getOrNull()
+            }
+            if (saved == null) {
+                Toast.makeText(
+                    getApplication<Application>(),
+                    LevyraStrings.forCode(_state.value.languageCode).profilePhotoFailed,
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
+            _state.update {
+                it.copy(profilePhotoPath = saved.absolutePath, profilePhotoVersion = System.currentTimeMillis())
+            }
+        }
+    }
+
+    fun clearProfilePhoto() {
+        viewModelScope.launch {
+            val cleared = withContext(Dispatchers.IO) { profilePhotoStore.clear() }
+            if (cleared) {
+                _state.update { it.copy(profilePhotoPath = "", profilePhotoVersion = 0L) }
+            }
+        }
     }
 
     fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
