@@ -112,7 +112,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 <div align="center">
 
-<a href="docs/assets/showcase/00_levyra_hero_wall_player.webp"><img src="docs/assets/showcase/00_levyra_hero_wall_player.webp?v=chatgpt-1774x887" width="100%" alt="Levyra music player for Android and Windows" /></a>
+<a href="docs/assets/showcase/00_levyra_hero_wall_player.webp"><img src="docs/assets/showcase/00_levyra_hero_wall_player.webp?v=neon-1774x887" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <p align="center">
   <sub>Browse radio and charts, open an artist, switch to video or follow synced lyrics. Your listening stats stay on your device.</sub>
