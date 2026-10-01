@@ -753,13 +753,14 @@ private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
 private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
 private val HOME_DENSE_SHELF_END_PADDING = 38.dp
-private val HOME_COLLECTION_CARD_WIDTH = 180.dp
-private val HOME_COLLECTION_CARD_HEIGHT = 96.dp
-private val HOME_COLLECTION_CARD_CORNER = 8.dp
-private val HOME_COLLECTION_COMPACT_WIDTH = 188.dp
-private val HOME_COLLECTION_ART_SIZE = 64.dp
-private val HOME_COLLECTION_ART_INSET = 10.dp
-private val HOME_COLLECTION_TEXT_END_PADDING = 12.dp
+private val HOME_COLLECTION_CARD_WIDTH = 178.dp
+private val HOME_COLLECTION_CARD_HEIGHT = 166.dp
+private val HOME_COLLECTION_CARD_CORNER = 12.dp
+private val HOME_COLLECTION_COMPACT_WIDTH = 170.dp
+private val HOME_COLLECTION_ART_SIZE = 78.dp
+private val HOME_COLLECTION_ART_INSET = 12.dp
+private val HOME_COLLECTION_TEXT_END_PADDING = 14.dp
+private val HOME_COLLECTION_CARD_GAP = 10.dp
 private val HOME_COLLECTION_ART_TEXT_KEEPOUT =
     HOME_COLLECTION_ART_SIZE + HOME_COLLECTION_ART_INSET - HOME_COLLECTION_TEXT_END_PADDING + 4.dp
 private val HOME_VIDEO_CARD_WIDTH_FRACTION = 0.84f
@@ -10328,7 +10329,7 @@ private fun HomeEditorialCollectionsShelf(
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
+            horizontalArrangement = Arrangement.spacedBy(HOME_COLLECTION_CARD_GAP),
             contentPadding = PaddingValues(
                 start = HomeHorizontalInset,
                 end = HOME_COLLECTION_SHELF_END_PADDING
@@ -10364,7 +10365,7 @@ private fun HomeEditorialCollectionCard(
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.972f else 1f,
+        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.982f else 1f,
         animationSpec = tween(150, easing = FastOutSlowInEasing),
         label = "homeCollectionScale-${collection.id}"
     )
@@ -10381,15 +10382,15 @@ private fun HomeEditorialCollectionCard(
             .joinToString(" · ")
     }
     val compact = cardWidth < HOME_COLLECTION_COMPACT_WIDTH
-    val titleSize = if (compact) 15.sp else 16.5.sp
-    val titleLineHeight = if (compact) 16.5.sp else 18.sp
-    val artworkTilt = if (visualIndex % 2 == 0) 6f else -5f
+    val titleSize = if (compact) 16.sp else 18.sp
+    val titleLineHeight = if (compact) 18.sp else 20.sp
+    val artworkTilt = if (visualIndex % 2 == 0) 4f else -4f
     val shape = RoundedCornerShape(HOME_COLLECTION_CARD_CORNER)
 
     Surface(
         color = Color.Transparent,
         shape = shape,
-        border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.14f)),
+        border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.10f)),
         shadowElevation = 0.dp,
         modifier = Modifier
             .width(cardWidth)
@@ -10433,7 +10434,7 @@ private fun HomeEditorialCollectionCard(
                         .padding(end = HOME_COLLECTION_ART_INSET, bottom = HOME_COLLECTION_ART_INSET)
                         .size(HOME_COLLECTION_ART_SIZE)
                         .graphicsLayer { rotationZ = artworkTilt }
-                        .shadow(9.dp, RoundedCornerShape(9.dp)),
+                        .shadow(8.dp, RoundedCornerShape(10.dp)),
                     highRes = false,
                     zoom = 1.02f
                 )
@@ -10442,21 +10443,21 @@ private fun HomeEditorialCollectionCard(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
-                        start = 14.dp,
-                        top = 12.dp,
+                        start = 16.dp,
+                        top = 14.dp,
                         end = HOME_COLLECTION_TEXT_END_PADDING,
-                        bottom = 11.dp
+                        bottom = 13.dp
                     ),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = "LEVYRA",
-                        color = Color.White.copy(alpha = 0.72f),
-                        fontSize = 8.5.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(8.5.sp),
+                        color = Color.White.copy(alpha = 0.78f),
+                        fontSize = 9.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(9.sp),
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 0.75.sp,
+                        letterSpacing = 0.8.sp,
                         maxLines = 1
                     )
                     Text(
@@ -10474,9 +10475,9 @@ private fun HomeEditorialCollectionCard(
                 if (artistLine.isNotBlank()) {
                     Text(
                         text = artistLine,
-                        color = Color.White.copy(alpha = 0.80f),
-                        fontSize = 10.sp,
-                        lineHeight = 12.sp,
+                        color = Color.White.copy(alpha = 0.82f),
+                        fontSize = 11.sp,
+                        lineHeight = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
