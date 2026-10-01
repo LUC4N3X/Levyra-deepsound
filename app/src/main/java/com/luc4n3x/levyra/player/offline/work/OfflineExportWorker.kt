@@ -13,6 +13,7 @@ import android.os.SystemClock
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -32,6 +33,11 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.OfflineDownloadTaskEntity
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.retainsExistingBatchMembership
+import com.luc4n3x.levyra.player.liveupdate.DownloadBatchProgress
+import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateContent
+import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateMapper
+import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateSlot
+import com.luc4n3x.levyra.player.liveupdate.LiveUpdatePolicy
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.OfflineExportPipeline
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -118,9 +124,14 @@ class OfflineExportWorker(
         if (taskDao.updateStateForWork(taskKey, workId, "RUNNING", previousProgress, "", System.currentTimeMillis()) == 0) {
             return Result.failure(errorData(ERROR_SUPERSEDED))
         }
+        val batchTask = if (LiveUpdatePolicy.isSupported()) taskDao.byKey(taskKey) else null
+        val batchKey = batchTask?.batchKey.orEmpty()
+        val batchTitle = batchTask?.batchTitle.orEmpty()
         return try {
             setProgress(workDataOf(KEY_PROGRESS to previousProgress))
-            setForeground(createForegroundInfo(track, taskKey, previousProgress, strings))
+            setForeground(
+                createForegroundInfo(track, taskKey, previousProgress, strings, liveUpdateFor(taskKey, previousProgress, batchKey, batchTitle))
+            )
             var persistedProgress = previousProgress
             var persistedAtMs = SystemClock.elapsedRealtime()
             var foregroundProgress = previousProgress
@@ -151,7 +162,9 @@ class OfflineExportWorker(
                 if (shouldRefreshForeground) {
                     foregroundProgress = monotonicProgress
                     foregroundAtMs = nowElapsed
-                    setForeground(createForegroundInfo(track, taskKey, monotonicProgress, strings))
+                    setForeground(
+                        createForegroundInfo(track, taskKey, monotonicProgress, strings, liveUpdateFor(taskKey, monotonicProgress, batchKey, batchTitle))
+                    )
                 }
             }
             val pipeline = OfflineExportPipeline(
@@ -204,7 +217,29 @@ class OfflineExportWorker(
                 Timber.e(error, "Offline export failed")
                 Result.failure(errorData(if (unsupportedSource) "contentIsMalformed" else error.message ?: "offline_export_failed"))
             }
+        } finally {
+            if (LiveUpdatePolicy.isSupported()) DownloadLiveUpdateSlot.release(taskKey)
         }
+    }
+
+    private suspend fun liveUpdateFor(
+        taskKey: String,
+        progress: Int,
+        batchKey: String,
+        batchTitle: String
+    ): DownloadLiveUpdateContent? {
+        if (!LiveUpdatePolicy.isSupported()) return null
+        val batch = if (batchKey.isBlank()) {
+            null
+        } else {
+            val counts = LevyraDatabase.get(applicationContext).offlineDownloadTasksDao().batchCounts(batchKey)
+            DownloadBatchProgress(title = batchTitle, completed = counts.completed, total = counts.total)
+        }
+        val notifications = NotificationManagerCompat.from(applicationContext)
+        val promotionAllowed = progress < 100 &&
+            notifications.canPostPromotedNotifications() &&
+            DownloadLiveUpdateSlot.claim(taskKey)
+        return DownloadLiveUpdateMapper.map(progress, batch, promotionAllowed)
     }
 
     private fun errorData(message: String): Data = workDataOf(KEY_ERROR to message)
@@ -239,10 +274,11 @@ class OfflineExportWorker(
         track: Track,
         taskKey: String,
         progress: Int,
-        strings: LevyraStrings
+        strings: LevyraStrings,
+        liveUpdate: DownloadLiveUpdateContent?
     ): ForegroundInfo {
         ensureNotificationChannel(strings)
-        val notification = buildForegroundNotification(track, taskKey, progress.coerceIn(0, 100), strings)
+        val notification = buildForegroundNotification(track, taskKey, progress.coerceIn(0, 100), strings, liveUpdate)
         val notificationId = NOTIFICATION_ID_BASE + (track.id.hashCode() and Int.MAX_VALUE) % NOTIFICATION_ID_RANGE
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -255,7 +291,8 @@ class OfflineExportWorker(
         track: Track,
         taskKey: String,
         progress: Int,
-        strings: LevyraStrings
+        strings: LevyraStrings,
+        liveUpdate: DownloadLiveUpdateContent?
     ): Notification {
         val title = track.title.ifBlank { strings.offlineDownloadsPlain }
         val artist = track.artist.ifBlank { "LEVYRA" }
@@ -276,6 +313,13 @@ class OfflineExportWorker(
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setProgress(100, percent, false)
+            .apply {
+                if (liveUpdate != null) {
+                    setShortCriticalText(liveUpdate.shortCriticalText)
+                    setRequestPromotedOngoing(liveUpdate.requestPromotion)
+                    liveUpdate.subText?.let { setSubText(it) }
+                }
+            }
             .build()
     }
 

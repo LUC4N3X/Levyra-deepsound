@@ -572,6 +572,8 @@ Responsibilities include:
  
 The UI does not own audible playback. Decorative Canvas artwork is the narrow exception: its muted, audio-disabled ExoPlayer is owned by the mounted artwork layer and releases its listener, surface and player on disposal.
 
+On Android 16+ the Media3 notification provider is wrapped by `LiveUpdateMediaNotificationProvider` (`player/liveupdate/`). The MediaStyle notification stays unchanged; `PlaybackLiveUpdateNotifier` mirrors the same session (title, artist, Media3's decoded artwork and session activity) into a silent promoted Live Update only while playback is active and the system allows promoted notifications. It is driven by player events, uses a system chronometer instead of polling, and is cancelled on pause, stop, end of queue and service destruction. Offline download workers add the Live Update chip, batch counter and promotion request to their existing foreground notification, with a single promoted download at a time. Older Android versions keep the previous notification path.
+
 The service memory guard samples native allocation outside the Main dispatcher, then returns to Main and revalidates the active playing instance before any player mutation. Recovery reuses the measured value and the existing primary ExoPlayer while restoring the current item, position and play intent.
 
 ### 12.1 Real crossfade and AutoMix
