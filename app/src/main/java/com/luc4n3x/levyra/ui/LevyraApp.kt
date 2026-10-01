@@ -11725,172 +11725,58 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    val shelfTracks = remember(tracks) {
-        LevyraPersonalOrbit.distinctWorks(
-            LevyraPersonalOrbit.distinctRecordings(tracks)
-        ).take(LevyraHomeDesign.SPEED_DIAL_PAGE_SIZE * 2)
-    }
-    if (shelfTracks.isEmpty()) return
-
-    val pages = remember(shelfTracks) {
-        shelfTracks.chunked(LevyraHomeDesign.SPEED_DIAL_PAGE_SIZE)
-    }
-    val pageRows = remember(pages) {
-        pages.map { page -> page.chunked(LevyraHomeDesign.SPEED_DIAL_COLUMNS) }
-    }
-    val pagerState = rememberPagerState(pageCount = { pages.size })
+    val columns = remember(tracks) { homePersonalOrbitColumns(tracks) }
+    if (columns.isEmpty()) return
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
             HomeOrbitHeader(onPlayAll = onPlayAll)
         }
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxWidth(),
-            key = { pageIndex -> "orbit-speed-dial-page-$pageIndex" }
-        ) { pageIndex ->
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = LevyraHomeDesign.HorizontalInset),
-                verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.SpeedDialGap)
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val columnWidth = (maxWidth - HOME_DENSE_SHELF_PEEK)
+                .coerceIn(HOME_DENSE_SHELF_MIN_WIDTH, HOME_DENSE_SHELF_MAX_WIDTH)
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    start = LevyraHomeDesign.HorizontalInset,
+                    end = HOME_DENSE_SHELF_END_PADDING
+                ),
+                horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.TrackColumnGap)
             ) {
-                pageRows[pageIndex].forEach { rowTracks ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.SpeedDialGap)
+                itemsIndexed(
+                    items = columns,
+                    key = { columnIndex, column ->
+                        val identity = column.firstOrNull()
+                            ?.let(LevyraPersonalOrbit::identityKey)
+                            .orEmpty()
+                        "orbit-column-$columnIndex-$identity"
+                    },
+                    contentType = { _, _ -> HOME_DENSE_SHELF_CONTENT_TYPE }
+                ) { _, columnTracks ->
+                    Column(
+                        modifier = Modifier.width(columnWidth),
+                        verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.TrackColumnGap)
                     ) {
-                        rowTracks.forEach { track ->
-                            Box(modifier = Modifier.weight(1f)) {
-                                PersonalOrbitSpeedDialCard(
+                        columnTracks.forEach { track ->
+                            key(LevyraPersonalOrbit.identityKey(track)) {
+                                HomeTrackRow(
                                     track = track,
                                     isCurrent = track.id == currentId,
                                     isPlaying = isPlaying && track.id == currentId,
                                     isResolving = isResolving && track.id == currentId,
                                     onPlay = { onPlay(track) },
-                                    onLongClick = { onTrackActions(track) }
+                                    onActions = { onTrackActions(track) }
                                 )
                             }
-                        }
-                        repeat(LevyraHomeDesign.SPEED_DIAL_COLUMNS - rowTracks.size) {
-                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
             }
         }
-        if (pages.size > 1) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                pages.indices.forEach { index ->
-                    val isSelected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .size(if (isSelected) 6.dp else 5.dp)
-                            .background(
-                                if (isSelected) LevyraText else LevyraText.copy(alpha = 0.28f),
-                                CircleShape
-                            )
-                    )
-                }
-            }
-        }
     }
 }
 
-@Composable
-private fun PersonalOrbitSpeedDialCard(
-    track: Track,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    onPlay: () -> Unit,
-    onLongClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(6.dp)
-    val strings = LocalLevyraStrings.current
-    val haptics = LocalLevyraHaptics.current
-    val interaction = remember { MutableInteractionSource() }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clip(shape)
-            .combinedClickable(
-                interactionSource = interaction,
-                indication = null,
-                onLongClickLabel = strings.songOptions,
-                onLongClick = {
-                    haptics.perform(LevyraHapticAction.TrackSwipe)
-                    onLongClick()
-                },
-                onClick = onPlay
-            )
-    ) {
-        CoverImage(
-            track = track,
-            modifier = Modifier.fillMaxSize(),
-            highRes = false
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .fillMaxHeight(0.40f)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.70f)
-                        )
-                    )
-                )
-        )
-        Text(
-            text = track.title,
-            color = if (isCurrent) LevyraCyan else Color.White,
-            fontSize = 12.sp,
-            lineHeight = 14.5.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 7.dp, vertical = 6.dp)
-        )
-        if (isCurrent) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(5.dp)
-                    .size(22.dp)
-                    .background(Color.Black.copy(alpha = 0.65f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isResolving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(12.dp),
-                        strokeWidth = 1.5.dp,
-                        color = LevyraCyan
-                    )
-                } else {
-                    ActiveTrackEqualizer(
-                        color = LevyraCyan,
-                        isPlaying = isPlaying,
-                        width = 12.dp,
-                        height = 9.dp
-                    )
-                }
-            }
-        }
-    }
-}
 
 private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
     title = track.album.trim(),
