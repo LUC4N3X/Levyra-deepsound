@@ -753,11 +753,11 @@ private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
 private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
 private val HOME_DENSE_SHELF_END_PADDING = 38.dp
-private val HOME_COLLECTION_CARD_WIDTH = 178.dp
-private val HOME_COLLECTION_CARD_HEIGHT = 166.dp
+private val HOME_COLLECTION_CARD_WIDTH = 196.dp
+private val HOME_COLLECTION_CARD_HEIGHT = 178.dp
 private val HOME_COLLECTION_CARD_CORNER = 12.dp
 private val HOME_COLLECTION_COMPACT_WIDTH = 170.dp
-private val HOME_COLLECTION_ART_SIZE = 78.dp
+private val HOME_COLLECTION_ART_SIZE = 80.dp
 private val HOME_COLLECTION_ART_INSET = 12.dp
 private val HOME_COLLECTION_TEXT_END_PADDING = 14.dp
 private val HOME_COLLECTION_CARD_GAP = 10.dp
@@ -10468,7 +10468,6 @@ private fun HomeEditorialCollectionCard(
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.25).sp,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -10479,8 +10478,7 @@ private fun HomeEditorialCollectionCard(
                         fontSize = 11.sp,
                         lineHeight = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 2,
                         modifier = Modifier.padding(end = HOME_COLLECTION_ART_TEXT_KEEPOUT)
                     )
                 }
