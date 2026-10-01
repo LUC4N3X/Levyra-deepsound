@@ -3423,7 +3423,7 @@ private fun downloadHudBottomPadding(state: LevyraUiState, dockSideBySide: Boole
 @Composable
 private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val collapsed = LevyraTabBarHeight + navigationBarInset + LevyraBottomContentGap
+    val collapsed = LevyraTabBarCompactHeight + navigationBarInset + LevyraBottomContentGap
     val miniPlayerExtra = if (levyraWindowIsCompactLandscape()) {
         (LevyraMiniPlayerHeight - LevyraTabBarHeight).coerceAtLeast(0.dp)
     } else {
@@ -9291,7 +9291,7 @@ private fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = statusBarTop + homeTopPadding,
-                bottom = homeBottomInset + LevyraBottomContentGap
+                bottom = homeBottomInset
             ),
             verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.sectionGap(compactHome))
         ) {
@@ -11845,6 +11845,9 @@ private fun PersonalListeningShelf(
     val pages = remember(tracks) { homePersonalOrbitPages(tracks) }
     if (pages.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { pages.size })
+    LaunchedEffect(pages.size) {
+        if (pagerState.currentPage > pages.lastIndex) pagerState.scrollToPage(pages.lastIndex)
+    }
     val pageKey: (Int) -> String = { pageIndex ->
         pages[pageIndex].firstOrNull()?.firstOrNull()
             ?.let(LevyraPersonalOrbit::identityKey)
