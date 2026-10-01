@@ -185,6 +185,7 @@ def generate_hero_panoramic_showcase():
     canvas_w, canvas_h = 2400, 880
 
     candidates = [
+        r"C:\Users\Luca Drogo\Downloads\Danza e musica in luce neon.png",
         os.path.join(OUT_SHOWCASE_DIR, "levyra_hero_cinematic_chatgpt.png"),
         r"C:\Users\Luca Drogo\Downloads\Immagine ChatGPT 30 set 2026, 21_37_37.png",
         r"C:\Users\Luca Drogo\Downloads\Immagine ChatGPT 30 set 2026, 21_31_11.png",
