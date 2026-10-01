@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
@@ -80,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.offlineDownloadStageOf
+import com.luc4n3x.levyra.ui.LevyraHorizontalSafeInsets
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.LibrarySort
@@ -1255,7 +1257,12 @@ internal fun LevyraPlaylistDetailScreen(
         if (selectionActive) selectionMode = false
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LevyraInk)
+            .windowInsetsPadding(LevyraHorizontalSafeInsets)
+    ) {
         LazyColumn(
             state = playlistListState,
             modifier = Modifier.fillMaxSize().statusBarsPadding().then(if (searchActive) Modifier.imePadding() else Modifier),

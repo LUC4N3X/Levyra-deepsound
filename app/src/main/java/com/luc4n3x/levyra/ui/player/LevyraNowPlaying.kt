@@ -22,18 +22,22 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -127,13 +131,15 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
+import com.luc4n3x.levyra.ui.isLevyraCompactLandscape
+import com.luc4n3x.levyra.ui.levyraCompactLandscapeVideoPaneWeight
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
 import com.luc4n3x.levyra.ui.levyraFoldAwareGutterDp
 import com.luc4n3x.levyra.ui.levyraPlayerArtworkMaxWidthDp
 import com.luc4n3x.levyra.ui.playerAmbienceOf
 import com.luc4n3x.levyra.ui.preferredPlayerArtworkUrl
 import com.luc4n3x.levyra.ui.resolveLevyraLayoutMode
-import com.luc4n3x.levyra.ui.resolvePlayerPane
+import com.luc4n3x.levyra.ui.resolveNowPlayingPane
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
@@ -151,6 +157,7 @@ private val MinimumFittedPlayerHeight = 600.dp
 private val ScrollingArtworkMax = 260.dp
 private val HeaderSideReserve = 108.dp
 private val HeaderButtonMinimumWidth = 40.dp
+private val HeaderCenterMinimumWidth = 112.dp
 private const val DefaultBackdropFocus = 0.34f
 
 @Composable
@@ -322,11 +329,8 @@ fun LevyraNowPlaying(
             .background(Color.Black)
     ) {
         val layoutMode = resolveLevyraLayoutMode(maxWidth.value, maxHeight.value)
-        val playerPane = if (state.isVideoMode) {
-            LevyraPlayerPane.Stacked
-        } else {
-            resolvePlayerPane(maxWidth.value, maxHeight.value)
-        }
+        val compactLandscape = isLevyraCompactLandscape(maxWidth.value, maxHeight.value)
+        val playerPane = resolveNowPlayingPane(maxWidth.value, maxHeight.value, state.isVideoMode)
         val deckLayout = resolvePlayerDeckLayout(
             mode = visualMode,
             isVideoMode = state.isVideoMode,
@@ -566,8 +570,8 @@ fun LevyraNowPlaying(
             }
         }
 
-        val headerBlock: @Composable () -> Unit = {
-            if (headerCentered) {
+        val headerRow: @Composable (Boolean) -> Unit = { centered ->
+            if (centered) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -607,14 +611,13 @@ fun LevyraNowPlaying(
                 }
             }
         }
+        val headerBlock: @Composable () -> Unit = { headerRow(headerCentered) }
 
         val mediaHeroBlock: @Composable (Track, Dp, Dp?) -> Unit = { activeTrack, heroSize, cornerOverride ->
             val artworkCorner = cornerOverride ?: LevyraPlayerShapes.artworkCorner(heroSize)
             Box(
                 modifier = if (state.isVideoMode) {
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
+                    Modifier.aspectRatio(16f / 9f)
                 } else {
                     Modifier.size(heroSize)
                 },
@@ -1038,14 +1041,59 @@ fun LevyraNowPlaying(
                 gutter = gutter,
                 modifier = deckModifier
             )
+        } else if (playerPane == LevyraPlayerPane.SideBySide && track != null && compactLandscape && !state.isVideoMode) {
+            Row(
+                modifier = rootModifier
+                    .widthIn(max = detailMaxWidth)
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                    .padding(horizontal = gutter, vertical = LevyraPlayerDesign.SpaceSm),
+                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXl),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                stageBlock(
+                    track,
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(vertical = LevyraPlayerDesign.SpaceSm),
+                    null
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        headerRow(headerCentered && maxWidth - HeaderSideReserve * 2 >= HeaderCenterMinimumWidth)
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        controlsBlock(track)
+                    }
+                }
+            }
         } else if (playerPane == LevyraPlayerPane.SideBySide && track != null) {
+            val stageWeight = if (compactLandscape) levyraCompactLandscapeVideoPaneWeight(maxWidth.value) else 1f
             Column(
                 modifier = rootModifier
                     .widthIn(max = detailMaxWidth)
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .padding(horizontal = gutter, vertical = LevyraPlayerDesign.SpaceMd)
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                    .padding(
+                        horizontal = gutter,
+                        vertical = if (compactLandscape) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd
+                    )
             ) {
                 headerBlock()
                 Row(
@@ -1058,9 +1106,9 @@ fun LevyraNowPlaying(
                     stageBlock(
                         track,
                         Modifier
-                            .weight(1f)
+                            .weight(stageWeight)
                             .fillMaxHeight()
-                            .padding(vertical = LevyraPlayerDesign.SpaceMd),
+                            .padding(vertical = if (compactLandscape) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd),
                         null
                     )
                     Column(
