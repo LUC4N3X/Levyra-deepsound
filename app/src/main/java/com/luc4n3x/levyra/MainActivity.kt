@@ -89,7 +89,6 @@ private data class MainActivityUiSlice(
     val isPlaying: Boolean,
     val showSettings: Boolean,
     val showOnboarding: Boolean,
-    val showLyrics: Boolean,
     val languageCode: String,
     val recentListenCount: Int,
     val updateInfo: AppUpdateInfo?,
@@ -102,7 +101,6 @@ private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainAct
     isPlaying = isPlaying,
     showSettings = showSettings,
     showOnboarding = showOnboarding,
-    showLyrics = showLyrics,
     languageCode = languageCode,
     recentListenCount = recentListens.size,
     updateInfo = updateInfo,
@@ -118,7 +116,6 @@ class MainActivity : ComponentActivity() {
     private var updateJob: Job? = null
     private var updateRequestToken = 0L
     private var pendingUpdate: PreparedAppUpdate? = null
-    private var lyricsRotationAllowed = false
 
     private val unknownSourcesLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         resumePendingUpdateInstall()
@@ -177,11 +174,6 @@ class MainActivity : ComponentActivity() {
                     if (viewModel.state.value.selectedChartId != defaultRegionId) {
                         viewModel.selectChart(defaultRegionId)
                     }
-                }
-
-                LaunchedEffect(activityUiState.showLyrics) {
-                    lyricsRotationAllowed = activityUiState.showLyrics
-                    applyOrientationPolicy()
                 }
 
                 LaunchedEffect(activityUiState.isPlaying) {
@@ -309,11 +301,6 @@ class MainActivity : ComponentActivity() {
         if (!AppUpdateContract.matches(intent)) return false
         if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
         return true
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        applyOrientationPolicy()
     }
 
     override fun onUserLeaveHint() {
@@ -550,12 +537,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyOrientationPolicy() {
-        requestedOrientation = when {
-            isInPictureInPictureMode -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            resources.configuration.smallestScreenWidthDp >= 600 -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
-            lyricsRotationAllowed -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
-            else -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        val target = if (isInPictureInPictureMode) {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         }
+        if (requestedOrientation != target) requestedOrientation = target
     }
 
     private fun requestNotificationPermission() {
