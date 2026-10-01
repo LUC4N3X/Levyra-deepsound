@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player.liveupdate
 
 import android.os.Build
 import androidx.annotation.ChecksSdkIntAtLeast
+import kotlin.math.ceil
 
 internal object LiveUpdatePolicy {
     const val MIN_SDK: Int = Build.VERSION_CODES.BAKLAVA
@@ -54,7 +55,8 @@ internal data class PlaybackLiveUpdateContent(
         if (mediaId != other.mediaId || title != other.title || text != other.text) return false
         val base = chronometerBaseEpochMs
         val otherBase = other.chronometerBaseEpochMs
-        if (base == null || otherBase == null) return base == otherBase
+        if (base == null && otherBase == null) return kotlin.math.abs(timeoutMs - other.timeoutMs) < CHRONOMETER_TOLERANCE_MS
+        if (base == null || otherBase == null) return false
         return kotlin.math.abs(base - otherBase) < CHRONOMETER_TOLERANCE_MS
     }
 
@@ -79,7 +81,7 @@ internal object PlaybackLiveUpdateMapper {
             text = contentText(input.artist.trim(), input.durationMs.takeIf { knownDuration }),
             chronometerBaseEpochMs = chronometerBase(input, position),
             timeoutMs = if (knownDuration) {
-                (input.durationMs - position).coerceAtLeast(0L) + TIMEOUT_GRACE_MS
+                wallClockRemainingMs(input.durationMs - position, input.speed) + TIMEOUT_GRACE_MS
             } else {
                 UNKNOWN_DURATION_TIMEOUT_MS
             }
@@ -88,6 +90,11 @@ internal object PlaybackLiveUpdateMapper {
 
     private fun isActive(input: PlaybackLiveUpdateInput): Boolean =
         input.playWhenReady && (input.buffering || input.ready)
+
+    private fun wallClockRemainingMs(remainingMediaMs: Long, speed: Float): Long {
+        val safeSpeed = if (speed.isFinite() && speed > 0f) speed else 1f
+        return ceil(remainingMediaMs.coerceAtLeast(0L) / safeSpeed.toDouble()).toLong()
+    }
 
     private fun contentText(artist: String, durationMs: Long?): String {
         val duration = durationMs?.let(LiveUpdatePolicy::formatClock) ?: return artist

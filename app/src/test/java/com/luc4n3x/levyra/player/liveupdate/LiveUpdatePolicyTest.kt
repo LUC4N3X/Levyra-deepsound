@@ -64,6 +64,27 @@ class LiveUpdatePolicyTest {
     }
 
     @Test
+    fun `known duration timeout follows wall clock time at the current speed`() {
+        val remaining = 257_000L - 151_000L
+        val grace = PlaybackLiveUpdateMapper.TIMEOUT_GRACE_MS
+
+        assertEquals(remaining * 2 + grace, PlaybackLiveUpdateMapper.map(playing().copy(speed = 0.5f))!!.timeoutMs)
+        assertEquals(remaining / 2 + grace, PlaybackLiveUpdateMapper.map(playing().copy(speed = 2f))!!.timeoutMs)
+        assertEquals(remaining + grace, PlaybackLiveUpdateMapper.map(playing().copy(speed = 0f))!!.timeoutMs)
+        assertEquals(remaining + grace, PlaybackLiveUpdateMapper.map(playing().copy(speed = Float.NaN))!!.timeoutMs)
+    }
+
+    @Test
+    fun `speed change without a chronometer still refreshes the timeout`() {
+        val half = PlaybackLiveUpdateMapper.map(playing().copy(speed = 0.5f))!!
+        val quarter = PlaybackLiveUpdateMapper.map(playing().copy(speed = 0.25f))!!
+        val sameHalf = PlaybackLiveUpdateMapper.map(playing().copy(speed = 0.5f))!!
+
+        assertFalse(quarter.isEquivalentTo(half))
+        assertTrue(sameHalf.isEquivalentTo(half))
+    }
+
+    @Test
     fun `unknown duration and missing artist degrade cleanly`() {
         assertEquals("Depeche Mode", PlaybackLiveUpdateMapper.map(playing().copy(durationMs = 0L))!!.text)
         assertEquals("4:17", PlaybackLiveUpdateMapper.map(playing().copy(artist = ""))!!.text)
