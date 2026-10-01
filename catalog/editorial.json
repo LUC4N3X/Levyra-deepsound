@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-30T22:20:00Z",
+  "generatedAt": "2026-10-01T06:01:23Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1666,7 +1666,7 @@
         },
         {
           "position": 19,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1674,8 +1674,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1685,7 +1685,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 20,
@@ -1796,6 +1796,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -1882,7 +1888,7 @@
         },
         {
           "position": 29,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -1890,12 +1896,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 30,
@@ -3243,6 +3249,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -6218,11 +6230,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-08-24"
+            "releaseDate": "2010-01-01"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
           "position": 11,
@@ -7132,6 +7144,12 @@
           },
           "durationMs": 151741,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "DmlkcUkXDC4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC6XpMxhc6Q8ctf_eoXtiXnw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027694ff7ea6cfdfdbb72f38b3"
         }
       ]
@@ -8985,6 +9003,12 @@
           },
           "durationMs": 198300,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "aaQryp24OOc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC5TYeA9Hw3L5VlZYtMt3pqg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b1be77ca2239c960e068895c"
         },
         {
@@ -10789,6 +10813,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -23682,6 +23712,12 @@
           },
           "durationMs": 178124,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "jifBuWCqGJ8",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCgxF4gSR9V-g3ntmp9IkBQQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d1f46cbae07d00b319018f98"
         },
         {
@@ -25150,14 +25186,6 @@
           },
           "durationMs": 281173,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "60gOh6eCrkw",
-            "audioConfidence": 100,
-            "videoId": "X-EK60rmcQs",
-            "videoConfidence": 97,
-            "confidence": 100,
-            "artistBrowseId": "UCA36OMMsSium2rOWHdo7gsA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295688e1f59ae3fc4951d41ff"
         },
         {
@@ -26008,6 +26036,12 @@
           },
           "durationMs": 222314,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "mA97APK1ZUo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCKpUdN_3jvEAwvOxAUcKDA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0271659b8e2bf2bdcc7e0922c1"
         },
         {
@@ -26429,11 +26463,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 40,
@@ -27170,8 +27204,6 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -28651,6 +28683,12 @@
           },
           "durationMs": 213529,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "O8FdYL6zyWk",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCQT34JghsmSnkc9apQCQZcA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0212fc73f7a20f65645d538927"
         },
         {
