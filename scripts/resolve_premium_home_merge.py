@@ -90,8 +90,8 @@ merged = text[:start] + replacement + text[end:]
 checks = {
     "premium Orbit helper": "homePersonalOrbitColumns(tracks)",
     "premium Orbit LazyRow": "items = columns",
-    "promotion domain preserved": "HomePromotion",
-    "promotion presentation preserved": "HomePromotionPresentation",
+    "main compact-landscape dock behavior": "LevyraLandscapeDockMiniWeight",
+    "main responsive player-pane behavior": "resolvePlayerPane(widthDp, heightDp)",
 }
 missing_after = [name for name, fragment in checks.items() if fragment not in merged]
 if missing_after:
@@ -101,4 +101,4 @@ if "private fun PersonalOrbitSpeedDialCard(" in merged:
     raise SystemExit("Legacy PersonalOrbitSpeedDialCard still present after merge")
 
 PATH.write_text(merged, encoding="utf-8")
-print("Safely reapplied premium Orbit on top of current main LevyraApp.kt")
+print("Safely reapplied premium Orbit on top of current responsive-landscape main LevyraApp.kt")
