@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -133,7 +134,12 @@ internal fun PlaylistHitOverlay(
         preview.hit.displayTrackCount(tracks.size, strings::formatTrackCount)
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(colors.base)) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.base)
+            .windowInsetsPadding(LevyraHorizontalSafeInsets)
+    ) {
         val wide = resolvePlayerPane(maxWidth.value, maxHeight.value) == LevyraPlayerPane.SideBySide
         val topBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
         val heroHeight = immersiveHeroHeight(wide, maxWidth, maxHeight, topBarHeight)
