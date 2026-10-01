@@ -13,6 +13,25 @@ enum class LevyraPlayerPane {
 
 const val LevyraMediumWidthDp: Float = 600f
 const val LevyraExpandedWidthDp: Float = 840f
+const val LevyraCompactLandscapeMaxHeightDp: Float = 480f
+
+fun isLevyraCompactLandscape(widthDp: Float, heightDp: Float): Boolean =
+    heightDp > 0f && heightDp < LevyraCompactLandscapeMaxHeightDp && widthDp > heightDp
+
+fun levyraCompactLandscapeVideoPaneWeight(widthDp: Float): Float =
+    if (widthDp >= 760f) 1.5f else 1f
+
+fun levyraCompactLandscapeHeightDp(
+    preferredDp: Float,
+    widthDp: Float,
+    heightDp: Float,
+    viewportShare: Float,
+    minimumDp: Float
+): Float {
+    if (!isLevyraCompactLandscape(widthDp, heightDp)) return preferredDp
+    val floor = minOf(minimumDp, preferredDp)
+    return (heightDp * viewportShare).coerceIn(floor, preferredDp)
+}
 
 fun resolveLevyraLayoutMode(widthDp: Float, heightDp: Float): LevyraLayoutMode {
     val safeWidth = widthDp.coerceAtLeast(0f)
@@ -31,6 +50,13 @@ fun resolvePlayerPane(widthDp: Float, heightDp: Float): LevyraPlayerPane {
     val tallEnough = heightDp >= 320f
     return if (wideEnough && tallEnough) LevyraPlayerPane.SideBySide else LevyraPlayerPane.Stacked
 }
+
+fun resolveNowPlayingPane(widthDp: Float, heightDp: Float, isVideoMode: Boolean): LevyraPlayerPane =
+    if (isVideoMode && !isLevyraCompactLandscape(widthDp, heightDp)) {
+        LevyraPlayerPane.Stacked
+    } else {
+        resolvePlayerPane(widthDp, heightDp)
+    }
 
 fun levyraContentMaxWidthDp(mode: LevyraLayoutMode): Float = when (mode) {
     LevyraLayoutMode.Compact -> 560f
