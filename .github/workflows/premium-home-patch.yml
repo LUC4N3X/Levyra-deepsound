@@ -1,0 +1,77 @@
+name: Premium Home Patch
+
+on:
+  push:
+    branches:
+      - feat/premium-home-playlist-detail
+
+permissions:
+  contents: write
+
+concurrency:
+  group: premium-home-patch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Detect patch script
+        id: patch
+        shell: bash
+        run: |
+          if [[ -f scripts/premium_home_patch.py ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v6
+        if: steps.patch.outputs.present == 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Setup Android SDK
+        if: steps.patch.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+      - name: Apply guarded patch
+        if: steps.patch.outputs.present == 'true'
+        run: python3 scripts/premium_home_patch.py
+      - name: Focused Home tests
+        if: steps.patch.outputs.present == 'true'
+        run: >-
+          ./gradlew :app:testDebugUnitTest
+          --tests com.luc4n3x.levyra.ui.HomePersonalOrbitLayoutTest
+          --tests com.luc4n3x.levyra.ui.HomePremiumLayoutContractTest
+          --console=plain --warning-mode summary
+      - name: Verify and push
+        if: steps.patch.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          rm scripts/premium_home_patch.py
+          rm .github/workflows/premium-home-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style(home): turn Orbit into a premium quick shelf"
+          git push origin HEAD:feat/premium-home-playlist-detail
