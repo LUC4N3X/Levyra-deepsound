@@ -94,10 +94,18 @@ internal fun buildLibraryCatalog(
         .filter { it.id.isNotBlank() }
         .associateBy { it.id }
 
-    val offlineItems = downloads.map { download ->
-        val known = knownById[download.trackId] ?: knownTracks.firstOrNull { track ->
-            libraryDownloadForTrack(track, listOf(download)) != null
-        }
+    val knownByText = knownTracks.groupBy { track ->
+        normalizeLibraryText(track.title) to normalizeLibraryText(track.artist)
+    }
+
+    val knownByDownload = downloads.map { download ->
+        knownById[download.trackId]
+            ?: knownByText[normalizeLibraryText(download.title) to normalizeLibraryText(download.artist)]
+                ?.firstOrNull { track -> libraryDownloadForTrack(track, listOf(download)) != null }
+    }
+
+    val offlineItems = downloads.mapIndexed { index, download ->
+        val known = knownByDownload[index]
         LibraryOfflineItem(
             key = "download:${download.id}",
             track = known?.copy(streamUrl = "") ?: download.toLibraryTrack(),
@@ -130,11 +138,9 @@ internal fun buildLibraryCatalog(
         if (ts > 0L) recordRecency(fav, ts)
     }
 
-    downloads.forEach { dl ->
+    downloads.forEachIndexed { index, dl ->
         if (dl.savedAt > 0L) {
-            val dlTrack = knownById[dl.trackId] ?: knownTracks.firstOrNull { track ->
-                libraryDownloadForTrack(track, listOf(dl)) != null
-            } ?: dl.toLibraryTrack()
+            val dlTrack = knownByDownload[index] ?: dl.toLibraryTrack()
             recordRecency(dlTrack, dl.savedAt)
             if (dl.trackId.isNotBlank()) {
                 val idKey = "id:${dl.trackId}"
