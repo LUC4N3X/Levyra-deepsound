@@ -109,12 +109,13 @@ class LevyraYoutubeDataSource private constructor(
                 if (read > 0) bytesReadSinceOpen += read
                 return read
             } catch (error: IOException) {
-                if (!isRecoverableStreamEnd(error) || !resumeAfterStreamEnd()) throw error
+                val recoverable = isRecoverableStreamEnd(error) || isTransientStreamTransportFailure(error)
+                if (!recoverable || !resumeAfterStreamEnd(error)) throw error
             }
         }
     }
 
-    private fun resumeAfterStreamEnd(): Boolean {
+    private fun resumeAfterStreamEnd(failure: IOException): Boolean {
         val original = openedSpec ?: return false
         if (readRetries >= PLAYBACK_STREAM_READ_RETRIES) return false
         if (Thread.currentThread().isInterrupted) return false
@@ -133,6 +134,12 @@ class LevyraYoutubeDataSource private constructor(
         runCatching { delegate.close() }
         return try {
             openDelegate(resumeSpec)
+            Timber.i(
+                "stream read resumed attempt=%d offset=%d reason=%s",
+                readRetries,
+                resumeSpec.position,
+                failure.cause?.javaClass?.simpleName ?: failure.javaClass.simpleName
+            )
             true
         } catch (retryFailure: IOException) {
             Timber.d(retryFailure, "stream resume failed")
