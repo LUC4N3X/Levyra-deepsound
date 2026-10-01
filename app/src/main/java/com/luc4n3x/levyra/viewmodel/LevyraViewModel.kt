@@ -305,6 +305,7 @@ import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
 import com.luc4n3x.levyra.player.queue.queueAfterPlayNextIntent
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
+import com.luc4n3x.levyra.player.isTransientNetworkFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -3945,6 +3946,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 if (transitionId != streamTransitionId) return@launch
+                if (playWhenReady && isTransientNetworkFailure(error)) {
+                    player.deferRecoveryToService()
+                    _state.update { it.copy(isResolving = false, isPlaying = player.isPlaying, playerError = null) }
+                    return@launch
+                }
                 val message = cleanPlaybackError(error)
                 player.failRecovery(message)
                 _state.update { it.copy(isResolving = false, isPlaying = false, playerError = message) }

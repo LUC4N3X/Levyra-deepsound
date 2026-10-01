@@ -7,7 +7,11 @@ import androidx.media3.datasource.cache.ContentMetadata
 import com.luc4n3x.levyra.domain.Track
 import java.io.EOFException
 import java.io.FileNotFoundException
+import java.net.ConnectException
 import java.net.ProtocolException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.Locale
 
 internal const val PLAYBACK_STREAM_READ_RETRIES = 2
@@ -41,6 +45,49 @@ internal fun isRecoverableStreamEnd(error: Throwable): Boolean {
     }
     return false
 }
+
+internal fun isTransientStreamTransportFailure(error: Throwable): Boolean {
+    var current: Throwable? = error
+    var depth = 0
+    while (current != null && depth < MAX_CAUSE_DEPTH) {
+        if (current is HttpDataSource.InvalidResponseCodeException) return false
+        val message = current.message.orEmpty().lowercase(Locale.ROOT)
+        if (message.contains("canceled") || message.contains("socket closed")) return false
+        if (current is SocketTimeoutException) return true
+        if (current is SocketException && current !is ConnectException) return true
+        if (message.contains("stream was reset") || message.contains(CRONET_CONNECTION_RESET_MARKER)) return true
+        current = current.cause
+        depth++
+    }
+    return false
+}
+
+internal fun isTransientNetworkFailure(error: Throwable): Boolean {
+    var current: Throwable? = error
+    var depth = 0
+    while (current != null && depth < MAX_CAUSE_DEPTH) {
+        if (current is HttpDataSource.InvalidResponseCodeException) return false
+        val message = current.message.orEmpty().lowercase(Locale.ROOT)
+        if (message.contains("canceled") || message.contains("socket closed")) return false
+        if (current is SocketException || current is SocketTimeoutException || current is UnknownHostException) return true
+        if (transientNetworkMarkers.any(message::contains)) return true
+        current = current.cause
+        depth++
+    }
+    return false
+}
+
+private val transientNetworkMarkers = listOf(
+    "connectexception",
+    "sockettimeoutexception",
+    "unknownhostexception",
+    "failed to connect",
+    "unable to resolve host",
+    "connection reset",
+    CRONET_CONNECTION_RESET_MARKER,
+    "econnrefused",
+    "enetunreach"
+)
 
 internal fun playbackFailureReasonOf(error: Throwable): String {
     val parts = mutableListOf<String>()
@@ -92,3 +139,4 @@ internal fun removePlaybackCacheResource(cache: Cache, key: String): Boolean = r
 }.getOrDefault(false)
 
 private const val MAX_CAUSE_DEPTH = 8
+private const val CRONET_CONNECTION_RESET_MARKER = "err_connection_reset"

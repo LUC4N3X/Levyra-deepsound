@@ -31,6 +31,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 private const val MODE_HANDOFF_BACKWARD_SEEK_TOLERANCE_MS = 1_500L
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 5_500L
@@ -261,7 +262,12 @@ class LevyraPlayer(context: Context) {
                         sponsorJob = null
                         videoFrameWatchdogJob?.cancel()
                         videoFrameWatchdogJob = null
-                        connected.pause()
+                        Timber.i(
+                            "stream recovery start attempt=%d playWhenReady=%s positionMs=%d",
+                            recoveryAttempts,
+                            playWhenReadyBeforeError,
+                            connected.currentPosition
+                        )
                         onRecoverableStreamError?.invoke(
                             track,
                             if (track.isLiveRadio()) 0L else connected.currentPosition.coerceAtLeast(0L),
@@ -450,6 +456,14 @@ class LevyraPlayer(context: Context) {
         clearLoadedState()
         controller?.pause()
         onError?.invoke(message)
+    }
+
+    fun deferRecoveryToService() {
+        recoveryInFlight = false
+        Timber.i(
+            "stream recovery deferred to service playWhenReady=%s",
+            controller?.playWhenReady
+        )
     }
 
     fun pause() {
