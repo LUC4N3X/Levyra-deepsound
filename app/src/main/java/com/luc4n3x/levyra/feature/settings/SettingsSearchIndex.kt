@@ -4,6 +4,7 @@ import java.text.Normalizer
 import java.util.Locale
 
 data class SettingsSearchEntry(
+    val id: String,
     val title: String,
     val description: String,
     val keywords: String,
@@ -12,6 +13,7 @@ data class SettingsSearchEntry(
 )
 
 data class SettingsSearchResult(
+    val id: String,
     val title: String,
     val description: String,
     val categoryId: String,
@@ -20,7 +22,7 @@ data class SettingsSearchResult(
 )
 
 class SettingsSearchIndex(entries: List<SettingsSearchEntry>, locale: Locale) {
-    private val indexedEntries = entries.mapIndexed { index, entry ->
+    private val indexedEntries = entries.distinctBy(SettingsSearchEntry::id).mapIndexed { index, entry ->
         IndexedEntry(
             entry = entry,
             order = index,
@@ -41,6 +43,7 @@ class SettingsSearchIndex(entries: List<SettingsSearchEntry>, locale: Locale) {
             .sortedWith(compareByDescending<Pair<IndexedEntry, Int>> { it.second }.thenBy { it.first.order })
             .map { (indexed, score) ->
                 SettingsSearchResult(
+                    id = indexed.entry.id,
                     title = indexed.entry.title,
                     description = indexed.entry.description,
                     categoryId = indexed.entry.categoryId,
