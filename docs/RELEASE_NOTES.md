@@ -1,102 +1,109 @@
-# Levyra 2.5.12
+# Levyra 2.6.0
 
 ## Highlights
 
-2.5.12 is a pretty big player update, but most of it shows up in simple ways when you actually use Levyra.
+2.6.0 is a big Levyra update, but the point is not to make the app feel busier. It is the opposite: more of the things you actually use are easier to reach, easier to understand, and harder to break.
 
-You can flip the player into synced lyrics without leaving the artwork, choose the video quality instead of being stuck on the first stream YouTube gives back, open playlists from Search before deciding what to do with them, and swipe around the player without a tiny accidental flick skipping the track.
+Home has been reworked around denser music discovery and a much more personal **La tua orbita**. Playlist import is now a proper flow instead of a small utility. Lyrics gained sharing, landscape layouts and a stronger parser. The player adapts properly when the phone is sideways, system media controls know the real Like/Shuffle/Repeat state, and audio routing no longer has to start outside Levyra.
 
-The queue and discovery side got some attention too. Smart Orbit has a better memory of what you listen to, radio is less likely to hand you another upload of the same recording, and removing an auto-added song now actually means “don’t give me this again” for the rest of that queue session. There is also a new multi-link flow for people who share or paste several YouTube links at once.
+There is quite a lot underneath that too: Mix Lab, Enhanced Audio, safer rapid skipping, smarter artwork requests, adaptive buffering and a long list of fixes around queues, playback state and local music.
 
-## ✦ Lyrics right on the player
+## ✦ Home feels more like your music
 
-The artwork card can now turn into a compact synced-lyrics view. Swipe across the title and artist area to bring it in, swipe back to return to the cover, and the normal full Lyrics screen is still there when you want it.
+Home has been tightened up so it shows more music without turning into a wall of tiny cards. The spacing is denser, the artwork has a cleaner shape, and the important shelves have more room to breathe where it matters.
 
-The compact card follows the same playback clock and lyric timing Levyra already uses. Tap a line to seek to it, or scroll by hand and auto-follow gives you a moment before taking over again.
+**La tua orbita** is now a real personal quick-pick area: compact 3×3 artwork pages on phones, multiple pages side by side on wider screens, with the listener name and an optional profile photo. It keeps the fast tap-to-play flow, while the current track and track actions still behave like the rest of Levyra.
 
-It is a small interaction, but it makes checking a line of lyrics feel much less like leaving the player to open another screen.
+The rest of Home moved in the same direction:
 
-## ✦ Video quality is finally a real choice
+- the Radio hero can blend from the artwork into the page instead of sitting inside a separate card;
+- the video shelf uses wide 16:9 music-video frames and keeps the video experience visually separate from ordinary song cards;
+- Top 50 no longer makes you drag through a long row of countries: the current market opens a searchable selector and the choice is remembered;
+- album and catalog-playlist pages now use artwork-led, palette-aware headers instead of feeling disconnected from the music they contain;
+- closing the full player can take you back to the album, artist or playlist you came from instead of dropping you on Home.
 
-Video mode now exposes the quality ladder that YouTube actually makes available instead of collapsing to the 360p fallback in cases where adaptive streams exist.
+There is also a global Liquid Glass interface system behind supported surfaces. It is a real persisted setting, not just a decorative switch: when the effect is disabled, Levyra avoids doing the unnecessary backdrop work as well.
 
-Split audio and video streams are handled correctly, including the black-screen case that could happen when the merged source lost the active video identity. Quality changes also keep their own short grace period so switching resolution does not get mistaken for a playback failure.
+## ✦ Bring playlists with you
 
-If a video only has limited qualities, Levyra still shows only what is genuinely available. It does not invent a 1080p option where the source does not provide one.
+Playlist import has been rebuilt into a full reviewable flow.
 
-## ✦ A queue that takes the hint
+Levyra can detect supported playlist links, shared links and common playlist files without making you pick the source first. The importer understands public playlist data from YouTube, Spotify, Deezer, Apple Music, JioSaavn and Bandcamp, together with formats such as M3U/M3U8, PLS, XSPF, CSV/TSV, JSON and plain text.
 
-Continuous radio now does a better job of recognising alternate uploads of a song already in the queue. Official video, lyric, audio, remaster, Topic and VEVO-style variants no longer keep bouncing the same recording back at you, while real remixes, live versions and different artists stay separate.
+Instead of silently accepting the first search result, imported tracks go through one matching engine. Clear matches can move straight through, uncertain ones are shown for review, and unresolved entries stay visible rather than being quietly replaced by the wrong recording. You can inspect alternatives, search manually and decide what should actually be saved.
 
-There is also a new anti-boomerang rule for radio-added tracks. Remove one and Levyra remembers that choice for the current queue space, so a later refill does not immediately put the same recording back. Adding it yourself or choosing Play next clears that temporary block.
+Large imports can be resumed, and nothing is written as the final playlist until you confirm it. Existing playlist entries also get a **Change match** action, so a bad match can be replaced in place without rebuilding the playlist from scratch.
 
-Track swipes are less trigger-happy as well. A fast little movement that was really just a tap no longer counts as Next or Previous unless the gesture actually travelled in that direction.
+## ✦ Mix Lab gives you another way to discover music
 
-And if you would rather keep background preparation to a minimum, **Preload next track** can now be turned off. It stays on by default.
+Mix Lab is a new way to build a queue when you know the kind of session you want but not the exact songs.
 
-## ✦ Several links in, one clean result
+You can shape a mix around familiarity versus discovery, recency, duration, track count, genres, artists and mood. Levyra builds the result from music and metadata it already knows, then lets you play it, shuffle it, add it to the queue or save it as a playlist.
 
-Share or paste a block of text containing multiple YouTube or YouTube Music links and Levyra can now collect them as one request.
+The engine deliberately works around missing metadata instead of inventing it. It also limits repeated artists/albums and obvious duplicate recordings so the result behaves more like a mix than a search dump.
 
-Links are normalised and deduplicated, resolution is bounded instead of firing everything at once, and the result sheet tells you what was found, duplicated or not recognised. From there the tracks can be played, queued, downloaded or saved as a playlist.
+## ✦ Lyrics do more than sit on screen
 
-Single links still use the normal single-item flow. Bulk mode only steps in when there is actually more than one distinct supported link.
+Lyrics picked up several changes in 2.6.0.
 
-## ✦ Smart Orbit 2.0
+There is now a dedicated sharing flow. Pick up to five contiguous lyric lines, preview the result and export a 4:5 image card using Artwork, Gradient or Minimal styling. Translation and romanization can be included when the selected lyrics actually contain them.
 
-Smart Orbit now builds a small local discovery pool from tracks related to music you have genuinely listened to.
+Turn a phone sideways and lyrics get a proper two-pane view: artwork, track information and playback controls on one side, lyrics on the other. It uses the same timing and lyric state as portrait mode rather than running a second lyrics system in parallel.
 
-Candidates connected to several of your listened tracks gain more weight, while music you already heard, artists you tend to skip early, excluded artists, explicit dislikes and tracks you removed from radio are held back. The same local co-occurrence signal also helps radio and Similar Songs choose better candidates.
+The parsing and matching side was tightened too. LRC, TTML, YRC, QRC and KRC handling is more defensive, word-timed text keeps spacing and CJK text intact, and a candidate with strong wrong-song evidence is no longer promoted just because it has richer timing data.
 
-The important part has not changed: this listening model stays on the device. It does not need a new account or a new tracking service.
+Local music benefits from the same work. The file tag editor can now change or remove embedded artwork and edit embedded lyrics for supported MP3, M4A/MP4 and FLAC files. The save path keeps the existing copy/edit/replace/rollback approach, and successful edits can be reflected back into the library and current playback metadata without forcing a track restart.
 
-## ✦ Playlists from Search behave like playlists
+## ✦ The player now fits the way you hold the phone
 
-Tapping a playlist in Search now opens its details instead of immediately starting the whole thing.
+Levyra can now follow the system rotation setting across the app instead of treating landscape like a special case reserved for one screen.
 
-You can look through the tracks first, then choose Play, Shuffle or Download. Longer playlists continue loading as you reach the end, and the result shows the real track count rather than treating a view count as if it were the number of songs.
+On a landscape phone, Now Playing becomes a side-by-side layout with the visual stage on one side and the controls on the other. Video uses a proper 16:9 fit, the bottom dock becomes much shorter, and major surfaces account for side cutouts and navigation bars. Portrait and larger-screen layouts keep their own behavior.
 
-It sounds obvious when written down. It feels much better in use.
+Canvas Immersive was cleaned up at the same time. Bright fullscreen Canvas clips get a readability layer behind the controls, the artwork-to-player dissolve is smoother, and opening or closing the player is easier to follow instead of snapping through the transition too quickly.
 
-## ✦ Visuals that can get out of the way
+## ✦ Better control outside the player too
 
-There is a new **Full / Auto / Smooth** visual performance setting under Design.
+System media surfaces now follow Levyra's real playback state instead of showing static actions.
 
-Full keeps the complete motion treatment and remains the default. Auto scales the decorative work back when the device reports low memory or battery saver. Smooth removes heavier blur, depth transitions and decorative loops without touching playback, providers or the actual feature set.
+Like, Shuffle and Repeat are derived from the active queue and favorites state, then republished to the existing MediaSession when that state changes. Changes made from supported system surfaces can flow back into the running app as well.
 
-The mini player transitions were cleaned up, the seekbar wave keeps a steadier shape as progress moves, and the active crossfade curve is now visible instead of being an invisible audio setting.
+Inside Now Playing there is also a new **Audio Route Center**. It shows the current local output and available routes, can request direct route changes on supported Android versions, and falls back safely when a route cannot be selected.
 
-## ✦ Experimental network compatibility
+Queue behavior received a smaller but important fix: consecutive **Play next** batches now keep FIFO intent instead of reversing or scrambling the order as new batches are inserted.
 
-2.5.12 adds an experimental ByeDPI path for YouTube together with an optional US region profile.
+## ✦ Audio gets smarter without pretending to be something it is not
 
-When enabled, Levyra can route YouTube traffic through the local desync tunnel while resolving destinations through its DoH chain. HTTPS still keeps the original hostname for certificate verification, and JioSaavn routing is left alone.
+2.6.0 adds **Levyra Enhanced Audio**, an optional real-time restoration stage for lossy playback. It looks for a clear high-frequency cutoff and, only when the signal gives enough evidence, reconstructs part of the missing upper band.
 
-This is deliberately marked experimental. It is there for restrictive networks where the normal YouTube path does not work reliably, not as something everyone should switch on. The native ByeDPI component ships in the upstream build and is excluded from the F-Droid variant.
+It does not relabel the source. AAC is still reported as AAC, and a lossy stream does not suddenly become “lossless” because enhancement is active. Full-band input, known lossless input, remote playback, CPU-protection states and uncertain detections can bypass the processor.
 
-## ✦ A few other things worth mentioning
+Playback buffering also gained an adaptive stability mode underneath the player. Normal conditions keep the normal buffering profile. Repeated real instability can request a more conservative profile at a track boundary, with hysteresis and cooldown instead of constantly changing the buffer while a song is playing.
 
-- Lyrics provider priority is now respected more consistently, including cached fallbacks.
-- A resume-playback shortcut can restore the queue before playback continues.
-- Search gets rotating taste-based prompts built from local listening signals.
-- Radio duplicate detection was tightened without collapsing real live cuts or remixes.
-- Queue prefetch now respects the new preload setting all the way down to the playback service.
-- The player, video and network changes picked up a long list of smaller review fixes along the way.
+## ✦ Fast skipping is much harder to confuse
+
+A lot can finish in the background after you have already moved to another song: lyrics, motion artwork, source resolution, SponsorBlock data and high-quality audio lookup among them.
+
+2.6.0 gives playback transitions a generation identity so late work from an older transition can be discarded before it lands on the new track. That matters most when you hit Next several times quickly or when the same recording appears more than once in a queue.
+
+Artwork requests are more disciplined too. Small rows ask supported providers for smaller sources, cards use a middle tier, and large detail/player surfaces can still request the full artwork. The goal is simple: stop downloading a player-sized cover for a tiny list row.
+
+Search also merges duplicate song results more carefully when two payloads describe the same recording with complementary metadata, instead of showing both just because one result is missing a duration or another field.
 
 ## Validation
 
-The 2.5.12 release range contains 90 commits before the version wiring changes. The product notes above are based on the complete GitHub comparison and the current `main` implementation, with badge refreshes, documentation-only changes, player-config syncs and other maintenance left out of the feature story.
+These notes were written from the current Android source and the merged change set that makes up 2.6.0, with documentation-only work and repository presentation changes kept out of the product story.
 
-The code in this release adds focused regression coverage around Smart Orbit, bulk link capture, radio deduplication, queue prefetch, player gestures, video quality, lyrics provider ordering, visual performance behavior and the restricted-network path.
+The feature work in this release includes focused automated coverage around playlist import and matching, Mix Lab, lyrics parsing and sharing, local metadata editing, playback generations, artwork resolution, adaptive buffering, Enhanced Audio, system media actions, audio routing, landscape layout behavior, Liquid Glass policy and queue ordering. Individual merged changes also carry their own CI and manual-test evidence; those checks are not presented here as if one single device ran every 2.6.0 path end to end.
 
-The GitHub release is published only from `main`. Before an APK can become the 2.5.12 release, the release workflow validates the version and these notes, runs `lintRelease`, builds the signed release APK, checks the APK version and signing certificate, writes a SHA-256 checksum, publishes the GitHub release and downloads the published assets again for verification.
+The GitHub Android release is gated by the existing `main` release workflow. Before 2.6.0 can be published, that workflow validates the version and these notes, runs release lint, builds the signed release APK, checks the APK version and signing certificate, writes a SHA-256 checksum, publishes the GitHub release and downloads the published assets again for verification. If those release gates fail, the release is not considered published.
 
-This version bump does not claim a fresh manual pass across every Android device, Android Auto setup, Bluetooth route or OEM background restriction.
+No claim is made here that every Android device, Bluetooth/USB route, Android Auto setup, OEM background policy or visual combination received a fresh physical-device pass on the final 2.6.0 artifact.
 
 ## Versioning
 
-- Version name: `2.5.12`
-- Version code: `2051200`
+- Version name: `2.6.0`
+- Version code: `2060000`
 
 This is an Android release. Levyra Desktop keeps its own independent version line.
 
@@ -104,16 +111,16 @@ This is an Android release. Levyra Desktop keeps its own independent version lin
 
 No manual migration is required.
 
-The new player, discovery and network options pick up safe defaults automatically. Existing local library data, favorites, playlists, queues, listening history and settings do not need to be recreated for this update.
+Levyra includes the Room migration needed by the newer playlist-entry model. Existing playlist rows are copied into the new entry-based structure automatically, allowing repeated source entries and the newer import/match workflow without asking the user to recreate playlists.
 
-The experimental ByeDPI path is opt-in. If normal playback already works on your network, there is no reason to enable it.
+The new interface and audio features keep their state through the existing settings system where applicable. Features such as playlist import, Mix Lab, lyric sharing and landscape layouts do not require a separate account or setup step before they can be opened.
 
-GitHub users can update from the signed APK attached to this release. F-Droid and other repositories publish on their own schedule.
+GitHub users can update from the signed APK attached to this release once publication completes. F-Droid and other repositories follow their own build and publishing schedules.
 
 ## Final note
 
-2.5.12 makes Levyra feel less eager to get in your way.
+2.6.0 is less about one headline feature and more about Levyra growing up in several places at once.
 
-Fewer accidental skips. Fewer duplicate versions sneaking back into radio. Lyrics closer to the song. Video controls that behave like actual controls. Search playlists you can inspect before pressing play.
+Home is quicker to read. Playlists are much easier to bring in. Lyrics are useful beyond the lyrics screen. The player makes sense sideways. System controls and audio outputs feel connected to the app instead of bolted on. And underneath all of that, a lot of work went into making sure stale background work, awkward queues and unstable connections have fewer chances to interrupt the song.
 
-That is the kind of polish this release is about.
+That is the version: more capable, but also a little calmer to use.
