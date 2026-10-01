@@ -2851,15 +2851,23 @@ class PlaybackService : MediaLibraryService() {
         val attempt = serviceRecoveryAttempts++
         acquirePlaybackWakeLock()
         delay(plan.delaysMs[attempt])
+        if (mediaSession?.player?.playWhenReady == false) {
+            Timber.i("Background playback recovery stopped: paused during recovery")
+            markPlaybackExpected(false, force = true)
+            releasePlaybackWakeLock()
+            return true
+        }
         val restored = restoreCurrentPlayback(
             positionMs = plan.positionMs,
             preferFreshResolution = !plan.localPlayback && hasInternetCapableNetwork()
         )
         if (restored) {
             Timber.i(
-                "Background playback recovery restored attempt=%d local=%s",
+                "Background playback recovery restored attempt=%d local=%s playWhenReady=%s positionMs=%d",
                 attempt + 1,
-                plan.localPlayback
+                plan.localPlayback,
+                mediaSession?.player?.playWhenReady,
+                plan.positionMs
             )
             return true
         }
@@ -3202,9 +3210,17 @@ private object LevyraPlaybackLoadErrorHandlingPolicy : LoadErrorHandlingPolicy {
     ): LoadErrorHandlingPolicy.FallbackSelection? = null
 
     override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long =
-        C.TIME_UNSET
+        transientNetworkRetryDelayMs(loadErrorInfo.exception, loadErrorInfo.errorCount)
 
-    override fun getMinimumLoadableRetryCount(dataType: Int): Int = 0
+    override fun getMinimumLoadableRetryCount(dataType: Int): Int = TRANSIENT_NETWORK_LOAD_RETRIES
+}
+
+internal const val TRANSIENT_NETWORK_LOAD_RETRIES = 8
+
+internal fun transientNetworkRetryDelayMs(error: Throwable, errorCount: Int): Long {
+    if (errorCount > TRANSIENT_NETWORK_LOAD_RETRIES) return C.TIME_UNSET
+    if (!isTransientNetworkFailure(error)) return C.TIME_UNSET
+    return (1_000L shl (errorCount - 1).coerceIn(0, 3)).coerceAtMost(5_000L)
 }
 
 internal fun truePeakLimiterRequired(

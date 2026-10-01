@@ -74,9 +74,9 @@ class AdaptivePlaybackPolicy(context: Context) {
         val manufacturer = "${Build.MANUFACTURER} ${Build.BRAND}".lowercase(Locale.ROOT)
         val aggressiveOem = isAggressiveOem(manufacturer)
         return when {
-            lowRam -> PlaybackBufferProfile(600, 12_000, 100, 250, 0)
-            aggressiveOem -> PlaybackBufferProfile(800, 20_000, 100, 300, 2_000)
-            else -> PlaybackBufferProfile(900, 24_000, 100, 300, 4_000)
+            lowRam -> PlaybackBufferProfile(6_000, 12_000, 100, 250, 0)
+            aggressiveOem -> PlaybackBufferProfile(10_000, 20_000, 100, 300, 2_000)
+            else -> PlaybackBufferProfile(12_000, 24_000, 100, 300, 4_000)
         }
     }
 
