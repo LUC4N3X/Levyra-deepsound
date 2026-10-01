@@ -141,6 +141,8 @@ class PlaybackCacheRecoveryTest {
             )
         )
         assertTrue(isTransientNetworkFailure(IOException("isConnected failed: ECONNREFUSED (Connection refused)")))
+        assertFalse(isTransientNetworkFailure(SocketException("Socket closed")))
+        assertFalse(isTransientNetworkFailure(IOException("Canceled", SocketException("Connection reset"))))
         assertFalse(isTransientNetworkFailure(IllegalStateException("Sign in to confirm you're not a bot")))
         assertFalse(isTransientNetworkFailure(IOException("stream expired, http 403 forbidden")))
         assertFalse(isTransientNetworkFailure(IllegalStateException("Video unavailable")))
