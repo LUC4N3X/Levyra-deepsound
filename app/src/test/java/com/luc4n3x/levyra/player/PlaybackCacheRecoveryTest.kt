@@ -2,17 +2,23 @@ package com.luc4n3x.levyra.player
 
 import com.luc4n3x.levyra.data.PlaybackFailureKind
 import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
+import android.net.Uri
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.HttpDataSource
 import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
 import java.io.EOFException
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.net.ConnectException
 import java.net.ProtocolException
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.Mockito
 
 class PlaybackCacheRecoveryTest {
     private fun invalidatesCache(error: Throwable): Boolean =
@@ -112,5 +118,94 @@ class PlaybackCacheRecoveryTest {
         )
         assertTrue(reason.contains("enoent", ignoreCase = true))
         assertTrue(reason.contains("cache span missing"))
+    }
+
+    @Test
+    fun midStreamTransportResetsAreResumableButCancellationAndConnectFailuresAreNot() {
+        assertTrue(
+            isTransientStreamTransportFailure(
+                IOException("read failed", SocketException("Connection reset"))
+            )
+        )
+        assertTrue(isTransientStreamTransportFailure(SocketTimeoutException("timeout")))
+        assertTrue(isTransientStreamTransportFailure(IOException("stream was reset: INTERNAL_ERROR")))
+        assertFalse(isTransientStreamTransportFailure(SocketException("Socket closed")))
+        assertFalse(isTransientStreamTransportFailure(IOException("Canceled", SocketException("Connection reset"))))
+        assertFalse(isTransientStreamTransportFailure(ConnectException("Connection refused")))
+        assertFalse(isTransientStreamTransportFailure(UnknownHostException("rr1.googlevideo.com")))
+    }
+
+    @Test
+    fun resolverConnectivityFailuresKeepPlaybackIntentButContentFailuresDoNot() {
+        assertTrue(isTransientNetworkFailure(ConnectException("Failed to connect to youtubei.googleapis.com")))
+        assertTrue(isTransientNetworkFailure(UnknownHostException("youtubei.googleapis.com")))
+        assertTrue(
+            isTransientNetworkFailure(
+                IllegalStateException("LevyraExtractor: java.net.ConnectException: Failed to connect to www.youtube.com")
+            )
+        )
+        assertTrue(isTransientNetworkFailure(IOException("isConnected failed: ECONNREFUSED (Connection refused)")))
+        assertFalse(isTransientNetworkFailure(SocketException("Socket closed")))
+        assertFalse(isTransientNetworkFailure(IOException("Canceled", SocketException("Connection reset"))))
+        assertFalse(isTransientNetworkFailure(IllegalStateException("Sign in to confirm you're not a bot")))
+        assertFalse(isTransientNetworkFailure(IOException("stream expired, http 403 forbidden")))
+        assertFalse(isTransientNetworkFailure(IllegalStateException("Video unavailable")))
+    }
+
+    @Test
+    fun loadRetriesAreBoundedAndOnlyForTransientNetworkFailures() {
+        val refused = IOException("load failed", ConnectException("ECONNREFUSED"))
+        val delays = (1..TRANSIENT_NETWORK_LOAD_RETRIES).map { transientNetworkRetryDelayMs(refused, it) }
+        assertEquals(listOf(1_000L, 2_000L, 4_000L, 5_000L, 5_000L, 5_000L, 5_000L, 5_000L), delays)
+        assertEquals(
+            androidx.media3.common.C.TIME_UNSET,
+            transientNetworkRetryDelayMs(refused, TRANSIENT_NETWORK_LOAD_RETRIES + 1)
+        )
+        assertEquals(
+            androidx.media3.common.C.TIME_UNSET,
+            transientNetworkRetryDelayMs(IOException("stream expired, http 403 forbidden"), 1)
+        )
+    }
+
+    @Test
+    fun cronetConnectionResetIsTransientForStreamResumeAndLoadRetries() {
+        val cronetReset = cronetReadFailure("net::ERR_CONNECTION_RESET")
+        assertTrue(isTransientStreamTransportFailure(cronetReset))
+        assertTrue(isTransientNetworkFailure(cronetReset))
+        assertEquals(1_000L, transientNetworkRetryDelayMs(cronetReset, 1))
+    }
+
+    @Test
+    fun cronetResetDoesNotOverrideCancellationClosedSocketsOrHttpErrors() {
+        val cronetReset = cronetReadFailure("net::ERR_CONNECTION_RESET")
+        val canceled = IOException("Canceled", cronetReset)
+        val socketClosed = SocketException("Socket closed").apply { initCause(cronetReset) }
+        val forbidden = HttpDataSource.InvalidResponseCodeException(
+            403,
+            "Forbidden",
+            cronetReset,
+            emptyMap(),
+            DataSpec(Mockito.mock(Uri::class.java)),
+            ByteArray(0)
+        )
+        listOf(canceled, socketClosed, forbidden).forEach { error ->
+            assertFalse(isTransientStreamTransportFailure(error))
+            assertFalse(isTransientNetworkFailure(error))
+        }
+        assertEquals(androidx.media3.common.C.TIME_UNSET, transientNetworkRetryDelayMs(forbidden, 1))
+    }
+
+    @Test
+    fun otherCronetErrorsAreNotTreatedAsConnectionResets() {
+        val protocolError = cronetReadFailure("net::ERR_HTTP2_PROTOCOL_ERROR")
+        assertFalse(isTransientStreamTransportFailure(protocolError))
+        assertFalse(isTransientNetworkFailure(protocolError))
+    }
+
+    private fun cronetReadFailure(netError: String): IOException {
+        val networkException = IOException(
+            "Exception in CronetUrlRequest: $netError, ErrorCode=4, InternalErrorCode=-101, Retryable=false"
+        )
+        return IOException(networkException.toString(), networkException)
     }
 }

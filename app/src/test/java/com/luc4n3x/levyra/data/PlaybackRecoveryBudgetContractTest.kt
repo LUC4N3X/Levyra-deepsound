@@ -8,12 +8,19 @@ import org.junit.Test
 
 class PlaybackRecoveryBudgetContractTest {
     @Test
-    fun mediaSourcesUseTheServiceRecoveryBudgetWithoutHiddenRetries() {
+    fun mediaSourcesOnlyRetryTransientNetworkFailuresWithinABoundedBudget() {
         val service = readServiceSource()
 
         assertTrue(service.contains("private object LevyraPlaybackLoadErrorHandlingPolicy"))
-        assertTrue(service.contains("getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long =\n        C.TIME_UNSET"))
-        assertTrue(service.contains("getMinimumLoadableRetryCount(dataType: Int): Int = 0"))
+        assertTrue(
+            service.contains(
+                "getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long =\n" +
+                    "        transientNetworkRetryDelayMs(loadErrorInfo.exception, loadErrorInfo.errorCount)"
+            )
+        )
+        assertTrue(service.contains("getMinimumLoadableRetryCount(dataType: Int): Int = TRANSIENT_NETWORK_LOAD_RETRIES"))
+        assertTrue(service.contains("if (errorCount > TRANSIENT_NETWORK_LOAD_RETRIES) return C.TIME_UNSET"))
+        assertTrue(service.contains("if (!isTransientNetworkFailure(error)) return C.TIME_UNSET"))
         assertTrue(service.contains("DefaultMediaSourceFactory("))
         assertTrue(service.contains(").setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
         assertTrue(service.contains("uri in subtitleUris -> subtitleDataSourceFactory"))
