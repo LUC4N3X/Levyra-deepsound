@@ -55,6 +55,11 @@ data class OfflineDownloadBatchRow(
     val updatedAt: Long
 )
 
+data class OfflineDownloadBatchCounts(
+    val total: Int,
+    val completed: Int
+)
+
 @Dao
 interface OfflineDownloadTasksDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -107,6 +112,16 @@ interface OfflineDownloadTasksDao {
 
     @Query("SELECT * FROM offline_download_tasks WHERE batchKey = :batchKey ORDER BY batchPosition ASC")
     suspend fun batchTasks(batchKey: String): List<OfflineDownloadTaskEntity>
+
+    @Query(
+        """
+        SELECT COUNT(*) AS total,
+               COALESCE(SUM(CASE WHEN state = 'SUCCEEDED' THEN 1 ELSE 0 END), 0) AS completed
+        FROM offline_download_tasks
+        WHERE batchKey = :batchKey
+        """
+    )
+    suspend fun batchCounts(batchKey: String): OfflineDownloadBatchCounts
 
     @Query("DELETE FROM offline_download_tasks WHERE batchKey = :batchKey")
     suspend fun deleteBatch(batchKey: String)
