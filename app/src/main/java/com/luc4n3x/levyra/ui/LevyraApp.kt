@@ -11848,7 +11848,7 @@ private fun PersonalListeningShelf(
         if (pagerState.currentPage > pages.lastIndex) pagerState.scrollToPage(pages.lastIndex)
     }
     val pageKey: (Int) -> String = { pageIndex ->
-        pages[pageIndex].firstOrNull()?.firstOrNull()
+        pages.getOrNull(pageIndex)?.firstOrNull()?.firstOrNull()
             ?.let(LevyraPersonalOrbit::identityKey)
             ?.takeIf(String::isNotBlank)
             ?.let { "orbit-page-$it" }
@@ -11862,7 +11862,7 @@ private fun PersonalListeningShelf(
             ),
             verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
         ) {
-            pages[pageIndex].forEach { rowTracks ->
+            pages.getOrNull(pageIndex).orEmpty().forEach { rowTracks ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.OrbitTileGap)
