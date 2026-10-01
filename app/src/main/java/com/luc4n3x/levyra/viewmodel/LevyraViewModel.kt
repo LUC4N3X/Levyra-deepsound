@@ -3948,7 +3948,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (transitionId != streamTransitionId) return@launch
                 if (playWhenReady && isTransientNetworkFailure(error)) {
                     player.deferRecoveryToService()
-                    _state.update { it.copy(isResolving = false, isPlaying = true, playerError = null) }
+                    _state.update { it.copy(isResolving = false, isPlaying = player.isPlaying, playerError = null) }
                     return@launch
                 }
                 val message = cleanPlaybackError(error)
