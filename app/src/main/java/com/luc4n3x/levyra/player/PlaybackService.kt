@@ -182,6 +182,7 @@ class PlaybackService : MediaLibraryService() {
     private var serviceRecoveryExhausted = false
     private var watchdogPositionMs = C.TIME_UNSET
     private var watchdogAdvancedAtMs = 0L
+    private val watchdogRecoveryAllowance = WatchdogRecoveryAllowance()
     private var lastPlaybackExpected: Boolean? = null
     private var lastPlaybackHeartbeatAtMs = 0L
     private var appliedPlayerWakeMode = C.WAKE_MODE_NETWORK
@@ -2851,16 +2852,13 @@ class PlaybackService : MediaLibraryService() {
         val attempt = serviceRecoveryAttempts++
         acquirePlaybackWakeLock()
         delay(plan.delaysMs[attempt])
-        if (mediaSession?.player?.playWhenReady == false) {
-            Timber.i("Background playback recovery stopped: paused during recovery")
-            markPlaybackExpected(false, force = true)
-            releasePlaybackWakeLock()
-            return true
-        }
+        if (stopServiceRecoveryPausedByUser()) return true
         val restored = restoreCurrentPlayback(
             positionMs = plan.positionMs,
-            preferFreshResolution = !plan.localPlayback && hasInternetCapableNetwork()
+            preferFreshResolution = !plan.localPlayback && hasInternetCapableNetwork(),
+            activeRecovery = true
         )
+        if (!restored && stopServiceRecoveryPausedByUser()) return true
         if (restored) {
             Timber.i(
                 "Background playback recovery restored attempt=%d local=%s playWhenReady=%s positionMs=%d",
@@ -2873,6 +2871,14 @@ class PlaybackService : MediaLibraryService() {
         }
         Timber.w(error, "Background playback recovery attempt %d failed", attempt + 1)
         return false
+    }
+
+    private fun stopServiceRecoveryPausedByUser(): Boolean {
+        if (mediaSession?.player?.playWhenReady != false) return false
+        Timber.i("Background playback recovery stopped: paused during recovery")
+        markPlaybackExpected(false, force = true)
+        releasePlaybackWakeLock()
+        return true
     }
 
     private fun isPlaybackHealthy(player: Player?): Boolean = player != null &&
@@ -2915,7 +2921,8 @@ class PlaybackService : MediaLibraryService() {
         }
         val restored = restoreCurrentPlayback(
             snapshot.positionMs,
-            preferFreshResolution = !isLocalPlaybackTrack(currentTrack)
+            preferFreshResolution = !isLocalPlaybackTrack(currentTrack),
+            activeRecovery = false
         )
         if (!restored) {
             Timber.w("Sticky background playback restore failed")
@@ -2973,7 +2980,11 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    private suspend fun restoreCurrentPlayback(positionMs: Long, preferFreshResolution: Boolean): Boolean {
+    private suspend fun restoreCurrentPlayback(
+        positionMs: Long,
+        preferFreshResolution: Boolean,
+        activeRecovery: Boolean
+    ): Boolean {
         val player = mediaSession?.player ?: return false
         if (isLiveRadioMediaItem(player.currentMediaItem)) return false
         if (!playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) return false
@@ -3011,6 +3022,10 @@ class PlaybackService : MediaLibraryService() {
                 ?.takeIf { it.streamUrl.isNotBlank() }
                 ?.let { LevyraMediaItemFactory.build(it, videoMode) }
         } ?: return false
+        if (shouldAbortActiveRecoveryRestore(activeRecovery, player.playWhenReady)) {
+            Timber.i("Playback recovery restore skipped: paused during stream resolution")
+            return false
+        }
         (player as? ExoPlayer)?.let { updatePlayerWakeMode(it, mediaItem) }
         acquirePlaybackWakeLock()
         player.setMediaItem(mediaItem, positionMs.coerceAtLeast(0L))
@@ -3083,6 +3098,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun recordWatchdogProgress(positionMs: Long, now: Long): Boolean {
         if (!hasWatchdogPositionAdvanced(positionMs)) return false
+        if (isGenuineWatchdogProgress(watchdogPositionMs, positionMs)) watchdogRecoveryAllowance.reset()
         watchdogPositionMs = positionMs
         watchdogAdvancedAtMs = now
         return true
@@ -3090,7 +3106,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun hasWatchdogPositionAdvanced(positionMs: Long): Boolean =
         watchdogPositionMs == C.TIME_UNSET ||
-            positionMs > watchdogPositionMs + 250L ||
+            positionMs > watchdogPositionMs + WATCHDOG_PROGRESS_THRESHOLD_MS ||
             positionMs < watchdogPositionMs
 
     private fun isWatchdogStalled(now: Long): Boolean =
@@ -3099,13 +3115,18 @@ class PlaybackService : MediaLibraryService() {
     private fun scheduleWatchdogRecovery(positionMs: Long) {
         if (serviceRecoveryJob?.isActive == true) return
         if (isLiveRadioMediaItem(mediaSession?.player?.currentMediaItem)) return
+        if (!watchdogRecoveryAllowance.isAvailable()) {
+            Timber.d("Playback watchdog recovery deferred to load retries at %d ms", positionMs)
+            return
+        }
         Timber.w("Playback watchdog detected a stalled player at %d ms", positionMs)
         serviceRecoveryJob = serviceScope.launch {
             val restored = restoreCurrentPlayback(
                 positionMs,
-                preferFreshResolution = !isCurrentPlaybackLocal() && hasInternetCapableNetwork()
+                preferFreshResolution = !isCurrentPlaybackLocal() && hasInternetCapableNetwork(),
+                activeRecovery = true
             )
-            if (!restored) Timber.w("Playback watchdog recovery failed")
+            if (restored) watchdogRecoveryAllowance.consume() else Timber.w("Playback watchdog recovery failed")
         }
     }
 
@@ -3216,6 +3237,29 @@ private object LevyraPlaybackLoadErrorHandlingPolicy : LoadErrorHandlingPolicy {
 }
 
 internal const val TRANSIENT_NETWORK_LOAD_RETRIES = 8
+
+internal const val WATCHDOG_RECOVERIES_WITHOUT_PROGRESS = 1
+private const val WATCHDOG_PROGRESS_THRESHOLD_MS = 250L
+
+internal class WatchdogRecoveryAllowance(private val limit: Int = WATCHDOG_RECOVERIES_WITHOUT_PROGRESS) {
+    private var used = 0
+
+    fun isAvailable(): Boolean = used < limit
+
+    fun consume() {
+        used++
+    }
+
+    fun reset() {
+        used = 0
+    }
+}
+
+internal fun isGenuineWatchdogProgress(previousPositionMs: Long, positionMs: Long): Boolean =
+    previousPositionMs != C.TIME_UNSET && positionMs > previousPositionMs + WATCHDOG_PROGRESS_THRESHOLD_MS
+
+internal fun shouldAbortActiveRecoveryRestore(activeRecovery: Boolean, playWhenReady: Boolean): Boolean =
+    activeRecovery && !playWhenReady
 
 internal fun transientNetworkRetryDelayMs(error: Throwable, errorCount: Int): Long {
     if (errorCount > TRANSIENT_NETWORK_LOAD_RETRIES) return C.TIME_UNSET

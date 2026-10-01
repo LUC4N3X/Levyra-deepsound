@@ -55,7 +55,7 @@ internal fun isTransientStreamTransportFailure(error: Throwable): Boolean {
         if (message.contains("canceled") || message.contains("socket closed")) return false
         if (current is SocketTimeoutException) return true
         if (current is SocketException && current !is ConnectException) return true
-        if (message.contains("stream was reset")) return true
+        if (message.contains("stream was reset") || message.contains(CRONET_CONNECTION_RESET_MARKER)) return true
         current = current.cause
         depth++
     }
@@ -84,6 +84,7 @@ private val transientNetworkMarkers = listOf(
     "failed to connect",
     "unable to resolve host",
     "connection reset",
+    CRONET_CONNECTION_RESET_MARKER,
     "econnrefused",
     "enetunreach"
 )
@@ -138,3 +139,4 @@ internal fun removePlaybackCacheResource(cache: Cache, key: String): Boolean = r
 }.getOrDefault(false)
 
 private const val MAX_CAUSE_DEPTH = 8
+private const val CRONET_CONNECTION_RESET_MARKER = "err_connection_reset"

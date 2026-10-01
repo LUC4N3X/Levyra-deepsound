@@ -2,6 +2,9 @@ package com.luc4n3x.levyra.player
 
 import com.luc4n3x.levyra.data.PlaybackFailureKind
 import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
+import android.net.Uri
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.HttpDataSource
 import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
 import java.io.EOFException
 import java.io.FileNotFoundException
@@ -15,6 +18,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.Mockito
 
 class PlaybackCacheRecoveryTest {
     private fun invalidatesCache(error: Throwable): Boolean =
@@ -161,5 +165,47 @@ class PlaybackCacheRecoveryTest {
             androidx.media3.common.C.TIME_UNSET,
             transientNetworkRetryDelayMs(IOException("stream expired, http 403 forbidden"), 1)
         )
+    }
+
+    @Test
+    fun cronetConnectionResetIsTransientForStreamResumeAndLoadRetries() {
+        val cronetReset = cronetReadFailure("net::ERR_CONNECTION_RESET")
+        assertTrue(isTransientStreamTransportFailure(cronetReset))
+        assertTrue(isTransientNetworkFailure(cronetReset))
+        assertEquals(1_000L, transientNetworkRetryDelayMs(cronetReset, 1))
+    }
+
+    @Test
+    fun cronetResetDoesNotOverrideCancellationClosedSocketsOrHttpErrors() {
+        val cronetReset = cronetReadFailure("net::ERR_CONNECTION_RESET")
+        val canceled = IOException("Canceled", cronetReset)
+        val socketClosed = SocketException("Socket closed").apply { initCause(cronetReset) }
+        val forbidden = HttpDataSource.InvalidResponseCodeException(
+            403,
+            "Forbidden",
+            cronetReset,
+            emptyMap(),
+            DataSpec(Mockito.mock(Uri::class.java)),
+            ByteArray(0)
+        )
+        listOf(canceled, socketClosed, forbidden).forEach { error ->
+            assertFalse(isTransientStreamTransportFailure(error))
+            assertFalse(isTransientNetworkFailure(error))
+        }
+        assertEquals(androidx.media3.common.C.TIME_UNSET, transientNetworkRetryDelayMs(forbidden, 1))
+    }
+
+    @Test
+    fun otherCronetErrorsAreNotTreatedAsConnectionResets() {
+        val protocolError = cronetReadFailure("net::ERR_HTTP2_PROTOCOL_ERROR")
+        assertFalse(isTransientStreamTransportFailure(protocolError))
+        assertFalse(isTransientNetworkFailure(protocolError))
+    }
+
+    private fun cronetReadFailure(netError: String): IOException {
+        val networkException = IOException(
+            "Exception in CronetUrlRequest: $netError, ErrorCode=4, InternalErrorCode=-101, Retryable=false"
+        )
+        return IOException(networkException.toString(), networkException)
     }
 }
