@@ -67,8 +67,9 @@ internal fun isTransientNetworkFailure(error: Throwable): Boolean {
     var depth = 0
     while (current != null && depth < MAX_CAUSE_DEPTH) {
         if (current is HttpDataSource.InvalidResponseCodeException) return false
-        if (current is SocketException || current is SocketTimeoutException || current is UnknownHostException) return true
         val message = current.message.orEmpty().lowercase(Locale.ROOT)
+        if (message.contains("canceled") || message.contains("socket closed")) return false
+        if (current is SocketException || current is SocketTimeoutException || current is UnknownHostException) return true
         if (transientNetworkMarkers.any(message::contains)) return true
         current = current.cause
         depth++
