@@ -270,6 +270,8 @@ Contributions and bug reports are welcome. Technical documentation and architect
   <b>Featured:</b>
   <a href="https://mailchi.mp/kotlinweekly/kotlin-weekly-530"><b>Kotlin Weekly</b></a>
   &nbsp;·&nbsp;
+  <a href="https://techno360.in/levyra-review/"><b>Techno360</b></a>
+  &nbsp;·&nbsp;
   <a href="https://www.oschina.net/news/502584"><b>OSCHINA 开源中国</b></a>
   &nbsp;·&nbsp;
   <a href="https://blog.csdn.net/techforward/article/details/165886477"><b>CSDN</b></a>
