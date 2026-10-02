@@ -10319,8 +10319,8 @@ private fun Modifier.homeHeroHeaderScrim(canvas: Color, isLight: Boolean, bleed:
     val scrim = if (isLight) canvas else Color.Black
     val brush = Brush.verticalGradient(
         colorStops = arrayOf(
-            0f to scrim.copy(alpha = if (isLight) 0.94f else 0.58f),
-            0.58f to scrim.copy(alpha = if (isLight) 0.78f else 0.30f),
+            0f to scrim.copy(alpha = if (isLight) 0.94f else 0.78f),
+            0.58f to scrim.copy(alpha = if (isLight) 0.78f else 0.52f),
             1f to scrim.copy(alpha = 0f)
         ),
         startY = top,
@@ -20890,7 +20890,7 @@ private fun GreetingBar(
                 )
                 Text(
                     text = greeting,
-                    color = LevyraMuted,
+                    color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f),
                     fontSize = 12.5.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                     fontWeight = FontWeight.Medium,
