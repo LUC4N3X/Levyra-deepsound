@@ -195,6 +195,19 @@ class PlaylistImportCatalog(
         }
     }
 
+    private fun rankAutomaticCandidates(
+        identity: ImportedTrackIdentity,
+        tracks: List<Track>,
+        limit: Int
+    ): List<Track> = tracks
+        .distinctBy { it.id }
+        .map { track ->
+            track to PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).score
+        }
+        .sortedByDescending { (_, score) -> score }
+        .take(limit)
+        .map { (track, _) -> track }
+
     private suspend fun resolveCandidatesAdaptive(
         identity: ImportedTrackIdentity,
         cleanTitle: String,
@@ -210,23 +223,24 @@ class PlaylistImportCatalog(
             PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).confidence.autoAccepted
         }
         if (hasGoodSongMatch) {
-            return songs.take(8)
+            return rankAutomaticCandidates(identity, songs, 8)
         }
 
         val mixed = retrying { repository.search(preciseQuery, 8, language) }
         val hasGoodMixedMatch = mixed.any { track ->
             PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).confidence.autoAccepted
         }
+        val firstPassCandidates = (songs + mixed).distinctBy { it.id }
         val firstPassCombined = combineOnlineSearchResults(songs, mixed, 8)
         if (hasGoodMixedMatch) {
-            return firstPassCombined
+            return rankAutomaticCandidates(identity, firstPassCandidates, 8)
         }
 
         val cleanQuery = listOf(cleanTitle, cleanPrimary).filter(String::isNotBlank).joinToString(" ")
             .takeIf { it.length >= 2 && it != preciseQuery }
         if (cleanQuery != null) {
             val fallbackResults = onlineSearch(cleanQuery, 8)
-            return (firstPassCombined + fallbackResults).distinctBy { it.id }.take(8)
+            return rankAutomaticCandidates(identity, firstPassCandidates + fallbackResults, 8)
         }
 
         return firstPassCombined
