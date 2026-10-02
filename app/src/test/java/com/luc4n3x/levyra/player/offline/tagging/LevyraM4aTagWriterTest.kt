@@ -31,7 +31,7 @@ class LevyraM4aTagWriterTest {
                     genres = listOf("Pop", "Dance"),
                     trackNumber = 4,
                     discNumber = 2,
-                    lyrics = "First line\nSecond line",
+                    lyrics = "[00:12.34]First line\n[00:34.56]Second line",
                     explicit = true,
                     isrc = "ITABC2600001",
                     upc = "123456789012",
@@ -61,7 +61,7 @@ class LevyraM4aTagWriterTest {
             assertTrue(raw.contains("ARTIST_IDS"))
             assertTrue(raw.contains("COUNTERPART_ID"))
             assertTrue(raw.contains("MEDIA_TYPE"))
-            assertTrue(raw.contains("First line\nSecond line"))
+            assertTrue(raw.contains("[00:12.34]First line\n[00:34.56]Second line"))
         } finally {
             input.delete()
             output.delete()
