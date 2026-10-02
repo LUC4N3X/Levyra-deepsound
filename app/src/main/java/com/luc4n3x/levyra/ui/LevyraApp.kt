@@ -2148,7 +2148,7 @@ fun LevyraApp(
             var expansionDragStart by remember { mutableFloatStateOf(0f) }
             var expansionDragAccum by remember { mutableFloatStateOf(0f) }
             var expansionDragGeneration by remember { mutableIntStateOf(0) }
-            var backgroundTab by remember {
+            var backgroundTab by rememberSaveable {
                 mutableStateOf(state.selectedTab.takeIf { it != LevyraTab.Player } ?: LevyraTab.Home)
             }
             LaunchedEffect(state.selectedTab) {
@@ -2872,6 +2872,8 @@ fun LevyraApp(
                     onTogglePinToHome = { artist -> viewModel.toggleSpeedDialArtist(artist.name, artist.browseId, artist.thumbnailUrl) },
                     onOpenArtist = viewModel::openArtistFromHit,
                     onOpenRelease = viewModel::openArtistRelease,
+                    onTogglePlayback = viewModel::togglePlay,
+                    onOpenPlayer = viewModel::openPlayerScreen,
                     onClose = viewModel::closeArtist
                 )
             }
@@ -4819,6 +4821,8 @@ private fun ArtistOverlay(
     onTogglePinToHome: (ArtistProfile) -> Unit,
     onOpenArtist: (ArtistHit) -> Unit,
     onOpenRelease: (ArtistRelease, String) -> Unit,
+    onTogglePlayback: () -> Unit,
+    onOpenPlayer: () -> Unit,
     onClose: () -> Unit
 ) {
     val profile = state.artistProfile
@@ -5087,12 +5091,13 @@ private fun ArtistOverlay(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
                             ) {
-                                items(artist.videos.take(20), key = { "artist-video-${it.id}" }) { track ->
+                                val shownVideos = artist.videos.take(20)
+                                items(shownVideos, key = { "artist-video-${it.id}" }) { track ->
                                     VideoGlassCard(
                                         track = track,
                                         isCurrent = track.id == state.currentTrack?.id,
                                         isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                        onClick = { onPlay(track) }
+                                        onClick = { onPlayFrom(shownVideos, track) }
                                     )
                                 }
                             }
@@ -5104,6 +5109,22 @@ private fun ArtistOverlay(
                     }
                 }
             }
+        }
+
+        state.currentTrack?.let { current ->
+            AlbumNowPlayingDock(
+                track = current,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                progress = progressOf(state.positionMs, state.durationMs),
+                animated = state.animationsEnabled,
+                onToggle = onTogglePlayback,
+                onOpenPlayer = onOpenPlayer,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(start = 18.dp, end = 18.dp, bottom = 14.dp)
+            )
         }
 
         TrackSelectionBar(
@@ -16144,7 +16165,7 @@ private fun PlayerYoutubeEngagementRow(
         ) {
             Box(
                 modifier = Modifier
-                    .height(LevyraPlayerDesign.MinimumTouchTarget)
+                    .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
                     .wrapContentWidth(),
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -16154,7 +16175,7 @@ private fun PlayerYoutubeEngagementRow(
                     shape = pillShape
                 ) {
                     Row(
-                        modifier = Modifier.height(rowHeight),
+                        modifier = Modifier.heightIn(min = rowHeight),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(

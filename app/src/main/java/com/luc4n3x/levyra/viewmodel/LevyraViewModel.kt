@@ -6885,12 +6885,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openArtist(track: Track) {
-        val artistName = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
-        val browseId = track.artistBrowseIds.firstOrNull().orEmpty()
-        if (browseId.isNotBlank()) {
-            openArtistReference(name = artistName, browseId = browseId)
-        } else {
-            openArtistByName(artistName)
+        val reference = artistReferenceOf(track) ?: return
+        openArtistReference(name = reference.name, browseId = reference.browseId)
+    }
+
+    fun openArtistFromPlayer(track: Track) {
+        val reference = artistReferenceOf(track) ?: return
+        restorePlayerReturnDetail()
+        openArtistReference(name = reference.name, browseId = reference.browseId)
+        if (_state.value.selectedTab == LevyraTab.Player) {
+            moveToTab(previousTab(LevyraTab.Player), rememberCurrent = false)
         }
     }
 
@@ -6921,7 +6925,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playerReturnDetail = null
         val clean = name.trim()
         val normalizedBrowseId = browseId.trim()
-        if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
+        if (!isNavigableArtistName(clean)) return
         val requestedArtistListStateKey = nextArtistListStateKey(normalizedBrowseId)
         artistJob?.cancel()
         artistLoreJob?.cancel()
@@ -7593,7 +7597,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playArtistSong(track: Track) {
         val profile = _state.value.artistProfile ?: return
-        closeArtist()
         playFrom(profile.topSongs, track)
     }
 
