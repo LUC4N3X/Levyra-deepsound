@@ -187,26 +187,26 @@ class PlaylistImportCatalog(
         if (cleanQuery.length < 2) return emptyList()
         val language = languageCode()
         return coroutineScope {
-            val songsDeferred = async { retrying { repository.searchSongsPage(cleanQuery, language).items } }
-            val mixedDeferred = async { retrying { repository.search(cleanQuery, limit, language) } }
+            val songsDeferred = async {
+                isolatedOnlineSearch { retrying { repository.searchSongsPage(cleanQuery, language).items } }
+            }
+            val mixedDeferred = async {
+                isolatedOnlineSearch { retrying { repository.search(cleanQuery, limit, language) } }
+            }
             val songs = songsDeferred.await()
             val mixed = mixedDeferred.await()
             combineOnlineSearchResults(songs, mixed, limit)
         }
     }
 
-    private fun rankAutomaticCandidates(
-        identity: ImportedTrackIdentity,
-        tracks: List<Track>,
-        limit: Int
-    ): List<Track> = tracks
-        .distinctBy { it.id }
-        .map { track ->
-            track to PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).score
-        }
-        .sortedByDescending { (_, score) -> score }
-        .take(limit)
-        .map { (track, _) -> track }
+    private suspend fun <T> isolatedOnlineSearch(block: suspend () -> List<T>): List<T> = try {
+        block()
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Timber.w(error, "Playlist import online search branch failed")
+        emptyList()
+    }
 
     private suspend fun resolveCandidatesAdaptive(
         identity: ImportedTrackIdentity,
@@ -223,7 +223,7 @@ class PlaylistImportCatalog(
             PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).confidence.autoAccepted
         }
         if (hasGoodSongMatch) {
-            return rankAutomaticCandidates(identity, songs, 8)
+            return songs.distinctBy { it.id }
         }
 
         val mixed = retrying { repository.search(preciseQuery, 8, language) }
@@ -231,19 +231,18 @@ class PlaylistImportCatalog(
             PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).confidence.autoAccepted
         }
         val firstPassCandidates = (songs + mixed).distinctBy { it.id }
-        val firstPassCombined = combineOnlineSearchResults(songs, mixed, 8)
         if (hasGoodMixedMatch) {
-            return rankAutomaticCandidates(identity, firstPassCandidates, 8)
+            return firstPassCandidates
         }
 
         val cleanQuery = listOf(cleanTitle, cleanPrimary).filter(String::isNotBlank).joinToString(" ")
             .takeIf { it.length >= 2 && it != preciseQuery }
         if (cleanQuery != null) {
             val fallbackResults = onlineSearch(cleanQuery, 8)
-            return rankAutomaticCandidates(identity, firstPassCandidates + fallbackResults, 8)
+            return (firstPassCandidates + fallbackResults).distinctBy { it.id }
         }
 
-        return firstPassCombined
+        return firstPassCandidates
     }
 
     private suspend fun <T> retrying(block: suspend () -> List<T>): List<T> {
