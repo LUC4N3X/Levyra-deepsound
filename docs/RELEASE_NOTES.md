@@ -1,63 +1,39 @@
-# Levyra 2.6.1
+# Levyra 2.6.2
 
 ## Highlights
 
-2.6.1 is a focused Android maintenance release built around the problems reported after 2.6.0. The biggest changes are simple: Library should stop hanging on large local collections, playback should recover more cleanly after short network drops, and the playlist importer should stop reopening the playlist you just finished importing.
+2.6.2 is a focused Android maintenance release for player navigation, artist playback and high-quality source matching. It keeps the screen you came from stable while playback starts, makes artist pages behave consistently with albums and playlists, and improves JioSaavn matching without weakening the existing identity checks.
 
-There are a few smaller improvements in the same build too. Android 16 gets Live Updates for playback and downloads, Settings search is more useful, downloaded M4A files can carry lyrics with them, and Levyra now uses the refreshed official app icon.
+The release also refreshes Levyra's in-app branding and Home header contrast, while keeping the app's data, playback architecture and release channels unchanged.
 
-## ✦ Fewer freezes and fewer interrupted songs
+## ✦ Player navigation stays where you left it
 
-Opening Library with a lot of downloads could spend far too long matching offline tracks on the main thread. That path has been reworked so the catalog no longer repeatedly scans and normalizes the entire known-track list for every download. This addresses the freeze / "Levyra isn't responding" report in [#794](https://github.com/LUC4N3X/Levyra-deepsound/issues/794).
+Starting a song from an artist page no longer closes the page underneath the player. Artist video cards now play their own visible list instead of unexpectedly switching to the artist's top-songs queue, and the selected tab behind the expanded player survives activity recreation.
 
-Playback recovery was tightened as well. A short connection reset or temporary outage should no longer leave the current track paused waiting for you to press Play again. Levyra can resume the stream in place when possible, retry transient network failures with bounded backoff, and keep the original play intent through recovery. An intentional pause still wins and is not overridden.
+Artist pages now use the same detail-screen now-playing dock as albums and playlists. Tapping the artist name in Now Playing resolves and opens the artist above the collapsed player when the current item has a usable artist identity; live radio and placeholder credits remain excluded.
 
-A separate Home edge case was fixed at the same time: if the personal listening pager shrinks while an old page index is still active, Levyra now handles that stale index safely instead of risking an `IndexOutOfBoundsException`.
+## ✦ More reliable JioSaavn matching
 
-## ✦ Playlist import starts fresh again
+Artist top songs now take their album identity from the album link instead of the play-count column. Music-video titles are reduced to the underlying recording for chart display and matching queries, and the Russian band designator is normalized consistently with names beginning with “The”.
 
-After finishing an import, reopening the importer could bring the previous playlist back with no obvious way to start another one. A completed import now reopens on a clean input screen, and the summary includes an **Import another playlist** action.
+When a track's duration is not known yet, Levyra defers the JioSaavn lookup until the YouTube manifest supplies a verified duration, within the existing bounded wait. The strict title, artist, album and duration checks still decide whether the high-quality source is safe to use.
 
-This fixes [#810](https://github.com/LUC4N3X/Levyra-deepsound/issues/810). Unfinished imports still keep their resumable session behavior.
+## ✦ Branding and readability polish
 
-## ✦ Downloaded M4A tracks can carry lyrics
-
-Downloaded M4A files can now embed the lyrics Levyra already has available. Synced lyrics keep their LRC timestamps, plain lyrics remain plain, and missing or instrumental lyrics do not block the download/export path.
-
-This implements the request in [#793](https://github.com/LUC4N3X/Levyra-deepsound/issues/793) for lyrics that can also be read by compatible external music players.
-
-## ✦ Android 16 and Settings polish
-
-On Android 16, active playback and downloads can use the platform Live Update surface when the system allows promoted notifications. Older Android versions keep the existing notification path.
-
-Settings search has also been rebuilt from the settings that actually exist in Levyra, with stable entries and useful aliases for things such as 320 kbps, JioSaavn, DNS, proxy, AutoEQ, Canvas and cache. Opening a result keeps the search context so Back can return to it.
-
-The Android launcher icon has been refreshed across adaptive, legacy, round and themed icon variants, including the Fastlane store asset.
-
-## Related issues
-
-- [#794 — Consistent Crashing And Freezing](https://github.com/LUC4N3X/Levyra-deepsound/issues/794)
-- [#810 — Importing Spotify playlist issue](https://github.com/LUC4N3X/Levyra-deepsound/issues/810)
-- [#793 — Embedded Lyrics](https://github.com/LUC4N3X/Levyra-deepsound/issues/793)
+The in-app Levyra branding has been synchronized with the current identity, and the Home header contrast has been adjusted for clearer readability. The repository presentation artwork was refreshed separately and does not affect the Android package.
 
 ## Validation
 
-The Library fix has focused regression coverage for download matching and was exercised on an emulator with a large seeded library. The reported ANR path was reproduced before the fix and the same stress flow completed without an ANR after the change.
+The player/navigation and JioSaavn changes include focused regression tests for artist routes, player restoration, shared detail-screen player behavior, display-title cleanup and matching decisions. The release also keeps the existing F-Droid source-build and review-contract checks in the repository quality gate.
 
-The playback recovery work has focused tests around stream resume, network classification and retry coordination, plus emulator checks covering connection reset, a longer network outage and an intentional pause during recovery. Physical-device, Android Auto, video-mode and live-radio validation were not part of that pass.
+The GitHub Android release workflow remains the publication gate for 2.6.2. It validates these notes and the version, runs release lint, builds the signed APK, verifies the APK version and signing certificate, writes the SHA-256 checksum, publishes the release, and downloads the published assets again for verification. If those checks fail, the release is not considered published.
 
-The playlist-import fix passed its focused controller/import/i18n test set, including regressions for reopening after a completed import and starting a second independent import. It was not manually tested on a device or emulator before merge.
-
-The Android 16 Live Update and Settings search change had green PR CI, including unit tests, Android lint, release compile, F-Droid checks and diagnostics. The final user-facing Live Update behavior was not manually exercised on an Android 16 device during that change.
-
-For M4A lyric embedding, the fast repository quality gate passed. The full local Gradle path was blocked in that authoring environment by a Java/Gradle loopback failure, and reading the embedded lyrics in an external player was not manually tested there.
-
-The GitHub Android release workflow remains the publication gate for 2.6.1. It validates these notes and the version, runs release lint, builds the signed APK, verifies the APK version and signing certificate, writes the SHA-256 checksum, publishes the release, and downloads the published assets again for verification. If those checks fail, the release is not considered published.
+Physical-device playback, Android Auto, native-video mode and live-radio behavior have not been manually revalidated specifically for this release candidate.
 
 ## Versioning
 
-- Version name: `2.6.1`
-- Version code: `2060100`
+- Version name: `2.6.2`
+- Version code: `2060200`
 
 This is an Android release. Levyra Desktop keeps its own independent version line.
 
@@ -65,10 +41,10 @@ This is an Android release. Levyra Desktop keeps its own independent version lin
 
 No manual migration is required.
 
-This patch does not add a new database schema migration. Existing favorites, playlists, downloads, history, settings and resumable playlist-import sessions stay on their current data paths.
+This patch does not add a new database schema migration. Existing favorites, playlists, downloads, history, settings and sessions stay on their current data paths.
 
 GitHub users can update from the signed APK attached to this release once publication completes. F-Droid and other repositories follow their own build and publishing schedules.
 
 ## Final note
 
-2.6.1 is mostly about removing friction from the places people actually hit every day: opening Library, surviving a shaky connection, importing another playlist, and keeping downloaded music useful outside Levyra too.
+2.6.2 keeps the player experience coherent: the page behind playback stays put, artist actions open the right destination, and high-quality matching gets better inputs without becoming less strict.
