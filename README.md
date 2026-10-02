@@ -1,9 +1,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-banner-light.webp?v=levyra-stage-20261002">
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-github-banner.webp?v=levyra-stage-20261002">
-  <img src="docs/assets/levyra-github-banner.webp?v=levyra-stage-20261002" alt="Levyra" width="100%">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-banner-light.webp?v=urban-20261002">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-github-banner.webp?v=urban-20261002">
+  <img src="docs/assets/levyra-github-banner.webp?v=urban-20261002" alt="Levyra" width="100%">
 </picture>
 
 # Levyra
