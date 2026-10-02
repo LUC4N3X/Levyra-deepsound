@@ -114,7 +114,7 @@ internal class YoutubeMusicChartsRepository(context: Context) {
             .distinctBy { it.id }
             .take(request.limit)
             .map { track ->
-                track.copy(
+                chartRecordingOf(track).copy(
                     album = track.album.ifBlank { CHART_ALBUM },
                     source = CHART_SOURCE,
                     moodTags = track.moodTags + setOf("chart", "hit"),
@@ -252,6 +252,16 @@ internal class YoutubeMusicChartsRepository(context: Context) {
         const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
+}
+
+internal fun chartRecordingOf(track: Track): Track {
+    val recording = MusicVideoTitle.recordingFor(track)
+    if (recording.title == track.title && recording.artist == track.artist) return track
+    return track.copy(
+        title = recording.title,
+        artist = recording.artist,
+        artistBrowseIds = if (recording.artist == track.artist) track.artistBrowseIds else emptyList()
+    )
 }
 
 internal object YoutubeMusicChartPageParser {

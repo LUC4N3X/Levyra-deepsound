@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.hqaudio
 
+import com.luc4n3x.levyra.data.MusicVideoTitle
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.AlternativeAudioSource
@@ -26,12 +27,13 @@ class HighQualityPlaybackCoordinator(
         if (track.playbackManifest?.alternativeSource != null) return null
         if (audioQuality.equals(DATA_SAVER_AUDIO_QUALITY, ignoreCase = true)) return null
         if (isLocalTrack(track)) return null
-        if (track.title.isBlank() || track.artist.isBlank() || track.durationMs <= 0L) return null
+        if (track.title.isBlank() || track.artist.isBlank()) return null
+        val recording = MusicVideoTitle.recordingFor(track)
         return AlternativeTrackQuery(
-            title = track.title,
-            artist = track.artist,
+            title = recording.title,
+            artist = recording.artist,
             album = track.album,
-            durationMs = track.durationMs,
+            durationMs = track.durationMs.coerceAtLeast(0L),
             explicit = if (track.explicit) true else null,
             isrc = track.isrc
         )
@@ -44,10 +46,15 @@ class HighQualityPlaybackCoordinator(
         resolveNormal: suspend () -> Track
     ): Track {
         val startedAt = clock()
-        val pending = resolver.begin(identityKey(track), query)
+        val upfront = query.takeIf { it.durationMs > 0L }?.let { resolver.begin(identityKey(track), it) }
         val normal = runCatchingPreservingCancellation { resolveNormal() }
         val normalTrack = normal.getOrNull()
         if (normalTrack?.playbackManifest?.alternativeSource != null) return normalTrack
+        val pending = upfront
+            ?: normalTrack?.durationMs?.takeIf { it > 0L }?.let { verified ->
+                resolver.begin(identityKey(track), query.copy(durationMs = verified))
+            }
+            ?: return normal.getOrThrow()
         val waitMs = waitBudgetMs(resolver.mode, clock() - startedAt, normalTrack != null)
         when (val resolution = resolver.await(pending, waitMs)) {
             is HighQualityResolution.Selected -> {
