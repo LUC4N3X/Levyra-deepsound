@@ -80,6 +80,33 @@ internal fun mergeArtistSongs(
     return merged
 }
 
+internal data class ArtistSongAlbum(val title: String, val browseId: String)
+
+internal fun artistSongAlbum(renderer: JSONObject): ArtistSongAlbum? {
+    val columns = renderer.optJSONArray("flexColumns") ?: return null
+    for (columnIndex in 0 until columns.length()) {
+        val runs = columns.optJSONObject(columnIndex)
+            ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+            ?.optJSONObject("text")
+            ?.optJSONArray("runs")
+            ?: continue
+        for (runIndex in 0 until runs.length()) {
+            val run = runs.optJSONObject(runIndex) ?: continue
+            val endpoint = run.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint") ?: continue
+            val browseId = endpoint.optString("browseId").trim()
+            val pageType = endpoint.optJSONObject("browseEndpointContextSupportedConfigs")
+                ?.optJSONObject("browseEndpointContextMusicConfig")
+                ?.optString("pageType")
+                .orEmpty()
+            val isAlbum = browseId.startsWith("MPRE", ignoreCase = true) ||
+                pageType.equals("MUSIC_PAGE_TYPE_ALBUM", ignoreCase = true)
+            val title = run.optString("text").trim()
+            if (isAlbum && title.isNotBlank()) return ArtistSongAlbum(title = title, browseId = browseId)
+        }
+    }
+    return null
+}
+
 internal fun normalizeInlineArtistBiography(value: String): ArtistBiography? {
     val normalized = value
         .replace("\u00a0", " ")
@@ -912,7 +939,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             val lines = flexLines(renderer)
             val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return@forEach
             val artist = lines.getOrNull(1)?.split(" • ", " · ")?.firstOrNull()?.trim().orEmpty()
-            val album = lines.getOrNull(2).orEmpty()
+            val album = artistSongAlbum(renderer)
             val thumb = bestThumbnail(thumbnailsOf(renderer))
             val seed = stableSeed(videoId + title)
             val accent = palette(seed)
@@ -921,7 +948,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                     id = videoId,
                     title = title,
                     artist = artist.ifBlank { fallbackArtist },
-                    album = album.ifBlank { "YouTube Music" },
+                    album = album?.title ?: "YouTube Music",
+                    albumBrowseId = album?.browseId.orEmpty(),
                     durationMs = durationOf(renderer.toString()),
                     streamUrl = "",
                     videoUrl = "https://www.youtube.com/watch?v=$videoId",
