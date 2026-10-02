@@ -620,6 +620,9 @@ private fun ImportSummaryScreen(state: PlaylistImportUiState, copy: PlaylistImpo
                     ) { Text(copy["copyReport"], color = LevyraCyan) }
                 }
             }
+            TextButton(onClick = controller::importAnother, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(copy["importAnother"], color = LevyraCyan)
+            }
             TextButton(onClick = controller::finish, modifier = Modifier.heightIn(min = 48.dp)) { Text(copy["done"], color = LevyraMuted) }
         }
     }
