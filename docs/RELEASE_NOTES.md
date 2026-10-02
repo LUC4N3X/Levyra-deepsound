@@ -10,7 +10,7 @@ The release also refreshes Levyra's in-app branding and Home header contrast, wh
 
 Starting a song from an artist page no longer closes the page underneath the player. Artist video cards now play their own visible list instead of unexpectedly switching to the artist's top-songs queue, and the selected tab behind the expanded player survives activity recreation.
 
-Artist pages now use the same detail-screen now-playing dock as albums and playlists. Tapping the artist name in Now Playing resolves and opens the artist above the collapsed player when the current item has a usable artist identity; live radio and placeholder credits remain excluded.
+Artist pages now use the same detail-screen now-playing dock as albums and playlists. Tapping the artist name in Now Playing resolves and opens the artist above the collapsed player when the current item has a usable artist identity; live radio and generic credits remain excluded.
 
 ## ✦ More reliable JioSaavn matching
 
