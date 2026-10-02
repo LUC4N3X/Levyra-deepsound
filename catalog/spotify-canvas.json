@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-01T22:43:57Z",
+  "generatedAt": "2026-10-02T05:44:20Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -369,7 +369,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -518,6 +518,13 @@
       "artist": "Sam Fender, Olivia Dean",
       "album": "People Watching (Deluxe Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/6zlR5ttMfMNmwf2lecU9Cc/video/c376916e9524470db551c735393b9866.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1427,7 +1434,7 @@
       "song": "Pra Não Esquecer De Mim",
       "artist": "Aaron Modesto, Mc Magal, MC Meno K, DJ Glenner",
       "album": "Pra Não Esquecer De Mim",
-      "url": "https://canvaz.scdn.co/upload/artist/48yaM25WLHmQZXx5NN3DYH/video/bdfa84c7822f46b5b7843a40c1211be1.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/48yaM25WLHmQZXx5NN3DYH/video/13aa6de61b764e639b0edb2ab2d87673.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2397,13 +2404,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Sömnmolnet",
       "artist": "Humlan Djojj, Josefine Götestam",
       "album": "Sov med Humlan Djojj",
@@ -3254,7 +3254,7 @@
       "song": "Yes! 東京",
       "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, 原因は自分にある。, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
       "album": "Yes! 東京",
-      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/5f9236dda7f64c14aef1e1e589f2830e.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/a7b5f2893fba410c930cf65f511e39d1.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4511,115 +4511,80 @@
       "scope": "track"
     },
     {
-      "song": "Silencio",
-      "artist": "U2",
-      "album": "Silencio",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/0a08453c4a9744d7934b9102f7bf9998.cnvs.mp4",
+      "song": "Draw You Out - From The Hunger Games: Sunrise on the Reaping - The Album",
+      "artist": "Noah Kahan, The Hunger Games",
+      "album": "Draw You Out",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/794d36013f1449d2b93a44305c1a93be.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Danceteria Afterhours",
-      "artist": "Madonna, Charli xcx",
-      "album": "Danceteria Afterhours",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2444d58fe5484b67846124dea9eabb9d.cnvs.mp4",
+      "song": "Why Don’t You Say So (feat. Avery Anna)",
+      "artist": "Dexter and The Moonrocks, Avery Anna",
+      "album": "Friends That I Don't Like",
+      "url": "https://canvaz.scdn.co/upload/artist/72sOBVpZpUwHq7i0vb26lT/video/feeff9230d394049aefa26300cbd9f07.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Headed Back To Austin",
-      "artist": "Dylan Gossett",
-      "album": "Ramblin'",
-      "url": "https://canvaz.scdn.co/upload/artist/4H4M0Y4cN39zIVDHvdW53x/video/c4944608b50e4486bc3baad237c7f6c4.cnvs.mp4",
+      "song": "World's Greatest!",
+      "artist": "Lil Nas X",
+      "album": "World's Greatest!",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/f1043797732e457a9c6842296692c6b2.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Slow Down, Slow Down",
-      "artist": "Max McNown",
-      "album": "Leave On A Light",
-      "url": "https://canvaz.scdn.co/upload/artist/340PS4ZcZ4UCBgyrXzEjcp/video/eb6d4bcba2b344128bc23292fc492ef1.cnvs.mp4",
+      "song": "DANGER DANGER (feat. Skepta)",
+      "artist": "Dom Dolla, Skepta, Solomun",
+      "album": "DANGER DANGER (feat. Skepta)",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/012f399f031949da9630526cfe571594.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Nobody Wanna Dance Anymore",
-      "artist": "Tinashe",
-      "album": "Popstar",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/054bd08ba7bb467a8ccc6d64fd1689b4.cnvs.mp4",
+      "song": "Snakeskin Boots",
+      "artist": "Miranda Lambert, Ella Langley",
+      "album": "Crisco",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/817b8ded818e450da1585ae4a4a8e581.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Beauty Sleep",
-      "artist": "Jane Remover",
-      "album": "Beauty Sleep",
-      "url": "https://canvaz.scdn.co/upload/artist/2rLGlNI6htigNxx172qxLu/video/b794a8121c4249d6a94e3ae5b63e1d04.cnvs.mp4",
+      "song": "Tell Me I'm Beautiful",
+      "artist": "Andrea Bejar",
+      "album": "Tell Me I'm Beautiful",
+      "url": "https://canvaz.scdn.co/upload/artist/5l3g6Xp8KQE4prw9hk6rQ8/video/219d7caf1f2343bd8bd7a096bc965c69.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Tough Love",
-      "artist": "Nessa Barrett",
-      "album": "Tough Love",
-      "url": "https://canvaz.scdn.co/upload/artist/7pwufEBGfggjoI8twqlsmQ/video/3d4c5d22bd6944bfaff2a87dc883bdab.cnvs.mp4",
+      "song": "Too Cute To Be Lonely",
+      "artist": "Holly Humberstone",
+      "album": "Too Cute To Be Lonely",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/9177fd443be644fd8a05e9549241d19f.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "I Won’t Cry",
-      "artist": "Remi Wolf",
-      "album": "I Won't Cry",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b9c9680440dd468dbbb9fc2b1c75fc61.cnvs.mp4",
+      "song": "Us Again",
+      "artist": "Gavin Adcock, Treaty Oak Revival",
+      "album": "The Day I Hang It Up",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/812cd869fcc443b89dd7873bdb3b9677.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Roses",
-      "artist": "CHVRCHES",
-      "album": "Roses",
-      "url": "https://canvaz.scdn.co/upload/artist/3CjlHNtplJyTf9npxaPl5w/video/c26f0c99e3a44d32a19e2efb30cb3af4.cnvs.mp4",
+      "song": "options",
+      "artist": "Sasha Keable",
+      "album": "options",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/55ccd9a6cdc841b6bce6440b92588056.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Don't Stop Now",
-      "artist": "Corey Kent",
-      "album": "Heartland Rock and Roll",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/3a9376b1860946a0b6db3193e883e470.cnvs.mp4",
+      "song": "Bad Luck Hideaway",
+      "artist": "The Rolling Stones",
+      "album": "Mr Charm",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b87077dc89b048d7a7f41132585a2c14.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Stone Fruit",
-      "artist": "Blondshell",
-      "album": "Violins",
-      "url": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/36f3f349eafb4f91843ee8000c8d7a8c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Robbery 10",
-      "artist": "Tee Grizzley",
-      "album": "They Forgot",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/674ee457198943d6b0907a4047e2a820.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "TSUNAMI",
-      "artist": "SOFI TUKKER, OneRepublic",
-      "album": "TSUNAMI",
-      "url": "https://canvaz.scdn.co/upload/artist/586uxXMyD5ObPuzjtrzO1Q/video/a322714778e94ce5bd45d83b7205a178.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Vulnerability",
-      "artist": "Shenseea",
-      "album": "Vulnerability",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/643d6798cb9d4a42b0d5b38c1543541e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "PLAYA FRÍA",
-      "artist": "Kapo",
-      "album": "PLAYA FRÍA",
-      "url": "https://canvaz.scdn.co/upload/artist/3UTF2no3muGdiFXVujl94i/video/012fe11e02124017bea6a1f7b728c6ef.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Stay For Love",
-      "artist": "Kaskade, Brieanna Grace",
-      "album": "ORIGIN //",
-      "url": "https://canvaz.scdn.co/upload/artist/6TQj5BFPooTa08A7pk8AQ1/video/48a852671cb948a58ed0e22b4107239a.cnvs.mp4",
+      "song": "Algún Día",
+      "artist": "De La Ghetto, Yandel",
+      "album": "Algún Día",
+      "url": "https://canvaz.scdn.co/upload/artist/3EiLUeyEcA6fbRPSHkG5kb/video/eca3e8473b8f483493699e362e255f18.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4627,6 +4592,13 @@
       "artist": "ARIETE",
       "album": "Tutti Tornano A Casa",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/91472d73a62c46d9b9cc50c5eb249a2e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "WINNER",
+      "artist": "Geolier",
+      "album": "WINNER",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/36a27cab754a4757b20744e1d2f60291.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4655,13 +4627,6 @@
       "artist": "Purple Disco Machine, MEEK",
       "album": "Test My Luck",
       "url": "https://canvaz.scdn.co/upload/artist/2WBJQGf1bT1kxuoqziH5g4/video/f8135ff0be824440abff55b169373d38.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "World's Greatest!",
-      "artist": "Lil Nas X",
-      "album": "World's Greatest!",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/f1043797732e457a9c6842296692c6b2.cnvs.mp4",
       "scope": "track"
     },
     {
