@@ -35,7 +35,7 @@ internal fun LyricsRepository.observe(
         }
 
         val existing = latest
-        if (existing?.manualSelection == true || existing.hasCompleteSyncedTiming() || existing?.cached == false) {
+        if (existing?.manualSelection == true || existing.hasCompleteSyncedTiming()) {
             return@flow
         }
 
