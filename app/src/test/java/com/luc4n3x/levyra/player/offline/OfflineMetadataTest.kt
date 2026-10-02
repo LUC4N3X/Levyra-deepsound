@@ -150,6 +150,24 @@ class OfflineMetadataTest {
     }
 
     @Test
+    fun blankCachedLyricsUseFetchedLyrics() = runBlocking {
+        val cachedPayload = """{"synced":true,"lines":[{"startMs":0,"text":"Instrumental","instrumental":true}]}"""
+        val fetchedPayload = """{"synced":true,"lines":[{"startMs":12340,"text":"Recovered line"}]}"""
+
+        val lyrics = cachedOrFetchedLyricsText(cachedPayload) { fetchedPayload }
+
+        assertEquals("[00:12.34]Recovered line", lyrics)
+    }
+
+    @Test
+    fun blankCachedLyricsRemainBlankWhenRefreshHasNoUsableLyrics() = runBlocking {
+        val cachedPayload = """{"synced":true,"lines":[{"startMs":0,"text":"Instrumental","instrumental":true}]}"""
+        val fetchedPayload = """{"synced":true,"lines":[{"startMs":0,"text":"Instrumental","instrumental":true}]}"""
+
+        assertEquals("", cachedOrFetchedLyricsText(cachedPayload) { fetchedPayload })
+    }
+
+    @Test
     fun coldCacheUsesFetchedSyncedLyrics() = runBlocking {
         val fetchedPayload = """
             {

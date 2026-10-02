@@ -124,7 +124,10 @@ internal suspend fun cachedOrFetchedLyricsText(
 ): String {
     if (cachedPayload == null) return fetchPayload()?.let(::cachedLyricsText).orEmpty()
     val cachedText = cachedLyricsText(cachedPayload)
-    if (cachedText.isBlank() || cachedLyricsHaveCompleteTiming(cachedPayload)) return cachedText
+    if (cachedText.isBlank()) {
+        return fetchPayload()?.let(::cachedLyricsText)?.ifBlank { cachedText } ?: cachedText
+    }
+    if (cachedLyricsHaveCompleteTiming(cachedPayload)) return cachedText
     val fetchedPayload = fetchPayload() ?: return cachedText
     return if (cachedLyricsHaveCompleteTiming(fetchedPayload)) cachedLyricsText(fetchedPayload) else cachedText
 }
