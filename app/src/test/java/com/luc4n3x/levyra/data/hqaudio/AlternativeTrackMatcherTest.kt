@@ -588,4 +588,28 @@ class AlternativeTrackMatcherTest {
         )
     }
 
+    @Test
+    fun russianBandDesignatorDoesNotHideTheSameArtist() {
+        val evaluation = verdict(
+            query(title = "Группа крови", artist = "Группа Кино", album = "Игла Remix", durationMs = 274_000L),
+            candidate(id = "Bt-8zakD", title = "Группа крови", primary = listOf("Кино"), album = "Игла Remix", duration = 274)
+        )
+        assertEquals(AlternativeMatchVerdict.EXACT, evaluation.verdict)
+    }
+
+    @Test
+    fun cyrillicTrackWithVerifiedDurationMatchesItsJioSaavnRelease() {
+        val album = "Виктор Цой и Группа Кино. Полная Дискография"
+        val selection = matcher.select(
+            query(title = "Группа крови", artist = "Виктор Цой & Группа Кино", album = album, durationMs = 236_000L),
+            listOf(
+                candidate(id = "20zL7tZU", title = "Группа крови", primary = listOf("Артём Scoop"), album = "Другое кино", duration = 176),
+                candidate(id = "wbTqLnmA", title = "Группа крови", primary = listOf("Виктор Цой", "группа Кино"), album = album, duration = 235),
+                candidate(id = "pSUfLBwi", title = "Группа крови (Remix)", primary = listOf("Паша Кореец", "DJ Vini"), album = "Последний герой Remix", duration = 394),
+                candidate(id = "5Wb0ZbD7", title = "Группа крови (Английская версия)", primary = listOf("Виктор Цой", "группа Кино"), album = album, duration = 285)
+            )
+        )
+        assertEquals("wbTqLnmA", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
 }

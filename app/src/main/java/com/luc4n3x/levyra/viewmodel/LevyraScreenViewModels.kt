@@ -442,7 +442,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun openAmbient() = root.openAmbient()
     fun exportCurrentTrack() = root.exportCurrentTrack()
     fun next() = root.next()
-    fun openArtist(track: Track) = root.openArtist(track)
+    fun openArtist(track: Track) = root.openArtistFromPlayer(track)
     fun openAudioQualityPanel() = root.openAudioQualityPanel()
     fun openLyrics() = root.openLyrics()
     fun openQueue() = root.openQueue()

@@ -170,9 +170,45 @@ class HighQualityPlaybackCoordinatorTest {
         assertNull(coordinator.queryFor(track, isVideoMode = false, audioQuality = "Low"))
         assertNull(coordinator.queryFor(track.copy(source = "Offline"), isVideoMode = false, audioQuality = "Auto"))
         assertNull(coordinator.queryFor(track.copy(streamUrl = "content://media/1"), isVideoMode = false, audioQuality = "Auto"))
-        assertNull(coordinator.queryFor(track.copy(durationMs = 0L), isVideoMode = false, audioQuality = "Auto"))
+        assertNull(coordinator.queryFor(track.copy(artist = " "), isVideoMode = false, audioQuality = "Auto"))
         coordinator.mode = HighQualityAudioMode.OFF
         assertNull(coordinator.queryFor(track, isVideoMode = false, audioQuality = "High"))
+    }
+
+    @Test
+    fun onlyMusicVideoTitlesAreReducedToTheirRecording() {
+        val coordinator = coordinator(exactProvider())
+        val audio = playbackTrack().copy(title = "Tum Hi Ho - Aashiqui", artist = "Arijit Singh", videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val untyped = audio.copy(videoType = "")
+        val video = audio.copy(title = "NovaFeel - Dark Paradise (Official Video)", artist = "NovaFeel Channel", videoType = "MUSIC_VIDEO_TYPE_OMV")
+
+        assertEquals("Tum Hi Ho - Aashiqui", coordinator.queryFor(audio, false, "Auto")?.title)
+        assertEquals("Tum Hi Ho - Aashiqui", coordinator.queryFor(untyped, false, "Auto")?.title)
+        val videoQuery = coordinator.queryFor(video, false, "Auto")
+        assertEquals("Dark Paradise", videoQuery?.title)
+        assertEquals("NovaFeel", videoQuery?.artist)
+    }
+
+    @Test
+    fun unknownDurationSearchesOnlyAfterTheNormalStreamVerifiesIt() {
+        val provider = exactProvider()
+        val requested = playbackTrack().copy(durationMs = 0L)
+        val result = coordinator(provider, HighQualityAudioMode.PREFER_320).play(requested) {
+            assertTrue(provider.searches.isEmpty())
+            normalTrack()
+        }
+        assertEquals(320, result.playbackManifest?.alternativeSource?.bitrateKbps)
+        assertEquals(requested.id, result.id)
+        assertFalse(provider.searches.isEmpty())
+    }
+
+    @Test
+    fun unknownDurationWithoutVerifiedDurationKeepsNormalSourceWithoutSearching() {
+        val provider = exactProvider()
+        val normal = normalTrack().copy(durationMs = 0L)
+        val result = coordinator(provider).play(playbackTrack().copy(durationMs = 0L)) { normal }
+        assertSame(normal, result)
+        assertTrue(provider.searches.isEmpty())
     }
 
     @Test
