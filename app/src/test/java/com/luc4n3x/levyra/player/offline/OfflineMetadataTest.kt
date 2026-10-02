@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.player.offline
 
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -79,12 +80,14 @@ class OfflineMetadataTest {
         assertEquals("Deezer", metadata.metadataProvider)
         assertEquals(94, metadata.metadataConfidence)
         assertTrue(metadata.sourceUrl.contains("video-123"))
+        assertEquals("First line\nSecond line", metadata.lyrics)
     }
 
     @Test
     fun cachedLyricsExcludeMetadataAndInstrumentalRows() {
         val payload = """
             {
+              "synced": false,
               "lines": [
                 {"text":"[Verse 1]","metadata":true,"instrumental":false},
                 {"text":"First line","metadata":false,"instrumental":false},
@@ -99,6 +102,108 @@ class OfflineMetadataTest {
         assertEquals("First line\nSecond line", lyrics)
         assertFalse(lyrics.contains("Verse"))
         assertFalse(lyrics.contains("Instrumental"))
+    }
+
+    @Test
+    fun cachedSyncedLyricsPreserveLineTimingAsLrc() {
+        val payload = """
+            {
+              "synced": true,
+              "lines": [
+                {"startMs":0,"text":"[Intro]","metadata":true,"instrumental":false},
+                {"startMs":12340,"text":"First line","metadata":false,"instrumental":false},
+                {"startMs":65210,"text":"Second line","metadata":false,"instrumental":false}
+              ]
+            }
+        """.trimIndent()
+
+        assertEquals("[00:12.34]First line\n[01:05.21]Second line", cachedLyricsText(payload))
+    }
+
+    @Test
+    fun cachedLyricsWithoutCompleteTimingRemainPlain() {
+        val payload = """
+            {
+              "synced": true,
+              "lines": [
+                {"startMs":12340,"text":"First line","metadata":false,"instrumental":false},
+                {"text":"Second line","metadata":false,"instrumental":false}
+              ]
+            }
+        """.trimIndent()
+
+        assertEquals("First line\nSecond line", cachedLyricsText(payload))
+    }
+
+    @Test
+    fun cachedInstrumentalLyricsRemainEmpty() {
+        val payload = """
+            {
+              "synced": true,
+              "lines": [
+                {"startMs":0,"text":"Instrumental","metadata":false,"instrumental":true}
+              ]
+            }
+        """.trimIndent()
+
+        assertEquals("", cachedLyricsText(payload))
+    }
+
+    @Test
+    fun blankCachedLyricsUseFetchedLyrics() = runBlocking {
+        val cachedPayload = """{"synced":true,"lines":[{"startMs":0,"text":"Instrumental","instrumental":true}]}"""
+        val fetchedPayload = """{"synced":true,"lines":[{"startMs":12340,"text":"Recovered line"}]}"""
+
+        val lyrics = cachedOrFetchedLyricsText(cachedPayload) { fetchedPayload }
+
+        assertEquals("[00:12.34]Recovered line", lyrics)
+    }
+
+    @Test
+    fun blankCachedLyricsRemainBlankWhenRefreshHasNoUsableLyrics() = runBlocking {
+        val cachedPayload = """{"synced":true,"lines":[{"startMs":0,"text":"Instrumental","instrumental":true}]}"""
+        val fetchedPayload = """{"synced":true,"lines":[{"startMs":0,"text":"Instrumental","instrumental":true}]}"""
+
+        assertEquals("", cachedOrFetchedLyricsText(cachedPayload) { fetchedPayload })
+    }
+
+    @Test
+    fun coldCacheUsesFetchedSyncedLyrics() = runBlocking {
+        val fetchedPayload = """
+            {
+              "synced": true,
+              "lines": [
+                {"startMs":12340,"text":"First line","metadata":false,"instrumental":false}
+              ]
+            }
+        """.trimIndent()
+
+        val lyrics = cachedOrFetchedLyricsText(null) { fetchedPayload }
+
+        assertEquals("[00:12.34]First line", lyrics)
+    }
+
+    @Test
+    fun cachedPlainLyricsUpgradeToFetchedSyncedLyrics() = runBlocking {
+        val payload = """{"synced":false,"lines":[{"text":"Plain line"}]}"""
+        val fetchedPayload = """{"synced":true,"lines":[{"startMs":12340,"text":"Synced line"}]}"""
+
+        val lyrics = cachedOrFetchedLyricsText(payload) { fetchedPayload }
+
+        assertEquals("[00:12.34]Synced line", lyrics)
+    }
+
+    @Test
+    fun cachedPlainLyricsRemainWhenRefreshHasNoSyncedResult() = runBlocking {
+        val payload = """{"synced":false,"lines":[{"text":"Plain line"}]}"""
+        val fetchedPayload = """{"synced":false,"lines":[{"text":"Other plain line"}]}"""
+
+        assertEquals("Plain line", cachedOrFetchedLyricsText(payload) { fetchedPayload })
+    }
+
+    @Test
+    fun missingCachedAndFetchedLyricsRemainEmpty() = runBlocking {
+        assertEquals("", cachedOrFetchedLyricsText(null) { null })
     }
 
     private fun track(
