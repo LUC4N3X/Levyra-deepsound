@@ -452,7 +452,10 @@ internal fun TrackReviewContent(
                 listOf(CandidateOrigin.ONLINE to copy["searchOnline"], CandidateOrigin.LOCAL to copy["searchLocal"]).forEach { (value, label) ->
                     FilterChip(
                         selected = origin == value,
-                        onClick = { origin = value },
+                        onClick = {
+                            origin = value
+                            if (manual != null) controller.manualSearch(position, query, value)
+                        },
                         label = { Text(label) },
                         modifier = Modifier.heightIn(min = 48.dp)
                     )
@@ -554,7 +557,9 @@ private fun EvaluationCard(
     Surface(
         color = if (isSelected) LevyraCyan.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.03f),
         shape = ImportRowShape,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onUse != null) Modifier.clip(ImportRowShape).clickable(onClick = onUse) else Modifier)
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CandidateSummary(

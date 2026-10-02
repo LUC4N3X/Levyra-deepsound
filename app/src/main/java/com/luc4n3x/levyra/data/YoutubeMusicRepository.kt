@@ -741,7 +741,7 @@ internal fun selectAlbumRecoveryCandidate(
     excludedBrowseIds: Set<String> = emptySet()
 ): AlbumHit? = selectAlbumRecoveryCandidates(album, candidates, excludedBrowseIds).firstOrNull()
 
-class YoutubeMusicRepository(private val context: Context? = null) {
+open class YoutubeMusicRepository(private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val clientVersion = "1.20260423.01.00"
     private val memory: MutableMap<String, Track> = java.util.Collections.synchronizedMap(LinkedHashMap())
@@ -749,7 +749,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)
     private val albumDescriptionRepository = AlbumDescriptionRepository(context)
 
-    suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
+    open suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext emptyList()
         val remote = try {
@@ -839,7 +839,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         if (results.isEmpty) fallbackResults(cleanQuery, languageCode) else results
     }
 
-    suspend fun searchSongsPage(
+    open suspend fun searchSongsPage(
         query: String,
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
         continuation: String = ""
