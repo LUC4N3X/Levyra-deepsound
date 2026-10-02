@@ -74,7 +74,7 @@ object MusicIdentityText {
         "\\s*(?:,|&|\\+|/|;|\\sx\\s|\\sand\\s|\\se\\s|\\sy\\s|\\svs\\.?\\s|\\sfeat\\.?\\s|\\sft\\.?\\s|\\sfeaturing\\s|\\swith\\s)\\s*",
         RegexOption.IGNORE_CASE
     )
-    private val leadingArticle = Regex("^the\\s+")
+    private val leadingArticle = Regex("^(?:the|группа)\\s+")
     private val yearToken = Regex("\\b(?:19|20)\\d{2}\\b")
     private val versionWord = Regex("(?:^|\\s)version(?:\\s|$)")
 
