@@ -113,6 +113,85 @@ class PipedRescueClientTest {
     }
 
     @Test
+    fun repeatedInstanceFailuresEscalateCooldownUpToCap() = runBlocking {
+        var nowMs = 10_000L
+        val exchange = RecordingExchange { response(500) }
+        val client = PipedRescueClient(exchange, listOf(instanceA), clockMs = { nowMs })
+        val videos = listOf(VIDEO_ID, SECOND_VIDEO_ID, THIRD_VIDEO_ID, FOURTH_VIDEO_ID, "aaaaaaaaaaa", "bbbbbbbbbbb", "ccccccccccc", "ddddddddddd")
+
+        assertNull(client.resolve(videos[0], "auto"))
+        assertNull(client.resolve(videos[1], "auto"))
+        val cooldowns = mutableListOf(client.instanceSnapshot("a").blockedUntilMs - nowMs)
+        for (video in videos.drop(2)) {
+            nowMs = client.instanceSnapshot("a").blockedUntilMs
+            assertNull(client.resolve(video, "auto"))
+            cooldowns += client.instanceSnapshot("a").blockedUntilMs - nowMs
+        }
+
+        assertEquals(
+            listOf(60_000L, 120_000L, 240_000L, 480_000L, 900_000L, 900_000L, 900_000L),
+            cooldowns
+        )
+        assertEquals(videos.size, exchange.calls.get())
+    }
+
+    @Test
+    fun multipleFailedProbesInOneResolutionEscalateCooldownOnce() = runBlocking {
+        var nowMs = 10_000L
+        val proxy = "https://proxy-a.example"
+        val body = JSONObject()
+            .put("proxyUrl", proxy)
+            .put(
+                "audioStreams",
+                JSONArray()
+                    .put(stream("$proxy/m4a/videoplayback?expire=2000000000&n=m4a", "audio/mp4", "mp4a.40.2", 128_000))
+                    .put(stream("$proxy/opus/videoplayback?expire=2000000000&n=opus", "audio/webm", "opus", 160_000))
+            )
+            .toString()
+        val exchange = RecordingExchange { request ->
+            if (request.kind == PipedRequestKind.API) response(200, body) else response(503)
+        }
+        val client = PipedRescueClient(exchange, listOf(instanceA), clockMs = { nowMs })
+
+        assertNull(client.resolve(VIDEO_ID, "auto"))
+        val firstCooldown = client.instanceSnapshot("a").blockedUntilMs - nowMs
+        nowMs = client.instanceSnapshot("a").blockedUntilMs
+        assertNull(client.resolve(SECOND_VIDEO_ID, "auto"))
+        val secondCooldown = client.instanceSnapshot("a").blockedUntilMs - nowMs
+
+        assertEquals(PipedRescuePolicy.INSTANCE_COOLDOWN_MS, firstCooldown)
+        assertEquals(PipedRescuePolicy.INSTANCE_COOLDOWN_MS * 2, secondCooldown)
+        assertEquals(6, exchange.calls.get())
+    }
+
+    @Test
+    fun successResetsEscalatedCooldown() = runBlocking {
+        var nowMs = 10_000L
+        var healthy = false
+        val exchange = RecordingExchange { request ->
+            when {
+                !healthy -> response(500)
+                request.kind == PipedRequestKind.API -> response(200, proxyBody("https://proxy-a.example"))
+                else -> response(206, contentType = "audio/mp4")
+            }
+        }
+        val client = PipedRescueClient(exchange, listOf(instanceA), clockMs = { nowMs })
+        for (video in listOf(VIDEO_ID, SECOND_VIDEO_ID, THIRD_VIDEO_ID)) {
+            nowMs = maxOf(nowMs, client.instanceSnapshot("a").blockedUntilMs)
+            assertNull(client.resolve(video, "auto"))
+        }
+        nowMs = client.instanceSnapshot("a").blockedUntilMs
+        healthy = true
+
+        assertEquals("a", client.resolve(FOURTH_VIDEO_ID, "auto")?.instanceId)
+        healthy = false
+        assertNull(client.resolve("aaaaaaaaaaa", "auto"))
+        assertNull(client.resolve("bbbbbbbbbbb", "auto"))
+
+        assertEquals(PipedRescuePolicy.INSTANCE_COOLDOWN_MS, client.instanceSnapshot("a").blockedUntilMs - nowMs)
+    }
+
+    @Test
     fun invalidJsonAndEmptyAudioAreRejected() = runBlocking {
         val invalidClient = PipedRescueClient(
             RecordingExchange { response(200, "{not-json") },

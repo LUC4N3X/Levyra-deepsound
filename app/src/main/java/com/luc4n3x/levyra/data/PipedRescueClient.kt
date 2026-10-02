@@ -31,6 +31,7 @@ internal object PipedRescuePolicy {
     const val MAX_NEGATIVE_CACHE_ENTRIES = 256
     const val INSTANCE_FAILURE_THRESHOLD = 2
     const val INSTANCE_COOLDOWN_MS = 60_000L
+    const val MAX_INSTANCE_COOLDOWN_MS = 15L * 60L * 1_000L
     const val TIMEOUT_NEGATIVE_TTL_MS = 20_000L
     const val SERVER_NEGATIVE_TTL_MS = 30_000L
     const val FORBIDDEN_NEGATIVE_TTL_MS = 60_000L
@@ -112,7 +113,8 @@ internal class PipedRescueClient(
         var averageLatencyMs: Long? = null,
         var lastSuccessAtMs: Long? = null,
         var lastFailureAtMs: Long? = null,
-        var blockedUntilMs: Long = 0L
+        var blockedUntilMs: Long = 0L,
+        var cooldownEscalations: Int = 0
     )
 
     private data class NegativeKey(
@@ -364,6 +366,7 @@ internal class PipedRescueClient(
         health.averageLatencyMs = health.averageLatencyMs?.let { (it * 3L + latencyMs) / 4L } ?: latencyMs
         health.lastSuccessAtMs = now
         health.blockedUntilMs = 0L
+        health.cooldownEscalations = 0
     }
 
     private fun recordFailure(
@@ -385,8 +388,11 @@ internal class PipedRescueClient(
             PipedFailureKind.RATE_LIMITED -> PipedRescuePolicy.RATE_LIMIT_NEGATIVE_TTL_MS
             PipedFailureKind.HTTP_403,
             PipedFailureKind.STREAM_FORBIDDEN -> PipedRescuePolicy.FORBIDDEN_NEGATIVE_TTL_MS
-            else -> if (health.consecutiveFailures >= PipedRescuePolicy.INSTANCE_FAILURE_THRESHOLD) {
-                PipedRescuePolicy.INSTANCE_COOLDOWN_MS
+            else -> if (
+                health.consecutiveFailures >= PipedRescuePolicy.INSTANCE_FAILURE_THRESHOLD &&
+                health.blockedUntilMs <= now
+            ) {
+                escalatingCooldownMs(health.cooldownEscalations++)
             } else {
                 0L
             }
@@ -433,6 +439,10 @@ internal class PipedRescueClient(
         PipedFailureKind.STREAM_UNREACHABLE,
         PipedFailureKind.TRANSPORT -> PipedRescuePolicy.SERVER_NEGATIVE_TTL_MS
     }
+
+    private fun escalatingCooldownMs(previousEscalations: Int): Long =
+        (PipedRescuePolicy.INSTANCE_COOLDOWN_MS shl previousEscalations.coerceAtMost(MAX_COOLDOWN_DOUBLINGS))
+            .coerceAtMost(PipedRescuePolicy.MAX_INSTANCE_COOLDOWN_MS)
 
     private fun healthScore(health: MutableHealth?): Int {
         if (health == null) return 50
@@ -510,6 +520,7 @@ internal class PipedRescueClient(
             "User-Agent" to "Levyra/Android Piped Rescue"
         )
         private const val MAX_STREAM_PROBES_PER_INSTANCE = 2
+        private const val MAX_COOLDOWN_DOUBLINGS = 4
         private const val MIN_GLOBAL_MISSING_CONFIRMATIONS = 2
     }
 }

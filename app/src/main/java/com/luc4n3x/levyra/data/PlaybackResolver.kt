@@ -371,7 +371,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     )
     private val resilienceEngine = PlaybackResilienceEngine(context)
     private val pipedRescueClient = PipedRescueClient()
-    private val adaptiveYoutubeRescue = AdaptiveYoutubeRescue()
+    private val adaptiveYoutubeRescue = AdaptiveYoutubeRescue(directScope = resolveScope)
     private val strategyHealth = PlaybackStrategyHealthStore(context)
     private val strategyOriginByUrl = ConcurrentHashMap<String, PlaybackStrategyOrigin>()
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
@@ -1266,19 +1266,20 @@ class PlaybackResolver private constructor(private val context: Context) {
                 return@withContext resolved
             }
 
-            val reason = errors.firstOrNull { it.startsWith("LevyraExtractor:") }
-                ?: errors.firstOrNull {
+            val failures = synchronized(errors) { errors.toList() }
+            val reason = failures.firstOrNull { it.startsWith("LevyraExtractor:") }
+                ?: failures.firstOrNull {
                     it.contains("age", true) ||
                         it.contains("anonymous", true) ||
                         it.contains("login", true) ||
                         it.contains("accedi", true)
                 }
-                ?: errors.firstOrNull()
+                ?: failures.firstOrNull()
                 ?: "Stream non disponibile"
             Timber.w(
                 "audio resolve failed offlineExport=false policyRevision=%d errors=%s",
                 playbackPolicyStore.current().revision,
-                errors.joinToString(" | ").take(900)
+                failures.joinToString(" | ").take(900)
             )
             throw PlaybackBlockedException(reason)
         }

@@ -111,6 +111,31 @@ class AdaptiveYoutubeRescueTest {
     }
 
     @Test
+    fun blockingDirectAttemptCannotOutliveItsBudget() = runBlocking {
+        val health = FakeHealth(ByeDpiHealthState.HEALTHY)
+        val rescue = AdaptiveYoutubeRescue(
+            health = health,
+            resolutionBudgetMs = 50L,
+            recoveryProbeBudgetMs = 50L
+        )
+        val startedAt = System.nanoTime()
+
+        val result = rescue.resolve(
+            byeDpiEnabled = true,
+            direct = {
+                Thread.sleep(2_000L)
+                "late"
+            },
+            piped = { null }
+        )
+
+        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000L
+        assertNull(result)
+        assertTrue("elapsed=$elapsedMs", elapsedMs < 1_000L)
+        assertTrue(health.failures.contains(ByeDpiFailureKind.TIMEOUT))
+    }
+
+    @Test
     fun pipedFailureNeverStartsDirectMoreThanOnce() = runBlocking {
         val health = FakeHealth(ByeDpiHealthState.HEALTHY)
         val directCalls = AtomicInteger(0)

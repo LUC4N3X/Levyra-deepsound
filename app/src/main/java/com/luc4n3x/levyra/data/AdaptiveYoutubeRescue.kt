@@ -5,6 +5,11 @@ import com.luc4n3x.levyra.data.network.byedpi.ByeDpiHealthPolicy
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiHealthState
 import com.luc4n3x.levyra.data.network.byedpi.ByeDpiSupervisor
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal interface ByeDpiHealthGateway {
@@ -24,7 +29,8 @@ internal object SupervisorByeDpiHealthGateway : ByeDpiHealthGateway {
 internal class AdaptiveYoutubeRescue(
     private val health: ByeDpiHealthGateway = SupervisorByeDpiHealthGateway,
     private val resolutionBudgetMs: Long = ByeDpiHealthPolicy.RESOLUTION_BUDGET_MS,
-    private val recoveryProbeBudgetMs: Long = ByeDpiHealthPolicy.RECOVERY_PROBE_BUDGET_MS
+    private val recoveryProbeBudgetMs: Long = ByeDpiHealthPolicy.RECOVERY_PROBE_BUDGET_MS,
+    private val directScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) {
     private data class DirectAttempt<T>(val value: T?)
 
@@ -55,20 +61,24 @@ internal class AdaptiveYoutubeRescue(
         direct: suspend () -> T?
     ): DirectAttempt<T> {
         val startedAt = System.nanoTime()
-        val attempt = withTimeoutOrNull(budgetMs) {
-            val value = direct()
-            val latencyMs = elapsedMs(startedAt)
-            if (value == null) {
-                health.recordFailure(ByeDpiFailureKind.RESOLUTION)
-            } else {
-                health.recordSuccess(latencyMs)
-            }
-            DirectAttempt(value)
+        val pending = directScope.async { direct() }
+        val attempt = try {
+            withTimeoutOrNull(budgetMs) { DirectAttempt(pending.await()) }
+        } catch (cancellation: CancellationException) {
+            pending.cancel()
+            throw cancellation
         }
-        return if (attempt == null) {
+        if (attempt == null) {
+            pending.cancel()
             health.recordFailure(ByeDpiFailureKind.TIMEOUT)
-            DirectAttempt(null)
-        } else attempt
+            return DirectAttempt(null)
+        }
+        if (attempt.value == null) {
+            health.recordFailure(ByeDpiFailureKind.RESOLUTION)
+        } else {
+            health.recordSuccess(elapsedMs(startedAt))
+        }
+        return attempt
     }
 
     private fun elapsedMs(startedAtNanos: Long): Long =
