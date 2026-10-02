@@ -144,6 +144,8 @@ class PlaylistImportController(
     private val trackCache = HashMap<String, Track>()
 
     fun open(prefill: String? = null) {
+        val current = _state.value
+        if (current.committedPlaylistId != null && !current.busy) reset(keepVisible = true)
         _state.update { it.copy(visible = true) }
         refreshResumable()
         if (prefill != null && !_state.value.busy) {
@@ -408,6 +410,12 @@ class PlaylistImportController(
         val id = _state.value.committedPlaylistId ?: return
         gateway.openPlaylist(id)
         finish()
+    }
+
+    fun importAnother() {
+        if (_state.value.step != PlaylistImportStep.SUMMARY) return
+        reset(keepVisible = true)
+        refreshResumable()
     }
 
     fun fixMissing() {
