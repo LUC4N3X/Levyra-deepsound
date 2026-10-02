@@ -339,7 +339,7 @@ class PlaylistImportController(
                 }
             } catch (error: CancellationException) {
                 throw error
-            } catch (error: IOException) {
+            } catch (error: Exception) {
                 Timber.w(error, "Manual playlist import search failed")
                 emptyList()
             }
