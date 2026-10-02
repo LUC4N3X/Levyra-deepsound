@@ -3,8 +3,11 @@ package com.luc4n3x.levyra.data.playlistimport
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.SearchPage
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin
 import com.luc4n3x.levyra.nexus.playlistimport.ImportedTrackIdentity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -106,5 +109,67 @@ class PlaylistImportCatalogEdgeCaseTest {
             "A high-confidence Songs match beyond position eight must not be discarded",
             candidates.any { it.candidate.id == "correct_ninth" }
         )
+    }
+
+    @Test
+    fun songsRuntimeFailureDoesNotDiscardMixedSearchResults() = runBlocking {
+        val mixedTrack = track("mixed_survives", "Alive", "Pearl Jam")
+        val repository = object : YoutubeMusicRepository(null) {
+            override suspend fun searchSongsPage(
+                query: String,
+                languageCode: String,
+                continuation: String
+            ): SearchPage<Track> = throw IllegalStateException("Malformed Songs response")
+
+            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> = listOf(mixedTrack)
+        }
+        val catalog = PlaylistImportCatalog(repository, localTracks = { emptyList() }, languageCode = { "en" })
+
+        val results = catalog.search("Alive Pearl Jam", CandidateOrigin.ONLINE)
+
+        assertEquals(listOf("mixed_survives"), results.map { it.candidate.id })
+    }
+
+    @Test
+    fun mixedRuntimeFailureDoesNotDiscardSongsSearchResults() = runBlocking {
+        val songTrack = track("song_survives", "Everlong", "Foo Fighters")
+        val repository = object : YoutubeMusicRepository(null) {
+            override suspend fun searchSongsPage(
+                query: String,
+                languageCode: String,
+                continuation: String
+            ): SearchPage<Track> = SearchPage(items = listOf(songTrack), continuation = "")
+
+            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> =
+                throw IllegalArgumentException("Malformed mixed response")
+        }
+        val catalog = PlaylistImportCatalog(repository, localTracks = { emptyList() }, languageCode = { "en" })
+
+        val results = catalog.search("Everlong Foo Fighters", CandidateOrigin.ONLINE)
+
+        assertEquals(listOf("song_survives"), results.map { it.candidate.id })
+    }
+
+    @Test
+    fun onlineSearchStillPropagatesCancellation() = runBlocking {
+        val repository = object : YoutubeMusicRepository(null) {
+            override suspend fun searchSongsPage(
+                query: String,
+                languageCode: String,
+                continuation: String
+            ): SearchPage<Track> = throw CancellationException("cancelled")
+
+            override suspend fun search(query: String, limit: Int, languageCode: String): List<Track> = emptyList()
+        }
+        val catalog = PlaylistImportCatalog(repository, localTracks = { emptyList() }, languageCode = { "en" })
+        var propagated = false
+
+        try {
+            catalog.search("Cancelled Search", CandidateOrigin.ONLINE)
+        } catch (_: CancellationException) {
+            propagated = true
+        }
+
+        assertTrue("CancellationException must not be swallowed by branch isolation", propagated)
     }
 }
