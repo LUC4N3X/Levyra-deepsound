@@ -1,9 +1,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-banner-light.webp?v=samsung-night-20261002">
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-github-banner.webp?v=samsung-night-20261002">
-  <img src="docs/assets/levyra-github-banner.webp?v=samsung-night-20261002" alt="Levyra" width="100%">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-banner-light.webp?v=samsung-terrace-20261002-v2">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-github-banner.webp?v=samsung-terrace-20261002-v2">
+  <img src="docs/assets/levyra-github-banner.webp?v=samsung-terrace-20261002-v2" alt="Levyra" width="100%">
 </picture>
 
 # Levyra
@@ -112,7 +112,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 <div align="center">
 
-<a href="docs/assets/showcase/00_levyra_hero_wall_player.webp"><img src="docs/assets/showcase/00_levyra_hero_wall_player.webp?v=neon-1774x887" width="100%" alt="Levyra music player for Android and Windows" /></a>
+<a href="docs/assets/showcase/00_levyra_hero_wall_player.webp"><img src="docs/assets/showcase/00_levyra_hero_wall_player.webp?v=studio-dance-20261002" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <p align="center">
   <sub>Browse radio and charts, open an artist, switch to video or follow synced lyrics. Your listening stats stay on your device.</sub>
