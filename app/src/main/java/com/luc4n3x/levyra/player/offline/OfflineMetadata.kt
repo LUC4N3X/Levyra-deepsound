@@ -102,11 +102,50 @@ internal fun Track.offlineSourceUrl(): String = videoUrl
 internal fun cachedLyricsText(payload: String): String {
     if (payload.isBlank()) return ""
     return runCatching {
-        val lines = JSONObject(payload).optJSONArray("lines") ?: JSONArray()
-        (0 until lines.length())
-            .mapNotNull { index -> lines.optJSONObject(index)?.cachedLyricTextOrNull() }
-            .joinToString("\n")
+        val root = JSONObject(payload)
+        val lines = root.optJSONArray("lines") ?: JSONArray()
+        val lyricLines = (0 until lines.length())
+            .mapNotNull { index ->
+                lines.optJSONObject(index)?.let { line ->
+                    line.cachedLyricTextOrNull()?.let { text -> line to text }
+                }
+            }
+        val includeTimestamps = root.optBoolean("synced") &&
+            lyricLines.all { (line, _) -> line.optLong("startMs", -1L) >= 0L }
+        lyricLines.joinToString("\n") { (line, text) ->
+            if (includeTimestamps) "${lrcTimestamp(line.optLong("startMs"))}$text" else text
+        }
     }.getOrDefault("")
+}
+
+internal suspend fun cachedOrFetchedLyricsText(
+    cachedPayload: String?,
+    fetchPayload: suspend () -> String?
+): String {
+    if (cachedPayload == null) return fetchPayload()?.let(::cachedLyricsText).orEmpty()
+    val cachedText = cachedLyricsText(cachedPayload)
+    if (cachedText.isBlank() || cachedLyricsHaveCompleteTiming(cachedPayload)) return cachedText
+    val fetchedPayload = fetchPayload() ?: return cachedText
+    return if (cachedLyricsHaveCompleteTiming(fetchedPayload)) cachedLyricsText(fetchedPayload) else cachedText
+}
+
+private fun cachedLyricsHaveCompleteTiming(payload: String): Boolean = runCatching {
+    val root = JSONObject(payload)
+    if (!root.optBoolean("synced")) return@runCatching false
+    val lines = root.optJSONArray("lines") ?: return@runCatching false
+    val lyricLines = (0 until lines.length()).mapNotNull { index ->
+        lines.optJSONObject(index)?.takeIf { it.cachedLyricTextOrNull() != null }
+    }
+    lyricLines.isNotEmpty() && lyricLines.all { it.optLong("startMs", -1L) >= 0L }
+}.getOrDefault(false)
+
+private fun lrcTimestamp(positionMs: Long): String {
+    val centiseconds = positionMs.coerceAtLeast(0L) / 10L
+    val minutes = centiseconds / 6_000L
+    val seconds = centiseconds % 6_000L / 100L
+    val fraction = centiseconds % 100L
+    return "[${minutes.toString().padStart(2, '0')}:" +
+        "${seconds.toString().padStart(2, '0')}.${fraction.toString().padStart(2, '0')}]"
 }
 
 private fun JSONObject.cachedLyricTextOrNull(): String? {

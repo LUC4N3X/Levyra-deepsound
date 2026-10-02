@@ -13,6 +13,7 @@ import androidx.annotation.RequiresApi
 import androidx.media3.datasource.cache.CacheSpan
 import com.luc4n3x.levyra.data.DownloadFolderAccess
 import com.luc4n3x.levyra.data.LyricsMatcher
+import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.YoutubeStreamCapability
@@ -39,9 +40,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -68,6 +71,7 @@ internal const val DEFAULT_PARALLEL_RANGE_CHUNK_BYTES = 2L * 1024L * 1024L
 internal const val MIN_PARALLEL_AUDIO_BYTES = 2L * 1024L * 1024L
 internal const val FAST_METADATA_EMBED_MAX_BYTES = 32L * 1024L * 1024L
 internal const val FAST_METADATA_EMBED_MAX_DURATION_MS = 20L * 60L * 1000L
+private const val EMBEDDED_LYRICS_FETCH_TIMEOUT_MS = 8_000L
 private const val RANGE_ALIGNMENT_BYTES = 256L * 1024L
 internal const val DEFAULT_STREAM_USER_AGENT =
     "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36"
@@ -443,6 +447,7 @@ class OfflineAudioExporter(
 ) {
     private val rateLimiter = DownloadRateLimiter(settings.effectiveRateKbps)
     private val appleMetadataEnricher = AppleMetadataEnricher(context)
+    private val lyricsRepository = LyricsRepository(context)
     val embeddedMetadataWriterReady: Boolean
         get() = LevyraM4aTagWriter.isAvailable
 
@@ -481,7 +486,7 @@ class OfflineAudioExporter(
         val metadataSeed = metadataTrack
         val prepareMetadata = settings.embedMetadata && (metadataSeed.durationMs <= 0L || metadataSeed.durationMs <= FAST_METADATA_EMBED_MAX_DURATION_MS)
         val artworkDeferred = if (prepareMetadata && settings.embedArtwork) async(Dispatchers.IO) { downloadArtwork(metadataSeed) } else null
-        val lyricsDeferred = if (prepareMetadata) async(Dispatchers.IO) { loadCachedLyrics(metadataSeed) } else null
+        val lyricsDeferred = if (prepareMetadata) async(Dispatchers.IO) { loadLyricsForMetadata(metadataSeed) } else null
         try {
             val downloaded = runCatching {
                 downloadAudio(playable, workspace)
@@ -1223,24 +1228,45 @@ class OfflineAudioExporter(
         }
     }
 
-    private suspend fun loadCachedLyrics(track: Track): String {
+    private suspend fun loadLyricsForMetadata(track: Track): String {
         if (track.title.isBlank()) return ""
         val durationBucket = (track.durationMs.coerceAtLeast(0L) / 1000L) / 5L
-        val entity = try {
+        val cachedPayload = try {
             LevyraDatabase.get(context).lyricsCacheDao().findBestPositiveForOffline(
                 titleKey = LyricsMatcher.normalize(track.title),
                 artistKey = LyricsMatcher.normalize(track.artist),
                 durationBucket = durationBucket,
                 minimumDurationBucket = (durationBucket - 1L).coerceAtLeast(0L),
                 maximumDurationBucket = durationBucket + 1L
-            )
+            )?.payload
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             Timber.w(error, "Cached lyrics lookup failed")
             null
-        } ?: return ""
-        return cachedLyricsText(entity.payload)
+        }
+        return cachedOrFetchedLyricsText(cachedPayload) { fetchLyricsPayload(track) }
+    }
+
+    private suspend fun fetchLyricsPayload(track: Track): String? {
+        var latest: LyricsRepository.LyricsResult? = null
+        try {
+            withTimeoutOrNull(EMBEDDED_LYRICS_FETCH_TIMEOUT_MS) {
+                lyricsRepository.observe(
+                    title = track.title,
+                    artist = track.artist,
+                    durationSec = track.durationMs.coerceAtLeast(0L) / 1_000L,
+                    album = track.album,
+                    videoId = PlaybackSourceIdentity.sourceVideoId(track),
+                    forceRefresh = true
+                ).collect { latest = it }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "Lyrics lookup for offline metadata failed")
+        }
+        return latest?.let(lyricsRepository::serializeResult)
     }
 
     private fun needsAppleMetadataEnrichment(track: Track): Boolean {

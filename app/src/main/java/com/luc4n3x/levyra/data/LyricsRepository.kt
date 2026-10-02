@@ -150,14 +150,15 @@ class LyricsRepository(context: Context? = null) {
         album: String = "",
         videoId: String = "",
         languageCode: String = "",
-        translate: Boolean = false
+        translate: Boolean = false,
+        forceRefresh: Boolean = false
     ): Flow<LyricsResult> = channelFlow {
         val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return@channelFlow
         if (emitSelectedResult(query) { send(it) }) return@channelFlow
         val (cached, restored) = restoreCachedResult(query) { send(it) }
         var current = restored
         if (cached.negative) return@channelFlow
-        if (!cached.refreshRequired) return@channelFlow
+        if (!cached.refreshRequired && !forceRefresh) return@channelFlow
 
         val outcome = fetchNetworkProgressive(query) { candidate ->
             val previous = current

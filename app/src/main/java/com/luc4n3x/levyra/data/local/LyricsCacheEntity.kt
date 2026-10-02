@@ -60,7 +60,7 @@ interface LyricsCacheDao {
         translate: Boolean
     ): LyricsCacheEntity?
 
-    @Query("SELECT * FROM lyrics_cache WHERE negative = 0 AND titleKey = :titleKey AND artistKey = :artistKey AND durationBucket BETWEEN :minimumDurationBucket AND :maximumDurationBucket ORDER BY translate ASC, ABS(durationBucket - :durationBucket) ASC, confidence DESC, updatedAt DESC LIMIT 1")
+    @Query("SELECT * FROM lyrics_cache WHERE negative = 0 AND titleKey = :titleKey AND artistKey = :artistKey AND durationBucket BETWEEN :minimumDurationBucket AND :maximumDurationBucket ORDER BY synced DESC, translate ASC, ABS(durationBucket - :durationBucket) ASC, confidence DESC, updatedAt DESC LIMIT 1")
     suspend fun findBestPositiveForOffline(
         titleKey: String,
         artistKey: String,
