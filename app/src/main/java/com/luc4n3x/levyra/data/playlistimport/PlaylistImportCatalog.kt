@@ -7,8 +7,11 @@ import com.luc4n3x.levyra.nexus.playlistimport.CandidateKind
 import com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin
 import com.luc4n3x.levyra.nexus.playlistimport.ImportedTrackIdentity
 import com.luc4n3x.levyra.nexus.playlistimport.MatchCandidate
+import com.luc4n3x.levyra.nexus.playlistimport.PlaylistMatchEngine
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -29,6 +32,55 @@ interface PlaylistCandidateProvider {
 
 internal const val LOCAL_TRACK_PREFIX = "local:"
 private val youtubeVideoId = Regex("^[A-Za-z0-9_-]{11}$")
+
+internal fun trackKindRank(track: Track): Int {
+    val type = track.videoType.uppercase()
+    return when {
+        "ATV" in type -> 0
+        "OMV" in type -> 1
+        "UGC" in type -> 3
+        else -> 2
+    }
+}
+
+internal fun combineOnlineSearchResults(songs: List<Track>, mixed: List<Track>, limit: Int): List<Track> {
+    if (songs.isEmpty()) return mixed.distinctBy { it.id }.take(limit)
+    if (mixed.isEmpty()) return songs.distinctBy { it.id }.take(limit)
+
+    val result = ArrayList<Track>(limit)
+    val seenIds = HashSet<String>()
+
+    fun addTrack(track: Track): Boolean {
+        if (result.size >= limit) return false
+        if (seenIds.add(track.id)) {
+            result.add(track)
+            return true
+        }
+        return false
+    }
+
+    mixed.firstOrNull()?.let { addTrack(it) }
+
+    val mixedHighRelevance = mixed.filter { trackKindRank(it) <= 1 }
+    val songsIter = songs.iterator()
+    val mixedIter = mixedHighRelevance.iterator()
+    while (result.size < limit && (songsIter.hasNext() || mixedIter.hasNext())) {
+        if (songsIter.hasNext()) addTrack(songsIter.next())
+        if (mixedIter.hasNext()) addTrack(mixedIter.next())
+    }
+
+    for (song in songs) {
+        if (result.size >= limit) break
+        addTrack(song)
+    }
+
+    for (m in mixed) {
+        if (result.size >= limit) break
+        addTrack(m)
+    }
+
+    return result
+}
 
 internal fun Track.toMatchCandidate(): CatalogCandidate {
     val local = id.startsWith(LOCAL_TRACK_PREFIX) || streamUrl.startsWith("content://")
@@ -99,15 +151,18 @@ class PlaylistImportCatalog(
 
     override suspend fun candidates(identity: ImportedTrackIdentity, broad: Boolean): List<CatalogCandidate> {
         val title = MusicIdentityText.title(identity.title)
-        val primary = identity.primaryArtist
-        val query = if (broad) {
-            listOf(title.core, primary.substringBefore(',').trim()).filter(String::isNotBlank).joinToString(" ")
-                .takeIf { it.length >= 2 && it != identity.title } ?: title.core
+        val cleanTitle = title.core
+        val cleanPrimary = identity.primaryArtist.substringBefore(',').trim()
+        val local = localMatches(cleanTitle)
+
+        val online = if (broad) {
+            val query = listOf(cleanTitle, cleanPrimary).filter(String::isNotBlank).joinToString(" ")
+                .takeIf { it.length >= 2 && it != identity.title } ?: cleanTitle
+            if (query.length >= 2) onlineSearch(query, 12) else emptyList()
         } else {
-            listOf(identity.title, primary).filter(String::isNotBlank).joinToString(" ")
+            resolveCandidatesAdaptive(identity, cleanTitle, cleanPrimary)
         }
-        val local = localMatches(title.core)
-        val online = if (query.length >= 2) onlineSearch(query, if (broad) 12 else 8) else emptyList()
+
         return (local + online).distinctBy { it.id }.map { it.toMatchCandidate() }
     }
 
@@ -127,12 +182,54 @@ class PlaylistImportCatalog(
         }
     }
 
-    private suspend fun onlineSearch(query: String, limit: Int): List<Track> {
+    internal suspend fun onlineSearch(query: String, limit: Int): List<Track> {
+        val cleanQuery = query.trim()
+        if (cleanQuery.length < 2) return emptyList()
         val language = languageCode()
-        val songs = retrying { repository.searchSongsPage(query, language).items }
-        if (songs.size >= 3) return songs.take(limit)
-        val mixed = retrying { repository.search(query, limit, language) }
-        return (songs + mixed).distinctBy { it.id }.take(limit)
+        return coroutineScope {
+            val songsDeferred = async { retrying { repository.searchSongsPage(cleanQuery, language).items } }
+            val mixedDeferred = async { retrying { repository.search(cleanQuery, limit, language) } }
+            val songs = songsDeferred.await()
+            val mixed = mixedDeferred.await()
+            combineOnlineSearchResults(songs, mixed, limit)
+        }
+    }
+
+    private suspend fun resolveCandidatesAdaptive(
+        identity: ImportedTrackIdentity,
+        cleanTitle: String,
+        cleanPrimary: String
+    ): List<Track> {
+        val language = languageCode()
+        val primary = identity.primaryArtist
+        val preciseQuery = listOf(identity.title, primary).filter(String::isNotBlank).joinToString(" ")
+        if (preciseQuery.length < 2) return emptyList()
+
+        val songs = retrying { repository.searchSongsPage(preciseQuery, language).items }
+        val hasGoodSongMatch = songs.any { track ->
+            PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).confidence.autoAccepted
+        }
+        if (hasGoodSongMatch) {
+            return songs.take(8)
+        }
+
+        val mixed = retrying { repository.search(preciseQuery, 8, language) }
+        val hasGoodMixedMatch = mixed.any { track ->
+            PlaylistMatchEngine.evaluate(identity, track.toMatchCandidate().candidate).confidence.autoAccepted
+        }
+        val firstPassCombined = combineOnlineSearchResults(songs, mixed, 8)
+        if (hasGoodMixedMatch) {
+            return firstPassCombined
+        }
+
+        val cleanQuery = listOf(cleanTitle, cleanPrimary).filter(String::isNotBlank).joinToString(" ")
+            .takeIf { it.length >= 2 && it != preciseQuery }
+        if (cleanQuery != null) {
+            val fallbackResults = onlineSearch(cleanQuery, 8)
+            return (firstPassCombined + fallbackResults).distinctBy { it.id }.take(8)
+        }
+
+        return firstPassCombined
     }
 
     private suspend fun <T> retrying(block: suspend () -> List<T>): List<T> {
