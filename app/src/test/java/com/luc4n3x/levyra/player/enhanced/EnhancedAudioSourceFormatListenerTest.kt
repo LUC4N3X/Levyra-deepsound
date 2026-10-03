@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.player.enhanced
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -65,6 +66,34 @@ class EnhancedAudioSourceFormatListenerTest {
         assertTrue(processor.isLosslessSource)
         listener.onAudioInputFormatChanged(eventTime, audioFormat(MimeTypes.AUDIO_AAC), null)
         assertFalse(processor.isLosslessSource)
+    }
+
+    @Test
+    fun sourceFormatChanges_notifyOnlyEffectiveLosslessChanges() {
+        val processor = EnhancedAudioProcessor()
+        val changes = mutableListOf<Boolean>()
+        val listener = EnhancedAudioSourceFormatListener(processor, "test", changes::add)
+
+        listener.onAudioInputFormatChanged(eventTime, audioFormat(MimeTypes.AUDIO_AAC), null)
+        listener.onAudioInputFormatChanged(eventTime, audioFormat(MimeTypes.AUDIO_FLAC), null)
+        listener.onAudioInputFormatChanged(eventTime, audioFormat(MimeTypes.AUDIO_FLAC), null)
+        listener.onMediaItemTransition(eventTime, null, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
+
+        assertEquals(listOf(true, false), changes)
+        assertFalse(processor.isLosslessSource)
+    }
+
+    @Test
+    fun repeatTransition_preservesKnownLosslessSource() {
+        val processor = EnhancedAudioProcessor()
+        val changes = mutableListOf<Boolean>()
+        val listener = EnhancedAudioSourceFormatListener(processor, "test", changes::add)
+        listener.onAudioInputFormatChanged(eventTime, audioFormat(MimeTypes.AUDIO_FLAC), null)
+
+        listener.onMediaItemTransition(eventTime, null, Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)
+
+        assertTrue(processor.isLosslessSource)
+        assertEquals(listOf(true), changes)
     }
 
     @Test
