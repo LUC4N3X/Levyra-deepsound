@@ -464,6 +464,34 @@ class LevyraStrings private constructor(
         "de" -> "Stellt bei verlustbehafteter Kompression verlorene Details wieder her und belässt den Originalstream unverändert."
         else -> "Restores detail lost during lossy compression while keeping the original stream untouched when enhancement is not beneficial."
     }
+    val audioEfficiencyTitle: String get() = when (code) {
+        "it" -> "Efficienza audio"
+        "es" -> "Eficiencia de audio"
+        "fr" -> "Efficacité audio"
+        "de" -> "Audio-Effizienz"
+        else -> "Audio efficiency"
+    }
+    val audioEfficiencySubtitle: String get() = when (code) {
+        "it" -> "Usa l'offload audio hardware quando il dispositivo e le impostazioni audio attuali lo supportano."
+        "es" -> "Usa la descarga de audio por hardware cuando tu dispositivo y los ajustes de audio actuales lo admiten."
+        "fr" -> "Utilise le déchargement audio matériel lorsque votre appareil et les réglages audio actuels le permettent."
+        "de" -> "Nutzt Hardware-Audio-Offload, wenn dein Gerät und die aktuellen Audioeinstellungen es unterstützen."
+        else -> "Use hardware audio offload when your device and current audio settings support it."
+    }
+    val audioEfficiencyAutomatic: String get() = when (code) {
+        "it" -> "Automatico"
+        "es" -> "Automático"
+        "fr" -> "Automatique"
+        "de" -> "Automatisch"
+        else -> "Automatic"
+    }
+    val audioEfficiencyOff: String get() = when (code) {
+        "it" -> "Disattivato"
+        "es" -> "Desactivado"
+        "fr" -> "Désactivé"
+        "de" -> "Aus"
+        else -> "Off"
+    }
     val audioSectionPlayback: String get() = value("audioSectionPlayback")
     val audioResetEqualizer: String get() = value("audioResetEqualizer")
     val audioPresetCustom: String get() = value("audioPresetCustom")
