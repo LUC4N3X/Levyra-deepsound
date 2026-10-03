@@ -77,11 +77,11 @@ internal fun normalizeExtractorPresentationTimeUs(
 }
 
 internal fun mapExtractorSampleFlagsToCodecFlags(sampleFlags: Int): Int {
-    var codecFlags = 0
-    if ((sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
-        codecFlags = codecFlags or MediaCodec.BUFFER_FLAG_KEY_FRAME
+    return if (sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) {
+        MediaCodec.BUFFER_FLAG_KEY_FRAME
+    } else {
+        0
     }
-    return codecFlags
 }
 
 internal object OfflineAudioTrackExtractor {
