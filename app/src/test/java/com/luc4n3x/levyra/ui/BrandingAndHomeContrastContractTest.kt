@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -46,6 +47,24 @@ class BrandingAndHomeContrastContractTest {
         )
         assertTrue(headerScrim.contains("if (isLight) 0.94f else 0.78f"))
         assertTrue(headerScrim.contains("if (isLight) 0.78f else 0.52f"))
+    }
+
+    @Test
+    fun `home greeting wraps instead of truncating long names or translations`() {
+        val greetingBar = functionBlock("private fun GreetingBar(")
+
+        assertTrue(greetingBar.contains("softWrap = true"))
+        assertTrue(greetingBar.contains("modifier = Modifier.fillMaxWidth()"))
+        assertFalse(greetingBar.contains("overflow = TextOverflow.Ellipsis"))
+    }
+
+    @Test
+    fun `compact Levyra emblem is optically enlarged inside its header tile`() {
+        val logoMark = functionBlock("private fun LevyraLogoMark(")
+
+        assertTrue(logoMark.contains(".fillMaxSize()"))
+        assertTrue(logoMark.contains("scaleX = 1.45f"))
+        assertTrue(logoMark.contains("scaleY = 1.45f"))
     }
 
     private fun functionBlock(signature: String): String {
