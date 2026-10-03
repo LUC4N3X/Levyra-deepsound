@@ -23,13 +23,22 @@ class AudioOffloadPolicyTest {
 
     private fun decide(
         settings: LevyraAudioSettings = plainSettings,
+        enhancedAudioRequiresPcmProcessing: Boolean = settings.enhancedAudioEnabled,
         audioNormalization: Boolean = false,
         speed: Float = 1f,
         pitch: Float = 1f,
         skipSilence: Boolean = false,
         aaudioSupported: Boolean = true
     ): AudioOffloadDecision = AudioOffloadPolicy.decide(
-        AudioOffloadInputs.from(settings, audioNormalization, speed, pitch, skipSilence, aaudioSupported)
+        AudioOffloadInputs.from(
+            settings,
+            enhancedAudioRequiresPcmProcessing,
+            audioNormalization,
+            speed,
+            pitch,
+            skipSilence,
+            aaudioSupported
+        )
     )
 
     @Test
@@ -108,6 +117,30 @@ class AudioOffloadPolicyTest {
         assertEquals(setOf(AudioOffloadBlocker.DSP), decide(settings = plainSettings.copy(enhancedAudioEnabled = true)).blockers)
         assertTrue(
             decide(settings = plainSettings.copy(parametricEqualizerEnabled = true, activeParametricProfile = null)).allowed
+        )
+    }
+
+    @Test
+    fun enhancedAudioLosslessBypass_doesNotRequirePcmProcessing() {
+        val enhancedAudio = plainSettings.copy(enhancedAudioEnabled = true)
+
+        assertTrue(decide(settings = enhancedAudio, enhancedAudioRequiresPcmProcessing = false).allowed)
+        assertEquals(
+            setOf(AudioOffloadBlocker.DSP),
+            decide(
+                settings = enhancedAudio.copy(equalizerEnabled = true),
+                enhancedAudioRequiresPcmProcessing = false
+            ).blockers
+        )
+    }
+
+    @Test
+    fun enhancedAudioUnknownOrLossySource_requiresPcmProcessing() {
+        val enhancedAudio = plainSettings.copy(enhancedAudioEnabled = true)
+
+        assertEquals(
+            setOf(AudioOffloadBlocker.DSP),
+            decide(settings = enhancedAudio, enhancedAudioRequiresPcmProcessing = true).blockers
         )
     }
 

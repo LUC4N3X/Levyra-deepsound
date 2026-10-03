@@ -1,7 +1,9 @@
 package com.luc4n3x.levyra.player.enhanced
 
 import androidx.media3.common.Format
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -16,15 +18,30 @@ internal fun isLosslessAudioMimeType(mimeType: String?): Boolean = when (mimeTyp
 @UnstableApi
 internal class EnhancedAudioSourceFormatListener(
     private val processor: EnhancedAudioProcessor,
-    private val label: String
+    private val label: String,
+    private val onLosslessSourceChanged: (Boolean) -> Unit = {}
 ) : AnalyticsListener {
+    private fun updateLosslessSource(lossless: Boolean) {
+        if (processor.isLosslessSource == lossless) return
+        processor.isLosslessSource = lossless
+        onLosslessSourceChanged(lossless)
+    }
+
+    override fun onMediaItemTransition(
+        eventTime: AnalyticsListener.EventTime,
+        mediaItem: MediaItem?,
+        reason: Int
+    ) {
+        if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) updateLosslessSource(false)
+    }
+
     override fun onAudioInputFormatChanged(
         eventTime: AnalyticsListener.EventTime,
         format: Format,
         decoderReuseEvaluation: DecoderReuseEvaluation?
     ) {
         val lossless = isLosslessAudioMimeType(format.sampleMimeType)
-        processor.isLosslessSource = lossless
+        updateLosslessSource(lossless)
         Timber.d(
             "AUDIO_SOURCE_FORMAT player=%s mime=%s codecs=%s sampleRate=%d channels=%d pcmEncoding=%d lossless=%s",
             label,
