@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.player
 import androidx.media3.common.C
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences
+import androidx.media3.common.audio.AudioProcessor
 import com.luc4n3x.levyra.data.backupAudioSettingsFromJson
 import com.luc4n3x.levyra.data.backupAudioSettingsToJson
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
@@ -13,6 +14,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class AudioOffloadPolicyTest {
 
@@ -23,9 +26,10 @@ class AudioOffloadPolicyTest {
         audioNormalization: Boolean = false,
         speed: Float = 1f,
         pitch: Float = 1f,
-        skipSilence: Boolean = false
+        skipSilence: Boolean = false,
+        aaudioSupported: Boolean = true
     ): AudioOffloadDecision = AudioOffloadPolicy.decide(
-        AudioOffloadInputs.from(settings, audioNormalization, speed, pitch, skipSilence)
+        AudioOffloadInputs.from(settings, audioNormalization, speed, pitch, skipSilence, aaudioSupported)
     )
 
     @Test
@@ -45,6 +49,42 @@ class AudioOffloadPolicyTest {
     fun preferenceOff_blocksOffload() {
         val decision = decide(settings = plainSettings.copy(audioOffloadPreference = AudioOffloadPreference.OFF))
         assertEquals(setOf(AudioOffloadBlocker.PREFERENCE_OFF), decision.blockers)
+    }
+
+    @Test
+    fun supportedAaudioOutput_blocksAndReleasesWithoutChangingPreference() {
+        val aaudio = plainSettings.copy(aaudioOutputEnabled = true)
+        assertEquals(setOf(AudioOffloadBlocker.AAUDIO_OUTPUT), decide(settings = aaudio).blockers)
+        assertEquals(AudioOffloadPreference.AUTOMATIC, aaudio.audioOffloadPreference)
+
+        assertTrue(decide(settings = aaudio.copy(aaudioOutputEnabled = false)).allowed)
+    }
+
+    @Test
+    fun unsupportedAaudioOutput_doesNotBlock() {
+        assertTrue(decide(settings = plainSettings.copy(aaudioOutputEnabled = true), aaudioSupported = false).allowed)
+    }
+
+    @Test
+    fun outputPath_isDerivedFromOffloadFlagAndEncoding() {
+        assertEquals(AudioOffloadOutput.OFFLOADED, audioOffloadOutputOf(offload = true, encoding = C.ENCODING_AAC_LC))
+        assertEquals(AudioOffloadOutput.PCM, audioOffloadOutputOf(offload = false, encoding = C.ENCODING_PCM_16BIT))
+        assertEquals(AudioOffloadOutput.PCM, audioOffloadOutputOf(offload = false, encoding = C.ENCODING_PCM_FLOAT))
+        assertEquals(AudioOffloadOutput.PASSTHROUGH, audioOffloadOutputOf(offload = false, encoding = C.ENCODING_E_AC3))
+    }
+
+    @Test
+    fun clearWaveform_emptiesSharedVisualizerState() {
+        val processor = VisualizerAudioProcessor()
+        processor.configure(AudioProcessor.AudioFormat(44_100, 2, C.ENCODING_PCM_16BIT))
+        val pcm = ByteBuffer.allocateDirect(4_096).order(ByteOrder.LITTLE_ENDIAN)
+        while (pcm.remaining() >= 2) pcm.putShort(8_000)
+        pcm.flip()
+        processor.queueInput(pcm)
+        assertTrue(VisualizerAudioProcessor.waveformState.value.isNotEmpty())
+
+        VisualizerAudioProcessor.clearWaveform()
+        assertTrue(VisualizerAudioProcessor.waveformState.value.isEmpty())
     }
 
     @Test

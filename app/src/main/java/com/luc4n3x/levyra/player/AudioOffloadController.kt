@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player
 
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioSink
@@ -11,7 +12,14 @@ import timber.log.Timber
 internal enum class AudioOffloadOutput(val label: String) {
     NONE("none"),
     OFFLOADED("offloaded"),
-    SOFTWARE("software_pcm")
+    PCM("pcm"),
+    PASSTHROUGH("passthrough")
+}
+
+internal fun audioOffloadOutputOf(offload: Boolean, encoding: Int): AudioOffloadOutput = when {
+    offload -> AudioOffloadOutput.OFFLOADED
+    Util.isEncodingLinearPcm(encoding) -> AudioOffloadOutput.PCM
+    else -> AudioOffloadOutput.PASSTHROUGH
 }
 
 internal data class AudioOffloadState(
@@ -56,7 +64,8 @@ internal class AudioOffloadController(
         eventTime: AnalyticsListener.EventTime,
         audioTrackConfig: AudioSink.AudioTrackConfig
     ) {
-        val output = if (audioTrackConfig.offload) AudioOffloadOutput.OFFLOADED else AudioOffloadOutput.SOFTWARE
+        val output = audioOffloadOutputOf(audioTrackConfig.offload, audioTrackConfig.encoding)
+        if (output == AudioOffloadOutput.OFFLOADED) VisualizerAudioProcessor.clearWaveform()
         if (output != lastActiveOutput) {
             log("Audio output path ${lastActiveOutput.label} -> ${output.label}")
             lastActiveOutput = output

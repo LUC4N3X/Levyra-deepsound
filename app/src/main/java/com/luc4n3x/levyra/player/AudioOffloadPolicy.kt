@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 
 internal enum class AudioOffloadBlocker(val label: String) {
     PREFERENCE_OFF("preference_off"),
+    AAUDIO_OUTPUT("aaudio_output"),
     CROSSFADE("crossfade"),
     DSP("dsp"),
     NORMALIZATION("normalization"),
@@ -15,6 +16,7 @@ internal enum class AudioOffloadBlocker(val label: String) {
 
 internal data class AudioOffloadInputs(
     val preference: AudioOffloadPreference,
+    val aaudioOutputActive: Boolean,
     val crossfadeActive: Boolean,
     val dspActive: Boolean,
     val normalizationActive: Boolean,
@@ -29,12 +31,14 @@ internal data class AudioOffloadInputs(
             audioNormalization: Boolean,
             speed: Float,
             pitch: Float,
-            skipSilenceEnabled: Boolean
+            skipSilenceEnabled: Boolean,
+            aaudioOutputSupported: Boolean
         ): AudioOffloadInputs {
             val normalized = settings.normalized()
             val parametricActive = normalized.parametricEqualizerEnabled && normalized.activeParametricProfile != null
             return AudioOffloadInputs(
                 preference = normalized.audioOffloadPreference,
+                aaudioOutputActive = normalized.aaudioOutputEnabled && aaudioOutputSupported,
                 crossfadeActive = normalized.gaplessEnabled && normalized.crossfadeSeconds > 0,
                 dspActive = normalized.equalizerEnabled || parametricActive || normalized.enhancedAudioEnabled ||
                     truePeakLimiterRequired(normalized, parametricActive, audioNormalization),
@@ -59,6 +63,7 @@ internal object AudioOffloadPolicy {
     fun decide(inputs: AudioOffloadInputs): AudioOffloadDecision {
         val blockers = buildSet {
             if (inputs.preference == AudioOffloadPreference.OFF) add(AudioOffloadBlocker.PREFERENCE_OFF)
+            if (inputs.aaudioOutputActive) add(AudioOffloadBlocker.AAUDIO_OUTPUT)
             if (inputs.crossfadeActive) add(AudioOffloadBlocker.CROSSFADE)
             if (inputs.dspActive) add(AudioOffloadBlocker.DSP)
             if (inputs.normalizationActive) add(AudioOffloadBlocker.NORMALIZATION)

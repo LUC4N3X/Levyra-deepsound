@@ -521,7 +521,8 @@ class PlaybackService : MediaLibraryService() {
                 audioNormalization = currentAudioNormalization,
                 speed = parameters.speed,
                 pitch = parameters.pitch,
-                skipSilenceEnabled = player.skipSilenceEnabled
+                skipSilenceEnabled = player.skipSilenceEnabled,
+                aaudioOutputSupported = NativeAudioIntegration.isAaudioOutputSupported()
             )
         )
     }

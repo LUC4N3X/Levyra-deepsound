@@ -159,12 +159,12 @@ class PlaybackDiagnosticsTest {
         val blocked = PlaybackDiagnosticSnapshot(
             audioOffload = AudioOffloadState(
                 decision = AudioOffloadDecision(setOf(AudioOffloadBlocker.CROSSFADE, AudioOffloadBlocker.DSP)),
-                output = AudioOffloadOutput.SOFTWARE
+                output = AudioOffloadOutput.PCM
             )
         ).safeReport()
         assertTrue(blocked.contains("audio_offload_policy: blocked"))
         assertTrue(blocked.contains("audio_offload_blocked_by: crossfade, dsp"))
-        assertTrue(blocked.contains("audio_output_path: software_pcm"))
+        assertTrue(blocked.contains("audio_output_path: pcm"))
 
         val allowed = PlaybackDiagnosticSnapshot(
             audioOffload = AudioOffloadState(decision = AudioOffloadDecision(emptySet()))
