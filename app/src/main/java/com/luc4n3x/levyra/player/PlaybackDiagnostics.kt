@@ -9,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackStrategyCircuit
 import com.luc4n3x.levyra.data.PlaybackStrategyStats
 import com.luc4n3x.levyra.data.PlaybackClientCapabilities
@@ -104,6 +105,7 @@ internal data class PlaybackDiagnosticSnapshot(
     val durationMs: Long = 0L,
     val playbackSpeed: Float = 1f,
     val audioSessionId: Int? = null,
+    val audioOffload: AudioOffloadState = AudioOffloadState(),
     val audioFormat: PlaybackDiagnosticFormat? = null,
     val videoFormat: PlaybackDiagnosticFormat? = null,
     val cacheBytes: Long = 0L,
@@ -130,6 +132,11 @@ internal data class PlaybackDiagnosticSnapshot(
         "duration_ms" to durationMs.coerceAtLeast(0L).toString(),
         "speed" to String.format(Locale.ROOT, "%.2fx", playbackSpeed),
         "audio_session" to (audioSessionId?.toString() ?: DIAGNOSTIC_MISSING),
+        "audio_offload_preference" to audioOffload.preference.storageValue,
+        "audio_offload_policy" to (audioOffload.decision?.let { if (it.allowed) "allowed" else "blocked" } ?: DIAGNOSTIC_MISSING),
+        "audio_offload_blocked_by" to audioOffload.decision?.blockers.orEmpty()
+            .joinToString(", ") { it.label }.ifBlank { DIAGNOSTIC_MISSING },
+        "audio_output_path" to audioOffload.output.label,
         "error_code" to safeDiagnosticValue(playerErrorCode)
     )
 
@@ -252,6 +259,8 @@ internal class PlaybackDiagnosticsReader(context: Context) {
         val now = System.currentTimeMillis()
         return withContext(Dispatchers.IO) {
             val strategies = readStrategyHealth(playerState.videoMode, now)
+            val audioOffload = playerState.audioOffload.takeIf { it.decision != null }
+                ?: AudioOffloadState(preference = LevyraPreferences(appContext).audioSettings().audioOffloadPreference)
             val network = networkSnapshot()
             PlaybackDiagnosticSnapshot(
                 status = playbackDiagnosticStatus(
@@ -273,6 +282,7 @@ internal class PlaybackDiagnosticsReader(context: Context) {
                 durationMs = playerState.durationMs,
                 playbackSpeed = playerState.playbackSpeed,
                 audioSessionId = playerState.audioSessionId,
+                audioOffload = audioOffload,
                 audioFormat = playerState.audioFormat,
                 videoFormat = playerState.videoFormat,
                 cacheBytes = LevyraMediaCache.currentCacheSpace(),
@@ -314,6 +324,7 @@ internal class PlaybackDiagnosticsReader(context: Context) {
             durationMs = duration,
             playbackSpeed = player?.playbackParameters?.speed ?: 1f,
             audioSessionId = player?.audioSessionId?.takeIf { it > 0 },
+            audioOffload = PlaybackService.audioOffloadState,
             audioFormat = selected.firstOrNull { it.sampleMimeType?.startsWith("audio/") == true }?.toDiagnosticFormat(),
             videoFormat = selected.firstOrNull { it.sampleMimeType?.startsWith("video/") == true }?.toDiagnosticFormat(),
             playerErrorCode = player?.playerError?.errorCodeName.orEmpty(),
@@ -407,6 +418,7 @@ private data class PlayerDiagnosticState(
     val durationMs: Long,
     val playbackSpeed: Float,
     val audioSessionId: Int?,
+    val audioOffload: AudioOffloadState,
     val audioFormat: PlaybackDiagnosticFormat?,
     val videoFormat: PlaybackDiagnosticFormat?,
     val playerErrorCode: String,
