@@ -754,6 +754,13 @@ class OfflineAudioExporter(
         workspace: File
     ): File {
         reportProgress(83)
+        Timber.i(
+            "Offline audio extraction: api=%d container=%s mime=%s source=%d bytes",
+            Build.VERSION.SDK_INT,
+            container.extension,
+            container.mimeType,
+            source.length()
+        )
         val output = File(workspace, "audio-${System.nanoTime()}.${container.extension}")
         OfflineAudioTrackExtractor.extractAudioTrack(context, source, output)
         Timber.i("Offline audio track extracted: %d bytes", output.length())
