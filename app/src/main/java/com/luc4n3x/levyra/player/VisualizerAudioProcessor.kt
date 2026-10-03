@@ -16,6 +16,10 @@ class VisualizerAudioProcessor : AudioProcessor {
         private val _waveformState = MutableStateFlow(FloatArray(0))
         val waveformState: StateFlow<FloatArray> = _waveformState.asStateFlow()
         private const val BARS_COUNT = 60
+
+        fun clearWaveform() {
+            _waveformState.value = FloatArray(0)
+        }
     }
 
     private var isActive = false

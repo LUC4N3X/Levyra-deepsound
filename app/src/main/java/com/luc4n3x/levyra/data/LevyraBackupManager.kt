@@ -36,6 +36,7 @@ import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.isExcludableArtist
 import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.AudioOffloadPreference
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
@@ -1639,6 +1640,7 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
         value.customParametricProfiles.forEach { put(parametricProfileToJson(it)) }
     })
     .put("enhancedAudioEnabled", value.enhancedAudioEnabled)
+    .put("audioOffloadPreference", value.audioOffloadPreference.storageValue)
 
 internal fun backupAudioQualityFromJson(settings: JSONObject): String =
     LevyraAudioQuality.normalize(settings.optString("audioQuality"))
@@ -1692,7 +1694,8 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         parametricEqualizerEnabled = json.optBoolean("parametricEqualizerEnabled", false),
         activeParametricProfile = json.optJSONObject("activeParametricProfile")?.let(::parametricProfileFromJson),
         customParametricProfiles = customParametricProfiles,
-        enhancedAudioEnabled = json.optBoolean("enhancedAudioEnabled", true)
+        enhancedAudioEnabled = json.optBoolean("enhancedAudioEnabled", true),
+        audioOffloadPreference = AudioOffloadPreference.fromStorage(json.optString("audioOffloadPreference"))
     ).normalized()
 }
 
