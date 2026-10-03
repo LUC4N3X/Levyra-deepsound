@@ -13,6 +13,16 @@ enum class ReplayGainMode(val storageValue: String) {
     }
 }
 
+enum class AudioOffloadPreference(val storageValue: String) {
+    AUTOMATIC("automatic"),
+    OFF("off");
+
+    companion object {
+        fun fromStorage(value: String?): AudioOffloadPreference =
+            entries.firstOrNull { it.storageValue == value?.trim()?.lowercase() } ?: AUTOMATIC
+    }
+}
+
 data class ReplayGainMetadata(
     val trackGainDb: Float? = null,
     val albumGainDb: Float? = null,
@@ -75,7 +85,8 @@ data class LevyraAudioSettings(
     val parametricEqualizerEnabled: Boolean = false,
     val activeParametricProfile: ParametricEqProfile? = null,
     val customParametricProfiles: List<ParametricEqProfile> = emptyList(),
-    val enhancedAudioEnabled: Boolean = true
+    val enhancedAudioEnabled: Boolean = true,
+    val audioOffloadPreference: AudioOffloadPreference = AudioOffloadPreference.AUTOMATIC
 ) {
     val effectiveReplayGainMode: ReplayGainMode
         get() = if (replayGainMode == ReplayGainMode.OFF && replayGainEnabled) ReplayGainMode.SMART else replayGainMode
