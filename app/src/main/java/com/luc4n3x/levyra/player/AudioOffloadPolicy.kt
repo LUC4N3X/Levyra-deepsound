@@ -28,6 +28,7 @@ internal data class AudioOffloadInputs(
     companion object {
         fun from(
             settings: LevyraAudioSettings,
+            enhancedAudioRequiresPcmProcessing: Boolean,
             audioNormalization: Boolean,
             speed: Float,
             pitch: Float,
@@ -40,7 +41,7 @@ internal data class AudioOffloadInputs(
                 preference = normalized.audioOffloadPreference,
                 aaudioOutputActive = normalized.aaudioOutputEnabled && aaudioOutputSupported,
                 crossfadeActive = normalized.gaplessEnabled && normalized.crossfadeSeconds > 0,
-                dspActive = normalized.equalizerEnabled || parametricActive || normalized.enhancedAudioEnabled ||
+                dspActive = normalized.equalizerEnabled || parametricActive || enhancedAudioRequiresPcmProcessing ||
                     truePeakLimiterRequired(normalized, parametricActive, audioNormalization),
                 normalizationActive = audioNormalization || normalized.replayGainActive,
                 speed = speed,
