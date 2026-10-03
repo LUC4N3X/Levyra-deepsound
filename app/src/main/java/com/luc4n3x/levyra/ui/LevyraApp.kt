@@ -20846,7 +20846,12 @@ private fun LevyraLogoMark(size: Dp = 58.dp) {
                 painter = painterResource(id = R.drawable.levyra_logo),
                 contentDescription = "Logo Levyra",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = 1.45f
+                        scaleY = 1.45f
+                    }
             )
         }
     }
@@ -20915,8 +20920,8 @@ private fun GreetingBar(
                     fontSize = 12.5.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    softWrap = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
