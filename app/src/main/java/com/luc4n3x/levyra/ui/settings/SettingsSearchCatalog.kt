@@ -136,6 +136,7 @@ private fun MutableList<SettingsSearchEntry>.audioEntries(
     entry("audio.dj_soft", strings.djSoft, strings.audioSectionPlayback, "dj transition automix", categories.audio)
     entry("audio.gapless", strings.gapless, strings.audioSectionPlayback, "gapless seamless", categories.audio)
     entry("audio.preload", strings.preloadNextTrack, strings.preloadNextTrackSubtitle, "preload prefetch cache buffer", categories.audio)
+    entry("audio.efficiency", strings.audioEfficiencyTitle, strings.audioEfficiencySubtitle, "${strings.audioEfficiencyAutomatic} offload battery hardware efficiency power", categories.audio)
     if (aaudioOutputAvailable) {
         entry("audio.aaudio", strings.audioOutputAaudio, strings.audioOutputAaudioSubtitle, "aaudio latency output", categories.audio)
     }

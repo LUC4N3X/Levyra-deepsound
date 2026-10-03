@@ -150,6 +150,31 @@ class PlaybackDiagnosticsTest {
     }
 
     @Test
+    fun audioOffloadRowsSeparatePolicyFromActualOutput() {
+        val idle = PlaybackDiagnosticSnapshot().safeReport()
+        assertTrue(idle.contains("audio_offload_preference: automatic"))
+        assertTrue(idle.contains("audio_offload_policy: -"))
+        assertTrue(idle.contains("audio_output_path: none"))
+
+        val blocked = PlaybackDiagnosticSnapshot(
+            audioOffload = AudioOffloadState(
+                decision = AudioOffloadDecision(setOf(AudioOffloadBlocker.CROSSFADE, AudioOffloadBlocker.DSP)),
+                output = AudioOffloadOutput.SOFTWARE
+            )
+        ).safeReport()
+        assertTrue(blocked.contains("audio_offload_policy: blocked"))
+        assertTrue(blocked.contains("audio_offload_blocked_by: crossfade, dsp"))
+        assertTrue(blocked.contains("audio_output_path: software_pcm"))
+
+        val allowed = PlaybackDiagnosticSnapshot(
+            audioOffload = AudioOffloadState(decision = AudioOffloadDecision(emptySet()))
+        ).safeReport()
+        assertTrue(allowed.contains("audio_offload_policy: allowed"))
+        assertTrue(allowed.contains("audio_offload_blocked_by: -"))
+        assertTrue(allowed.contains("audio_output_path: none"))
+    }
+
+    @Test
     fun statusReflectsPlayerAndResolverHealth() {
         val now = 1_750_000_000_000L
         val healthy = PlaybackDiagnosticStrategy(

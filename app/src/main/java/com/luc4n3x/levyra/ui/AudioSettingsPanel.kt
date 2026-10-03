@@ -104,6 +104,7 @@ import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.ParametricEqProfile
+import com.luc4n3x.levyra.domain.AudioOffloadPreference
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
@@ -161,6 +162,7 @@ internal fun AudioSettingsPanel(
     onPreloadNextTrack: (Boolean) -> Unit,
     aaudioOutputAvailable: Boolean,
     onAaudioOutput: (Boolean) -> Unit,
+    onAudioOffloadPreference: (AudioOffloadPreference) -> Unit = {},
     onResetEqualizer: () -> Unit,
     onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
     onSaveAutoEqPreset: (String, AutoEqImporter.ImportedProfile) -> Unit,
@@ -521,6 +523,20 @@ internal fun AudioSettingsPanel(
                             onCheckedChange = onAaudioOutput
                         )
                     }
+                }
+                item {
+                    val automatic = audioSettings.audioOffloadPreference == AudioOffloadPreference.AUTOMATIC
+                    val mode = if (automatic) strings.audioEfficiencyAutomatic else strings.audioEfficiencyOff
+                    AudioToggleRow(
+                        title = strings.audioEfficiencyTitle,
+                        subtitle = "$mode · ${strings.audioEfficiencySubtitle}",
+                        checked = automatic,
+                        onCheckedChange = { enabled ->
+                            onAudioOffloadPreference(
+                                if (enabled) AudioOffloadPreference.AUTOMATIC else AudioOffloadPreference.OFF
+                            )
+                        }
+                    )
                 }
                 item {
                     AudioSliderRow(
