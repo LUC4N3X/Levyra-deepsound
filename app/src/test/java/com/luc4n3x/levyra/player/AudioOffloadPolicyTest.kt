@@ -73,11 +73,26 @@ class AudioOffloadPolicyTest {
 
     @Test
     fun normalizationAndReplayGain_blockBecauseGainIsPcmProcessing() {
-        assertEquals(setOf(AudioOffloadBlocker.NORMALIZATION), decide(audioNormalization = true).blockers)
+        val noLimiter = plainSettings.copy(limiterEnabled = false)
         assertEquals(
             setOf(AudioOffloadBlocker.NORMALIZATION),
-            decide(settings = plainSettings.withReplayGainMode(ReplayGainMode.TRACK)).blockers
+            decide(settings = noLimiter, audioNormalization = true).blockers
         )
+        assertEquals(
+            setOf(AudioOffloadBlocker.NORMALIZATION),
+            decide(settings = noLimiter.withReplayGainMode(ReplayGainMode.TRACK)).blockers
+        )
+        assertEquals(
+            setOf(AudioOffloadBlocker.DSP, AudioOffloadBlocker.NORMALIZATION),
+            decide(audioNormalization = true).blockers
+        )
+    }
+
+    @Test
+    fun requiredTruePeakLimiter_blocksAsDspEvenWithEqualizerOff() {
+        val virtualizerOnly = plainSettings.copy(virtualizer = 40)
+        assertEquals(setOf(AudioOffloadBlocker.DSP), decide(settings = virtualizerOnly).blockers)
+        assertTrue(decide(settings = virtualizerOnly.copy(limiterEnabled = false)).allowed)
     }
 
     @Test

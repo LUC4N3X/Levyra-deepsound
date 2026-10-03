@@ -525,17 +525,9 @@ internal fun AudioSettingsPanel(
                     }
                 }
                 item {
-                    val automatic = audioSettings.audioOffloadPreference == AudioOffloadPreference.AUTOMATIC
-                    val mode = if (automatic) strings.audioEfficiencyAutomatic else strings.audioEfficiencyOff
-                    AudioToggleRow(
-                        title = strings.audioEfficiencyTitle,
-                        subtitle = "$mode · ${strings.audioEfficiencySubtitle}",
-                        checked = automatic,
-                        onCheckedChange = { enabled ->
-                            onAudioOffloadPreference(
-                                if (enabled) AudioOffloadPreference.AUTOMATIC else AudioOffloadPreference.OFF
-                            )
-                        }
+                    AudioEfficiencyRow(
+                        preference = audioSettings.audioOffloadPreference,
+                        onPreference = onAudioOffloadPreference
                     )
                 }
                 item {
@@ -1465,6 +1457,24 @@ private fun AudioCardHeader(title: String, trailing: String) {
                 .weight(1f, fill = false)
         )
     }
+}
+
+@Composable
+private fun AudioEfficiencyRow(
+    preference: AudioOffloadPreference,
+    onPreference: (AudioOffloadPreference) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val automatic = preference == AudioOffloadPreference.AUTOMATIC
+    val mode = if (automatic) strings.audioEfficiencyAutomatic else strings.audioEfficiencyOff
+    AudioToggleRow(
+        title = strings.audioEfficiencyTitle,
+        subtitle = "$mode · ${strings.audioEfficiencySubtitle}",
+        checked = automatic,
+        onCheckedChange = { enabled ->
+            onPreference(if (enabled) AudioOffloadPreference.AUTOMATIC else AudioOffloadPreference.OFF)
+        }
+    )
 }
 
 @Composable

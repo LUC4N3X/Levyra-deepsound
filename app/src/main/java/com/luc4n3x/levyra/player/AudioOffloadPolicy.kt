@@ -36,7 +36,8 @@ internal data class AudioOffloadInputs(
             return AudioOffloadInputs(
                 preference = normalized.audioOffloadPreference,
                 crossfadeActive = normalized.gaplessEnabled && normalized.crossfadeSeconds > 0,
-                dspActive = normalized.equalizerEnabled || parametricActive || normalized.enhancedAudioEnabled,
+                dspActive = normalized.equalizerEnabled || parametricActive || normalized.enhancedAudioEnabled ||
+                    truePeakLimiterRequired(normalized, parametricActive, audioNormalization),
                 normalizationActive = audioNormalization || normalized.replayGainActive,
                 speed = speed,
                 pitch = pitch,

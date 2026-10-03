@@ -9,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackStrategyCircuit
 import com.luc4n3x.levyra.data.PlaybackStrategyStats
 import com.luc4n3x.levyra.data.PlaybackClientCapabilities
@@ -258,6 +259,8 @@ internal class PlaybackDiagnosticsReader(context: Context) {
         val now = System.currentTimeMillis()
         return withContext(Dispatchers.IO) {
             val strategies = readStrategyHealth(playerState.videoMode, now)
+            val audioOffload = playerState.audioOffload.takeIf { it.decision != null }
+                ?: AudioOffloadState(preference = LevyraPreferences(appContext).audioSettings().audioOffloadPreference)
             val network = networkSnapshot()
             PlaybackDiagnosticSnapshot(
                 status = playbackDiagnosticStatus(
@@ -279,7 +282,7 @@ internal class PlaybackDiagnosticsReader(context: Context) {
                 durationMs = playerState.durationMs,
                 playbackSpeed = playerState.playbackSpeed,
                 audioSessionId = playerState.audioSessionId,
-                audioOffload = playerState.audioOffload,
+                audioOffload = audioOffload,
                 audioFormat = playerState.audioFormat,
                 videoFormat = playerState.videoFormat,
                 cacheBytes = LevyraMediaCache.currentCacheSpace(),
