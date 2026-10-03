@@ -518,6 +518,8 @@ class PlaybackService : MediaLibraryService() {
             player,
             AudioOffloadInputs.from(
                 settings = currentAudioSettings,
+                enhancedAudioRequiresPcmProcessing = currentAudioSettings.enhancedAudioEnabled &&
+                    !enhancedAudioProcessor.isLosslessSource,
                 audioNormalization = currentAudioNormalization,
                 speed = parameters.speed,
                 pitch = parameters.pitch,
@@ -865,7 +867,11 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(stabilitySignals)
         player.addListener(loadControl)
         player.addAnalyticsListener(stabilitySignals)
-        player.addAnalyticsListener(EnhancedAudioSourceFormatListener(enhancedAudioProcessor, "primary"))
+        player.addAnalyticsListener(
+            EnhancedAudioSourceFormatListener(enhancedAudioProcessor, "primary") {
+                refreshAudioOffloadPolicy()
+            }
+        )
         player.addAnalyticsListener(audioOffloadController)
         RuntimeHooks.attachPlayer(player)
         RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
