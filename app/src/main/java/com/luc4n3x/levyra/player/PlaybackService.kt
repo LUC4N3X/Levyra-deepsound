@@ -174,6 +174,7 @@ class PlaybackService : MediaLibraryService() {
     private val limiterProcessor = TruePeakLimiterAudioProcessor()
     private val visualizerProcessor = VisualizerAudioProcessor()
     private val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
+    private val audioOffloadController = AudioOffloadController()
     private lateinit var playbackWakeLock: PowerManager.WakeLock
     private lateinit var playbackStateStore: SharedPreferences
     private lateinit var audioManager: AudioManager
@@ -308,6 +309,9 @@ class PlaybackService : MediaLibraryService() {
 
         private val _enhancedAudioMetricsFlow = MutableStateFlow(EnhancedAudioMetrics())
         val enhancedAudioMetricsFlow: StateFlow<EnhancedAudioMetrics> = _enhancedAudioMetricsFlow.asStateFlow()
+
+        internal val audioOffloadState: AudioOffloadState
+            get() = activeService?.audioOffloadController?.state ?: AudioOffloadState()
 
         @Volatile
         var activePlayer: ExoPlayer? = null
@@ -504,6 +508,23 @@ class PlaybackService : MediaLibraryService() {
             )
         }
         updateAaudioOutputRequest(normalized.aaudioOutputEnabled)
+        refreshAudioOffloadPolicy()
+    }
+
+    private fun refreshAudioOffloadPolicy() {
+        val player = activePlayer ?: return
+        val parameters = player.playbackParameters
+        audioOffloadController.update(
+            player,
+            AudioOffloadInputs.from(
+                settings = currentAudioSettings,
+                audioNormalization = currentAudioNormalization,
+                speed = parameters.speed,
+                pitch = parameters.pitch,
+                skipSilenceEnabled = player.skipSilenceEnabled,
+                aaudioOutputSupported = NativeAudioIntegration.isAaudioOutputSupported()
+            )
+        )
     }
 
     private fun configureNormalizationProcessor(
@@ -845,6 +866,7 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(loadControl)
         player.addAnalyticsListener(stabilitySignals)
         player.addAnalyticsListener(EnhancedAudioSourceFormatListener(enhancedAudioProcessor, "primary"))
+        player.addAnalyticsListener(audioOffloadController)
         RuntimeHooks.attachPlayer(player)
         RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
         RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_CREATE)
@@ -871,7 +893,16 @@ class PlaybackService : MediaLibraryService() {
         }
 
         activePlayer = player
+        refreshAudioOffloadPolicy()
         player.addListener(object : Player.Listener {
+            override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+                refreshAudioOffloadPolicy()
+            }
+
+            override fun onSkipSilenceEnabledChanged(skipSilenceEnabled: Boolean) {
+                refreshAudioOffloadPolicy()
+            }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 if (mediaItem?.mediaId != lastTransitionMediaId) {
                     lastTransitionMediaId = mediaItem?.mediaId
