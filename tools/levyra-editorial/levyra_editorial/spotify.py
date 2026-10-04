@@ -580,11 +580,13 @@ class SpotifyWebClient:
             response = request_search()
             if response.status_code == 401:
                 self._ensure_authenticated(rejected_token=token_before)
+                token_before = self._access_token
                 response = request_search()
             if response.status_code == 429:
                 delay = _bounded_retry_after(response.headers.get("Retry-After"))
                 if delay > 0:
                     time.sleep(delay)
+                token_before = self._access_token
                 response = request_search()
                 if response.status_code == 401:
                     self._ensure_authenticated(rejected_token=token_before)
@@ -651,11 +653,13 @@ class SpotifyWebClient:
             response = self._pathfinder_request(params)
             if response.status_code == 401:
                 self._ensure_authenticated(rejected_token=token_before)
+                token_before = self._access_token
                 response = self._pathfinder_request(params)
             if response.status_code == 429:
                 delay = _bounded_retry_after(response.headers.get("Retry-After"))
                 if delay > 0:
                     time.sleep(delay)
+                token_before = self._access_token
                 response = self._pathfinder_request(params)
                 if response.status_code == 401:
                     self._ensure_authenticated(rejected_token=token_before)
@@ -834,12 +838,14 @@ class SpotifyWebClient:
             self._ensure_authenticated(rejected_token=token_before)
             with self._lock:
                 self._client_token = None
+            token_before = self._access_token
             response = request()
         if response.status_code == 429:
             delay = _bounded_retry_after(response.headers.get("Retry-After"))
             response.close()
             if delay > 0:
                 time.sleep(delay)
+            token_before = self._access_token
             response = request()
             if response.status_code in {401, 403}:
                 response.close()
@@ -896,12 +902,14 @@ class SpotifyWebClient:
         if response.status_code in {401, 403} and allow_reauthentication:
             response.close()
             self._ensure_authenticated(rejected_token=token_before)
+            token_before = self._access_token
             response = request()
         if response.status_code == 429:
             delay = _bounded_retry_after(response.headers.get("Retry-After"))
             response.close()
             if delay > 0:
                 time.sleep(delay)
+            token_before = self._access_token
             response = request()
             if response.status_code in {401, 403} and allow_reauthentication:
                 response.close()
@@ -1054,6 +1062,7 @@ class SpotifyWebClient:
             response = self._pathfinder_request(params)
             if response.status_code == 401:
                 self._ensure_authenticated(rejected_token=token_before)
+                token_before = self._access_token
                 response = self._pathfinder_request(params)
 
             if response.status_code == 429:
@@ -1064,6 +1073,7 @@ class SpotifyWebClient:
                         delay,
                     )
                     time.sleep(delay)
+                    token_before = self._access_token
                     response = self._pathfinder_request(params)
                 if response.status_code == 401:
                     self._ensure_authenticated(rejected_token=token_before)
