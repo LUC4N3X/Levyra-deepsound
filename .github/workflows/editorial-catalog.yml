@@ -58,7 +58,9 @@ jobs:
     name: Test Live Editorial Collection
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/main'
+      github.ref_type == 'branch' &&
+      (github.ref == 'refs/heads/main' ||
+      (github.actor == github.repository_owner && github.triggering_actor == github.repository_owner))
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -68,10 +70,11 @@ jobs:
       LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
       LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
     steps:
-      - name: Checkout Trusted Main
+      - name: Checkout Selected Trusted Ref
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
       - name: Setup Python
         uses: actions/setup-python@v7
         with:
@@ -90,7 +93,7 @@ jobs:
       - name: Generate and Validate Live Catalog
         run: |
           set -euo pipefail
-          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json --require-canvas
+          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json --require-canvas --paxsenix-canvas-only
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
           if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
@@ -117,6 +120,14 @@ jobs:
           if [ -f build/editorial/spotify-canvas.json ]; then
             levyra-editorial --validate-canvas build/editorial/spotify-canvas.json
             test "$(jq '.items | length' build/editorial/spotify-canvas.json)" -ge 1
+            if ! jq -e 'all(.items[]; ((.url | type) == "string") and (.url | test("^https://canvaz\\.scdn\\.co/[^?#]+\\.mp4$"; "i")))' build/editorial/spotify-canvas.json >/dev/null; then
+              echo "::error::Spotify Canvas artifact contains a non-allowlisted media URL"
+              exit 1
+            fi
+            if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|client-token)"[[:space:]]*:|sp_dc=|authorization:[[:space:]]*bearer|bearer[[:space:]]+[a-z0-9._~-]{16,}' build/editorial/catalog.json build/editorial/spotify-canvas.json; then
+              echo "::error::Editorial artifacts contain credential-related material"
+              exit 1
+            fi
           else
             echo "::warning::Spotify Canvas was unavailable; validating static provider fallback"
           fi
