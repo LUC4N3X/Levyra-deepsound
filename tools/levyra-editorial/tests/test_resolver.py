@@ -18,7 +18,7 @@ from levyra_editorial.resolver import (
     create_resolver_server,
     extract_client_ip,
 )
-from levyra_editorial.spotify import AuthenticationError
+from levyra_editorial.spotify import AuthenticationError, SpotifyWebClient
 
 
 class FakeSpotifyClient:
@@ -676,3 +676,162 @@ def test_http_server_read_timeout_behavior() -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+def _varint(value: int) -> bytes:
+    output = bytearray()
+    while value > 0x7F:
+        output.append((value & 0x7F) | 0x80)
+        value >>= 7
+    output.append(value)
+    return bytes(output)
+
+
+def _bytes_field(number: int, value: str | bytes) -> bytes:
+    encoded = value.encode() if isinstance(value, str) else value
+    return _varint((number << 3) | 2) + _varint(len(encoded)) + encoded
+
+
+def _canvas_response(track_id: str, url: str) -> bytes:
+    canvas = b"".join(
+        (
+            _bytes_field(1, "canvas-id"),
+            _bytes_field(2, url),
+            _bytes_field(5, f"spotify:track:{track_id}"),
+        )
+    )
+    return _bytes_field(1, canvas)
+
+
+class MockCanvasResponse:
+    def __init__(
+        self,
+        *,
+        payload: dict[str, Any] | None = None,
+        content: bytes = b"",
+        content_type: str = "application/json",
+        status_code: int = 200,
+    ) -> None:
+        import json
+
+        self._payload = payload
+        self._content = json.dumps(payload).encode() if payload is not None else content
+        self.status_code = status_code
+        self.closed = False
+        self.headers = {
+            "Content-Type": content_type,
+            "Content-Length": str(len(self._content)),
+        }
+
+    def json(self) -> dict[str, Any] | None:
+        return self._payload
+
+    def iter_content(self, chunk_size: int) -> list[bytes]:
+        return [
+            self._content[offset : offset + chunk_size]
+            for offset in range(0, len(self._content), chunk_size)
+        ]
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_concurrent_401_recovery_with_multiple_resolver_threads() -> None:
+    client = SpotifyWebClient("sp_dc_mock_session_secret_123456")
+    client._access_token = "test-stale-token"
+    client._client_id = "test-client-id"
+    client._client_token = "test-client-token"
+    client._client_token_expires_at = time.monotonic() + 3600
+
+    auth_refresh_count = 0
+
+    def mock_authenticate() -> None:
+        nonlocal auth_refresh_count
+        with client._lock:
+            auth_refresh_count += 1
+            time.sleep(0.04)
+            client._access_token = "test-fresh-token"
+            client._client_id = "test-client-id"
+
+    client.authenticate = mock_authenticate
+
+    def mock_get(url: str, params: Any = None, headers: Any = None, timeout: Any = None) -> Any:
+        auth_hdr = headers.get("Authorization", "") if headers else ""
+        if "test-stale-token" in auth_hdr:
+            return MockCanvasResponse(status_code=401)
+        if "test-fresh-token" in auth_hdr:
+            q = (params or {}).get("q", "")
+            title = q.split()[0] if q else "Song"
+            artist = q.split()[1] if len(q.split()) > 1 else "Artist"
+            track_id = f"tid{title}{artist}1234567890"
+            return MockCanvasResponse(
+                status_code=200,
+                payload={
+                    "tracks": {
+                        "items": [
+                            {
+                                "id": track_id,
+                                "name": title,
+                                "artists": [{"name": artist}],
+                                "album": {"name": f"Album {title}"},
+                                "external_ids": {"isrc": ""},
+                                "duration_ms": 180_000,
+                            }
+                        ]
+                    }
+                },
+            )
+        return MockCanvasResponse(status_code=403)
+
+    def mock_post(url: str, data: Any = None, headers: Any = None, **kwargs: Any) -> Any:
+        import re
+
+        auth_hdr = headers.get("Authorization", "") if headers else ""
+        if "test-stale-token" in auth_hdr:
+            return MockCanvasResponse(status_code=401)
+        if "test-fresh-token" in auth_hdr:
+            matches = re.findall(rb"spotify:track:([A-Za-z0-9_]+)", data or b"")
+            tid = matches[0].decode() if matches else "track_default"
+            content = _canvas_response(tid, f"https://canvaz.scdn.co/{tid}.mp4")
+            return MockCanvasResponse(
+                status_code=200,
+                content=content,
+                content_type="application/protobuf",
+            )
+        return MockCanvasResponse(status_code=403)
+
+    client._session.get = mock_get
+    client._session.post = mock_post
+
+    service = CanvasResolverService(client)
+
+    num_threads = 6
+    results: list[dict[str, Any] | None] = [None] * num_threads
+    errors: list[Exception | None] = [None] * num_threads
+
+    def worker(idx: int) -> None:
+        try:
+            res = service.resolve(
+                {
+                    "title": f"Song{idx}",
+                    "artist": f"Artist{idx}",
+                    "album": f"Album{idx}",
+                    "durationMs": 180_000,
+                }
+            )
+            results[idx] = res
+        except Exception as ex:
+            errors[idx] = ex
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert all(err is None for err in errors)
+    assert auth_refresh_count == 1
+    assert all(r is not None and r.get("status") == "resolved" for r in results)
+    for idx, r in enumerate(results):
+        assert r is not None
+        assert f"tidSong{idx}Artist{idx}1234567890" in r.get("url", "")
