@@ -685,7 +685,7 @@ internal fun ExploreMoodsDestinationScreen(
     onBack: () -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit,
-    onRequestCategoryArtwork: (String) -> Unit
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
@@ -752,7 +752,7 @@ internal fun ExploreMoodsDestinationScreen(
                                 key = { category -> "provider-mood-${category.params}" }
                             ) { category ->
                                 LaunchedEffect(category.params) {
-                                    onRequestCategoryArtwork(category.params)
+                                    onRequestCategoryArtwork(category.params, true)
                                 }
                                 ExploreAtmosphericCategoryCard(
                                     category = category,
@@ -773,7 +773,7 @@ internal fun ExploreMoodsDestinationScreen(
                         ) {
                             pair.forEach { category ->
                                 LaunchedEffect(category.params) {
-                                    onRequestCategoryArtwork(category.params)
+                                    onRequestCategoryArtwork(category.params, false)
                                 }
                                 ExploreStructuredCategoryCard(
                                     title = category.title,
