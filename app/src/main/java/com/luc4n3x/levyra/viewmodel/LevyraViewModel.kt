@@ -355,6 +355,7 @@ import java.util.concurrent.atomic.AtomicReference
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
+private const val EXPLORE_DISCOVERY_DEEP_WARMUP_LIMIT = 6
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
 private const val RELATED_CANDIDATE_CACHE_SEEDS = 6
 private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
@@ -895,6 +896,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val listeningRecapRepository = ListeningRecapRepository(listeningPulseStore)
     private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
+    private val startupExploreDiscovery = preferences.loadExploreDiscovery(startupSettings.languageCode)
     private val startupChartRegion = ChartsCatalog.startupRegion(
         storedRegionId = preferences.chartRegionId(),
         deviceCountry = Locale.getDefault().country,
@@ -925,7 +927,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             lastBackupAtMs = vaultRuntimeState.first,
             backupLocationUri = vaultRuntimeState.second.takeIf { it.isNotBlank() },
             playbackDiagnostics = resolver.playbackDiagnostics(),
-            recognitionAvailable = LevyraRecognitionCenter.isAvailable
+            recognitionAvailable = LevyraRecognitionCenter.isAvailable,
+            exploreCategories = startupExploreDiscovery?.categories.orEmpty(),
+            exploreCategoryArtwork = startupExploreDiscovery?.artwork.orEmpty()
         )
     )
     private val searchEngine = LevyraSearchEngine(
@@ -5657,6 +5661,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exploreCategoriesJob = null
         exploreDiscoveryPersistJob?.cancel()
         exploreDiscoveryPersistJob = null
+        exploreArtworkWarmupJob?.cancel()
+        exploreArtworkWarmupJob = null
+        exploreArtworkWarmupLanguage = ""
         val exploreSnapshot = preferences.loadExploreDiscovery(languageCode)
         exploreCategoriesLoadedLanguage = if (exploreSnapshot != null) languageCode else ""
         exploreCategoriesCachedAtMs = exploreSnapshot?.savedAtMs ?: 0L
@@ -9141,12 +9148,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var newReleasesRequestGeneration = 0L
     private var newReleasesJob: Job? = null
     private var exploreJob: Job? = null
-    private var exploreCategoriesLoadedLanguage = ""
+    private var exploreCategoriesLoadedLanguage =
+        startupExploreDiscovery?.let { LevyraLanguageCatalog.normalize(startupSettings.languageCode) }.orEmpty()
     private var exploreCategoriesRequestLanguage = ""
     private var exploreCategoriesRequestGeneration = 0L
-    private var exploreCategoriesCachedAtMs = 0L
+    private var exploreCategoriesCachedAtMs = startupExploreDiscovery?.savedAtMs ?: 0L
     private var exploreCategoriesJob: Job? = null
     private var exploreDiscoveryPersistJob: Job? = null
+    private var exploreArtworkWarmupJob: Job? = null
+    private var exploreArtworkWarmupLanguage = ""
     private val exploreCategoryArtworkRequests = mutableSetOf<String>()
     private val exploreCategoryArtworkSemaphore = Semaphore(2)
 
@@ -9505,6 +9515,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             selectExploreZone(ExploreCatalog.getZones(strings).first())
         }
         ensureExploreCategoriesLoaded()
+        warmExploreDiscoveryArtwork()
         ensureFreshCurrentsLoaded()
         ensureOfficialNewReleasesLoaded()
         ensureMusicVideosLoaded()
@@ -9611,32 +9622,90 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) {
+    fun ensureExploreCategoryArtwork(params: String) {
         if (params.isBlank() || !_state.value.exploreCategoryArtwork[params].isNullOrBlank()) return
         val languageCode = _state.value.languageCode
-        val requestKey = "$languageCode:$params"
-        if (!exploreCategoryArtworkRequests.add(requestKey)) return
         viewModelScope.launch {
-            try {
-                val artwork = exploreCategoryArtworkSemaphore.withPermit {
-                    repository.moodCategoryArtwork(
-                        params = params,
-                        languageCode = languageCode,
-                        allowTrackFallback = allowTrackFallback
+            resolveExploreCategoryArtwork(
+                params = params,
+                languageCode = languageCode,
+                allowTrackFallback = true
+            )
+        }
+    }
+
+    private suspend fun resolveExploreCategoryArtwork(
+        params: String,
+        languageCode: String,
+        allowTrackFallback: Boolean
+    ) {
+        if (
+            params.isBlank() ||
+            _state.value.languageCode != languageCode ||
+            !_state.value.exploreCategoryArtwork[params].isNullOrBlank()
+        ) return
+
+        val mode = if (allowTrackFallback) "deep" else "shallow"
+        val requestKey = "$languageCode:$params:$mode"
+        if (!exploreCategoryArtworkRequests.add(requestKey)) return
+        try {
+            val artwork = exploreCategoryArtworkSemaphore.withPermit {
+                repository.moodCategoryArtwork(
+                    params = params,
+                    languageCode = languageCode,
+                    allowTrackFallback = allowTrackFallback
+                )
+            }
+            if (artwork.isNotBlank() && _state.value.languageCode == languageCode) {
+                _state.update { current ->
+                    if (!current.exploreCategoryArtwork[params].isNullOrBlank()) current
+                    else current.copy(
+                        exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork)
                     )
                 }
-                if (artwork.isNotBlank() && _state.value.languageCode == languageCode) {
-                    _state.update { current ->
-                        current.copy(exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork))
+                schedulePersistExploreDiscovery(languageCode)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "Provider Explore category artwork failed")
+        } finally {
+            exploreCategoryArtworkRequests.remove(requestKey)
+        }
+    }
+
+    private fun warmExploreDiscoveryArtwork() {
+        val snapshot = _state.value
+        val languageCode = snapshot.languageCode
+        val missing = snapshot.exploreCategories
+            .filter { category ->
+                category.params.isNotBlank() &&
+                    snapshot.exploreCategoryArtwork[category.params].isNullOrBlank()
+            }
+        if (missing.isEmpty()) return
+        if (exploreArtworkWarmupJob?.isActive == true && exploreArtworkWarmupLanguage == languageCode) return
+
+        exploreArtworkWarmupJob?.cancel()
+        exploreArtworkWarmupLanguage = languageCode
+        exploreArtworkWarmupJob = viewModelScope.launch {
+            val prioritized = missing.sortedWith(
+                compareBy<ExploreCategory> { category -> if (category.sectionIndex == 0) 0 else 1 }
+                    .thenBy { category -> category.sectionIndex }
+            )
+            coroutineScope {
+                prioritized.mapIndexed { index, category ->
+                    async {
+                        resolveExploreCategoryArtwork(
+                            params = category.params,
+                            languageCode = languageCode,
+                            allowTrackFallback = category.sectionIndex == 0 &&
+                                index < EXPLORE_DISCOVERY_DEEP_WARMUP_LIMIT
+                        )
                     }
-                    schedulePersistExploreDiscovery(languageCode)
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                Timber.w(error, "Provider Explore category artwork failed")
-            } finally {
-                exploreCategoryArtworkRequests.remove(requestKey)
+                }.awaitAll()
+            }
+            if (_state.value.languageCode == languageCode) {
+                schedulePersistExploreDiscovery(languageCode)
             }
         }
     }
@@ -9731,7 +9800,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 current
             }
         }
-        if (categories.isNotEmpty()) schedulePersistExploreDiscovery(languageCode)
+        if (categories.isNotEmpty()) {
+            schedulePersistExploreDiscovery(languageCode)
+            warmExploreDiscoveryArtwork()
+        }
     }
 
     private fun finishExploreCategoriesRequest(languageCode: String, requestGeneration: Long) {
