@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 import threading
 import time
 from typing import Any
@@ -15,6 +16,7 @@ from levyra_editorial.resolver import (
     SQLiteCacheStorage,
     TrackQuery,
     create_resolver_server,
+    extract_client_ip,
 )
 from levyra_editorial.spotify import AuthenticationError
 
@@ -268,16 +270,16 @@ def test_sqlite_cache_storage_persistence(tmp_path: Any) -> None:
         }
     )
 
-    hit, val = storage.get("positive_key")
+    hit, val, _ = storage.get("positive_key")
     assert hit
     assert val == "https://canvaz.scdn.co/test.mp4"
 
-    hit_neg, val_neg = storage.get("negative_key")
+    hit_neg, val_neg, _ = storage.get("negative_key")
     assert hit_neg
     assert val_neg is None
 
     storage_reopened = SQLiteCacheStorage(db_file)
-    hit_reopened, val_reopened = storage_reopened.get("positive_key")
+    hit_reopened, val_reopened, _ = storage_reopened.get("positive_key")
     assert hit_reopened
     assert val_reopened == "https://canvaz.scdn.co/test.mp4"
 
@@ -548,6 +550,129 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         assert "authorization" not in caplog.text.lower()
         assert "127.0.0.1" not in caplog.text
 
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_extract_client_ip() -> None:
+    headers_xf = {"X-Forwarded-For": "203.0.113.1, 192.168.1.1"}
+    assert extract_client_ip("127.0.0.1", headers_xf) == "203.0.113.1"
+    headers_real = {"X-Real-IP": "203.0.113.2"}
+    assert extract_client_ip("::1", headers_real) == "203.0.113.2"
+    assert extract_client_ip("198.51.100.1", headers_xf) == "198.51.100.1"
+    assert extract_client_ip("127.0.0.1", {"X-Forwarded-For": "not-an-ip"}) == "127.0.0.1"
+    assert extract_client_ip("127.0.0.1", {}) == "127.0.0.1"
+
+
+def test_preserve_l2_cache_expiry_across_reload(tmp_path: Any) -> None:
+    db_file = str(tmp_path / "expiry_test.db")
+    storage = SQLiteCacheStorage(db_file)
+    storage.put("isrc:SHORT_TTL", "https://canvaz.scdn.co/short.mp4", ttl_seconds=0.4)
+    time.sleep(0.15)
+
+    cache = CanvasResolverCache(storage_backend=storage, positive_ttl_seconds=3600)
+    hit, val = cache.get("isrc:SHORT_TTL")
+    assert hit
+    assert val == "https://canvaz.scdn.co/short.mp4"
+
+    time.sleep(0.3)
+    hit_expired, val_expired = cache.get("isrc:SHORT_TTL")
+    assert not hit_expired
+    assert val_expired is None
+    storage.close()
+
+
+def test_http_server_negative_content_length_and_incomplete_body() -> None:
+    service = CanvasResolverService(FakeSpotifyClient())
+    server = create_resolver_server(service, host="127.0.0.1", port=0)
+    server_port = server.server_address[1]
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(("127.0.0.1", server_port))
+        sock.sendall(
+            b"POST /v1/resolve HTTP/1.1\r\n"
+            b"Host: 127.0.0.1\r\n"
+            b"Content-Length: -5\r\n"
+            b"Content-Type: application/json\r\n\r\n"
+            b"{}"
+        )
+        raw_resp = b""
+        sock.settimeout(2.0)
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            raw_resp += chunk
+            if b"}" in raw_resp:
+                break
+        sock.close()
+        assert b"400 Bad Request" in raw_resp
+        assert b"Invalid Content-Length" in raw_resp
+
+        sock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock2.connect(("127.0.0.1", server_port))
+        sock2.sendall(
+            b"POST /v1/resolve HTTP/1.1\r\n"
+            b"Host: 127.0.0.1\r\n"
+            b"Content-Length: 50\r\n"
+            b"Content-Type: application/json\r\n\r\n"
+            b"{\"test\": 1}"
+        )
+        sock2.shutdown(socket.SHUT_WR)
+        raw_resp2 = b""
+        sock2.settimeout(2.0)
+        while True:
+            chunk = sock2.recv(4096)
+            if not chunk:
+                break
+            raw_resp2 += chunk
+            if b"}" in raw_resp2:
+                break
+        sock2.close()
+        assert b"400 Bad Request" in raw_resp2
+        assert b"Incomplete request body" in raw_resp2
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_http_server_read_timeout_behavior() -> None:
+    service = CanvasResolverService(FakeSpotifyClient())
+    server = create_resolver_server(service, host="127.0.0.1", port=0)
+    server.RequestHandlerClass.timeout = 0.2
+    server_port = server.server_address[1]
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(("127.0.0.1", server_port))
+        sock.sendall(
+            b"POST /v1/resolve HTTP/1.1\r\n"
+            b"Host: 127.0.0.1\r\n"
+            b"Content-Length: 100\r\n"
+            b"Content-Type: application/json\r\n\r\n"
+            b"{\"start\":"
+        )
+        time.sleep(0.3)
+        raw_resp = b""
+        sock.settimeout(2.0)
+        while True:
+            try:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                raw_resp += chunk
+                if b"}" in raw_resp:
+                    break
+            except TimeoutError:
+                break
+        sock.close()
+        assert b"408 Request Timeout" in raw_resp or len(raw_resp) == 0
     finally:
         server.shutdown()
         server.server_close()

@@ -400,8 +400,6 @@ class SpotifyWebClient:
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
         with self._lock:
-            if self._access_token and (time.time() * 1000) < (self._expires_at_ms - 60_000):
-                return
             LOGGER.info("Preparing editorial source authentication.")
             secret_dict = self._fetch_totp_secret_dictionary()
             totp_version, totp_secret = select_latest_totp_secret(secret_dict)

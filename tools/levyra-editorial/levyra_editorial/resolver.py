@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import logging
 import os
@@ -319,7 +320,7 @@ class CanvasTrackMatcher:
 
 
 class CacheStorageBackend(Protocol):
-    def get(self, key: str) -> tuple[bool, str | None]:
+    def get(self, key: str) -> tuple[bool, str | None, float]:
         ...
 
     def put(self, key: str, url: str | None, ttl_seconds: float) -> None:
@@ -339,6 +340,7 @@ class SQLiteCacheStorage:
     def __init__(self, db_path: str | Path = ":memory:") -> None:
         self._db_path = str(db_path)
         self._lock = threading.Lock()
+        self._writes = 0
         if self._db_path != ":memory:":
             Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(
@@ -376,28 +378,33 @@ class SQLiteCacheStorage:
                 """
             )
 
-    def get(self, key: str) -> tuple[bool, str | None]:
+    def get(self, key: str) -> tuple[bool, str | None, float]:
         now = time.time()
         with self._lock:
             cur = self._conn.cursor()
             cur.execute("SELECT url, expires_at FROM cache_entries WHERE key = ?", (key,))
             row = cur.fetchone()
             if row is None:
-                return False, None
+                return False, None, 0.0
             url, expires_at = row
-            if now > expires_at:
+            remaining = expires_at - now
+            if remaining <= 0:
                 cur.execute("DELETE FROM cache_entries WHERE key = ?", (key,))
-                return False, None
-            return True, url
+                return False, None, 0.0
+            return True, url, remaining
 
     def put(self, key: str, url: str | None, ttl_seconds: float) -> None:
-        expires_at = time.time() + ttl_seconds
+        now = time.time()
+        expires_at = now + ttl_seconds
         with self._lock:
             cur = self._conn.cursor()
             cur.execute(
                 "INSERT OR REPLACE INTO cache_entries (key, url, expires_at) VALUES (?, ?, ?)",
                 (key, url, expires_at),
             )
+            self._writes += 1
+            if self._writes % 500 == 0:
+                cur.execute("DELETE FROM cache_entries WHERE expires_at < ?", (now,))
 
     def save_discovery(self, discovery: Mapping[str, Any]) -> None:
         song = str(discovery.get("song") or "").strip()
@@ -418,6 +425,12 @@ class SQLiteCacheStorage:
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (song, artist, album, url, scope, isrc, now),
+            )
+            cur.execute(
+                """
+                DELETE FROM discoveries
+                WHERE id NOT IN (SELECT id FROM discoveries ORDER BY id DESC LIMIT 10000)
+                """
             )
 
     def get_discoveries(self) -> list[dict[str, Any]]:
@@ -478,10 +491,9 @@ class CanvasResolverCache:
                     return True, url
 
             if self._storage is not None:
-                found, url = self._storage.get(key)
+                found, url, remaining = self._storage.get(key)
                 if found:
-                    ttl = self._positive_ttl if url is not None else self._negative_ttl
-                    self._entries[key] = (url, time.monotonic() + ttl)
+                    self._entries[key] = (url, time.monotonic() + remaining)
                     self._entries.move_to_end(key)
                     return True, url
 
@@ -792,9 +804,27 @@ class CanvasResolverService:
         return self._cache.singleflight(key, lambda: self._execute_upstream_resolve(query, key))
 
 
+def extract_client_ip(peer_ip: str, headers: Mapping[str, str]) -> str:
+    try:
+        if ipaddress.ip_address(peer_ip).is_loopback:
+            forwarded = headers.get("X-Forwarded-For", "").strip()
+            if forwarded:
+                candidate = forwarded.split(",")[0].strip()
+                ipaddress.ip_address(candidate)
+                return candidate
+            real_ip = headers.get("X-Real-IP", "").strip()
+            if real_ip:
+                ipaddress.ip_address(real_ip)
+                return real_ip
+    except ValueError:
+        pass
+    return peer_ip
+
+
 class CanvasHttpHandler(BaseHTTPRequestHandler):
     service: CanvasResolverService
     rate_limiter: RateLimiter
+    timeout: float | None = 10.0
 
     def log_message(self, format: str, *args: Any) -> None:
         message = format % args
@@ -822,7 +852,7 @@ class CanvasHttpHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.NOT_FOUND, {"status": "error", "message": "Not found"})
             return
 
-        client_ip = self.client_address[0]
+        client_ip = extract_client_ip(self.client_address[0], self.headers)
         allowed, retry_after = self.rate_limiter.is_allowed(client_ip)
         if not allowed:
             self.send_response(HTTPStatus.TOO_MANY_REQUESTS)
@@ -849,6 +879,13 @@ class CanvasHttpHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if content_length < 0:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"status": "error", "message": "Invalid Content-Length"},
+            )
+            return
+
         if content_length > MAX_REQUEST_BODY_BYTES:
             self._send_json(
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
@@ -856,7 +893,23 @@ class CanvasHttpHandler(BaseHTTPRequestHandler):
             )
             return
 
-        body = self.rfile.read(content_length)
+        try:
+            body = self.rfile.read(content_length)
+        except TimeoutError:
+            self._send_json(
+                HTTPStatus.REQUEST_TIMEOUT,
+                {"status": "error", "message": "Request body read timed out"},
+            )
+            self.close_connection = True
+            return
+
+        if len(body) < content_length:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"status": "error", "message": "Incomplete request body"},
+            )
+            self.close_connection = True
+            return
         try:
             data = json.loads(body.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):

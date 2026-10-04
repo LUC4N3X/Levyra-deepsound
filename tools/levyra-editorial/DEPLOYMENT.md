@@ -11,6 +11,19 @@ The on-demand Canvas Resolver runs as an internal daemon behind a TLS-terminatin
 - Python Backend: Runs `python -m levyra_editorial.resolver`, handles caching (in-memory L1 and persistent SQLite L2), deduplicates concurrent queries, coordinates upstream Spotify/PaxSenix lookups, validates MP4 Canvas links, and records discoveries.
 - Storage: Persistent volume mounted at `/var/lib/levyra/canvas_cache.db` storing positive/negative cache entries and canonical discoveries.
 
+## Cache and Service Defaults
+
+The service implements bounded caching and strict timeouts:
+
+- Positive cache TTL: 24 hours (86,400 seconds).
+- Negative cache TTL: 10 minutes (600 seconds).
+- In-memory L1 cache capacity: 50,000 entries (LRU).
+- Persistent L2 storage: SQLite in WAL mode with indexed expiry, automatic purging on write, and discoveries capped at 10,000 entries.
+- Cache reloading: Entries promoted from L2 to L1 retain their exact remaining TTL rather than resetting to a fresh duration.
+- Maximum request body: 16 KB.
+- Socket read timeout: 10.0 seconds.
+- Reverse proxy trust: `X-Forwarded-For` and `X-Real-IP` are inspected only when the direct connection originates from a loopback peer (`127.0.0.1` or `::1`). Direct non-loopback connections always use the peer socket address.
+
 ## Environment Variables
 
 The service is configured using standard environment variables:
@@ -20,7 +33,7 @@ The service is configured using standard environment variables:
 | `LEVYRA_EDITORIAL_SP_DC` | Yes | (empty) | Spotify `sp_dc` cookie for server-side token authentication. Never exposed to clients. |
 | `LEVYRA_RESOLVER_HOST` | No | `127.0.0.1` | Local interface binding address. |
 | `LEVYRA_RESOLVER_PORT` | No | `8080` | Internal TCP listening port. |
-| `LEVYRA_RESOLVER_CACHE_DB` | No | `:memory:` | Path to SQLite L2 cache database (use persistent path in production). |
+| `LEVYRA_RESOLVER_CACHE_DB` | No | `canvas_cache.db` | Path to SQLite L2 cache database. |
 | `LEVYRA_RESOLVER_RATE_LIMIT` | No | `60` | Internal per-IP rate limit per minute fallback. |
 
 ## Systemd Service
@@ -83,7 +96,7 @@ canvas.levyra.org {
     }
     handle @resolve {
         request_body {
-            max_size 64KB
+            max_size 16KB
         }
         reverse_proxy 127.0.0.1:8080 {
             header_up X-Real-IP {remote_host}
@@ -107,7 +120,7 @@ server {
     ssl_certificate /etc/letsencrypt/live/canvas.levyra.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/canvas.levyra.org/privkey.pem;
 
-    client_max_body_size 64k;
+    client_max_body_size 16k;
 
     location = /health {
         limit_except GET { deny all; }
