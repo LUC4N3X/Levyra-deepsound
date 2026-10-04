@@ -151,3 +151,18 @@ internal fun exploreFallbackGenres(zones: List<ExploreZone>): List<ExploreZone> 
     }
     .distinctBy { zone -> zone.id }
     .toList()
+
+internal fun exploreSupplementalGenres(
+    zones: List<ExploreZone>,
+    providerCategories: List<ExploreCategory>
+): List<ExploreZone> {
+    val providerLabels = providerCategories.asSequence()
+        .map { category -> category.title.discoveryLabelKey() }
+        .filter(String::isNotBlank)
+        .toSet()
+    return exploreFallbackGenres(zones)
+        .filterNot { zone -> zone.label.discoveryLabelKey() in providerLabels }
+}
+
+private fun String.discoveryLabelKey(): String =
+    trim().lowercase().replace(Regex("\\s+"), " ")
