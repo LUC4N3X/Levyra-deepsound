@@ -9610,14 +9610,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun ensureExploreCategoryArtwork(params: String) {
+    fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) {
         if (params.isBlank() || !_state.value.exploreCategoryArtwork[params].isNullOrBlank()) return
         val languageCode = _state.value.languageCode
         val requestKey = "$languageCode:$params"
         if (!exploreCategoryArtworkRequests.add(requestKey)) return
         viewModelScope.launch {
             try {
-                val artwork = repository.moodCategoryArtwork(params, languageCode)
+                val artwork = repository.moodCategoryArtwork(
+                    params = params,
+                    languageCode = languageCode,
+                    allowTrackFallback = allowTrackFallback
+                )
                 if (artwork.isNotBlank() && _state.value.languageCode == languageCode) {
                     _state.update { current ->
                         current.copy(exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork))
