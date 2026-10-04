@@ -41,6 +41,7 @@ DEFAULT_USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/135.0.0.0 Safari/537.36"
 )
+PAXSENIX_USER_AGENT = "Spotify/9.0.34.593 iOS/18.4 (iPhone15,3)"
 SPOTIFY_APP_VERSION = "1.2.61.20.g3b4cd5b2"
 TOKEN_ATTEMPTS = (
     ("mobile-web-player", "transport"),
@@ -165,6 +166,21 @@ def decode_canvas_response(payload: bytes) -> list[tuple[str, str]]:
         if canvas_url and track_uri:
             canvases.append((track_uri, canvas_url))
     return canvases
+
+
+def _merge_canvas_urls(
+    resolved: dict[str, str],
+    expected_track_ids: Sequence[str],
+    payload: bytes,
+) -> None:
+    expected = set(expected_track_ids)
+    prefix = "spotify:track:"
+    for track_uri, canvas_url in decode_canvas_response(payload):
+        if not track_uri.startswith(prefix):
+            continue
+        track_id = track_uri.removeprefix(prefix)
+        if track_id in expected:
+            resolved.setdefault(track_id, canvas_url)
 
 
 def _encode_varint(value: int) -> bytes:
@@ -659,14 +675,32 @@ class SpotifyWebClient:
         resolved: dict[str, str] = {}
         for offset in range(0, len(unique_ids), CANVAS_BATCH_SIZE):
             chunk = unique_ids[offset : offset + CANVAS_BATCH_SIZE]
-            response = self._request_canvas_batch(chunk)
-            for track_uri, canvas_url in decode_canvas_response(response):
-                prefix = "spotify:track:"
-                if not track_uri.startswith(prefix):
-                    continue
-                track_id = track_uri.removeprefix(prefix)
-                if track_id in chunk and track_id not in resolved:
-                    resolved[track_id] = canvas_url
+            primary_succeeded = False
+            try:
+                response = self._request_canvas_batch(chunk)
+                _merge_canvas_urls(resolved, chunk, response)
+                primary_succeeded = True
+            except (EditorialSourceError, requests.RequestException, ValueError) as error:
+                LOGGER.warning(
+                    "Primary Spotify Canvas resolver failed for a batch: %s",
+                    _safe_canvas_failure(error),
+                )
+
+            unresolved = [track_id for track_id in chunk if track_id not in resolved]
+            if not unresolved:
+                continue
+            try:
+                response = self._request_paxsenix_canvas_batch(unresolved)
+                _merge_canvas_urls(resolved, unresolved, response)
+            except (EditorialSourceError, requests.RequestException, ValueError) as error:
+                if not primary_succeeded:
+                    raise SourceApiError(
+                        "All Spotify Canvas resolvers failed for a request batch."
+                    ) from error
+                LOGGER.warning(
+                    "PaxSenix Canvas fallback failed for a batch: %s",
+                    _safe_canvas_failure(error),
+                )
         return resolved
 
     def _request_canvas_batch(self, track_ids: Sequence[str]) -> bytes:
@@ -704,6 +738,52 @@ class SpotifyWebClient:
             content_type = response.headers.get("Content-Type", "").partition(";")[0].strip().lower()
             if content_type not in CANVAS_RESPONSE_MIME_TYPES:
                 raise SourceApiError("Spotify Canvas returned an unsupported media type.")
+            return _read_bounded_response(response, MAX_CANVAS_RESPONSE_BYTES)
+        finally:
+            response.close()
+
+    def _request_paxsenix_canvas_batch(self, track_ids: Sequence[str]) -> bytes:
+        if self._access_token is None:
+            self.authenticate()
+        body = encode_canvas_request(track_ids)
+
+        def request() -> requests.Response:
+            if self._access_token is None:
+                raise AuthenticationError("The editorial source is not authenticated.")
+            return self._session.post(
+                CANVAS_URL,
+                data=body,
+                headers={
+                    "Accept": "application/protobuf",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept-Language": "en",
+                    "User-Agent": PAXSENIX_USER_AGENT,
+                    "Authorization": f"Bearer {self._access_token}",
+                },
+                timeout=self._timeout,
+                stream=True,
+                allow_redirects=False,
+            )
+
+        response = request()
+        if response.status_code in {401, 403}:
+            response.close()
+            self.authenticate()
+            response = request()
+        if response.status_code == 429:
+            delay = _bounded_retry_after(response.headers.get("Retry-After"))
+            response.close()
+            if delay > 0:
+                time.sleep(delay)
+            response = request()
+        try:
+            if response.status_code != 200:
+                raise SourceApiError(
+                    f"PaxSenix Canvas lookup failed with HTTP {response.status_code}."
+                )
+            content_type = response.headers.get("Content-Type", "").partition(";")[0].strip().lower()
+            if content_type not in CANVAS_RESPONSE_MIME_TYPES:
+                raise SourceApiError("PaxSenix Canvas returned an unsupported media type.")
             return _read_bounded_response(response, MAX_CANVAS_RESPONSE_BYTES)
         finally:
             response.close()
@@ -1320,6 +1400,18 @@ def _safe_authentication_failure(error: Exception) -> str:
         )
     if isinstance(error, ValueError):
         return "invalid token response"
+    return type(error).__name__
+
+
+def _safe_canvas_failure(error: Exception) -> str:
+    if isinstance(error, requests.Timeout):
+        return "request timed out"
+    if isinstance(error, requests.ConnectionError):
+        return "network connection failed"
+    if isinstance(error, AuthenticationError):
+        return "authentication failed"
+    if isinstance(error, SourceApiError):
+        return str(error)
     return type(error).__name__
 
 

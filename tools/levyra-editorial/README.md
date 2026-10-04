@@ -14,10 +14,14 @@ This repository-owned Python tool reads configured public country rankings with 
 - A failed or incomplete run never replaces the last valid catalog.
 - Canvas lookup is read-only and best-effort. Its private endpoint is used only inside GitHub
   Actions; the public Canvas output contains no Spotify IDs, URIs, tokens or account data.
+- The existing web-player Canvas resolver remains primary. Missing results fall back to a
+  PaxSenix-compatible request profile using the same short-lived access token derived inside the
+  collector; Levyra does not call a third-party PaxSenix service or forward the `sp_dc` cookie.
 
 The implementation is original Levyra code. SimpMusic was used only as a behavioral reference for
 the current `sp_dc` plus TOTP session exchange and Canvas protocol shape; no SimpMusic source code
-was copied.
+was copied. [PaxSenix Spotify Canvas API](https://github.com/Paxsenix0/Spotify-Canvas-API) was used
+as the behavioral reference for the fallback request profile.
 
 ## Repository secret
 

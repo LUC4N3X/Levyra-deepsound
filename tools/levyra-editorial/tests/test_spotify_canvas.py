@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import replace
 from typing import Any
 
 import pytest
+import requests
 
 from levyra_editorial.collector import (
     build_spotify_canvas_catalog,
@@ -14,6 +16,9 @@ from levyra_editorial.models import Album, Artist, Catalog, Collection, Track
 from levyra_editorial.spotify import (
     CANVAS_URL,
     CLIENT_TOKEN_URL,
+    PAXSENIX_USER_AGENT,
+    AuthenticationError,
+    SourceApiError,
     SpotifyWebClient,
     decode_canvas_response,
     encode_canvas_request,
@@ -52,14 +57,15 @@ class CanvasResponse:
         payload: dict[str, Any] | None = None,
         content: bytes = b"",
         content_type: str = "application/json",
+        status_code: int = 200,
     ) -> None:
         self._payload = payload
         self._content = json.dumps(payload).encode() if payload is not None else content
-        self.status_code = 200
+        self.status_code = status_code
         self.closed = False
         self.headers = {
             "Content-Type": content_type,
-            "Content-Length": str(len(content)),
+            "Content-Length": str(len(self._content)),
         }
 
     def json(self) -> dict[str, Any] | None:
@@ -100,6 +106,78 @@ class CanvasSession:
 
     def close(self) -> None:
         return None
+
+
+class FallbackCanvasSession(CanvasSession):
+    def __init__(self, track_id: str, url: str | None) -> None:
+        super().__init__(track_id, url or "")
+
+    def post(self, url: str, **kwargs: Any) -> CanvasResponse:
+        self.requests.append((url, kwargs))
+        if url == CLIENT_TOKEN_URL:
+            return CanvasResponse(
+                payload={
+                    "granted_token": {
+                        "token": "ephemeral-client-token",
+                        "expires_after_seconds": 600,
+                    }
+                }
+            )
+        assert url == CANVAS_URL
+        payload = b""
+        if "Client-Token" not in kwargs["headers"] and self.url:
+            payload = _canvas_response(self.track_id, self.url)
+        return CanvasResponse(content=payload, content_type="application/protobuf")
+
+
+class DuplicateCanvasSession(CanvasSession):
+    def post(self, url: str, **kwargs: Any) -> CanvasResponse:
+        response = super().post(url, **kwargs)
+        if url == CANVAS_URL:
+            response._content += response._content
+            response.headers["Content-Length"] = str(len(response._content))
+        return response
+
+
+class UnauthorizedCanvasSession(CanvasSession):
+    def post(self, url: str, **kwargs: Any) -> CanvasResponse:
+        self.requests.append((url, kwargs))
+        if url == CLIENT_TOKEN_URL:
+            return CanvasResponse(
+                payload={
+                    "granted_token": {
+                        "token": "ephemeral-client-token",
+                        "expires_after_seconds": 600,
+                    }
+                }
+            )
+        return CanvasResponse(
+            content_type="application/protobuf",
+            status_code=401,
+        )
+
+
+class TimeoutCanvasSession(CanvasSession):
+    def __init__(self, track_id: str, secret: str) -> None:
+        super().__init__(track_id, "")
+        self.secret = secret
+
+    def post(self, url: str, **kwargs: Any) -> CanvasResponse:
+        self.requests.append((url, kwargs))
+        raise requests.Timeout(f"request included sp_dc={self.secret}")
+
+
+class MalformedPrimaryCanvasSession(CanvasSession):
+    def post(self, url: str, **kwargs: Any) -> CanvasResponse:
+        if url == CLIENT_TOKEN_URL:
+            return super().post(url, **kwargs)
+        self.requests.append((url, kwargs))
+        if "Client-Token" in kwargs["headers"]:
+            return CanvasResponse(
+                content=b"\x0a\x05bad",
+                content_type="application/protobuf",
+            )
+        raise requests.Timeout("PaxSenix fallback timed out")
 
 
 def _catalog(track_id: str) -> Catalog:
@@ -169,6 +247,122 @@ def test_canvas_client_uses_ephemeral_tokens_without_placing_them_in_the_body() 
     assert canvas_request["headers"]["Client-Token"] == "ephemeral-client-token"
     assert canvas_request["headers"]["Authorization"] == "Bearer ephemeral-access-token"
     assert b"token" not in canvas_request["data"]
+
+
+def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie() -> None:
+    track_id = "5osCClSjGplWagDsJmyivf"
+    secret = "editorial-session-secret-value-123456"
+    url = "https://canvaz.scdn.co/upload/artist/video/canvas.cnvs.mp4"
+    session = FallbackCanvasSession(track_id, url)
+    client = SpotifyWebClient(secret, session=session)
+    client._access_token = "ephemeral-access-token"
+    client._client_id = "web-client-id"
+
+    assert client.get_canvas_urls([track_id]) == {track_id: url}
+
+    primary_request = session.requests[1][1]
+    paxsenix_request = session.requests[2][1]
+    assert primary_request["headers"]["Client-Token"] == "ephemeral-client-token"
+    assert paxsenix_request["headers"] == {
+        "Accept": "application/protobuf",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept-Language": "en",
+        "User-Agent": PAXSENIX_USER_AGENT,
+        "Authorization": "Bearer ephemeral-access-token",
+    }
+    assert "Cookie" not in paxsenix_request["headers"]
+    assert secret.encode() not in paxsenix_request["data"]
+
+
+def test_paxsenix_fallback_returns_no_canvas_as_a_clean_miss() -> None:
+    track_id = "5osCClSjGplWagDsJmyivf"
+    session = FallbackCanvasSession(track_id, None)
+    client = SpotifyWebClient("A" * 40, session=session)
+    client._access_token = "ephemeral-access-token"
+    client._client_id = "web-client-id"
+
+    assert client.get_canvas_urls([track_id]) == {}
+
+
+def test_canvas_resolvers_deduplicate_identical_track_results() -> None:
+    track_id = "5osCClSjGplWagDsJmyivf"
+    url = "https://canvaz.scdn.co/upload/artist/video/canvas.cnvs.mp4"
+    session = DuplicateCanvasSession(track_id, url)
+    client = SpotifyWebClient("A" * 40, session=session)
+    client._access_token = "ephemeral-access-token"
+    client._client_id = "web-client-id"
+
+    assert client.get_canvas_urls([track_id]) == {track_id: url}
+    assert [request_url for request_url, _ in session.requests].count(CANVAS_URL) == 1
+
+
+def test_paxsenix_invalid_url_is_rejected_by_existing_catalog_validation() -> None:
+    track_id = "5osCClSjGplWagDsJmyivf"
+    session = FallbackCanvasSession(
+        track_id,
+        "https://canvaz.scdn.co/upload/artist/video/canvas.webm",
+    )
+    client = SpotifyWebClient("A" * 40, session=session)
+    client._access_token = "ephemeral-access-token"
+    client._client_id = "web-client-id"
+
+    with pytest.raises(ValueError, match="at least one item"):
+        build_spotify_canvas_catalog(_catalog(track_id), client)
+
+
+def test_expired_canvas_auth_fails_closed_without_exposing_credentials(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    track_id = "5osCClSjGplWagDsJmyivf"
+    secret = "expired-editorial-session-secret-123456"
+    session = UnauthorizedCanvasSession(track_id, "")
+    client = SpotifyWebClient(secret, session=session)
+    client._access_token = "expired-access-token"
+    client._client_id = "web-client-id"
+
+    def fail_authentication() -> None:
+        raise AuthenticationError("The editorial source session could not be authenticated.")
+
+    client.authenticate = fail_authentication
+    with caplog.at_level(logging.WARNING), pytest.raises(
+        SourceApiError,
+        match="All Spotify Canvas resolvers failed",
+    ):
+        client.get_canvas_urls([track_id])
+
+    assert secret not in caplog.text
+    assert "expired-access-token" not in caplog.text
+
+
+def test_canvas_timeout_is_sanitized_and_does_not_leak_secret(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    track_id = "5osCClSjGplWagDsJmyivf"
+    secret = "timeout-editorial-session-secret-123456"
+    session = TimeoutCanvasSession(track_id, secret)
+    client = SpotifyWebClient(secret, session=session)
+    client._access_token = "ephemeral-access-token"
+    client._client_id = "web-client-id"
+
+    with caplog.at_level(logging.WARNING), pytest.raises(
+        SourceApiError,
+        match="All Spotify Canvas resolvers failed",
+    ):
+        client.get_canvas_urls([track_id])
+
+    assert "request timed out" in caplog.text
+    assert secret not in caplog.text
+
+
+def test_malformed_primary_response_and_failed_fallback_fail_the_batch() -> None:
+    track_id = "5osCClSjGplWagDsJmyivf"
+    session = MalformedPrimaryCanvasSession(track_id, "")
+    client = SpotifyWebClient("A" * 40, session=session)
+    client._access_token = "ephemeral-access-token"
+    client._client_id = "web-client-id"
+
+    with pytest.raises(SourceApiError, match="All Spotify Canvas resolvers failed"):
+        client.get_canvas_urls([track_id])
 
 
 def test_public_canvas_catalog_strips_all_spotify_source_identifiers() -> None:
