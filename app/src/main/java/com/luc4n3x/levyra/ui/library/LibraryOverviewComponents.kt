@@ -12,6 +12,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -395,8 +397,13 @@ internal fun SmartCollectionGrid(
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         cards.chunked(2).forEach { rowCards ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                rowCards.forEach { card -> SmartCollectionCard(card, Modifier.weight(1f)) }
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                rowCards.forEach { card ->
+                    SmartCollectionCard(card, Modifier.weight(1f).fillMaxHeight())
+                }
                 if (rowCards.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -722,14 +729,18 @@ private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modi
         track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
     }.orEmpty()
 
+    val shape = RoundedCornerShape(20.dp)
     Surface(
         color = LevyraPanel.copy(alpha = 0.88f),
-        shape = RoundedCornerShape(20.dp),
+        shape = shape,
         border = BorderStroke(1.dp, card.accent.copy(alpha = 0.20f)),
-        modifier = modifier.height(96.dp).combinedClickable(
-            enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty,
-            onClick = card.onClick
-        )
+        modifier = modifier
+            .heightIn(min = 96.dp)
+            .clip(shape)
+            .combinedClickable(
+                enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty,
+                onClick = card.onClick
+            )
     ) {
         Box(
             modifier = Modifier.fillMaxSize().background(
@@ -746,7 +757,7 @@ private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modi
                 )
                 Box(
                     modifier = Modifier.align(Alignment.CenterEnd).width(78.dp).fillMaxHeight().background(
-                        Brush.horizontalGradient(listOf(LevyraPanel.copy(alpha = 0.96f), Color.Transparent))
+                        Brush.horizontalGradient(listOf(LevyraPanel.copy(alpha = 0.96f), LevyraPanel.copy(alpha = 0f)))
                     )
                 )
             }
@@ -777,7 +788,8 @@ private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modi
                         color = LevyraMuted,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
