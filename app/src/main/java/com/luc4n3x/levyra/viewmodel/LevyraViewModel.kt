@@ -9529,15 +9529,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             ensureFreshCurrentsLoaded()
             return
         }
-        _state.update { it.copy(exploreZoneId = zone.id, exploreCategoryParams = null) }
         val languageCode = _state.value.languageCode
         val cacheKey = "zone:$languageCode:${zone.id}"
-        exploreCache[cacheKey]?.let { cached ->
-            _state.update { it.copy(exploreTracks = cached, isExploreLoading = false) }
-            refreshOfficialMetadataBatch(cached, 8)
+        val cached = exploreCache[cacheKey]
+        _state.update { current ->
+            current.copy(
+                exploreZoneId = zone.id,
+                exploreCategoryParams = null,
+                exploreTracks = cached.orEmpty(),
+                isExploreLoading = cached == null
+            )
+        }
+        cached?.let { cachedTracks ->
+            refreshOfficialMetadataBatch(cachedTracks, 8)
             return
         }
-        _state.update { it.copy(exploreTracks = emptyList(), isExploreLoading = true) }
         exploreJob = viewModelScope.launch {
             val results = try {
                 repository.exploreZone(zone.id, zone.query, languageCode, 24)
@@ -9562,24 +9568,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val params = category.params
         if (params.isBlank() || category.title.isBlank()) return
         exploreJob?.cancel()
-        _state.update { current ->
-            current.copy(exploreZoneId = null, exploreCategoryParams = params)
-        }
         val languageCode = _state.value.languageCode
         val cacheKey = "provider:$languageCode:$params"
-        exploreCache[cacheKey]?.let { cached ->
-            _state.update { current ->
-                if (current.exploreCategoryParams == params) {
-                    current.copy(exploreTracks = cached, isExploreLoading = false)
-                } else {
-                    current
-                }
-            }
-            refreshOfficialMetadataBatch(cached, 8)
-            return
-        }
+        val cached = exploreCache[cacheKey]
         _state.update { current ->
-            current.copy(exploreTracks = emptyList(), isExploreLoading = true)
+            current.copy(
+                exploreZoneId = null,
+                exploreCategoryParams = params,
+                exploreTracks = cached.orEmpty(),
+                isExploreLoading = cached == null
+            )
+        }
+        cached?.let { cachedTracks ->
+            refreshOfficialMetadataBatch(cachedTracks, 8)
+            return
         }
         exploreJob = viewModelScope.launch {
             val results = try {

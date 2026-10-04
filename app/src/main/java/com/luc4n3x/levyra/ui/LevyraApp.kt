@@ -24070,8 +24070,10 @@ private fun ExploreScreen(
                     val activeProviderCategory = state.exploreCategories
                         .firstOrNull { category -> category.params == providerCategory.params }
                         ?: providerCategory
-                    LaunchedEffect(providerCategory.params, state.languageCode) {
-                        if (state.exploreCategoryParams != providerCategory.params) {
+                    val categoryIsActive = state.exploreCategoryParams == providerCategory.params
+                    val categoryTracks = if (categoryIsActive) state.exploreTracks else emptyList()
+                    LaunchedEffect(providerCategory.params, state.languageCode, categoryIsActive) {
+                        if (!categoryIsActive) {
                             viewModel.selectExploreCategory(activeProviderCategory)
                         }
                     }
@@ -24080,43 +24082,45 @@ private fun ExploreScreen(
                         title = activeProviderCategory.title,
                         subtitle = activeProviderCategory.section.ifBlank { strings.exploreMoods },
                         zone = null,
-                        tracks = state.exploreTracks,
-                        isLoading = state.isExploreLoading,
+                        tracks = categoryTracks,
+                        isLoading = state.isExploreLoading || !categoryIsActive,
                         currentTrackId = state.currentTrack?.id,
                         isPlaying = state.isPlaying,
                         strings = strings,
                         onBack = { exploreDestination = exploreMoodReturn },
                         onPlayAll = {
-                            state.exploreTracks.firstOrNull()?.let { first ->
-                                viewModel.playFrom(state.exploreTracks, first)
+                            categoryTracks.firstOrNull()?.let { first ->
+                                viewModel.playFrom(categoryTracks, first)
                             }
                         },
-                        onPlayTrack = { track -> viewModel.playFrom(state.exploreTracks, track) }
+                        onPlayTrack = { track -> viewModel.playFrom(categoryTracks, track) }
                     )
                 } else {
                     exploreMoodDestinationId(exploreDestination)
                         ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
                         ?.let { zone ->
-                            LaunchedEffect(zone.id, state.languageCode) {
-                                if (state.exploreZoneId != zone.id) viewModel.selectExploreZone(zone)
+                            val zoneIsActive = state.exploreZoneId == zone.id
+                            val zoneTracks = if (zoneIsActive) state.exploreTracks else emptyList()
+                            LaunchedEffect(zone.id, state.languageCode, zoneIsActive) {
+                                if (!zoneIsActive) viewModel.selectExploreZone(zone)
                             }
                             ExploreCollectionDestinationScreen(
                                 identity = zone.id,
                                 title = zone.label,
                                 subtitle = strings.exploreMoods,
                                 zone = zone,
-                                tracks = state.exploreTracks,
-                                isLoading = state.isExploreLoading,
+                                tracks = zoneTracks,
+                                isLoading = state.isExploreLoading || !zoneIsActive,
                                 currentTrackId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
                                 strings = strings,
                                 onBack = { exploreDestination = exploreMoodReturn },
                                 onPlayAll = {
-                                    state.exploreTracks.firstOrNull()?.let { first ->
-                                        viewModel.playFrom(state.exploreTracks, first)
+                                    zoneTracks.firstOrNull()?.let { first ->
+                                        viewModel.playFrom(zoneTracks, first)
                                     }
                                 },
-                                onPlayTrack = { track -> viewModel.playFrom(state.exploreTracks, track) }
+                                onPlayTrack = { track -> viewModel.playFrom(zoneTracks, track) }
                             )
                         }
                 }
