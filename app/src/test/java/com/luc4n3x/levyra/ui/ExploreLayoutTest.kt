@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
@@ -163,6 +164,50 @@ class ExploreLayoutTest {
         assertEquals(3, exploreSampleTracks(videos, limit = 3).size)
         assertTrue(exploreSampleTracks(videos, limit = 0).isEmpty())
         assertTrue(exploreSampleTracks(videos, limit = -1).isEmpty())
+    }
+
+    @Test
+    fun providerSectionsUseStructuralOrderAndStableParamsIdentity() {
+        val categories = listOf(
+            ExploreCategory("Focus", "mood-focus", "Moods & moments", 0),
+            ExploreCategory("Focus duplicate", "mood-focus", "Moods & moments", 0),
+            ExploreCategory("Pop", "genre-pop", "Genres", 1),
+            ExploreCategory("", "malformed", "Genres", 1),
+            ExploreCategory("Rock", "", "Genres", 1)
+        )
+
+        val sections = buildExploreCategorySections(categories)
+
+        assertEquals(2, sections.size)
+        assertEquals(ExploreCategoryPresentation.Atmospheric, sections[0].presentation)
+        assertEquals(ExploreCategoryPresentation.Structured, sections[1].presentation)
+        assertEquals(listOf("mood-focus", "genre-pop"), sections.flatMap { it.categories }.map { it.params })
+    }
+
+    @Test
+    fun ungroupedProviderCategoriesRemainUsableWithoutTitleGuessing() {
+        val sections = buildExploreCategorySections(
+            listOf(ExploreCategory("未知", "opaque-params", section = "", sectionIndex = -1))
+        )
+
+        assertEquals(ExploreCategoryPresentation.Mixed, sections.single().presentation)
+        assertEquals("opaque-params", sections.single().categories.single().params)
+    }
+
+    @Test
+    fun fallbackGenresExcludeNonGenreEditorialShortcuts() {
+        val template = zones(1).single()
+        val fallbackIds = exploreFallbackGenres(
+            listOf(
+                template.copy(id = ExploreCatalog.NEW_RELEASES_ZONE_ID),
+                template.copy(id = ExploreCatalog.LOCAL_WAVE_ZONE_ID),
+                template.copy(id = "rap-drill")
+            )
+        ).map { it.id }
+
+        assertFalse(ExploreCatalog.NEW_RELEASES_ZONE_ID in fallbackIds)
+        assertFalse(ExploreCatalog.LOCAL_WAVE_ZONE_ID in fallbackIds)
+        assertTrue("rap-drill" in fallbackIds)
     }
 
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->
