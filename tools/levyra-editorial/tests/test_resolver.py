@@ -12,6 +12,7 @@ from levyra_editorial.resolver import (
     CanvasResolverService,
     CanvasTrackMatcher,
     RateLimiter,
+    SQLiteCacheStorage,
     TrackQuery,
     create_resolver_server,
 )
@@ -53,9 +54,6 @@ class FakeSpotifyClient:
 
             raise requests.Timeout("Spotify Canvas request timed out.")
         self.canvases_called.append(track_ids)
-        if self.paxsenix_fallback_hit:
-            # Simulate primary miss and PaxSenix resolving it
-            return {tid: self.canvas_map[tid] for tid in track_ids if tid in self.canvas_map}
         return {tid: self.canvas_map[tid] for tid in track_ids if tid in self.canvas_map}
 
 
@@ -89,16 +87,71 @@ def test_exact_isrc_hit() -> None:
     cand = make_candidate(isrc="USUM71703861")
     outcome = matcher.match_candidate(query, cand)
     assert outcome.accepted
-    assert outcome.score == 100.0
+    assert outcome.score >= 100.0
     assert outcome.reason == "exact_isrc"
 
     best = matcher.select_best_candidate(query, [cand])
     assert best == "track123"
 
 
+def test_exact_isrc_multiple_candidates_same_isrc_not_ambiguous() -> None:
+    matcher = CanvasTrackMatcher()
+    query = TrackQuery(
+        isrc="USUM71703861",
+        title="Test Song",
+        artist="Test Artist",
+        album="Original Album",
+        duration_ms=180_000,
+    )
+    cand_album = make_candidate(
+        track_id="track_album",
+        name="Test Song",
+        artist="Test Artist",
+        album="Original Album",
+        isrc="USUM71703861",
+    )
+    cand_comp = make_candidate(
+        track_id="track_compilation",
+        name="Test Song",
+        artist="Test Artist",
+        album="Greatest Hits 2024",
+        isrc="USUM71703861",
+    )
+    best = matcher.select_best_candidate(query, [cand_album, cand_comp])
+    assert best is not None
+    assert best == "track_album"
+
+
+def test_ambiguous_candidate_rejected_for_different_recordings() -> None:
+    matcher = CanvasTrackMatcher()
+    query = TrackQuery(
+        isrc="",
+        title="Photograph",
+        artist="Ed Sheeran",
+        duration_ms=250_000,
+    )
+    cand1 = make_candidate(
+        track_id="ed1",
+        name="Photograph",
+        artist="Ed Sheeran",
+        album="Album One",
+        duration_ms=250_000,
+        isrc="ISRC11111111",
+    )
+    cand2 = make_candidate(
+        track_id="ed2",
+        name="Photograph",
+        artist="Ed Sheeran",
+        album="Album Two",
+        duration_ms=250_000,
+        isrc="ISRC22222222",
+    )
+    best = matcher.select_best_candidate(query, [cand1, cand2])
+    assert best is None
+
+
 def test_strict_metadata_fallback() -> None:
     matcher = CanvasTrackMatcher()
-    # No ISRC
     query = TrackQuery(
         isrc="",
         title="Blinding Lights",
@@ -119,33 +172,6 @@ def test_strict_metadata_fallback() -> None:
     assert outcome.score >= 80.0
     best = matcher.select_best_candidate(query, [cand])
     assert best == "weeknd1"
-
-
-def test_ambiguous_candidate_rejected() -> None:
-    matcher = CanvasTrackMatcher()
-    query = TrackQuery(
-        isrc="",
-        title="Photograph",
-        artist="Ed Sheeran",
-        duration_ms=250_000,
-    )
-    cand1 = make_candidate(
-        track_id="ed1",
-        name="Photograph",
-        artist="Ed Sheeran",
-        album="Album One",
-        duration_ms=250_000,
-    )
-    cand2 = make_candidate(
-        track_id="ed2",
-        name="Photograph",
-        artist="Ed Sheeran",
-        album="Album Two",
-        duration_ms=250_000,
-    )
-    # Both have very similar scores and different IDs -> rejected
-    best = matcher.select_best_candidate(query, [cand1, cand2])
-    assert best is None
 
 
 def test_wrong_artist_rejected() -> None:
@@ -170,7 +196,6 @@ def test_wrong_artist_rejected() -> None:
 
 def test_wrong_album_version_rejected_when_material() -> None:
     matcher = CanvasTrackMatcher()
-    # Studio query vs live candidate
     query = TrackQuery(
         isrc="",
         title="Hotel California",
@@ -188,6 +213,26 @@ def test_wrong_album_version_rejected_when_material() -> None:
     assert "edition_mismatch" in outcome.reason
 
 
+def test_multi_word_unsafe_terms_rejected() -> None:
+    matcher = CanvasTrackMatcher()
+    query = TrackQuery(
+        isrc="",
+        title="Original Track",
+        artist="Artist",
+        duration_ms=180_000,
+    )
+    for term in ["Sped Up", "DJ Mix", "Set List"]:
+        cand = make_candidate(
+            track_id="bad_edition",
+            name=f"Original Track ({term})",
+            artist="Artist",
+            duration_ms=180_000,
+        )
+        outcome = matcher.match_candidate(query, cand)
+        assert not outcome.accepted
+        assert outcome.reason.startswith("unsafe_terms_")
+
+
 def test_duration_mismatch_rejected() -> None:
     matcher = CanvasTrackMatcher()
     query = TrackQuery(
@@ -196,7 +241,6 @@ def test_duration_mismatch_rejected() -> None:
         artist="Artist",
         duration_ms=120_000,
     )
-    # Candidate is 200s (80s delta > 8s limit)
     cand = make_candidate(
         track_id="long1",
         name="Short Song",
@@ -208,26 +252,73 @@ def test_duration_mismatch_rejected() -> None:
     assert "duration_mismatch" in outcome.reason
 
 
-def test_positive_and_negative_cache_hits() -> None:
-    cache = CanvasResolverCache(positive_ttl_seconds=3600, negative_ttl_seconds=60)
-    key = "isrc:USUM71703861"
+def test_sqlite_cache_storage_persistence(tmp_path: Any) -> None:
+    db_file = str(tmp_path / "canvas_cache.db")
+    storage = SQLiteCacheStorage(db_file)
+    storage.put("positive_key", "https://canvaz.scdn.co/test.mp4", ttl_seconds=3600)
+    storage.put("negative_key", None, ttl_seconds=60)
+    storage.save_discovery(
+        {
+            "song": "Song A",
+            "artist": "Artist A",
+            "album": "Album A",
+            "url": "https://canvaz.scdn.co/test.mp4",
+            "scope": "track",
+            "isrc": "USUM71703861",
+        }
+    )
 
-    # Initially miss
+    hit, val = storage.get("positive_key")
+    assert hit
+    assert val == "https://canvaz.scdn.co/test.mp4"
+
+    hit_neg, val_neg = storage.get("negative_key")
+    assert hit_neg
+    assert val_neg is None
+
+    storage_reopened = SQLiteCacheStorage(db_file)
+    hit_reopened, val_reopened = storage_reopened.get("positive_key")
+    assert hit_reopened
+    assert val_reopened == "https://canvaz.scdn.co/test.mp4"
+
+    discoveries = storage_reopened.get_discoveries()
+    assert len(discoveries) == 1
+    assert discoveries[0]["song"] == "Song A"
+    assert discoveries[0]["isrc"] == "USUM71703861"
+    storage.close()
+    storage_reopened.close()
+
+
+def test_canvas_resolver_cache_with_storage(tmp_path: Any) -> None:
+    db_file = str(tmp_path / "cache_l2.db")
+    storage = SQLiteCacheStorage(db_file)
+    cache = CanvasResolverCache(
+        storage_backend=storage,
+        positive_ttl_seconds=3600,
+        negative_ttl_seconds=60,
+    )
+
+    key = "isrc:USUM71703861"
     hit, val = cache.get(key)
     assert not hit
     assert val is None
 
-    # Positive put
     cache.put_positive(key, "https://canvaz.scdn.co/video.mp4")
     hit, val = cache.get(key)
     assert hit
     assert val == "https://canvaz.scdn.co/video.mp4"
 
-    # Negative put
-    cache.put_negative("isrc:NEGATIVE123")
-    hit_neg, val_neg = cache.get("isrc:NEGATIVE123")
-    assert hit_neg
-    assert val_neg is None
+    storage2 = SQLiteCacheStorage(db_file)
+    new_cache = CanvasResolverCache(
+        storage_backend=storage2,
+        positive_ttl_seconds=3600,
+        negative_ttl_seconds=60,
+    )
+    hit2, val2 = new_cache.get(key)
+    assert hit2
+    assert val2 == "https://canvaz.scdn.co/video.mp4"
+    storage.close()
+    storage2.close()
 
 
 def test_negative_cache_expiry() -> None:
@@ -235,15 +326,66 @@ def test_negative_cache_expiry() -> None:
     key = "isrc:EXPIRING123"
     cache.put_negative(key)
 
-    # Immediately hit
     hit, val = cache.get(key)
     assert hit
     assert val is None
 
     time.sleep(0.02)
-    # Expired
     hit_after, _ = cache.get(key)
     assert not hit_after
+
+
+def test_discovery_row_uses_canonical_spotify_metadata() -> None:
+    cand = make_candidate(
+        track_id="canon123",
+        name="Canonical Song",
+        artist="Canonical Artist",
+        album="Canonical Studio Album",
+        isrc="USUM71703861",
+    )
+    client = FakeSpotifyClient(
+        search_results=[cand],
+        canvas_map={"canon123": "https://canvaz.scdn.co/canonical.mp4"},
+    )
+    service = CanvasResolverService(client)
+    res = service.resolve(
+        {
+            "isrc": "USUM71703861",
+            "title": "Canonical Song",
+            "artist": "Canonical Artist",
+            "album": "Messy Untrusted Album Extra",
+        }
+    )
+    assert res["status"] == "resolved"
+    discoveries = service.cache.export_discoveries()
+    assert len(discoveries) == 1
+    row = discoveries[0]
+    assert row["song"] == "Canonical Song"
+    assert row["artist"] == "Canonical Artist"
+    assert row["album"] == "Canonical Studio Album"
+    assert row["isrc"] == "USUM71703861"
+    assert row["url"] == "https://canvaz.scdn.co/canonical.mp4"
+
+
+def test_conclusive_miss_negative_cached_transient_error_not_cached() -> None:
+    client_empty = FakeSpotifyClient(search_results=[])
+    service_empty = CanvasResolverService(client_empty)
+    query_payload = {"title": "Unknown Song", "artist": "Unknown Artist"}
+    res_miss = service_empty.resolve(query_payload)
+    assert res_miss["status"] == "miss"
+
+    key = service_empty._cache_key_for(service_empty._validate_request(query_payload))
+    hit, val = service_empty.cache.get(key)
+    assert hit
+    assert val is None
+
+    client_timeout = FakeSpotifyClient(timeout=True)
+    service_timeout = CanvasResolverService(client_timeout)
+    res_timeout = service_timeout.resolve(query_payload)
+    assert res_timeout["status"] == "unavailable"
+
+    hit_timeout, _ = service_timeout.cache.get(key)
+    assert not hit_timeout
 
 
 def test_concurrent_identical_requests_deduplicated() -> None:
@@ -272,12 +414,11 @@ def test_concurrent_identical_requests_deduplicated() -> None:
 
     assert len(results) == 5
     assert all(r["status"] == "resolved" for r in results)
-    assert call_count == 1  # Only ONE execution occurred!
+    assert call_count == 1
 
 
 def test_invalid_canvas_host_and_non_mp4_rejected() -> None:
     cand = make_candidate(track_id="bad_host_track")
-    # Non-canvaz host
     client_bad_host = FakeSpotifyClient(
         search_results=[cand],
         canvas_map={"bad_host_track": "https://evil.com/video.mp4"},
@@ -286,7 +427,6 @@ def test_invalid_canvas_host_and_non_mp4_rejected() -> None:
     res_bad_host = service_bad_host.resolve({"isrc": "USUM71703861"})
     assert res_bad_host["status"] == "miss"
 
-    # Non-MP4 extension
     client_bad_ext = FakeSpotifyClient(
         search_results=[cand],
         canvas_map={"bad_host_track": "https://canvaz.scdn.co/video.webm"},
@@ -314,27 +454,23 @@ def test_spotify_auth_failure_surfaces_cleanly() -> None:
     client = FakeSpotifyClient(auth_error=True)
     service = CanvasResolverService(client)
     with pytest.raises(AuthenticationError):
-        # Service level directly propagates AuthenticationError so handler can return 503
         service.resolve({"title": "Test", "artist": "Artist"})
 
 
-def test_timeout_handled_gracefully() -> None:
-    client = FakeSpotifyClient(timeout=True)
-    service = CanvasResolverService(client)
-    # Search timeout results in miss (caught internally)
-    res = service.resolve({"title": "Test", "artist": "Artist"})
-    assert res["status"] == "miss"
-
-
-def test_rate_limiter() -> None:
-    limiter = RateLimiter(limit_per_minute=2)
-    allowed, _ = limiter.is_allowed("1.2.3.4")
+def test_rate_limiter_stale_cleanup_and_capacity_cap() -> None:
+    limiter = RateLimiter(limit_per_minute=2, max_tracked_ips=3)
+    allowed, _ = limiter.is_allowed("1.1.1.1")
     assert allowed
-    allowed, _ = limiter.is_allowed("1.2.3.4")
+    allowed, _ = limiter.is_allowed("1.1.1.1")
     assert allowed
-    allowed, retry_after = limiter.is_allowed("1.2.3.4")
+    allowed, retry_after = limiter.is_allowed("1.1.1.1")
     assert not allowed
     assert retry_after >= 1
+
+    limiter.is_allowed("2.2.2.2")
+    limiter.is_allowed("3.3.3.3")
+    limiter.is_allowed("4.4.4.4")
+    assert len(limiter._requests) <= 3
 
 
 def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixture) -> None:
@@ -353,12 +489,20 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
 
     base_url = f"http://127.0.0.1:{server_port}"
     try:
-        # 1. Health check
         resp = requests.get(f"{base_url}/health", timeout=5)
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
 
-        # 2. POST resolve hit
+        resp_v1_health = requests.get(f"{base_url}/v1/health", timeout=5)
+        assert resp_v1_health.status_code == 200
+        assert resp_v1_health.json() == {"status": "ok"}
+
+        resp_get_resolve = requests.get(f"{base_url}/v1/resolve", timeout=5)
+        assert resp_get_resolve.status_code == 404
+
+        resp_unknown = requests.get(f"{base_url}/unknown/path", timeout=5)
+        assert resp_unknown.status_code == 404
+
         resp = requests.post(
             f"{base_url}/v1/resolve",
             json={
@@ -375,14 +519,6 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         assert "sp_dc" not in str(data)
         assert "Bearer" not in str(data)
 
-        # 3. GET resolve hit
-        resp = requests.get(f"{base_url}/v1/resolve?isrc=USUM71703861", timeout=5)
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["status"] == "resolved"
-        assert data["url"] == valid_canvas_url
-
-        # 4. Malformed request rejected (empty body / missing isrc and title)
         resp_bad = requests.post(
             f"{base_url}/v1/resolve",
             data=b"{}",
@@ -391,7 +527,6 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         )
         assert resp_bad.status_code == 400
 
-        # 5. Malformed JSON
         resp_malformed = requests.post(
             f"{base_url}/v1/resolve",
             data=b"not-json",
@@ -400,10 +535,18 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         )
         assert resp_malformed.status_code == 400
 
-        # 6. Verify logs contain no sensitive credentials
+        resp_oversized = requests.post(
+            f"{base_url}/v1/resolve",
+            data=b"x" * 70_000,
+            headers={"Content-Type": "application/json"},
+            timeout=5,
+        )
+        assert resp_oversized.status_code == 413
+
         assert "sp_dc" not in caplog.text
         assert "Bearer" not in caplog.text
         assert "authorization" not in caplog.text.lower()
+        assert "127.0.0.1" not in caplog.text
 
     finally:
         server.shutdown()

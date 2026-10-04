@@ -106,7 +106,6 @@ class OnDemandCanvasResolverTest {
             assertEquals("Levyra/1.0 (Android; MotionArtwork)", interceptedRequest?.header("User-Agent"))
             assertEquals("application/json", interceptedRequest?.header("Accept"))
 
-            // Verify request payload contains only minimal metadata and no sensitive tokens
             assertNotNull(interceptedBody)
             val bodyJson = JSONObject(interceptedBody!!)
             assertEquals("USUM71900764", bodyJson.getString("isrc"))
@@ -157,6 +156,17 @@ class OnDemandCanvasResolverTest {
     }
 
     @Test
+    fun metadataCacheKeyIncludesAlbumIdentity() {
+        val studio = testIdentity(isrc = "", title = "Song", artist = "Artist", album = "Studio Album", durationMs = 200_000L)
+        val live = testIdentity(isrc = "", title = "Song", artist = "Artist", album = "Live in Concert", durationMs = 200_000L)
+        val keyStudio = onDemandCacheKey(studio)
+        val keyLive = onDemandCacheKey(live)
+        assertFalse(keyStudio == keyLive)
+        assertTrue(keyStudio.contains("studio album"))
+        assertTrue(keyLive.contains("live in concert"))
+    }
+
+    @Test
     fun invalidCanvasHostRejected() {
         runBlocking {
             val client = clientWithHandler { request ->
@@ -194,7 +204,20 @@ class OnDemandCanvasResolverTest {
             )
 
             val candidate = resolver.resolve(testIdentity())
-            assertNull("Non-MP4 / non-allowlisted extension should be rejected", candidate)
+            assertNull("Non-MP4 extension should be rejected", candidate)
+        }
+    }
+
+    @Test
+    fun responseExceedingMaxSizeIsRejected() {
+        runBlocking {
+            val hugeBody = "a".repeat(100 * 1024)
+            val client = clientWithHandler { request ->
+                jsonResponse(request, 200, hugeBody)
+            }
+            val resolver = OnDemandCanvasResolver(client = client)
+            val candidate = resolver.resolve(testIdentity())
+            assertNull(candidate)
         }
     }
 
@@ -217,7 +240,6 @@ class OnDemandCanvasResolverTest {
             assertNull(first)
             assertEquals(1, requestCount.get())
 
-            // Second lookup for same identity should hit negative cache and not make HTTP call
             val second = resolver.resolve(identity)
             assertNull(second)
             assertEquals("Negative cache hit should skip network call", 1, requestCount.get())
@@ -282,47 +304,54 @@ class OnDemandCanvasResolverTest {
     }
 
     @Test
-    fun staleAndroidResultIgnoredAfterTrackChange() {
+    fun trackChangeCancelsInFlightRequestAndSafelyResolvesNewTrack() {
         runBlocking {
-            var activeTrack = "Track B"
-            val resolver = OnDemandCanvasResolver(
-                client = clientWithHandler { request ->
-                    val buffer = okio.Buffer()
-                    request.body?.writeTo(buffer)
-                    val body = buffer.readUtf8()
-                    if (body.contains("Track A")) {
-                        jsonResponse(request, 200, """{"status":"resolved","url":"https://canvaz.scdn.co/track_a.mp4"}""")
-                    } else {
-                        jsonResponse(request, 200, """{"status":"resolved","url":"https://canvaz.scdn.co/track_b.mp4"}""")
+            val trackARequestStarted = CompletableDeferred<Unit>()
+
+            val client = clientWithHandler { request ->
+                val buffer = okio.Buffer()
+                request.body?.writeTo(buffer)
+                val body = buffer.readUtf8()
+                if (body.contains("Track A")) {
+                    trackARequestStarted.complete(Unit)
+                    val start = System.currentTimeMillis()
+                    while (System.currentTimeMillis() - start < 1000) {
+                        Thread.sleep(20)
                     }
-                },
+                    jsonResponse(request, 200, """{"status":"resolved","url":"https://canvaz.scdn.co/track_a.mp4"}""")
+                } else {
+                    jsonResponse(request, 200, """{"status":"resolved","url":"https://canvaz.scdn.co/track_b.mp4"}""")
+                }
+            }
+
+            val resolver = OnDemandCanvasResolver(
+                client = client,
                 networkPolicyCheck = { true }
             )
 
             val identityA = testIdentity(isrc = "AAA1", title = "Track A")
             val identityB = testIdentity(isrc = "BBB2", title = "Track B")
 
-            // Simulate resolved candidate arriving for stale track A
-            val candidateA = resolver.resolve(identityA)
-            var currentArtwork: String? = null
-            if (candidateA != null && identityA.title == activeTrack) {
-                currentArtwork = candidateA.url
+            var candidateA: MotionArtworkCandidate? = null
+            val jobA = launch(Dispatchers.IO) {
+                candidateA = resolver.resolve(identityA)
             }
-            assertNull("Stale Track A result must be ignored when active track is Track B", currentArtwork)
 
-            // Candidate for active track B arrives
+            trackARequestStarted.await()
+            jobA.cancelAndJoin()
+            assertTrue(jobA.isCancelled)
+            assertNull(candidateA)
+
             val candidateB = resolver.resolve(identityB)
-            if (candidateB != null && identityB.title == activeTrack) {
-                currentArtwork = candidateB.url
-            }
-            assertEquals("https://canvaz.scdn.co/track_b.mp4", currentArtwork)
+            assertNotNull(candidateB)
+            assertEquals("https://canvaz.scdn.co/track_b.mp4", candidateB?.url)
         }
     }
 
     @Test
     fun remoteFailurePreservesCurrentFallbackBehavior() {
         runBlocking {
-            val client = clientWithHandler { request ->
+            val client = clientWithHandler {
                 throw IOException("Network unreachable")
             }
 
@@ -331,7 +360,6 @@ class OnDemandCanvasResolverTest {
                 networkPolicyCheck = { true }
             )
 
-            // Exception should be caught gracefully and return null without throwing
             val candidate = resolver.resolve(testIdentity())
             assertNull(candidate)
         }

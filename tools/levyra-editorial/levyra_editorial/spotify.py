@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import struct
+import threading
 import time
 import uuid
 from collections.abc import Mapping, Sequence
@@ -394,53 +395,57 @@ class SpotifyWebClient:
         self._playlist_pages: dict[tuple[str, int], dict[str, Any]] = {}
         self._track_metadata: dict[str, Mapping[str, Any]] = {}
         self._track_metadata_rate_limited = False
+        self._lock = threading.RLock()
 
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
-        LOGGER.info("Preparing editorial source authentication.")
-        secret_dict = self._fetch_totp_secret_dictionary()
-        totp_version, totp_secret = select_latest_totp_secret(secret_dict)
-        last_error: Exception | None = None
-        for product_type, reason in TOKEN_ATTEMPTS:
-            LOGGER.info(
-                "Trying editorial token profile %s / %s.",
-                product_type,
-                reason,
-            )
-            server_time = self._fetch_server_time()
-            otp = generate_totp(totp_secret, server_time)
-            try:
-                token_data = self._request_access_token(
-                    product_type=product_type,
-                    reason=reason,
-                    otp=otp,
-                    totp_version=totp_version,
-                )
-                self._accept_token_response(token_data, server_time)
-                LOGGER.info(
-                    "Editorial source authentication succeeded with the %s profile.",
-                    product_type,
-                )
+        with self._lock:
+            if self._access_token and (time.time() * 1000) < (self._expires_at_ms - 60_000):
                 return
-            except (
-                requests.RequestException,
-                ValueError,
-                AuthenticationError,
-            ) as error:
-                last_error = error
-                self._access_token = None
-                self._client_id = None
-                LOGGER.warning(
-                    "Editorial token profile %s / %s failed: %s.",
+            LOGGER.info("Preparing editorial source authentication.")
+            secret_dict = self._fetch_totp_secret_dictionary()
+            totp_version, totp_secret = select_latest_totp_secret(secret_dict)
+            last_error: Exception | None = None
+            for product_type, reason in TOKEN_ATTEMPTS:
+                LOGGER.info(
+                    "Trying editorial token profile %s / %s.",
                     product_type,
                     reason,
-                    _safe_authentication_failure(error),
                 )
+                server_time = self._fetch_server_time()
+                otp = generate_totp(totp_secret, server_time)
+                try:
+                    token_data = self._request_access_token(
+                        product_type=product_type,
+                        reason=reason,
+                        otp=otp,
+                        totp_version=totp_version,
+                    )
+                    self._accept_token_response(token_data, server_time)
+                    LOGGER.info(
+                        "Editorial source authentication succeeded with the %s profile.",
+                        product_type,
+                    )
+                    return
+                except (
+                    requests.RequestException,
+                    ValueError,
+                    AuthenticationError,
+                ) as error:
+                    last_error = error
+                    self._access_token = None
+                    self._client_id = None
+                    LOGGER.warning(
+                        "Editorial token profile %s / %s failed: %s.",
+                        product_type,
+                        reason,
+                        _safe_authentication_failure(error),
+                    )
 
-        raise AuthenticationError(
-            "The editorial source session could not be authenticated. "
-            "Rotate LEVYRA_EDITORIAL_SP_DC and retry the workflow."
-        ) from last_error
+            raise AuthenticationError(
+                "The editorial source session could not be authenticated. "
+                "Rotate LEVYRA_EDITORIAL_SP_DC and retry the workflow."
+            ) from last_error
 
     def get_playlist_metadata(
         self,
@@ -591,11 +596,12 @@ class SpotifyWebClient:
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         """Search Spotify for track candidates matching a query string or ISRC."""
-        normalized_query = str(query or "").strip()
-        if len(normalized_query) < 2:
-            return []
-        if self._access_token is None:
-            self.authenticate()
+        with self._lock:
+            normalized_query = str(query or "").strip()
+            if len(normalized_query) < 2:
+                return []
+            if self._access_token is None:
+                self.authenticate()
 
         params = {
             "q": normalized_query,
@@ -737,11 +743,12 @@ class SpotifyWebClient:
         *,
         use_primary: bool,
     ) -> dict[str, str]:
-        unique_ids = list(dict.fromkeys(str(value or "").strip() for value in track_ids))
-        if len(unique_ids) > MAX_CANVAS_TRACKS:
-            raise SourceApiError("The Spotify Canvas request exceeds the bounded track limit.")
-        if not unique_ids:
-            return {}
+        with self._lock:
+            unique_ids = list(dict.fromkeys(str(value or "").strip() for value in track_ids))
+            if len(unique_ids) > MAX_CANVAS_TRACKS:
+                raise SourceApiError("The Spotify Canvas request exceeds the bounded track limit.")
+            if not unique_ids:
+                return {}
         encode_canvas_request(unique_ids)
         resolved: dict[str, str] = {}
         paxsenix_resolved = 0
@@ -958,8 +965,9 @@ class SpotifyWebClient:
 
     def close(self) -> None:
         """Close the underlying HTTP session."""
-        self._paxsenix_session.close()
-        self._session.close()
+        with self._lock:
+            self._paxsenix_session.close()
+            self._session.close()
 
     def _get_playlist_page(
         self,
@@ -1512,9 +1520,8 @@ def _bounded_retry_after(value: str | None) -> int:
     try:
         return min(max(int(value), 0), 5)
     except ValueError:
-        # `Retry-After` may legally be an HTTP-date. Fall back to the absent-header default so a
-        # rate-limited page still gets its single retry instead of failing immediately.
         return 1
+
 
 
 def validate_secret_dict_url(value: str) -> str:
