@@ -35,14 +35,24 @@ import kotlin.coroutines.resumeWithException
  * or require loading the complete catalog. Levyra's bounded flat snapshot remains a rollout
  * fallback while the indexed mirror is unavailable.
  */
-class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
+class CommunityCanvasProvider internal constructor(
+    private val client: OkHttpClient,
+    private val onDemandResolver: OnDemandCanvasResolver
+) : MotionArtworkProvider {
+    constructor(
+        context: Context,
+        onDemandResolver: OnDemandCanvasResolver = OnDemandCanvasResolver(context)
+    ) : this(
+        client = LevyraHttpClientFactory.media(context).newBuilder()
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
+            .callTimeout(5, TimeUnit.SECONDS)
+            .build(),
+        onDemandResolver = onDemandResolver
+    )
+
     override val id: String = PROVIDER_ID
 
-    private val client: OkHttpClient = LevyraHttpClientFactory.media(context).newBuilder()
-        .connectTimeout(3, TimeUnit.SECONDS)
-        .readTimeout(4, TimeUnit.SECONDS)
-        .callTimeout(5, TimeUnit.SECONDS)
-        .build()
     private val catalogMutex = Mutex()
     private val indexManifestMutex = Mutex()
     private val indexShardCacheMutex = Mutex()
@@ -71,20 +81,33 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
-            val indexedRows = when (val indexed = indexedEntries(identity)) {
-                is CommunityCanvasIndexLookup.Available -> indexed.entries
-                CommunityCanvasIndexLookup.Unavailable -> null
+            val entries = runCatching {
+                val indexedRows = when (val indexed = indexedEntries(identity)) {
+                    is CommunityCanvasIndexLookup.Available -> indexed.entries
+                    CommunityCanvasIndexLookup.Unavailable -> null
+                }
+                indexedRows?.takeIf { it.isNotEmpty() } ?: catalog()
+            }.getOrElse { error ->
+                if (error is CancellationException) throw error
+                Timber.d(error, "Community canvas local catalog unavailable for %s", identity.title)
+                emptyList()
             }
-            val entries = indexedRows?.takeIf { it.isNotEmpty() } ?: catalog()
             Timber.d(
-                "Community canvas lookup indexed=%d entries=%d title=%s",
-                indexedRows?.size ?: -1,
+                "Community canvas lookup entries=%d title=%s",
                 entries.size,
                 identity.title
             )
             val candidates = communityCanvasCandidates(identity, entries, System.currentTimeMillis())
-            if (candidates.isEmpty()) MotionArtworkProviderResult.NoMatch
-            else MotionArtworkProviderResult.Found(candidates)
+            if (candidates.isNotEmpty()) {
+                return MotionArtworkProviderResult.Found(candidates)
+            }
+            val onDemand = onDemandResolver.resolve(identity)
+            if (onDemand != null) {
+                Timber.d("Community canvas on-demand resolved candidate for %s", identity.title)
+                MotionArtworkProviderResult.Found(listOf(onDemand))
+            } else {
+                MotionArtworkProviderResult.NoMatch
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {

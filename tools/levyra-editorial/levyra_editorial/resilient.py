@@ -234,6 +234,23 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use only the PaxSenix-compatible resolver for live Canvas diagnostics.",
     )
+    parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="Start the on-demand Canvas resolver HTTP service.",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind the on-demand Canvas resolver HTTP service.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Port to bind the on-demand Canvas resolver HTTP service.",
+    )
     return parser
 
 
@@ -251,6 +268,21 @@ def main(argv: list[str] | None = None) -> int:
         elif args.validate_canvas:
             validate_spotify_canvas_file(args.validate_canvas)
             LOGGER.info("Spotify Canvas validation succeeded: %s", args.validate_canvas)
+        elif args.serve:
+            from .resolver import CanvasResolverService, create_resolver_server
+
+            raw_secret = os.environ.get("LEVYRA_EDITORIAL_SP_DC", "")
+            spotify = SpotifyWebClient(raw_secret)
+            service = CanvasResolverService(spotify)
+            server = create_resolver_server(service, host=args.host, port=args.port)
+            LOGGER.info("Starting on-demand Canvas resolver on http://%s:%d", args.host, args.port)
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                LOGGER.info("Stopping on-demand Canvas resolver.")
+            finally:
+                server.server_close()
+                spotify.close()
         else:
             if args.require_canvas and args.canvas_output is None:
                 raise ValueError("--require-canvas requires --canvas-output.")
