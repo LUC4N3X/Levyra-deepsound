@@ -1295,10 +1295,32 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): String = withContext(Dispatchers.IO) {
         if (params.isBlank()) return@withContext ""
-        moodPlaylists(params, languageCode, 1)
-            .firstOrNull()
-            ?.thumbnailUrl
-            .orEmpty()
+
+        val shelves = moodPlaylists(params, languageCode, 8)
+        shelves.asSequence()
+            .map { shelf -> shelf.thumbnailUrl.trim() }
+            .firstOrNull(String::isNotBlank)
+            ?.let { artwork -> return@withContext artwork }
+
+        for (shelf in shelves.take(3)) {
+            val playlistId = shelf.playlistId.ifBlank { shelf.browseId.removePrefix("VL") }
+            if (playlistId.isBlank()) continue
+            val artwork = try {
+                playlist(playlistId, languageCode, 6)
+                    ?.tracks
+                    .orEmpty()
+                    .asSequence()
+                    .map { track -> track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.trim() }
+                    .firstOrNull(String::isNotBlank)
+                    .orEmpty()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                ""
+            }
+            if (artwork.isNotBlank()) return@withContext artwork
+        }
+        ""
     }
 
     suspend fun exploreCategory(
