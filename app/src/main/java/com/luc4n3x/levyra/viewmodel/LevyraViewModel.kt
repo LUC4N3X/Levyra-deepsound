@@ -34,6 +34,7 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.ProfilePhotoStore
 import com.luc4n3x.levyra.data.LyricsLatencyProfiles
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
+import com.luc4n3x.levyra.data.EXPLORE_DISCOVERY_CACHE_TTL_MS
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.HomeInteractionGate
 import com.luc4n3x.levyra.data.HomeOfflinePolicy
@@ -5654,7 +5655,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exploreJob = null
         exploreCategoriesJob?.cancel()
         exploreCategoriesJob = null
-        exploreCategoriesLoadedLanguage = ""
+        exploreDiscoveryPersistJob?.cancel()
+        exploreDiscoveryPersistJob = null
+        val exploreSnapshot = preferences.loadExploreDiscovery(languageCode)
+        exploreCategoriesLoadedLanguage = if (exploreSnapshot != null) languageCode else ""
+        exploreCategoriesCachedAtMs = exploreSnapshot?.savedAtMs ?: 0L
         exploreCategoryArtworkRequests.clear()
         musicVideosJob?.cancel()
         musicVideosJob = null
@@ -5700,8 +5705,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 ),
                 exploreZoneId = null,
                 exploreCategoryParams = null,
-                exploreCategories = emptyList(),
-                exploreCategoryArtwork = emptyMap(),
+                exploreCategories = exploreSnapshot?.categories.orEmpty(),
+                exploreCategoryArtwork = exploreSnapshot?.artwork.orEmpty(),
                 isExploreCategoriesLoading = false,
                 isExploreLoading = false,
                 exploreTracks = emptyList()
@@ -9139,7 +9144,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var exploreCategoriesLoadedLanguage = ""
     private var exploreCategoriesRequestLanguage = ""
     private var exploreCategoriesRequestGeneration = 0L
+    private var exploreCategoriesCachedAtMs = 0L
     private var exploreCategoriesJob: Job? = null
+    private var exploreDiscoveryPersistJob: Job? = null
     private val exploreCategoryArtworkRequests = mutableSetOf<String>()
 
     private fun discoveryPreferredArtists(snapshot: LevyraUiState, limit: Int = 24): List<String> = buildList {
@@ -9609,23 +9616,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val requestKey = "$languageCode:$params"
         if (!exploreCategoryArtworkRequests.add(requestKey)) return
         viewModelScope.launch {
-            val artwork = try {
-                repository.moodCategoryArtwork(params, languageCode)
+            try {
+                val artwork = repository.moodCategoryArtwork(params, languageCode)
+                if (artwork.isNotBlank() && _state.value.languageCode == languageCode) {
+                    _state.update { current ->
+                        current.copy(exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork))
+                    }
+                    schedulePersistExploreDiscovery(languageCode)
+                }
             } catch (error: CancellationException) {
-                exploreCategoryArtworkRequests.remove(requestKey)
                 throw error
             } catch (error: Throwable) {
-                exploreCategoryArtworkRequests.remove(requestKey)
                 Timber.w(error, "Provider Explore category artwork failed")
-                ""
-            }
-            if (artwork.isBlank() || _state.value.languageCode != languageCode) {
+            } finally {
                 exploreCategoryArtworkRequests.remove(requestKey)
-            } else {
-                _state.update { current ->
-                    current.copy(exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork))
-                }
             }
+        }
+    }
+
+    private fun schedulePersistExploreDiscovery(languageCode: String) {
+        exploreDiscoveryPersistJob?.cancel()
+        exploreDiscoveryPersistJob = viewModelScope.launch {
+            delay(350L)
+            val current = _state.value
+            if (current.languageCode != languageCode || current.exploreCategories.isEmpty()) return@launch
+            preferences.saveExploreDiscovery(
+                categories = current.exploreCategories,
+                artwork = current.exploreCategoryArtwork,
+                languageCode = languageCode
+            )
         }
     }
 
@@ -9635,9 +9654,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (exploreCategoriesRequestLanguage == languageCode) return
             exploreCategoriesJob?.cancel()
         }
+        val hasCachedCategories =
+            exploreCategoriesLoadedLanguage == languageCode && _state.value.exploreCategories.isNotEmpty()
+        val cacheAgeMs = System.currentTimeMillis() - exploreCategoriesCachedAtMs
         if (
-            exploreCategoriesLoadedLanguage == languageCode &&
-            _state.value.exploreCategories.isNotEmpty()
+            hasCachedCategories &&
+            exploreCategoriesCachedAtMs > 0L &&
+            cacheAgeMs in 0 until EXPLORE_DISCOVERY_CACHE_TTL_MS
         ) return
 
         val requestGeneration = ++exploreCategoriesRequestGeneration
@@ -9659,12 +9682,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 current
             } else {
                 current.copy(
-                    exploreCategories = if (exploreCategoriesLoadedLanguage == languageCode) {
-                        current.exploreCategories
-                    } else {
-                        emptyList()
-                    },
-                    isExploreCategoriesLoading = true
+                    exploreCategories = current.exploreCategories,
+                    isExploreCategoriesLoading = current.exploreCategories.isEmpty()
                 )
             }
         }
@@ -9691,17 +9710,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             exploreCategoriesRequestGeneration != requestGeneration ||
             _state.value.languageCode != languageCode
         ) return
-        if (categories.isNotEmpty()) exploreCategoriesLoadedLanguage = languageCode
+        if (categories.isNotEmpty()) {
+            exploreCategoriesLoadedLanguage = languageCode
+            exploreCategoriesCachedAtMs = System.currentTimeMillis()
+        }
         _state.update { current ->
             if (current.languageCode == languageCode) {
                 current.copy(
-                    exploreCategories = categories,
+                    exploreCategories = categories.ifEmpty { current.exploreCategories },
                     isExploreCategoriesLoading = false
                 )
             } else {
                 current
             }
         }
+        if (categories.isNotEmpty()) schedulePersistExploreDiscovery(languageCode)
     }
 
     private fun finishExploreCategoriesRequest(languageCode: String, requestGeneration: Long) {
