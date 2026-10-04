@@ -5655,6 +5655,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exploreCategoriesJob?.cancel()
         exploreCategoriesJob = null
         exploreCategoriesLoadedLanguage = ""
+        exploreCategoryArtworkRequests.clear()
         musicVideosJob?.cancel()
         musicVideosJob = null
         musicVideosLoadedLanguage = ""
@@ -5700,6 +5701,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 exploreZoneId = null,
                 exploreCategoryParams = null,
                 exploreCategories = emptyList(),
+                exploreCategoryArtwork = emptyMap(),
                 isExploreCategoriesLoading = false,
                 isExploreLoading = false,
                 exploreTracks = emptyList()
@@ -9138,6 +9140,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var exploreCategoriesRequestLanguage = ""
     private var exploreCategoriesRequestGeneration = 0L
     private var exploreCategoriesJob: Job? = null
+    private val exploreCategoryArtworkRequests = mutableSetOf<String>()
 
     private fun discoveryPreferredArtists(snapshot: LevyraUiState, limit: Int = 24): List<String> = buildList {
         snapshot.currentTrack?.artist?.let(::add)
@@ -9595,6 +9598,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             ) return@launch
             _state.update { current -> current.copy(exploreTracks = results, isExploreLoading = false) }
             refreshOfficialMetadataBatch(results, 8)
+        }
+    }
+
+    fun ensureExploreCategoryArtwork(params: String) {
+        if (params.isBlank() || !_state.value.exploreCategoryArtwork[params].isNullOrBlank()) return
+        val languageCode = _state.value.languageCode
+        val requestKey = "$languageCode:$params"
+        if (!exploreCategoryArtworkRequests.add(requestKey)) return
+        viewModelScope.launch {
+            val artwork = try {
+                repository.moodCategoryArtwork(params, languageCode)
+            } catch (error: CancellationException) {
+                exploreCategoryArtworkRequests.remove(requestKey)
+                throw error
+            } catch (error: Throwable) {
+                exploreCategoryArtworkRequests.remove(requestKey)
+                Timber.w(error, "Provider Explore category artwork failed")
+                ""
+            }
+            if (artwork.isBlank() || _state.value.languageCode != languageCode) {
+                exploreCategoryArtworkRequests.remove(requestKey)
+            } else {
+                _state.update { current ->
+                    current.copy(exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork))
+                }
+            }
         }
     }
 

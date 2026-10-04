@@ -24048,6 +24048,7 @@ private fun ExploreScreen(
             ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
                 zones = zones,
                 categories = state.exploreCategories,
+                categoryArtwork = state.exploreCategoryArtwork,
                 isLoading = state.isExploreCategoriesLoading,
                 strings = strings,
                 onBack = { exploreDestination = null },
@@ -24060,7 +24061,8 @@ private fun ExploreScreen(
                     viewModel.selectExploreCategory(category)
                     exploreMoodReturn = ExploreMoodsDestination
                     exploreDestination = exploreCategoryDestination(category)
-                }
+                },
+                onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
             )
             else -> {
                 val providerCategory = exploreCategoryDestinationValue(exploreDestination)

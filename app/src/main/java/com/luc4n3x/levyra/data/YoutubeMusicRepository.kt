@@ -1290,6 +1290,17 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         parseMoodPlaylists(root).take(limit.coerceIn(1, 100))
     }
 
+    suspend fun moodCategoryArtwork(
+        params: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): String = withContext(Dispatchers.IO) {
+        if (params.isBlank()) return@withContext ""
+        moodPlaylists(params, languageCode, 1)
+            .firstOrNull()
+            ?.thumbnailUrl
+            .orEmpty()
+    }
+
     suspend fun exploreCategory(
         params: String,
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),

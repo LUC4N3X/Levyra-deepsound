@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -37,11 +38,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -671,11 +674,13 @@ private fun ExploreDestinationReleaseRow(
 internal fun ExploreMoodsDestinationScreen(
     zones: List<ExploreZone>,
     categories: List<ExploreCategory>,
+    categoryArtwork: Map<String, String>,
     isLoading: Boolean,
     strings: LevyraStrings,
     onBack: () -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
-    onOpenCategory: (ExploreCategory) -> Unit
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String) -> Unit
 ) {
     BackHandler(onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
@@ -699,7 +704,7 @@ internal fun ExploreMoodsDestinationScreen(
                 top = contentPadding.calculateTopPadding() + 14.dp,
                 bottom = 130.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(22.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (isLoading && sections.isEmpty()) {
                 item(key = "provider-moods-loading-title") {
@@ -738,8 +743,12 @@ internal fun ExploreMoodsDestinationScreen(
                                 items = section.categories,
                                 key = { category -> "provider-mood-${category.params}" }
                             ) { category ->
+                                LaunchedEffect(category.params) {
+                                    onRequestCategoryArtwork(category.params)
+                                }
                                 ExploreAtmosphericCategoryCard(
                                     category = category,
+                                    artworkUrl = categoryArtwork[category.params].orEmpty(),
                                     onClick = { onOpenCategory(category) }
                                 )
                             }
@@ -755,9 +764,13 @@ internal fun ExploreMoodsDestinationScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             pair.forEach { category ->
+                                LaunchedEffect(category.params) {
+                                    onRequestCategoryArtwork(category.params)
+                                }
                                 ExploreStructuredCategoryCard(
                                     title = category.title,
                                     identity = category.params,
+                                    artworkUrl = categoryArtwork[category.params].orEmpty(),
                                     modifier = Modifier.weight(1f).fillMaxHeight(),
                                     onClick = { onOpenCategory(category) }
                                 )
@@ -840,14 +853,15 @@ private fun ExploreCategorySectionHeader(title: String, atmospheric: Boolean) {
 @Composable
 private fun ExploreAtmosphericCategoryCard(
     category: ExploreCategory,
+    artworkUrl: String,
     onClick: () -> Unit
 ) {
     val (accentStart, accentEnd) = exploreCategoryPalette(category.params)
     val shape = RoundedCornerShape(24.dp)
     Box(
         modifier = Modifier
-            .width(218.dp)
-            .heightIn(min = 126.dp)
+            .width(232.dp)
+            .heightIn(min = 142.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
@@ -862,28 +876,50 @@ private fun ExploreAtmosphericCategoryCard(
             .semantics { role = Role.Button }
             .clickable(onClick = onClick)
     ) {
+        if (artworkUrl.isNotBlank()) {
+            AsyncImage(
+                model = artworkUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(accentStart.copy(alpha = 0.56f), LevyraBlack.copy(alpha = 0.08f))
+                        )
+                    )
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(LevyraBlack.copy(alpha = 0.04f), LevyraBlack.copy(alpha = 0.88f))
+                        )
+                    )
+            )
+        }
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 14.dp, end = 16.dp)
-                .size(58.dp)
-                .background(accentEnd.copy(alpha = 0.16f), CircleShape)
+                .size(44.dp)
+                .background(LevyraBlack.copy(alpha = 0.44f), CircleShape)
         )
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
             contentDescription = null,
-            tint = LevyraText.copy(alpha = 0.86f),
-            modifier = Modifier.align(Alignment.TopEnd).padding(20.dp).size(20.dp)
+            tint = Color.White.copy(alpha = 0.92f),
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 25.dp, end = 28.dp).size(18.dp)
         )
         Text(
             text = category.title,
-            color = LevyraText,
+            color = Color.White,
             fontSize = 21.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(21.sp),
             fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(0.82f).padding(18.dp)
+            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(0.86f).padding(18.dp)
         )
     }
 }
@@ -913,15 +949,16 @@ private fun ExploreAtmosphericCategoryPlaceholder() {
 private fun ExploreStructuredCategoryCard(
     title: String,
     identity: String,
+    artworkUrl: String = "",
     modifier: Modifier = Modifier,
     emoji: String = "",
     onClick: () -> Unit
 ) {
     val (accentStart, accentEnd) = exploreCategoryPalette(identity)
     val shape = RoundedCornerShape(16.dp)
-    Row(
+    Box(
         modifier = modifier
-            .heightIn(min = 72.dp)
+            .heightIn(min = 98.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
@@ -935,20 +972,42 @@ private fun ExploreStructuredCategoryCard(
             .border(BorderStroke(1.dp, accentStart.copy(alpha = 0.20f)), shape)
             .semantics { role = Role.Button }
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(
-            modifier = Modifier.size(34.dp).background(accentStart.copy(alpha = 0.16f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (emoji.isNotBlank()) {
-                Text(text = emoji, fontSize = 15.sp, maxLines = 1)
-            } else {
+        if (artworkUrl.isNotBlank()) {
+            AsyncImage(
+                model = artworkUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 12.dp, y = 14.dp)
+                    .size(82.dp)
+                    .rotate(17f)
+                    .clip(RoundedCornerShape(9.dp))
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(96.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(LevyraPanel.copy(alpha = 0f), LevyraBlack.copy(alpha = 0.18f))
+                        )
+                    )
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset(x = 18.dp)
+                    .size(78.dp)
+                    .background(accentStart.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(11.dp)
+                        .size(30.dp)
                         .background(Brush.linearGradient(listOf(accentStart, accentEnd)), CircleShape)
                 )
             }
@@ -956,19 +1015,35 @@ private fun ExploreStructuredCategoryCard(
         Text(
             text = title,
             color = LevyraText,
-            fontSize = 13.5.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
-            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+            fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.64f)
+                .padding(start = 13.dp, top = 13.dp)
         )
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-            contentDescription = null,
-            tint = LevyraMuted,
-            modifier = Modifier.size(17.dp)
-        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 12.dp, bottom = 11.dp)
+                .size(27.dp)
+                .background(accentStart.copy(alpha = 0.18f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (emoji.isNotBlank()) {
+                Text(text = emoji, fontSize = 12.sp, maxLines = 1)
+            } else {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = null,
+                    tint = accentStart,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+        }
     }
 }
 
