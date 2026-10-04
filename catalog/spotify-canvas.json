@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-04T05:58:49Z",
+  "generatedAt": "2026-10-04T12:26:50Z",
   "items": [
     {
       "song": "WINNER",
@@ -496,7 +496,7 @@
       "song": "Babydoll",
       "artist": "Jamie Miller",
       "album": "Babydoll",
-      "url": "https://canvaz.scdn.co/upload/artist/2LkkwxA19J8C52wPQl5bG6/video/98b4811250354783939283092543b25e.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2ffb0b9c6b6f4ca898bb73d3602d477f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -532,6 +532,13 @@
       "artist": "Prospa, Cloonee, Sybil",
       "album": "Free Your Mind",
       "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Iris",
+      "artist": "The Goo Goo Dolls",
+      "album": "Stay with You",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2425,6 +2432,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "STÖRD",
       "artist": "KYPARN, DIREKTÖREN, OKVH",
       "album": "STÖRD",
@@ -3202,6 +3216,13 @@
       "scope": "track"
     },
     {
+      "song": "The One That Got Away",
+      "artist": "Katy Perry",
+      "album": "Teenage Dream",
+      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/f374d8ce515d475489868ec09202c9a1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Nano",
       "artist": "TUL8TE, Saint Levant",
       "album": "Nano",
@@ -3650,6 +3671,13 @@
       "scope": "track"
     },
     {
+      "song": "Vaaroon Forever - From “Mirzapur The Movie”",
+      "artist": "Anand Bhaskar, Romy, Shreya Ghoshal, Ginny Diwan",
+      "album": "Mirzapur The Movie (Original Motion Picture Soundtrack)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/062ec7839b614966b68e170d062432f2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Jo Tum Mere Ho",
       "artist": "Anuv Jain",
       "album": "Jo Tum Mere Ho",
@@ -3876,7 +3904,7 @@
     {
       "song": "Terbelah Jadi Dua",
       "artist": "Gloria Jessica, Ade Govinda",
-      "album": "Terbelah Jadi Dua",
+      "album": "Blue.",
       "url": "https://canvaz.scdn.co/upload/artist/1lg1jqQMMJQQFFMnkxn0zV/video/c61b90f5ff4b49a191a1984ad99c47dc.cnvs.mp4",
       "scope": "track"
     },
