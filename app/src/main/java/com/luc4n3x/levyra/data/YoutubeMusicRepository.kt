@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.CacheReport
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -47,12 +48,6 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 
-data class YoutubeMusicMoodCategory(
-    val title: String,
-    val params: String,
-    val section: String = ""
-)
-
 data class YoutubeMusicMoodPlaylist(
     val title: String,
     val playlistId: String,
@@ -64,7 +59,7 @@ data class YoutubeMusicMoodPlaylist(
 data class YoutubeMusicExplore(
     val newReleases: List<AlbumHit> = emptyList(),
     val topSongs: List<Track> = emptyList(),
-    val moodsAndGenres: List<YoutubeMusicMoodCategory> = emptyList(),
+    val moodsAndGenres: List<ExploreCategory> = emptyList(),
     val trending: List<Track> = emptyList(),
     val newVideos: List<Track> = emptyList()
 )
@@ -1280,7 +1275,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
 
     suspend fun moodCategories(
         languageCode: String = LevyraLanguageCatalog.deviceDefault()
-    ): List<YoutubeMusicMoodCategory> = withContext(Dispatchers.IO) {
+    ): List<ExploreCategory> = withContext(Dispatchers.IO) {
         val root = requestMusicBrowseRoot(languageCode, "FEmusic_moods_and_genres") ?: return@withContext emptyList()
         parseMoodCategories(root)
     }
@@ -1293,6 +1288,21 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         if (params.isBlank()) return@withContext emptyList()
         val root = requestMusicBrowseRoot(languageCode, "FEmusic_moods_and_genres_category", params) ?: return@withContext emptyList()
         parseMoodPlaylists(root).take(limit.coerceIn(1, 100))
+    }
+
+    suspend fun exploreCategory(
+        params: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        limit: Int = 24
+    ): List<Track> = withContext(Dispatchers.IO) {
+        if (params.isBlank()) return@withContext emptyList()
+        val tracks = loadMoodCategoryTracks(
+            params = params,
+            languageCode = languageCode,
+            limit = limit.coerceIn(1, 60)
+        )
+        tracks.forEach { track -> memory[track.id] = track }
+        tracks
     }
 
     suspend fun explore(
@@ -1400,13 +1410,24 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         limit: Int = 24
     ): List<Track> = withContext(Dispatchers.IO) {
         val boundedLimit = limit.coerceIn(1, 60)
-        val native = runCatching { explore(languageCode) }.getOrDefault(YoutubeMusicExplore())
+        val native = try {
+            explore(languageCode)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            YoutubeMusicExplore()
+        }
         val nativeTracks = when (zoneId) {
             "nuove-uscite" -> coroutineScope {
                 native.newReleases.take(6).map { album ->
                     async {
-                        runCatching { albumDetail(album, languageCode).tracks.take(4) }
-                            .getOrDefault(emptyList())
+                        try {
+                            albumDetail(album, languageCode).tracks.take(4)
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Throwable) {
+                            emptyList()
+                        }
                     }
                 }.map { it.await() }.flatten()
             }
@@ -1419,24 +1440,20 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             }
         }
 
-        val categories = (native.moodsAndGenres + runCatching { moodCategories(languageCode) }.getOrDefault(emptyList()))
+        val providerCategories = try {
+            moodCategories(languageCode)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        val categories = (native.moodsAndGenres + providerCategories)
             .distinctBy { it.params }
         val selectedCategory = categories.maxByOrNull { category ->
             moodCategoryScore(zoneId, fallbackQuery, category)
         }?.takeIf { moodCategoryScore(zoneId, fallbackQuery, it) > 0 }
         val moodTracks = selectedCategory?.let { category ->
-            val shelves = runCatching { moodPlaylists(category.params, languageCode, 12) }.getOrDefault(emptyList())
-            coroutineScope {
-                shelves.take(4).map { shelf ->
-                    async {
-                        val playlistId = shelf.playlistId.ifBlank { shelf.browseId.removePrefix("VL") }
-                        if (playlistId.isBlank()) emptyList() else {
-                            runCatching { playlist(playlistId, languageCode, 18)?.tracks.orEmpty() }
-                                .getOrDefault(emptyList())
-                        }
-                    }
-                }.map { it.await() }.flatten()
-            }
+            loadMoodCategoryTracks(category.params, languageCode, boundedLimit)
         }.orEmpty()
         val result = (moodTracks + native.topSongs + native.trending)
             .distinctBy { it.id }
@@ -1681,7 +1698,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
     private fun moodCategoryScore(
         zoneId: String,
         fallbackQuery: String,
-        category: YoutubeMusicMoodCategory
+        category: ExploreCategory
     ): Int {
         val candidate = normalizedWords("${category.section} ${category.title}")
         if (candidate.isEmpty()) return 0
@@ -1720,11 +1737,43 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         .replace(Regex("\\s+"), " ")
         .trim()
 
-    private fun parseMoodCategories(root: JSONObject): List<YoutubeMusicMoodCategory> {
-        val result = LinkedHashMap<String, YoutubeMusicMoodCategory>()
+    private suspend fun loadMoodCategoryTracks(
+        params: String,
+        languageCode: String,
+        limit: Int
+    ): List<Track> {
+        val shelves = try {
+            moodPlaylists(params, languageCode, 12)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        return coroutineScope {
+            shelves.take(4).map { shelf ->
+                async {
+                    val playlistId = shelf.playlistId.ifBlank { shelf.browseId.removePrefix("VL") }
+                    if (playlistId.isBlank()) {
+                        emptyList()
+                    } else {
+                        try {
+                            playlist(playlistId, languageCode, 18)?.tracks.orEmpty()
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Throwable) {
+                            emptyList()
+                        }
+                    }
+                }
+            }.map { request -> request.await() }.flatten()
+        }.distinctBy { track -> track.id }.take(limit)
+    }
+
+    private fun parseMoodCategories(root: JSONObject): List<ExploreCategory> {
+        val result = LinkedHashMap<String, ExploreCategory>()
         val grids = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "gridRenderer", grids)
-        grids.forEach { grid ->
+        grids.forEachIndexed { sectionIndex, grid ->
             val section = grid.optJSONObject("header")
                 ?.optJSONObject("gridHeaderRenderer")
                 ?.optJSONObject("title")
@@ -1735,7 +1784,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             val buttons = mutableListOf<JSONObject>()
             collectObjectsByKey(grid.optJSONArray("items"), "musicNavigationButtonRenderer", buttons)
             buttons.forEach { button ->
-                parseMoodCategoryButton(button, section)?.let { category ->
+                parseMoodCategoryButton(button, section, sectionIndex)?.let { category ->
                     result.putIfAbsent(category.params, category)
                 }
             }
@@ -1744,22 +1793,31 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             val buttons = mutableListOf<JSONObject>()
             collectObjectsByKey(root, "musicNavigationButtonRenderer", buttons)
             buttons.forEach { button ->
-                parseMoodCategoryButton(button, "")?.let { category -> result.putIfAbsent(category.params, category) }
+                parseMoodCategoryButton(button, "", -1)?.let { category -> result.putIfAbsent(category.params, category) }
             }
         }
         return result.values.toList()
     }
 
-    private fun parseMoodCategoryButton(button: JSONObject, section: String): YoutubeMusicMoodCategory? {
+    private fun parseMoodCategoryButton(
+        button: JSONObject,
+        section: String,
+        sectionIndex: Int
+    ): ExploreCategory? {
         val title = button.optJSONObject("buttonText")?.optJSONArray("runs")?.joinText().orEmpty()
             .ifBlank { button.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty() }
             .trim()
         val endpoint = button.optJSONObject("clickCommand")?.optJSONObject("browseEndpoint")
             ?: button.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")
             ?: return null
-        val params = endpoint.optString("params").trim()
+        val params = endpoint.optString("params")
         if (title.isBlank() || params.isBlank()) return null
-        return YoutubeMusicMoodCategory(title = title, params = params, section = section)
+        return ExploreCategory(
+            title = title,
+            params = params,
+            section = section,
+            sectionIndex = sectionIndex
+        )
     }
 
     private fun parseMoodPlaylists(root: JSONObject): List<YoutubeMusicMoodPlaylist> {
@@ -1796,7 +1854,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val topSongs = LinkedHashMap<String, Track>()
         val trending = LinkedHashMap<String, Track>()
         val newVideos = LinkedHashMap<String, Track>()
-        val moods = LinkedHashMap<String, YoutubeMusicMoodCategory>()
+        val moods = LinkedHashMap<String, ExploreCategory>()
         val shelves = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicCarouselShelfRenderer", shelves)
         shelves.forEach { shelf ->
@@ -1817,7 +1875,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                     val buttons = mutableListOf<JSONObject>()
                     collectObjectsByKey(contents, "musicNavigationButtonRenderer", buttons)
                     buttons.forEach { button ->
-                        parseMoodCategoryButton(button, shelfTitle(shelf))?.let { moods.putIfAbsent(it.params, it) }
+                        parseMoodCategoryButton(button, shelfTitle(shelf), -1)?.let { moods.putIfAbsent(it.params, it) }
                     }
                 }
                 navigationId == "FEmusic_new_releases_videos" -> {

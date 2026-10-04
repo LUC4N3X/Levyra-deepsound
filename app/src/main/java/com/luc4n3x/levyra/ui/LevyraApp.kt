@@ -24047,30 +24047,78 @@ private fun ExploreScreen(
             )
             ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
                 zones = zones,
+                categories = state.exploreCategories,
+                isLoading = state.isExploreCategoriesLoading,
                 strings = strings,
                 onBack = { exploreDestination = null },
                 onOpenZone = { zone ->
                     viewModel.selectExploreZone(zone)
                     exploreMoodReturn = ExploreMoodsDestination
                     exploreDestination = exploreMoodDestination(zone.id)
+                },
+                onOpenCategory = { category ->
+                    viewModel.selectExploreCategory(category)
+                    exploreMoodReturn = ExploreMoodsDestination
+                    exploreDestination = exploreCategoryDestination(category)
                 }
             )
-            else -> exploreMoodDestinationId(exploreDestination)
-                ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
-                ?.let { zone ->
+            else -> {
+                val providerCategory = exploreCategoryDestinationValue(exploreDestination)
+                if (providerCategory != null) {
+                    val activeProviderCategory = state.exploreCategories
+                        .firstOrNull { category -> category.params == providerCategory.params }
+                        ?: providerCategory
+                    LaunchedEffect(providerCategory.params, state.languageCode) {
+                        if (state.exploreCategoryParams != providerCategory.params) {
+                            viewModel.selectExploreCategory(activeProviderCategory)
+                        }
+                    }
                     ExploreCollectionDestinationScreen(
-                        title = zone.label,
-                        subtitle = strings.exploreMoods,
-                        tracks = freshTracks,
+                        identity = providerCategory.params,
+                        title = activeProviderCategory.title,
+                        subtitle = activeProviderCategory.section.ifBlank { strings.exploreMoods },
+                        zone = null,
+                        tracks = state.exploreTracks,
                         isLoading = state.isExploreLoading,
                         currentTrackId = state.currentTrack?.id,
                         isPlaying = state.isPlaying,
                         strings = strings,
                         onBack = { exploreDestination = exploreMoodReturn },
-                        onPlayAll = { freshTracks.firstOrNull()?.let { viewModel.playFrom(freshTracks, it) } },
-                        onPlayTrack = { track -> viewModel.playFrom(freshTracks, track) }
+                        onPlayAll = {
+                            state.exploreTracks.firstOrNull()?.let { first ->
+                                viewModel.playFrom(state.exploreTracks, first)
+                            }
+                        },
+                        onPlayTrack = { track -> viewModel.playFrom(state.exploreTracks, track) }
                     )
+                } else {
+                    exploreMoodDestinationId(exploreDestination)
+                        ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
+                        ?.let { zone ->
+                            LaunchedEffect(zone.id, state.languageCode) {
+                                if (state.exploreZoneId != zone.id) viewModel.selectExploreZone(zone)
+                            }
+                            ExploreCollectionDestinationScreen(
+                                identity = zone.id,
+                                title = zone.label,
+                                subtitle = strings.exploreMoods,
+                                zone = zone,
+                                tracks = state.exploreTracks,
+                                isLoading = state.isExploreLoading,
+                                currentTrackId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                strings = strings,
+                                onBack = { exploreDestination = exploreMoodReturn },
+                                onPlayAll = {
+                                    state.exploreTracks.firstOrNull()?.let { first ->
+                                        viewModel.playFrom(state.exploreTracks, first)
+                                    }
+                                },
+                                onPlayTrack = { track -> viewModel.playFrom(state.exploreTracks, track) }
+                            )
+                        }
                 }
+            }
         }
 
         samplesStartIndex?.let { initialPage ->

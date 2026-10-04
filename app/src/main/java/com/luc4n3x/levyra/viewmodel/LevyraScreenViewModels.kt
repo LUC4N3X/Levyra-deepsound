@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartRegion
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreZone
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.HomeEditorialCollection
@@ -285,6 +286,7 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun playSample(list: List<Track>, track: Track) = root.playSample(list, track)
     fun playLiveRadio(station: RadioStation) = root.playLiveRadio(station)
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
+    fun selectExploreCategory(category: ExploreCategory) = root.selectExploreCategory(category)
     fun setMixFamiliarity(value: Float) = root.setMixFamiliarity(value)
 
     fun startLevyraMix(
@@ -1201,8 +1203,11 @@ internal data class ExploreProjection(
     val exploreVideos: List<Track>,
     val exploreSamples: List<Track>,
     val exploreZoneId: String?,
+    val exploreCategoryParams: String?,
+    val exploreCategories: List<ExploreCategory>,
     val favoriteIds: Set<String>,
     val isExploreLoading: Boolean,
+    val isExploreCategoriesLoading: Boolean,
     val isFreshCurrentsLoading: Boolean,
     val isNewReleasesLoading: Boolean,
     val newReleasesLoadFailed: Boolean,
@@ -1226,8 +1231,11 @@ internal fun exploreProjection(state: LevyraUiState): ExploreProjection = Explor
     exploreVideos = state.exploreVideos,
     exploreSamples = state.exploreSamples,
     exploreZoneId = state.exploreZoneId,
+    exploreCategoryParams = state.exploreCategoryParams,
+    exploreCategories = state.exploreCategories,
     favoriteIds = state.favoriteIds,
     isExploreLoading = state.isExploreLoading,
+    isExploreCategoriesLoading = state.isExploreCategoriesLoading,
     isFreshCurrentsLoading = state.isFreshCurrentsLoading,
     isNewReleasesLoading = state.isNewReleasesLoading,
     newReleasesLoadFailed = state.newReleasesLoadFailed,

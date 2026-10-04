@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ExcludedArtist
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.RecommendationFeedback
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.PlaylistHitPreview
@@ -246,6 +247,8 @@ data class LevyraUiState(
     val downloads: List<DownloadedTrack> = emptyList(),
     val downloadStorageBytes: Long = 0L,
     val exploreZoneId: String? = null,
+    val exploreCategoryParams: String? = null,
+    val exploreCategories: List<ExploreCategory> = emptyList(),
     val exploreTracks: List<Track> = emptyList(),
     val exploreFreshTracks: List<Track> = emptyList(),
     val exploreNewReleases: List<AlbumHit> = emptyList(),
@@ -257,6 +260,7 @@ data class LevyraUiState(
     val isSamplesLoading: Boolean = false,
     val samplesLoadFailed: Boolean = false,
     val isExploreLoading: Boolean = false,
+    val isExploreCategoriesLoading: Boolean = false,
     val downloadingTrackIds: Set<String> = emptySet(),
     val downloadedTrackIds: Set<String> = emptySet(),
     val downloadProgressByTrackId: Map<String, Int> = emptyMap(),
