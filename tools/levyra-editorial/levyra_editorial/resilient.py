@@ -56,6 +56,14 @@ class CentralEditorialClient:
             self._youtube_music.close()
 
 
+class PaxSenixCanvasClient:
+    def __init__(self, spotify: SpotifyWebClient) -> None:
+        self._spotify = spotify
+
+    def get_canvas_urls(self, track_ids: list[str]) -> dict[str, str]:
+        return self._spotify.get_paxsenix_canvas_urls(track_ids)
+
+
 def build_resilient_catalog(
     config: Mapping[str, Any],
     client: EditorialClient,
@@ -136,6 +144,7 @@ def run_collection(
     output_path: Path,
     canvas_output_path: Path | None = None,
     require_canvas: bool = False,
+    paxsenix_canvas_only: bool = False,
 ) -> None:
     """Execute one resilient collector run using the repository Actions secret."""
     config = load_config(config_path)
@@ -157,7 +166,8 @@ def run_collection(
         write_catalog(catalog, output_path)
         if canvas_output_path is not None:
             try:
-                canvas_catalog = build_spotify_canvas_catalog(catalog, spotify)
+                canvas_client = PaxSenixCanvasClient(spotify) if paxsenix_canvas_only else spotify
+                canvas_catalog = build_spotify_canvas_catalog(catalog, canvas_client)
                 write_spotify_canvas_catalog(canvas_catalog, canvas_output_path)
                 canvas_count = len(canvas_catalog["items"])
             except (EditorialSourceError, OSError, ValueError) as error:
@@ -219,6 +229,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Fail when live Canvas verification cannot produce a sanitized catalog.",
     )
+    parser.add_argument(
+        "--paxsenix-canvas-only",
+        action="store_true",
+        help="Use only the PaxSenix-compatible resolver for live Canvas diagnostics.",
+    )
     return parser
 
 
@@ -239,7 +254,15 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if args.require_canvas and args.canvas_output is None:
                 raise ValueError("--require-canvas requires --canvas-output.")
-            run_collection(args.config, args.output, args.canvas_output, args.require_canvas)
+            if args.paxsenix_canvas_only and args.canvas_output is None:
+                raise ValueError("--paxsenix-canvas-only requires --canvas-output.")
+            run_collection(
+                config_path=args.config,
+                output_path=args.output,
+                canvas_output_path=args.canvas_output,
+                require_canvas=args.require_canvas,
+                paxsenix_canvas_only=args.paxsenix_canvas_only,
+            )
         return 0
     except (EditorialSourceError, OSError, ValueError) as error:
         LOGGER.error("%s", error)
