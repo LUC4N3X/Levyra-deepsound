@@ -58,7 +58,9 @@ jobs:
     name: Test Live Editorial Collection
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      github.ref_type == 'branch'
+      github.ref_type == 'branch' &&
+      (github.ref == 'refs/heads/main' ||
+      (github.actor == github.repository_owner && github.triggering_actor == github.repository_owner))
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10

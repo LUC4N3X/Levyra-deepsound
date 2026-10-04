@@ -388,6 +388,7 @@ class SpotifyWebClient:
         self._client_id: str | None = None
         self._client_token: str | None = None
         self._client_token_expires_at = 0.0
+        self._canvas_auth_generation = 0
         self._device_id = str(uuid.uuid4())
         self._expires_at_ms = 0
         self._playlist_pages: dict[tuple[str, int], dict[str, Any]] = {}
@@ -695,6 +696,7 @@ class SpotifyWebClient:
         for offset in range(0, len(unique_ids), CANVAS_BATCH_SIZE):
             chunk = unique_ids[offset : offset + CANVAS_BATCH_SIZE]
             primary_succeeded = False
+            auth_generation = self._canvas_auth_generation
             if use_primary:
                 try:
                     response = self._request_canvas_batch(chunk)
@@ -705,12 +707,16 @@ class SpotifyWebClient:
                         "Primary Spotify Canvas resolver failed for a batch: %s",
                         _safe_canvas_failure(error),
                     )
+            primary_reauthenticated = self._canvas_auth_generation != auth_generation
 
             unresolved = [track_id for track_id in chunk if track_id not in resolved]
             if not unresolved:
                 continue
             try:
-                response = self._request_paxsenix_canvas_batch(unresolved)
+                response = self._request_paxsenix_canvas_batch(
+                    unresolved,
+                    allow_reauthentication=not primary_reauthenticated,
+                )
                 paxsenix_resolved += _merge_canvas_urls(resolved, unresolved, response)
             except (EditorialSourceError, requests.RequestException, ValueError) as error:
                 if not primary_succeeded:
@@ -745,6 +751,7 @@ class SpotifyWebClient:
         response = request()
         if response.status_code in {401, 403}:
             response.close()
+            self._canvas_auth_generation += 1
             self.authenticate()
             self._client_token = None
             response = request()
@@ -766,7 +773,12 @@ class SpotifyWebClient:
         finally:
             response.close()
 
-    def _request_paxsenix_canvas_batch(self, track_ids: Sequence[str]) -> bytes:
+    def _request_paxsenix_canvas_batch(
+        self,
+        track_ids: Sequence[str],
+        *,
+        allow_reauthentication: bool,
+    ) -> bytes:
         if self._access_token is None:
             self.authenticate()
         body = encode_canvas_request(track_ids)
@@ -792,7 +804,7 @@ class SpotifyWebClient:
             )
 
         response = request()
-        if response.status_code in {401, 403}:
+        if response.status_code in {401, 403} and allow_reauthentication:
             response.close()
             self.authenticate()
             response = request()

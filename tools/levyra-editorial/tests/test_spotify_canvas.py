@@ -373,8 +373,11 @@ def test_expired_canvas_auth_fails_closed_without_exposing_credentials(
     )
     client._access_token = "expired-access-token"
     client._client_id = "web-client-id"
+    authentication_attempts = 0
 
     def fail_authentication() -> None:
+        nonlocal authentication_attempts
+        authentication_attempts += 1
         raise AuthenticationError("The editorial source session could not be authenticated.")
 
     client.authenticate = fail_authentication
@@ -386,6 +389,7 @@ def test_expired_canvas_auth_fails_closed_without_exposing_credentials(
 
     assert secret not in caplog.text
     assert "expired-access-token" not in caplog.text
+    assert authentication_attempts == 1
 
 
 def test_canvas_timeout_is_sanitized_and_does_not_leak_secret(
