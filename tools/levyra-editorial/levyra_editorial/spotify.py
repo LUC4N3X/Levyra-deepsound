@@ -585,6 +585,58 @@ class SpotifyWebClient:
             )
         return selected
 
+    def search_tracks(
+        self,
+        query: str,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Search Spotify for track candidates matching a query string or ISRC."""
+        normalized_query = str(query or "").strip()
+        if len(normalized_query) < 2:
+            return []
+        if self._access_token is None:
+            self.authenticate()
+
+        params = {
+            "q": normalized_query,
+            "type": "track",
+            "limit": min(max(1, limit), 50),
+        }
+
+        def request_search() -> requests.Response:
+            return self._session.get(
+                f"{API_BASE_URL}/search",
+                params=params,
+                headers=self._api_headers(),
+                timeout=self._timeout,
+            )
+
+        response = request_search()
+        if response.status_code == 401:
+            self.authenticate()
+            response = request_search()
+        if response.status_code == 429:
+            delay = _bounded_retry_after(response.headers.get("Retry-After"))
+            if delay > 0:
+                time.sleep(delay)
+            response = request_search()
+            if response.status_code == 401:
+                self.authenticate()
+                response = request_search()
+        if response.status_code >= 400:
+            raise SourceApiError(
+                f"Spotify track search failed with HTTP {response.status_code}."
+            )
+        try:
+            payload = response.json()
+        except ValueError as error:
+            raise SourceApiError("Spotify track search returned invalid JSON.") from error
+        tracks = payload.get("tracks") if isinstance(payload, Mapping) else None
+        items = tracks.get("items") if isinstance(tracks, Mapping) else None
+        if not isinstance(items, list):
+            return []
+        return [item for item in items if isinstance(item, Mapping)]
+
     def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Best-effort ISRC and release metadata without weakening Pathfinder reads."""
         if self._track_metadata_rate_limited:
