@@ -9622,14 +9622,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun ensureExploreCategoryArtwork(params: String) {
+    fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) {
         if (params.isBlank() || !_state.value.exploreCategoryArtwork[params].isNullOrBlank()) return
         val languageCode = _state.value.languageCode
         viewModelScope.launch {
             resolveExploreCategoryArtwork(
                 params = params,
                 languageCode = languageCode,
-                allowTrackFallback = true
+                allowTrackFallback = allowTrackFallback
             )
         }
     }
