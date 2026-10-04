@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import threading
 import time
 from typing import Any
@@ -18,7 +17,7 @@ from levyra_editorial.resolver import (
     TrackQuery,
     create_resolver_server,
 )
-from levyra_editorial.spotify import AuthenticationError, SourceApiError
+from levyra_editorial.spotify import AuthenticationError
 
 
 class FakeSpotifyClient:

@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, urlparse
 import requests
 
 from .collector import _spotify_canvas_url_problem
-from .spotify import AuthenticationError, EditorialSourceError, SourceApiError, SpotifyWebClient
+from .spotify import AuthenticationError, EditorialSourceError, SpotifyWebClient
 
 LOGGER = logging.getLogger(__name__)
 
@@ -158,7 +158,8 @@ class CanvasTrackMatcher:
             query.isrc and cand_isrc and query.isrc == cand_isrc and ISRC_PATTERN.match(query.isrc)
         )
         if exact_isrc:
-            # Safeguard: verify artist compatibility or moderate title similarity to prevent corrupted catalog hits
+            # Safeguard: verify artist compatibility or moderate title similarity
+            # to prevent corrupted catalog hits.
             if query.artist and cand_artists:
                 ref_artists = split_artists(query.artist)
                 if not primary_artist_matches(ref_artists, cand_artists):
@@ -425,7 +426,11 @@ class CanvasResolverService:
             duration_ms=duration_ms,
         )
 
-        key = f"isrc:{isrc}" if isrc else f"meta:{normalize_text(title)}|{normalize_text(artist)}|{duration_ms // 1000}"
+        key = (
+            f"isrc:{isrc}"
+            if isrc
+            else f"meta:{normalize_text(title)}|{normalize_text(artist)}|{duration_ms // 1000}"
+        )
 
         def _do_resolve() -> dict[str, Any]:
             track_id: str | None = None
