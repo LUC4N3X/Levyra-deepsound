@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -61,10 +62,7 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
-import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.feature.radio.RadioCategory
-import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraBlue
@@ -685,18 +683,15 @@ internal fun ExploreMoodsDestinationScreen(
     onBack: () -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit,
-    onRequestCategoryArtwork: (String, Boolean) -> Unit
+    onRequestCategoryArtwork: (String) -> Unit
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
     val hasProviderGenres = sections.any { section ->
         section.presentation == ExploreCategoryPresentation.Structured
     }
-    val browseZones = remember(zones, strings.code) {
-        (zones + exploreBrowseSupplementZones(strings)).distinctBy { zone -> zone.id }
-    }
-    val supplementalGenres = remember(browseZones, categories) {
-        exploreSupplementalGenres(browseZones, categories)
+    val fallbackGenres = remember(zones, hasProviderGenres) {
+        if (hasProviderGenres) emptyList() else exploreFallbackGenres(zones)
     }
     ExploreDestinationSurface(
         title = strings.exploreMoods,
@@ -752,7 +747,7 @@ internal fun ExploreMoodsDestinationScreen(
                                 key = { category -> "provider-mood-${category.params}" }
                             ) { category ->
                                 LaunchedEffect(category.params) {
-                                    onRequestCategoryArtwork(category.params, true)
+                                    onRequestCategoryArtwork(category.params)
                                 }
                                 ExploreAtmosphericCategoryCard(
                                     category = category,
@@ -768,18 +763,18 @@ internal fun ExploreMoodsDestinationScreen(
                         key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
                     ) { pair ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             pair.forEach { category ->
                                 LaunchedEffect(category.params) {
-                                    onRequestCategoryArtwork(category.params, false)
+                                    onRequestCategoryArtwork(category.params)
                                 }
                                 ExploreStructuredCategoryCard(
                                     title = category.title,
                                     identity = category.params,
                                     artworkUrl = categoryArtwork[category.params].orEmpty(),
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
                                     onClick = { onOpenCategory(category) }
                                 )
                             }
@@ -789,18 +784,16 @@ internal fun ExploreMoodsDestinationScreen(
                 }
             }
 
-            if (supplementalGenres.isNotEmpty()) {
-                if (!hasProviderGenres) {
-                    item(key = "editorial-genres-header") {
-                        ExploreCategorySectionHeader(strings.genres, atmospheric = false)
-                    }
+            if (fallbackGenres.isNotEmpty()) {
+                item(key = "editorial-genres-header") {
+                    ExploreCategorySectionHeader(strings.genres, atmospheric = false)
                 }
                 items(
-                    items = supplementalGenres.chunked(2),
+                    items = fallbackGenres.chunked(2),
                     key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
                 ) { pair ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         pair.forEach { zone ->
@@ -808,7 +801,7 @@ internal fun ExploreMoodsDestinationScreen(
                                 title = zone.label,
                                 identity = zone.id,
                                 emoji = zone.emoji,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 onClick = { onOpenZone(zone) }
                             )
                         }
@@ -817,7 +810,7 @@ internal fun ExploreMoodsDestinationScreen(
                 }
             }
 
-            if (!isLoading && sections.isEmpty() && supplementalGenres.isEmpty()) {
+            if (!isLoading && sections.isEmpty() && fallbackGenres.isEmpty()) {
                 item(key = "moods-and-genres-empty") {
                     Text(
                         text = strings.exploreEmpty,
@@ -832,46 +825,6 @@ internal fun ExploreMoodsDestinationScreen(
             }
         }
     }
-}
-
-private fun exploreBrowseSupplementZones(strings: LevyraStrings): List<ExploreZone> {
-    val locale = LevyraContentLocales.forLanguage(strings.code)
-    val radio = LevyraLiveRadioCatalog.forCode(strings.code)
-    val homeSeed = locale.homeQueries.firstOrNull().orEmpty()
-    return listOf(
-        ExploreZone(
-            id = "hip-hop",
-            label = radio.category(RadioCategory.HipHop),
-            emoji = "",
-            query = "${locale.queryForTaste("rap")} hip hop".trim(),
-            accentStart = 0xFF8E24AA.toInt(),
-            accentEnd = 0xFF3949AB.toInt()
-        ),
-        ExploreZone(
-            id = "dance",
-            label = radio.category(RadioCategory.Dance),
-            emoji = "",
-            query = locale.queryForTaste("party"),
-            accentStart = 0xFFD81B60.toInt(),
-            accentEnd = 0xFF8E24AA.toInt()
-        ),
-        ExploreZone(
-            id = "jazz",
-            label = radio.category(RadioCategory.Jazz),
-            emoji = "",
-            query = "jazz ${homeSeed}".trim(),
-            accentStart = 0xFF6D4C41.toInt(),
-            accentEnd = 0xFF8D6E63.toInt()
-        ),
-        ExploreZone(
-            id = "classical",
-            label = radio.category(RadioCategory.Classical),
-            emoji = "",
-            query = "classical music ${homeSeed}".trim(),
-            accentStart = 0xFF546E7A.toInt(),
-            accentEnd = 0xFF455A64.toInt()
-        )
-    )
 }
 
 @Composable
@@ -910,8 +863,8 @@ private fun ExploreAtmosphericCategoryCard(
     val shape = RoundedCornerShape(24.dp)
     Box(
         modifier = Modifier
-            .width(218.dp)
-            .height(132.dp)
+            .width(232.dp)
+            .heightIn(min = 142.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
@@ -1020,88 +973,95 @@ private fun ExploreStructuredCategoryCard(
     onClick: () -> Unit
 ) {
     val (accentStart, accentEnd) = exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(16.dp)
     Box(
         modifier = modifier
-            .height(88.dp)
+            .heightIn(min = 98.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        accentStart.copy(alpha = 0.44f),
-                        accentEnd.copy(alpha = 0.24f),
-                        LevyraPanel.copy(alpha = 0.98f)
+                        accentStart.copy(alpha = 0.15f),
+                        LevyraPanel.copy(alpha = 0.92f),
+                        LevyraPanel
                     )
                 )
             )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.055f)), shape)
+            .border(BorderStroke(1.dp, accentStart.copy(alpha = 0.20f)), shape)
             .semantics { role = Role.Button }
             .clickable(onClick = onClick)
     ) {
-        val artworkModifier = Modifier
-            .align(Alignment.BottomEnd)
-            .offset(x = 10.dp, y = 12.dp)
-            .size(70.dp)
-            .rotate(14f)
-            .clip(RoundedCornerShape(9.dp))
-
         if (artworkUrl.isNotBlank()) {
             AsyncImage(
                 model = artworkUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = artworkModifier
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 12.dp, y = 14.dp)
+                    .size(82.dp)
+                    .rotate(17f)
+                    .clip(RoundedCornerShape(9.dp))
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(96.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(LevyraPanel.copy(alpha = 0f), LevyraBlack.copy(alpha = 0.18f))
+                        )
+                    )
             )
         } else {
             Box(
-                modifier = artworkModifier.background(
-                    Brush.linearGradient(
-                        listOf(
-                            accentEnd.copy(alpha = 0.95f),
-                            accentStart.copy(alpha = 0.72f)
-                        )
-                    )
-                ),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset(x = 18.dp)
+                    .size(78.dp)
+                    .background(accentStart.copy(alpha = 0.12f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = emoji.ifBlank { title.trim().take(1).uppercase() },
-                    color = Color.White.copy(alpha = 0.92f),
-                    fontSize = if (emoji.isBlank()) 23.sp else 18.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .background(Brush.linearGradient(listOf(accentStart, accentEnd)), CircleShape)
                 )
             }
         }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(88.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            LevyraBlack.copy(alpha = 0f),
-                            LevyraBlack.copy(alpha = 0.12f)
-                        )
-                    )
-                )
-        )
-
         Text(
             text = title,
-            color = Color.White,
-            fontSize = 16.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
+            color = LevyraText,
+            fontSize = 15.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
             fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.66f)
-                .padding(start = 14.dp, top = 13.dp)
+                .fillMaxWidth(0.64f)
+                .padding(start = 13.dp, top = 13.dp)
         )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 12.dp, bottom = 11.dp)
+                .size(27.dp)
+                .background(accentStart.copy(alpha = 0.18f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (emoji.isNotBlank()) {
+                Text(text = emoji, fontSize = 12.sp, maxLines = 1)
+            } else {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = null,
+                    tint = accentStart,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+        }
     }
 }
 
