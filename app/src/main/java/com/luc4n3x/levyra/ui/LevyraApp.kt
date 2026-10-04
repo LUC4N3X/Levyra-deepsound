@@ -2325,7 +2325,7 @@ fun LevyraApp(
                                 viewModel = exploreViewModel,
                                 state = screenState,
                                 liveRadioOpen = liveRadioOpen,
-                                liveRadioBackEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Explore,
+                                backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Explore,
                                 onLiveRadioOpenChange = { liveRadioOpen = it },
                                 onOpenJam = viewModel::openJam
                             )
@@ -23810,7 +23810,7 @@ private fun ExploreScreen(
     viewModel: ExploreViewModel,
     state: LevyraUiState,
     liveRadioOpen: Boolean,
-    liveRadioBackEnabled: Boolean,
+    backEnabled: Boolean,
     onLiveRadioOpenChange: (Boolean) -> Unit,
     onOpenJam: () -> Unit
 ) {
@@ -24042,6 +24042,7 @@ private fun ExploreScreen(
                 releases = state.exploreNewReleases,
                 isLoading = state.isNewReleasesLoading,
                 strings = strings,
+                backEnabled = backEnabled,
                 onBack = { exploreDestination = null },
                 onOpenRelease = viewModel::openAlbum
             )
@@ -24051,6 +24052,7 @@ private fun ExploreScreen(
                 categoryArtwork = state.exploreCategoryArtwork,
                 isLoading = state.isExploreCategoriesLoading,
                 strings = strings,
+                backEnabled = backEnabled,
                 onBack = { exploreDestination = null },
                 onOpenZone = { zone ->
                     viewModel.selectExploreZone(zone)
@@ -24071,6 +24073,7 @@ private fun ExploreScreen(
                 state = state,
                 strings = strings,
                 viewModel = viewModel,
+                backEnabled = backEnabled,
                 onDestinationChange = { exploreDestination = it }
             )
         }
@@ -24087,6 +24090,7 @@ private fun ExploreScreen(
                     loadFailed = state.samplesLoadFailed,
                     favoriteIds = state.favoriteIds,
                     strings = strings,
+                    backEnabled = backEnabled,
                     onPlaySample = viewModel::playSample,
                     onTogglePlay = viewModel::togglePlay,
                     onToggleFavorite = viewModel::toggleFavorite,
@@ -24106,7 +24110,7 @@ private fun ExploreScreen(
                     ?.id
                     ?.removePrefix("live-radio:"),
                 isPlaying = state.isPlaying,
-                backEnabled = liveRadioBackEnabled,
+                backEnabled = backEnabled,
                 onBack = { onLiveRadioOpenChange(false) },
                 onPlay = viewModel::playLiveRadio
             )
@@ -24122,6 +24126,7 @@ private fun ExploreMoodCollectionDestination(
     state: LevyraUiState,
     strings: LevyraStrings,
     viewModel: ExploreViewModel,
+    backEnabled: Boolean,
     onDestinationChange: (String?) -> Unit
 ) {
     val providerCategory = exploreCategoryDestinationValue(destination)
@@ -24144,6 +24149,7 @@ private fun ExploreMoodCollectionDestination(
             currentTrackId = state.currentTrack?.id,
             isPlaying = state.isPlaying,
             strings = strings,
+            backEnabled = backEnabled,
             onBack = { onDestinationChange(returnDestination) },
             onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
             onPlayTrack = { track -> viewModel.playFrom(tracks, track) }
@@ -24168,6 +24174,7 @@ private fun ExploreMoodCollectionDestination(
         currentTrackId = state.currentTrack?.id,
         isPlaying = state.isPlaying,
         strings = strings,
+        backEnabled = backEnabled,
         onBack = { onDestinationChange(returnDestination) },
         onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
         onPlayTrack = { track -> viewModel.playFrom(tracks, track) }
