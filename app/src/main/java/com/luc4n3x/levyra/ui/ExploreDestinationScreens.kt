@@ -690,8 +690,8 @@ internal fun ExploreMoodsDestinationScreen(
     val hasProviderGenres = sections.any { section ->
         section.presentation == ExploreCategoryPresentation.Structured
     }
-    val fallbackGenres = remember(zones, hasProviderGenres) {
-        if (hasProviderGenres) emptyList() else exploreFallbackGenres(zones)
+    val supplementalGenres = remember(zones, categories) {
+        exploreSupplementalGenres(zones, categories)
     }
     ExploreDestinationSurface(
         title = strings.exploreMoods,
@@ -763,7 +763,7 @@ internal fun ExploreMoodsDestinationScreen(
                         key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
                     ) { pair ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             pair.forEach { category ->
@@ -774,7 +774,7 @@ internal fun ExploreMoodsDestinationScreen(
                                     title = category.title,
                                     identity = category.params,
                                     artworkUrl = categoryArtwork[category.params].orEmpty(),
-                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    modifier = Modifier.weight(1f),
                                     onClick = { onOpenCategory(category) }
                                 )
                             }
@@ -784,16 +784,18 @@ internal fun ExploreMoodsDestinationScreen(
                 }
             }
 
-            if (fallbackGenres.isNotEmpty()) {
-                item(key = "editorial-genres-header") {
-                    ExploreCategorySectionHeader(strings.genres, atmospheric = false)
+            if (supplementalGenres.isNotEmpty()) {
+                if (!hasProviderGenres) {
+                    item(key = "editorial-genres-header") {
+                        ExploreCategorySectionHeader(strings.genres, atmospheric = false)
+                    }
                 }
                 items(
-                    items = fallbackGenres.chunked(2),
+                    items = supplementalGenres.chunked(2),
                     key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
                 ) { pair ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         pair.forEach { zone ->
@@ -801,7 +803,7 @@ internal fun ExploreMoodsDestinationScreen(
                                 title = zone.label,
                                 identity = zone.id,
                                 emoji = zone.emoji,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                modifier = Modifier.weight(1f),
                                 onClick = { onOpenZone(zone) }
                             )
                         }
@@ -810,7 +812,7 @@ internal fun ExploreMoodsDestinationScreen(
                 }
             }
 
-            if (!isLoading && sections.isEmpty() && fallbackGenres.isEmpty()) {
+            if (!isLoading && sections.isEmpty() && supplementalGenres.isEmpty()) {
                 item(key = "moods-and-genres-empty") {
                     Text(
                         text = strings.exploreEmpty,
@@ -863,8 +865,8 @@ private fun ExploreAtmosphericCategoryCard(
     val shape = RoundedCornerShape(24.dp)
     Box(
         modifier = Modifier
-            .width(232.dp)
-            .heightIn(min = 142.dp)
+            .width(218.dp)
+            .height(132.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
@@ -973,95 +975,88 @@ private fun ExploreStructuredCategoryCard(
     onClick: () -> Unit
 ) {
     val (accentStart, accentEnd) = exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(14.dp)
     Box(
         modifier = modifier
-            .heightIn(min = 98.dp)
+            .height(88.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        accentStart.copy(alpha = 0.15f),
-                        LevyraPanel.copy(alpha = 0.92f),
-                        LevyraPanel
+                        accentStart.copy(alpha = 0.44f),
+                        accentEnd.copy(alpha = 0.24f),
+                        LevyraPanel.copy(alpha = 0.98f)
                     )
                 )
             )
-            .border(BorderStroke(1.dp, accentStart.copy(alpha = 0.20f)), shape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.055f)), shape)
             .semantics { role = Role.Button }
             .clickable(onClick = onClick)
     ) {
+        val artworkModifier = Modifier
+            .align(Alignment.BottomEnd)
+            .offset(x = 10.dp, y = 12.dp)
+            .size(70.dp)
+            .rotate(14f)
+            .clip(RoundedCornerShape(9.dp))
+
         if (artworkUrl.isNotBlank()) {
             AsyncImage(
                 model = artworkUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 12.dp, y = 14.dp)
-                    .size(82.dp)
-                    .rotate(17f)
-                    .clip(RoundedCornerShape(9.dp))
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(96.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(LevyraPanel.copy(alpha = 0f), LevyraBlack.copy(alpha = 0.18f))
-                        )
-                    )
+                modifier = artworkModifier
             )
         } else {
             Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 18.dp)
-                    .size(78.dp)
-                    .background(accentStart.copy(alpha = 0.12f), CircleShape),
+                modifier = artworkModifier.background(
+                    Brush.linearGradient(
+                        listOf(
+                            accentEnd.copy(alpha = 0.95f),
+                            accentStart.copy(alpha = 0.72f)
+                        )
+                    )
+                ),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .background(Brush.linearGradient(listOf(accentStart, accentEnd)), CircleShape)
+                Text(
+                    text = emoji.ifBlank { title.trim().take(1).uppercase() },
+                    color = Color.White.copy(alpha = 0.92f),
+                    fontSize = if (emoji.isBlank()) 23.sp else 18.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1
                 )
             }
         }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(88.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            LevyraBlack.copy(alpha = 0f),
+                            LevyraBlack.copy(alpha = 0.12f)
+                        )
+                    )
+                )
+        )
+
         Text(
             text = title,
-            color = LevyraText,
-            fontSize = 15.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+            color = Color.White,
+            fontSize = 16.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
             fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.64f)
-                .padding(start = 13.dp, top = 13.dp)
+                .fillMaxWidth(0.66f)
+                .padding(start = 14.dp, top = 13.dp)
         )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 12.dp, bottom = 11.dp)
-                .size(27.dp)
-                .background(accentStart.copy(alpha = 0.18f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (emoji.isNotBlank()) {
-                Text(text = emoji, fontSize = 12.sp, maxLines = 1)
-            } else {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                    contentDescription = null,
-                    tint = accentStart,
-                    modifier = Modifier.size(15.dp)
-                )
-            }
-        }
     }
 }
 
