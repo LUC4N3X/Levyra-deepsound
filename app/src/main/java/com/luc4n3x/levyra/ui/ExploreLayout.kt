@@ -1,12 +1,26 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
 
 internal const val ExploreSampleLimit = 10
 internal const val ExploreImmersiveSampleLimit = 24
+
+internal enum class ExploreCategoryPresentation {
+    Atmospheric,
+    Structured,
+    Mixed
+}
+
+internal data class ExploreCategorySection(
+    val key: String,
+    val providerTitle: String,
+    val presentation: ExploreCategoryPresentation,
+    val categories: List<ExploreCategory>
+)
 
 internal enum class ExploreAnchor {
     Fresh,
@@ -100,3 +114,40 @@ internal fun exploreSampleTracks(videos: List<Track>, limit: Int = ExploreSample
         .take(limit)
         .toList()
 }
+
+internal fun buildExploreCategorySections(categories: List<ExploreCategory>): List<ExploreCategorySection> {
+    val validCategories = LinkedHashMap<String, ExploreCategory>()
+    categories.forEach { category ->
+        val title = category.title.trim()
+        if (title.isNotBlank() && category.params.isNotBlank()) {
+            validCategories.putIfAbsent(
+                category.params,
+                category.copy(title = title, section = category.section.trim())
+            )
+        }
+    }
+
+    return validCategories.values
+        .groupBy { category -> category.sectionIndex to category.section }
+        .map { (sectionIdentity, sectionCategories) ->
+            val (sectionIndex, providerTitle) = sectionIdentity
+            ExploreCategorySection(
+                key = "provider-section-$sectionIndex-${sectionCategories.first().params}",
+                providerTitle = providerTitle,
+                presentation = when {
+                    sectionIndex < 0 -> ExploreCategoryPresentation.Mixed
+                    sectionIndex == 0 -> ExploreCategoryPresentation.Atmospheric
+                    else -> ExploreCategoryPresentation.Structured
+                },
+                categories = sectionCategories
+            )
+        }
+}
+
+internal fun exploreFallbackGenres(zones: List<ExploreZone>): List<ExploreZone> = zones
+    .asSequence()
+    .filterNot { zone ->
+        zone.id == ExploreCatalog.NEW_RELEASES_ZONE_ID || zone.id == ExploreCatalog.LOCAL_WAVE_ZONE_ID
+    }
+    .distinctBy { zone -> zone.id }
+    .toList()
