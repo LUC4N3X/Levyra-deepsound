@@ -9148,6 +9148,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var exploreCategoriesJob: Job? = null
     private var exploreDiscoveryPersistJob: Job? = null
     private val exploreCategoryArtworkRequests = mutableSetOf<String>()
+    private val exploreCategoryArtworkSemaphore = Semaphore(2)
 
     private fun discoveryPreferredArtists(snapshot: LevyraUiState, limit: Int = 24): List<String> = buildList {
         snapshot.currentTrack?.artist?.let(::add)
@@ -9617,11 +9618,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!exploreCategoryArtworkRequests.add(requestKey)) return
         viewModelScope.launch {
             try {
-                val artwork = repository.moodCategoryArtwork(
-                    params = params,
-                    languageCode = languageCode,
-                    allowTrackFallback = allowTrackFallback
-                )
+                val artwork = exploreCategoryArtworkSemaphore.withPermit {
+                    repository.moodCategoryArtwork(
+                        params = params,
+                        languageCode = languageCode,
+                        allowTrackFallback = allowTrackFallback
+                    )
+                }
                 if (artwork.isNotBlank() && _state.value.languageCode == languageCode) {
                     _state.update { current ->
                         current.copy(exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork))
