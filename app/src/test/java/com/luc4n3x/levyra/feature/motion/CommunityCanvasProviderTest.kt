@@ -1,5 +1,11 @@
 package com.luc4n3x.levyra.feature.motion
 
+import kotlinx.coroutines.runBlocking
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -373,5 +379,120 @@ class CommunityCanvasProviderTest {
         assertEquals(2_500L, communityCanvasIndexBudgetMs(MotionArtworkConfig().requestTimeoutMs))
         assertEquals(0L, communityCanvasIndexBudgetMs(2_500L))
         assertEquals(4_500L, communityCanvasIndexBudgetMs(12_000L))
+    }
+
+    @Test
+    fun providerDelegatesToOnDemandResolverOnCatalogMiss() {
+        runBlocking {
+            val dummyClient = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(404)
+                        .message("Not found")
+                        .body("{}".toResponseBody(null))
+                        .build()
+                }
+                .build()
+
+            val onDemandClient = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body("""{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/on_demand.mp4"}""".toResponseBody(null))
+                        .build()
+                }
+                .build()
+
+            val onDemandResolver = OnDemandCanvasResolver(
+                client = onDemandClient,
+                resolverUrl = "https://canvas.example.invalid/v1/resolve",
+                clientKey = "test_dummy_key",
+                networkPolicyCheck = { true }
+            )
+
+            val provider = CommunityCanvasProvider(
+                client = dummyClient,
+                onDemandResolver = onDemandResolver
+            )
+
+            val identity = MotionTrackIdentity(
+                title = "Unlisted Song",
+                artists = listOf("Unlisted Artist"),
+                album = "Unlisted Album",
+                durationMs = 180_000L,
+                isrc = "USUM71900001",
+                upc = "",
+                year = "2021",
+                trackId = "unlisted",
+                albumId = "unlisted_album"
+            )
+
+            val result = provider.find(identity)
+            assertTrue("Expected Found result from on-demand resolver", result is MotionArtworkProviderResult.Found)
+            val candidates = (result as MotionArtworkProviderResult.Found).candidates
+            assertEquals(1, candidates.size)
+            assertEquals("https://canvaz.scdn.co/upload/video/on_demand.mp4", candidates.single().url)
+        }
+    }
+
+    @Test
+    fun providerReturnsNoMatchWhenOnDemandResolverMisses() {
+        runBlocking {
+            val dummyClient = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(404)
+                        .message("Not found")
+                        .body("{}".toResponseBody(null))
+                        .build()
+                }
+                .build()
+
+            val onDemandClient = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body("""{"status":"miss"}""".toResponseBody(null))
+                        .build()
+                }
+                .build()
+
+            val onDemandResolver = OnDemandCanvasResolver(
+                client = onDemandClient,
+                resolverUrl = "https://canvas.example.invalid/v1/resolve",
+                clientKey = "test_dummy_key",
+                networkPolicyCheck = { true }
+            )
+
+            val provider = CommunityCanvasProvider(
+                client = dummyClient,
+                onDemandResolver = onDemandResolver
+            )
+
+            val identity = MotionTrackIdentity(
+                title = "Nonexistent Song",
+                artists = listOf("Nonexistent Artist"),
+                album = "Nonexistent Album",
+                durationMs = 180_000L,
+                isrc = "USUM71900002",
+                upc = "",
+                year = "2021",
+                trackId = "nonexistent",
+                albumId = "nonexistent_album"
+            )
+
+            val result = provider.find(identity)
+            assertTrue("Expected NoMatch result", result is MotionArtworkProviderResult.NoMatch)
+        }
     }
 }
