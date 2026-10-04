@@ -249,7 +249,9 @@ def test_canvas_client_uses_ephemeral_tokens_without_placing_them_in_the_body() 
     assert b"token" not in canvas_request["data"]
 
 
-def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie() -> None:
+def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     track_id = "5osCClSjGplWagDsJmyivf"
     secret = "editorial-session-secret-value-123456"
     url = "https://canvaz.scdn.co/upload/artist/video/canvas.cnvs.mp4"
@@ -258,7 +260,8 @@ def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie() -
     client._access_token = "ephemeral-access-token"
     client._client_id = "web-client-id"
 
-    assert client.get_canvas_urls([track_id]) == {track_id: url}
+    with caplog.at_level(logging.INFO):
+        assert client.get_canvas_urls([track_id]) == {track_id: url}
 
     primary_request = session.requests[1][1]
     paxsenix_request = session.requests[2][1]
@@ -272,6 +275,8 @@ def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie() -
     }
     assert "Cookie" not in paxsenix_request["headers"]
     assert secret.encode() not in paxsenix_request["data"]
+    assert "PaxSenix Canvas fallback resolved 1 track(s)." in caplog.text
+    assert secret not in caplog.text
 
 
 def test_paxsenix_fallback_returns_no_canvas_as_a_clean_miss() -> None:

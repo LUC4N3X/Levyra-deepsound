@@ -172,7 +172,8 @@ def _merge_canvas_urls(
     resolved: dict[str, str],
     expected_track_ids: Sequence[str],
     payload: bytes,
-) -> None:
+) -> int:
+    initial_count = len(resolved)
     expected = set(expected_track_ids)
     prefix = "spotify:track:"
     for track_uri, canvas_url in decode_canvas_response(payload):
@@ -181,6 +182,7 @@ def _merge_canvas_urls(
         track_id = track_uri.removeprefix(prefix)
         if track_id in expected:
             resolved.setdefault(track_id, canvas_url)
+    return len(resolved) - initial_count
 
 
 def _encode_varint(value: int) -> bytes:
@@ -673,6 +675,7 @@ class SpotifyWebClient:
             return {}
         encode_canvas_request(unique_ids)
         resolved: dict[str, str] = {}
+        paxsenix_resolved = 0
         for offset in range(0, len(unique_ids), CANVAS_BATCH_SIZE):
             chunk = unique_ids[offset : offset + CANVAS_BATCH_SIZE]
             primary_succeeded = False
@@ -691,7 +694,7 @@ class SpotifyWebClient:
                 continue
             try:
                 response = self._request_paxsenix_canvas_batch(unresolved)
-                _merge_canvas_urls(resolved, unresolved, response)
+                paxsenix_resolved += _merge_canvas_urls(resolved, unresolved, response)
             except (EditorialSourceError, requests.RequestException, ValueError) as error:
                 if not primary_succeeded:
                     raise SourceApiError(
@@ -701,6 +704,10 @@ class SpotifyWebClient:
                     "PaxSenix Canvas fallback failed for a batch: %s",
                     _safe_canvas_failure(error),
                 )
+        LOGGER.info(
+            "PaxSenix Canvas fallback resolved %d track(s).",
+            paxsenix_resolved,
+        )
         return resolved
 
     def _request_canvas_batch(self, track_ids: Sequence[str]) -> bytes:
