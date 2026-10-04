@@ -287,7 +287,8 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun playLiveRadio(station: RadioStation) = root.playLiveRadio(station)
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
     fun selectExploreCategory(category: ExploreCategory) = root.selectExploreCategory(category)
-    fun ensureExploreCategoryArtwork(params: String) = root.ensureExploreCategoryArtwork(params)
+    fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) =
+        root.ensureExploreCategoryArtwork(params, allowTrackFallback)
     fun setMixFamiliarity(value: Float) = root.setMixFamiliarity(value)
 
     fun startLevyraMix(
