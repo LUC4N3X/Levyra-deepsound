@@ -911,6 +911,21 @@ private fun ExploreAtmosphericCategoryCard(
             tint = Color.White.copy(alpha = 0.92f),
             modifier = Modifier.align(Alignment.TopEnd).padding(top = 25.dp, end = 28.dp).size(18.dp)
         )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .height(86.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            LevyraBlack.copy(alpha = 0f),
+                            LevyraBlack.copy(alpha = 0.78f),
+                            LevyraBlack.copy(alpha = 0.96f)
+                        )
+                    )
+                )
+        )
         Text(
             text = category.title,
             color = Color.White,
