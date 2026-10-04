@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.feature.motion
 
 import android.content.Context
+import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +36,7 @@ class OnDemandCanvasResolver(
             .readTimeout(3, TimeUnit.SECONDS)
             .callTimeout(4, TimeUnit.SECONDS)
             .build(),
-    private val resolverUrl: String = DEFAULT_RESOLVER_URL,
+    private val resolverUrl: String = BuildConfig.CANVAS_RESOLVER_URL,
     private val networkPolicyCheck: () -> Boolean = {
         context?.let { MotionArtworkNetworkPolicy.canUseMotionArtwork(it) } ?: true
     }
@@ -149,7 +150,6 @@ class OnDemandCanvasResolver(
     }
 
     companion object {
-        const val DEFAULT_RESOLVER_URL = "https://canvas.levyra.org/v1/resolve"
         const val USER_AGENT = "Levyra/1.0 (Android; MotionArtwork)"
         private const val MAX_RESPONSE_BYTES = 64 * 1024
         private const val MAX_NEGATIVE_CACHE_ENTRIES = 128

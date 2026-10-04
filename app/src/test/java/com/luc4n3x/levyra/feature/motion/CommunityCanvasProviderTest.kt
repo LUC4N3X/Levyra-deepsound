@@ -410,6 +410,7 @@ class CommunityCanvasProviderTest {
 
             val onDemandResolver = OnDemandCanvasResolver(
                 client = onDemandClient,
+                resolverUrl = "https://canvas.example.invalid/v1/resolve",
                 networkPolicyCheck = { true }
             )
 
@@ -467,6 +468,7 @@ class CommunityCanvasProviderTest {
 
             val onDemandResolver = OnDemandCanvasResolver(
                 client = onDemandClient,
+                resolverUrl = "https://canvas.example.invalid/v1/resolve",
                 networkPolicyCheck = { true }
             )
 

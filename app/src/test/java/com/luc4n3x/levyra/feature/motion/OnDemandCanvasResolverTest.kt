@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class OnDemandCanvasResolverTest {
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
+    private val fakeResolverUrl = "https://canvas.example.invalid/v1/resolve"
 
     private fun clientWithHandler(handler: (Request) -> Response): OkHttpClient {
         val interceptor = Interceptor { chain ->
@@ -87,7 +88,7 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
-                resolverUrl = "https://canvas.levyra.org/v1/resolve",
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { true }
             )
 
@@ -101,7 +102,7 @@ class OnDemandCanvasResolverTest {
             assertEquals("video/mp4", candidate?.mimeType)
 
             assertNotNull(interceptedRequest)
-            assertEquals("https://canvas.levyra.org/v1/resolve", interceptedRequest?.url.toString())
+            assertEquals(fakeResolverUrl, interceptedRequest?.url.toString())
             assertEquals("POST", interceptedRequest?.method)
             assertEquals("Levyra/1.0 (Android; MotionArtwork)", interceptedRequest?.header("User-Agent"))
             assertEquals("application/json", interceptedRequest?.header("Accept"))
@@ -137,7 +138,7 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
-                resolverUrl = "https://canvas.levyra.org/v1/resolve",
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { true }
             )
 
@@ -179,6 +180,7 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { true }
             )
 
@@ -200,6 +202,7 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { true }
             )
 
@@ -215,7 +218,11 @@ class OnDemandCanvasResolverTest {
             val client = clientWithHandler { request ->
                 jsonResponse(request, 200, hugeBody)
             }
-            val resolver = OnDemandCanvasResolver(client = client)
+            val resolver = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = fakeResolverUrl,
+                networkPolicyCheck = { true }
+            )
             val candidate = resolver.resolve(testIdentity())
             assertNull(candidate)
         }
@@ -232,6 +239,7 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { true }
             )
 
@@ -257,12 +265,34 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { false }
             )
 
             val candidate = resolver.resolve(testIdentity())
             assertNull(candidate)
             assertEquals("Network policy check false must not invoke network", 0, requestCount.get())
+        }
+    }
+
+    @Test
+    fun blankResolverUrlDisablesOnDemandResolutionGracefully() {
+        runBlocking {
+            val requestCount = AtomicInteger(0)
+            val client = clientWithHandler { request ->
+                requestCount.incrementAndGet()
+                jsonResponse(request, 200, """{"status":"resolved","url":"https://canvaz.scdn.co/v.mp4"}""")
+            }
+
+            val resolver = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = "   ",
+                networkPolicyCheck = { true }
+            )
+
+            val candidate = resolver.resolve(testIdentity())
+            assertNull(candidate)
+            assertEquals("Blank resolverUrl must not invoke network", 0, requestCount.get())
         }
     }
 
@@ -290,6 +320,7 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { true }
             )
 
@@ -326,6 +357,7 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { true }
             )
 
@@ -357,6 +389,7 @@ class OnDemandCanvasResolverTest {
 
             val resolver = OnDemandCanvasResolver(
                 client = client,
+                resolverUrl = fakeResolverUrl,
                 networkPolicyCheck = { true }
             )
 
