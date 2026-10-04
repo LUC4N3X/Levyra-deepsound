@@ -99,22 +99,6 @@ internal fun decodeExploreDiscoverySnapshot(
     }.getOrNull()
 }
 
-internal fun exploreArtworkWarmCandidates(
-    categories: List<ExploreCategory>,
-    artwork: Map<String, String>,
-    limit: Int = EXPLORE_DISCOVERY_ARTWORK_WARM_LIMIT
-): List<ExploreCategory> {
-    if (limit <= 0) return emptyList()
-    return categories.asSequence()
-        .filter { category ->
-            category.params.isNotBlank() && artwork[category.params].isNullOrBlank()
-        }
-        .distinctBy { category -> category.params }
-        .take(limit)
-        .toList()
-}
-
 internal const val EXPLORE_DISCOVERY_CACHE_TTL_MS = 12L * 60L * 60L * 1000L
-internal const val EXPLORE_DISCOVERY_ARTWORK_WARM_LIMIT = 12
 private const val EXPLORE_DISCOVERY_SCHEMA = 1
 private const val EXPLORE_DISCOVERY_MAX_CATEGORIES = 120
