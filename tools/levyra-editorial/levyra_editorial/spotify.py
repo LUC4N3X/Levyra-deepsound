@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import struct
+import threading
 import time
 import uuid
 from collections.abc import Mapping, Sequence
@@ -35,6 +36,9 @@ DEFAULT_SECRET_DICT_URL = (
 )
 DEFAULT_PLAYLIST_QUERY_HASH = (
     "a65e12194ed5fc443a1cdebed5fabe33ca5b07b987185d63c72483867ad13cb4"
+)
+DEFAULT_SEARCH_QUERY_HASH = (
+    "bc1ca2fcd0ba1013a0fc88e6cc4f190af501851e3dafd3e1ef85840297694428"
 )
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -366,6 +370,7 @@ class SpotifyWebClient:
         paxsenix_session: requests.Session | None = None,
         secret_dict_url: str | None = None,
         playlist_query_hash: str | None = None,
+        search_query_hash: str | None = None,
         timeout_seconds: float = 8.0,
     ) -> None:
         self._sp_dc = normalize_sp_dc(sp_dc)
@@ -383,6 +388,11 @@ class SpotifyWebClient:
             or os.environ.get("LEVYRA_EDITORIAL_PLAYLIST_QUERY_HASH")
             or DEFAULT_PLAYLIST_QUERY_HASH
         )
+        self._search_query_hash = validate_search_query_hash(
+            search_query_hash
+            or os.environ.get("LEVYRA_EDITORIAL_SEARCH_QUERY_HASH")
+            or DEFAULT_SEARCH_QUERY_HASH
+        )
         self._timeout = timeout_seconds
         self._access_token: str | None = None
         self._client_id: str | None = None
@@ -394,53 +404,69 @@ class SpotifyWebClient:
         self._playlist_pages: dict[tuple[str, int], dict[str, Any]] = {}
         self._track_metadata: dict[str, Mapping[str, Any]] = {}
         self._track_metadata_rate_limited = False
+        self._lock = threading.RLock()
+        self._upstream_lock = threading.RLock()
+
+    @property
+    def upstream_lock(self) -> threading.RLock:
+        return self._upstream_lock
+
+    def _ensure_authenticated(self, rejected_token: str | None = None) -> None:
+        with self._lock:
+            if rejected_token is not None:
+                if self._access_token != rejected_token:
+                    return
+            elif self._access_token is not None:
+                return
+            self.authenticate()
 
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
-        LOGGER.info("Preparing editorial source authentication.")
-        secret_dict = self._fetch_totp_secret_dictionary()
-        totp_version, totp_secret = select_latest_totp_secret(secret_dict)
-        last_error: Exception | None = None
-        for product_type, reason in TOKEN_ATTEMPTS:
-            LOGGER.info(
-                "Trying editorial token profile %s / %s.",
-                product_type,
-                reason,
-            )
-            server_time = self._fetch_server_time()
-            otp = generate_totp(totp_secret, server_time)
-            try:
-                token_data = self._request_access_token(
-                    product_type=product_type,
-                    reason=reason,
-                    otp=otp,
-                    totp_version=totp_version,
-                )
-                self._accept_token_response(token_data, server_time)
+        with self._lock:
+            LOGGER.info("Preparing editorial source authentication.")
+            secret_dict = self._fetch_totp_secret_dictionary()
+            totp_version, totp_secret = select_latest_totp_secret(secret_dict)
+            last_error: Exception | None = None
+            for product_type, reason in TOKEN_ATTEMPTS:
                 LOGGER.info(
-                    "Editorial source authentication succeeded with the %s profile.",
-                    product_type,
-                )
-                return
-            except (
-                requests.RequestException,
-                ValueError,
-                AuthenticationError,
-            ) as error:
-                last_error = error
-                self._access_token = None
-                self._client_id = None
-                LOGGER.warning(
-                    "Editorial token profile %s / %s failed: %s.",
+                    "Trying editorial token profile %s / %s.",
                     product_type,
                     reason,
-                    _safe_authentication_failure(error),
                 )
+                server_time = self._fetch_server_time()
+                otp = generate_totp(totp_secret, server_time)
+                try:
+                    token_data = self._request_access_token(
+                        product_type=product_type,
+                        reason=reason,
+                        otp=otp,
+                        totp_version=totp_version,
+                    )
+                    self._accept_token_response(token_data, server_time)
+                    LOGGER.info(
+                        "Editorial source authentication succeeded with the %s profile.",
+                        product_type,
+                    )
+                    return
+                except (
+                    requests.RequestException,
+                    ValueError,
+                    AuthenticationError,
+                ) as error:
+                    last_error = error
+                    LOGGER.warning(
+                        "Editorial token profile %s / %s failed: %s.",
+                        product_type,
+                        reason,
+                        _safe_authentication_failure(error),
+                    )
 
-        raise AuthenticationError(
-            "The editorial source session could not be authenticated. "
-            "Rotate LEVYRA_EDITORIAL_SP_DC and retry the workflow."
-        ) from last_error
+            self._access_token = None
+            self._client_id = None
+            raise AuthenticationError(
+                "The editorial source session could not be authenticated. "
+                "Rotate LEVYRA_EDITORIAL_SP_DC and retry the workflow."
+            ) from last_error
 
     def get_playlist_metadata(
         self,
@@ -523,131 +549,187 @@ class SpotifyWebClient:
         title_hints: Sequence[str] = (),
     ) -> str:
         """Resolve one Spotify-owned editorial playlist through web-player search."""
-        normalized_query = str(query or "").strip()
-        normalized_market = str(market or "").strip().upper()
-        if len(normalized_query) < 3:
-            raise SourceApiError("The editorial playlist search query is too short.")
-        if normalized_market not in {"GLOBAL", "WORLD"} and not re.fullmatch(
-            r"[A-Z]{2}", normalized_market
-        ):
-            raise SourceApiError("The editorial playlist market is invalid.")
-        if self._access_token is None:
-            self.authenticate()
+        with self._upstream_lock:
+            normalized_query = str(query or "").strip()
+            normalized_market = str(market or "").strip().upper()
+            if len(normalized_query) < 3:
+                raise SourceApiError("The editorial playlist search query is too short.")
+            if normalized_market not in {"GLOBAL", "WORLD"} and not re.fullmatch(
+                r"[A-Z]{2}", normalized_market
+            ):
+                raise SourceApiError("The editorial playlist market is invalid.")
+            self._ensure_authenticated()
 
-        params = {
-            "q": normalized_query,
-            "type": "playlist",
-            "limit": 20,
-        }
-        if normalized_market not in {"GLOBAL", "WORLD"}:
-            params["market"] = normalized_market
+            params = {
+                "q": normalized_query,
+                "type": "playlist",
+                "limit": 20,
+            }
+            if normalized_market not in {"GLOBAL", "WORLD"}:
+                params["market"] = normalized_market
 
-        def request_search() -> requests.Response:
-            return self._session.get(
-                f"{API_BASE_URL}/search",
-                params=params,
-                headers=self._api_headers(),
-                timeout=self._timeout,
-            )
-
-        response = request_search()
-        if response.status_code == 401:
-            self.authenticate()
-            response = request_search()
-        if response.status_code == 429:
-            delay = _bounded_retry_after(response.headers.get("Retry-After"))
-            if delay > 0:
-                time.sleep(delay)
-            response = request_search()
-            if response.status_code == 401:
-                self.authenticate()
-                response = request_search()
-        if response.status_code >= 400:
-            raise SourceApiError(
-                f"Spotify editorial playlist search failed with HTTP {response.status_code}."
-            )
-        try:
-            payload = response.json()
-        except ValueError as error:
-            raise SourceApiError("Spotify playlist search returned invalid JSON.") from error
-        playlists = payload.get("playlists") if isinstance(payload, Mapping) else None
-        items = playlists.get("items") if isinstance(playlists, Mapping) else None
-        if not isinstance(items, list):
-            raise SourceApiError("Spotify playlist search returned no usable result list.")
-        selected = select_official_spotify_playlist_id(
-            [item for item in items if isinstance(item, Mapping)],
-            normalized_query,
-            title_hints,
-        )
-        if selected is None:
-            raise SourceApiError(
-                f"No Spotify-owned editorial playlist matched '{normalized_query}'."
-            )
-        return selected
-
-    def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Best-effort ISRC and release metadata without weakening Pathfinder reads."""
-        if self._track_metadata_rate_limited:
-            return items
-        if self._access_token is None:
-            self.authenticate()
-        ids = [
-            str(item.get("track", {}).get("id") or "").strip()
-            for item in items
-            if isinstance(item.get("track"), Mapping)
-        ]
-        missing = [
-            track_id
-            for track_id in dict.fromkeys(ids)
-            if track_id and track_id not in self._track_metadata
-        ]
-        for offset in range(0, len(missing), 50):
-            chunk = missing[offset : offset + 50]
-            if not chunk:
-                continue
-
-            def request_batch(track_ids: list[str] = chunk) -> requests.Response:
+            def request_search() -> requests.Response:
                 return self._session.get(
-                    f"{API_BASE_URL}/tracks",
-                    params={"ids": ",".join(track_ids)},
+                    f"{API_BASE_URL}/search",
+                    params=params,
                     headers=self._api_headers(),
                     timeout=self._timeout,
                 )
 
-            try:
-                response = request_batch()
+            token_before = self._access_token
+            response = request_search()
+            if response.status_code == 401:
+                self._ensure_authenticated(rejected_token=token_before)
+                token_before = self._access_token
+                response = request_search()
+            if response.status_code == 429:
+                delay = _bounded_retry_after(response.headers.get("Retry-After"))
+                if delay > 0:
+                    time.sleep(delay)
+                token_before = self._access_token
+                response = request_search()
                 if response.status_code == 401:
-                    self.authenticate()
-                    response = request_batch()
-                if response.status_code == 429:
-                    self._track_metadata_rate_limited = True
-                    LOGGER.warning(
-                        "Spotify track metadata rate-limited; disabling best-effort metadata "
-                        "enrichment for the remainder of this run."
-                    )
-                    break
-                if response.status_code >= 400:
-                    LOGGER.warning(
-                        "Spotify track metadata enrichment skipped after HTTP %s.",
-                        response.status_code,
-                    )
-                    continue
-                payload = response.json()
-            except (requests.RequestException, ValueError, AuthenticationError) as error:
-                LOGGER.warning(
-                    "Spotify track metadata enrichment skipped: %s.",
-                    _safe_authentication_failure(error),
+                    self._ensure_authenticated(rejected_token=token_before)
+                    response = request_search()
+            if response.status_code >= 400:
+                raise SourceApiError(
+                    f"Spotify editorial playlist search failed with HTTP {response.status_code}."
                 )
-                continue
-            raw_tracks = payload.get("tracks") if isinstance(payload, Mapping) else None
-            if not isinstance(raw_tracks, list):
-                continue
-            for raw_track in raw_tracks:
-                if not isinstance(raw_track, Mapping):
+            try:
+                payload = response.json()
+            except ValueError as error:
+                raise SourceApiError("Spotify playlist search returned invalid JSON.") from error
+            playlists = payload.get("playlists") if isinstance(payload, Mapping) else None
+            items = playlists.get("items") if isinstance(playlists, Mapping) else None
+            if not isinstance(items, list):
+                raise SourceApiError("Spotify playlist search returned no usable result list.")
+            selected = select_official_spotify_playlist_id(
+                [item for item in items if isinstance(item, Mapping)],
+                normalized_query,
+                title_hints,
+            )
+            if selected is None:
+                raise SourceApiError(
+                    f"No Spotify-owned editorial playlist matched '{normalized_query}'."
+                )
+            return selected
+
+    def search_tracks(
+        self,
+        query: str,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Search Spotify for track candidates through Web Player Pathfinder."""
+        with self._upstream_lock:
+            normalized_query = str(query or "").strip()
+            if len(normalized_query) < 2:
+                return []
+            self._ensure_authenticated()
+            bounded_limit = min(max(1, limit), 50)
+            params = {
+                "operationName": "searchTracks",
+                "variables": json.dumps(
+                    {
+                        "searchTerm": normalized_query,
+                        "offset": 0,
+                        "limit": bounded_limit,
+                        "numberOfTopResults": bounded_limit,
+                        "includeAudiobooks": True,
+                        "includePreReleases": False,
+                    },
+                    separators=(",", ":"),
+                ),
+                "extensions": json.dumps(
+                    {
+                        "persistedQuery": {
+                            "version": 1,
+                            "sha256Hash": self._search_query_hash,
+                        }
+                    },
+                    separators=(",", ":"),
+                ),
+            }
+            token_before = self._access_token
+            response = self._pathfinder_request(params)
+            if response.status_code == 401:
+                self._ensure_authenticated(rejected_token=token_before)
+                token_before = self._access_token
+                response = self._pathfinder_request(params)
+            if response.status_code == 429:
+                delay = _bounded_retry_after(response.headers.get("Retry-After"))
+                if delay > 0:
+                    time.sleep(delay)
+                token_before = self._access_token
+                response = self._pathfinder_request(params)
+                if response.status_code == 401:
+                    self._ensure_authenticated(rejected_token=token_before)
+                    response = self._pathfinder_request(params)
+            return _parse_search_tracks_response(response)
+
+    def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Best-effort ISRC and release metadata without weakening Pathfinder reads."""
+        with self._upstream_lock:
+            if self._track_metadata_rate_limited:
+                return items
+            self._ensure_authenticated()
+            ids = [
+                str(item.get("track", {}).get("id") or "").strip()
+                for item in items
+                if isinstance(item.get("track"), Mapping)
+            ]
+            missing = [
+                track_id
+                for track_id in dict.fromkeys(ids)
+                if track_id and track_id not in self._track_metadata
+            ]
+            for offset in range(0, len(missing), 50):
+                chunk = missing[offset : offset + 50]
+                if not chunk:
                     continue
-                track_id = _string(raw_track.get("id"))
-                if track_id:
-                    self._track_metadata[track_id] = raw_track
+
+                def request_batch(track_ids: list[str] = chunk) -> requests.Response:
+                    return self._session.get(
+                        f"{API_BASE_URL}/tracks",
+                        params={"ids": ",".join(track_ids)},
+                        headers=self._api_headers(),
+                        timeout=self._timeout,
+                    )
+
+                try:
+                    token_before = self._access_token
+                    response = request_batch()
+                    if response.status_code == 401:
+                        self._ensure_authenticated(rejected_token=token_before)
+                        response = request_batch()
+                    if response.status_code == 429:
+                        self._track_metadata_rate_limited = True
+                        LOGGER.warning(
+                            "Spotify track metadata rate-limited; disabling best-effort metadata "
+                            "enrichment for the remainder of this run."
+                        )
+                        break
+                    if response.status_code >= 400:
+                        LOGGER.warning(
+                            "Spotify track metadata enrichment skipped after HTTP %s.",
+                            response.status_code,
+                        )
+                        continue
+                    payload = response.json()
+                except (requests.RequestException, ValueError, AuthenticationError) as error:
+                    LOGGER.warning(
+                        "Spotify track metadata enrichment skipped: %s.",
+                        _safe_authentication_failure(error),
+                    )
+                    continue
+                raw_tracks = payload.get("tracks") if isinstance(payload, Mapping) else None
+                if not isinstance(raw_tracks, list):
+                    continue
+                for raw_track in raw_tracks:
+                    if not isinstance(raw_track, Mapping):
+                        continue
+                    track_id = _string(raw_track.get("id"))
+                    if track_id:
+                        self._track_metadata[track_id] = raw_track
 
         for item in items:
             track = item.get("track")
@@ -685,57 +767,57 @@ class SpotifyWebClient:
         *,
         use_primary: bool,
     ) -> dict[str, str]:
-        unique_ids = list(dict.fromkeys(str(value or "").strip() for value in track_ids))
-        if len(unique_ids) > MAX_CANVAS_TRACKS:
-            raise SourceApiError("The Spotify Canvas request exceeds the bounded track limit.")
-        if not unique_ids:
-            return {}
-        encode_canvas_request(unique_ids)
-        resolved: dict[str, str] = {}
-        paxsenix_resolved = 0
-        for offset in range(0, len(unique_ids), CANVAS_BATCH_SIZE):
-            chunk = unique_ids[offset : offset + CANVAS_BATCH_SIZE]
-            primary_succeeded = False
-            auth_generation = self._canvas_auth_generation
-            if use_primary:
+        with self._upstream_lock:
+            unique_ids = list(dict.fromkeys(str(value or "").strip() for value in track_ids))
+            if len(unique_ids) > MAX_CANVAS_TRACKS:
+                raise SourceApiError("The Spotify Canvas request exceeds the bounded track limit.")
+            if not unique_ids:
+                return {}
+            encode_canvas_request(unique_ids)
+            resolved: dict[str, str] = {}
+            paxsenix_resolved = 0
+            for offset in range(0, len(unique_ids), CANVAS_BATCH_SIZE):
+                chunk = unique_ids[offset : offset + CANVAS_BATCH_SIZE]
+                primary_succeeded = False
+                auth_generation = self._canvas_auth_generation
+                if use_primary:
+                    try:
+                        response = self._request_canvas_batch(chunk)
+                        _merge_canvas_urls(resolved, chunk, response)
+                        primary_succeeded = True
+                    except (EditorialSourceError, requests.RequestException, ValueError) as error:
+                        LOGGER.warning(
+                            "Primary Spotify Canvas resolver failed for a batch: %s",
+                            _safe_canvas_failure(error),
+                        )
+                primary_reauthenticated = self._canvas_auth_generation != auth_generation
+
+                unresolved = [track_id for track_id in chunk if track_id not in resolved]
+                if not unresolved:
+                    continue
                 try:
-                    response = self._request_canvas_batch(chunk)
-                    _merge_canvas_urls(resolved, chunk, response)
-                    primary_succeeded = True
+                    response = self._request_paxsenix_canvas_batch(
+                        unresolved,
+                        allow_reauthentication=not primary_reauthenticated,
+                    )
+                    paxsenix_resolved += _merge_canvas_urls(resolved, unresolved, response)
                 except (EditorialSourceError, requests.RequestException, ValueError) as error:
+                    if not primary_succeeded:
+                        raise SourceApiError(
+                            "All Spotify Canvas resolvers failed for a request batch."
+                        ) from error
                     LOGGER.warning(
-                        "Primary Spotify Canvas resolver failed for a batch: %s",
+                        "PaxSenix Canvas fallback failed for a batch: %s",
                         _safe_canvas_failure(error),
                     )
-            primary_reauthenticated = self._canvas_auth_generation != auth_generation
-
-            unresolved = [track_id for track_id in chunk if track_id not in resolved]
-            if not unresolved:
-                continue
-            try:
-                response = self._request_paxsenix_canvas_batch(
-                    unresolved,
-                    allow_reauthentication=not primary_reauthenticated,
-                )
-                paxsenix_resolved += _merge_canvas_urls(resolved, unresolved, response)
-            except (EditorialSourceError, requests.RequestException, ValueError) as error:
-                if not primary_succeeded:
-                    raise SourceApiError(
-                        "All Spotify Canvas resolvers failed for a request batch."
-                    ) from error
-                LOGGER.warning(
-                    "PaxSenix Canvas fallback failed for a batch: %s",
-                    _safe_canvas_failure(error),
-                )
-        LOGGER.info(
-            "PaxSenix resolved: %d",
-            paxsenix_resolved,
-        )
-        return resolved
+            LOGGER.info(
+                "PaxSenix resolved: %d",
+                paxsenix_resolved,
+            )
+            return resolved
 
     def _request_canvas_batch(self, track_ids: Sequence[str]) -> bytes:
-        if self._access_token is None:
-            self.authenticate()
+        self._ensure_authenticated()
         body = encode_canvas_request(track_ids)
 
         def request() -> requests.Response:
@@ -748,19 +830,30 @@ class SpotifyWebClient:
                 allow_redirects=False,
             )
 
+        token_before = self._access_token
         response = request()
         if response.status_code in {401, 403}:
             response.close()
             self._canvas_auth_generation += 1
-            self.authenticate()
-            self._client_token = None
+            self._ensure_authenticated(rejected_token=token_before)
+            with self._lock:
+                self._client_token = None
+            token_before = self._access_token
             response = request()
         if response.status_code == 429:
             delay = _bounded_retry_after(response.headers.get("Retry-After"))
             response.close()
             if delay > 0:
                 time.sleep(delay)
+            token_before = self._access_token
             response = request()
+            if response.status_code in {401, 403}:
+                response.close()
+                self._canvas_auth_generation += 1
+                self._ensure_authenticated(rejected_token=token_before)
+                with self._lock:
+                    self._client_token = None
+                response = request()
         try:
             if response.status_code != 200:
                 raise SourceApiError(
@@ -779,13 +872,14 @@ class SpotifyWebClient:
         *,
         allow_reauthentication: bool,
     ) -> bytes:
-        if self._access_token is None:
-            self.authenticate()
+        self._ensure_authenticated()
         body = encode_canvas_request(track_ids)
 
         def request() -> requests.Response:
-            if self._access_token is None:
-                raise AuthenticationError("The editorial source is not authenticated.")
+            with self._lock:
+                if self._access_token is None:
+                    raise AuthenticationError("The editorial source is not authenticated.")
+                tok = self._access_token
             self._paxsenix_session.cookies.clear()
             self._paxsenix_session.headers.pop("Cookie", None)
             return self._paxsenix_session.post(
@@ -796,24 +890,31 @@ class SpotifyWebClient:
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Accept-Language": "en",
                     "User-Agent": PAXSENIX_USER_AGENT,
-                    "Authorization": f"Bearer {self._access_token}",
+                    "Authorization": f"Bearer {tok}",
                 },
                 timeout=self._timeout,
                 stream=True,
                 allow_redirects=False,
             )
 
+        token_before = self._access_token
         response = request()
         if response.status_code in {401, 403} and allow_reauthentication:
             response.close()
-            self.authenticate()
+            self._ensure_authenticated(rejected_token=token_before)
+            token_before = self._access_token
             response = request()
         if response.status_code == 429:
             delay = _bounded_retry_after(response.headers.get("Retry-After"))
             response.close()
             if delay > 0:
                 time.sleep(delay)
+            token_before = self._access_token
             response = request()
+            if response.status_code in {401, 403} and allow_reauthentication:
+                response.close()
+                self._ensure_authenticated(rejected_token=token_before)
+                response = request()
         try:
             if response.status_code != 200:
                 raise SourceApiError(
@@ -827,10 +928,12 @@ class SpotifyWebClient:
             response.close()
 
     def _canvas_headers(self) -> dict[str, str]:
-        if self._access_token is None:
-            raise AuthenticationError("The editorial source is not authenticated.")
+        with self._lock:
+            if self._access_token is None:
+                raise AuthenticationError("The editorial source is not authenticated.")
+            tok = self._access_token
         return {
-            "Authorization": f"Bearer {self._access_token}",
+            "Authorization": f"Bearer {tok}",
             "Client-Token": self._get_client_token(),
             "Accept": "application/protobuf",
             "Content-Type": "application/protobuf",
@@ -838,25 +941,29 @@ class SpotifyWebClient:
         }
 
     def _get_client_token(self) -> str:
-        if self._client_token and time.monotonic() < self._client_token_expires_at:
-            return self._client_token
-        if not self._client_id:
-            if self._access_token is None:
-                self.authenticate()
+        with self._lock:
+            if self._client_token and time.monotonic() < self._client_token_expires_at:
+                return self._client_token
             if not self._client_id:
-                raise AuthenticationError("Spotify did not provide a web-player client ID.")
+                if self._access_token is None:
+                    self.authenticate()
+                if not self._client_id:
+                    raise AuthenticationError("Spotify did not provide a web-player client ID.")
+            client_id = self._client_id
+            device_id = self._device_id
+
         response = self._session.post(
             CLIENT_TOKEN_URL,
             json={
                 "client_data": {
                     "client_version": SPOTIFY_APP_VERSION,
-                    "client_id": self._client_id,
+                    "client_id": client_id,
                     "js_sdk_data": {
                         "device_brand": "unknown",
                         "device_model": "unknown",
                         "os": "linux",
                         "os_version": "unknown",
-                        "device_id": self._device_id,
+                        "device_id": device_id,
                         "device_type": "computer",
                     },
                 }
@@ -889,25 +996,30 @@ class SpotifyWebClient:
         expires_after = granted.get("expires_after_seconds") if isinstance(granted, Mapping) else None
         if not client_token_value or not isinstance(expires_after, int) or expires_after <= 0:
             raise AuthenticationError("Spotify client-token endpoint returned an invalid token.")
-        self._client_token = client_token_value
-        self._client_token_expires_at = time.monotonic() + max(1, expires_after - 30)
-        return client_token_value
+        with self._lock:
+            self._client_token = client_token_value
+            self._client_token_expires_at = time.monotonic() + max(1, expires_after - 30)
+            return client_token_value
 
     def _api_headers(self) -> dict[str, str]:
-        if self._access_token is None:
-            raise AuthenticationError("The editorial source is not authenticated.")
+        with self._lock:
+            if self._access_token is None:
+                raise AuthenticationError("The editorial source is not authenticated.")
+            tok = self._access_token
+            client_id = self._client_id
         headers = {
-            "Authorization": f"Bearer {self._access_token}",
+            "Authorization": f"Bearer {tok}",
             "Accept": "application/json",
         }
-        if self._client_id:
-            headers["Client-Id"] = self._client_id
+        if client_id:
+            headers["Client-Id"] = client_id
         return headers
 
     def close(self) -> None:
         """Close the underlying HTTP session."""
-        self._paxsenix_session.close()
-        self._session.close()
+        with self._upstream_lock, self._lock:
+            self._paxsenix_session.close()
+            self._session.close()
 
     def _get_playlist_page(
         self,
@@ -916,56 +1028,62 @@ class SpotifyWebClient:
         offset: int,
         limit: int = 100,
     ) -> dict[str, Any]:
-        cache_key = (playlist_id, offset)
-        cached = self._playlist_pages.get(cache_key)
-        if cached is not None:
-            return cached
+        with self._upstream_lock:
+            cache_key = (playlist_id, offset)
+            cached = self._playlist_pages.get(cache_key)
+            if cached is not None:
+                return cached
 
-        if self._access_token is None:
-            self.authenticate()
+            self._ensure_authenticated()
 
-        params = {
-            "operationName": "fetchPlaylist",
-            "variables": json.dumps(
-                {
-                    "uri": f"spotify:playlist:{playlist_id}",
-                    "offset": offset,
-                    "limit": limit,
-                    "enableWatchFeedEntrypoint": False,
-                },
-                separators=(",", ":"),
-            ),
-            "extensions": json.dumps(
-                {
-                    "persistedQuery": {
-                        "version": 1,
-                        "sha256Hash": self._playlist_query_hash,
-                    }
-                },
-                separators=(",", ":"),
-            ),
-        }
+            params = {
+                "operationName": "fetchPlaylist",
+                "variables": json.dumps(
+                    {
+                        "uri": f"spotify:playlist:{playlist_id}",
+                        "offset": offset,
+                        "limit": limit,
+                        "enableWatchFeedEntrypoint": False,
+                    },
+                    separators=(",", ":"),
+                ),
+                "extensions": json.dumps(
+                    {
+                        "persistedQuery": {
+                            "version": 1,
+                            "sha256Hash": self._playlist_query_hash,
+                        }
+                    },
+                    separators=(",", ":"),
+                ),
+            }
 
-        response = self._pathfinder_request(params)
-        if response.status_code == 401:
-            self.authenticate()
+            token_before = self._access_token
             response = self._pathfinder_request(params)
-
-        if response.status_code == 429:
-            delay = _bounded_retry_after(response.headers.get("Retry-After"))
-            if delay > 0:
-                LOGGER.warning(
-                    "Editorial pathfinder rate-limited; retrying once in %d second(s).",
-                    delay,
-                )
-                time.sleep(delay)
+            if response.status_code == 401:
+                self._ensure_authenticated(rejected_token=token_before)
+                token_before = self._access_token
                 response = self._pathfinder_request(params)
 
-        if response.status_code >= 400:
-            raise SourceApiError(
-                "The editorial pathfinder request failed with "
-                f"HTTP {response.status_code}."
-            )
+            if response.status_code == 429:
+                delay = _bounded_retry_after(response.headers.get("Retry-After"))
+                if delay > 0:
+                    LOGGER.warning(
+                        "Editorial pathfinder rate-limited; retrying once in %d second(s).",
+                        delay,
+                    )
+                    time.sleep(delay)
+                    token_before = self._access_token
+                    response = self._pathfinder_request(params)
+                if response.status_code == 401:
+                    self._ensure_authenticated(rejected_token=token_before)
+                    response = self._pathfinder_request(params)
+
+            if response.status_code >= 400:
+                raise SourceApiError(
+                    "The editorial pathfinder request failed with "
+                    f"HTTP {response.status_code}."
+                )
 
         try:
             payload = response.json()
@@ -1160,19 +1278,22 @@ class SpotifyWebClient:
         return headers
 
     def _pathfinder_headers(self) -> dict[str, str]:
-        if self._access_token is None:
-            raise AuthenticationError(
-                "The editorial source is not authenticated."
-            )
+        with self._lock:
+            if self._access_token is None:
+                raise AuthenticationError(
+                    "The editorial source is not authenticated."
+                )
+            tok = self._access_token
+            client_id = self._client_id
         headers = {
-            "Authorization": f"Bearer {self._access_token}",
+            "Authorization": f"Bearer {tok}",
             "Accept": "application/json",
             "App-Platform": "WebPlayer",
             "Origin": OPEN_SPOTIFY_URL.rstrip("/"),
             "Referer": OPEN_SPOTIFY_URL,
         }
-        if self._client_id:
-            headers["Client-Id"] = self._client_id
+        if client_id:
+            headers["Client-Id"] = client_id
         return headers
 
     @staticmethod
@@ -1460,9 +1581,8 @@ def _bounded_retry_after(value: str | None) -> int:
     try:
         return min(max(int(value), 0), 5)
     except ValueError:
-        # `Retry-After` may legally be an HTTP-date. Fall back to the absent-header default so a
-        # rate-limited page still gets its single retry instead of failing immediately.
         return 1
+
 
 
 def validate_secret_dict_url(value: str) -> str:
@@ -1492,6 +1612,100 @@ def validate_playlist_query_hash(value: str) -> str:
     if re.fullmatch(r"[0-9a-f]{64}", normalized) is None:
         raise AuthenticationError("The playlist query hash is malformed.")
     return normalized
+
+
+def validate_search_query_hash(value: str) -> str:
+    normalized = str(value or "").strip().lower()
+    if re.fullmatch(r"[0-9a-f]{64}", normalized) is None:
+        raise AuthenticationError("The search query hash is malformed.")
+    return normalized
+
+
+def _parse_search_tracks_response(response: requests.Response) -> list[dict[str, Any]]:
+    if response.status_code >= 400:
+        raise SourceApiError(
+            f"Spotify track search failed with HTTP {response.status_code}."
+        )
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise SourceApiError("Spotify track search returned invalid JSON.") from error
+    if not isinstance(payload, Mapping):
+        raise SourceApiError("Spotify track search returned an invalid response shape.")
+    _check_search_graphql_errors(payload)
+    items = _extract_search_track_items(payload)
+    results: list[dict[str, Any]] = []
+    for raw_item in items:
+        converted = _convert_search_track_item(raw_item)
+        if converted is not None:
+            results.append(converted)
+    return results
+
+
+def _check_search_graphql_errors(payload: Mapping[str, Any]) -> None:
+    errors = payload.get("errors")
+    if not isinstance(errors, list) or not errors:
+        return
+    messages = {
+        str(error.get("message") or "")
+        for error in errors
+        if isinstance(error, Mapping)
+    }
+    if "PersistedQueryNotFound" in messages:
+        raise SourceApiError(
+            "Spotify rotated the searchTracks query hash. "
+            "Update LEVYRA_EDITORIAL_SEARCH_QUERY_HASH."
+        )
+    raise SourceApiError("Spotify track search returned a GraphQL error.")
+
+
+def _extract_search_track_items(payload: Mapping[str, Any]) -> list[Any]:
+    data = _mapping(payload.get("data"))
+    search_v2 = _mapping(data.get("searchV2")) if data else None
+    tracks_v2 = _mapping(search_v2.get("tracksV2")) if search_v2 else None
+    items = tracks_v2.get("items") if tracks_v2 else None
+    if not isinstance(items, list):
+        raise SourceApiError("Spotify track search returned an invalid response shape.")
+    return items
+
+
+def _convert_search_track_item(raw_item: Any) -> dict[str, Any] | None:
+    outer = _mapping(raw_item)
+    inner = _mapping(outer.get("item")) if outer else None
+    track_data = _mapping(inner.get("data")) if inner else None
+    if not track_data:
+        return None
+    uri = _string(track_data.get("uri"))
+    track_id = _spotify_id(_string(track_data.get("id"))) or _spotify_id(uri)
+    name = _string(track_data.get("name"))
+    if not track_id or not name:
+        return None
+    duration_node = _mapping(track_data.get("duration"))
+    duration_ms = (
+        _positive_timestamp(duration_node.get("totalMilliseconds"))
+        if duration_node
+        else None
+    ) or 0
+    album_node = _mapping(track_data.get("albumOfTrack"))
+    album_name = _string(album_node.get("name")) if album_node else None
+    album_id = (
+        _spotify_id(_string(album_node.get("id")))
+        or _spotify_id(_string(album_node.get("uri")))
+        if album_node
+        else None
+    )
+    return {
+        "id": track_id,
+        "uri": uri or f"spotify:track:{track_id}",
+        "name": name,
+        "duration_ms": duration_ms,
+        "artists": _artists(track_data.get("artists")),
+        "album": {
+            "id": album_id or "",
+            "name": album_name or "",
+        },
+        "external_ids": {},
+    }
 
 
 def _spotify_id(uri: str | None) -> str | None:
