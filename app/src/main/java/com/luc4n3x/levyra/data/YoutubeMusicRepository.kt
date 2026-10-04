@@ -1292,7 +1292,8 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
 
     suspend fun moodCategoryArtwork(
         params: String,
-        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        allowTrackFallback: Boolean = true
     ): String = withContext(Dispatchers.IO) {
         if (params.isBlank()) return@withContext ""
 
@@ -1301,6 +1302,8 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             .map { shelf -> shelf.thumbnailUrl.trim() }
             .firstOrNull(String::isNotBlank)
             ?.let { artwork -> return@withContext artwork }
+
+        if (!allowTrackFallback) return@withContext ""
 
         for (shelf in shelves.take(3)) {
             val playlistId = shelf.playlistId.ifBlank { shelf.browseId.removePrefix("VL") }
