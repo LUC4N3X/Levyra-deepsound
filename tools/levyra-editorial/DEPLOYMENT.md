@@ -76,6 +76,14 @@ LEVYRA_EDITORIAL_SP_DC=your_sp_dc_cookie_here
 
 ## Reverse Proxy Configuration
 
+The resolver backend expects to run behind a local reverse proxy (Caddy or Nginx) terminating TLS.
+
+### Trusted Proxy Contract
+
+To prevent rate-limit identity spoofing:
+1. The resolver backend processes forwarded headers only when the direct connecting peer is a trusted loopback address (`127.0.0.1` or `::1`). Direct non-loopback clients cannot spoof client identity with arbitrary headers.
+2. The trusted edge proxy MUST overwrite `X-Forwarded-For` and `X-Real-IP` with the direct client remote address (`{remote_host}` or `$remote_addr`). Appending proxy configurations (such as `$proxy_add_x_forwarded_for`) MUST NOT be used because client-supplied headers could be preserved.
+
 ### Caddy Example
 
 ```caddy
@@ -134,6 +142,7 @@ server {
 
     location = /v1/resolve {
         limit_except POST { deny all; }
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_pass http://127.0.0.1:8080/v1/resolve;
     }

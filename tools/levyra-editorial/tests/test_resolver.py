@@ -561,8 +561,35 @@ def test_extract_client_ip() -> None:
     headers_real = {"X-Real-IP": "203.0.113.2"}
     assert extract_client_ip("::1", headers_real) == "203.0.113.2"
     assert extract_client_ip("198.51.100.1", headers_xf) == "198.51.100.1"
+    assert extract_client_ip("198.51.100.1", headers_real) == "198.51.100.1"
+    assert extract_client_ip("10.0.0.5", headers_xf) == "10.0.0.5"
     assert extract_client_ip("127.0.0.1", {"X-Forwarded-For": "not-an-ip"}) == "127.0.0.1"
+    assert extract_client_ip("127.0.0.1", {"X-Real-IP": "not-an-ip"}) == "127.0.0.1"
     assert extract_client_ip("127.0.0.1", {}) == "127.0.0.1"
+
+
+def test_direct_client_spoofed_headers_cannot_bypass_rate_limit() -> None:
+    rate_limiter = RateLimiter(limit_per_minute=2)
+    direct_peer = "198.51.100.5"
+
+    headers1 = {"X-Forwarded-For": "1.1.1.1", "X-Real-IP": "1.1.1.1"}
+    ip1 = extract_client_ip(direct_peer, headers1)
+    assert ip1 == direct_peer
+    allowed1, _ = rate_limiter.is_allowed(ip1)
+    assert allowed1
+
+    headers2 = {"X-Forwarded-For": "2.2.2.2", "X-Real-IP": "2.2.2.2"}
+    ip2 = extract_client_ip(direct_peer, headers2)
+    assert ip2 == direct_peer
+    allowed2, _ = rate_limiter.is_allowed(ip2)
+    assert allowed2
+
+    headers3 = {"X-Forwarded-For": "3.3.3.3", "X-Real-IP": "3.3.3.3"}
+    ip3 = extract_client_ip(direct_peer, headers3)
+    assert ip3 == direct_peer
+    allowed3, retry_after3 = rate_limiter.is_allowed(ip3)
+    assert not allowed3
+    assert retry_after3 > 0
 
 
 def test_preserve_l2_cache_expiry_across_reload(tmp_path: Any) -> None:
@@ -669,8 +696,8 @@ def test_http_server_read_timeout_behavior() -> None:
                 raw_resp += chunk
                 if b"}" in raw_resp:
                     break
-            except TimeoutError:
-                break
+            except TimeoutError as err:
+                raise AssertionError("server did not enforce read timeout") from err
         sock.close()
         assert b"408 Request Timeout" in raw_resp or len(raw_resp) == 0
     finally:

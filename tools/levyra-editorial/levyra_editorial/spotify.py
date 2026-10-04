@@ -710,6 +710,7 @@ class SpotifyWebClient:
                         "Spotify track metadata enrichment skipped: %s.",
                         _safe_authentication_failure(error),
                     )
+                    continue
                 raw_tracks = payload.get("tracks") if isinstance(payload, Mapping) else None
                 if not isinstance(raw_tracks, list):
                     continue

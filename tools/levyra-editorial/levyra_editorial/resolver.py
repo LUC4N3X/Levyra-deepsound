@@ -805,6 +805,16 @@ class CanvasResolverService:
 
 
 def extract_client_ip(peer_ip: str, headers: Mapping[str, str]) -> str:
+    """Extract client IP under the trusted loopback reverse-proxy contract.
+
+    Forwarded headers are only processed when peer_ip is a trusted loopback
+    address (127.0.0.1 or ::1). Direct clients cannot spoof their rate-limit
+    identity using X-Forwarded-For or X-Real-IP.
+
+    The trusted reverse proxy (Caddy / Nginx) must strictly overwrite
+    X-Forwarded-For / X-Real-IP with the connecting client IP rather than
+    appending to client-supplied headers.
+    """
     try:
         if ipaddress.ip_address(peer_ip).is_loopback:
             forwarded = headers.get("X-Forwarded-For", "").strip()
