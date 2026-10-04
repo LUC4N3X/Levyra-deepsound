@@ -89,13 +89,14 @@ internal fun ExploreSamplesScreen(
     loadFailed: Boolean,
     favoriteIds: Set<String>,
     strings: LevyraStrings,
+    backEnabled: Boolean,
     onPlaySample: (List<Track>, Track) -> Unit,
     onTogglePlay: () -> Unit,
     onToggleFavorite: (Track) -> Unit,
     onRequestFeed: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    BackHandler(onBack = onDismiss)
+    BackHandler(enabled = backEnabled, onBack = onDismiss)
     val latestOnDismiss = rememberUpdatedState(onDismiss)
     DisposableEffect(Unit) {
         onDispose { latestOnDismiss.value() }

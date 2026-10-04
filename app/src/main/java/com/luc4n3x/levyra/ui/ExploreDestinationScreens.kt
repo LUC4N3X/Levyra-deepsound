@@ -128,11 +128,12 @@ internal fun ExploreCollectionDestinationScreen(
     currentTrackId: String?,
     isPlaying: Boolean,
     strings: LevyraStrings,
+    backEnabled: Boolean,
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit
 ) {
-    BackHandler(onBack = onBack)
+    BackHandler(enabled = backEnabled, onBack = onBack)
     val rotationBucket = remember(identity) {
         exploreGenreRotationBucket(System.currentTimeMillis())
     }
@@ -562,10 +563,11 @@ internal fun ExploreNewReleasesDestinationScreen(
     releases: List<AlbumHit>,
     isLoading: Boolean,
     strings: LevyraStrings,
+    backEnabled: Boolean,
     onBack: () -> Unit,
     onOpenRelease: (AlbumHit) -> Unit
 ) {
-    BackHandler(onBack = onBack)
+    BackHandler(enabled = backEnabled, onBack = onBack)
     ExploreDestinationSurface(
         title = strings.exploreNewReleases,
         subtitle = null,
@@ -677,12 +679,13 @@ internal fun ExploreMoodsDestinationScreen(
     categoryArtwork: Map<String, String>,
     isLoading: Boolean,
     strings: LevyraStrings,
+    backEnabled: Boolean,
     onBack: () -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit,
     onRequestCategoryArtwork: (String) -> Unit
 ) {
-    BackHandler(onBack = onBack)
+    BackHandler(enabled = backEnabled, onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
     val hasProviderGenres = sections.any { section ->
         section.presentation == ExploreCategoryPresentation.Structured
