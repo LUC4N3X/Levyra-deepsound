@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.ExploreCategory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -24,5 +25,23 @@ class ExploreDestinationScreensTest {
     fun topLevelExploreDestinationsRemainDistinct() {
         assertNotEquals(ExploreNewReleasesDestination, ExploreMoodsDestination)
         assertNotEquals(ExploreNewReleasesDestination, exploreMoodDestination("nuove-uscite"))
+    }
+
+    @Test
+    fun providerCategoryRoutePreservesOpaqueIdentityAndLocalizedMetadata() {
+        val category = ExploreCategory(
+            title = "集中・リラックス",
+            params = "ggMPOg1uX2ozUHlwbWM3ajNq%3D%3D",
+            section = "ムードとシーン",
+            sectionIndex = 0
+        )
+
+        assertEquals(category, exploreCategoryDestinationValue(exploreCategoryDestination(category)))
+    }
+
+    @Test
+    fun malformedProviderCategoryRoutesAreRejected() {
+        assertNull(exploreCategoryDestinationValue("explore-destination-provider-category:not-valid"))
+        assertNull(exploreCategoryDestinationValue(ExploreMoodsDestination))
     }
 }

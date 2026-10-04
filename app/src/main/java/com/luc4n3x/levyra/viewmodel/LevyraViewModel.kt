@@ -107,6 +107,7 @@ import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
@@ -5649,6 +5650,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             limit = HOME_ALBUM_RECOMMENDATION_LIMIT
         ).ifEmpty { localAlbums }
         exploreCache.clear()
+        exploreJob?.cancel()
+        exploreJob = null
+        exploreCategoriesJob?.cancel()
+        exploreCategoriesJob = null
+        exploreCategoriesLoadedLanguage = ""
+        exploreCategoryArtworkRequests.clear()
         musicVideosJob?.cancel()
         musicVideosJob = null
         musicVideosLoadedLanguage = ""
@@ -5692,6 +5699,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     it.isDeviceOffline
                 ),
                 exploreZoneId = null,
+                exploreCategoryParams = null,
+                exploreCategories = emptyList(),
+                exploreCategoryArtwork = emptyMap(),
+                isExploreCategoriesLoading = false,
+                isExploreLoading = false,
                 exploreTracks = emptyList()
             )
         }
@@ -9124,6 +9136,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var newReleasesRequestGeneration = 0L
     private var newReleasesJob: Job? = null
     private var exploreJob: Job? = null
+    private var exploreCategoriesLoadedLanguage = ""
+    private var exploreCategoriesRequestLanguage = ""
+    private var exploreCategoriesRequestGeneration = 0L
+    private var exploreCategoriesJob: Job? = null
+    private val exploreCategoryArtworkRequests = mutableSetOf<String>()
 
     private fun discoveryPreferredArtists(snapshot: LevyraUiState, limit: Int = 24): List<String> = buildList {
         snapshot.currentTrack?.artist?.let(::add)
@@ -9476,9 +9493,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun ensureExplore(strings: LevyraStrings) {
-        if (_state.value.exploreZoneId == null) {
+        if (_state.value.exploreZoneId == null && _state.value.exploreCategoryParams == null) {
             selectExploreZone(ExploreCatalog.getZones(strings).first())
         }
+        ensureExploreCategoriesLoaded()
         ensureFreshCurrentsLoaded()
         ensureOfficialNewReleasesLoaded()
         ensureMusicVideosLoaded()
@@ -9498,10 +9516,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectExploreZone(zone: ExploreZone) {
+        exploreJob?.cancel()
         if (zone.id == ExploreCatalog.NEW_RELEASES_ZONE_ID) {
             _state.update { current ->
                 current.copy(
                     exploreZoneId = zone.id,
+                    exploreCategoryParams = null,
                     exploreTracks = current.exploreFreshTracks,
                     isExploreLoading = current.isFreshCurrentsLoading
                 )
@@ -9509,24 +9529,191 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             ensureFreshCurrentsLoaded()
             return
         }
-        _state.update { it.copy(exploreZoneId = zone.id) }
-        exploreCache[zone.id]?.let { cached ->
-            _state.update { it.copy(exploreTracks = cached, isExploreLoading = false) }
-            refreshOfficialMetadataBatch(cached, 8)
+        val languageCode = _state.value.languageCode
+        val cacheKey = "zone:$languageCode:${zone.id}"
+        val cached = exploreCache[cacheKey]
+        _state.update { current ->
+            current.copy(
+                exploreZoneId = zone.id,
+                exploreCategoryParams = null,
+                exploreTracks = cached.orEmpty(),
+                isExploreLoading = cached == null
+            )
+        }
+        cached?.let { cachedTracks ->
+            refreshOfficialMetadataBatch(cachedTracks, 8)
             return
         }
-        exploreJob?.cancel()
-        _state.update { it.copy(exploreTracks = emptyList(), isExploreLoading = true) }
-        val languageCode = _state.value.languageCode
         exploreJob = viewModelScope.launch {
-            val results = runCatching {
+            val results = try {
                 repository.exploreZone(zone.id, zone.query, languageCode, 24)
-            }.getOrDefault(emptyList())
-            if (results.isNotEmpty()) exploreCache[zone.id] = results
-            if (_state.value.exploreZoneId != zone.id || _state.value.languageCode != languageCode) return@launch
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Editorial Explore zone failed for %s", zone.id)
+                emptyList()
+            }
+            if (results.isNotEmpty()) exploreCache[cacheKey] = results
+            if (
+                _state.value.exploreZoneId != zone.id ||
+                _state.value.exploreCategoryParams != null ||
+                _state.value.languageCode != languageCode
+            ) return@launch
             _state.update { it.copy(exploreTracks = results, isExploreLoading = false) }
             refreshOfficialMetadataBatch(results, 8)
         }
+    }
+
+    fun selectExploreCategory(category: ExploreCategory) {
+        val params = category.params
+        if (params.isBlank() || category.title.isBlank()) return
+        exploreJob?.cancel()
+        val languageCode = _state.value.languageCode
+        val cacheKey = "provider:$languageCode:$params"
+        val cached = exploreCache[cacheKey]
+        _state.update { current ->
+            current.copy(
+                exploreZoneId = null,
+                exploreCategoryParams = params,
+                exploreTracks = cached.orEmpty(),
+                isExploreLoading = cached == null
+            )
+        }
+        cached?.let { cachedTracks ->
+            refreshOfficialMetadataBatch(cachedTracks, 8)
+            return
+        }
+        exploreJob = viewModelScope.launch {
+            val results = try {
+                repository.exploreCategory(params, languageCode, 24)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Provider Explore category failed")
+                emptyList()
+            }
+            if (results.isNotEmpty()) exploreCache[cacheKey] = results
+            if (
+                _state.value.exploreCategoryParams != params ||
+                _state.value.exploreZoneId != null ||
+                _state.value.languageCode != languageCode
+            ) return@launch
+            _state.update { current -> current.copy(exploreTracks = results, isExploreLoading = false) }
+            refreshOfficialMetadataBatch(results, 8)
+        }
+    }
+
+    fun ensureExploreCategoryArtwork(params: String) {
+        if (params.isBlank() || !_state.value.exploreCategoryArtwork[params].isNullOrBlank()) return
+        val languageCode = _state.value.languageCode
+        val requestKey = "$languageCode:$params"
+        if (!exploreCategoryArtworkRequests.add(requestKey)) return
+        viewModelScope.launch {
+            val artwork = try {
+                repository.moodCategoryArtwork(params, languageCode)
+            } catch (error: CancellationException) {
+                exploreCategoryArtworkRequests.remove(requestKey)
+                throw error
+            } catch (error: Throwable) {
+                exploreCategoryArtworkRequests.remove(requestKey)
+                Timber.w(error, "Provider Explore category artwork failed")
+                ""
+            }
+            if (artwork.isBlank() || _state.value.languageCode != languageCode) {
+                exploreCategoryArtworkRequests.remove(requestKey)
+            } else {
+                _state.update { current ->
+                    current.copy(exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork))
+                }
+            }
+        }
+    }
+
+    private fun ensureExploreCategoriesLoaded() {
+        val languageCode = _state.value.languageCode
+        if (exploreCategoriesJob?.isActive == true) {
+            if (exploreCategoriesRequestLanguage == languageCode) return
+            exploreCategoriesJob?.cancel()
+        }
+        if (
+            exploreCategoriesLoadedLanguage == languageCode &&
+            _state.value.exploreCategories.isNotEmpty()
+        ) return
+
+        val requestGeneration = ++exploreCategoriesRequestGeneration
+        exploreCategoriesRequestLanguage = languageCode
+        markExploreCategoriesLoading(languageCode)
+        exploreCategoriesJob = viewModelScope.launch {
+            try {
+                val categories = fetchExploreCategories(languageCode)
+                publishExploreCategories(languageCode, requestGeneration, categories)
+            } finally {
+                finishExploreCategoriesRequest(languageCode, requestGeneration)
+            }
+        }
+    }
+
+    private fun markExploreCategoriesLoading(languageCode: String) {
+        _state.update { current ->
+            if (current.languageCode != languageCode) {
+                current
+            } else {
+                current.copy(
+                    exploreCategories = if (exploreCategoriesLoadedLanguage == languageCode) {
+                        current.exploreCategories
+                    } else {
+                        emptyList()
+                    },
+                    isExploreCategoriesLoading = true
+                )
+            }
+        }
+    }
+
+    private suspend fun fetchExploreCategories(languageCode: String): List<ExploreCategory> = try {
+        repository.moodCategories(languageCode)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Throwable) {
+        Timber.w(error, "Provider Explore categories failed for %s", languageCode)
+        emptyList()
+    }.asSequence()
+        .filter { category -> category.title.isNotBlank() && category.params.isNotBlank() }
+        .distinctBy { category -> category.params }
+        .toList()
+
+    private fun publishExploreCategories(
+        languageCode: String,
+        requestGeneration: Long,
+        categories: List<ExploreCategory>
+    ) {
+        if (
+            exploreCategoriesRequestGeneration != requestGeneration ||
+            _state.value.languageCode != languageCode
+        ) return
+        if (categories.isNotEmpty()) exploreCategoriesLoadedLanguage = languageCode
+        _state.update { current ->
+            if (current.languageCode == languageCode) {
+                current.copy(
+                    exploreCategories = categories,
+                    isExploreCategoriesLoading = false
+                )
+            } else {
+                current
+            }
+        }
+    }
+
+    private fun finishExploreCategoriesRequest(languageCode: String, requestGeneration: Long) {
+        if (exploreCategoriesRequestGeneration != requestGeneration) return
+        _state.update { current ->
+            if (current.languageCode == languageCode && current.isExploreCategoriesLoading) {
+                current.copy(isExploreCategoriesLoading = false)
+            } else {
+                current
+            }
+        }
+        exploreCategoriesJob = null
     }
 
     fun playDownloaded(download: DownloadedTrack) {
