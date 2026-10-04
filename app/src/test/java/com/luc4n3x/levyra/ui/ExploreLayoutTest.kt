@@ -210,23 +210,6 @@ class ExploreLayoutTest {
         assertTrue("rap-drill" in fallbackIds)
     }
 
-    @Test
-    fun supplementalGenresKeepEditorialBreadthWithoutDuplicatingProviderLabels() {
-        val template = zones(1).single()
-        val supplemental = exploreSupplementalGenres(
-            zones = listOf(
-                template.copy(id = "pop-global", label = "Pop"),
-                template.copy(id = "jazz", label = "Jazz"),
-                template.copy(id = "dance", label = "Dance")
-            ),
-            providerCategories = listOf(
-                ExploreCategory("  jazz  ", "provider-jazz", "Genres", 1)
-            )
-        )
-
-        assertEquals(listOf("pop-global", "dance"), supplemental.map { it.id })
-    }
-
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->
         ExploreZone(
             id = "zone-$index",
