@@ -53,76 +53,20 @@ class OnDemandCanvasResolver(
     }
 
     suspend fun resolve(identity: MotionTrackIdentity): MotionArtworkCandidate? = withContext(Dispatchers.IO) {
-        if (resolverUrl.isBlank()) return@withContext null
-        if (!networkPolicyCheck()) return@withContext null
+        if (resolverUrl.isBlank() || !networkPolicyCheck()) return@withContext null
 
         val cacheKey = onDemandCacheKey(identity)
         val now = System.currentTimeMillis()
-        synchronized(negativeCacheLock) {
-            val expiresAt = negativeCache[cacheKey]
-            if (expiresAt != null && now < expiresAt) {
-                Timber.d("On-demand canvas negative cache hit for %s", identity.title)
-                return@withContext null
-            }
+        if (isNegativeCached(cacheKey, now)) {
+            Timber.d("On-demand canvas negative cache hit for %s", identity.title)
+            return@withContext null
         }
 
-        val requestJson = JSONObject().apply {
-            if (identity.isrc.isNotBlank()) put("isrc", identity.isrc)
-            put("title", identity.title)
-            put("artist", identity.artists.firstOrNull() ?: "")
-            if (identity.album.isNotBlank()) put("album", identity.album)
-            if (identity.durationMs > 0L) put("durationMs", identity.durationMs)
-        }
-
-        val body = requestJson.toString().toRequestBody(JSON_MEDIA_TYPE)
-        val request = Request.Builder()
-            .url(resolverUrl)
-            .post(body)
-            .header("User-Agent", USER_AGENT)
-            .header("Accept", "application/json")
-            .build()
-
+        val request = buildRequest(identity)
         try {
             val response = client.newCall(request).awaitCancellable()
             response.use { resp ->
-                if (!resp.isSuccessful) {
-                    if (resp.code in 400..404) {
-                        recordNegative(cacheKey, now)
-                    }
-                    Timber.d("On-demand canvas resolver returned HTTP %d for %s", resp.code, identity.title)
-                    return@withContext null
-                }
-                val raw = resp.body?.string() ?: return@withContext null
-                if (raw.length > MAX_RESPONSE_BYTES) {
-                    Timber.d("On-demand canvas resolver response too large (%d bytes)", raw.length)
-                    return@withContext null
-                }
-                val payload = runCatching { JSONObject(raw) }.getOrNull() ?: return@withContext null
-                val status = payload.optString("status")
-                if (status != "resolved") {
-                    recordNegative(cacheKey, now)
-                    return@withContext null
-                }
-                val rawUrl = payload.optString("url").trim()
-                val mediaUrl = communityCanvasMediaUrl(rawUrl)
-                if (mediaUrl == null) {
-                    recordNegative(cacheKey, now)
-                    Timber.d("On-demand canvas returned non-allowlisted media URL for %s", identity.title)
-                    return@withContext null
-                }
-                Timber.d("On-demand canvas resolved successfully: %s", rawUrl)
-                MotionArtworkCandidate(
-                    provider = CommunityCanvasProvider.PROVIDER_ID,
-                    scope = MotionArtworkScope.TRACK,
-                    identity = identity,
-                    url = rawUrl,
-                    mimeType = if (rawUrl.substringBefore('?').endsWith(".m3u8", true)) {
-                        "application/x-mpegURL"
-                    } else {
-                        "video/mp4"
-                    },
-                    expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
-                )
+                parseCandidate(resp, identity, cacheKey, now)
             }
         } catch (cancellation: CancellationException) {
             throw cancellation
@@ -130,6 +74,73 @@ class OnDemandCanvasResolver(
             Timber.d(error, "On-demand canvas resolver request failed for %s", identity.title)
             null
         }
+    }
+
+    private fun isNegativeCached(key: String, nowMs: Long): Boolean =
+        synchronized(negativeCacheLock) {
+            val expiresAt = negativeCache[key]
+            expiresAt != null && nowMs < expiresAt
+        }
+
+    private fun buildRequest(identity: MotionTrackIdentity): Request {
+        val requestJson = JSONObject().apply {
+            if (identity.isrc.isNotBlank()) put("isrc", identity.isrc)
+            put("title", identity.title)
+            put("artist", identity.artists.firstOrNull() ?: "")
+            if (identity.album.isNotBlank()) put("album", identity.album)
+            if (identity.durationMs > 0L) put("durationMs", identity.durationMs)
+        }
+        val body = requestJson.toString().toRequestBody(JSON_MEDIA_TYPE)
+        return Request.Builder()
+            .url(resolverUrl)
+            .post(body)
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", "application/json")
+            .build()
+    }
+
+    private fun parseCandidate(
+        resp: Response,
+        identity: MotionTrackIdentity,
+        cacheKey: String,
+        nowMs: Long,
+    ): MotionArtworkCandidate? {
+        if (!resp.isSuccessful) {
+            if (resp.code in 400..404) {
+                recordNegative(cacheKey, nowMs)
+            }
+            Timber.d("On-demand canvas resolver returned HTTP %d for %s", resp.code, identity.title)
+            return null
+        }
+        val raw = resp.body.string()
+        if (raw.length > MAX_RESPONSE_BYTES) {
+            Timber.d("On-demand canvas resolver response too large (%d bytes)", raw.length)
+            return null
+        }
+        val payload = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+        if (payload.optString("status") != "resolved") {
+            recordNegative(cacheKey, nowMs)
+            return null
+        }
+        val rawUrl = payload.optString("url").trim()
+        if (communityCanvasMediaUrl(rawUrl) == null) {
+            recordNegative(cacheKey, nowMs)
+            Timber.d("On-demand canvas returned non-allowlisted media URL for %s", identity.title)
+            return null
+        }
+        Timber.d("On-demand canvas resolved successfully: %s", rawUrl)
+        return MotionArtworkCandidate(
+            provider = CommunityCanvasProvider.PROVIDER_ID,
+            scope = MotionArtworkScope.TRACK,
+            identity = identity,
+            url = rawUrl,
+            mimeType = if (rawUrl.substringBefore('?').endsWith(".m3u8", true)) {
+                "application/x-mpegURL"
+            } else {
+                "video/mp4"
+            },
+            expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
+        )
     }
 
     private fun recordNegative(key: String, nowMs: Long) {

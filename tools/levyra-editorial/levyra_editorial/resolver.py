@@ -142,6 +142,63 @@ class CanvasTrackMatcher:
     """Conservative Spotify track candidate matcher."""
 
     @staticmethod
+    def _check_isrc(
+        query: TrackQuery,
+        cand_isrc: str,
+        cand_artists: list[str],
+        cand_title: str,
+    ) -> MatchOutcome | None:
+        exact_isrc = bool(
+            query.isrc and cand_isrc and query.isrc == cand_isrc and ISRC_PATTERN.match(query.isrc)
+        )
+        if exact_isrc:
+            if query.artist and cand_artists:
+                ref_artists = split_artists(query.artist)
+                if not primary_artist_matches(ref_artists, cand_artists):
+                    sim = text_similarity(query.title, cand_title)
+                    if sim < 0.5:
+                        return MatchOutcome(False, 0.0, "isrc_artist_conflict")
+            return MatchOutcome(True, 100.0, "exact_isrc")
+
+        if query.isrc and cand_isrc and query.isrc != cand_isrc:
+            return MatchOutcome(False, 0.0, "conflicting_isrc")
+
+        return None
+
+    @staticmethod
+    def _check_tokens(query: TrackQuery, cand_title: str, cand_album: str) -> MatchOutcome | None:
+        ref_tokens = comparison_tokens(f"{query.title} {query.album}")
+        cand_tokens = comparison_tokens(f"{cand_title} {cand_album}")
+        unsafe_diff = (cand_tokens & UNSAFE_TERMS) - ref_tokens
+        if unsafe_diff:
+            return MatchOutcome(False, 0.0, f"unsafe_terms_{','.join(sorted(unsafe_diff))}")
+
+        edition_diff = (cand_tokens & EDITION_TERMS) - ref_tokens
+        if edition_diff:
+            return MatchOutcome(False, 0.0, f"edition_mismatch_{','.join(sorted(edition_diff))}")
+
+        return None
+
+    @staticmethod
+    def _calculate_score(
+        query: TrackQuery,
+        cand_album: str,
+        cand_duration_ms: int,
+        title_sim: float,
+    ) -> float:
+        score = 40.0 + (title_sim * 40.0)
+        if query.album and cand_album:
+            album_sim = text_similarity(query.album, cand_album)
+            score += album_sim * 15.0
+        if query.duration_ms > 0 and cand_duration_ms > 0:
+            delta_ms = abs(query.duration_ms - cand_duration_ms)
+            if delta_ms <= 3_000:
+                score += 5.0
+            elif delta_ms <= 6_000:
+                score += 2.0
+        return score
+
+    @staticmethod
     def match_candidate(query: TrackQuery, candidate: Mapping[str, Any]) -> MatchOutcome:
         cand_title = str(candidate.get("name") or "").strip()
         cand_duration_ms = int(candidate.get("duration_ms") or 0)
@@ -154,64 +211,35 @@ class CanvasTrackMatcher:
         cand_isrc = str(candidate.get("external_ids", {}).get("isrc") or "").strip().upper()
 
         # 1. Exact ISRC check
-        exact_isrc = bool(
-            query.isrc and cand_isrc and query.isrc == cand_isrc and ISRC_PATTERN.match(query.isrc)
-        )
-        if exact_isrc:
-            # Safeguard: verify artist compatibility or moderate title similarity
-            # to prevent corrupted catalog hits.
-            if query.artist and cand_artists:
-                ref_artists = split_artists(query.artist)
-                if not primary_artist_matches(ref_artists, cand_artists):
-                    sim = text_similarity(query.title, cand_title)
-                    if sim < 0.5:
-                        return MatchOutcome(False, 0.0, "isrc_artist_conflict")
-            return MatchOutcome(True, 100.0, "exact_isrc")
-
-        # Conflicting ISRC
-        if query.isrc and cand_isrc and query.isrc != cand_isrc:
-            return MatchOutcome(False, 0.0, "conflicting_isrc")
+        isrc_outcome = CanvasTrackMatcher._check_isrc(query, cand_isrc, cand_artists, cand_title)
+        if isrc_outcome is not None:
+            return isrc_outcome
 
         # 2. Artist check
         ref_artists = split_artists(query.artist)
         if not primary_artist_matches(ref_artists, cand_artists):
             return MatchOutcome(False, 0.0, "wrong_artist")
 
-        # 3. Unsafe terms check
-        ref_tokens = comparison_tokens(f"{query.title} {query.album}")
-        cand_tokens = comparison_tokens(f"{cand_title} {cand_album}")
-        unsafe_diff = (cand_tokens & UNSAFE_TERMS) - ref_tokens
-        if unsafe_diff:
-            return MatchOutcome(False, 0.0, f"unsafe_terms_{','.join(sorted(unsafe_diff))}")
+        # 3. Unsafe terms and edition check
+        token_outcome = CanvasTrackMatcher._check_tokens(query, cand_title, cand_album)
+        if token_outcome is not None:
+            return token_outcome
 
-        # 4. Edition / version check
-        edition_diff = (cand_tokens & EDITION_TERMS) - ref_tokens
-        if edition_diff:
-            return MatchOutcome(False, 0.0, f"edition_mismatch_{','.join(sorted(edition_diff))}")
-
-        # 5. Duration mismatch check
+        # 4. Duration mismatch check
         if query.duration_ms > 0 and cand_duration_ms > 0:
             delta_ms = abs(query.duration_ms - cand_duration_ms)
             if delta_ms > 8_000:
                 return MatchOutcome(False, 0.0, f"duration_mismatch_{delta_ms}ms")
 
-        # 6. Title similarity check
+        # 5. Title similarity check
         title_sim = text_similarity(query.title, cand_title)
         if title_sim < 0.82:
             return MatchOutcome(False, 0.0, f"title_similarity_low_{title_sim:.2f}")
 
-        # 7. Score calculation
-        score = 40.0 + (title_sim * 40.0)
-        if query.album and cand_album:
-            album_sim = text_similarity(query.album, cand_album)
-            score += album_sim * 15.0
-        if query.duration_ms > 0 and cand_duration_ms > 0:
-            delta_ms = abs(query.duration_ms - cand_duration_ms)
-            if delta_ms <= 3_000:
-                score += 5.0
-            elif delta_ms <= 6_000:
-                score += 2.0
-
+        # 6. Score calculation
+        score = CanvasTrackMatcher._calculate_score(
+            query, cand_album, cand_duration_ms, title_sim
+        )
         return MatchOutcome(True, score, "metadata_matched")
 
     def select_best_candidate(

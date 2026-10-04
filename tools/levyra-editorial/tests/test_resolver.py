@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import json
 import threading
 import time
 from typing import Any
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
 
 import pytest
+import requests
 
 from levyra_editorial.resolver import (
     CanvasResolverCache,
@@ -356,59 +354,51 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
     base_url = f"http://127.0.0.1:{server_port}"
     try:
         # 1. Health check
-        with urlopen(f"{base_url}/health") as resp:
-            assert resp.status == 200
-            data = json.loads(resp.read().decode())
-            assert data == {"status": "ok"}
+        resp = requests.get(f"{base_url}/health", timeout=5)
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}
 
         # 2. POST resolve hit
-        req_body = json.dumps({
-            "isrc": "USUM71703861",
-            "title": "Test Song",
-            "artist": "Test Artist",
-        }).encode("utf-8")
-        req = Request(
+        resp = requests.post(
             f"{base_url}/v1/resolve",
-            data=req_body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
+            json={
+                "isrc": "USUM71703861",
+                "title": "Test Song",
+                "artist": "Test Artist",
+            },
+            timeout=5,
         )
-        with urlopen(req) as resp:
-            assert resp.status == 200
-            data = json.loads(resp.read().decode())
-            assert data["status"] == "resolved"
-            assert data["url"] == valid_canvas_url
-            assert "sp_dc" not in str(data)
-            assert "Bearer" not in str(data)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "resolved"
+        assert data["url"] == valid_canvas_url
+        assert "sp_dc" not in str(data)
+        assert "Bearer" not in str(data)
 
         # 3. GET resolve hit
-        with urlopen(f"{base_url}/v1/resolve?isrc=USUM71703861") as resp:
-            assert resp.status == 200
-            data = json.loads(resp.read().decode())
-            assert data["status"] == "resolved"
-            assert data["url"] == valid_canvas_url
+        resp = requests.get(f"{base_url}/v1/resolve?isrc=USUM71703861", timeout=5)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "resolved"
+        assert data["url"] == valid_canvas_url
 
         # 4. Malformed request rejected (empty body / missing isrc and title)
-        req_bad = Request(
+        resp_bad = requests.post(
             f"{base_url}/v1/resolve",
             data=b"{}",
             headers={"Content-Type": "application/json"},
-            method="POST",
+            timeout=5,
         )
-        with pytest.raises(HTTPError) as err:
-            urlopen(req_bad)
-        assert err.value.code == 400
+        assert resp_bad.status_code == 400
 
         # 5. Malformed JSON
-        req_malformed = Request(
+        resp_malformed = requests.post(
             f"{base_url}/v1/resolve",
             data=b"not-json",
             headers={"Content-Type": "application/json"},
-            method="POST",
+            timeout=5,
         )
-        with pytest.raises(HTTPError) as err:
-            urlopen(req_malformed)
-        assert err.value.code == 400
+        assert resp_malformed.status_code == 400
 
         # 6. Verify logs contain no sensitive credentials
         assert "sp_dc" not in caplog.text
