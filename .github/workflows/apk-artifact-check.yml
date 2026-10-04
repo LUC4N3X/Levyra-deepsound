@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 60
     env:
       YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+      LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
+      LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
       LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
       LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
       LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
@@ -93,6 +95,8 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_CANVAS_RESOLVER_URL}"
+          test -n "${LEVYRA_CANVAS_CLIENT_KEY}"
           test -n "${LEVYRA_KEYSTORE_BASE64}"
           test -n "${LEVYRA_KEYSTORE_PASSWORD}"
           test -n "${LEVYRA_KEY_ALIAS}"
