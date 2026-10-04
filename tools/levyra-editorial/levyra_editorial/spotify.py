@@ -668,6 +668,18 @@ class SpotifyWebClient:
 
     def get_canvas_urls(self, track_ids: Sequence[str]) -> dict[str, str]:
         """Resolve Canvas media for public track IDs without exposing account material."""
+        return self._resolve_canvas_urls(track_ids, use_primary=True)
+
+    def get_paxsenix_canvas_urls(self, track_ids: Sequence[str]) -> dict[str, str]:
+        """Resolve Canvas media directly through the PaxSenix-compatible profile."""
+        return self._resolve_canvas_urls(track_ids, use_primary=False)
+
+    def _resolve_canvas_urls(
+        self,
+        track_ids: Sequence[str],
+        *,
+        use_primary: bool,
+    ) -> dict[str, str]:
         unique_ids = list(dict.fromkeys(str(value or "").strip() for value in track_ids))
         if len(unique_ids) > MAX_CANVAS_TRACKS:
             raise SourceApiError("The Spotify Canvas request exceeds the bounded track limit.")
@@ -679,15 +691,16 @@ class SpotifyWebClient:
         for offset in range(0, len(unique_ids), CANVAS_BATCH_SIZE):
             chunk = unique_ids[offset : offset + CANVAS_BATCH_SIZE]
             primary_succeeded = False
-            try:
-                response = self._request_canvas_batch(chunk)
-                _merge_canvas_urls(resolved, chunk, response)
-                primary_succeeded = True
-            except (EditorialSourceError, requests.RequestException, ValueError) as error:
-                LOGGER.warning(
-                    "Primary Spotify Canvas resolver failed for a batch: %s",
-                    _safe_canvas_failure(error),
-                )
+            if use_primary:
+                try:
+                    response = self._request_canvas_batch(chunk)
+                    _merge_canvas_urls(resolved, chunk, response)
+                    primary_succeeded = True
+                except (EditorialSourceError, requests.RequestException, ValueError) as error:
+                    LOGGER.warning(
+                        "Primary Spotify Canvas resolver failed for a batch: %s",
+                        _safe_canvas_failure(error),
+                    )
 
             unresolved = [track_id for track_id in chunk if track_id not in resolved]
             if not unresolved:
@@ -705,7 +718,7 @@ class SpotifyWebClient:
                     _safe_canvas_failure(error),
                 )
         LOGGER.info(
-            "PaxSenix Canvas fallback resolved %d track(s).",
+            "PaxSenix Canvas resolver resolved %d track(s).",
             paxsenix_resolved,
         )
         return resolved

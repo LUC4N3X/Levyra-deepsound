@@ -275,8 +275,23 @@ def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie(
     }
     assert "Cookie" not in paxsenix_request["headers"]
     assert secret.encode() not in paxsenix_request["data"]
-    assert "PaxSenix Canvas fallback resolved 1 track(s)." in caplog.text
+    assert "PaxSenix Canvas resolver resolved 1 track(s)." in caplog.text
     assert secret not in caplog.text
+
+
+def test_paxsenix_only_resolver_skips_primary_profile() -> None:
+    track_id = "5osCClSjGplWagDsJmyivf"
+    url = "https://canvaz.scdn.co/upload/artist/video/canvas.cnvs.mp4"
+    session = FallbackCanvasSession(track_id, url)
+    client = SpotifyWebClient("A" * 40, session=session)
+    client._access_token = "ephemeral-access-token"
+    client._client_id = "web-client-id"
+
+    assert client.get_paxsenix_canvas_urls([track_id]) == {track_id: url}
+    assert [request_url for request_url, _ in session.requests] == [CANVAS_URL]
+    request = session.requests[0][1]
+    assert "Client-Token" not in request["headers"]
+    assert request["headers"]["User-Agent"] == PAXSENIX_USER_AGENT
 
 
 def test_paxsenix_fallback_returns_no_canvas_as_a_clean_miss() -> None:
