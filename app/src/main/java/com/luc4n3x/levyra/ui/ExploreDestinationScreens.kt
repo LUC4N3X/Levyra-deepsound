@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,7 +61,10 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
+import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.radio.RadioCategory
+import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraBlue
@@ -690,8 +692,11 @@ internal fun ExploreMoodsDestinationScreen(
     val hasProviderGenres = sections.any { section ->
         section.presentation == ExploreCategoryPresentation.Structured
     }
-    val supplementalGenres = remember(zones, categories) {
-        exploreSupplementalGenres(zones, categories)
+    val browseZones = remember(zones, strings.code) {
+        (zones + exploreBrowseSupplementZones(strings)).distinctBy { zone -> zone.id }
+    }
+    val supplementalGenres = remember(browseZones, categories) {
+        exploreSupplementalGenres(browseZones, categories)
     }
     ExploreDestinationSurface(
         title = strings.exploreMoods,
@@ -827,6 +832,46 @@ internal fun ExploreMoodsDestinationScreen(
             }
         }
     }
+}
+
+private fun exploreBrowseSupplementZones(strings: LevyraStrings): List<ExploreZone> {
+    val locale = LevyraContentLocales.forLanguage(strings.code)
+    val radio = LevyraLiveRadioCatalog.forCode(strings.code)
+    val homeSeed = locale.homeQueries.firstOrNull().orEmpty()
+    return listOf(
+        ExploreZone(
+            id = "hip-hop",
+            label = radio.category(RadioCategory.HipHop),
+            emoji = "",
+            query = "${locale.queryForTaste("rap")} hip hop".trim(),
+            accentStart = 0xFF8E24AA.toInt(),
+            accentEnd = 0xFF3949AB.toInt()
+        ),
+        ExploreZone(
+            id = "dance",
+            label = radio.category(RadioCategory.Dance),
+            emoji = "",
+            query = locale.queryForTaste("party"),
+            accentStart = 0xFFD81B60.toInt(),
+            accentEnd = 0xFF8E24AA.toInt()
+        ),
+        ExploreZone(
+            id = "jazz",
+            label = radio.category(RadioCategory.Jazz),
+            emoji = "",
+            query = "jazz ${homeSeed}".trim(),
+            accentStart = 0xFF6D4C41.toInt(),
+            accentEnd = 0xFF8D6E63.toInt()
+        ),
+        ExploreZone(
+            id = "classical",
+            label = radio.category(RadioCategory.Classical),
+            emoji = "",
+            query = "classical music ${homeSeed}".trim(),
+            accentStart = 0xFF546E7A.toInt(),
+            accentEnd = 0xFF455A64.toInt()
+        )
+    )
 }
 
 @Composable
