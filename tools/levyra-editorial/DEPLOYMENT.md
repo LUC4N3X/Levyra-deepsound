@@ -31,6 +31,7 @@ The service is configured using standard environment variables:
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `LEVYRA_EDITORIAL_SP_DC` | Yes | (empty) | Spotify `sp_dc` cookie for server-side web-player token authentication. Remains strictly server-only and is never exposed to clients. |
+| `LEVYRA_RESOLVER_CLIENT_KEY` | Yes | (empty) | Shared authentication key required in the `X-Levyra-Key` header on `POST /v1/resolve`. |
 | `LEVYRA_EDITORIAL_SEARCH_QUERY_HASH` | No | `bc1ca2fcd0ba1013a0fc88e6cc4f190af501851e3dafd3e1ef85840297694428` | 64-character hex persisted query SHA-256 hash for Spotify Web Player Pathfinder `searchTracks`. |
 | `LEVYRA_RESOLVER_HOST` | No | `127.0.0.1` | Local interface binding address. |
 | `LEVYRA_RESOLVER_PORT` | No | `8080` | Internal TCP listening port. |

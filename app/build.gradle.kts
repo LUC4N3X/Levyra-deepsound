@@ -78,6 +78,11 @@ val canvasResolverUrl = if (isFdroidBuild) {
 } else {
     envOrProperty("LEVYRA_CANVAS_RESOLVER_URL", "levyraCanvasResolverUrl")
 }
+val canvasClientKey = if (isFdroidBuild) {
+    ""
+} else {
+    envOrProperty("LEVYRA_CANVAS_CLIENT_KEY", "levyraCanvasClientKey")
+}
 val releaseStoreFilePath = envOrProperty("LEVYRA_KEYSTORE_FILE", "levyraStoreFile").ifBlank { "app/levyra-release.jks" }
 val releaseStorePassword = envOrProperty("LEVYRA_KEYSTORE_PASSWORD", "levyraStorePassword")
 val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias")
@@ -95,6 +100,10 @@ if (isReleaseTaskRequested() && !isFdroidBuild && youtubeInnertubeApiKey.isBlank
 
 if (isPrDiagnosticsArtifactTaskRequested() && canvasResolverUrl.isBlank()) {
     throw GradleException("Missing LEVYRA_CANVAS_RESOLVER_URL. Configure LEVYRA_CANVAS_RESOLVER_URL as a GitHub Actions secret or in local.properties as levyraCanvasResolverUrl.")
+}
+
+if (isPrDiagnosticsArtifactTaskRequested() && canvasClientKey.isBlank()) {
+    throw GradleException("Missing LEVYRA_CANVAS_CLIENT_KEY. Configure LEVYRA_CANVAS_CLIENT_KEY as a GitHub Actions secret or in local.properties as levyraCanvasClientKey.")
 }
 
 if (isReleaseTaskRequested() && !isFdroidBuild && !releaseSigningAvailable) {
@@ -162,6 +171,7 @@ android {
         buildConfigField("boolean", "REMOTE_ANNOUNCEMENTS_ENABLED", (!isFdroidBuild).toString())
         buildConfigField("String", "YOUTUBE_INNERTUBE_API_KEY", buildConfigString(youtubeInnertubeApiKey))
         buildConfigField("String", "CANVAS_RESOLVER_URL", buildConfigString(canvasResolverUrl))
+        buildConfigField("String", "CANVAS_CLIENT_KEY", buildConfigString(canvasClientKey))
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

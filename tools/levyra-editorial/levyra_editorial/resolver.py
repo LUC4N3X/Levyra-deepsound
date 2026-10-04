@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hmac
 import ipaddress
 import json
 import logging
@@ -834,12 +835,23 @@ def extract_client_ip(peer_ip: str, headers: Mapping[str, str]) -> str:
 class CanvasHttpHandler(BaseHTTPRequestHandler):
     service: CanvasResolverService
     rate_limiter: RateLimiter
+    client_key: str = ""
     timeout: float | None = 10.0
 
     def log_message(self, format: str, *args: Any) -> None:
         message = format % args
         sanitized = message.split("?", 1)[0] if "?" in message else message
         LOGGER.info("HTTP %s", sanitized)
+
+    def _is_authorized_client(self) -> bool:
+        expected = self.client_key
+        provided = (self.headers.get("X-Levyra-Key") or "").strip()
+        if not expected or not provided:
+            return False
+        return hmac.compare_digest(
+            provided.encode("utf-8"),
+            expected.encode("utf-8"),
+        )
 
     def do_HEAD(self) -> None:
         if self.path in {"/health", "/v1/health"}:
@@ -870,6 +882,13 @@ class CanvasHttpHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(b'{"status":"error","message":"Rate limit exceeded"}\n')
+            return
+
+        if not self._is_authorized_client():
+            self._send_json(
+                HTTPStatus.UNAUTHORIZED,
+                {"status": "error", "message": "Unauthorized"},
+            )
             return
 
         content_length_header = self.headers.get("Content-Length")
@@ -975,14 +994,21 @@ def create_resolver_server(
     host: str = "127.0.0.1",
     port: int = 8080,
     rate_limit: int = DEFAULT_RATE_LIMIT_PER_MINUTE,
+    client_key: str | None = None,
 ) -> ThreadingHTTPServer:
     rate_limiter = RateLimiter(rate_limit)
+    resolved_key = (
+        client_key
+        if client_key is not None
+        else os.environ.get("LEVYRA_RESOLVER_CLIENT_KEY", "")
+    ).strip()
 
     class CustomHandler(CanvasHttpHandler):
         pass
 
     CustomHandler.service = service
     CustomHandler.rate_limiter = rate_limiter
+    CustomHandler.client_key = resolved_key
 
     return ThreadingHTTPServer((host, port), CustomHandler)
 
@@ -1004,12 +1030,22 @@ def main() -> None:
     if not sp_dc:
         LOGGER.error("LEVYRA_EDITORIAL_SP_DC environment variable is required.")
         sys.exit(1)
+    client_key = os.environ.get("LEVYRA_RESOLVER_CLIENT_KEY", "").strip()
+    if not client_key:
+        LOGGER.error("LEVYRA_RESOLVER_CLIENT_KEY environment variable is required.")
+        sys.exit(1)
 
     storage = SQLiteCacheStorage(args.cache_db)
     cache = CanvasResolverCache(storage_backend=storage)
     client = SpotifyWebClient(sp_dc)
     service = CanvasResolverService(client=client, cache=cache)
-    server = create_resolver_server(service, host=args.host, port=args.port, rate_limit=args.rate_limit)
+    server = create_resolver_server(
+        service,
+        host=args.host,
+        port=args.port,
+        rate_limit=args.rate_limit,
+        client_key=client_key,
+    )
 
     LOGGER.info("Starting Levyra Canvas resolver on %s:%d (cache=%s)", args.host, args.port, args.cache_db)
     try:

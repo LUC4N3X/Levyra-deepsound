@@ -27,6 +27,7 @@ class OnDemandCanvasResolverTest {
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val fakeResolverUrl = "https://canvas.example.invalid/v1/resolve"
+    private val fakeClientKey = "test_dummy_key"
 
     private fun clientWithHandler(handler: (Request) -> Response): OkHttpClient {
         val interceptor = Interceptor { chain ->
@@ -89,6 +90,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
 
@@ -106,6 +108,7 @@ class OnDemandCanvasResolverTest {
             assertEquals("POST", interceptedRequest?.method)
             assertEquals("Levyra/1.0 (Android; MotionArtwork)", interceptedRequest?.header("User-Agent"))
             assertEquals("application/json", interceptedRequest?.header("Accept"))
+            assertEquals(fakeClientKey, interceptedRequest?.header("X-Levyra-Key"))
 
             assertNotNull(interceptedBody)
             val bodyJson = JSONObject(interceptedBody!!)
@@ -139,6 +142,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
 
@@ -181,6 +185,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
 
@@ -203,6 +208,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
 
@@ -221,6 +227,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
             val candidate = resolver.resolve(testIdentity())
@@ -240,6 +247,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
 
@@ -266,6 +274,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { false }
             )
 
@@ -276,7 +285,7 @@ class OnDemandCanvasResolverTest {
     }
 
     @Test
-    fun blankResolverUrlDisablesOnDemandResolutionGracefully() {
+    fun blankResolverUrlOrClientKeyDisablesOnDemandResolutionGracefully() {
         runBlocking {
             val requestCount = AtomicInteger(0)
             val client = clientWithHandler { request ->
@@ -284,15 +293,23 @@ class OnDemandCanvasResolverTest {
                 jsonResponse(request, 200, """{"status":"resolved","url":"https://canvaz.scdn.co/v.mp4"}""")
             }
 
-            val resolver = OnDemandCanvasResolver(
+            val resolverBlankUrl = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = "   ",
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
-
-            val candidate = resolver.resolve(testIdentity())
-            assertNull(candidate)
+            assertNull(resolverBlankUrl.resolve(testIdentity()))
             assertEquals("Blank resolverUrl must not invoke network", 0, requestCount.get())
+
+            val resolverBlankKey = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = fakeResolverUrl,
+                clientKey = "   ",
+                networkPolicyCheck = { true }
+            )
+            assertNull(resolverBlankKey.resolve(testIdentity()))
+            assertEquals("Blank clientKey must not invoke network", 0, requestCount.get())
         }
     }
 
@@ -321,6 +338,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
 
@@ -358,6 +376,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
 
@@ -390,6 +409,7 @@ class OnDemandCanvasResolverTest {
             val resolver = OnDemandCanvasResolver(
                 client = client,
                 resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
                 networkPolicyCheck = { true }
             )
 

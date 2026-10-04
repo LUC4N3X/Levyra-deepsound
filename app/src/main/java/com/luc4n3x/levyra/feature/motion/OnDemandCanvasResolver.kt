@@ -37,6 +37,7 @@ class OnDemandCanvasResolver(
             .callTimeout(4, TimeUnit.SECONDS)
             .build(),
     private val resolverUrl: String = BuildConfig.CANVAS_RESOLVER_URL,
+    private val clientKey: String = BuildConfig.CANVAS_CLIENT_KEY,
     private val networkPolicyCheck: () -> Boolean = {
         context?.let { MotionArtworkNetworkPolicy.canUseMotionArtwork(it) } ?: true
     }
@@ -48,7 +49,7 @@ class OnDemandCanvasResolver(
     }
 
     suspend fun resolve(identity: MotionTrackIdentity): MotionArtworkCandidate? = withContext(Dispatchers.IO) {
-        if (resolverUrl.isBlank() || !networkPolicyCheck()) return@withContext null
+        if (resolverUrl.isBlank() || clientKey.isBlank() || !networkPolicyCheck()) return@withContext null
 
         val cacheKey = onDemandCacheKey(identity)
         val now = System.currentTimeMillis()
@@ -91,6 +92,7 @@ class OnDemandCanvasResolver(
             .post(body)
             .header("User-Agent", USER_AGENT)
             .header("Accept", "application/json")
+            .header("X-Levyra-Key", clientKey)
             .build()
     }
 

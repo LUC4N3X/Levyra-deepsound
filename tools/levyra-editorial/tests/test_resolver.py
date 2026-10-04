@@ -489,13 +489,20 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         canvas_map={"http_track": valid_canvas_url},
     )
     service = CanvasResolverService(client)
-    server = create_resolver_server(service, host="127.0.0.1", port=0)
+    test_client_key = "test_dummy_key"
+    server = create_resolver_server(
+        service,
+        host="127.0.0.1",
+        port=0,
+        client_key=test_client_key,
+    )
     server_port = server.server_address[1]
 
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
 
     base_url = f"http://127.0.0.1:{server_port}"
+    auth_headers = {"X-Levyra-Key": test_client_key}
     try:
         resp = requests.get(f"{base_url}/health", timeout=5)
         assert resp.status_code == 200
@@ -511,6 +518,29 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         resp_unknown = requests.get(f"{base_url}/unknown/path", timeout=5)
         assert resp_unknown.status_code == 404
 
+        resp_no_key = requests.post(
+            f"{base_url}/v1/resolve",
+            json={
+                "isrc": "USUM71703861",
+                "title": "Test Song",
+                "artist": "Test Artist",
+            },
+            timeout=5,
+        )
+        assert resp_no_key.status_code == 401
+
+        resp_wrong_key = requests.post(
+            f"{base_url}/v1/resolve",
+            json={
+                "isrc": "USUM71703861",
+                "title": "Test Song",
+                "artist": "Test Artist",
+            },
+            headers={"X-Levyra-Key": "wrong_dummy_key"},
+            timeout=5,
+        )
+        assert resp_wrong_key.status_code == 401
+
         resp = requests.post(
             f"{base_url}/v1/resolve",
             json={
@@ -518,6 +548,7 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
                 "title": "Test Song",
                 "artist": "Test Artist",
             },
+            headers=auth_headers,
             timeout=5,
         )
         assert resp.status_code == 200
@@ -530,7 +561,7 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         resp_bad = requests.post(
             f"{base_url}/v1/resolve",
             data=b"{}",
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", **auth_headers},
             timeout=5,
         )
         assert resp_bad.status_code == 400
@@ -538,7 +569,7 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         resp_malformed = requests.post(
             f"{base_url}/v1/resolve",
             data=b"not-json",
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", **auth_headers},
             timeout=5,
         )
         assert resp_malformed.status_code == 400
@@ -546,7 +577,7 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         resp_oversized = requests.post(
             f"{base_url}/v1/resolve",
             data=b"x" * 70_000,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", **auth_headers},
             timeout=5,
         )
         assert resp_oversized.status_code == 413
@@ -555,6 +586,7 @@ def test_http_server_endpoints_and_sanitized_logs(caplog: pytest.LogCaptureFixtu
         assert "Bearer" not in caplog.text
         assert "authorization" not in caplog.text.lower()
         assert "127.0.0.1" not in caplog.text
+        assert test_client_key not in caplog.text
 
     finally:
         server.shutdown()
@@ -618,7 +650,12 @@ def test_preserve_l2_cache_expiry_across_reload(tmp_path: Any) -> None:
 
 def test_http_server_negative_content_length_and_incomplete_body() -> None:
     service = CanvasResolverService(FakeSpotifyClient())
-    server = create_resolver_server(service, host="127.0.0.1", port=0)
+    server = create_resolver_server(
+        service,
+        host="127.0.0.1",
+        port=0,
+        client_key="test_dummy_key",
+    )
     server_port = server.server_address[1]
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
@@ -629,6 +666,7 @@ def test_http_server_negative_content_length_and_incomplete_body() -> None:
         sock.sendall(
             b"POST /v1/resolve HTTP/1.1\r\n"
             b"Host: 127.0.0.1\r\n"
+            b"X-Levyra-Key: test_dummy_key\r\n"
             b"Content-Length: -5\r\n"
             b"Content-Type: application/json\r\n\r\n"
             b"{}"
@@ -651,6 +689,7 @@ def test_http_server_negative_content_length_and_incomplete_body() -> None:
         sock2.sendall(
             b"POST /v1/resolve HTTP/1.1\r\n"
             b"Host: 127.0.0.1\r\n"
+            b"X-Levyra-Key: test_dummy_key\r\n"
             b"Content-Length: 50\r\n"
             b"Content-Type: application/json\r\n\r\n"
             b"{\"test\": 1}"
@@ -675,7 +714,12 @@ def test_http_server_negative_content_length_and_incomplete_body() -> None:
 
 def test_http_server_read_timeout_behavior() -> None:
     service = CanvasResolverService(FakeSpotifyClient())
-    server = create_resolver_server(service, host="127.0.0.1", port=0)
+    server = create_resolver_server(
+        service,
+        host="127.0.0.1",
+        port=0,
+        client_key="test_dummy_key",
+    )
     server.RequestHandlerClass.timeout = 0.2
     server_port = server.server_address[1]
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -687,6 +731,7 @@ def test_http_server_read_timeout_behavior() -> None:
         sock.sendall(
             b"POST /v1/resolve HTTP/1.1\r\n"
             b"Host: 127.0.0.1\r\n"
+            b"X-Levyra-Key: test_dummy_key\r\n"
             b"Content-Length: 100\r\n"
             b"Content-Type: application/json\r\n\r\n"
             b"{\"start\":"

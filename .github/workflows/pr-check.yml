@@ -355,6 +355,7 @@ jobs:
     env:
       YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
       LEVYRA_CANVAS_RESOLVER_URL: https://canvas.example.invalid/v1/resolve
+      LEVYRA_CANVAS_CLIENT_KEY: levyra_ci_dummy_key
       ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
       LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
       LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
