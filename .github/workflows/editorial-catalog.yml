@@ -130,7 +130,7 @@ jobs:
             echo "::warning::Spotify Canvas was unavailable; validating static provider fallback"
           fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
-      - name: Upload Live Smoke Diagnostics
+      - name: Upload Pull Request Diagnostics
         uses: actions/upload-artifact@v7
         with:
           name: editorial-pr-${{ github.run_number }}

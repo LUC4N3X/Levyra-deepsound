@@ -86,6 +86,8 @@ class CanvasSession:
         self.track_id = track_id
         self.url = url
         self.requests: list[tuple[str, dict[str, Any]]] = []
+        self.cookies = requests.cookies.RequestsCookieJar()
+        self.headers: dict[str, str] = {}
 
     def post(self, url: str, **kwargs: Any) -> CanvasResponse:
         self.requests.append((url, kwargs))
@@ -255,8 +257,16 @@ def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie(
     track_id = "5osCClSjGplWagDsJmyivf"
     secret = "editorial-session-secret-value-123456"
     url = "https://canvaz.scdn.co/upload/artist/video/canvas.cnvs.mp4"
-    session = FallbackCanvasSession(track_id, url)
-    client = SpotifyWebClient(secret, session=session)
+    session = FallbackCanvasSession(track_id, None)
+    paxsenix_session = FallbackCanvasSession(track_id, url)
+    session.cookies.set("sp_dc", secret)
+    paxsenix_session.cookies.set("stale", "cookie")
+    paxsenix_session.headers["Cookie"] = "stale=cookie"
+    client = SpotifyWebClient(
+        secret,
+        session=session,
+        paxsenix_session=paxsenix_session,
+    )
     client._access_token = "ephemeral-access-token"
     client._client_id = "web-client-id"
 
@@ -264,7 +274,7 @@ def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie(
         assert client.get_canvas_urls([track_id]) == {track_id: url}
 
     primary_request = session.requests[1][1]
-    paxsenix_request = session.requests[2][1]
+    paxsenix_request = paxsenix_session.requests[0][1]
     assert primary_request["headers"]["Client-Token"] == "ephemeral-client-token"
     assert paxsenix_request["headers"] == {
         "Accept": "application/protobuf",
@@ -274,22 +284,31 @@ def test_paxsenix_fallback_resolves_missing_canvas_without_forwarding_cookie(
         "Authorization": "Bearer ephemeral-access-token",
     }
     assert "Cookie" not in paxsenix_request["headers"]
+    assert paxsenix_session.cookies.get_dict() == {}
+    assert "Cookie" not in paxsenix_session.headers
+    assert session.cookies.get_dict() == {"sp_dc": secret}
     assert secret.encode() not in paxsenix_request["data"]
-    assert "PaxSenix Canvas resolver resolved 1 track(s)." in caplog.text
+    assert "PaxSenix resolved: 1" in caplog.text
     assert secret not in caplog.text
 
 
 def test_paxsenix_only_resolver_skips_primary_profile() -> None:
     track_id = "5osCClSjGplWagDsJmyivf"
     url = "https://canvaz.scdn.co/upload/artist/video/canvas.cnvs.mp4"
-    session = FallbackCanvasSession(track_id, url)
-    client = SpotifyWebClient("A" * 40, session=session)
+    session = FallbackCanvasSession(track_id, None)
+    paxsenix_session = FallbackCanvasSession(track_id, url)
+    client = SpotifyWebClient(
+        "A" * 40,
+        session=session,
+        paxsenix_session=paxsenix_session,
+    )
     client._access_token = "ephemeral-access-token"
     client._client_id = "web-client-id"
 
     assert client.get_paxsenix_canvas_urls([track_id]) == {track_id: url}
-    assert [request_url for request_url, _ in session.requests] == [CANVAS_URL]
-    request = session.requests[0][1]
+    assert session.requests == []
+    assert [request_url for request_url, _ in paxsenix_session.requests] == [CANVAS_URL]
+    request = paxsenix_session.requests[0][1]
     assert "Client-Token" not in request["headers"]
     assert request["headers"]["User-Agent"] == PAXSENIX_USER_AGENT
 
@@ -297,7 +316,12 @@ def test_paxsenix_only_resolver_skips_primary_profile() -> None:
 def test_paxsenix_fallback_returns_no_canvas_as_a_clean_miss() -> None:
     track_id = "5osCClSjGplWagDsJmyivf"
     session = FallbackCanvasSession(track_id, None)
-    client = SpotifyWebClient("A" * 40, session=session)
+    paxsenix_session = FallbackCanvasSession(track_id, None)
+    client = SpotifyWebClient(
+        "A" * 40,
+        session=session,
+        paxsenix_session=paxsenix_session,
+    )
     client._access_token = "ephemeral-access-token"
     client._client_id = "web-client-id"
 
@@ -318,11 +342,16 @@ def test_canvas_resolvers_deduplicate_identical_track_results() -> None:
 
 def test_paxsenix_invalid_url_is_rejected_by_existing_catalog_validation() -> None:
     track_id = "5osCClSjGplWagDsJmyivf"
-    session = FallbackCanvasSession(
+    session = FallbackCanvasSession(track_id, None)
+    paxsenix_session = FallbackCanvasSession(
         track_id,
         "https://canvaz.scdn.co/upload/artist/video/canvas.webm",
     )
-    client = SpotifyWebClient("A" * 40, session=session)
+    client = SpotifyWebClient(
+        "A" * 40,
+        session=session,
+        paxsenix_session=paxsenix_session,
+    )
     client._access_token = "ephemeral-access-token"
     client._client_id = "web-client-id"
 
@@ -336,7 +365,12 @@ def test_expired_canvas_auth_fails_closed_without_exposing_credentials(
     track_id = "5osCClSjGplWagDsJmyivf"
     secret = "expired-editorial-session-secret-123456"
     session = UnauthorizedCanvasSession(track_id, "")
-    client = SpotifyWebClient(secret, session=session)
+    paxsenix_session = UnauthorizedCanvasSession(track_id, "")
+    client = SpotifyWebClient(
+        secret,
+        session=session,
+        paxsenix_session=paxsenix_session,
+    )
     client._access_token = "expired-access-token"
     client._client_id = "web-client-id"
 
@@ -360,7 +394,12 @@ def test_canvas_timeout_is_sanitized_and_does_not_leak_secret(
     track_id = "5osCClSjGplWagDsJmyivf"
     secret = "timeout-editorial-session-secret-123456"
     session = TimeoutCanvasSession(track_id, secret)
-    client = SpotifyWebClient(secret, session=session)
+    paxsenix_session = TimeoutCanvasSession(track_id, secret)
+    client = SpotifyWebClient(
+        secret,
+        session=session,
+        paxsenix_session=paxsenix_session,
+    )
     client._access_token = "ephemeral-access-token"
     client._client_id = "web-client-id"
 
@@ -377,7 +416,12 @@ def test_canvas_timeout_is_sanitized_and_does_not_leak_secret(
 def test_malformed_primary_response_and_failed_fallback_fail_the_batch() -> None:
     track_id = "5osCClSjGplWagDsJmyivf"
     session = MalformedPrimaryCanvasSession(track_id, "")
-    client = SpotifyWebClient("A" * 40, session=session)
+    paxsenix_session = TimeoutCanvasSession(track_id, "fallback-secret")
+    client = SpotifyWebClient(
+        "A" * 40,
+        session=session,
+        paxsenix_session=paxsenix_session,
+    )
     client._access_token = "ephemeral-access-token"
     client._client_id = "web-client-id"
 

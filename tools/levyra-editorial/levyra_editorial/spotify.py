@@ -363,12 +363,16 @@ class SpotifyWebClient:
         sp_dc: str,
         *,
         session: requests.Session | None = None,
+        paxsenix_session: requests.Session | None = None,
         secret_dict_url: str | None = None,
         playlist_query_hash: str | None = None,
         timeout_seconds: float = 8.0,
     ) -> None:
         self._sp_dc = normalize_sp_dc(sp_dc)
         self._session = session or build_session()
+        self._paxsenix_session = paxsenix_session or requests.Session()
+        if self._paxsenix_session is self._session:
+            raise ValueError("PaxSenix Canvas requires a dedicated cookie-free HTTP session.")
         self._secret_dict_url = validate_secret_dict_url(
             secret_dict_url
             or os.environ.get("LEVYRA_EDITORIAL_TOTP_SECRETS_URL")
@@ -718,7 +722,7 @@ class SpotifyWebClient:
                     _safe_canvas_failure(error),
                 )
         LOGGER.info(
-            "PaxSenix Canvas resolver resolved %d track(s).",
+            "PaxSenix resolved: %d",
             paxsenix_resolved,
         )
         return resolved
@@ -770,7 +774,9 @@ class SpotifyWebClient:
         def request() -> requests.Response:
             if self._access_token is None:
                 raise AuthenticationError("The editorial source is not authenticated.")
-            return self._session.post(
+            self._paxsenix_session.cookies.clear()
+            self._paxsenix_session.headers.pop("Cookie", None)
+            return self._paxsenix_session.post(
                 CANVAS_URL,
                 data=body,
                 headers={
@@ -888,6 +894,7 @@ class SpotifyWebClient:
 
     def close(self) -> None:
         """Close the underlying HTTP session."""
+        self._paxsenix_session.close()
         self._session.close()
 
     def _get_playlist_page(
