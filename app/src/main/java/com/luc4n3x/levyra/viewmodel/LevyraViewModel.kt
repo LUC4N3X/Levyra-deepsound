@@ -5664,6 +5664,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exploreArtworkWarmupJob?.cancel()
         exploreArtworkWarmupJob = null
         exploreArtworkWarmupLanguage = ""
+        exploreArtworkWarmupAttempts.clear()
         val exploreSnapshot = preferences.loadExploreDiscovery(languageCode)
         exploreCategoriesLoadedLanguage = if (exploreSnapshot != null) languageCode else ""
         exploreCategoriesCachedAtMs = exploreSnapshot?.savedAtMs ?: 0L
@@ -9157,6 +9158,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var exploreDiscoveryPersistJob: Job? = null
     private var exploreArtworkWarmupJob: Job? = null
     private var exploreArtworkWarmupLanguage = ""
+    private val exploreArtworkWarmupAttempts = mutableSetOf<String>()
     private val exploreCategoryArtworkRequests = mutableSetOf<String>()
     private val exploreCategoryArtworkSemaphore = Semaphore(2)
 
@@ -9680,7 +9682,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val missing = snapshot.exploreCategories
             .filter { category ->
                 category.params.isNotBlank() &&
-                    snapshot.exploreCategoryArtwork[category.params].isNullOrBlank()
+                    snapshot.exploreCategoryArtwork[category.params].isNullOrBlank() &&
+                    "$languageCode:${category.params}" !in exploreArtworkWarmupAttempts
             }
         if (missing.isEmpty()) return
         if (exploreArtworkWarmupJob?.isActive == true && exploreArtworkWarmupLanguage == languageCode) return
@@ -9695,6 +9698,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             coroutineScope {
                 prioritized.mapIndexed { index, category ->
                     async {
+                        exploreArtworkWarmupAttempts += "$languageCode:${category.params}"
                         resolveExploreCategoryArtwork(
                             params = category.params,
                             languageCode = languageCode,
@@ -9706,6 +9710,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             if (_state.value.languageCode == languageCode) {
                 schedulePersistExploreDiscovery(languageCode)
+            }
+            exploreArtworkWarmupJob = null
+            if (_state.value.languageCode == languageCode) {
+                warmExploreDiscoveryArtwork()
             }
         }
     }
