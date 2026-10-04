@@ -71,6 +71,18 @@ class PlaybackNavigationIndependenceContractTest {
         assertTrue(app.contains("var backgroundTab by rememberSaveable {"))
     }
 
+    @Test
+    fun `backgrounded Explore destinations cannot consume player back`() {
+        val destinations = readSource("ui/ExploreDestinationScreens.kt")
+        val samples = readSource("ui/ExploreSamplesScreen.kt")
+
+        assertTrue(app.contains("backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Explore"))
+        assertTrue(destinations.contains("BackHandler(enabled = backEnabled, onBack = onBack)"))
+        assertTrue(samples.contains("BackHandler(enabled = backEnabled, onBack = onDismiss)"))
+        assertFalse(destinations.contains("BackHandler(onBack = onBack)"))
+        assertFalse(samples.contains("BackHandler(onBack = onDismiss)"))
+    }
+
     private fun functionBody(source: String, signature: String): String {
         val start = source.indexOf(signature)
         assertTrue("Missing $signature", start >= 0)
