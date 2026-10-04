@@ -24064,67 +24064,15 @@ private fun ExploreScreen(
                 },
                 onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
             )
-            else -> {
-                val providerCategory = exploreCategoryDestinationValue(exploreDestination)
-                if (providerCategory != null) {
-                    val activeProviderCategory = state.exploreCategories
-                        .firstOrNull { category -> category.params == providerCategory.params }
-                        ?: providerCategory
-                    val categoryIsActive = state.exploreCategoryParams == providerCategory.params
-                    val categoryTracks = if (categoryIsActive) state.exploreTracks else emptyList()
-                    LaunchedEffect(providerCategory.params, state.languageCode, categoryIsActive) {
-                        if (!categoryIsActive) {
-                            viewModel.selectExploreCategory(activeProviderCategory)
-                        }
-                    }
-                    ExploreCollectionDestinationScreen(
-                        identity = providerCategory.params,
-                        title = activeProviderCategory.title,
-                        subtitle = activeProviderCategory.section.ifBlank { strings.exploreMoods },
-                        zone = null,
-                        tracks = categoryTracks,
-                        isLoading = state.isExploreLoading || !categoryIsActive,
-                        currentTrackId = state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        strings = strings,
-                        onBack = { exploreDestination = exploreMoodReturn },
-                        onPlayAll = {
-                            categoryTracks.firstOrNull()?.let { first ->
-                                viewModel.playFrom(categoryTracks, first)
-                            }
-                        },
-                        onPlayTrack = { track -> viewModel.playFrom(categoryTracks, track) }
-                    )
-                } else {
-                    exploreMoodDestinationId(exploreDestination)
-                        ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
-                        ?.let { zone ->
-                            val zoneIsActive = state.exploreZoneId == zone.id
-                            val zoneTracks = if (zoneIsActive) state.exploreTracks else emptyList()
-                            LaunchedEffect(zone.id, state.languageCode, zoneIsActive) {
-                                if (!zoneIsActive) viewModel.selectExploreZone(zone)
-                            }
-                            ExploreCollectionDestinationScreen(
-                                identity = zone.id,
-                                title = zone.label,
-                                subtitle = strings.exploreMoods,
-                                zone = zone,
-                                tracks = zoneTracks,
-                                isLoading = state.isExploreLoading || !zoneIsActive,
-                                currentTrackId = state.currentTrack?.id,
-                                isPlaying = state.isPlaying,
-                                strings = strings,
-                                onBack = { exploreDestination = exploreMoodReturn },
-                                onPlayAll = {
-                                    zoneTracks.firstOrNull()?.let { first ->
-                                        viewModel.playFrom(zoneTracks, first)
-                                    }
-                                },
-                                onPlayTrack = { track -> viewModel.playFrom(zoneTracks, track) }
-                            )
-                        }
-                }
-            }
+            else -> ExploreMoodCollectionDestination(
+                destination = exploreDestination,
+                returnDestination = exploreMoodReturn,
+                zones = zones,
+                state = state,
+                strings = strings,
+                viewModel = viewModel,
+                onDestinationChange = { exploreDestination = it }
+            )
         }
 
         samplesStartIndex?.let { initialPage ->
@@ -24164,6 +24112,66 @@ private fun ExploreScreen(
             )
         }
     }
+}
+
+@Composable
+private fun ExploreMoodCollectionDestination(
+    destination: String?,
+    returnDestination: String?,
+    zones: List<ExploreZone>,
+    state: LevyraUiState,
+    strings: LevyraStrings,
+    viewModel: ExploreViewModel,
+    onDestinationChange: (String?) -> Unit
+) {
+    val providerCategory = exploreCategoryDestinationValue(destination)
+    if (providerCategory != null) {
+        val activeCategory = state.exploreCategories
+            .firstOrNull { category -> category.params == providerCategory.params }
+            ?: providerCategory
+        val isActive = state.exploreCategoryParams == providerCategory.params
+        val tracks = if (isActive) state.exploreTracks else emptyList()
+        LaunchedEffect(providerCategory.params, state.languageCode, isActive) {
+            if (!isActive) viewModel.selectExploreCategory(activeCategory)
+        }
+        ExploreCollectionDestinationScreen(
+            identity = providerCategory.params,
+            title = activeCategory.title,
+            subtitle = activeCategory.section.ifBlank { strings.exploreMoods },
+            zone = null,
+            tracks = tracks,
+            isLoading = state.isExploreLoading || !isActive,
+            currentTrackId = state.currentTrack?.id,
+            isPlaying = state.isPlaying,
+            strings = strings,
+            onBack = { onDestinationChange(returnDestination) },
+            onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+            onPlayTrack = { track -> viewModel.playFrom(tracks, track) }
+        )
+        return
+    }
+
+    val zoneId = exploreMoodDestinationId(destination) ?: return
+    val zone = zones.firstOrNull { candidate -> candidate.id == zoneId } ?: return
+    val isActive = state.exploreZoneId == zone.id
+    val tracks = if (isActive) state.exploreTracks else emptyList()
+    LaunchedEffect(zone.id, state.languageCode, isActive) {
+        if (!isActive) viewModel.selectExploreZone(zone)
+    }
+    ExploreCollectionDestinationScreen(
+        identity = zone.id,
+        title = zone.label,
+        subtitle = strings.exploreMoods,
+        zone = zone,
+        tracks = tracks,
+        isLoading = state.isExploreLoading || !isActive,
+        currentTrackId = state.currentTrack?.id,
+        isPlaying = state.isPlaying,
+        strings = strings,
+        onBack = { onDestinationChange(returnDestination) },
+        onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+        onPlayTrack = { track -> viewModel.playFrom(tracks, track) }
+    )
 }
 
 @Composable

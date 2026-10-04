@@ -9642,6 +9642,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
         val requestGeneration = ++exploreCategoriesRequestGeneration
         exploreCategoriesRequestLanguage = languageCode
+        markExploreCategoriesLoading(languageCode)
+        exploreCategoriesJob = viewModelScope.launch {
+            try {
+                val categories = fetchExploreCategories(languageCode)
+                publishExploreCategories(languageCode, requestGeneration, categories)
+            } finally {
+                finishExploreCategoriesRequest(languageCode, requestGeneration)
+            }
+        }
+    }
+
+    private fun markExploreCategoriesLoading(languageCode: String) {
         _state.update { current ->
             if (current.languageCode != languageCode) {
                 current
@@ -9656,47 +9668,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
         }
-        exploreCategoriesJob = viewModelScope.launch {
-            try {
-                val categories = try {
-                    repository.moodCategories(languageCode)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    Timber.w(error, "Provider Explore categories failed for %s", languageCode)
-                    emptyList()
-                }.asSequence()
-                    .filter { category -> category.title.isNotBlank() && category.params.isNotBlank() }
-                    .distinctBy { category -> category.params }
-                    .toList()
-                if (
-                    exploreCategoriesRequestGeneration != requestGeneration ||
-                    _state.value.languageCode != languageCode
-                ) return@launch
-                if (categories.isNotEmpty()) exploreCategoriesLoadedLanguage = languageCode
-                _state.update { current ->
-                    if (current.languageCode == languageCode) {
-                        current.copy(
-                            exploreCategories = categories,
-                            isExploreCategoriesLoading = false
-                        )
-                    } else {
-                        current
-                    }
-                }
-            } finally {
-                if (exploreCategoriesRequestGeneration == requestGeneration) {
-                    _state.update { current ->
-                        if (current.languageCode == languageCode && current.isExploreCategoriesLoading) {
-                            current.copy(isExploreCategoriesLoading = false)
-                        } else {
-                            current
-                        }
-                    }
-                    exploreCategoriesJob = null
-                }
+    }
+
+    private suspend fun fetchExploreCategories(languageCode: String): List<ExploreCategory> = try {
+        repository.moodCategories(languageCode)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Throwable) {
+        Timber.w(error, "Provider Explore categories failed for %s", languageCode)
+        emptyList()
+    }.asSequence()
+        .filter { category -> category.title.isNotBlank() && category.params.isNotBlank() }
+        .distinctBy { category -> category.params }
+        .toList()
+
+    private fun publishExploreCategories(
+        languageCode: String,
+        requestGeneration: Long,
+        categories: List<ExploreCategory>
+    ) {
+        if (
+            exploreCategoriesRequestGeneration != requestGeneration ||
+            _state.value.languageCode != languageCode
+        ) return
+        if (categories.isNotEmpty()) exploreCategoriesLoadedLanguage = languageCode
+        _state.update { current ->
+            if (current.languageCode == languageCode) {
+                current.copy(
+                    exploreCategories = categories,
+                    isExploreCategoriesLoading = false
+                )
+            } else {
+                current
             }
         }
+    }
+
+    private fun finishExploreCategoriesRequest(languageCode: String, requestGeneration: Long) {
+        if (exploreCategoriesRequestGeneration != requestGeneration) return
+        _state.update { current ->
+            if (current.languageCode == languageCode && current.isExploreCategoriesLoading) {
+                current.copy(isExploreCategoriesLoading = false)
+            } else {
+                current
+            }
+        }
+        exploreCategoriesJob = null
     }
 
     fun playDownloaded(download: DownloadedTrack) {
