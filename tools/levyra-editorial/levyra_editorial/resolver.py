@@ -747,8 +747,8 @@ class CanvasResolverService:
         )
         canonical_isrc = (
             str(matched_cand.get("external_ids", {}).get("isrc") or "").strip().upper()
-            if matched_cand
-            else query.isrc
+            if matched_cand is not None
+            else ""
         )
         return {
             "song": canonical_title or query.title or "Unknown",
@@ -756,7 +756,7 @@ class CanvasResolverService:
             "album": canonical_album or query.album or canonical_title or "Unknown",
             "url": canvas_url,
             "scope": "track",
-            "isrc": canonical_isrc or query.isrc,
+            "isrc": canonical_isrc,
         }
 
     def _execute_upstream_resolve(self, query: TrackQuery, key: str) -> dict[str, Any]:

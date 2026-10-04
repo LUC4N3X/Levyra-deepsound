@@ -37,6 +37,9 @@ DEFAULT_SECRET_DICT_URL = (
 DEFAULT_PLAYLIST_QUERY_HASH = (
     "a65e12194ed5fc443a1cdebed5fabe33ca5b07b987185d63c72483867ad13cb4"
 )
+DEFAULT_SEARCH_QUERY_HASH = (
+    "bc1ca2fcd0ba1013a0fc88e6cc4f190af501851e3dafd3e1ef85840297694428"
+)
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -367,6 +370,7 @@ class SpotifyWebClient:
         paxsenix_session: requests.Session | None = None,
         secret_dict_url: str | None = None,
         playlist_query_hash: str | None = None,
+        search_query_hash: str | None = None,
         timeout_seconds: float = 8.0,
     ) -> None:
         self._sp_dc = normalize_sp_dc(sp_dc)
@@ -383,6 +387,11 @@ class SpotifyWebClient:
             playlist_query_hash
             or os.environ.get("LEVYRA_EDITORIAL_PLAYLIST_QUERY_HASH")
             or DEFAULT_PLAYLIST_QUERY_HASH
+        )
+        self._search_query_hash = validate_search_query_hash(
+            search_query_hash
+            or os.environ.get("LEVYRA_EDITORIAL_SEARCH_QUERY_HASH")
+            or DEFAULT_SEARCH_QUERY_HASH
         )
         self._timeout = timeout_seconds
         self._access_token: str | None = None
@@ -608,53 +617,50 @@ class SpotifyWebClient:
         query: str,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
-        """Search Spotify for track candidates matching a query string or ISRC."""
+        """Search Spotify for track candidates through Web Player Pathfinder."""
         with self._upstream_lock:
             normalized_query = str(query or "").strip()
             if len(normalized_query) < 2:
                 return []
             self._ensure_authenticated()
-
+            bounded_limit = min(max(1, limit), 50)
             params = {
-                "q": normalized_query,
-                "type": "track",
-                "limit": min(max(1, limit), 50),
+                "operationName": "searchTracks",
+                "variables": json.dumps(
+                    {
+                        "searchTerm": normalized_query,
+                        "offset": 0,
+                        "limit": bounded_limit,
+                        "numberOfTopResults": bounded_limit,
+                        "includeAudiobooks": True,
+                        "includePreReleases": False,
+                    },
+                    separators=(",", ":"),
+                ),
+                "extensions": json.dumps(
+                    {
+                        "persistedQuery": {
+                            "version": 1,
+                            "sha256Hash": self._search_query_hash,
+                        }
+                    },
+                    separators=(",", ":"),
+                ),
             }
-
-            def request_search() -> requests.Response:
-                return self._session.get(
-                    f"{API_BASE_URL}/search",
-                    params=params,
-                    headers=self._api_headers(),
-                    timeout=self._timeout,
-                )
-
             token_before = self._access_token
-            response = request_search()
+            response = self._pathfinder_request(params)
             if response.status_code == 401:
                 self._ensure_authenticated(rejected_token=token_before)
-                response = request_search()
+                response = self._pathfinder_request(params)
             if response.status_code == 429:
                 delay = _bounded_retry_after(response.headers.get("Retry-After"))
                 if delay > 0:
                     time.sleep(delay)
-                response = request_search()
+                response = self._pathfinder_request(params)
                 if response.status_code == 401:
                     self._ensure_authenticated(rejected_token=token_before)
-                    response = request_search()
-            if response.status_code >= 400:
-                raise SourceApiError(
-                    f"Spotify track search failed with HTTP {response.status_code}."
-                )
-            try:
-                payload = response.json()
-            except ValueError as error:
-                raise SourceApiError("Spotify track search returned invalid JSON.") from error
-            tracks = payload.get("tracks") if isinstance(payload, Mapping) else None
-            items = tracks.get("items") if isinstance(tracks, Mapping) else None
-            if not isinstance(items, list):
-                return []
-            return [item for item in items if isinstance(item, Mapping)]
+                    response = self._pathfinder_request(params)
+            return _parse_search_tracks_response(response)
 
     def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Best-effort ISRC and release metadata without weakening Pathfinder reads."""
@@ -1596,6 +1602,100 @@ def validate_playlist_query_hash(value: str) -> str:
     if re.fullmatch(r"[0-9a-f]{64}", normalized) is None:
         raise AuthenticationError("The playlist query hash is malformed.")
     return normalized
+
+
+def validate_search_query_hash(value: str) -> str:
+    normalized = str(value or "").strip().lower()
+    if re.fullmatch(r"[0-9a-f]{64}", normalized) is None:
+        raise AuthenticationError("The search query hash is malformed.")
+    return normalized
+
+
+def _parse_search_tracks_response(response: requests.Response) -> list[dict[str, Any]]:
+    if response.status_code >= 400:
+        raise SourceApiError(
+            f"Spotify track search failed with HTTP {response.status_code}."
+        )
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise SourceApiError("Spotify track search returned invalid JSON.") from error
+    if not isinstance(payload, Mapping):
+        raise SourceApiError("Spotify track search returned an invalid response shape.")
+    _check_search_graphql_errors(payload)
+    items = _extract_search_track_items(payload)
+    results: list[dict[str, Any]] = []
+    for raw_item in items:
+        converted = _convert_search_track_item(raw_item)
+        if converted is not None:
+            results.append(converted)
+    return results
+
+
+def _check_search_graphql_errors(payload: Mapping[str, Any]) -> None:
+    errors = payload.get("errors")
+    if not isinstance(errors, list) or not errors:
+        return
+    messages = {
+        str(error.get("message") or "")
+        for error in errors
+        if isinstance(error, Mapping)
+    }
+    if "PersistedQueryNotFound" in messages:
+        raise SourceApiError(
+            "Spotify rotated the searchTracks query hash. "
+            "Update LEVYRA_EDITORIAL_SEARCH_QUERY_HASH."
+        )
+    raise SourceApiError("Spotify track search returned a GraphQL error.")
+
+
+def _extract_search_track_items(payload: Mapping[str, Any]) -> list[Any]:
+    data = _mapping(payload.get("data"))
+    search_v2 = _mapping(data.get("searchV2")) if data else None
+    tracks_v2 = _mapping(search_v2.get("tracksV2")) if search_v2 else None
+    items = tracks_v2.get("items") if tracks_v2 else None
+    if not isinstance(items, list):
+        raise SourceApiError("Spotify track search returned an invalid response shape.")
+    return items
+
+
+def _convert_search_track_item(raw_item: Any) -> dict[str, Any] | None:
+    outer = _mapping(raw_item)
+    inner = _mapping(outer.get("item")) if outer else None
+    track_data = _mapping(inner.get("data")) if inner else None
+    if not track_data:
+        return None
+    uri = _string(track_data.get("uri"))
+    track_id = _spotify_id(_string(track_data.get("id"))) or _spotify_id(uri)
+    name = _string(track_data.get("name"))
+    if not track_id or not name:
+        return None
+    duration_node = _mapping(track_data.get("duration"))
+    duration_ms = (
+        _positive_timestamp(duration_node.get("totalMilliseconds"))
+        if duration_node
+        else None
+    ) or 0
+    album_node = _mapping(track_data.get("albumOfTrack"))
+    album_name = _string(album_node.get("name")) if album_node else None
+    album_id = (
+        _spotify_id(_string(album_node.get("id")))
+        or _spotify_id(_string(album_node.get("uri")))
+        if album_node
+        else None
+    )
+    return {
+        "id": track_id,
+        "uri": uri or f"spotify:track:{track_id}",
+        "name": name,
+        "duration_ms": duration_ms,
+        "artists": _artists(track_data.get("artists")),
+        "album": {
+            "id": album_id or "",
+            "name": album_name or "",
+        },
+        "external_ids": {},
+    }
 
 
 def _spotify_id(uri: str | None) -> str | None:

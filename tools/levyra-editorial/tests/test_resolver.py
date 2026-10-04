@@ -18,7 +18,13 @@ from levyra_editorial.resolver import (
     create_resolver_server,
     extract_client_ip,
 )
-from levyra_editorial.spotify import AuthenticationError, SpotifyWebClient
+from levyra_editorial.spotify import (
+    DEFAULT_SEARCH_QUERY_HASH,
+    AuthenticationError,
+    SourceApiError,
+    SpotifyWebClient,
+    validate_search_query_hash,
+)
 
 
 class FakeSpotifyClient:
@@ -783,30 +789,30 @@ def test_concurrent_401_recovery_with_multiple_resolver_threads() -> None:
     client.authenticate = mock_authenticate
 
     def mock_get(url: str, params: Any = None, headers: Any = None, timeout: Any = None) -> Any:
+        import json
+
         auth_hdr = headers.get("Authorization", "") if headers else ""
         if "test-stale-token" in auth_hdr:
             return MockCanvasResponse(status_code=401)
         if "test-fresh-token" in auth_hdr:
-            q = (params or {}).get("q", "")
+            raw_vars = (params or {}).get("variables", "{}")
+            q = json.loads(raw_vars).get("searchTerm", "")
             title = q.split()[0] if q else "Song"
             artist = q.split()[1] if len(q.split()) > 1 else "Artist"
             track_id = f"tid{title}{artist}1234567890"
             return MockCanvasResponse(
                 status_code=200,
-                payload={
-                    "tracks": {
-                        "items": [
-                            {
-                                "id": track_id,
-                                "name": title,
-                                "artists": [{"name": artist}],
-                                "album": {"name": f"Album {title}"},
-                                "external_ids": {"isrc": ""},
-                                "duration_ms": 180_000,
-                            }
-                        ]
-                    }
-                },
+                payload=_pathfinder_search_payload(
+                    [
+                        _pathfinder_track_node(
+                            track_id=track_id,
+                            name=title,
+                            artist_name=artist,
+                            album_name=f"Album{title.removeprefix('Song')}",
+                            duration_ms=180_000,
+                        )
+                    ]
+                ),
             )
         return MockCanvasResponse(status_code=403)
 
@@ -862,3 +868,319 @@ def test_concurrent_401_recovery_with_multiple_resolver_threads() -> None:
     for idx, r in enumerate(results):
         assert r is not None
         assert f"tidSong{idx}Artist{idx}1234567890" in r.get("url", "")
+
+
+def _pathfinder_track_node(
+    track_id: str = "6DCZcSspjsKoFjzjrWoCdn",
+    name: str = "HUMBLE.",
+    artist_id: str = "2YZyLoL8N0Wb9xBt1NhZWg",
+    artist_name: str = "Kendrick Lamar",
+    album_id: str = "4eLPsYPBmXABThSJ821sqY",
+    album_name: str = "DAMN.",
+    duration_ms: int = 177_000,
+    album_id_via_uri_only: bool = False,
+) -> dict[str, Any]:
+    album_node: dict[str, Any] = {
+        "name": album_name,
+        "uri": f"spotify:album:{album_id}",
+        "coverArt": {"sources": []},
+    }
+    if not album_id_via_uri_only:
+        album_node["id"] = album_id
+    return {
+        "item": {
+            "data": {
+                "__typename": "Track",
+                "id": track_id,
+                "uri": f"spotify:track:{track_id}",
+                "name": name,
+                "duration": {"totalMilliseconds": duration_ms},
+                "artists": {
+                    "items": [
+                        {
+                            "uri": f"spotify:artist:{artist_id}",
+                            "profile": {"name": artist_name},
+                        }
+                    ]
+                },
+                "albumOfTrack": album_node,
+            }
+        }
+    }
+
+
+def _pathfinder_search_payload(items: list[Any]) -> dict[str, Any]:
+    return {
+        "data": {
+            "searchV2": {
+                "tracksV2": {
+                    "items": items,
+                }
+            }
+        }
+    }
+
+
+def _authenticated_spotify_client(**kwargs: Any) -> SpotifyWebClient:
+    client = SpotifyWebClient("sp_dc_mock_session_secret_123456", **kwargs)
+    client._access_token = "test-active-token"
+    client._client_id = "test-client-id"
+    client._client_token = "test-client-token"
+    client._client_token_expires_at = time.monotonic() + 3600
+    return client
+
+
+def test_pathfinder_search_tracks_parsing_and_id_extraction() -> None:
+    import json
+
+    client = _authenticated_spotify_client()
+    captured: dict[str, Any] = {}
+
+    def mock_get(url: str, params: Any = None, headers: Any = None, timeout: Any = None) -> Any:
+        captured["url"] = url
+        captured["params"] = params
+        captured["headers"] = headers
+        return MockCanvasResponse(
+            status_code=200,
+            payload=_pathfinder_search_payload(
+                [
+                    _pathfinder_track_node(
+                        track_id="trackA123456",
+                        name="HUMBLE.",
+                        artist_id="artistKDot12",
+                        artist_name="Kendrick Lamar",
+                        album_id="albumDamn123",
+                        album_name="DAMN.",
+                        duration_ms=177_000,
+                    ),
+                    _pathfinder_track_node(
+                        track_id="trackB654321",
+                        name="DNA.",
+                        artist_id="artistKDot12",
+                        artist_name="Kendrick Lamar",
+                        album_id="albumUriOnly1",
+                        album_name="DAMN.",
+                        duration_ms=185_000,
+                        album_id_via_uri_only=True,
+                    ),
+                ]
+            ),
+        )
+
+    client._session.get = mock_get
+    results = client.search_tracks("HUMBLE. Kendrick Lamar", limit=10)
+
+    assert captured["url"] == "https://api-partner.spotify.com/pathfinder/v1/query"
+    assert "api.spotify.com/v1/search" not in captured["url"]
+    assert captured["params"]["operationName"] == "searchTracks"
+    variables = json.loads(captured["params"]["variables"])
+    assert variables == {
+        "searchTerm": "HUMBLE. Kendrick Lamar",
+        "offset": 0,
+        "limit": 10,
+        "numberOfTopResults": 10,
+        "includeAudiobooks": True,
+        "includePreReleases": False,
+    }
+    extensions = json.loads(captured["params"]["extensions"])
+    assert extensions == {
+        "persistedQuery": {
+            "version": 1,
+            "sha256Hash": DEFAULT_SEARCH_QUERY_HASH,
+        }
+    }
+
+    assert len(results) == 2
+    assert results[0] == {
+        "id": "trackA123456",
+        "uri": "spotify:track:trackA123456",
+        "name": "HUMBLE.",
+        "duration_ms": 177_000,
+        "artists": [{"id": "artistKDot12", "name": "Kendrick Lamar"}],
+        "album": {"id": "albumDamn123", "name": "DAMN."},
+        "external_ids": {},
+    }
+    assert results[1]["album"] == {"id": "albumUriOnly1", "name": "DAMN."}
+    assert results[1]["duration_ms"] == 185_000
+    assert results[1]["external_ids"] == {}
+
+
+def test_pathfinder_search_ignores_malformed_items_and_rejects_bad_payload() -> None:
+    client = _authenticated_spotify_client()
+
+    def mock_get_partial(
+        url: str, params: Any = None, headers: Any = None, timeout: Any = None
+    ) -> Any:
+        return MockCanvasResponse(
+            status_code=200,
+            payload=_pathfinder_search_payload(
+                [
+                    None,
+                    {},
+                    {"item": "not-a-dict"},
+                    {"item": {"data": {"id": "", "name": "Missing ID"}}},
+                    {"item": {"data": {"id": "validTrack12", "name": ""}}},
+                    _pathfinder_track_node(track_id="validTrack99", name="Valid Track"),
+                ]
+            ),
+        )
+
+    client._session.get = mock_get_partial
+    items = client.search_tracks("Valid Track")
+    assert len(items) == 1
+    assert items[0]["id"] == "validTrack99"
+
+    def mock_get_bad_shape(
+        url: str, params: Any = None, headers: Any = None, timeout: Any = None
+    ) -> Any:
+        return MockCanvasResponse(status_code=200, payload={"data": {"searchV2": {}}})
+
+    client._session.get = mock_get_bad_shape
+    with pytest.raises(SourceApiError, match="invalid response shape"):
+        client.search_tracks("Valid Track")
+
+
+def test_pathfinder_search_401_refresh_and_retry() -> None:
+    client = _authenticated_spotify_client()
+    client._access_token = "expired-tok"
+    refreshed = 0
+
+    def mock_auth() -> None:
+        nonlocal refreshed
+        refreshed += 1
+        client._access_token = "renewed-tok"
+
+    client.authenticate = mock_auth
+
+    def mock_get(url: str, params: Any = None, headers: Any = None, timeout: Any = None) -> Any:
+        auth_hdr = (headers or {}).get("Authorization", "")
+        if "expired-tok" in auth_hdr:
+            return MockCanvasResponse(status_code=401)
+        return MockCanvasResponse(
+            status_code=200,
+            payload=_pathfinder_search_payload(
+                [_pathfinder_track_node(track_id="after401Track", name="Recovered")]
+            ),
+        )
+
+    client._session.get = mock_get
+    results = client.search_tracks("Recovered")
+    assert refreshed == 1
+    assert len(results) == 1
+    assert results[0]["id"] == "after401Track"
+
+
+def test_pathfinder_search_429_transient_not_negative_cached() -> None:
+    client = _authenticated_spotify_client()
+    attempts = 0
+
+    def mock_get(url: str, params: Any = None, headers: Any = None, timeout: Any = None) -> Any:
+        nonlocal attempts
+        attempts += 1
+        resp = MockCanvasResponse(status_code=429)
+        resp.headers["Retry-After"] = "0"
+        return resp
+
+    client._session.get = mock_get
+    service = CanvasResolverService(client)
+    query_payload = {"title": "Rate Limited Song", "artist": "Artist"}
+    res = service.resolve(query_payload)
+    assert res["status"] == "unavailable"
+    assert attempts == 2
+
+    key = service._cache_key_for(service._validate_request(query_payload))
+    hit, _ = service.cache.get(key)
+    assert not hit
+
+
+def test_pathfinder_search_persisted_query_not_found_and_hash_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    custom_hash = "ab" * 32
+    monkeypatch.setenv("LEVYRA_EDITORIAL_SEARCH_QUERY_HASH", custom_hash.upper())
+    client = _authenticated_spotify_client()
+    assert client._search_query_hash == custom_hash
+
+    with pytest.raises(AuthenticationError, match="search query hash is malformed"):
+        validate_search_query_hash("invalid-short-hash")
+
+    def mock_get_rotated(
+        url: str, params: Any = None, headers: Any = None, timeout: Any = None
+    ) -> Any:
+        return MockCanvasResponse(
+            status_code=200,
+            payload={"errors": [{"message": "PersistedQueryNotFound"}]},
+        )
+
+    client._session.get = mock_get_rotated
+    with pytest.raises(
+        SourceApiError,
+        match="Update LEVYRA_EDITORIAL_SEARCH_QUERY_HASH",
+    ):
+        client.search_tracks("Some Track")
+
+
+def test_pathfinder_candidates_do_not_fabricate_isrc() -> None:
+    client = _authenticated_spotify_client()
+
+    def mock_get(url: str, params: Any = None, headers: Any = None, timeout: Any = None) -> Any:
+        return MockCanvasResponse(
+            status_code=200,
+            payload=_pathfinder_search_payload(
+                [
+                    _pathfinder_track_node(
+                        track_id="noIsrcTrack12",
+                        name="HUMBLE.",
+                        artist_name="Kendrick Lamar",
+                        album_name="DAMN.",
+                        duration_ms=177_000,
+                    )
+                ]
+            ),
+        )
+
+    def mock_post(url: str, data: Any = None, headers: Any = None, **kwargs: Any) -> Any:
+        content = _canvas_response(
+            "noIsrcTrack12",
+            "https://canvaz.scdn.co/upload/artist/kdot/video/humble.cnvs.mp4",
+        )
+        return MockCanvasResponse(
+            status_code=200,
+            content=content,
+            content_type="application/protobuf",
+        )
+
+    client._session.get = mock_get
+    client._session.post = mock_post
+
+    matcher = CanvasTrackMatcher()
+    candidates = client.search_tracks("HUMBLE. Kendrick Lamar")
+    assert candidates[0]["external_ids"] == {}
+    outcome = matcher.match_candidate(
+        TrackQuery(
+            isrc="USUM71703861",
+            title="HUMBLE.",
+            artist="Kendrick Lamar",
+            album="DAMN.",
+            duration_ms=177_000,
+        ),
+        candidates[0],
+    )
+    assert outcome.accepted
+    assert outcome.reason == "metadata_matched"
+
+    service = CanvasResolverService(client)
+    res = service.resolve(
+        {
+            "isrc": "USUM71703861",
+            "title": "HUMBLE.",
+            "artist": "Kendrick Lamar",
+            "album": "DAMN.",
+            "durationMs": 177_000,
+        }
+    )
+    assert res["status"] == "resolved"
+    assert res["isrc"] == ""
+    discoveries = service.cache.export_discoveries()
+    assert len(discoveries) == 1
+    assert discoveries[0]["isrc"] == ""

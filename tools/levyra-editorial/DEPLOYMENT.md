@@ -8,7 +8,7 @@ The on-demand Canvas Resolver runs as an internal daemon behind a TLS-terminatin
 
 - Inbound requests: Android client queries `https://canvas.levyra.org/v1/resolve` via HTTPS.
 - Reverse Proxy: Terminates TLS, enforces DDoS protection, provides primary edge rate limiting, restricts HTTP methods (`POST` for `/v1/resolve`, `GET` for `/health`), and forwards requests to the Python service.
-- Python Backend: Runs `python -m levyra_editorial.resolver`, handles caching (in-memory L1 and persistent SQLite L2), deduplicates concurrent queries, coordinates upstream Spotify/PaxSenix lookups, validates MP4 Canvas links, and records discoveries.
+- Python Backend: Runs `python -m levyra_editorial.resolver`, handles caching (in-memory L1 and persistent SQLite L2), deduplicates concurrent queries, resolves track candidates via Spotify Web Player Pathfinder (`searchTracks`), coordinates upstream Spotify/PaxSenix Canvas lookups, validates MP4 Canvas links, and records discoveries.
 - Storage: Persistent volume mounted at `/var/lib/levyra/canvas_cache.db` storing positive/negative cache entries and canonical discoveries.
 
 ## Cache and Service Defaults
@@ -30,7 +30,8 @@ The service is configured using standard environment variables:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `LEVYRA_EDITORIAL_SP_DC` | Yes | (empty) | Spotify `sp_dc` cookie for server-side token authentication. Never exposed to clients. |
+| `LEVYRA_EDITORIAL_SP_DC` | Yes | (empty) | Spotify `sp_dc` cookie for server-side web-player token authentication. Remains strictly server-only and is never exposed to clients. |
+| `LEVYRA_EDITORIAL_SEARCH_QUERY_HASH` | No | `bc1ca2fcd0ba1013a0fc88e6cc4f190af501851e3dafd3e1ef85840297694428` | 64-character hex persisted query SHA-256 hash for Spotify Web Player Pathfinder `searchTracks`. |
 | `LEVYRA_RESOLVER_HOST` | No | `127.0.0.1` | Local interface binding address. |
 | `LEVYRA_RESOLVER_PORT` | No | `8080` | Internal TCP listening port. |
 | `LEVYRA_RESOLVER_CACHE_DB` | No | `canvas_cache.db` | Path to SQLite L2 cache database. |
