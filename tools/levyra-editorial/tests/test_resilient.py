@@ -196,3 +196,51 @@ def test_live_canvas_verification_surfaces_resolver_failure(
             tmp_path / "spotify-canvas.json",
             require_canvas=True,
         )
+
+
+def test_paxsenix_canvas_only_uses_diagnostic_resolver(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Any,
+) -> None:
+    class Spotify:
+        def get_paxsenix_canvas_urls(self, track_ids: list[str]) -> dict[str, str]:
+            return {track_id: "https://canvaz.scdn.co/upload/canvas.cnvs.mp4" for track_id in track_ids}
+
+        def close(self) -> None:
+            return None
+
+    spotify = Spotify()
+    captured: dict[str, object] = {}
+    monkeypatch.delenv("LEVYRA_EDITORIAL_YTM_COOKIE", raising=False)
+    monkeypatch.setattr(resilient_module, "SpotifyWebClient", lambda _secret: spotify)
+    monkeypatch.setattr(resilient_module, "load_config", lambda _path: {"collections": []})
+    monkeypatch.setattr(
+        resilient_module,
+        "build_resilient_catalog",
+        lambda _config, _client: SimpleNamespace(collections=[]),
+    )
+    monkeypatch.setattr(resilient_module, "write_catalog", lambda _catalog, _path: None)
+
+    def build_canvas(_catalog: object, resolver: object) -> dict[str, object]:
+        captured["resolver"] = resolver
+        return {"items": []}
+
+    monkeypatch.setattr(resilient_module, "build_spotify_canvas_catalog", build_canvas)
+    monkeypatch.setattr(resilient_module, "write_spotify_canvas_catalog", lambda _data, _path: None)
+
+    resilient_module.run_collection(
+        tmp_path / "config.json",
+        tmp_path / "catalog.json",
+        tmp_path / "spotify-canvas.json",
+        paxsenix_canvas_only=True,
+    )
+
+    resolver = captured["resolver"]
+    assert isinstance(resolver, resilient_module.PaxSenixCanvasClient)
+    assert resolver.get_canvas_urls(["track-id"]) == {
+        "track-id": "https://canvaz.scdn.co/upload/canvas.cnvs.mp4"
+    }
+
+
+def test_paxsenix_canvas_only_requires_canvas_output() -> None:
+    assert resilient_module.main(["--paxsenix-canvas-only"]) == 1
