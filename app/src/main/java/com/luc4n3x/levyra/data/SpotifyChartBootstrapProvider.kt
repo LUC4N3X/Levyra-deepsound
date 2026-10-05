@@ -57,12 +57,15 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
         if (root.optJSONArray("collections")?.length()?.let { it > 0 } != true) return
 
         val now = System.currentTimeMillis()
+        val cachedRoot = if (cachePresent) readCatalogRoot(target) else null
         val bundledGeneratedAtMs = catalogGeneratedAtMs(root)
-        val cachedGeneratedAtMs = if (cachePresent) catalogGeneratedAtMs(target) else null
+        val cachedGeneratedAtMs = cachedRoot?.let(::catalogGeneratedAtMs)
         val shouldInstall = shouldInstallBundledCatalog(
             cachePresent = cachePresent,
             cachedGeneratedAtMs = cachedGeneratedAtMs,
-            bundledGeneratedAtMs = bundledGeneratedAtMs
+            bundledGeneratedAtMs = bundledGeneratedAtMs,
+            cachedHasExplore = cachedRoot?.let(::hasExploreCollections) == true,
+            bundledHasExplore = hasExploreCollections(root)
         )
         if (shouldInstall) {
             if (!cachePresent && bundledGeneratedAtMs == null) {
@@ -83,12 +86,25 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
     private fun catalogGeneratedAtMs(root: JSONObject): Long? =
         runCatching { Instant.parse(root.optString("generatedAt").trim()).toEpochMilli() }.getOrNull()
 
-    private fun catalogGeneratedAtMs(file: File): Long? =
+    private fun readCatalogRoot(file: File): JSONObject? =
         runCatching {
             if (!file.isFile || file.length() !in 1..MAX_CATALOG_BYTES.toLong()) return@runCatching null
             val body = file.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
-            catalogGeneratedAtMs(JSONObject(body))
+            JSONObject(body)
         }.getOrNull()
+
+    private fun hasExploreCollections(root: JSONObject): Boolean {
+        val collections = root.optJSONArray("collections") ?: return false
+        for (index in 0 until collections.length()) {
+            val kind = collections.optJSONObject(index)
+                ?.optString("kind")
+                .orEmpty()
+                .trim()
+                .lowercase(Locale.ROOT)
+            if (kind == "mood" || kind == "genre") return true
+        }
+        return false
+    }
 
     private fun writeCatalog(target: File, payload: ByteArray) {
         if (payload.size !in 1..MAX_CATALOG_BYTES) return
@@ -237,9 +253,12 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
 internal fun shouldInstallBundledCatalog(
     cachePresent: Boolean,
     cachedGeneratedAtMs: Long?,
-    bundledGeneratedAtMs: Long?
+    bundledGeneratedAtMs: Long?,
+    cachedHasExplore: Boolean = false,
+    bundledHasExplore: Boolean = false
 ): Boolean {
     if (!cachePresent) return true
+    if (bundledHasExplore && !cachedHasExplore) return true
     val bundled = bundledGeneratedAtMs ?: return false
     val cached = cachedGeneratedAtMs ?: return true
     return bundled > cached
