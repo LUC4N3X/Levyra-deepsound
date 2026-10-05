@@ -870,11 +870,8 @@ internal fun ExploreMoodsDestinationScreen(
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
-    val hasProviderGenres = sections.any { section ->
-        section.presentation == ExploreCategoryPresentation.Structured
-    }
-    val fallbackGenres = remember(zones, hasProviderGenres) {
-        if (hasProviderGenres) emptyList() else exploreFallbackGenres(zones)
+    val fallbackGenres = remember(zones, sections) {
+        fallbackExploreGenres(zones, sections)
     }
 
     ExploreDestinationSurface(
@@ -883,36 +880,72 @@ internal fun ExploreMoodsDestinationScreen(
         strings = strings,
         onBack = onBack
     ) { contentPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = contentPadding.calculateTopPadding() + 18.dp,
-                bottom = 130.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            exploreMoodLoadingItems(isLoading, sections, strings)
-            exploreProviderCategoryItems(
-                sections = sections,
-                categoryArtwork = categoryArtwork,
-                strings = strings,
-                onOpenCategory = onOpenCategory,
-                onRequestCategoryArtwork = onRequestCategoryArtwork
-            )
-            exploreFallbackGenreItems(
-                fallbackGenres = fallbackGenres,
-                strings = strings,
-                onOpenZone = onOpenZone
-            )
-            exploreMoodEmptyItem(
-                isLoading = isLoading,
-                sections = sections,
-                fallbackGenres = fallbackGenres,
-                strings = strings
-            )
-        }
+        ExploreMoodsList(
+            contentPadding = contentPadding,
+            sections = sections,
+            fallbackGenres = fallbackGenres,
+            categoryArtwork = categoryArtwork,
+            isLoading = isLoading,
+            strings = strings,
+            onOpenZone = onOpenZone,
+            onOpenCategory = onOpenCategory,
+            onRequestCategoryArtwork = onRequestCategoryArtwork
+        )
+    }
+}
+
+private fun fallbackExploreGenres(
+    zones: List<ExploreZone>,
+    sections: List<ExploreCategorySection>
+): List<ExploreZone> = if (
+    sections.any { section -> section.presentation == ExploreCategoryPresentation.Structured }
+) {
+    emptyList()
+} else {
+    exploreFallbackGenres(zones)
+}
+
+@Composable
+private fun ExploreMoodsList(
+    contentPadding: PaddingValues,
+    sections: List<ExploreCategorySection>,
+    fallbackGenres: List<ExploreZone>,
+    categoryArtwork: Map<String, String>,
+    isLoading: Boolean,
+    strings: LevyraStrings,
+    onOpenZone: (ExploreZone) -> Unit,
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = contentPadding.calculateTopPadding() + 18.dp,
+            bottom = 130.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        exploreMoodLoadingItems(isLoading, sections, strings)
+        exploreProviderCategoryItems(
+            sections = sections,
+            categoryArtwork = categoryArtwork,
+            strings = strings,
+            onOpenCategory = onOpenCategory,
+            onRequestCategoryArtwork = onRequestCategoryArtwork
+        )
+        exploreFallbackGenreItems(
+            fallbackGenres = fallbackGenres,
+            strings = strings,
+            onOpenZone = onOpenZone
+        )
+        exploreMoodEmptyItem(
+            isLoading = isLoading,
+            sections = sections,
+            fallbackGenres = fallbackGenres,
+            strings = strings
+        )
     }
 }
 
