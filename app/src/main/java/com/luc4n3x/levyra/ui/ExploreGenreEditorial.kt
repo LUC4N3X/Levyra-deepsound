@@ -75,15 +75,14 @@ internal fun buildExploreGenreEditorial(
     }
 
     val seed = 31 * zoneId.hashCode() + rotationBucket.hashCode()
-    val visualTracks = uniqueTracks.filter { track -> artworkUrl(track).isNotBlank() }
-    val featured = rotateFromSeed(visualTracks, seed).take(8)
+    val featured = rotateFromSeed(uniqueTracks, seed).take(8)
     val rotated = rotateFromSeed(uniqueTracks, seed xor 0x5A17)
 
     val artists = rotated.asSequence()
         .mapNotNull { track ->
             val name = track.artist.trim()
             val artwork = artworkUrl(track)
-            if (name.isBlank() || artwork.isBlank()) return@mapNotNull null
+            if (name.isBlank()) return@mapNotNull null
             val browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
             ExploreGenreArtistCard(
                 key = browseId.ifBlank { name.lowercase() },
@@ -100,7 +99,7 @@ internal fun buildExploreGenreEditorial(
         .mapNotNull { track ->
             val title = track.album.trim()
             val artwork = artworkUrl(track)
-            if (title.isBlank() || artwork.isBlank()) return@mapNotNull null
+            if (title.isBlank()) return@mapNotNull null
             ExploreGenreAlbumCard(
                 key = track.albumBrowseId.trim().ifBlank { "${track.artist.trim().lowercase()}|${title.lowercase()}" },
                 title = title,
