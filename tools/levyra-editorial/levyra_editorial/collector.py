@@ -335,6 +335,29 @@ def validate_catalog_dict(payload: Mapping[str, Any]) -> None:
         if collection_id in ids:
             raise ValueError(f"Catalog collection id '{collection_id}' is duplicated.")
         ids.add(collection_id)
+        kind = str(collection.get("kind") or "").strip().lower()
+        if kind not in {"chart", "editorial", "release", "mood", "genre"}:
+            raise ValueError(f"Catalog collection '{collection_id}' has an invalid kind.")
+        youtube_params = collection.get("youtubeParams")
+        if kind in {"mood", "genre"}:
+            if (
+                not isinstance(youtube_params, str)
+                or not youtube_params
+                or len(youtube_params) > 1024
+                or re.fullmatch(r"[A-Za-z0-9_=+-]+", youtube_params) is None
+            ):
+                raise ValueError(
+                    f"Catalog collection '{collection_id}' has invalid YouTube browse params."
+                )
+            section_index = collection.get("sectionIndex")
+            if not isinstance(section_index, int) or section_index < -1:
+                raise ValueError(
+                    f"Catalog collection '{collection_id}' has an invalid section index."
+                )
+        elif youtube_params is not None:
+            raise ValueError(
+                f"Catalog collection '{collection_id}' unexpectedly has YouTube browse params."
+            )
         tracks = collection.get("tracks")
         if not isinstance(tracks, list) or not tracks:
             raise ValueError(f"Catalog collection '{collection_id}' has no tracks.")
