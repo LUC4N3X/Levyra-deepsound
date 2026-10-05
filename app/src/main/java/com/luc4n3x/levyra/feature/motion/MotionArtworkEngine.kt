@@ -880,18 +880,19 @@ internal class MotionProgressiveSession {
             collectors.toList()
         }
         for (target in targets) {
-            target.close()
+            target.cancel(CancellationException("Motion artwork session cancelled"))
         }
         worker?.cancel()
     }
 
     suspend fun collectInto(emit: suspend (MotionArtwork) -> Unit): Boolean {
         val channel = Channel<MotionArtwork>(Channel.UNLIMITED)
-        val initialArtwork: MotionArtwork?
         val workerToStart: Job?
         synchronized(stateLock) {
             if (!acceptingSubscriptions || isCompleted) return false
-            initialArtwork = currentArtwork
+            currentArtwork?.let { artwork ->
+                channel.trySend(artwork)
+            }
             collectors.add(channel)
             workerToStart = if (!workerStarted) worker else null
             if (workerToStart != null) workerStarted = true
@@ -902,10 +903,6 @@ internal class MotionProgressiveSession {
                 complete()
             }
             var lastEmitted: MotionArtwork? = null
-            if (initialArtwork != null) {
-                lastEmitted = initialArtwork
-                emit(initialArtwork)
-            }
             for (artwork in channel) {
                 if (artwork != lastEmitted) {
                     lastEmitted = artwork

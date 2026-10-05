@@ -203,6 +203,45 @@ class MotionArtworkRequestCoordinatorTest {
     }
 
     @Test
+    fun explicitRefreshCancellationDropsBufferedArtworkForSlowCollector() = runBlocking {
+        val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val coordinator = MotionArtworkRequestCoordinator(coordinatorScope)
+            val first = artwork("track-slow", "community-canvas")
+            val second = artwork("track-slow", "apple-motion")
+            val workerReady = CompletableDeferred<Unit>()
+            val firstDeliveryStarted = CompletableDeferred<Unit>()
+            val releaseFirstDelivery = CompletableDeferred<Unit>()
+            val delivered = mutableListOf<MotionArtwork>()
+
+            val collector = launch {
+                coordinator.share("slow-refresh") { emit ->
+                    emit(first)
+                    emit(second)
+                    workerReady.complete(Unit)
+                    awaitCancellation()
+                }.collect { item ->
+                    delivered += item
+                    if (item == first) {
+                        firstDeliveryStarted.complete(Unit)
+                        releaseFirstDelivery.await()
+                    }
+                }
+            }
+
+            workerReady.await()
+            firstDeliveryStarted.await()
+            coordinator.cancel("slow-refresh")
+            releaseFirstDelivery.complete(Unit)
+            collector.join()
+
+            assertEquals(listOf(first), delivered)
+        } finally {
+            coordinatorScope.cancel()
+        }
+    }
+
+    @Test
     fun cancellationDuringInitialReplayDoesNotLeakSubscriber() = runBlocking {
         val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {

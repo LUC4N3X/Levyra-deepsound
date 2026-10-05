@@ -152,9 +152,14 @@ internal fun MotionArtworkLayer(
     LaunchedEffect(videoArtwork) {
         if (videoArtwork == null) videoReady = false
     }
-    LaunchedEffect(dynamicBackdropEnabled, videoArtwork?.identityKey) {
-        if (!dynamicBackdropEnabled || videoArtwork == null) {
-            onDynamicBackdropPalette(null)
+    val currentOnDynamicBackdropPalette by rememberUpdatedState(onDynamicBackdropPalette)
+    val ownsDynamicBackdrop = dynamicBackdropEnabled && videoArtwork != null
+    DisposableEffect(ownsDynamicBackdrop, videoArtwork?.identityKey) {
+        if (!ownsDynamicBackdrop) {
+            return@DisposableEffect onDispose { }
+        }
+        onDispose {
+            currentOnDynamicBackdropPalette(null)
         }
     }
     val artworkIdentityKey = artwork?.identityKey

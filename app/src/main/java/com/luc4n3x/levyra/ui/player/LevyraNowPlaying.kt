@@ -222,17 +222,20 @@ fun LevyraNowPlaying(
         fallback = fallbackPalette
     )
     val motionEnabled = animated && !state.isVideoMode && !motionSuspended
+    val motionBackdropVisible = deckMode.usesMotionCard() || deckMode.showsCinematicStage()
     var canvasBackdropPalette by remember(track?.id, state.isVideoMode) {
         mutableStateOf<MotionBackdropPalette?>(null)
     }
     LaunchedEffect(
         motionEnabled,
+        motionBackdropVisible,
         backgroundMode,
         state.motionArtwork?.identityKey
     ) {
         val activeIdentity = state.motionArtwork?.identityKey
         if (
             !motionEnabled ||
+            !motionBackdropVisible ||
             backgroundMode != PlayerBackgroundMode.Dynamic ||
             activeIdentity == null ||
             canvasBackdropPalette?.identityKey?.let { it != activeIdentity } == true
@@ -268,6 +271,7 @@ fun LevyraNowPlaying(
         ?.takeIf { palette ->
             backgroundMode == PlayerBackgroundMode.Dynamic &&
                 motionEnabled &&
+                motionBackdropVisible &&
                 palette.identityKey == state.motionArtwork?.identityKey
         }
         ?.let { palette -> harmonizePlayerAccents(palette.primary, palette.secondary) }
@@ -708,7 +712,8 @@ fun LevyraNowPlaying(
                         modifier = Modifier
                             .fillMaxSize()
                             .playerLyricsFlipFace(lyricsFlip, back = false, depth = lyricsFlipDepth, rightToLeft = rightToLeft),
-                        dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic,
+                        dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
+                            deckMode.usesMotionCard(),
                         onDynamicBackdropPalette = { palette ->
                             val activeIdentity = state.motionArtwork?.identityKey
                             if (palette == null || (activeIdentity != null && palette.identityKey == activeIdentity)) {
