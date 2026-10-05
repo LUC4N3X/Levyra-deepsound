@@ -379,7 +379,7 @@ def collect_spotify_explore_collections(
                 error,
             )
             break
-        except (EditorialSourceError, requests.RequestException, RuntimeError, ValueError) as error:
+        except (requests.RequestException, RuntimeError, ValueError) as error:
             LOGGER.info(
                 "Explore category %s will use the YouTube Music fallback: %s",
                 seed.title,
