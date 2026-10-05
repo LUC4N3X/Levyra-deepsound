@@ -185,7 +185,7 @@ def run_collection(
                     spotify,
                     track_limit=track_limit,
                 )
-            except (EditorialSourceError, OSError, RuntimeError, ValueError) as error:
+            except (OSError, RuntimeError, ValueError) as error:
                 LOGGER.warning(
                     "Spotify-first Explore collection skipped; "
                     "runtime YouTube Music fallback remains active: %s",
