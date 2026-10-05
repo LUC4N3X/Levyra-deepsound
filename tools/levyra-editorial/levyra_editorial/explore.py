@@ -19,7 +19,6 @@ LOGGER = logging.getLogger(__name__)
 BROWSE_URL = f"{ORIGIN}/youtubei/v1/browse"
 MOODS_BROWSE_ID = "FEmusic_moods_and_genres"
 DEFAULT_TRACK_LIMIT = 16
-YOUTUBE_MAPPING_LIMIT = 8
 BROWSE_PARAMS_PATTERN = re.compile(r"^[A-Za-z0-9_./=+\-]+$")
 
 
@@ -254,11 +253,8 @@ def collect_spotify_explore_collections(
                 playlist_id,
                 limit=bounded_limit,
             )[:bounded_limit]
-            raw_items = spotify.enrich_track_metadata(raw_items)
-            if youtube_music is not None and raw_items:
-                youtube_music.enrich_track_metadata(
-                    raw_items[: min(YOUTUBE_MAPPING_LIMIT, len(raw_items))]
-                )
+            # Playlist items already carry the metadata and artwork needed by Explore.
+            # Keep collection lightweight: playback mapping is resolved on demand in the app.
             tracks = normalize_playlist_items(raw_items)
             if not tracks:
                 continue
