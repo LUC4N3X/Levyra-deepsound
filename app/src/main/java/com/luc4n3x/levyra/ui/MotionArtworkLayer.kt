@@ -396,21 +396,30 @@ internal class MotionVideoFrameSource {
     var fitScaleY: Float = 1f
 
     fun sampleBackdropPalette(identityKey: String): MotionBackdropPalette? {
-        val view = textureView ?: return null
-        if (!frameReady || !view.isAvailable) return null
-        if (view.width <= 1 || view.height <= 1) return null
+        val view = textureView
+        if (
+            view == null ||
+            !frameReady ||
+            !view.isAvailable ||
+            view.width <= 1 ||
+            view.height <= 1
+        ) {
+            return null
+        }
         val bitmap = try {
             view.getBitmap(DYNAMIC_BACKDROP_SAMPLE_SIZE, DYNAMIC_BACKDROP_SAMPLE_SIZE)
         } catch (error: IllegalStateException) {
             Timber.d(error, "Canvas dynamic backdrop frame capture failed")
             null
-        } ?: return null
-        return try {
-            val pixels = IntArray(bitmap.width * bitmap.height)
-            bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-            motionBackdropPalette(identityKey, pixels, bitmap.width, bitmap.height)
-        } finally {
-            bitmap.recycle()
+        }
+        return bitmap?.let { frame ->
+            try {
+                val pixels = IntArray(frame.width * frame.height)
+                frame.getPixels(pixels, 0, frame.width, 0, 0, frame.width, frame.height)
+                motionBackdropPalette(identityKey, pixels, frame.width, frame.height)
+            } finally {
+                frame.recycle()
+            }
         }
     }
 
@@ -433,9 +442,14 @@ internal fun motionBackdropPalette(
     width: Int,
     height: Int
 ): MotionBackdropPalette? {
-    if (identityKey.isBlank()) return null
-    if (width <= 0 || height <= 0) return null
-    if (pixels.size < width * height) return null
+    if (
+        identityKey.isBlank() ||
+        width <= 0 ||
+        height <= 0 ||
+        pixels.size < width * height
+    ) {
+        return null
+    }
     val top = MotionPaletteAccumulator()
     val bottom = MotionPaletteAccumulator()
     val all = MotionPaletteAccumulator()
@@ -460,12 +474,14 @@ internal fun motionBackdropPalette(
         }
     }
 
-    val fallback = all.color() ?: return null
-    return MotionBackdropPalette(
-        identityKey = identityKey,
-        primary = top.color() ?: fallback,
-        secondary = bottom.color() ?: fallback
-    )
+    val fallback = all.color()
+    return fallback?.let { base ->
+        MotionBackdropPalette(
+            identityKey = identityKey,
+            primary = top.color() ?: base,
+            secondary = bottom.color() ?: base
+        )
+    }
 }
 
 private class MotionPaletteAccumulator {
