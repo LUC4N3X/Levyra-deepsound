@@ -1,0 +1,92 @@
+name: Generate larger Levyra icon
+
+on:
+  push:
+    branches:
+      - ui/larger-app-icon
+    paths:
+      - .github/workflows/_temp_generate_larger_icon.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/larger-app-icon
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: python -m pip install --disable-pip-version-check pillow
+
+      - name: Generate F-Droid icon from the official Levyra mark
+        run: |
+          python - <<'PY'
+          from PIL import Image, ImageDraw
+          from pathlib import Path
+
+          source = Path("app/src/main/res/drawable/levyra_logo.png")
+          output = Path("fastlane/metadata/android/en-US/images/icon.png")
+
+          logo = Image.open(source).convert("RGBA")
+          bbox = logo.getbbox()
+          if not bbox:
+              raise SystemExit("Official Levyra logo is empty")
+          mark = logo.crop(bbox)
+
+          size = 512
+          start = (4, 5, 16)
+          middle = (10, 11, 33)
+          end = (24, 10, 45)
+
+          bg = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+          px = bg.load()
+          for y in range(size):
+              for x in range(size):
+                  t = (x + y) / (2 * (size - 1))
+                  if t <= 0.5:
+                      u = t / 0.5
+                      a, b = start, middle
+                  else:
+                      u = (t - 0.5) / 0.5
+                      a, b = middle, end
+                  rgb = tuple(round(a[i] * (1 - u) + b[i] * u) for i in range(3))
+                  px[x, y] = (*rgb, 255)
+
+          rounded = Image.new("L", (size, size), 0)
+          ImageDraw.Draw(rounded).rounded_rectangle(
+              (0, 0, size - 1, size - 1),
+              radius=108,
+              fill=255,
+          )
+          bg.putalpha(rounded)
+
+          target_h = 394
+          target_w = round(mark.width * target_h / mark.height)
+          mark = mark.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+          canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+          canvas.alpha_composite(bg)
+          canvas.alpha_composite(
+              mark,
+              ((size - target_w) // 2, (size - target_h) // 2 - 2),
+          )
+
+          output.parent.mkdir(parents=True, exist_ok=True)
+          canvas.save(output, optimize=True, compress_level=9)
+          PY
+
+      - name: Commit generated icon and remove one-off workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fastlane/metadata/android/en-US/images/icon.png
+          git rm .github/workflows/_temp_generate_larger_icon.yml
+          git commit -m "ui: enlarge F-Droid icon artwork"
+          git push origin HEAD:ui/larger-app-icon
