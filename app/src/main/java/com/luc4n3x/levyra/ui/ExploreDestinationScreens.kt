@@ -723,25 +723,27 @@ internal fun ExploreMoodsDestinationScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 18.dp,
-                end = 18.dp,
-                top = contentPadding.calculateTopPadding() + 14.dp,
+                start = 16.dp,
+                end = 16.dp,
+                top = contentPadding.calculateTopPadding() + 18.dp,
                 bottom = 130.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (isLoading && sections.isEmpty()) {
                 item(key = "provider-moods-loading-title") {
-                    ExploreCategorySectionHeader(strings.exploreMoodSection, atmospheric = true)
+                    ExploreCategorySectionHeader(strings.exploreMoodSection)
                 }
-                item(key = "provider-moods-loading-cards") {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        userScrollEnabled = false
+                items(
+                    count = 2,
+                    key = { index -> "provider-mood-loading-row-$index" }
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(108.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(count = 2, key = { index -> "provider-mood-loading-$index" }) {
-                            ExploreAtmosphericCategoryPlaceholder()
-                        }
+                        ExploreDiscoveryCategoryPlaceholder(Modifier.weight(1f).fillMaxHeight())
+                        ExploreDiscoveryCategoryPlaceholder(Modifier.weight(1f).fillMaxHeight())
                     }
                 }
             }
@@ -755,70 +757,51 @@ internal fun ExploreMoodsDestinationScreen(
                     }
                 }
                 item(key = "${section.key}-header") {
-                    ExploreCategorySectionHeader(
-                        title = title,
-                        atmospheric = section.presentation == ExploreCategoryPresentation.Atmospheric
-                    )
+                    ExploreCategorySectionHeader(title)
                 }
-                if (section.presentation == ExploreCategoryPresentation.Atmospheric) {
-                    item(key = "${section.key}-cards") {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(
-                                items = section.categories,
-                                key = { category -> "provider-mood-${category.params}" }
-                            ) { category ->
-                                LaunchedEffect(category.params) {
-                                    onRequestCategoryArtwork(category.params, true)
-                                }
-                                ExploreAtmosphericCategoryCard(
-                                    category = category,
-                                    artworkUrl = categoryArtwork[category.params].orEmpty(),
-                                    onClick = { onOpenCategory(category) }
-                                )
+                items(
+                    items = section.categories.chunked(2),
+                    key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
+                ) { pair ->
+                    val prominent = section.presentation == ExploreCategoryPresentation.Atmospheric
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (prominent) 112.dp else 102.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        pair.forEach { category ->
+                            LaunchedEffect(category.params) {
+                                onRequestCategoryArtwork(category.params, prominent)
                             }
+                            ExploreDiscoveryCategoryCard(
+                                title = category.title,
+                                identity = category.params,
+                                artworkUrl = categoryArtwork[category.params].orEmpty(),
+                                prominent = prominent,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                onClick = { onOpenCategory(category) }
+                            )
                         }
-                    }
-                } else {
-                    items(
-                        items = section.categories.chunked(2),
-                        key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
-                    ) { pair ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            pair.forEach { category ->
-                                LaunchedEffect(category.params) {
-                                    onRequestCategoryArtwork(category.params, false)
-                                }
-                                ExploreStructuredCategoryCard(
-                                    title = category.title,
-                                    identity = category.params,
-                                    artworkUrl = categoryArtwork[category.params].orEmpty(),
-                                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                                    onClick = { onOpenCategory(category) }
-                                )
-                            }
-                            if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
-                        }
+                        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
 
             if (fallbackGenres.isNotEmpty()) {
                 item(key = "editorial-genres-header") {
-                    ExploreCategorySectionHeader(strings.genres, atmospheric = false)
+                    ExploreCategorySectionHeader(strings.genres)
                 }
                 items(
                     items = fallbackGenres.chunked(2),
                     key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
                 ) { pair ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        modifier = Modifier.fillMaxWidth().height(102.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         pair.forEach { zone ->
-                            ExploreStructuredCategoryCard(
+                            ExploreDiscoveryCategoryCard(
                                 title = zone.label,
                                 identity = zone.id,
                                 emoji = zone.emoji,
@@ -849,169 +832,65 @@ internal fun ExploreMoodsDestinationScreen(
 }
 
 @Composable
-private fun ExploreCategorySectionHeader(title: String, atmospheric: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth().semantics { heading() },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .width(if (atmospheric) 24.dp else 10.dp)
-                .height(3.dp)
-                .clip(CircleShape)
-                .background(if (atmospheric) LevyraCyan else LevyraViolet)
-        )
-        Text(
-            text = title,
-            color = LevyraText,
-            fontSize = 19.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(19.sp),
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun ExploreAtmosphericCategoryCard(
-    category: ExploreCategory,
-    artworkUrl: String,
-    onClick: () -> Unit
-) {
-    val (accentStart, accentEnd) = exploreCategoryPalette(category.params)
-    val shape = RoundedCornerShape(24.dp)
-    Box(
+private fun ExploreCategorySectionHeader(title: String) {
+    Text(
+        text = title,
+        color = LevyraText,
+        fontSize = 22.sp,
+        lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
+        fontWeight = FontWeight.Black,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier
-            .width(232.dp)
-            .heightIn(min = 142.dp)
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        accentStart.copy(alpha = 0.62f),
-                        accentEnd.copy(alpha = 0.34f),
-                        LevyraPanel
-                    )
-                )
-            )
-            .border(BorderStroke(1.dp, accentStart.copy(alpha = 0.34f)), shape)
-            .semantics { role = Role.Button }
-            .clickable(onClick = onClick)
-    ) {
-        if (artworkUrl.isNotBlank()) {
-            AsyncImage(
-                model = artworkUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(accentStart.copy(alpha = 0.56f), LevyraBlack.copy(alpha = 0.08f))
-                        )
-                    )
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(LevyraBlack.copy(alpha = 0.04f), LevyraBlack.copy(alpha = 0.88f))
-                        )
-                    )
-            )
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 14.dp, end = 16.dp)
-                .size(44.dp)
-                .background(LevyraBlack.copy(alpha = 0.44f), CircleShape)
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.92f),
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 25.dp, end = 28.dp).size(18.dp)
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .height(86.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            LevyraBlack.copy(alpha = 0f),
-                            LevyraBlack.copy(alpha = 0.78f),
-                            LevyraBlack.copy(alpha = 0.96f)
-                        )
-                    )
-                )
-        )
-        Text(
-            text = category.title,
-            color = Color.White,
-            fontSize = 21.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(21.sp),
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(0.86f).padding(18.dp)
-        )
-    }
-}
-
-@Composable
-private fun ExploreAtmosphericCategoryPlaceholder() {
-    val shape = RoundedCornerShape(24.dp)
-    Box(
-        modifier = Modifier
-            .width(218.dp)
-            .height(126.dp)
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        LevyraPanelSoft.copy(alpha = 0.92f),
-                        LevyraCyan.copy(alpha = 0.12f),
-                        LevyraPanel
-                    )
-                )
-            )
-            .border(BorderStroke(1.dp, LevyraText.copy(alpha = 0.07f)), shape)
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 2.dp)
+            .semantics { heading() }
     )
 }
 
 @Composable
-private fun ExploreStructuredCategoryCard(
+private fun ExploreDiscoveryCategoryCard(
     title: String,
     identity: String,
     artworkUrl: String = "",
     modifier: Modifier = Modifier,
+    prominent: Boolean = false,
     emoji: String = "",
     onClick: () -> Unit
 ) {
     val (accentStart, accentEnd) = exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(14.dp)
+    val artworkSize = if (prominent) 86.dp else 78.dp
     Box(
         modifier = modifier
-            .heightIn(min = 98.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        accentStart.copy(alpha = 0.15f),
-                        LevyraPanel.copy(alpha = 0.92f),
-                        LevyraPanel
+                        accentStart,
+                        accentEnd,
+                        accentEnd.copy(alpha = 0.88f)
                     )
                 )
             )
-            .border(BorderStroke(1.dp, accentStart.copy(alpha = 0.20f)), shape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape)
             .semantics { role = Role.Button }
             .clickable(onClick = onClick)
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            LevyraBlack.copy(alpha = 0.18f),
+                            LevyraBlack.copy(alpha = 0.02f),
+                            LevyraBlack.copy(alpha = 0.10f)
+                        )
+                    )
+                )
+        )
+
         if (artworkUrl.isNotBlank()) {
             AsyncImage(
                 model = artworkUrl,
@@ -1019,79 +898,96 @@ private fun ExploreStructuredCategoryCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .offset(x = 12.dp, y = 14.dp)
-                    .size(82.dp)
-                    .rotate(17f)
+                    .offset(x = 14.dp, y = 12.dp)
+                    .size(artworkSize)
+                    .rotate(13f)
                     .clip(RoundedCornerShape(9.dp))
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(96.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(LevyraPanel.copy(alpha = 0f), LevyraBlack.copy(alpha = 0.18f))
-                        )
-                    )
             )
         } else {
             Box(
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 18.dp)
-                    .size(78.dp)
-                    .background(accentStart.copy(alpha = 0.12f), CircleShape),
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 14.dp, y = 12.dp)
+                    .size(artworkSize)
+                    .rotate(13f)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color.White.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .background(Brush.linearGradient(listOf(accentStart, accentEnd)), CircleShape)
-                )
+                if (emoji.isNotBlank()) {
+                    Text(
+                        text = emoji,
+                        fontSize = if (prominent) 30.sp else 26.sp,
+                        maxLines = 1
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(if (prominent) 38.dp else 34.dp)
+                            .background(Color.White.copy(alpha = 0.12f), CircleShape)
+                    )
+                }
             }
         }
+
         Text(
             text = title,
-            color = LevyraText,
-            fontSize = 15.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+            color = Color.White,
+            fontSize = if (prominent) 17.sp else 16.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(if (prominent) 17.sp else 16.sp),
             fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.64f)
-                .padding(start = 13.dp, top = 13.dp)
+                .fillMaxWidth(if (prominent) 0.62f else 0.60f)
+                .padding(start = 14.dp, top = 14.dp, end = 4.dp)
         )
+    }
+}
+
+@Composable
+private fun ExploreDiscoveryCategoryPlaceholder(modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        LevyraPanelSoft,
+                        LevyraPanel,
+                        LevyraPanel.copy(alpha = 0.92f)
+                    )
+                )
+            )
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)), shape)
+    ) {
         Box(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 12.dp, bottom = 11.dp)
-                .size(27.dp)
-                .background(accentStart.copy(alpha = 0.18f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (emoji.isNotBlank()) {
-                Text(text = emoji, fontSize = 12.sp, maxLines = 1)
-            } else {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                    contentDescription = null,
-                    tint = accentStart,
-                    modifier = Modifier.size(15.dp)
-                )
-            }
-        }
+                .align(Alignment.BottomEnd)
+                .offset(x = 14.dp, y = 12.dp)
+                .size(78.dp)
+                .rotate(13f)
+                .clip(RoundedCornerShape(9.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+        )
     }
 }
 
 @Composable
 private fun exploreCategoryPalette(identity: String): Pair<Color, Color> {
-    val palette = listOf(LevyraCyan, LevyraBlue, LevyraViolet, LevyraPink, LevyraOrange)
-    val index = (identity.hashCode() and Int.MAX_VALUE) % palette.size
-    val secondaryIndex = (index + 2) % palette.size
-    return palette[index] to palette[secondaryIndex]
+    val palette = listOf(
+        Color(0xFF7C3AED) to Color(0xFF4C1D95),
+        Color(0xFFD81B60) to Color(0xFF7A1538),
+        Color(0xFF0F8A78) to Color(0xFF075E54),
+        Color(0xFF246BCE) to Color(0xFF173F7A),
+        Color(0xFFB96A16) to Color(0xFF70400F),
+        Color(0xFF238636) to Color(0xFF145325),
+        Color(0xFFB335B5) to Color(0xFF64236C),
+        Color(0xFFD9571C) to Color(0xFF7B3215)
+    )
+    return palette[(identity.hashCode() and Int.MAX_VALUE) % palette.size]
 }
 
 @Composable
