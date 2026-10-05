@@ -417,4 +417,69 @@ class OnDemandCanvasResolverTest {
             assertNull(candidate)
         }
     }
+
+    @Test
+    fun authorizationFailureIsTransientAndDoesNotPopulateNegativeCache() {
+        runBlocking {
+            val requestCount = AtomicInteger(0)
+            val client = clientWithHandler { request ->
+                if (requestCount.incrementAndGet() == 1) {
+                    jsonResponse(request, 403, """{"error":"forbidden"}""")
+                } else {
+                    jsonResponse(
+                        request,
+                        200,
+                        """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/recovered.mp4"}"""
+                    )
+                }
+            }
+
+            val resolver = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
+                networkPolicyCheck = { true }
+            )
+
+            val first = resolver.resolveResult(testIdentity())
+            assertTrue(first is OnDemandCanvasResolution.Failed)
+
+            val second = resolver.resolveResult(testIdentity())
+            assertTrue(second is OnDemandCanvasResolution.Found)
+            assertEquals(2, requestCount.get())
+        }
+    }
+
+    @Test
+    fun malformedSuccessfulResponseIsTransientAndDoesNotPopulateNegativeCache() {
+        runBlocking {
+            val requestCount = AtomicInteger(0)
+            val client = clientWithHandler { request ->
+                if (requestCount.incrementAndGet() == 1) {
+                    jsonResponse(request, 200, """{"status":"error"}""")
+                } else {
+                    jsonResponse(
+                        request,
+                        200,
+                        """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/recovered_after_protocol_error.mp4"}"""
+                    )
+                }
+            }
+
+            val resolver = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
+                networkPolicyCheck = { true }
+            )
+
+            val first = resolver.resolveResult(testIdentity())
+            assertTrue(first is OnDemandCanvasResolution.Failed)
+
+            val second = resolver.resolveResult(testIdentity())
+            assertTrue(second is OnDemandCanvasResolution.Found)
+            assertEquals(2, requestCount.get())
+        }
+    }
+
 }
