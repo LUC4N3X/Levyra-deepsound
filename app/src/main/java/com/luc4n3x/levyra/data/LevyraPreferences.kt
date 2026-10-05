@@ -608,7 +608,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[homeAlbumsKey(normalized)] = array.toString() }
     }
 
-    fun loadExploreDiscovery(languageCode: String = languageCode()): ExploreDiscoverySnapshot? {
+    internal fun loadExploreDiscovery(languageCode: String = languageCode()): ExploreDiscoverySnapshot? {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         return store.derived("explore_discovery:$normalized") { preferences ->
             decodeExploreDiscoverySnapshot(
@@ -618,7 +618,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         }.takeIf { snapshot -> snapshot.categories.isNotEmpty() }
     }
 
-    fun saveExploreDiscovery(
+    internal fun saveExploreDiscovery(
         categories: List<com.luc4n3x.levyra.domain.ExploreCategory>,
         artwork: Map<String, String>,
         languageCode: String = languageCode()
