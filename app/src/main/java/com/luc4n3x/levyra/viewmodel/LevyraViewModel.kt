@@ -8601,6 +8601,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 artistProfile = artistProfile
             )
         }
+        val exploreSnapshot = _state.value
+        val exploreCacheKey = when {
+            exploreSnapshot.exploreCategoryParams != null ->
+                "provider:${exploreSnapshot.languageCode}:${exploreSnapshot.exploreCategoryParams}"
+            exploreSnapshot.exploreZoneId != null ->
+                "zone:${exploreSnapshot.languageCode}:${exploreSnapshot.exploreZoneId}"
+            else -> null
+        }
+        if (exploreCacheKey != null && exploreSnapshot.exploreTracks.isNotEmpty()) {
+            exploreCache[exploreCacheKey] = exploreSnapshot.exploreTracks
+        }
         searchArtworkPatch?.let(searchEngine::patchResults)
         persistHomeSnapshot()
         enrichedByKey.values.forEach { queueEngine.updateTrackMetadata(it) }
