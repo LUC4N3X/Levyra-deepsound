@@ -156,6 +156,31 @@ class EditorialCatalogParserTest {
     }
 
     @Test
+    fun keepsBundledExploreCollectionsWhenRemoteCatalogIsStillLegacy() {
+        val remote = catalog(
+            collections = collection("IT", track(title = "Fresh chart"))
+        )
+        val moodCollection = """{
+            "id": "mood-party",
+            "kind": "mood",
+            "market": "GLOBAL",
+            "title": "Party",
+            "youtubeParams": "partyParams",
+            "sectionIndex": 0,
+            "tracks": [${track(title = "Spotify Party", artist = "Editorial Artist")}]
+        }""".trimIndent()
+        val bundled = catalog(
+            collections = collection("IT", track(title = "Old chart")) + "," + moodCollection
+        )
+
+        val merged = mergeExploreCollectionsFromFallback(remote, bundled)
+        val snapshot = EditorialCatalogParser.parse(merged!!, loadedAt = 0L)!!
+
+        assertEquals("Fresh chart", snapshot.tracks("IT", 1).single().title)
+        assertEquals("Spotify Party", snapshot.explore("partyParams", 24)!!.tracks.single().title)
+    }
+
+    @Test
     fun parsesSpotifyFirstExploreCollectionByExactYoutubeParams() {
         val spotifyArtwork = "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
         val moodTrack = track(
