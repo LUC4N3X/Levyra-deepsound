@@ -65,7 +65,7 @@ class ExploreGenreEditorialTest {
     }
 
     @Test
-    fun editorialOmitsBlankArtistAlbumAndArtworkCards() {
+    fun editorialKeepsNamedCardsWhileArtworkIsStillLoading() {
         val tracks = listOf(
             track("1", "", "Album A", "", "album-a"),
             track("2", "Artist B", "", "artist-b", ""),
@@ -74,9 +74,38 @@ class ExploreGenreEditorialTest {
 
         val editorial = buildExploreGenreEditorial(tracks, "pop-global", 3L)
 
-        assertTrue(editorial.featured.size <= 2)
-        assertEquals(1, editorial.artists.size)
-        assertEquals(1, editorial.albums.size)
+        assertEquals(3, editorial.featured.size)
+        assertEquals(2, editorial.artists.size)
+        assertEquals(2, editorial.albums.size)
+    }
+
+    @Test
+    fun metadataRefreshKeepsEditorialSelectionAndOrderStable() {
+        val tracks = (1..12).map { index ->
+            track(
+                id = index.toString(),
+                artist = "Artist $index",
+                album = "Album $index",
+                artistBrowseId = "artist-$index",
+                albumBrowseId = "album-$index",
+                artwork = "https://i.ytimg.com/vi/$index/hqdefault.jpg"
+            )
+        }
+        val original = buildExploreGenreEditorial(tracks, "focus", 7L)
+        val refreshedTracks = tracks.map { item ->
+            item.copy(
+                thumbnailUrl = "https://lh3.googleusercontent.com/${item.id}=w544-h544",
+                largeThumbnailUrl = "https://lh3.googleusercontent.com/${item.id}=w1200-h1200"
+            )
+        }
+
+        val refreshed = refreshExploreGenreEditorialMetadata(original, refreshedTracks)
+
+        assertEquals(original.featured.map { it.id }, refreshed.featured.map { it.id })
+        assertEquals(original.artists.map { it.key }, refreshed.artists.map { it.key })
+        assertEquals(original.albums.map { it.key }, refreshed.albums.map { it.key })
+        assertEquals(original.essentials.map { it.id }, refreshed.essentials.map { it.id })
+        assertTrue(refreshed.featured.all { it.thumbnailUrl.contains("googleusercontent.com") })
     }
 
     @Test
