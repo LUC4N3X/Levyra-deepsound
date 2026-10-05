@@ -37,18 +37,21 @@ import kotlin.coroutines.resumeWithException
  */
 class CommunityCanvasProvider internal constructor(
     private val client: OkHttpClient,
-    private val onDemandResolver: OnDemandCanvasResolver
+    private val onDemandResolver: OnDemandCanvasResolver,
+    private val minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
 ) : MotionArtworkProvider {
     constructor(
         context: Context,
-        onDemandResolver: OnDemandCanvasResolver = OnDemandCanvasResolver(context)
+        onDemandResolver: OnDemandCanvasResolver = OnDemandCanvasResolver(context),
+        minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
     ) : this(
         client = LevyraHttpClientFactory.media(context).newBuilder()
             .connectTimeout(3, TimeUnit.SECONDS)
             .readTimeout(4, TimeUnit.SECONDS)
             .callTimeout(5, TimeUnit.SECONDS)
             .build(),
-        onDemandResolver = onDemandResolver
+        onDemandResolver = onDemandResolver,
+        minimumConfidence = minimumConfidence
     )
 
     override val id: String = PROVIDER_ID
@@ -82,7 +85,6 @@ class CommunityCanvasProvider internal constructor(
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
             val local = localCandidates(identity)
-            val minimumConfidence = MotionArtworkRuntime.snapshot().value.minimumConfidence
             if (!communityCanvasNeedsOnDemand(identity, local.candidates, minimumConfidence)) {
                 return MotionArtworkProviderResult.Found(local.candidates)
             }
