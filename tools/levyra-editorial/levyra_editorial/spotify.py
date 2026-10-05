@@ -82,6 +82,10 @@ class SourceApiError(EditorialSourceError):
     """Raised when the metadata source returns an unusable response."""
 
 
+class SpotifySearchUnavailable(SourceApiError):
+    """Raised when playlist search should stop for the remainder of the run."""
+
+
 def normalize_sp_dc(raw_value: str) -> str:
     """Extract and validate the ``sp_dc`` value from a raw value or cookie string."""
     raw = raw_value.strip()
@@ -599,7 +603,9 @@ class SpotifyWebClient:
                     variables=variables,
                 )
                 if response.status_code == 429:
-                    raise SourceApiError("Spotify Pathfinder playlist search is rate-limited.")
+                    raise SpotifySearchUnavailable(
+                        "Spotify Pathfinder playlist search is rate-limited."
+                    )
                 if response.status_code == 401:
                     token_before = self._access_token
                     self._ensure_authenticated(rejected_token=token_before)
@@ -608,6 +614,10 @@ class SpotifyWebClient:
                         query_hash=query_hash,
                         variables=variables,
                     )
+                    if response.status_code == 429:
+                        raise SpotifySearchUnavailable(
+                            "Spotify Pathfinder playlist search is rate-limited."
+                        )
                 if response.status_code >= 400:
                     raise SourceApiError(
                         "Spotify Pathfinder playlist search failed with "
@@ -626,7 +636,7 @@ class SpotifyWebClient:
                 if _has_persisted_query_not_found(candidate):
                     if index < len(dict.fromkeys(hashes)) - 1:
                         continue
-                    raise SourceApiError(
+                    raise SpotifySearchUnavailable(
                         "Spotify rotated the searchDesktop query hash. "
                         "Update LEVYRA_EDITORIAL_DESKTOP_SEARCH_QUERY_HASH."
                     )
