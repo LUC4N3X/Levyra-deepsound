@@ -137,12 +137,16 @@ internal fun ExploreCollectionDestinationScreen(
     val rotationBucket = remember(identity) {
         exploreGenreRotationBucket(System.currentTimeMillis())
     }
-    val editorial = remember(tracks, identity, rotationBucket) {
+    val trackStructure = remember(tracks) { tracks.map { track -> track.id } }
+    val editorialStructure = remember(trackStructure, identity, rotationBucket) {
         buildExploreGenreEditorial(
             tracks = tracks,
             zoneId = zone?.id ?: identity,
             rotationBucket = rotationBucket
         )
+    }
+    val editorial = remember(editorialStructure, tracks) {
+        refreshExploreGenreEditorialMetadata(editorialStructure, tracks)
     }
 
     ExploreDestinationSurface(
