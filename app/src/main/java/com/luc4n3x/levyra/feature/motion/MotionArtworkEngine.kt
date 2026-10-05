@@ -56,8 +56,25 @@ class MotionArtworkEngine(context: Context) {
     private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val requestCoordinator = MotionArtworkRequestCoordinator(lookupScope)
     private val metadataWarmCache = MotionMetadataWarmCache()
+    private var artistProviderWarmupJob: Job? = null
 
     private val artistMotionProvider by lazy { AppleMotionArtworkProvider(appContext) }
+
+    fun warmArtistMotionProvider(source: LevyraCanvasSource = LevyraCanvasSource.Auto) {
+        if (!networkPolicy.canResolveCurrent() || !shouldWarmDedicatedArtistMotion(source)) return
+        synchronized(runtimeLock) {
+            if (artistProviderWarmupJob != null) return
+            artistProviderWarmupJob = lookupScope.launch {
+                try {
+                    artistMotionProvider.warmup()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.d(error, "Apple artist motion provider warmup failed")
+                }
+            }
+        }
+    }
 
     fun close() {
         lookupScope.cancel()
@@ -86,6 +103,9 @@ class MotionArtworkEngine(context: Context) {
             }
         )
     }.flowOn(Dispatchers.IO)
+
+    fun resolveAppleAlbumProgressive(track: Track): Flow<MotionArtwork> =
+        resolveProgressive(track, LevyraCanvasSource.Apple)
 
     private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
         val remembered = metadataWarmCache.get(track) ?: track
