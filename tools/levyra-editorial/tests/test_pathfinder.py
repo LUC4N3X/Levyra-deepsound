@@ -9,6 +9,7 @@ from levyra_editorial.spotify import (
     PATHFINDER_URL,
     PATHFINDER_V2_URL,
     SourceApiError,
+    SpotifySearchUnavailable,
     SpotifyWebClient,
 )
 
@@ -242,10 +243,35 @@ def test_playlist_search_rate_limit_fails_fast_without_sleeping() -> None:
     session = PathfinderSession(FakeResponse({}, status_code=429))
     client = authenticated_client(session)
 
-    with pytest.raises(SourceApiError, match="rate-limited"):
+    with pytest.raises(SpotifySearchUnavailable, match="rate-limited"):
         client.resolve_playlist_id("Workout", "US", ["Workout"])
 
     assert len(session.calls) == 1
+
+
+def test_playlist_search_rate_limit_after_auth_retry_still_fails_fast(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class RetrySession(PathfinderSession):
+        def __init__(self) -> None:
+            super().__init__(FakeResponse({}, status_code=401))
+            self.responses = [
+                FakeResponse({}, status_code=401),
+                FakeResponse({}, status_code=429),
+            ]
+
+        def post(self, url: str, **kwargs: Any) -> FakeResponse:
+            self.calls.append((url, kwargs))
+            return self.responses.pop(0)
+
+    session = RetrySession()
+    client = authenticated_client(session)
+    monkeypatch.setattr(client, "_ensure_authenticated", lambda rejected_token=None: None)
+
+    with pytest.raises(SpotifySearchUnavailable, match="rate-limited"):
+        client.resolve_playlist_id("Workout", "US", ["Workout"])
+
+    assert len(session.calls) == 2
 
 
 def test_pathfinder_reports_rotated_persisted_query_hash() -> None:
