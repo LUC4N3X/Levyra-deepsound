@@ -88,6 +88,7 @@ internal fun PlayerVisualHost(
                     morphActive = morphActive,
                     swipeOffset = swipeOffset,
                     modifier = Modifier.fillMaxSize(),
+                    dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic && isImmersive,
                     onDynamicBackdropPalette = onDynamicBackdropPalette
                 )
             }

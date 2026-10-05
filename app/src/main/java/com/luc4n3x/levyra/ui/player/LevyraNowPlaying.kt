@@ -372,6 +372,12 @@ fun LevyraNowPlaying(
             hasTrack = track != null
         )
         val deckMode = if (liveRadio) PlayerVisualMode.Artwork else resolvePlayerDeckVisualMode(visualMode, deckLayout)
+        val acceptDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = { palette ->
+            val activeIdentity = state.motionArtwork?.identityKey
+            if (palette == null || (activeIdentity != null && palette.identityKey == activeIdentity)) {
+                canvasBackdropPalette = palette
+            }
+        }
         val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 380.dp || maxHeight < 720.dp)
         val fitsViewport = maxHeight >= MinimumFittedPlayerHeight || playerPane == LevyraPlayerPane.SideBySide
         val gutter = if (state.isVideoMode) {
@@ -443,12 +449,7 @@ fun LevyraNowPlaying(
             isVideoMode = state.isVideoMode,
             backdropFocus = backdropFocus,
             modifier = Modifier.fillMaxSize(),
-            onDynamicBackdropPalette = { palette ->
-                val activeIdentity = state.motionArtwork?.identityKey
-                if (palette == null || (activeIdentity != null && palette.identityKey == activeIdentity)) {
-                    canvasBackdropPalette = palette
-                }
-            }
+            onDynamicBackdropPalette = acceptDynamicBackdropPalette
         )
 
         val headerButtonFill = surfaces.controlQuiet
@@ -714,12 +715,7 @@ fun LevyraNowPlaying(
                             .playerLyricsFlipFace(lyricsFlip, back = false, depth = lyricsFlipDepth, rightToLeft = rightToLeft),
                         dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
                             deckMode.usesMotionCard(),
-                        onDynamicBackdropPalette = { palette ->
-                            val activeIdentity = state.motionArtwork?.identityKey
-                            if (palette == null || (activeIdentity != null && palette.identityKey == activeIdentity)) {
-                                canvasBackdropPalette = palette
-                            }
-                        }
+                        onDynamicBackdropPalette = acceptDynamicBackdropPalette
                     )
                     if (lyricsFlipAvailable && lyricsFlip.lyricsComposed) {
                         PlayerLyricsCard(

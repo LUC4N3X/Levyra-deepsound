@@ -167,6 +167,7 @@ internal fun PlayerCinematicStage(
     morphActive: Boolean,
     swipeOffset: () -> Float,
     modifier: Modifier = Modifier,
+    dynamicBackdropEnabled: Boolean = false,
     onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {}
 ) {
     val stacked = geometry.layout == PlayerCinematicLayout.Stacked
@@ -244,7 +245,7 @@ internal fun PlayerCinematicStage(
                 presentation = MotionArtworkPresentation.Cinematic,
                 quality = canvasQuality,
                 livingArtwork = livingArtwork,
-                dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic,
+                dynamicBackdropEnabled = dynamicBackdropEnabled,
                 onDynamicBackdropPalette = onDynamicBackdropPalette,
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -263,7 +264,7 @@ internal fun PlayerCinematicStage(
                 presentation = MotionArtworkPresentation.Cinematic,
                 quality = canvasQuality,
                 livingArtwork = null,
-                dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic,
+                dynamicBackdropEnabled = dynamicBackdropEnabled,
                 onDynamicBackdropPalette = onDynamicBackdropPalette,
                 modifier = Modifier
                     .fillMaxSize()
