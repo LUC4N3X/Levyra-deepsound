@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -156,167 +157,328 @@ internal fun ExploreCollectionDestinationScreen(
         strings = strings,
         onBack = onBack,
         trailing = if (tracks.isNotEmpty()) {
-            {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(LevyraCyan, CircleShape)
-                        .semantics { role = Role.Button }
-                        .clickable(onClick = onPlayAll),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = strings.play,
-                        tint = LevyraBlack,
-                        modifier = Modifier.size(23.dp)
-                    )
-                }
-            }
+            { ExploreCollectionPlayAllButton(strings = strings, onPlayAll = onPlayAll) }
         } else {
             null
         }
     ) { contentPadding ->
-        when {
-            isLoading && tracks.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize().padding(contentPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
-            }
+        ExploreCollectionDestinationContent(
+            identity = identity,
+            title = title,
+            subtitle = subtitle,
+            zone = zone,
+            tracks = tracks,
+            editorial = editorial,
+            isLoading = isLoading,
+            currentTrackId = currentTrackId,
+            isPlaying = isPlaying,
+            strings = strings,
+            contentPadding = contentPadding,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+    }
+}
 
-            tracks.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 28.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = strings.exploreEmpty,
-                    color = LevyraMuted,
-                    fontSize = 15.sp,
-                    lineHeight = 21.sp,
-                    fontWeight = FontWeight.SemiBold
+@Composable
+private fun ExploreCollectionPlayAllButton(
+    strings: LevyraStrings,
+    onPlayAll: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .background(LevyraCyan, CircleShape)
+            .semantics { role = Role.Button }
+            .clickable(onClick = onPlayAll),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.PlayArrow,
+            contentDescription = strings.play,
+            tint = LevyraBlack,
+            modifier = Modifier.size(23.dp)
+        )
+    }
+}
+
+@Composable
+private fun ExploreCollectionDestinationContent(
+    identity: String,
+    title: String,
+    subtitle: String?,
+    zone: ExploreZone?,
+    tracks: List<Track>,
+    editorial: ExploreGenreEditorial,
+    isLoading: Boolean,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    strings: LevyraStrings,
+    contentPadding: PaddingValues,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    when {
+        isLoading && tracks.isEmpty() -> ExploreCollectionLoading(contentPadding)
+        tracks.isEmpty() -> ExploreCollectionEmpty(
+            contentPadding = contentPadding,
+            message = strings.exploreEmpty
+        )
+        else -> ExploreCollectionList(
+            identity = identity,
+            title = title,
+            subtitle = subtitle,
+            zone = zone,
+            tracks = tracks,
+            editorial = editorial,
+            currentTrackId = currentTrackId,
+            isPlaying = isPlaying,
+            strings = strings,
+            contentPadding = contentPadding,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+    }
+}
+
+@Composable
+private fun ExploreCollectionLoading(contentPadding: PaddingValues) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
+    }
+}
+
+@Composable
+private fun ExploreCollectionEmpty(
+    contentPadding: PaddingValues,
+    message: String
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 28.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            color = LevyraMuted,
+            fontSize = 15.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun ExploreCollectionList(
+    identity: String,
+    title: String,
+    subtitle: String?,
+    zone: ExploreZone?,
+    tracks: List<Track>,
+    editorial: ExploreGenreEditorial,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    strings: LevyraStrings,
+    contentPadding: PaddingValues,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 18.dp,
+            end = 18.dp,
+            top = contentPadding.calculateTopPadding() + 10.dp,
+            bottom = 130.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        exploreCollectionHeroItem(
+            identity = identity,
+            title = title,
+            subtitle = subtitle,
+            zone = zone,
+            track = tracks.first(),
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreFeaturedItems(
+            tracks = editorial.featured,
+            currentTrackId = currentTrackId,
+            strings = strings,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreArtistItems(
+            artists = editorial.artists,
+            strings = strings,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreAlbumItems(
+            albums = editorial.albums,
+            strings = strings,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreEssentialItems(
+            tracks = editorial.essentials,
+            currentTrackId = currentTrackId,
+            isPlaying = isPlaying,
+            strings = strings,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+    }
+}
+
+private fun LazyListScope.exploreCollectionHeroItem(
+    identity: String,
+    title: String,
+    subtitle: String?,
+    zone: ExploreZone?,
+    track: Track,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    item(key = "explore-collection-hero") {
+        LaunchedEffect(track.id) {
+            onRequestTrackArtwork(track)
+        }
+        ExploreCollectionHero(
+            title = title,
+            subtitle = subtitle,
+            leadTrack = track,
+            identity = identity,
+            zone = zone
+        )
+    }
+}
+
+private fun LazyListScope.exploreFeaturedItems(
+    tracks: List<Track>,
+    currentTrackId: String?,
+    strings: LevyraStrings,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    if (tracks.isEmpty()) return
+    item(key = "explore-genre-popular-header") {
+        ExploreGenreSectionHeader(strings.popularTracks)
+    }
+    item(key = "explore-genre-popular") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            items(
+                items = tracks,
+                key = { track -> "explore-featured-${track.id}" }
+            ) { track ->
+                LaunchedEffect(track.id) {
+                    onRequestTrackArtwork(track)
+                }
+                ExploreGenreTrackCard(
+                    track = track,
+                    isCurrent = track.id == currentTrackId,
+                    onClick = { onPlayTrack(track) }
                 )
             }
+        }
+    }
+}
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 18.dp,
-                    end = 18.dp,
-                    top = contentPadding.calculateTopPadding() + 10.dp,
-                    bottom = 130.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                item(key = "explore-collection-hero") {
-                    val leadTrack = tracks.first()
-                    LaunchedEffect(leadTrack.id) {
-                        onRequestTrackArtwork(leadTrack)
-                    }
-                    ExploreCollectionHero(
-                        title = title,
-                        subtitle = subtitle,
-                        leadTrack = leadTrack,
-                        identity = identity,
-                        zone = zone
-                    )
+private fun LazyListScope.exploreArtistItems(
+    artists: List<ExploreGenreArtistCard>,
+    strings: LevyraStrings,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    if (artists.isEmpty()) return
+    item(key = "explore-genre-artists-header") {
+        ExploreGenreSectionHeader(strings.artists)
+    }
+    item(key = "explore-genre-artists") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            items(
+                items = artists,
+                key = { artist -> "explore-artist-${artist.key}" }
+            ) { artist ->
+                LaunchedEffect(artist.track.id) {
+                    onRequestTrackArtwork(artist.track)
                 }
-
-                if (editorial.featured.isNotEmpty()) {
-                    item(key = "explore-genre-popular-header") {
-                        ExploreGenreSectionHeader(strings.popularTracks)
-                    }
-                    item(key = "explore-genre-popular") {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(end = 4.dp)
-                        ) {
-                            items(
-                                items = editorial.featured,
-                                key = { track -> "explore-featured-${track.id}" }
-                            ) { track ->
-                                LaunchedEffect(track.id) {
-                                    onRequestTrackArtwork(track)
-                                }
-                                ExploreGenreTrackCard(
-                                    track = track,
-                                    isCurrent = track.id == currentTrackId,
-                                    onClick = { onPlayTrack(track) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (editorial.artists.isNotEmpty()) {
-                    item(key = "explore-genre-artists-header") {
-                        ExploreGenreSectionHeader(strings.artists)
-                    }
-                    item(key = "explore-genre-artists") {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            contentPadding = PaddingValues(end = 4.dp)
-                        ) {
-                            items(
-                                items = editorial.artists,
-                                key = { artist -> "explore-artist-${artist.key}" }
-                            ) { artist ->
-                                LaunchedEffect(artist.track.id) {
-                                    onRequestTrackArtwork(artist.track)
-                                }
-                                ExploreGenreArtistCard(
-                                    artist = artist,
-                                    onClick = { onPlayTrack(artist.track) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (editorial.albums.isNotEmpty()) {
-                    item(key = "explore-genre-albums-header") {
-                        ExploreGenreSectionHeader(strings.albumsPlain)
-                    }
-                    item(key = "explore-genre-albums") {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(end = 4.dp)
-                        ) {
-                            items(
-                                items = editorial.albums,
-                                key = { album -> "explore-album-${album.key}" }
-                            ) { album ->
-                                LaunchedEffect(album.track.id) {
-                                    onRequestTrackArtwork(album.track)
-                                }
-                                ExploreGenreAlbumCard(
-                                    album = album,
-                                    onClick = { onPlayTrack(album.track) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                item(key = "explore-genre-songs-header") {
-                    ExploreGenreSectionHeader(strings.songsPlain)
-                }
-                items(
-                    items = editorial.essentials,
-                    key = { track -> "explore-destination-track-${track.id}" }
-                ) { track ->
-                    LaunchedEffect(track.id) {
-                        onRequestTrackArtwork(track)
-                    }
-                    ExploreDestinationTrackRow(
-                        track = track,
-                        isCurrent = track.id == currentTrackId,
-                        isPlaying = isPlaying && track.id == currentTrackId,
-                        onClick = { onPlayTrack(track) }
-                    )
-                }
+                ExploreGenreArtistCard(
+                    artist = artist,
+                    onClick = { onPlayTrack(artist.track) }
+                )
             }
         }
+    }
+}
+
+private fun LazyListScope.exploreAlbumItems(
+    albums: List<ExploreGenreAlbumCard>,
+    strings: LevyraStrings,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    if (albums.isEmpty()) return
+    item(key = "explore-genre-albums-header") {
+        ExploreGenreSectionHeader(strings.albumsPlain)
+    }
+    item(key = "explore-genre-albums") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            items(
+                items = albums,
+                key = { album -> "explore-album-${album.key}" }
+            ) { album ->
+                LaunchedEffect(album.track.id) {
+                    onRequestTrackArtwork(album.track)
+                }
+                ExploreGenreAlbumCard(
+                    album = album,
+                    onClick = { onPlayTrack(album.track) }
+                )
+            }
+        }
+    }
+}
+
+private fun LazyListScope.exploreEssentialItems(
+    tracks: List<Track>,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    strings: LevyraStrings,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    item(key = "explore-genre-songs-header") {
+        ExploreGenreSectionHeader(strings.songsPlain)
+    }
+    items(
+        items = tracks,
+        key = { track -> "explore-destination-track-${track.id}" }
+    ) { track ->
+        LaunchedEffect(track.id) {
+            onRequestTrackArtwork(track)
+        }
+        ExploreDestinationTrackRow(
+            track = track,
+            isCurrent = track.id == currentTrackId,
+            isPlaying = isPlaying && track.id == currentTrackId,
+            onClick = { onPlayTrack(track) }
+        )
     }
 }
 
