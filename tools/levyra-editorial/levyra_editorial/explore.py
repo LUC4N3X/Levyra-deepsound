@@ -21,6 +21,43 @@ MOODS_BROWSE_ID = "FEmusic_moods_and_genres"
 DEFAULT_TRACK_LIMIT = 16
 BROWSE_PARAMS_PATTERN = re.compile(r"^[A-Za-z0-9_./=+\-]+$")
 
+# YouTube Music and Spotify often describe the same listening intent with
+# different editorial labels. Keep this mapping on the trusted collector side:
+# the app still displays the provider-localized YouTube Music category title,
+# while Spotify search uses the name its editorial team is more likely to use.
+SPOTIFY_EDITORIAL_ALIASES: dict[str, tuple[str, ...]] = {
+    # Moods & moments
+    "energize": ("Energy Booster", "Mood Booster"),
+    "decades": ("All Out", "Throwback Party"),
+    "party": ("Party Hits", "Dance Party"),
+    "workout": ("Beast Mode", "Power Workout"),
+    "focus": ("Deep Focus", "Focus Flow"),
+    "chill": ("Chill Hits", "Chill Tracks"),
+    "relax": ("Relax & Unwind", "Peaceful Piano"),
+    "sleep": ("Sleep", "Deep Sleep"),
+    "romance": ("Love Pop", "Love Ballads"),
+    "feel good": ("Mood Booster", "Happy Hits!"),
+    "commute": ("Songs to Sing in the Car", "Daily Lift"),
+    "travel": ("Road Trip", "Songs to Sing in the Car"),
+    "dinner": ("Dinner with Friends", "Jazz in the Background"),
+    "morning": ("Morning Motivation", "Wake Up Happy"),
+    "family": ("Family Road Trip", "Disney Hits"),
+    "gaming": ("Top Gaming Tracks", "Power Gaming"),
+    # Genres where Spotify's flagship editorial name differs materially.
+    "dance electronic": ("Dance Rising", "mint"),
+    "hip hop": ("RapCaviar", "Most Necessary"),
+    "r b soul": ("Are & Be", "R&B Right Now"),
+    "latin": ("Viva Latino", "Baila Reggaeton"),
+    "country americana": ("Hot Country", "Indigo"),
+    "indie alternative": ("Lorem", "All New Indie"),
+    "african": ("African Heat", "Afrobeats"),
+    "afro": ("African Heat", "Afrobeats"),
+    "k pop": ("K-Pop ON!", "K-Pop Rising"),
+    "bollywood indian": ("Bollywood Butter", "Desi Hits"),
+    "arabic": ("Arab X", "Arabic Hits"),
+    "christian gospel": ("Top Christian & Gospel", "WorshipNow"),
+}
+
 
 @dataclass(frozen=True)
 class ExploreSeed:
@@ -221,6 +258,54 @@ def _collection_id(seed: ExploreSeed) -> str:
     return f"{seed.kind}-{digest}"
 
 
+def _spotify_intent_key(title: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", title.casefold()))
+
+
+def spotify_editorial_queries(seed: ExploreSeed) -> tuple[str, ...]:
+    key = _spotify_intent_key(seed.title)
+    aliases = SPOTIFY_EDITORIAL_ALIASES.get(key, ())
+    # One or two Spotify-native queries are enough. More would make the
+    # scheduled collector expensive and increases the chance of rate limiting.
+    candidates = (*aliases, seed.title)
+    output: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        normalized = " ".join(candidate.split())
+        lookup_key = normalized.casefold()
+        if len(normalized) < 3 or lookup_key in seen:
+            continue
+        seen.add(lookup_key)
+        output.append(normalized)
+        if len(output) >= 2:
+            break
+    return tuple(output)
+
+
+def _resolve_spotify_explore_playlist(
+    spotify: SpotifyWebClient,
+    seed: ExploreSeed,
+) -> tuple[str, str]:
+    queries = spotify_editorial_queries(seed)
+    last_error: SourceApiError | None = None
+    for query in queries:
+        try:
+            playlist_id = spotify.resolve_playlist_id(
+                query,
+                "US",
+                queries,
+            )
+            return playlist_id, query
+        except SourceApiError as error:
+            last_error = error
+            lowered = str(error).casefold()
+            if "rate-limited" in lowered or "rotated the searchdesktop" in lowered:
+                raise
+    if last_error is not None:
+        raise last_error
+    raise SourceApiError(f"No Spotify editorial query is available for '{seed.title}'.")
+
+
 def _playlist_total_tracks(metadata: Mapping[str, Any], fallback: int) -> int:
     tracks = metadata.get("tracks")
     if not isinstance(tracks, Mapping):
@@ -243,10 +328,14 @@ def collect_spotify_explore_collections(
 
     for seed in seeds:
         try:
-            playlist_id = spotify.resolve_playlist_id(
+            playlist_id, matched_query = _resolve_spotify_explore_playlist(
+                spotify,
+                seed,
+            )
+            LOGGER.info(
+                "Explore category %s matched Spotify editorial intent %s.",
                 seed.title,
-                "US",
-                [seed.title],
+                matched_query,
             )
             metadata = spotify.get_playlist_metadata(playlist_id)
             raw_items = spotify.iter_playlist_items(
