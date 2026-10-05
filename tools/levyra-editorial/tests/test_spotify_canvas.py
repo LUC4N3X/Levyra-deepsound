@@ -223,6 +223,43 @@ def _catalog(track_id: str) -> Catalog:
     )
 
 
+def test_explore_collections_do_not_expand_canvas_resolution() -> None:
+    catalog = _catalog("5osCClSjGplWagDsJmyivf")
+    base_track = catalog.collections[0].tracks[0]
+    catalog.collections.append(
+        Collection(
+            id="mood-focus",
+            kind="mood",
+            market="GLOBAL",
+            title="Focus",
+            description="",
+            source_id="private-mood-playlist",
+            source_url=None,
+            artwork_url=None,
+            snapshot_id=None,
+            total_source_items=1,
+            tracks=[replace(base_track, id="6osCClSjGplWagDsJmyivg")],
+            youtube_params="opaqueParams",
+            section_index=0,
+        )
+    )
+
+    requested: list[str] = []
+
+    class Resolver:
+        def get_canvas_urls(self, track_ids: list[str]) -> dict[str, str]:
+            requested.extend(track_ids)
+            return {
+                track_id: "https://canvaz.scdn.co/upload/artist/video/canvas.cnvs.mp4"
+                for track_id in track_ids
+            }
+
+    payload = build_spotify_canvas_catalog(catalog, Resolver())
+
+    assert requested == ["5osCClSjGplWagDsJmyivf"]
+    assert [item["song"] for item in payload["items"]] == ["Canvas Song"]
+
+
 def test_canvas_request_and_response_use_only_required_protobuf_fields() -> None:
     track_id = "1234567890"
     request = encode_canvas_request([track_id])
