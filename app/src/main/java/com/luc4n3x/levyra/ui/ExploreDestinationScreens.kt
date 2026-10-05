@@ -1004,10 +1004,12 @@ private fun LazyListScope.exploreProviderCategorySection(
     item(key = "${section.key}-header") {
         ExploreCategorySectionHeader(title)
     }
+    val pairs = section.categories.chunked(2)
     items(
-        items = section.categories.chunked(2),
-        key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
-    ) { pair ->
+        count = pairs.size,
+        key = { index -> "${section.key}-pair-$index" }
+    ) { index ->
+        val pair = pairs[index]
         ExploreProviderCategoryRow(
             pair = pair,
             prominent = prominent,
