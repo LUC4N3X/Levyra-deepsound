@@ -29,6 +29,36 @@ internal data class ExploreGenreEditorial(
 internal fun exploreGenreRotationBucket(nowMs: Long): Long =
     if (nowMs <= 0L) 0L else nowMs / ExploreGenreRotationWindowMs
 
+internal fun refreshExploreGenreEditorialMetadata(
+    editorial: ExploreGenreEditorial,
+    tracks: List<Track>
+): ExploreGenreEditorial {
+    if (tracks.isEmpty()) return editorial
+    val latestById = tracks.associateBy { track -> track.id }
+    fun latest(track: Track): Track = latestById[track.id] ?: track
+    fun latestArtwork(track: Track, fallback: String): String =
+        artworkUrl(track).ifBlank { fallback }
+
+    return ExploreGenreEditorial(
+        featured = editorial.featured.map(::latest),
+        artists = editorial.artists.map { card ->
+            val updated = latest(card.track)
+            card.copy(
+                artworkUrl = latestArtwork(updated, card.artworkUrl),
+                track = updated
+            )
+        },
+        albums = editorial.albums.map { card ->
+            val updated = latest(card.track)
+            card.copy(
+                artworkUrl = latestArtwork(updated, card.artworkUrl),
+                track = updated
+            )
+        },
+        essentials = editorial.essentials.map(::latest)
+    )
+}
+
 internal fun buildExploreGenreEditorial(
     tracks: List<Track>,
     zoneId: String,
@@ -45,15 +75,14 @@ internal fun buildExploreGenreEditorial(
     }
 
     val seed = 31 * zoneId.hashCode() + rotationBucket.hashCode()
-    val visualTracks = uniqueTracks.filter { track -> artworkUrl(track).isNotBlank() }
-    val featured = rotateFromSeed(visualTracks, seed).take(8)
+    val featured = rotateFromSeed(uniqueTracks, seed).take(8)
     val rotated = rotateFromSeed(uniqueTracks, seed xor 0x5A17)
 
     val artists = rotated.asSequence()
         .mapNotNull { track ->
             val name = track.artist.trim()
             val artwork = artworkUrl(track)
-            if (name.isBlank() || artwork.isBlank()) return@mapNotNull null
+            if (name.isBlank()) return@mapNotNull null
             val browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
             ExploreGenreArtistCard(
                 key = browseId.ifBlank { name.lowercase() },
@@ -70,7 +99,7 @@ internal fun buildExploreGenreEditorial(
         .mapNotNull { track ->
             val title = track.album.trim()
             val artwork = artworkUrl(track)
-            if (title.isBlank() || artwork.isBlank()) return@mapNotNull null
+            if (title.isBlank()) return@mapNotNull null
             ExploreGenreAlbumCard(
                 key = track.albumBrowseId.trim().ifBlank { "${track.artist.trim().lowercase()}|${title.lowercase()}" },
                 title = title,

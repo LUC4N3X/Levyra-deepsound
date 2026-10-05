@@ -104,6 +104,7 @@ class LevyraStringsTest {
             assertTrue(strings.shareVerses.isNotBlank())
             assertTrue(strings.lyricsVersions.isNotBlank())
             assertTrue(strings.exploreMoods.isNotBlank())
+            assertTrue(strings.exploreMoodSection.isNotBlank())
             assertTrue(strings.exploreSamples.isNotBlank())
             assertTrue(strings.exploreSamplesSubtitle.isNotBlank())
             assertTrue(strings.exploreSamplesError.isNotBlank())
