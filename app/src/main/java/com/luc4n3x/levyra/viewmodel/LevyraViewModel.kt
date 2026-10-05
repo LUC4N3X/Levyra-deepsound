@@ -9712,7 +9712,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!exploreCategoryArtworkRequests.add(requestKey)) return
         try {
             val editorialArtwork = editorialChartsRepository
-                .cachedExploreCollection(params, 1)
+                .exploreCollection(params, 1)
                 ?.artworkUrl
                 .orEmpty()
             val artwork = editorialArtwork.ifBlank {
