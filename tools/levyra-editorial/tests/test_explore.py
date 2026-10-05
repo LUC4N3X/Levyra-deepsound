@@ -124,7 +124,7 @@ def test_spotify_explore_collection_is_sanitized_and_keyed_by_youtube_params(
     seed = ExploreSeed("Focus", "opaque/+=_", "Moods & moments", 0)
     monkeypatch.setattr(explore_module, "discover_youtube_explore_categories", lambda: [seed])
 
-    collections = collect_spotify_explore_collections(FakeSpotify(), None)
+    collections = collect_spotify_explore_collections(FakeSpotify())
     assert len(collections) == 1
 
     public = collections[0].to_dict()
