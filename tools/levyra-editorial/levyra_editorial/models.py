@@ -118,6 +118,9 @@ class Collection:
     snapshot_id: str | None
     total_source_items: int
     tracks: list[Track]
+    youtube_params: str | None = None
+    section_index: int | None = None
+    section_title: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -127,6 +130,10 @@ class Collection:
                 "market": self.market,
                 "title": self.title,
                 "description": self.description,
+                "artworkUrl": _public_artwork_url(self.artwork_url),
+                "youtubeParams": self.youtube_params,
+                "sectionIndex": self.section_index,
+                "sectionTitle": self.section_title,
                 "totalSourceItems": self.total_source_items,
                 "tracks": [track.to_dict() for track in self.tracks],
             }
