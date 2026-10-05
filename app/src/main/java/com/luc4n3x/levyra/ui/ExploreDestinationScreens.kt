@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -1135,6 +1136,33 @@ private fun ExploreCategorySectionHeader(title: String) {
     )
 }
 
+private data class ExploreCategoryCardMetrics(
+    val artworkSize: androidx.compose.ui.unit.Dp,
+    val emojiSize: androidx.compose.ui.unit.TextUnit,
+    val placeholderSize: androidx.compose.ui.unit.Dp,
+    val titleSize: androidx.compose.ui.unit.TextUnit,
+    val titleWidthFraction: Float
+)
+
+private fun exploreCategoryCardMetrics(prominent: Boolean): ExploreCategoryCardMetrics =
+    if (prominent) {
+        ExploreCategoryCardMetrics(
+            artworkSize = 86.dp,
+            emojiSize = 30.sp,
+            placeholderSize = 38.dp,
+            titleSize = 17.sp,
+            titleWidthFraction = 0.62f
+        )
+    } else {
+        ExploreCategoryCardMetrics(
+            artworkSize = 78.dp,
+            emojiSize = 26.sp,
+            placeholderSize = 34.dp,
+            titleSize = 16.sp,
+            titleWidthFraction = 0.60f
+        )
+    }
+
 @Composable
 private fun ExploreDiscoveryCategoryCard(
     title: String,
@@ -1147,7 +1175,7 @@ private fun ExploreDiscoveryCategoryCard(
 ) {
     val (accentStart, accentEnd) = exploreCategoryPalette(identity)
     val shape = RoundedCornerShape(14.dp)
-    val artworkSize = if (prominent) 86.dp else 78.dp
+    val metrics = exploreCategoryCardMetrics(prominent)
     Box(
         modifier = modifier
             .clip(shape)
@@ -1177,60 +1205,74 @@ private fun ExploreDiscoveryCategoryCard(
                     )
                 )
         )
-
-        if (artworkUrl.isNotBlank()) {
-            AsyncImage(
-                model = artworkUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 14.dp, y = 12.dp)
-                    .size(artworkSize)
-                    .rotate(13f)
-                    .clip(RoundedCornerShape(9.dp))
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 14.dp, y = 12.dp)
-                    .size(artworkSize)
-                    .rotate(13f)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(Color.White.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (emoji.isNotBlank()) {
-                    Text(
-                        text = emoji,
-                        fontSize = if (prominent) 30.sp else 26.sp,
-                        maxLines = 1
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(if (prominent) 38.dp else 34.dp)
-                            .background(Color.White.copy(alpha = 0.12f), CircleShape)
-                    )
-                }
-            }
-        }
-
+        ExploreDiscoveryCategoryArtwork(
+            artworkUrl = artworkUrl,
+            emoji = emoji,
+            metrics = metrics
+        )
         Text(
             text = title,
             color = Color.White,
-            fontSize = if (prominent) 17.sp else 16.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(if (prominent) 17.sp else 16.sp),
+            fontSize = metrics.titleSize,
+            lineHeight = LevyraTypeRhythm.lineHeight(metrics.titleSize),
             fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(if (prominent) 0.62f else 0.60f)
+                .fillMaxWidth(metrics.titleWidthFraction)
                 .padding(start = 14.dp, top = 14.dp, end = 4.dp)
         )
     }
+}
+
+@Composable
+private fun BoxScope.ExploreDiscoveryCategoryArtwork(
+    artworkUrl: String,
+    emoji: String,
+    metrics: ExploreCategoryCardMetrics
+) {
+    val artworkModifier = Modifier
+        .align(Alignment.BottomEnd)
+        .offset(x = 14.dp, y = 12.dp)
+        .size(metrics.artworkSize)
+        .rotate(13f)
+        .clip(RoundedCornerShape(9.dp))
+    if (artworkUrl.isNotBlank()) {
+        AsyncImage(
+            model = artworkUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = artworkModifier
+        )
+        return
+    }
+    Box(
+        modifier = artworkModifier.background(Color.White.copy(alpha = 0.12f)),
+        contentAlignment = Alignment.Center
+    ) {
+        ExploreDiscoveryCategoryArtworkFallback(emoji, metrics)
+    }
+}
+
+@Composable
+private fun ExploreDiscoveryCategoryArtworkFallback(
+    emoji: String,
+    metrics: ExploreCategoryCardMetrics
+) {
+    if (emoji.isNotBlank()) {
+        Text(
+            text = emoji,
+            fontSize = metrics.emojiSize,
+            maxLines = 1
+        )
+        return
+    }
+    Box(
+        modifier = Modifier
+            .size(metrics.placeholderSize)
+            .background(Color.White.copy(alpha = 0.12f), CircleShape)
+    )
 }
 
 @Composable
