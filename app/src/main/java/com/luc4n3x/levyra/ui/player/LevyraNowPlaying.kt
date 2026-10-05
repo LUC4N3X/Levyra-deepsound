@@ -222,28 +222,8 @@ fun LevyraNowPlaying(
         fallback = fallbackPalette
     )
     val motionEnabled = animated && !state.isVideoMode && !motionSuspended
-    val motionBackdropVisible = deckMode.usesMotionCard() || deckMode.showsCinematicStage()
     var canvasBackdropPalette by remember(track?.id, state.isVideoMode) {
         mutableStateOf<MotionBackdropPalette?>(null)
-    }
-    LaunchedEffect(
-        motionEnabled,
-        motionBackdropVisible,
-        backgroundMode,
-        state.motionArtwork?.identityKey
-    ) {
-        val activeIdentity = state.motionArtwork?.identityKey
-        if (
-            !canvasBackdropPaletteMatches(
-                palette = canvasBackdropPalette,
-                motionEnabled = motionEnabled,
-                motionBackdropVisible = motionBackdropVisible,
-                backgroundMode = backgroundMode,
-                activeIdentity = activeIdentity
-            )
-        ) {
-            canvasBackdropPalette = null
-        }
     }
     val rawPrimaryTarget = Color(activePalette.start)
     val rawSecondaryTarget = Color(activePalette.end)
@@ -269,22 +249,6 @@ fun LevyraNowPlaying(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-hero-tone"
     )
-    val canvasBackdropTargets = canvasBackdropPalette
-        ?.takeIf { palette ->
-            canvasBackdropPaletteMatches(
-                palette = palette,
-                motionEnabled = motionEnabled,
-                motionBackdropVisible = motionBackdropVisible,
-                backgroundMode = backgroundMode,
-                activeIdentity = state.motionArtwork?.identityKey
-            )
-        }
-        ?.let { palette -> harmonizePlayerAccents(palette.primary, palette.secondary) }
-    val backdropPrimaryTarget = canvasBackdropTargets?.primary ?: primaryTarget
-    val backdropSecondaryTarget = canvasBackdropTargets?.secondary ?: secondaryTarget
-    val backdropAmbience = remember(backdropPrimaryTarget, backdropSecondaryTarget) {
-        playerAmbienceOf(backdropPrimaryTarget, backdropSecondaryTarget)
-    }
     val livingArtwork = remember(primaryTarget, secondaryTarget) {
         livingArtworkColors(primaryTarget, secondaryTarget)
     }
@@ -377,6 +341,42 @@ fun LevyraNowPlaying(
             hasTrack = track != null
         )
         val deckMode = if (liveRadio) PlayerVisualMode.Artwork else resolvePlayerDeckVisualMode(visualMode, deckLayout)
+        val motionBackdropVisible = deckMode.usesMotionCard() || deckMode.showsCinematicStage()
+        LaunchedEffect(
+            motionEnabled,
+            motionBackdropVisible,
+            backgroundMode,
+            state.motionArtwork?.identityKey
+        ) {
+            val activeIdentity = state.motionArtwork?.identityKey
+            if (
+                !canvasBackdropPaletteMatches(
+                    palette = canvasBackdropPalette,
+                    motionEnabled = motionEnabled,
+                    motionBackdropVisible = motionBackdropVisible,
+                    backgroundMode = backgroundMode,
+                    activeIdentity = activeIdentity
+                )
+            ) {
+                canvasBackdropPalette = null
+            }
+        }
+        val canvasBackdropTargets = canvasBackdropPalette
+            ?.takeIf { palette ->
+                canvasBackdropPaletteMatches(
+                    palette = palette,
+                    motionEnabled = motionEnabled,
+                    motionBackdropVisible = motionBackdropVisible,
+                    backgroundMode = backgroundMode,
+                    activeIdentity = state.motionArtwork?.identityKey
+                )
+            }
+            ?.let { palette -> harmonizePlayerAccents(palette.primary, palette.secondary) }
+        val backdropPrimaryTarget = canvasBackdropTargets?.primary ?: primaryTarget
+        val backdropSecondaryTarget = canvasBackdropTargets?.secondary ?: secondaryTarget
+        val backdropAmbience = remember(backdropPrimaryTarget, backdropSecondaryTarget) {
+            playerAmbienceOf(backdropPrimaryTarget, backdropSecondaryTarget)
+        }
         val acceptDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = { palette ->
             val activeIdentity = state.motionArtwork?.identityKey
             if (palette == null || (activeIdentity != null && palette.identityKey == activeIdentity)) {
