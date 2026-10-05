@@ -131,7 +131,8 @@ internal fun ExploreCollectionDestinationScreen(
     backEnabled: Boolean,
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
-    onPlayTrack: (Track) -> Unit
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val rotationBucket = remember(identity) {
@@ -208,10 +209,14 @@ internal fun ExploreCollectionDestinationScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 item(key = "explore-collection-hero") {
+                    val leadTrack = tracks.first()
+                    LaunchedEffect(leadTrack.id) {
+                        onRequestTrackArtwork(leadTrack)
+                    }
                     ExploreCollectionHero(
                         title = title,
                         subtitle = subtitle,
-                        leadTrack = tracks.first(),
+                        leadTrack = leadTrack,
                         identity = identity,
                         zone = zone
                     )
@@ -230,6 +235,9 @@ internal fun ExploreCollectionDestinationScreen(
                                 items = editorial.featured,
                                 key = { track -> "explore-featured-${track.id}" }
                             ) { track ->
+                                LaunchedEffect(track.id) {
+                                    onRequestTrackArtwork(track)
+                                }
                                 ExploreGenreTrackCard(
                                     track = track,
                                     isCurrent = track.id == currentTrackId,
@@ -253,6 +261,9 @@ internal fun ExploreCollectionDestinationScreen(
                                 items = editorial.artists,
                                 key = { artist -> "explore-artist-${artist.key}" }
                             ) { artist ->
+                                LaunchedEffect(artist.track.id) {
+                                    onRequestTrackArtwork(artist.track)
+                                }
                                 ExploreGenreArtistCard(
                                     artist = artist,
                                     onClick = { onPlayTrack(artist.track) }
@@ -275,6 +286,9 @@ internal fun ExploreCollectionDestinationScreen(
                                 items = editorial.albums,
                                 key = { album -> "explore-album-${album.key}" }
                             ) { album ->
+                                LaunchedEffect(album.track.id) {
+                                    onRequestTrackArtwork(album.track)
+                                }
                                 ExploreGenreAlbumCard(
                                     album = album,
                                     onClick = { onPlayTrack(album.track) }
@@ -291,6 +305,9 @@ internal fun ExploreCollectionDestinationScreen(
                     items = editorial.essentials,
                     key = { track -> "explore-destination-track-${track.id}" }
                 ) { track ->
+                    LaunchedEffect(track.id) {
+                        onRequestTrackArtwork(track)
+                    }
                     ExploreDestinationTrackRow(
                         track = track,
                         isCurrent = track.id == currentTrackId,
