@@ -87,6 +87,9 @@ class MotionArtworkEngine(context: Context) {
         )
     }.flowOn(Dispatchers.IO)
 
+    fun resolveAppleAlbumProgressive(track: Track): Flow<MotionArtwork> =
+        resolveProgressive(track, LevyraCanvasSource.Apple)
+
     private suspend fun prepareLookupTrackWithinBudget(track: Track): Track {
         val remembered = metadataWarmCache.get(track) ?: track
         val budgetMs = motionMetadataForegroundBudgetMs(remembered)

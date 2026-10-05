@@ -84,72 +84,43 @@ class MotionArtworkLayerTest {
     }
 
     @Test
-    fun pageMotionDoesNotFlashStaticCoverWhileCanvasIsResolving() {
-        assertFalse(
-            motionStaticBedVisible(
-                pageMode = true,
-                motionResolving = true,
-                motionVisible = false,
-                videoCandidatePending = false,
-                videoUnavailable = false
-            )
+    fun pageMotionShowsStaticCoverImmediatelyWhileCanvasIsResolving() {
+        assertTrue(
+            motionStaticBedVisible(motionVisible = false)
         )
     }
 
     @Test
     fun pageMotionKeepsStaticCoverVisibleUntilFirstVideoFrame() {
         assertTrue(
-            motionStaticBedVisible(
-                pageMode = true,
-                motionResolving = false,
-                motionVisible = false,
-                videoCandidatePending = true,
-                videoUnavailable = false
-            )
+            motionStaticBedVisible(motionVisible = false)
+        )
+    }
+
+    @Test
+    fun pageMotionReplacesStaticCoverAfterFirstVideoFrame() {
+        assertFalse(
+            motionStaticBedVisible(motionVisible = true)
         )
     }
 
     @Test
     fun pageMotionShowsStaticCoverAfterConclusiveMissOrVideoFailure() {
         assertTrue(
-            motionStaticBedVisible(
-                pageMode = true,
-                motionResolving = false,
-                motionVisible = false,
-                videoCandidatePending = false,
-                videoUnavailable = false
-            )
+            motionStaticBedVisible(motionVisible = false)
         )
         assertTrue(
-            motionStaticBedVisible(
-                pageMode = true,
-                motionResolving = true,
-                motionVisible = false,
-                videoCandidatePending = true,
-                videoUnavailable = true
-            )
+            motionStaticBedVisible(motionVisible = false)
         )
     }
 
     @Test
     fun nowPlayingStaticCoverBehaviorDoesNotChange() {
         assertTrue(
-            motionStaticBedVisible(
-                pageMode = false,
-                motionResolving = true,
-                motionVisible = false,
-                videoCandidatePending = true,
-                videoUnavailable = false
-            )
+            motionStaticBedVisible(motionVisible = false)
         )
         assertFalse(
-            motionStaticBedVisible(
-                pageMode = false,
-                motionResolving = false,
-                motionVisible = true,
-                videoCandidatePending = false,
-                videoUnavailable = false
-            )
+            motionStaticBedVisible(motionVisible = true)
         )
     }
 

@@ -719,6 +719,40 @@ internal fun selectArtistMotionSeeds(
 
 private const val MAX_ARTIST_MOTION_SEEDS = 4
 
+internal fun selectAlbumMotionSeed(
+    detail: AlbumDetail,
+    isLocal: (Track) -> Boolean
+): Track? = detail.tracks.firstOrNull { candidate ->
+    !isLocal(candidate) && albumMotionSeedMatches(
+        track = candidate,
+        albumTitle = detail.album.title,
+        albumArtist = detail.album.artist
+    )
+}
+
+internal fun albumMotionSeedMatches(track: Track, albumTitle: String, albumArtist: String): Boolean {
+    val identity = MotionTrackIdentity.from(track)
+    if (albumArtist.isNotBlank() && !primaryMotionArtistMatches(identity.artists, listOf(albumArtist))) return false
+    if (albumTitle.isBlank() || identity.album.isBlank()) return true
+    return normalizeMotionText(identity.album) == normalizeMotionText(albumTitle)
+}
+
+internal fun canPublishAlbumMotionArtwork(
+    visible: AlbumDetail?,
+    expected: AlbumDetail,
+    albumVisible: Boolean,
+    animationsEnabled: Boolean,
+    motionArtworkEnabled: Boolean
+): Boolean {
+    if (!albumVisible || !animationsEnabled || !motionArtworkEnabled || visible == null) return false
+    val expectedBrowseId = expected.album.browseId
+    if (expectedBrowseId.isNotBlank() && visible.album.browseId.isNotBlank()) {
+        return visible.album.browseId.equals(expectedBrowseId, ignoreCase = true)
+    }
+    return visible.album.title.equals(expected.album.title, ignoreCase = true) &&
+        visible.album.artist.equals(expected.album.artist, ignoreCase = true)
+}
+
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
     private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
@@ -10921,12 +10955,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(albumMotionArtwork = null) }
             return
         }
-        val expectedBrowseId = detail.album.browseId
-        val expectedTitle = detail.album.title
-        val expectedArtist = detail.album.artist
-        val seed = detail.tracks.firstOrNull { candidate ->
-            !isLocalPlaybackTrack(candidate) && albumMotionSeedMatches(candidate, expectedTitle, expectedArtist)
-        }
+        val seed = selectAlbumMotionSeed(detail, ::isLocalPlaybackTrack)
         if (seed == null) {
             _state.update { it.copy(albumMotionArtwork = null) }
             return
@@ -10934,11 +10963,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         albumMotionJob = viewModelScope.launch(Dispatchers.IO) {
             val publishForVisibleAlbum: (MotionArtwork?) -> Unit = { artwork ->
                 _state.update { current ->
-                    val visible = current.albumDetail
                     if (
-                        current.showAlbum &&
-                        visible != null &&
-                        sameAlbumIdentity(visible, expectedBrowseId, expectedTitle, expectedArtist)
+                        canPublishAlbumMotionArtwork(
+                            visible = current.albumDetail,
+                            expected = detail,
+                            albumVisible = current.showAlbum,
+                            animationsEnabled = current.animationsEnabled,
+                            motionArtworkEnabled = current.motionArtworkEnabled
+                        )
                     ) {
                         current.copy(albumMotionArtwork = artwork)
                     } else {
@@ -10949,7 +10981,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             var published = false
             runCatching {
                 motionArtworkEngine
-                    .resolveProgressive(seed, _state.value.interfaceSettings.canvasSource)
+                    .resolveAppleAlbumProgressive(seed)
                     .collect { artwork ->
                         published = true
                         publishForVisibleAlbum(artwork)
@@ -10962,21 +10994,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!isActive) return@launch
             if (!published) publishForVisibleAlbum(null)
         }
-    }
-
-    private fun albumMotionSeedMatches(track: Track, albumTitle: String, albumArtist: String): Boolean {
-        val identity = MotionTrackIdentity.from(track)
-        if (albumArtist.isNotBlank() && !primaryMotionArtistMatches(identity.artists, listOf(albumArtist))) return false
-        if (albumTitle.isBlank() || identity.album.isBlank()) return true
-        return normalizeMotionText(identity.album) == normalizeMotionText(albumTitle)
-    }
-
-    private fun sameAlbumIdentity(detail: AlbumDetail, browseId: String, title: String, artist: String): Boolean {
-        if (browseId.isNotBlank() && detail.album.browseId.isNotBlank()) {
-            return detail.album.browseId.equals(browseId, ignoreCase = true)
-        }
-        return detail.album.title.equals(title, ignoreCase = true) &&
-            detail.album.artist.equals(artist, ignoreCase = true)
     }
 
     private fun prefetchLyricsAround(current: Track) {
@@ -12328,6 +12345,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeSnapshotJob?.cancel()
         musicVideosJob?.cancel()
         videoMetadataJob?.cancel()
+        cancelPageMotion()
+        motionArtworkJob?.cancel()
+        motionArtworkPrefetchJob?.cancel()
+        motionArtworkEngine.close()
         if (deArrowRepository.isInitialized()) deArrowRepository.value.close()
         levyraMixJob?.cancel()
         listeningDnaJob?.cancel()
