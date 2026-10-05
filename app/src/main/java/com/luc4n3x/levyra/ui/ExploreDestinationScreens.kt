@@ -947,28 +947,50 @@ private fun LazyListScope.exploreProviderCategoryItems(
     onRequestCategoryArtwork: (String, Boolean) -> Unit
 ) {
     sections.forEach { section ->
-        val title = section.providerTitle.ifBlank {
-            when (section.presentation) {
-                ExploreCategoryPresentation.Atmospheric -> strings.exploreMoodSection
-                ExploreCategoryPresentation.Structured -> strings.genres
-                ExploreCategoryPresentation.Mixed -> strings.exploreMoods
-            }
-        }
-        item(key = "${section.key}-header") {
-            ExploreCategorySectionHeader(title)
-        }
-        items(
-            items = section.categories.chunked(2),
-            key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
-        ) { pair ->
-            ExploreProviderCategoryRow(
-                pair = pair,
-                prominent = section.presentation == ExploreCategoryPresentation.Atmospheric,
-                categoryArtwork = categoryArtwork,
-                onOpenCategory = onOpenCategory,
-                onRequestCategoryArtwork = onRequestCategoryArtwork
-            )
-        }
+        exploreProviderCategorySection(
+            section = section,
+            categoryArtwork = categoryArtwork,
+            strings = strings,
+            onOpenCategory = onOpenCategory,
+            onRequestCategoryArtwork = onRequestCategoryArtwork
+        )
+    }
+}
+
+private fun LazyListScope.exploreProviderCategorySection(
+    section: ExploreCategorySection,
+    categoryArtwork: Map<String, String>,
+    strings: LevyraStrings,
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
+) {
+    val title = exploreProviderSectionTitle(section, strings)
+    val prominent = section.presentation == ExploreCategoryPresentation.Atmospheric
+    item(key = "${section.key}-header") {
+        ExploreCategorySectionHeader(title)
+    }
+    items(
+        items = section.categories.chunked(2),
+        key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
+    ) { pair ->
+        ExploreProviderCategoryRow(
+            pair = pair,
+            prominent = prominent,
+            categoryArtwork = categoryArtwork,
+            onOpenCategory = onOpenCategory,
+            onRequestCategoryArtwork = onRequestCategoryArtwork
+        )
+    }
+}
+
+private fun exploreProviderSectionTitle(
+    section: ExploreCategorySection,
+    strings: LevyraStrings
+): String = section.providerTitle.ifBlank {
+    when (section.presentation) {
+        ExploreCategoryPresentation.Atmospheric -> strings.exploreMoodSection
+        ExploreCategoryPresentation.Structured -> strings.genres
+        ExploreCategoryPresentation.Mixed -> strings.exploreMoods
     }
 }
 
