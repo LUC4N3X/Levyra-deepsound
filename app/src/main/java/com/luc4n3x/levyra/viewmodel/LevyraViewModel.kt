@@ -7041,6 +7041,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 detailReturnTarget = DetailReturnTarget.None
             )
         }
+        placeholder?.let(::refreshArtistMotionArtwork)
         artistJob = viewModelScope.launch {
             coroutineScope {
                 val biographyDeferred = async {
