@@ -9727,7 +9727,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             preferences.saveExploreDiscovery(
                 categories = current.exploreCategories,
                 artwork = current.exploreCategoryArtwork,
-                languageCode = languageCode
+                languageCode = languageCode,
+                savedAtMs = exploreCategoriesCachedAtMs
             )
         }
     }
