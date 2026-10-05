@@ -11,3 +11,7 @@ interface MotionArtworkProvider {
 
     suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult
 }
+
+internal interface MotionArtworkRefreshableProvider : MotionArtworkProvider {
+    suspend fun invalidate(identity: MotionTrackIdentity)
+}

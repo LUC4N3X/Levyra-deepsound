@@ -20,6 +20,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -417,4 +418,152 @@ class OnDemandCanvasResolverTest {
             assertNull(candidate)
         }
     }
+
+    @Test
+    fun nonNotFoundHttpFailuresAreTransientAndDoNotPopulateNegativeCache() {
+        runBlocking {
+            for (status in listOf(400, 401, 403, 429, 503)) {
+                val requestCount = AtomicInteger(0)
+                val client = clientWithHandler { request ->
+                    if (requestCount.incrementAndGet() == 1) {
+                        jsonResponse(request, status, """{"error":"temporary"}""")
+                    } else {
+                        jsonResponse(
+                            request,
+                            200,
+                            """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/recovered_${status}.mp4"}"""
+                        )
+                    }
+                }
+
+                val resolver = OnDemandCanvasResolver(
+                    client = client,
+                    resolverUrl = fakeResolverUrl,
+                    clientKey = fakeClientKey,
+                    networkPolicyCheck = { true }
+                )
+
+                val first = resolver.resolveResult(testIdentity())
+                assertTrue("HTTP $status should remain transient", first is OnDemandCanvasResolution.Failed)
+
+                val second = resolver.resolveResult(testIdentity())
+                assertTrue("HTTP $status must not poison the negative cache", second is OnDemandCanvasResolution.Found)
+                assertEquals(2, requestCount.get())
+            }
+        }
+    }
+
+    @Test
+    fun malformedSuccessfulResponseIsTransientAndDoesNotPopulateNegativeCache() {
+        runBlocking {
+            val requestCount = AtomicInteger(0)
+            val client = clientWithHandler { request ->
+                if (requestCount.incrementAndGet() == 1) {
+                    jsonResponse(request, 200, """{"status":"error"}""")
+                } else {
+                    jsonResponse(
+                        request,
+                        200,
+                        """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/recovered_after_protocol_error.mp4"}"""
+                    )
+                }
+            }
+
+            val resolver = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
+                networkPolicyCheck = { true }
+            )
+
+            val first = resolver.resolveResult(testIdentity())
+            assertTrue(first is OnDemandCanvasResolution.Failed)
+
+            val second = resolver.resolveResult(testIdentity())
+            assertTrue(second is OnDemandCanvasResolution.Found)
+            assertEquals(2, requestCount.get())
+        }
+    }
+
+
+    @Test
+    fun explicitInvalidationClearsTrackNegativeCache() {
+        runBlocking {
+            val requestCount = AtomicInteger(0)
+            val client = clientWithHandler { request ->
+                if (requestCount.incrementAndGet() == 1) {
+                    jsonResponse(request, 404, """{"status":"miss"}""")
+                } else {
+                    jsonResponse(
+                        request,
+                        200,
+                        """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/refreshed.mp4"}"""
+                    )
+                }
+            }
+            val resolver = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
+                networkPolicyCheck = { true }
+            )
+            val identity = testIdentity()
+
+            assertTrue(resolver.resolveResult(identity) is OnDemandCanvasResolution.NoMatch)
+            assertTrue(resolver.resolveResult(identity) is OnDemandCanvasResolution.NoMatch)
+            assertEquals(1, requestCount.get())
+
+            resolver.invalidate(identity)
+
+            assertTrue(resolver.resolveResult(identity) is OnDemandCanvasResolution.Found)
+            assertEquals(2, requestCount.get())
+        }
+    }
+
+
+    @Test
+    fun invalidationDuringInFlightMissDoesNotRestoreNegativeCache() {
+        runBlocking {
+            val requestCount = AtomicInteger(0)
+            val firstRequestStarted = CountDownLatch(1)
+            val releaseFirstResponse = CountDownLatch(1)
+            val client = clientWithHandler { request ->
+                if (requestCount.incrementAndGet() == 1) {
+                    firstRequestStarted.countDown()
+                    if (!releaseFirstResponse.await(1, TimeUnit.SECONDS)) {
+                        throw IOException("Timed out waiting to release stale response")
+                    }
+                    jsonResponse(request, 404, """{"status":"miss"}""")
+                } else {
+                    jsonResponse(
+                        request,
+                        200,
+                        """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/fresh_after_refresh.mp4"}"""
+                    )
+                }
+            }
+            val resolver = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
+                networkPolicyCheck = { true }
+            )
+            val identity = testIdentity()
+            var staleResult: OnDemandCanvasResolution? = null
+
+            val staleLookup = launch(Dispatchers.IO) {
+                staleResult = resolver.resolveResult(identity)
+            }
+
+            assertTrue(firstRequestStarted.await(1, TimeUnit.SECONDS))
+            resolver.invalidate(identity)
+            releaseFirstResponse.countDown()
+            staleLookup.join()
+
+            assertTrue(staleResult is OnDemandCanvasResolution.NoMatch)
+            assertTrue(resolver.resolveResult(identity) is OnDemandCanvasResolution.Found)
+            assertEquals(2, requestCount.get())
+        }
+    }
+
 }
