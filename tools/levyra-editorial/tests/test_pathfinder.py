@@ -7,6 +7,7 @@ import pytest
 from levyra_editorial.spotify import (
     API_BASE_URL,
     PATHFINDER_URL,
+    PATHFINDER_V2_URL,
     SourceApiError,
     SpotifyWebClient,
 )
@@ -34,6 +35,10 @@ class PathfinderSession:
         self.calls: list[tuple[str, dict[str, Any]]] = []
 
     def get(self, url: str, **kwargs: Any) -> FakeResponse:
+        self.calls.append((url, kwargs))
+        return self.response
+
+    def post(self, url: str, **kwargs: Any) -> FakeResponse:
         self.calls.append((url, kwargs))
         return self.response
 
@@ -144,6 +149,103 @@ def test_pathfinder_collects_metadata_and_tracks_without_developer_api() -> None
     assert kwargs["params"]["operationName"] == "fetchPlaylist"
     assert kwargs["headers"]["Authorization"] == "Bearer temporary-token"
     assert kwargs["headers"]["App-Platform"] == "WebPlayer"
+
+
+def test_playlist_search_uses_web_player_pathfinder_instead_of_rest() -> None:
+    payload = {
+        "data": {
+            "searchV2": {
+                "playlists": {
+                    "items": [
+                        {
+                            "__typename": "PlaylistResponseWrapper",
+                            "data": {
+                                "__typename": "Playlist",
+                                "uri": "spotify:playlist:playlist12345",
+                                "name": "Dance Party",
+                                "ownerV2": {
+                                    "data": {
+                                        "uri": "spotify:user:spotify",
+                                        "name": "Spotify",
+                                    }
+                                },
+                            },
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    session = PathfinderSession(FakeResponse(payload))
+    client = authenticated_client(session)
+
+    playlist_id = client.resolve_playlist_id("Dance Party", "US", ["Dance Party"])
+
+    assert playlist_id == "playlist12345"
+    assert len(session.calls) == 1
+    url, kwargs = session.calls[0]
+    assert url == PATHFINDER_V2_URL
+    assert not url.startswith(API_BASE_URL)
+    assert kwargs["json"]["operationName"] == "searchDesktop"
+    assert kwargs["json"]["variables"]["searchTerm"] == "Dance Party"
+    assert kwargs["headers"]["Authorization"] == "Bearer temporary-token"
+
+
+def test_playlist_search_falls_back_to_previous_hash() -> None:
+    rejected = FakeResponse({"errors": [{"message": "PersistedQueryNotFound"}]})
+    accepted = FakeResponse(
+        {
+            "data": {
+                "searchV2": {
+                    "playlists": {
+                        "items": [
+                            {
+                                "data": {
+                                    "__typename": "Playlist",
+                                    "uri": "spotify:playlist:playlist12345",
+                                    "name": "Focus",
+                                    "ownerV2": {
+                                        "data": {
+                                            "uri": "spotify:user:spotify",
+                                            "name": "Spotify",
+                                        }
+                                    },
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    )
+
+    class PostSequenceSession(PathfinderSession):
+        def __init__(self) -> None:
+            super().__init__(rejected)
+            self.responses = [rejected, accepted]
+
+        def post(self, url: str, **kwargs: Any) -> FakeResponse:
+            self.calls.append((url, kwargs))
+            return self.responses.pop(0)
+
+    session = PostSequenceSession()
+    client = authenticated_client(session)
+
+    assert client.resolve_playlist_id("Focus", "US", ["Focus"]) == "playlist12345"
+    assert len(session.calls) == 2
+    first_hash = session.calls[0][1]["json"]["extensions"]["persistedQuery"]["sha256Hash"]
+    second_hash = session.calls[1][1]["json"]["extensions"]["persistedQuery"]["sha256Hash"]
+    assert first_hash != second_hash
+
+
+def test_playlist_search_rate_limit_fails_fast_without_sleeping() -> None:
+    session = PathfinderSession(FakeResponse({}, status_code=429))
+    client = authenticated_client(session)
+
+    with pytest.raises(SourceApiError, match="rate-limited"):
+        client.resolve_playlist_id("Workout", "US", ["Workout"])
+
+    assert len(session.calls) == 1
 
 
 def test_pathfinder_reports_rotated_persisted_query_hash() -> None:
