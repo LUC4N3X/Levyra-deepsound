@@ -172,17 +172,25 @@ def run_collection(
     canvas_count = 0
     try:
         catalog = build_resilient_catalog(config, client)
-        try:
-            explore_collections = collect_spotify_explore_collections(
-                spotify,
-                youtube_music,
-            )
-        except (EditorialSourceError, OSError, RuntimeError, ValueError) as error:
-            LOGGER.warning(
-                "Spotify-first Explore collection skipped; runtime YouTube Music fallback remains active: %s",
-                type(error).__name__,
-            )
-            explore_collections = []
+        explore_config = config.get("exploreDiscovery")
+        explore_enabled = (
+            isinstance(explore_config, Mapping)
+            and explore_config.get("enabled") is True
+        )
+        explore_collections: list[Collection] = []
+        if explore_enabled:
+            track_limit = int(explore_config.get("trackLimit") or 16)
+            try:
+                explore_collections = collect_spotify_explore_collections(
+                    spotify,
+                    youtube_music,
+                    track_limit=track_limit,
+                )
+            except (EditorialSourceError, OSError, RuntimeError, ValueError) as error:
+                LOGGER.warning(
+                    "Spotify-first Explore collection skipped; runtime YouTube Music fallback remains active: %s",
+                    type(error).__name__,
+                )
         if explore_collections:
             catalog = Catalog(
                 schema_version=catalog.schema_version,
