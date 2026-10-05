@@ -567,7 +567,7 @@ class CommunityCanvasProviderTest {
         val weakCandidate = MotionArtworkCandidate(
             provider = CommunityCanvasProvider.PROVIDER_ID,
             scope = MotionArtworkScope.TRACK,
-            identity = identity.copy(title = "Love Me"),
+            identity = identity.copy(title = "Love Me", durationMs = 0L),
             url = "https://canvaz.scdn.co/upload/video/weak.mp4",
             mimeType = "video/mp4",
             expiresAtMs = Long.MAX_VALUE
