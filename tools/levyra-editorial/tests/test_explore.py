@@ -125,7 +125,6 @@ def test_spotify_explore_collection_is_sanitized_and_keyed_by_youtube_params(
 
 
 def test_catalog_validation_accepts_opaque_explore_params_and_rejects_bad_values() -> None:
-    collection = collect_spotify_explore_collections
     payload = {
         "schemaVersion": 1,
         "generatedAt": "2026-10-05T08:00:00Z",
