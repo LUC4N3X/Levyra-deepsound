@@ -24,8 +24,6 @@ jobs:
       YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
       LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
       LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
-      LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
-      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
       LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
       LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
       LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
@@ -45,6 +43,9 @@ jobs:
 
       - name: Build Spotify Explore Preview Catalog
         shell: bash
+        env:
+          LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+          LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
         run: |
           set -euo pipefail
           test -n "${LEVYRA_EDITORIAL_SP_DC:-}"
