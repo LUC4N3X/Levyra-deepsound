@@ -215,27 +215,22 @@ internal fun RowScope.MoodGenreCard(
     )
 }
 
+private data class MoodGenrePortraitState(
+    val url: String,
+    val onArtworkError: (String) -> Unit
+)
+
 @Composable
-internal fun MoodGenreCard(
+private fun rememberMoodGenrePortraitState(
     id: String,
-    title: String,
     portraitKey: String,
-    accentStart: Int,
-    accentEnd: Int,
-    emoji: String = "",
-    externalArtworkUrl: String = "",
-    isSelected: Boolean = false,
-    compact: Boolean = false,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    onStartMix: (() -> Unit)? = null
-) {
-    val strings = LocalLevyraStrings.current
+    languageCode: String
+): MoodGenrePortraitState {
     val context = LocalContext.current
     val artworkRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
     val rotationBucket = remember(id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
-    val portraitCandidates = remember(portraitKey, strings.code, rotationBucket) {
-        exploreMoodPortraitCandidates(portraitKey, strings.code, rotationBucket)
+    val portraitCandidates = remember(portraitKey, languageCode, rotationBucket) {
+        exploreMoodPortraitCandidates(portraitKey, languageCode, rotationBucket)
     }
     val portraitLookupLimit = remember(portraitKey, portraitCandidates.size) {
         exploreMoodPortraitLookupLimit(portraitKey, portraitCandidates.size)
@@ -262,7 +257,39 @@ internal fun MoodGenreCard(
         }
     }
 
-    val effectiveArtworkUrl = portraitUrl.ifBlank { externalArtworkUrl }
+    return MoodGenrePortraitState(
+        url = portraitUrl,
+        onArtworkError = { failedUrl ->
+            if (portraitUrl == failedUrl) {
+                if (failedUrl == hardFallbackPortraitUrl) {
+                    portraitUrl = ""
+                } else {
+                    portraitUrl = hardFallbackPortraitUrl
+                    portraitCandidateIndex = (portraitCandidateIndex + 1).coerceAtMost(portraitLookupLimit)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+internal fun MoodGenreCard(
+    id: String,
+    title: String,
+    portraitKey: String,
+    accentStart: Int,
+    accentEnd: Int,
+    emoji: String = "",
+    externalArtworkUrl: String = "",
+    isSelected: Boolean = false,
+    compact: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    onStartMix: (() -> Unit)? = null
+) {
+    val strings = LocalLevyraStrings.current
+    val portraitState = rememberMoodGenrePortraitState(id = id, portraitKey = portraitKey, languageCode = strings.code)
+    val effectiveArtworkUrl = portraitState.url.ifBlank { externalArtworkUrl }
     val startColor = Color(accentStart)
     val endColor = Color(accentEnd)
     val cardHeight = if (compact) 104.dp else 110.dp
@@ -276,6 +303,67 @@ internal fun MoodGenreCard(
             )
         )
     }
+    val outlineBrush = rememberMoodGenreOutlineBrush(startColor, endColor, isSelected)
+
+    Box(
+        modifier = modifier
+            .height(cardHeight)
+            .clip(shape)
+            .background(backgroundBrush)
+            .border(BorderStroke(if (isSelected) 1.5.dp else 1.dp, outlineBrush), shape)
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                selected = isSelected
+            }
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Tile,
+                role = Role.Button,
+                onClickLabel = title,
+                onLongClick = onStartMix,
+                onLongClickLabel = onStartMix?.let { strings.mixStartRadio }
+            )
+    ) {
+        MoodGenreCardBody(
+            title = title,
+            emoji = emoji,
+            artworkUrl = effectiveArtworkUrl,
+            startColor = startColor,
+            endColor = endColor,
+            isSelected = isSelected,
+            onArtworkError = portraitState.onArtworkError
+        )
+    }
+}
+
+@Composable
+private fun rememberMoodGenreOutlineBrush(
+    startColor: Color,
+    endColor: Color,
+    isSelected: Boolean
+): Brush = remember(startColor, endColor, isSelected) {
+    val startAlpha = if (isSelected) 0.94f else 0.46f
+    val endAlpha = if (isSelected) 0.70f else 0.26f
+    val whiteAlpha = if (isSelected) 0.18f else 0.08f
+    Brush.linearGradient(
+        listOf(
+            startColor.copy(alpha = startAlpha),
+            endColor.copy(alpha = endAlpha),
+            Color.White.copy(alpha = whiteAlpha)
+        )
+    )
+}
+
+@Composable
+private fun MoodGenreCardBody(
+    title: String,
+    emoji: String,
+    artworkUrl: String,
+    startColor: Color,
+    endColor: Color,
+    isSelected: Boolean,
+    onArtworkError: (String) -> Unit
+) {
     val imageScrim = remember(startColor) {
         Brush.horizontalGradient(
             colorStops = arrayOf(
@@ -296,56 +384,16 @@ internal fun MoodGenreCard(
             )
         )
     }
-    val outlineBrush = remember(startColor, endColor, isSelected) {
-        Brush.linearGradient(
-            listOf(
-                startColor.copy(alpha = if (isSelected) 0.94f else 0.46f),
-                endColor.copy(alpha = if (isSelected) 0.70f else 0.26f),
-                Color.White.copy(alpha = if (isSelected) 0.18f else 0.08f)
-            )
-        )
-    }
     val titleSize = if (title.length >= 18) 15.sp else 16.sp
 
-    Box(
-        modifier = modifier
-            .height(cardHeight)
-            .clip(shape)
-            .background(backgroundBrush)
-            .border(
-                BorderStroke(if (isSelected) 1.5.dp else 1.dp, outlineBrush),
-                shape
-            )
-            .semantics(mergeDescendants = true) {
-                role = Role.Button
-                selected = isSelected
-            }
-            .levyraPressable(
-                onClick = onClick,
-                pressedScale = LevyraPressScale.Tile,
-                role = Role.Button,
-                onClickLabel = title,
-                onLongClick = onStartMix,
-                onLongClickLabel = if (onStartMix != null) strings.mixStartRadio else null
-            )
-    ) {
-        if (effectiveArtworkUrl.isNotBlank()) {
-            val activeArtworkUrl = effectiveArtworkUrl
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (artworkUrl.isNotBlank()) {
             AsyncImage(
-                model = activeArtworkUrl,
+                model = artworkUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
-                onError = {
-                    if (portraitUrl == activeArtworkUrl) {
-                        if (activeArtworkUrl == hardFallbackPortraitUrl) {
-                            portraitUrl = ""
-                        } else {
-                            portraitUrl = hardFallbackPortraitUrl
-                            portraitCandidateIndex = (portraitCandidateIndex + 1).coerceAtMost(portraitLookupLimit)
-                        }
-                    }
-                },
+                onError = { onArtworkError(artworkUrl) },
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()

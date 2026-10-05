@@ -23861,13 +23861,11 @@ private fun ExploreScreen(
     val onPlayFresh: (() -> Unit)? = freshTracks.firstOrNull()?.let { first ->
         { viewModel.playFrom(freshTracks, first) }
     }
-    val onPlaySamples: (() -> Unit)? = if (samples.isNotEmpty()) {
+    val onPlaySamples: (() -> Unit)? = samples.takeIf { it.isNotEmpty() }?.let {
         {
             viewModel.beginSamplesPlayback()
             samplesStartIndex = 0
         }
-    } else {
-        null
     }
 
     val exploreMixAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
@@ -23888,64 +23886,26 @@ private fun ExploreScreen(
                 contentType = { row -> row::class }
             ) { row ->
                 when (row) {
-                    ExploreRow.Shortcuts -> Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ExplorePageHeader(
-                            title = strings.exploreTitle,
-                            subtitle = strings.exploreSubtitle,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                        ExplorePrimaryShortcuts(
-                            availableAnchors = availableAnchors,
-                            onSelect = onShortcut,
-                            onOpenJam = onOpenJam,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                        ExploreLiveRadioEntry(
-                            onClick = { onLiveRadioOpenChange(true) },
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                        LevyraMixLauncherPanel(
-                            familiarity = state.mixFamiliarity,
-                            loading = state.mixLoading,
-                            accent = exploreMixAccent,
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                            onFamiliarityChange = viewModel::setMixFamiliarity,
-                            onStartMix = { kind -> viewModel.startLevyraMix(kind) },
-                            onOpenYourSound = viewModel::openYourSound,
-                            onOpenMixLab = { viewModel.openMixLab() }
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                    }
-                    is ExploreRow.Header -> when (row.anchor) {
-                        ExploreAnchor.Fresh -> ExploreSectionHeader(
-                            title = strings.exploreFresh,
-                            subtitle = strings.exploreNewReleases,
-                            onPlayAll = onPlayFresh
-                        )
-                        ExploreAnchor.Samples -> ExploreSectionHeader(
-                            title = strings.exploreSamples,
-                            subtitle = strings.exploreSamplesSubtitle,
-                            onPlayAll = onPlaySamples
-                        )
-                        ExploreAnchor.Moods -> ExploreSectionHeader(
-                            title = strings.exploreMoodSection,
-                            actionLabel = strings.showAll,
-                            onAction = {
-                                samplesStartIndex = null
-                                exploreDestination = ExploreMoodsDestination
-                            }
-                        )
-                        ExploreAnchor.Genres -> ExploreSectionHeader(
-                            title = strings.genres,
-                            actionLabel = strings.showAll,
-                            onAction = {
-                                samplesStartIndex = null
-                                exploreDestination = ExploreGenresDestination
-                            }
-                        )
-                    }
+                    ExploreRow.Shortcuts -> ExploreShortcutsSection(
+                        strings = strings,
+                        availableAnchors = availableAnchors,
+                        state = state,
+                        exploreMixAccent = exploreMixAccent,
+                        viewModel = viewModel,
+                        onShortcut = onShortcut,
+                        onOpenJam = onOpenJam,
+                        onLiveRadioOpenChange = onLiveRadioOpenChange
+                    )
+                    is ExploreRow.Header -> ExploreHeaderRow(
+                        anchor = row.anchor,
+                        strings = strings,
+                        onPlayFresh = onPlayFresh,
+                        onPlaySamples = onPlaySamples,
+                        onOpenDestination = { destination ->
+                            samplesStartIndex = null
+                            exploreDestination = destination
+                        }
+                    )
                     ExploreRow.FreshLoading -> Box(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
                         contentAlignment = Alignment.Center
@@ -23955,30 +23915,14 @@ private fun ExploreScreen(
                     ExploreRow.FreshEmpty -> Box(modifier = Modifier.padding(horizontal = 24.dp)) {
                         EmptyState(strings.exploreEmpty)
                     }
-                    ExploreRow.FreshCarousel -> LazyRow(
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(freshTracks, key = { track -> "ex-track-${track.id}" }) { track ->
-                            TrackGlassCard(
-                                track = track,
-                                isCurrent = track.id == state.currentTrack?.id,
-                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                isFavorite = track.id in state.favoriteIds,
-                                onClick = { viewModel.playFrom(freshTracks, track) },
-                                onFavorite = { viewModel.toggleFavorite(track) },
-                                onShare = {
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_SUBJECT, track.title)
-                                        putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, strings.shareVia))
-                                },
-                                onAddToPlaylist = { addToPlaylistTarget = track }
-                            )
-                        }
-                    }
+                    ExploreRow.FreshCarousel -> ExploreFreshCarouselRow(
+                        freshTracks = freshTracks,
+                        state = state,
+                        strings = strings,
+                        context = context,
+                        viewModel = viewModel,
+                        onAddToPlaylist = { addToPlaylistTarget = it }
+                    )
                     ExploreRow.Samples -> ExploreSamplesRow(
                         samples = samples.take(ExploreSampleLimit),
                         currentTrackId = state.currentTrack?.id,
@@ -23989,109 +23933,21 @@ private fun ExploreScreen(
                                 .coerceAtLeast(0)
                         }
                     )
-                    is ExploreRow.MoodPair -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ExploreMoodCard(
-                            zone = row.leading,
-                            isSelected = row.leading.id == state.exploreZoneId,
-                            onClick = {
-                                viewModel.selectExploreZone(row.leading)
-                                exploreMoodReturn = null
-                                exploreDestination = exploreMoodDestination(row.leading.id)
-                            },
-                            onStartZoneMix = {
-                                viewModel.startLevyraMix(
-                                    kind = LevyraMixKind.Genre,
-                                    seedQuery = row.leading.query,
-                                    label = row.leading.label
-                                )
-                            }
-                        )
-                        val trailing = row.trailing
-                        if (trailing == null) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        } else {
-                            ExploreMoodCard(
-                                zone = trailing,
-                                isSelected = trailing.id == state.exploreZoneId,
-                                onClick = {
-                                    viewModel.selectExploreZone(trailing)
-                                    exploreMoodReturn = null
-                                    exploreDestination = exploreMoodDestination(trailing.id)
-                                },
-                                onStartZoneMix = {
-                                    viewModel.startLevyraMix(
-                                        kind = LevyraMixKind.Genre,
-                                        seedQuery = trailing.query,
-                                        label = trailing.label
-                                    )
-                                }
-                            )
+                    is ExploreRow.MoodPair -> ExploreLegacyMoodPairRow(
+                        row = row,
+                        selectedZoneId = state.exploreZoneId,
+                        viewModel = viewModel,
+                        onOpenZoneDestination = { zoneId ->
+                            exploreMoodReturn = null
+                            exploreDestination = exploreMoodDestination(zoneId)
                         }
-                    }
-                    is ExploreRow.UnifiedCategoryPair -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        val leading = row.leading
-                        val leadingArtwork = leading.providerCategory?.let { state.exploreCategoryArtwork[it.params] }
-                        LaunchedEffect(leading.id, leading.providerCategory?.params, leadingArtwork) {
-                            val category = leading.providerCategory
-                            if (category != null && leadingArtwork.isNullOrBlank()) {
-                                viewModel.ensureExploreCategoryArtwork(
-                                    category.params,
-                                    leading.kind == ExploreUnifiedKind.Mood
-                                )
-                            }
-                        }
-                        MoodGenreCard(
-                            item = leading,
-                            artworkUrl = leadingArtwork,
-                            isSelected = leading.zone.id == state.exploreZoneId ||
-                                (leading.providerCategory != null && leading.providerCategory.params == state.exploreCategoryParams),
-                            compact = true,
-                            onClick = { openUnifiedItem(leading, null) },
-                            onStartZoneMix = {
-                                viewModel.startLevyraMix(
-                                    kind = LevyraMixKind.Genre,
-                                    seedQuery = leading.query,
-                                    label = leading.title
-                                )
-                            }
-                        )
-                        val trailing = row.trailing
-                        if (trailing == null) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        } else {
-                            val trailingArtwork = trailing.providerCategory?.let { state.exploreCategoryArtwork[it.params] }
-                            LaunchedEffect(trailing.id, trailing.providerCategory?.params, trailingArtwork) {
-                                val category = trailing.providerCategory
-                                if (category != null && trailingArtwork.isNullOrBlank()) {
-                                    viewModel.ensureExploreCategoryArtwork(
-                                        category.params,
-                                        trailing.kind == ExploreUnifiedKind.Mood
-                                    )
-                                }
-                            }
-                            MoodGenreCard(
-                                item = trailing,
-                                artworkUrl = trailingArtwork,
-                                isSelected = trailing.zone.id == state.exploreZoneId ||
-                                    (trailing.providerCategory != null && trailing.providerCategory.params == state.exploreCategoryParams),
-                                compact = true,
-                                onClick = { openUnifiedItem(trailing, null) },
-                                onStartZoneMix = {
-                                    viewModel.startLevyraMix(
-                                        kind = LevyraMixKind.Genre,
-                                        seedQuery = trailing.query,
-                                        label = trailing.title
-                                    )
-                                }
-                            )
-                        }
-                    }
+                    )
+                    is ExploreRow.UnifiedCategoryPair -> ExploreUnifiedCategoryPairRow(
+                        row = row,
+                        state = state,
+                        viewModel = viewModel,
+                        onOpenItem = { item -> openUnifiedItem(item, null) }
+                    )
                 }
             }
         }
@@ -24112,91 +23968,42 @@ private fun ExploreScreen(
             )
         }
 
-        when (exploreDestination) {
-            ExploreNewReleasesDestination -> ExploreNewReleasesDestinationScreen(
-                releases = state.exploreNewReleases,
-                isLoading = state.isNewReleasesLoading,
-                strings = strings,
-                backEnabled = backEnabled,
-                onBack = { exploreDestination = null },
-                onOpenRelease = viewModel::openAlbum
-            )
-            ExploreMoodsDestination -> ExploreCatalogDestinationScreen(
-                title = strings.exploreMoodSection,
-                subtitle = strings.exploreSubtitle,
-                items = unifiedCatalog.fullMoods,
-                categoryArtwork = state.exploreCategoryArtwork,
-                selectedZoneId = state.exploreZoneId,
-                selectedCategoryParams = state.exploreCategoryParams,
-                strings = strings,
-                backEnabled = backEnabled,
-                onBack = { exploreDestination = null },
-                onOpenItem = { item -> openUnifiedItem(item, ExploreMoodsDestination) },
-                onStartItemMix = { item ->
-                    viewModel.startLevyraMix(
-                        kind = LevyraMixKind.Genre,
-                        seedQuery = item.query,
-                        label = item.title
-                    )
-                },
-                onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
-            )
-            ExploreGenresDestination -> ExploreCatalogDestinationScreen(
-                title = strings.genres,
-                subtitle = strings.exploreSubtitle,
-                items = unifiedCatalog.fullGenres,
-                categoryArtwork = state.exploreCategoryArtwork,
-                selectedZoneId = state.exploreZoneId,
-                selectedCategoryParams = state.exploreCategoryParams,
-                strings = strings,
-                backEnabled = backEnabled,
-                onBack = { exploreDestination = null },
-                onOpenItem = { item -> openUnifiedItem(item, ExploreGenresDestination) },
-                onStartItemMix = { item ->
-                    viewModel.startLevyraMix(
-                        kind = LevyraMixKind.Genre,
-                        seedQuery = item.query,
-                        label = item.title
-                    )
-                },
-                onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
-            )
-            else -> ExploreMoodCollectionDestination(
-                destination = exploreDestination,
-                returnDestination = exploreMoodReturn,
-                catalog = unifiedCatalog,
-                zones = zones,
-                state = state,
-                strings = strings,
-                viewModel = viewModel,
-                backEnabled = backEnabled,
-                onDestinationChange = { exploreDestination = it }
-            )
-        }
+        ExploreDestinationOverlay(
+            exploreDestination = exploreDestination,
+            exploreMoodReturn = exploreMoodReturn,
+            unifiedCatalog = unifiedCatalog,
+            zones = zones,
+            state = state,
+            strings = strings,
+            viewModel = viewModel,
+            backEnabled = backEnabled,
+            onOpenUnifiedItem = openUnifiedItem,
+            onDestinationChange = { exploreDestination = it }
+        )
 
         samplesStartIndex?.let { initialPage ->
-                ExploreSamplesScreen(
-                    samples = samples,
-                    initialPage = initialPage,
-                    currentTrack = state.currentTrack,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    isVideoMode = state.isVideoMode,
-                    isLoading = state.isSamplesLoading,
-                    loadFailed = state.samplesLoadFailed,
-                    favoriteIds = state.favoriteIds,
-                    strings = strings,
-                    backEnabled = backEnabled,
-                    onPlaySample = viewModel::playSample,
-                    onTogglePlay = viewModel::togglePlay,
-                    onToggleFavorite = viewModel::toggleFavorite,
-                    onRequestFeed = viewModel::refreshSamples,
-                    onDismiss = {
-                        viewModel.endSamplesPlayback()
-                        samplesStartIndex = null
-                    }
-                )
-            }
+            ExploreSamplesScreen(
+                samples = samples,
+                initialPage = initialPage,
+                currentTrack = state.currentTrack,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                isVideoMode = state.isVideoMode,
+                isLoading = state.isSamplesLoading,
+                loadFailed = state.samplesLoadFailed,
+                favoriteIds = state.favoriteIds,
+                strings = strings,
+                backEnabled = backEnabled,
+                onPlaySample = viewModel::playSample,
+                onTogglePlay = viewModel::togglePlay,
+                onToggleFavorite = viewModel::toggleFavorite,
+                onRequestFeed = viewModel::refreshSamples,
+                onDismiss = {
+                    viewModel.endSamplesPlayback()
+                    samplesStartIndex = null
+                }
+            )
+        }
 
         if (liveRadioOpen) {
             LiveRadioScreen(
@@ -24211,6 +24018,306 @@ private fun ExploreScreen(
                 onPlay = viewModel::playLiveRadio
             )
         }
+    }
+}
+
+@Composable
+private fun ExploreShortcutsSection(
+    strings: LevyraStrings,
+    availableAnchors: Set<ExploreAnchor>,
+    state: LevyraUiState,
+    exploreMixAccent: Color,
+    viewModel: ExploreViewModel,
+    onShortcut: (ExploreShortcut) -> Unit,
+    onOpenJam: () -> Unit,
+    onLiveRadioOpenChange: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        ExplorePageHeader(
+            title = strings.exploreTitle,
+            subtitle = strings.exploreSubtitle,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        ExplorePrimaryShortcuts(
+            availableAnchors = availableAnchors,
+            onSelect = onShortcut,
+            onOpenJam = onOpenJam,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        ExploreLiveRadioEntry(
+            onClick = { onLiveRadioOpenChange(true) },
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        LevyraMixLauncherPanel(
+            familiarity = state.mixFamiliarity,
+            loading = state.mixLoading,
+            accent = exploreMixAccent,
+            modifier = Modifier.padding(horizontal = 24.dp),
+            onFamiliarityChange = viewModel::setMixFamiliarity,
+            onStartMix = { kind -> viewModel.startLevyraMix(kind) },
+            onOpenYourSound = viewModel::openYourSound,
+            onOpenMixLab = { viewModel.openMixLab() }
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun ExploreFreshCarouselRow(
+    freshTracks: List<Track>,
+    state: LevyraUiState,
+    strings: LevyraStrings,
+    context: Context,
+    viewModel: ExploreViewModel,
+    onAddToPlaylist: (Track) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(freshTracks, key = { track -> "ex-track-${track.id}" }) { track ->
+            val isCurrent = track.id == state.currentTrack?.id
+            TrackGlassCard(
+                track = track,
+                isCurrent = isCurrent,
+                isPlaying = state.isPlaying && isCurrent,
+                isFavorite = track.id in state.favoriteIds,
+                onClick = { viewModel.playFrom(freshTracks, track) },
+                onFavorite = { viewModel.toggleFavorite(track) },
+                onShare = {
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, track.title)
+                        putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
+                    }
+                    context.startActivity(Intent.createChooser(intent, strings.shareVia))
+                },
+                onAddToPlaylist = { onAddToPlaylist(track) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExploreHeaderRow(
+    anchor: ExploreAnchor,
+    strings: LevyraStrings,
+    onPlayFresh: (() -> Unit)?,
+    onPlaySamples: (() -> Unit)?,
+    onOpenDestination: (String) -> Unit
+) {
+    when (anchor) {
+        ExploreAnchor.Fresh -> ExploreSectionHeader(
+            title = strings.exploreFresh,
+            subtitle = strings.exploreNewReleases,
+            onPlayAll = onPlayFresh
+        )
+        ExploreAnchor.Samples -> ExploreSectionHeader(
+            title = strings.exploreSamples,
+            subtitle = strings.exploreSamplesSubtitle,
+            onPlayAll = onPlaySamples
+        )
+        ExploreAnchor.Moods -> ExploreSectionHeader(
+            title = strings.exploreMoodSection,
+            actionLabel = strings.showAll,
+            onAction = { onOpenDestination(ExploreMoodsDestination) }
+        )
+        ExploreAnchor.Genres -> ExploreSectionHeader(
+            title = strings.genres,
+            actionLabel = strings.showAll,
+            onAction = { onOpenDestination(ExploreGenresDestination) }
+        )
+    }
+}
+
+@Composable
+private fun ExploreLegacyMoodPairRow(
+    row: ExploreRow.MoodPair,
+    selectedZoneId: String?,
+    viewModel: ExploreViewModel,
+    onOpenZoneDestination: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        ExploreMoodCard(
+            zone = row.leading,
+            isSelected = row.leading.id == selectedZoneId,
+            onClick = {
+                viewModel.selectExploreZone(row.leading)
+                onOpenZoneDestination(row.leading.id)
+            },
+            onStartZoneMix = {
+                viewModel.startLevyraMix(
+                    kind = LevyraMixKind.Genre,
+                    seedQuery = row.leading.query,
+                    label = row.leading.label
+                )
+            }
+        )
+        val trailing = row.trailing
+        if (trailing == null) {
+            Spacer(modifier = Modifier.weight(1f))
+        } else {
+            ExploreMoodCard(
+                zone = trailing,
+                isSelected = trailing.id == selectedZoneId,
+                onClick = {
+                    viewModel.selectExploreZone(trailing)
+                    onOpenZoneDestination(trailing.id)
+                },
+                onStartZoneMix = {
+                    viewModel.startLevyraMix(
+                        kind = LevyraMixKind.Genre,
+                        seedQuery = trailing.query,
+                        label = trailing.label
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExploreUnifiedCategoryPairRow(
+    row: ExploreRow.UnifiedCategoryPair,
+    state: LevyraUiState,
+    viewModel: ExploreViewModel,
+    onOpenItem: (ExploreUnifiedItem) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        ExploreUnifiedCategorySlot(
+            item = row.leading,
+            state = state,
+            viewModel = viewModel,
+            onOpenItem = onOpenItem
+        )
+        val trailing = row.trailing
+        if (trailing == null) {
+            Spacer(modifier = Modifier.weight(1f))
+        } else {
+            ExploreUnifiedCategorySlot(
+                item = trailing,
+                state = state,
+                viewModel = viewModel,
+                onOpenItem = onOpenItem
+            )
+        }
+    }
+}
+
+@Composable
+private fun RowScope.ExploreUnifiedCategorySlot(
+    item: ExploreUnifiedItem,
+    state: LevyraUiState,
+    viewModel: ExploreViewModel,
+    onOpenItem: (ExploreUnifiedItem) -> Unit
+) {
+    val providerParams = item.providerCategory?.params.orEmpty()
+    val artworkUrl = if (providerParams.isNotBlank()) state.exploreCategoryArtwork[providerParams] else null
+    LaunchedEffect(item.id, providerParams, artworkUrl) {
+        if (providerParams.isNotBlank() && artworkUrl.isNullOrBlank()) {
+            viewModel.ensureExploreCategoryArtwork(
+                providerParams,
+                item.kind == ExploreUnifiedKind.Mood
+            )
+        }
+    }
+    val isSelected = item.zone.id == state.exploreZoneId ||
+        (providerParams.isNotBlank() && providerParams == state.exploreCategoryParams)
+    MoodGenreCard(
+        item = item,
+        artworkUrl = artworkUrl,
+        isSelected = isSelected,
+        compact = true,
+        onClick = { onOpenItem(item) },
+        onStartZoneMix = {
+            viewModel.startLevyraMix(
+                kind = LevyraMixKind.Genre,
+                seedQuery = item.query,
+                label = item.title
+            )
+        }
+    )
+}
+
+@Composable
+private fun ExploreDestinationOverlay(
+    exploreDestination: String?,
+    exploreMoodReturn: String?,
+    unifiedCatalog: ExploreUnifiedCatalog,
+    zones: List<ExploreZone>,
+    state: LevyraUiState,
+    strings: LevyraStrings,
+    viewModel: ExploreViewModel,
+    backEnabled: Boolean,
+    onOpenUnifiedItem: (ExploreUnifiedItem, String?) -> Unit,
+    onDestinationChange: (String?) -> Unit
+) {
+    when (exploreDestination) {
+        ExploreNewReleasesDestination -> ExploreNewReleasesDestinationScreen(
+            releases = state.exploreNewReleases,
+            isLoading = state.isNewReleasesLoading,
+            strings = strings,
+            backEnabled = backEnabled,
+            onBack = { onDestinationChange(null) },
+            onOpenRelease = viewModel::openAlbum
+        )
+        ExploreMoodsDestination -> ExploreCatalogDestinationScreen(
+            title = strings.exploreMoodSection,
+            subtitle = strings.exploreSubtitle,
+            items = unifiedCatalog.fullMoods,
+            categoryArtwork = state.exploreCategoryArtwork,
+            selectedZoneId = state.exploreZoneId,
+            selectedCategoryParams = state.exploreCategoryParams,
+            strings = strings,
+            backEnabled = backEnabled,
+            onBack = { onDestinationChange(null) },
+            onOpenItem = { item -> onOpenUnifiedItem(item, ExploreMoodsDestination) },
+            onStartItemMix = { item ->
+                viewModel.startLevyraMix(
+                    kind = LevyraMixKind.Genre,
+                    seedQuery = item.query,
+                    label = item.title
+                )
+            },
+            onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
+        )
+        ExploreGenresDestination -> ExploreCatalogDestinationScreen(
+            title = strings.genres,
+            subtitle = strings.exploreSubtitle,
+            items = unifiedCatalog.fullGenres,
+            categoryArtwork = state.exploreCategoryArtwork,
+            selectedZoneId = state.exploreZoneId,
+            selectedCategoryParams = state.exploreCategoryParams,
+            strings = strings,
+            backEnabled = backEnabled,
+            onBack = { onDestinationChange(null) },
+            onOpenItem = { item -> onOpenUnifiedItem(item, ExploreGenresDestination) },
+            onStartItemMix = { item ->
+                viewModel.startLevyraMix(
+                    kind = LevyraMixKind.Genre,
+                    seedQuery = item.query,
+                    label = item.title
+                )
+            },
+            onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
+        )
+        else -> ExploreMoodCollectionDestination(
+            destination = exploreDestination,
+            returnDestination = exploreMoodReturn,
+            catalog = unifiedCatalog,
+            zones = zones,
+            state = state,
+            strings = strings,
+            viewModel = viewModel,
+            backEnabled = backEnabled,
+            onDestinationChange = onDestinationChange
+        )
     }
 }
 
