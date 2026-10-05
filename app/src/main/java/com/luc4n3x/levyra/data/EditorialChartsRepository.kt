@@ -258,7 +258,6 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         private const val HTTP_CACHE_DIRECTORY = "levyra_editorial_http"
         private const val HTTP_CACHE_BYTES = 4L * 1024L * 1024L
         private const val REFRESH_RETRY_TTL_MS = 5L * 60L * 1000L
-        private val PUBLISHED_YOUTUBE_BROWSE_PARAMS = Regex("[A-Za-z0-9_./=+\\-]+")
         private const val MAX_CATALOG_BYTES = 4 * 1024 * 1024
         private const val CATALOG_URL =
             "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json"
@@ -315,6 +314,8 @@ internal data class CatalogSnapshot(
 }
 
 internal object EditorialCatalogParser {
+    private val PUBLISHED_YOUTUBE_BROWSE_PARAMS = Regex("[A-Za-z0-9_./=+\\-]+")
+
     fun parse(body: String, loadedAt: Long): CatalogSnapshot? {
         val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
         if (root.optInt("schemaVersion", -1) != SUPPORTED_SCHEMA_VERSION) return null
