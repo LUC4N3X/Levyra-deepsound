@@ -1773,6 +1773,42 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         .replace(Regex("\\s+"), " ")
         .trim()
 
+    private fun moodCategoryTrackKey(track: Track): String =
+        LevyraPersonalOrbit.identityKey(track).ifBlank { "id:${track.id}" }
+
+    private fun isSyntheticYoutubeArtwork(track: Track): Boolean {
+        val videoId = track.id.trim()
+        if (videoId.isBlank()) return false
+        val marker = "i.ytimg.com/vi/$videoId/"
+        return track.thumbnailUrl.contains(marker, ignoreCase = true) ||
+            track.largeThumbnailUrl.contains(marker, ignoreCase = true)
+    }
+
+    private fun sanitizeMoodAudioArtwork(track: Track): Track {
+        if (isMusicVideoResult(track.videoType) || !isSyntheticYoutubeArtwork(track)) return track
+        return track.copy(thumbnailUrl = "", largeThumbnailUrl = "")
+    }
+
+    internal fun stabilizeMoodCategoryTracks(
+        tracks: List<Track>,
+        limit: Int
+    ): List<Track> {
+        if (tracks.isEmpty() || limit <= 0) return emptyList()
+        val selected = LinkedHashMap<String, Track>()
+        tracks.forEach { candidate ->
+            val key = moodCategoryTrackKey(candidate)
+            val current = selected[key]
+            val candidateIsAudio = !isMusicVideoResult(candidate.videoType)
+            val currentIsAudio = current?.let { !isMusicVideoResult(it.videoType) } == true
+            if (current == null || (candidateIsAudio && !currentIsAudio)) {
+                selected[key] = candidate
+            }
+        }
+        val stabilized = selected.values.map(::sanitizeMoodAudioArtwork)
+        val audio = stabilized.filterNot { track -> isMusicVideoResult(track.videoType) }
+        return if (audio.size >= limit) audio.take(limit) else stabilized.take(limit)
+    }
+
     private suspend fun loadMoodCategoryTracks(
         params: String,
         languageCode: String,
@@ -1785,7 +1821,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         } catch (_: Throwable) {
             emptyList()
         }
-        return coroutineScope {
+        val providerTracks = coroutineScope {
             shelves.take(4).map { shelf ->
                 async {
                     val playlistId = shelf.playlistId.ifBlank { shelf.browseId.removePrefix("VL") }
@@ -1802,7 +1838,8 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                     }
                 }
             }.map { request -> request.await() }.flatten()
-        }.distinctBy { track -> track.id }.take(limit)
+        }.distinctBy { track -> track.id }
+        return stabilizeMoodCategoryTracks(providerTracks, limit)
     }
 
     private fun parseMoodCategories(root: JSONObject): List<ExploreCategory> {
