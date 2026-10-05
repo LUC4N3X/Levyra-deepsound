@@ -419,34 +419,36 @@ class OnDemandCanvasResolverTest {
     }
 
     @Test
-    fun authorizationFailureIsTransientAndDoesNotPopulateNegativeCache() {
+    fun nonNotFoundHttpFailuresAreTransientAndDoNotPopulateNegativeCache() {
         runBlocking {
-            val requestCount = AtomicInteger(0)
-            val client = clientWithHandler { request ->
-                if (requestCount.incrementAndGet() == 1) {
-                    jsonResponse(request, 403, """{"error":"forbidden"}""")
-                } else {
-                    jsonResponse(
-                        request,
-                        200,
-                        """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/recovered.mp4"}"""
-                    )
+            for (status in listOf(400, 401, 403, 429, 503)) {
+                val requestCount = AtomicInteger(0)
+                val client = clientWithHandler { request ->
+                    if (requestCount.incrementAndGet() == 1) {
+                        jsonResponse(request, status, """{"error":"temporary"}""")
+                    } else {
+                        jsonResponse(
+                            request,
+                            200,
+                            """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/recovered_${status}.mp4"}"""
+                        )
+                    }
                 }
+
+                val resolver = OnDemandCanvasResolver(
+                    client = client,
+                    resolverUrl = fakeResolverUrl,
+                    clientKey = fakeClientKey,
+                    networkPolicyCheck = { true }
+                )
+
+                val first = resolver.resolveResult(testIdentity())
+                assertTrue("HTTP $status should remain transient", first is OnDemandCanvasResolution.Failed)
+
+                val second = resolver.resolveResult(testIdentity())
+                assertTrue("HTTP $status must not poison the negative cache", second is OnDemandCanvasResolution.Found)
+                assertEquals(2, requestCount.get())
             }
-
-            val resolver = OnDemandCanvasResolver(
-                client = client,
-                resolverUrl = fakeResolverUrl,
-                clientKey = fakeClientKey,
-                networkPolicyCheck = { true }
-            )
-
-            val first = resolver.resolveResult(testIdentity())
-            assertTrue(first is OnDemandCanvasResolution.Failed)
-
-            val second = resolver.resolveResult(testIdentity())
-            assertTrue(second is OnDemandCanvasResolution.Found)
-            assertEquals(2, requestCount.get())
         }
     }
 
