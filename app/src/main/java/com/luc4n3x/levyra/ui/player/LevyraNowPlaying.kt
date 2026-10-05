@@ -66,6 +66,7 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
@@ -119,6 +120,7 @@ import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraLayoutMode
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
+import com.luc4n3x.levyra.ui.MotionBackdropPalette
 import com.luc4n3x.levyra.ui.artwork.ArtworkPreviewOverlay
 import com.luc4n3x.levyra.ui.artwork.livingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
@@ -220,6 +222,9 @@ fun LevyraNowPlaying(
         fallback = fallbackPalette
     )
     val motionEnabled = animated && !state.isVideoMode && !motionSuspended
+    var canvasBackdropPalette by remember(track?.id, state.isVideoMode) {
+        mutableStateOf<MotionBackdropPalette?>(null)
+    }
     val rawPrimaryTarget = Color(activePalette.start)
     val rawSecondaryTarget = Color(activePalette.end)
     val harmonizedTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
@@ -244,9 +249,6 @@ fun LevyraNowPlaying(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-hero-tone"
     )
-    val ambience = remember(primaryTarget, secondaryTarget) {
-        playerAmbienceOf(primaryTarget, secondaryTarget)
-    }
     val livingArtwork = remember(primaryTarget, secondaryTarget) {
         livingArtworkColors(primaryTarget, secondaryTarget)
     }
@@ -339,6 +341,48 @@ fun LevyraNowPlaying(
             hasTrack = track != null
         )
         val deckMode = if (liveRadio) PlayerVisualMode.Artwork else resolvePlayerDeckVisualMode(visualMode, deckLayout)
+        val motionBackdropVisible = deckMode.usesMotionCard() || deckMode.showsCinematicStage()
+        LaunchedEffect(
+            motionEnabled,
+            motionBackdropVisible,
+            backgroundMode,
+            state.motionArtwork?.identityKey
+        ) {
+            val activeIdentity = state.motionArtwork?.identityKey
+            if (
+                !canvasBackdropPaletteMatches(
+                    palette = canvasBackdropPalette,
+                    motionEnabled = motionEnabled,
+                    motionBackdropVisible = motionBackdropVisible,
+                    backgroundMode = backgroundMode,
+                    activeIdentity = activeIdentity
+                )
+            ) {
+                canvasBackdropPalette = null
+            }
+        }
+        val canvasBackdropTargets = canvasBackdropPalette
+            ?.takeIf { palette ->
+                canvasBackdropPaletteMatches(
+                    palette = palette,
+                    motionEnabled = motionEnabled,
+                    motionBackdropVisible = motionBackdropVisible,
+                    backgroundMode = backgroundMode,
+                    activeIdentity = state.motionArtwork?.identityKey
+                )
+            }
+            ?.let { palette -> harmonizePlayerAccents(palette.primary, palette.secondary) }
+        val backdropPrimaryTarget = canvasBackdropTargets?.primary ?: primaryTarget
+        val backdropSecondaryTarget = canvasBackdropTargets?.secondary ?: secondaryTarget
+        val backdropAmbience = remember(backdropPrimaryTarget, backdropSecondaryTarget) {
+            playerAmbienceOf(backdropPrimaryTarget, backdropSecondaryTarget)
+        }
+        val acceptDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = { palette ->
+            val activeIdentity = state.motionArtwork?.identityKey
+            if (palette == null || (activeIdentity != null && palette.identityKey == activeIdentity)) {
+                canvasBackdropPalette = palette
+            }
+        }
         val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 380.dp || maxHeight < 720.dp)
         val fitsViewport = maxHeight >= MinimumFittedPlayerHeight || playerPane == LevyraPlayerPane.SideBySide
         val gutter = if (state.isVideoMode) {
@@ -398,7 +442,7 @@ fun LevyraNowPlaying(
             artworkUrl = artworkUrl,
             motionArtwork = state.motionArtwork,
             livingArtwork = livingArtwork,
-            ambience = ambience,
+            ambience = backdropAmbience,
             animationsEnabled = animated,
             motionEnabled = motionEnabled,
             isPlaying = state.isPlaying,
@@ -409,7 +453,8 @@ fun LevyraNowPlaying(
             cinematicGeometry = cinematicGeometry,
             isVideoMode = state.isVideoMode,
             backdropFocus = backdropFocus,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            onDynamicBackdropPalette = acceptDynamicBackdropPalette
         )
 
         val headerButtonFill = surfaces.controlQuiet
@@ -672,7 +717,15 @@ fun LevyraNowPlaying(
                         glowColor = if (deckLayout == PlayerDeckLayout.Editorial) Color.Transparent else primary,
                         modifier = Modifier
                             .fillMaxSize()
-                            .playerLyricsFlipFace(lyricsFlip, back = false, depth = lyricsFlipDepth, rightToLeft = rightToLeft)
+                            .playerLyricsFlipFace(
+                                state = lyricsFlip,
+                                back = false,
+                                depth = lyricsFlipDepth,
+                                rightToLeft = rightToLeft
+                            ),
+                        dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
+                            deckMode.usesMotionCard(),
+                        onDynamicBackdropPalette = acceptDynamicBackdropPalette
                     )
                     if (lyricsFlipAvailable && lyricsFlip.lyricsComposed) {
                         PlayerLyricsCard(
@@ -1284,6 +1337,11 @@ fun LevyraNowPlaying(
                     showActions = false
                     showTechnicalAudioInfo = true
                 },
+                onRefreshMotionArtwork = {
+                    showActions = false
+                    viewModel.refreshCurrentMotionArtwork()
+                    hapticFeedback.perform(LevyraHapticAction.Confirm)
+                },
                 onAmbient = viewModel::openAmbient,
                 onOpenArtist = { viewModel.openArtist(track) }
             )
@@ -1526,6 +1584,26 @@ private fun playerDockActions(
     }
 }
 
+private fun canvasBackdropPaletteMatches(
+    palette: MotionBackdropPalette?,
+    motionEnabled: Boolean,
+    motionBackdropVisible: Boolean,
+    backgroundMode: PlayerBackgroundMode,
+    activeIdentity: String?
+): Boolean {
+    val presentationActive = motionEnabled && motionBackdropVisible
+    val dynamicBackground = backgroundMode == PlayerBackgroundMode.Dynamic
+    val identityMatches = activeIdentity != null && palette?.identityKey == activeIdentity
+    return presentationActive && dynamicBackground && identityMatches
+}
+
+private fun Track.isLocalMotionArtworkTrack(): Boolean {
+    if (source.equals("Offline", ignoreCase = true)) return true
+    val cleanStreamUrl = streamUrl.trim()
+    return cleanStreamUrl.startsWith("content://", ignoreCase = true) ||
+        cleanStreamUrl.startsWith("file://", ignoreCase = true)
+}
+
 private fun playerSheetActions(
     track: Track,
     state: LevyraUiState,
@@ -1539,6 +1617,7 @@ private fun playerSheetActions(
     onAudioOutput: () -> Unit,
     onAudioSettings: () -> Unit,
     onTechnicalAudioInfo: () -> Unit,
+    onRefreshMotionArtwork: () -> Unit,
     onAmbient: () -> Unit,
     onOpenArtist: () -> Unit
 ): List<PlayerSheetAction> {
@@ -1588,6 +1667,22 @@ private fun playerSheetActions(
         label = strings.ambientMode,
         onClick = onAmbient
     )
+    val refreshMotionArtworkAction = if (
+        state.animationsEnabled &&
+        state.motionArtworkEnabled &&
+        !state.isVideoMode &&
+        !track.isLocalMotionArtworkTrack()
+    ) {
+        PlayerSheetAction(
+            key = "refresh-motion-artwork",
+            icon = Icons.Rounded.Refresh,
+            label = strings.motionArtwork,
+            value = strings.exploreSamplesRetry,
+            onClick = onRefreshMotionArtwork
+        )
+    } else {
+        null
+    }
     if (track.isLiveRadio()) {
         return listOfNotNull(
             sleepAction,
@@ -1641,6 +1736,7 @@ private fun playerSheetActions(
         audioOutputAction,
         audioAction,
         technicalAudioAction,
+        refreshMotionArtworkAction,
         ambientAction,
         PlayerSheetAction(
             key = "artist",

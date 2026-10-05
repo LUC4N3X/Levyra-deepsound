@@ -78,6 +78,10 @@ class MotionArtworkRepository(
         dao.prune(MAX_CACHE_ENTRIES)
     }
 
+    suspend fun invalidate(identityKey: String) {
+        if (identityKey.isNotBlank()) dao.delete(identityKey)
+    }
+
     suspend fun cleanup(configEpoch: Long) {
         dao.deleteExpiredOrObsolete(clock(), configEpoch)
         dao.prune(MAX_CACHE_ENTRIES)

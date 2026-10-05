@@ -154,6 +154,39 @@ class MotionArtworkLayerTest {
     }
 
     @Test
+    fun dynamicBackdropPaletteTracksCanvasFrameBands() {
+        val red = 0xFFFF2020.toInt()
+        val blue = 0xFF2040FF.toInt()
+        val palette = motionBackdropPalette(
+            identityKey = "track-a",
+            pixels = intArrayOf(red, red, blue, blue),
+            width = 2,
+            height = 2
+        )
+
+        assertEquals("track-a", palette?.identityKey)
+        assertTrue((palette?.primary?.red ?: 0f) > (palette?.primary?.blue ?: 1f))
+        assertTrue((palette?.secondary?.blue ?: 0f) > (palette?.secondary?.red ?: 1f))
+    }
+
+    @Test
+    fun dynamicBackdropPaletteRejectsBlankFrames() {
+        assertNull(
+            motionBackdropPalette(
+                identityKey = "track-a",
+                pixels = intArrayOf(
+                    0xFF000000.toInt(),
+                    0x00000000,
+                    0xFF000000.toInt(),
+                    0x00000000
+                ),
+                width = 2,
+                height = 2
+            )
+        )
+    }
+
+    @Test
     fun cinematicZoomDoesNotChangeArtistImmersiveCrop() {
         assertEquals(1.32f, motionArtworkMaxZoom(MotionArtworkPresentation.Immersive), 0f)
         assertEquals(MotionArtworkCinematicMaxZoom, motionArtworkMaxZoom(MotionArtworkPresentation.Cinematic), 0f)

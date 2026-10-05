@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,6 +37,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -78,12 +80,20 @@ internal enum class MotionArtworkPresentation {
     Cinematic
 }
 
+@Immutable
+internal data class MotionBackdropPalette(
+    val identityKey: String,
+    val primary: Color,
+    val secondary: Color
+)
+
 internal fun motionArtworkMaxZoom(presentation: MotionArtworkPresentation): Float = when (presentation) {
     MotionArtworkPresentation.Card -> MotionArtworkCardMaxZoom
     MotionArtworkPresentation.Immersive -> MotionArtworkImmersiveMaxZoom
     MotionArtworkPresentation.Cinematic -> MotionArtworkCinematicMaxZoom
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun MotionArtworkLayer(
     artwork: MotionArtwork?,
@@ -95,6 +105,8 @@ internal fun MotionArtworkLayer(
     quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     pageMode: Boolean = false,
     livingArtwork: LivingArtworkColors? = null,
+    dynamicBackdropEnabled: Boolean = false,
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {},
     staticArtwork: @Composable () -> Unit
 ) {
     val lifecycleActive = rememberMotionArtworkLifecycleActive()
@@ -140,6 +152,16 @@ internal fun MotionArtworkLayer(
     )
     LaunchedEffect(videoArtwork) {
         if (videoArtwork == null) videoReady = false
+    }
+    val currentOnDynamicBackdropPalette by rememberUpdatedState(onDynamicBackdropPalette)
+    val ownsDynamicBackdrop = dynamicBackdropEnabled && videoArtwork != null
+    DisposableEffect(ownsDynamicBackdrop, videoArtwork?.identityKey) {
+        if (!ownsDynamicBackdrop) {
+            return@DisposableEffect onDispose { }
+        }
+        onDispose {
+            currentOnDynamicBackdropPalette(null)
+        }
     }
     val artworkIdentityKey = artwork?.identityKey
     LaunchedEffect(motionGatesOpen, artworkIdentityKey) {
@@ -316,6 +338,8 @@ internal fun MotionArtworkLayer(
                     presentation = presentation,
                     profile = profile,
                     frameSource = frameSource,
+                    dynamicBackdropEnabled = dynamicBackdropEnabled,
+                    onDynamicBackdropPalette = onDynamicBackdropPalette,
                     onFirstFrame = {
                         if (incoming) {
                             videoReady = true
@@ -326,6 +350,7 @@ internal fun MotionArtworkLayer(
                         if (incoming) {
                             videoReady = false
                             videoUnavailable = true
+                            onDynamicBackdropPalette(null)
                             if (bridgeFrame != null) displayedArtwork = null
                         } else if (displayedArtwork?.url == slot.url) {
                             displayedArtwork = null
@@ -371,6 +396,28 @@ internal class MotionVideoFrameSource {
     var fitScaleX: Float = 1f
     var fitScaleY: Float = 1f
 
+    fun sampleBackdropPalette(identityKey: String): MotionBackdropPalette? {
+        val view = textureView
+        val surfaceReady = view != null && frameReady && view.isAvailable
+        val surfaceSized = (view?.width ?: 0) > 1 && (view?.height ?: 0) > 1
+        if (!surfaceReady || !surfaceSized) return null
+        val bitmap = try {
+            view?.getBitmap(DYNAMIC_BACKDROP_SAMPLE_SIZE, DYNAMIC_BACKDROP_SAMPLE_SIZE)
+        } catch (error: IllegalStateException) {
+            Timber.d(error, "Canvas dynamic backdrop frame capture failed")
+            null
+        }
+        return bitmap?.let { frame ->
+            try {
+                val pixels = IntArray(frame.width * frame.height)
+                frame.getPixels(pixels, 0, frame.width, 0, 0, frame.width, frame.height)
+                motionBackdropPalette(identityKey, pixels, frame.width, frame.height)
+            } finally {
+                frame.recycle()
+            }
+        }
+    }
+
     fun capture(): MotionBridgeFrame? {
         val view = textureView ?: return null
         if (!frameReady || !view.isAvailable || view.width <= 1 || view.height <= 1) return null
@@ -381,6 +428,74 @@ internal class MotionVideoFrameSource {
             null
         } ?: return null
         return MotionBridgeFrame(bitmap.asImageBitmap(), fitScaleX, fitScaleY)
+    }
+}
+
+internal fun motionBackdropPalette(
+    identityKey: String,
+    pixels: IntArray,
+    width: Int,
+    height: Int
+): MotionBackdropPalette? {
+    val identityValid = identityKey.isNotBlank()
+    val dimensionsValid = width > 0 && height > 0
+    val pixelBufferValid = dimensionsValid && pixels.size >= width * height
+    if (!identityValid || !dimensionsValid || !pixelBufferValid) return null
+    val top = MotionPaletteAccumulator()
+    val bottom = MotionPaletteAccumulator()
+    val all = MotionPaletteAccumulator()
+    val pixelCount = width * height
+    for (index in 0 until pixelCount) {
+        val pixel = pixels[index]
+        val alpha = (pixel ushr 24) and 0xFF
+        if (alpha < DYNAMIC_BACKDROP_MIN_ALPHA) continue
+        val red = ((pixel ushr 16) and 0xFF) / 255f
+        val green = ((pixel ushr 8) and 0xFF) / 255f
+        val blue = (pixel and 0xFF) / 255f
+        val luminance = 0.2126f * red + 0.7152f * green + 0.0722f * blue
+        if (luminance >= DYNAMIC_BACKDROP_MIN_LUMINANCE) {
+            val chroma = maxOf(red, green, blue) - minOf(red, green, blue)
+            val amount = 0.35f + chroma * 1.6f + luminance * 0.25f
+            all.add(red, green, blue, amount)
+            if (index / width < height / 2) {
+                top.add(red, green, blue, amount)
+            } else {
+                bottom.add(red, green, blue, amount)
+            }
+        }
+    }
+
+    val fallback = all.color()
+    return fallback?.let { base ->
+        MotionBackdropPalette(
+            identityKey = identityKey,
+            primary = top.color() ?: base,
+            secondary = bottom.color() ?: base
+        )
+    }
+}
+
+private class MotionPaletteAccumulator {
+    private var red = 0f
+    private var green = 0f
+    private var blue = 0f
+    private var weight = 0f
+
+    fun add(r: Float, g: Float, b: Float, amount: Float) {
+        red += r * amount
+        green += g * amount
+        blue += b * amount
+        weight += amount
+    }
+
+    fun color(): Color? {
+        if (weight <= 0f) return null
+        return Color(
+            red = (red / weight).coerceIn(0f, 1f),
+            green = (green / weight).coerceIn(0f, 1f),
+            blue = (blue / weight).coerceIn(0f, 1f),
+            alpha = 1f
+        )
     }
 }
 
@@ -610,6 +725,8 @@ private fun MotionArtworkVideo(
     presentation: MotionArtworkPresentation,
     profile: MotionCanvasProfile,
     frameSource: MotionVideoFrameSource,
+    dynamicBackdropEnabled: Boolean,
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit,
     onFirstFrame: () -> Unit,
     onUnavailable: () -> Unit,
     modifier: Modifier
@@ -617,6 +734,7 @@ private fun MotionArtworkVideo(
     val context = LocalContext.current
     val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
     val currentOnUnavailable by rememberUpdatedState(onUnavailable)
+    val currentOnDynamicBackdropPalette by rememberUpdatedState(onDynamicBackdropPalette)
     var firstFrameRendered by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
         mutableStateOf(false)
     }
@@ -725,6 +843,24 @@ private fun MotionArtworkVideo(
         }
     }
 
+    LaunchedEffect(
+        player,
+        artwork.identityKey,
+        dynamicBackdropEnabled,
+        isPlaying,
+        firstFrameRendered,
+        failed
+    ) {
+        if (!dynamicBackdropEnabled || !isPlaying) return@LaunchedEffect
+        if (!firstFrameRendered || failed) return@LaunchedEffect
+        delay(DYNAMIC_BACKDROP_INITIAL_DELAY_MS)
+        while (isActive) {
+            frameSource.sampleBackdropPalette(artwork.identityKey)
+                ?.let(currentOnDynamicBackdropPalette)
+            delay(DYNAMIC_BACKDROP_SAMPLE_INTERVAL_MS)
+        }
+    }
+
     AndroidView(
         factory = { textureView },
         modifier = modifier
@@ -770,3 +906,8 @@ private const val VIDEO_FADE_IN_MS = 620
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
 private const val VIDEO_RETRY_DELAY_MS = 4_000L
 private const val MAX_VIDEO_RETRIES = 1
+private const val DYNAMIC_BACKDROP_SAMPLE_SIZE = 24
+private const val DYNAMIC_BACKDROP_INITIAL_DELAY_MS = 240L
+private const val DYNAMIC_BACKDROP_SAMPLE_INTERVAL_MS = 6_000L
+private const val DYNAMIC_BACKDROP_MIN_ALPHA = 128
+private const val DYNAMIC_BACKDROP_MIN_LUMINANCE = 0.035f
