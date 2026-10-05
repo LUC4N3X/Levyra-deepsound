@@ -855,6 +855,7 @@ private fun ExploreDestinationReleaseRow(
     }
 }
 
+@Suppress("CognitiveComplexMethod")
 @Composable
 internal fun ExploreMoodsDestinationScreen(
     zones: List<ExploreZone>,
