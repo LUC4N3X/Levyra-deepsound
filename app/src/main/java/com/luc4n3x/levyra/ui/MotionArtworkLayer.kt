@@ -93,6 +93,7 @@ internal fun motionArtworkMaxZoom(presentation: MotionArtworkPresentation): Floa
     MotionArtworkPresentation.Cinematic -> MotionArtworkCinematicMaxZoom
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun MotionArtworkLayer(
     artwork: MotionArtwork?,
