@@ -200,6 +200,6 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
         const val BOOTSTRAP_VERSION = 1
         const val DEFAULT_MARKET = "IT"
         const val SUPPORTED_SCHEMA_VERSION = 1
-        const val MAX_CATALOG_BYTES = 2 * 1024 * 1024
+        const val MAX_CATALOG_BYTES = 4 * 1024 * 1024
     }
 }
