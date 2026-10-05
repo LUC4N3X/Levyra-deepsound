@@ -344,7 +344,7 @@ def validate_catalog_dict(payload: Mapping[str, Any]) -> None:
                 not isinstance(youtube_params, str)
                 or not youtube_params
                 or len(youtube_params) > 1024
-                or re.fullmatch(r"[A-Za-z0-9_=+-]+", youtube_params) is None
+                or re.fullmatch(r"[A-Za-z0-9_./=+-]+", youtube_params) is None
             ):
                 raise ValueError(
                     f"Catalog collection '{collection_id}' has invalid YouTube browse params."
