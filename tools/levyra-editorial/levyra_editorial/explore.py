@@ -20,6 +20,7 @@ BROWSE_URL = f"{ORIGIN}/youtubei/v1/browse"
 MOODS_BROWSE_ID = "FEmusic_moods_and_genres"
 DEFAULT_TRACK_LIMIT = 16
 YOUTUBE_MAPPING_LIMIT = 8
+BROWSE_PARAMS_PATTERN = re.compile(r"^[A-Za-z0-9_./=+\-]+$")
 
 
 @dataclass(frozen=True)
@@ -82,7 +83,12 @@ def _parse_navigation_button(
     title = _runs_text(renderer.get("buttonText")) or _runs_text(renderer.get("title"))
     endpoint = _browse_endpoint(renderer)
     params = str(endpoint.get("params") or "") if endpoint else ""
-    if not title or not params or len(params) > 1024:
+    if (
+        not title
+        or not params
+        or len(params) > 1024
+        or BROWSE_PARAMS_PATTERN.fullmatch(params) is None
+    ):
         return None
     return ExploreSeed(
         title=title,
@@ -150,10 +156,10 @@ def discover_youtube_explore_categories(
         response = client.get(HOME_URL, timeout=timeout_seconds)
         response.raise_for_status()
         body = response.text
-        api_key = re.search(r'"INNERTUBE_API_KEY":"([^"\\]+)"', body)
+        innertube_key = re.search(r'"INNERTUBE_API_KEY":"([^"\\]+)"', body)
         version = re.search(r'"INNERTUBE_CLIENT_VERSION":"([^"\\]+)"', body)
         visitor = re.search(r'"VISITOR_DATA":"([^"\\]+)"', body)
-        if api_key is None or version is None:
+        if innertube_key is None or version is None:
             raise RuntimeError("Unable to bootstrap YouTube Music discovery.")
 
         visitor_data = visitor.group(1) if visitor else ""
@@ -181,7 +187,7 @@ def discover_youtube_explore_categories(
             headers["X-Goog-Visitor-Id"] = visitor_data
         browse = client.post(
             BROWSE_URL,
-            params={"key": api_key.group(1), "prettyPrint": "false"},
+            params={"key": innertube_key.group(1), "prettyPrint": "false"},
             headers=headers,
             json=payload,
             timeout=timeout_seconds,
@@ -214,6 +220,16 @@ def _first_image_url(value: Any) -> str | None:
 def _collection_id(seed: ExploreSeed) -> str:
     digest = hashlib.sha256(seed.params.encode("utf-8")).hexdigest()[:16]
     return f"{seed.kind}-{digest}"
+
+
+def _playlist_total_tracks(metadata: Mapping[str, Any], fallback: int) -> int:
+    tracks = metadata.get("tracks")
+    if not isinstance(tracks, Mapping):
+        return fallback
+    total = tracks.get("total")
+    if isinstance(total, bool) or not isinstance(total, int) or total < 0:
+        return fallback
+    return total
 
 
 def collect_spotify_explore_collections(
@@ -261,7 +277,7 @@ def collect_spotify_explore_collections(
                     ),
                     artwork_url=_first_image_url(metadata.get("images")),
                     snapshot_id=str(metadata.get("snapshot_id") or "").strip() or None,
-                    total_source_items=len(raw_items),
+                    total_source_items=_playlist_total_tracks(metadata, len(raw_items)),
                     tracks=tracks,
                     youtube_params=seed.params,
                     section_index=seed.section_index,
