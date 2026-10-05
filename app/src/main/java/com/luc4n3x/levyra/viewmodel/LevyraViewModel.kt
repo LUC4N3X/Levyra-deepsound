@@ -10742,6 +10742,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     val activeTrack = current.currentTrack
                     if (
                         activeTrack != null &&
+                        current.animationsEnabled &&
+                        current.motionArtworkEnabled &&
+                        !current.isVideoMode &&
                         motionArtworkRequestToken.get() == requestToken &&
                         playbackGeneration.isCurrent(ticket) &&
                         MotionArtworkIdentityKey.create(activeTrack) == expectedKey
