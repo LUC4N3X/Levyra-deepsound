@@ -29,6 +29,36 @@ internal data class ExploreGenreEditorial(
 internal fun exploreGenreRotationBucket(nowMs: Long): Long =
     if (nowMs <= 0L) 0L else nowMs / ExploreGenreRotationWindowMs
 
+internal fun refreshExploreGenreEditorialMetadata(
+    editorial: ExploreGenreEditorial,
+    tracks: List<Track>
+): ExploreGenreEditorial {
+    if (tracks.isEmpty()) return editorial
+    val latestById = tracks.associateBy { track -> track.id }
+    fun latest(track: Track): Track = latestById[track.id] ?: track
+    fun latestArtwork(track: Track, fallback: String): String =
+        artworkUrl(track).ifBlank { fallback }
+
+    return ExploreGenreEditorial(
+        featured = editorial.featured.map(::latest),
+        artists = editorial.artists.map { card ->
+            val updated = latest(card.track)
+            card.copy(
+                artworkUrl = latestArtwork(updated, card.artworkUrl),
+                track = updated
+            )
+        },
+        albums = editorial.albums.map { card ->
+            val updated = latest(card.track)
+            card.copy(
+                artworkUrl = latestArtwork(updated, card.artworkUrl),
+                track = updated
+            )
+        },
+        essentials = editorial.essentials.map(::latest)
+    )
+}
+
 internal fun buildExploreGenreEditorial(
     tracks: List<Track>,
     zoneId: String,
