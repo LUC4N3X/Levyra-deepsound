@@ -31,6 +31,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         .build()
     private val tokenProvider = AppleDeveloperTokenProvider.get(context)
 
+    suspend fun warmup() {
+        developerToken()
+    }
+
     suspend fun findArtistMotion(artistName: String): MotionArtworkCandidate? {
         val clean = artistName.trim()
         if (clean.length < 2) return null
@@ -101,6 +105,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             .addQueryParameter("term", artistName)
             .addQueryParameter("types", "artists")
             .addQueryParameter("limit", "5")
+            .addQueryParameter("extend", "editorialVideo,editorialArtwork")
             .build()
         val data = requestJson(url.toString(), token)
             .optJSONObject("results")
@@ -119,7 +124,11 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             val artistId = item.optString("id").trim()
             if (name.isBlank() || artistId.isBlank() || isUnsafeResult(name, "")) continue
             if (!artistMatches(requested, splitArtists(name))) continue
-            compatible += AppleArtistSearchMatch(artistId, name)
+            compatible += AppleArtistSearchMatch(
+                id = artistId,
+                name = name,
+                video = selectAppleArtistEditorialVideo(attributes)
+            )
         }
         Timber.d(
             "Apple artist search storefront=%s artist=%s raw=%d compatible=%d",
@@ -135,6 +144,15 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val candidates = (exact.ifEmpty { compatible }).take(MAX_ARTIST_DETAIL_CANDIDATES)
 
         for (candidate in candidates) {
+            candidate.video?.let { video ->
+                Timber.d(
+                    "Apple artist search motion found storefront=%s appleArtistId=%s name=%s",
+                    storefront,
+                    candidate.id,
+                    candidate.name
+                )
+                return AppleArtistMotionMatch(candidate.id, candidate.name, video)
+            }
             Timber.d(
                 "Apple artist detail check storefront=%s appleArtistId=%s name=%s exact=%b",
                 storefront,
@@ -504,7 +522,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
 
     private data class AppleArtistSearchMatch(
         val id: String,
-        val name: String
+        val name: String,
+        val video: AppleEditorialVideo?
     )
 
     private data class AppleSearchResult(
