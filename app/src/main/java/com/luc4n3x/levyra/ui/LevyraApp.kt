@@ -4892,7 +4892,7 @@ private fun ArtistOverlay(
     ) {
         LazyListState()
     }
-    val heroArtwork = profile?.let { it.bannerUrl.ifBlank { it.thumbnailUrl } }.orEmpty()
+    val heroArtwork = profile?.let { it.thumbnailUrl.ifBlank { it.bannerUrl } }.orEmpty()
     val fallbackPalette = remember(accentStart, accentEnd) {
         ArtworkPalette(accentStart.toArgb(), accentEnd.toArgb())
     }
@@ -5690,7 +5690,7 @@ private fun ArtistHero(
                                 artworkUrl = artworkUrl,
                                 tint = Color(profile.accentStart),
                                 base = scrim,
-                                washFraction = 1f,
+                                washFraction = 0.28f,
                                 modifier = Modifier.matchParentSize()
                             )
                             AsyncImage(
