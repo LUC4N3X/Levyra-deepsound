@@ -7,6 +7,7 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -495,4 +496,102 @@ class CommunityCanvasProviderTest {
             assertTrue("Expected NoMatch result", result is MotionArtworkProviderResult.NoMatch)
         }
     }
+
+    @Test
+    fun transientLocalAndOnDemandFailuresRemainProviderFailures() {
+        runBlocking {
+            val failingLocalClient = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(503)
+                        .message("Unavailable")
+                        .body("{}".toResponseBody(null))
+                        .build()
+                }
+                .build()
+
+            val failingOnDemandClient = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(503)
+                        .message("Unavailable")
+                        .body("{}".toResponseBody(null))
+                        .build()
+                }
+                .build()
+
+            val provider = CommunityCanvasProvider(
+                client = failingLocalClient,
+                onDemandResolver = OnDemandCanvasResolver(
+                    client = failingOnDemandClient,
+                    resolverUrl = "https://canvas.example.invalid/v1/resolve",
+                    clientKey = "test_dummy_key",
+                    networkPolicyCheck = { true }
+                )
+            )
+
+            val result = provider.find(
+                MotionTrackIdentity(
+                    title = "Transient Song",
+                    artists = listOf("Transient Artist"),
+                    album = "Transient Album",
+                    durationMs = 180_000L,
+                    isrc = "USUM71900003",
+                    upc = "",
+                    year = "2021",
+                    trackId = "transient",
+                    albumId = "transient_album"
+                )
+            )
+
+            assertTrue(result is MotionArtworkProviderResult.Failed)
+        }
+    }
+
+    @Test
+    fun weakLocalCandidateRequiresOnDemandBeforeBecomingConclusive() {
+        val identity = MotionTrackIdentity(
+            title = "Love Me Now",
+            artists = listOf("Exact Artist"),
+            album = "Exact Album",
+            durationMs = 180_000L,
+            isrc = "",
+            upc = "",
+            year = "",
+            trackId = "love-me-now",
+            albumId = "exact-album"
+        )
+        val weakCandidate = MotionArtworkCandidate(
+            provider = CommunityCanvasProvider.PROVIDER_ID,
+            scope = MotionArtworkScope.TRACK,
+            identity = identity.copy(title = "Love Me", durationMs = 0L),
+            url = "https://canvaz.scdn.co/upload/video/weak.mp4",
+            mimeType = "video/mp4",
+            expiresAtMs = Long.MAX_VALUE
+        )
+        val exactCandidate = weakCandidate.copy(identity = identity)
+
+        val weakMatch = CanonicalTrackMatcher.match(identity, weakCandidate)
+        assertTrue(weakMatch.accepted)
+        assertTrue(weakMatch.score < DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE)
+        assertTrue(
+            communityCanvasNeedsOnDemand(
+                identity,
+                listOf(weakCandidate),
+                DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
+            )
+        )
+        assertFalse(
+            communityCanvasNeedsOnDemand(
+                identity,
+                listOf(exactCandidate),
+                DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
+            )
+        )
+    }
+
 }
