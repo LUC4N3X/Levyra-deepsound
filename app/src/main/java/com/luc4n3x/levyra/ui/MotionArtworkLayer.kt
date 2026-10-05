@@ -448,14 +448,15 @@ internal fun motionBackdropPalette(
         val green = ((pixel ushr 8) and 0xFF) / 255f
         val blue = (pixel and 0xFF) / 255f
         val luminance = 0.2126f * red + 0.7152f * green + 0.0722f * blue
-        if (luminance < DYNAMIC_BACKDROP_MIN_LUMINANCE) continue
-        val chroma = maxOf(red, green, blue) - minOf(red, green, blue)
-        val amount = 0.35f + chroma * 1.6f + luminance * 0.25f
-        all.add(red, green, blue, amount)
-        if (index / width < height / 2) {
-            top.add(red, green, blue, amount)
-        } else {
-            bottom.add(red, green, blue, amount)
+        if (luminance >= DYNAMIC_BACKDROP_MIN_LUMINANCE) {
+            val chroma = maxOf(red, green, blue) - minOf(red, green, blue)
+            val amount = 0.35f + chroma * 1.6f + luminance * 0.25f
+            all.add(red, green, blue, amount)
+            if (index / width < height / 2) {
+                top.add(red, green, blue, amount)
+            } else {
+                bottom.add(red, green, blue, amount)
+            }
         }
     }
 
