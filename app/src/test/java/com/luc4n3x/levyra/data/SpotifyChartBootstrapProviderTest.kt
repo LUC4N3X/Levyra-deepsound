@@ -28,6 +28,19 @@ class SpotifyChartBootstrapProviderTest {
     }
 
     @Test
+    fun installsExploreCapableBundleOverNewerLegacyCache() {
+        assertTrue(
+            shouldInstallBundledCatalog(
+                cachePresent = true,
+                cachedGeneratedAtMs = 300L,
+                bundledGeneratedAtMs = 200L,
+                cachedHasExplore = false,
+                bundledHasExplore = true
+            )
+        )
+    }
+
+    @Test
     fun keepsNewerCachedCatalogInsteadOfDowngradingToBundledData() {
         assertFalse(
             shouldInstallBundledCatalog(
