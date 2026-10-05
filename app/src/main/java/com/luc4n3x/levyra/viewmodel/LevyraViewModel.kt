@@ -10644,18 +10644,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ) prefetchAround(current)
     }
 
+    private fun canRefreshCurrentMotionArtwork(
+        snapshot: LevyraUiState,
+        current: Track
+    ): Boolean {
+        if (!snapshot.animationsEnabled || !snapshot.motionArtworkEnabled || snapshot.isVideoMode) {
+            return false
+        }
+        return !current.isLiveRadio() && !isLocalPlaybackTrack(current)
+    }
+
     fun refreshCurrentMotionArtwork() {
         val snapshot = _state.value
         val current = snapshot.currentTrack ?: return
-        if (
-            !snapshot.animationsEnabled ||
-            !snapshot.motionArtworkEnabled ||
-            snapshot.isVideoMode ||
-            current.isLiveRadio() ||
-            isLocalPlaybackTrack(current)
-        ) {
-            return
-        }
+        if (!canRefreshCurrentMotionArtwork(snapshot, current)) return
 
         val expectedKey = MotionArtworkIdentityKey.create(current)
         val ticket = playbackGeneration.current()
