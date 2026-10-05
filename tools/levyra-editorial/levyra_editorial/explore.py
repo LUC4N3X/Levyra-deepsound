@@ -12,7 +12,6 @@ import requests
 from .collector import normalize_playlist_items
 from .models import Collection
 from .spotify import (
-    EditorialSourceError,
     SourceApiError,
     SpotifySearchUnavailable,
     SpotifyWebClient,
