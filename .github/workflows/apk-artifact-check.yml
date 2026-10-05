@@ -34,40 +34,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: tools/levyra-editorial/pyproject.toml
-
-      - name: Build Spotify Explore Preview Catalog
-        shell: bash
-        env:
-          LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
-          LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
-        run: |
-          set -euo pipefail
-          test -n "${LEVYRA_EDITORIAL_SP_DC:-}"
-          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-          mkdir -p build/editorial app/src/main/assets/editorial
-          timeout --foreground 360s levyra-editorial \
-            --config tools/levyra-editorial/config.json \
-            --output build/editorial/pr-catalog.json
-          levyra-editorial --validate build/editorial/pr-catalog.json
-          EXPLORE_COUNT="$(jq '[.collections[] | select(.kind == "mood" or .kind == "genre")] | length' build/editorial/pr-catalog.json)"
-          test "${EXPLORE_COUNT}" -gt 0
-          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/pr-catalog.json >/dev/null; then
-            echo "::error::PR editorial preview contains private source identifiers"
-            exit 1
-          fi
-          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial/pr-catalog.json; then
-            echo "::error::PR editorial preview contains credential-related material"
-            exit 1
-          fi
-          cp build/editorial/pr-catalog.json app/src/main/assets/editorial/spotify-bootstrap.json
-          sha256sum build/editorial/pr-catalog.json > build/editorial/pr-catalog.sha256
-          echo "Spotify Explore preview collections: ${EXPLORE_COUNT}"
+      # PR builds must not execute checked-out collector code with provider session secrets.
+      # Spotify editorial data is produced only by the trusted Editorial Catalog publisher.
 
       - name: Setup Java
         uses: actions/setup-java@v6
