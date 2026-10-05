@@ -989,6 +989,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
     @Volatile private var motionArtworkRequestGeneration: Long = 0L
+    private val motionArtworkRequestToken = AtomicLong(0L)
     private var motionArtworkPrefetchJob: Job? = null
     @Volatile private var motionArtworkPrefetchKey: String? = null
     @Volatile private var motionArtworkPrefetchToken = 0L
@@ -10643,16 +10644,105 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ) prefetchAround(current)
     }
 
+    private fun canRefreshCurrentMotionArtwork(
+        snapshot: LevyraUiState,
+        current: Track
+    ): Boolean {
+        if (!snapshot.animationsEnabled || !snapshot.motionArtworkEnabled || snapshot.isVideoMode) {
+            return false
+        }
+        return !current.isLiveRadio() && !isLocalPlaybackTrack(current)
+    }
+
+    private fun canPublishMotionArtworkForRequest(
+        state: LevyraUiState,
+        ticket: PlaybackTicket,
+        expectedKey: String,
+        requestToken: Long
+    ): Boolean {
+        val visualStateAllowsMotion =
+            state.animationsEnabled && state.motionArtworkEnabled && !state.isVideoMode
+        val requestMatches =
+            motionArtworkRequestToken.get() == requestToken && playbackGeneration.isCurrent(ticket)
+        val identityMatches = state.currentTrack
+            ?.let { activeTrack -> MotionArtworkIdentityKey.create(activeTrack) == expectedKey }
+            ?: false
+        return visualStateAllowsMotion && requestMatches && identityMatches
+    }
+
+    fun refreshCurrentMotionArtwork() {
+        val snapshot = _state.value
+        val current = snapshot.currentTrack ?: return
+        if (!canRefreshCurrentMotionArtwork(snapshot, current)) return
+
+        val expectedKey = MotionArtworkIdentityKey.create(current)
+        val ticket = playbackGeneration.current()
+        val source = snapshot.interfaceSettings.canvasSource
+        val cachedIdentityKey = snapshot.motionArtwork?.identityKey
+        motionArtworkJob?.cancel()
+        motionArtworkPrefetchJob?.cancel()
+        motionArtworkRequestToken.incrementAndGet()
+        motionArtworkRequestKey = null
+        _state.update { state ->
+            val activeTrack = state.currentTrack
+            if (
+                activeTrack != null &&
+                playbackGeneration.isCurrent(ticket) &&
+                MotionArtworkIdentityKey.create(activeTrack) == expectedKey
+            ) {
+                state.copy(motionArtwork = null, motionArtworkLoading = true)
+            } else {
+                state
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    motionArtworkEngine.invalidate(
+                        track = current,
+                        source = source,
+                        cachedIdentityKey = cachedIdentityKey
+                    )
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                Timber.d(error, "Motion artwork selective refresh invalidation failed for %s", current.id)
+            }
+
+            if (!isActive || !playbackGeneration.isCurrent(ticket)) return@launch
+            val activeTrack = _state.value.currentTrack ?: return@launch
+            if (
+                _state.value.isVideoMode ||
+                MotionArtworkIdentityKey.create(activeTrack) != expectedKey
+            ) {
+                return@launch
+            }
+            refreshMotionArtworkAround(activeTrack)
+        }
+    }
+
     private fun refreshMotionArtworkAround(current: Track) {
         if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled || _state.value.isVideoMode) {
             motionArtworkJob?.cancel()
             motionArtworkPrefetchJob?.cancel()
+            motionArtworkRequestToken.incrementAndGet()
             motionArtworkRequestKey = null
             _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
             return
         }
         val expectedKey = MotionArtworkIdentityKey.create(current)
         val ticket = playbackGeneration.current()
+        val previousGeneration = motionArtworkRequestGeneration
+        if (
+            _state.value.motionArtwork != null &&
+            previousGeneration != ticket.generation
+        ) {
+            _state.update { state ->
+                state.copy(motionArtwork = null, motionArtworkLoading = true)
+            }
+        }
         if (
             motionArtworkJob?.isActive == true &&
             motionArtworkRequestKey == expectedKey &&
@@ -10660,27 +10750,38 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ) {
             return
         }
+        val requestToken = motionArtworkRequestToken.incrementAndGet()
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = expectedKey
         motionArtworkRequestGeneration = ticket.generation
-        motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
-            val publishForExpectedTrack: (MotionArtwork?) -> Unit = { artwork ->
-                _state.update { current ->
-                    val activeTrack = current.currentTrack
-                    if (
-                        activeTrack != null &&
-                        playbackGeneration.isCurrent(ticket) &&
-                        MotionArtworkIdentityKey.create(activeTrack) == expectedKey
-                    ) {
-                        current.copy(
-                            motionArtwork = artwork,
-                            motionArtworkLoading = false
-                        )
-                    } else {
-                        current
-                    }
-                }
+        launchMotionArtworkResolution(current, expectedKey, ticket, requestToken)
+    }
+
+    private fun publishMotionArtworkForRequest(
+        artwork: MotionArtwork?,
+        ticket: PlaybackTicket,
+        expectedKey: String,
+        requestToken: Long
+    ) {
+        _state.update { current ->
+            if (canPublishMotionArtworkForRequest(current, ticket, expectedKey, requestToken)) {
+                current.copy(
+                    motionArtwork = artwork,
+                    motionArtworkLoading = false
+                )
+            } else {
+                current
             }
+        }
+    }
+
+    private fun launchMotionArtworkResolution(
+        current: Track,
+        expectedKey: String,
+        ticket: PlaybackTicket,
+        requestToken: Long
+    ) {
+        motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 var stabilized: MotionArtwork? = null
                 runCatching {
@@ -10688,7 +10789,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         .resolveProgressive(current, _state.value.interfaceSettings.canvasSource)
                         .collect { artwork ->
                             stabilized = artwork
-                            publishForExpectedTrack(artwork)
+                            publishMotionArtworkForRequest(artwork, ticket, expectedKey, requestToken)
                         }
                 }
                     .onFailure { error ->
@@ -10696,10 +10797,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         Timber.d(error, "Motion artwork resolve failed for %s", current.id)
                     }
                 if (!isActive) return@launch
-                publishForExpectedTrack(stabilized)
+                publishMotionArtworkForRequest(stabilized, ticket, expectedKey, requestToken)
                 prefetchNextMotionArtwork(current)
             } finally {
-                if (motionArtworkRequestKey == expectedKey) motionArtworkRequestKey = null
+                if (
+                    motionArtworkRequestToken.get() == requestToken &&
+                    motionArtworkRequestKey == expectedKey
+                ) {
+                    motionArtworkRequestKey = null
+                }
             }
         }
     }
