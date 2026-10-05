@@ -10666,7 +10666,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             motionArtworkRequestToken.get() == requestToken && playbackGeneration.isCurrent(ticket)
         val identityMatches = state.currentTrack
             ?.let { activeTrack -> MotionArtworkIdentityKey.create(activeTrack) == expectedKey }
-            == true
+            ?: false
         return visualStateAllowsMotion && requestMatches && identityMatches
     }
 

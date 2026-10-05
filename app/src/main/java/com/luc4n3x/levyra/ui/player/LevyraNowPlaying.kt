@@ -1597,6 +1597,13 @@ private fun canvasBackdropPaletteMatches(
     return presentationActive && dynamicBackground && identityMatches
 }
 
+private fun Track.isLocalMotionArtworkTrack(): Boolean {
+    if (source.equals("Offline", ignoreCase = true)) return true
+    val cleanStreamUrl = streamUrl.trim()
+    return cleanStreamUrl.startsWith("content://", ignoreCase = true) ||
+        cleanStreamUrl.startsWith("file://", ignoreCase = true)
+}
+
 private fun playerSheetActions(
     track: Track,
     state: LevyraUiState,
@@ -1663,7 +1670,8 @@ private fun playerSheetActions(
     val refreshMotionArtworkAction = if (
         state.animationsEnabled &&
         state.motionArtworkEnabled &&
-        !state.isVideoMode
+        !state.isVideoMode &&
+        !track.isLocalMotionArtworkTrack()
     ) {
         PlayerSheetAction(
             key = "refresh-motion-artwork",
