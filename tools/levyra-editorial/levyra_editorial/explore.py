@@ -11,7 +11,7 @@ import requests
 
 from .collector import normalize_playlist_items
 from .models import Collection
-from .spotify import EditorialSourceError, SpotifyWebClient
+from .spotify import EditorialSourceError, SourceApiError, SpotifyWebClient
 from .youtube_music import DEFAULT_USER_AGENT, HOME_URL, ORIGIN, YoutubeMusicWebClient
 
 LOGGER = logging.getLogger(__name__)
@@ -284,8 +284,17 @@ def collect_spotify_explore_collections(
             LOGGER.info(
                 "Explore category %s will use the YouTube Music fallback: %s",
                 seed.title,
-                type(error).__name__,
+                str(error) if isinstance(error, SourceApiError) else type(error).__name__,
             )
+            if isinstance(error, SourceApiError) and (
+                "rate-limited" in str(error).casefold()
+                or "rotated the searchdesktop" in str(error).casefold()
+            ):
+                LOGGER.warning(
+                    "Spotify Explore search is unavailable for this run; "
+                    "skipping the remaining Spotify category lookups."
+                )
+                break
 
     LOGGER.info(
         "Collected Spotify editorial matches for %d of %d Explore categories.",
