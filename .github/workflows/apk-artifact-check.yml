@@ -153,8 +153,6 @@ jobs:
           if [ -f app/build/outputs/mapping/prDiagnostics/mapping.txt ]; then
             cp app/build/outputs/mapping/prDiagnostics/mapping.txt artifacts/mapping.txt
           fi
-          cp build/editorial/pr-catalog.json artifacts/editorial-preview.json
-          cp build/editorial/pr-catalog.sha256 artifacts/editorial-preview.json.sha256
 
       - name: Upload Signed PR Diagnostics APK
         uses: actions/upload-artifact@v7
