@@ -5535,7 +5535,6 @@ private val ArtistHeroMaxHeight = 520.dp
 private const val ArtistHeroViewportShare = 0.62f
 private val ArtistTopBarHeight = 64.dp
 private const val ArtistHeroParallax = 0.45f
-private const val ArtistHeroEntranceScale = 1.06f
 private const val ArtistTitleDockStart = 0.82f
 private val ArtistNameRise = 14.dp
 
@@ -5648,6 +5647,9 @@ private fun ArtistHero(
             .filter(String::isNotBlank)
             .joinToString("  ·  ")
     }
+    val heroIdentity = remember(profile.browseId, profile.name) {
+        profile.browseId.ifBlank { profile.name.trim().lowercase() }
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -5668,38 +5670,46 @@ private fun ArtistHero(
                 .matchParentSize()
                 .graphicsLayer {
                     translationY = scroll() * ArtistHeroParallax
-                    val settle = ArtistHeroEntranceScale - (ArtistHeroEntranceScale - 1f) * entrance()
-                    scaleX = settle
-                    scaleY = settle
-                    transformOrigin = TransformOrigin(0.5f, 0.35f)
                 }
         ) {
-            MotionArtworkLayer(
-                artwork = motionArtwork,
-                enabled = motionEnabled,
-                isPlaying = false,
-                pageMode = true,
-                cornerRadius = 0.dp,
-                presentation = MotionArtworkPresentation.Immersive,
-                quality = canvasQuality,
-                modifier = Modifier.matchParentSize()
-            ) {
-                if (artworkUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(heroContext).data(artworkUrl).crossfade(true).build(),
-                        contentDescription = profile.name,
-                        contentScale = ContentScale.Crop,
-                        alignment = BiasAlignment(0f, -0.35f),
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Rounded.Person,
-                            contentDescription = null,
-                            tint = LevyraText.copy(alpha = 0.42f),
-                            modifier = Modifier.size(96.dp)
-                        )
+            key(heroIdentity) {
+                MotionArtworkLayer(
+                    artwork = motionArtwork,
+                    enabled = motionEnabled,
+                    isPlaying = false,
+                    pageMode = true,
+                    cornerRadius = 0.dp,
+                    presentation = MotionArtworkPresentation.Immersive,
+                    quality = canvasQuality,
+                    staticArtworkMotionEnabled = false,
+                    modifier = Modifier.matchParentSize()
+                ) {
+                    if (artworkUrl.isNotBlank()) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            ArtworkBackdropWash(
+                                artworkUrl = artworkUrl,
+                                tint = Color(profile.accentStart),
+                                base = scrim,
+                                washFraction = 1f,
+                                modifier = Modifier.matchParentSize()
+                            )
+                            AsyncImage(
+                                model = ImageRequest.Builder(heroContext).data(artworkUrl).crossfade(true).build(),
+                                contentDescription = profile.name,
+                                contentScale = ContentScale.Fit,
+                                alignment = Alignment.TopCenter,
+                                modifier = Modifier.matchParentSize()
+                            )
+                        }
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Rounded.Person,
+                                contentDescription = null,
+                                tint = LevyraText.copy(alpha = 0.42f),
+                                modifier = Modifier.size(96.dp)
+                            )
+                        }
                     }
                 }
             }

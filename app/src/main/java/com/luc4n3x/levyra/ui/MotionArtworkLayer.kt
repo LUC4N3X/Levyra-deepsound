@@ -104,6 +104,7 @@ internal fun MotionArtworkLayer(
     presentation: MotionArtworkPresentation = MotionArtworkPresentation.Card,
     quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     pageMode: Boolean = false,
+    staticArtworkMotionEnabled: Boolean = true,
     livingArtwork: LivingArtworkColors? = null,
     dynamicBackdropEnabled: Boolean = false,
     onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {},
@@ -241,12 +242,15 @@ internal fun MotionArtworkLayer(
             videoUnavailable = false
         }
     }
-    val animateStatic = enabled &&
-        decorativeMotion &&
-        lifecycleActive &&
-        environment.localAllowed &&
-        layerActive &&
-        showStaticBed
+    val animateStatic = staticArtworkMotionActive(
+        enabled = enabled,
+        staticArtworkMotionEnabled = staticArtworkMotionEnabled,
+        decorativeMotion = decorativeMotion,
+        lifecycleActive = lifecycleActive,
+        localAllowed = environment.localAllowed,
+        layerActive = layerActive,
+        staticBedVisible = showStaticBed
+    )
     val staticBedAlpha by animateFloatAsState(
         targetValue = if (showStaticBed) 1f else 0f,
         animationSpec = if (!showStaticBed) {
@@ -343,6 +347,22 @@ internal fun motionVideoSlot(
 ): MotionArtwork? = if (retained != null && !handoffCaptured) retained else incoming
 
 internal fun motionStaticBedVisible(motionVisible: Boolean): Boolean = !motionVisible
+
+internal fun staticArtworkMotionActive(
+    enabled: Boolean,
+    staticArtworkMotionEnabled: Boolean,
+    decorativeMotion: Boolean,
+    lifecycleActive: Boolean,
+    localAllowed: Boolean,
+    layerActive: Boolean,
+    staticBedVisible: Boolean
+): Boolean = enabled &&
+    staticArtworkMotionEnabled &&
+    decorativeMotion &&
+    lifecycleActive &&
+    localAllowed &&
+    layerActive &&
+    staticBedVisible
 
 internal class MotionBridgeFrame(
     val image: ImageBitmap,

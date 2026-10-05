@@ -63,6 +63,15 @@ class MotionArtworkLayerTest {
     }
 
     @Test
+    fun artistChangeNeverRetainsPreviousArtistMotion() {
+        val previous = motion(identity = "artist:a", url = "https://apple.example/a.m3u8")
+        val next = motion(identity = "artist:b", url = "https://apple.example/b.m3u8")
+
+        assertNull(retainedMotionArtwork(displayed = previous, incoming = next, gatesOpen = true))
+        assertNull(retainedMotionArtwork(displayed = previous, incoming = null, gatesOpen = true))
+    }
+
+    @Test
     fun closedGatesOrSameAssetRetainNothing() {
         val current = motion(identity = "track-a", url = "https://canvaz.example/a.mp4")
         val upgrade = motion(identity = "track-a", url = "https://apple.example/a.m3u8")
@@ -101,6 +110,32 @@ class MotionArtworkLayerTest {
     fun pageMotionReplacesStaticCoverAfterFirstVideoFrame() {
         assertFalse(
             motionStaticBedVisible(motionVisible = true)
+        )
+    }
+
+    @Test
+    fun artistHeroCanDisableStaticKenBurnsWithoutDisablingMotionVideo() {
+        assertFalse(
+            staticArtworkMotionActive(
+                enabled = true,
+                staticArtworkMotionEnabled = false,
+                decorativeMotion = true,
+                lifecycleActive = true,
+                localAllowed = true,
+                layerActive = true,
+                staticBedVisible = true
+            )
+        )
+        assertTrue(
+            staticArtworkMotionActive(
+                enabled = true,
+                staticArtworkMotionEnabled = true,
+                decorativeMotion = true,
+                lifecycleActive = true,
+                localAllowed = true,
+                layerActive = true,
+                staticBedVisible = true
+            )
         )
     }
 
