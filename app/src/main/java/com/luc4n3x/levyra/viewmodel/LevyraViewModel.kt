@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
+import com.luc4n3x.levyra.data.EditorialChartsRepository
 import com.luc4n3x.levyra.data.FavoriteMembership
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.deduplicateSearchSongs
@@ -356,6 +357,7 @@ private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 private const val EXPLORE_DISCOVERY_DEEP_WARMUP_LIMIT = 6
+private const val EXPLORE_EDITORIAL_MIN_TRACKS = 10
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
 private const val RELATED_CANDIDATE_CACHE_SEEDS = 6
 private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
@@ -723,6 +725,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val shortsCache = YoutubeShortsCache(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository(application.applicationContext)
+    private val editorialChartsRepository = EditorialChartsRepository.get(application.applicationContext)
     private val officialArtworkRepository = OfficialArtworkRepository(application.applicationContext)
     private val motionArtworkEngine = MotionArtworkEngine(application.applicationContext)
     private val database = LevyraDatabase.get(application.applicationContext)
@@ -9527,6 +9530,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.exploreZoneId == null && _state.value.exploreCategoryParams == null) {
             selectExploreZone(ExploreCatalog.getZones(strings).first())
         }
+        editorialChartsRepository.warm()
         ensureExploreCategoriesLoaded()
         warmExploreDiscoveryArtwork()
         ensureFreshCurrentsLoaded()
@@ -9596,6 +9600,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun mergeExploreEditorialFallback(
+        editorial: List<Track>,
+        fallback: List<Track>,
+        limit: Int
+    ): List<Track> {
+        val output = LinkedHashMap<String, Track>()
+        (editorial + fallback).forEach { track ->
+            val key = LevyraPersonalOrbit.identityKey(track).ifBlank { "id:${track.id}" }
+            output.putIfAbsent(key, track)
+        }
+        return output.values.take(limit.coerceAtLeast(1))
+    }
+
     fun selectExploreCategory(category: ExploreCategory) {
         val params = category.params
         if (params.isBlank() || category.title.isBlank()) return
@@ -9616,15 +9633,43 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         exploreJob = viewModelScope.launch {
-            val results = try {
-                repository.exploreCategory(params, languageCode, 24)
+            val editorial = try {
+                editorialChartsRepository.cachedExploreCollection(params, 24)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                Timber.w(error, "Provider Explore category failed")
-                emptyList()
+                Timber.w(error, "Spotify editorial Explore category failed")
+                null
+            }
+            val editorialTracks = editorial?.tracks.orEmpty()
+            val results = if (editorialTracks.size >= EXPLORE_EDITORIAL_MIN_TRACKS) {
+                editorialTracks
+            } else {
+                val providerTracks = try {
+                    repository.exploreCategory(params, languageCode, 24)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.w(error, "Provider Explore category failed")
+                    emptyList()
+                }
+                mergeExploreEditorialFallback(
+                    editorial = editorialTracks,
+                    fallback = providerTracks,
+                    limit = 24
+                )
             }
             if (results.isNotEmpty()) exploreCache[cacheKey] = results
+            val editorialArtwork = editorial?.artworkUrl.orEmpty()
+            if (editorialArtwork.isNotBlank() && _state.value.languageCode == languageCode) {
+                _state.update { current ->
+                    current.copy(
+                        exploreCategoryArtwork = current.exploreCategoryArtwork +
+                            (params to editorialArtwork)
+                    )
+                }
+                schedulePersistExploreDiscovery(languageCode)
+            }
             if (
                 _state.value.exploreCategoryParams != params ||
                 _state.value.exploreZoneId != null ||
@@ -9666,12 +9711,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val requestKey = "$languageCode:$params:$mode"
         if (!exploreCategoryArtworkRequests.add(requestKey)) return
         try {
-            val artwork = exploreCategoryArtworkSemaphore.withPermit {
-                repository.moodCategoryArtwork(
-                    params = params,
-                    languageCode = languageCode,
-                    allowTrackFallback = allowTrackFallback
-                )
+            val editorialArtwork = editorialChartsRepository
+                .cachedExploreCollection(params, 1)
+                ?.artworkUrl
+                .orEmpty()
+            val artwork = editorialArtwork.ifBlank {
+                exploreCategoryArtworkSemaphore.withPermit {
+                    repository.moodCategoryArtwork(
+                        params = params,
+                        languageCode = languageCode,
+                        allowTrackFallback = allowTrackFallback
+                    )
+                }
             }
             if (artwork.isNotBlank() && _state.value.languageCode == languageCode) {
                 _state.update { current ->
