@@ -10660,11 +10660,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         expectedKey: String,
         requestToken: Long
     ): Boolean {
-        val activeTrack = state.currentTrack ?: return false
-        if (!state.animationsEnabled || !state.motionArtworkEnabled || state.isVideoMode) return false
-        if (motionArtworkRequestToken.get() != requestToken) return false
-        if (!playbackGeneration.isCurrent(ticket)) return false
-        return MotionArtworkIdentityKey.create(activeTrack) == expectedKey
+        val visualStateAllowsMotion =
+            state.animationsEnabled && state.motionArtworkEnabled && !state.isVideoMode
+        val requestMatches =
+            motionArtworkRequestToken.get() == requestToken && playbackGeneration.isCurrent(ticket)
+        val identityMatches = state.currentTrack
+            ?.let { activeTrack -> MotionArtworkIdentityKey.create(activeTrack) == expectedKey }
+            == true
+        return visualStateAllowsMotion && requestMatches && identityMatches
     }
 
     fun refreshCurrentMotionArtwork() {
@@ -10751,19 +10754,34 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = expectedKey
         motionArtworkRequestGeneration = ticket.generation
-        motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
-            val publishForExpectedTrack: (MotionArtwork?) -> Unit = { artwork ->
-                _state.update { current ->
-                    if (canPublishMotionArtworkForRequest(current, ticket, expectedKey, requestToken)) {
-                        current.copy(
-                            motionArtwork = artwork,
-                            motionArtworkLoading = false
-                        )
-                    } else {
-                        current
-                    }
-                }
+        launchMotionArtworkResolution(current, expectedKey, ticket, requestToken)
+    }
+
+    private fun publishMotionArtworkForRequest(
+        artwork: MotionArtwork?,
+        ticket: PlaybackTicket,
+        expectedKey: String,
+        requestToken: Long
+    ) {
+        _state.update { current ->
+            if (canPublishMotionArtworkForRequest(current, ticket, expectedKey, requestToken)) {
+                current.copy(
+                    motionArtwork = artwork,
+                    motionArtworkLoading = false
+                )
+            } else {
+                current
             }
+        }
+    }
+
+    private fun launchMotionArtworkResolution(
+        current: Track,
+        expectedKey: String,
+        ticket: PlaybackTicket,
+        requestToken: Long
+    ) {
+        motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 var stabilized: MotionArtwork? = null
                 runCatching {
@@ -10771,7 +10789,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         .resolveProgressive(current, _state.value.interfaceSettings.canvasSource)
                         .collect { artwork ->
                             stabilized = artwork
-                            publishForExpectedTrack(artwork)
+                            publishMotionArtworkForRequest(artwork, ticket, expectedKey, requestToken)
                         }
                 }
                     .onFailure { error ->
@@ -10779,7 +10797,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         Timber.d(error, "Motion artwork resolve failed for %s", current.id)
                     }
                 if (!isActive) return@launch
-                publishForExpectedTrack(stabilized)
+                publishMotionArtworkForRequest(stabilized, ticket, expectedKey, requestToken)
                 prefetchNextMotionArtwork(current)
             } finally {
                 if (

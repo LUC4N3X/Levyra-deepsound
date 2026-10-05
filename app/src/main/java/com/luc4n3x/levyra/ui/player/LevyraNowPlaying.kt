@@ -1591,10 +1591,10 @@ private fun canvasBackdropPaletteMatches(
     backgroundMode: PlayerBackgroundMode,
     activeIdentity: String?
 ): Boolean {
-    val candidate = palette ?: return false
-    if (!motionEnabled || !motionBackdropVisible) return false
-    if (backgroundMode != PlayerBackgroundMode.Dynamic || activeIdentity == null) return false
-    return candidate.identityKey == activeIdentity
+    val presentationActive = motionEnabled && motionBackdropVisible
+    val dynamicBackground = backgroundMode == PlayerBackgroundMode.Dynamic
+    val identityMatches = activeIdentity != null && palette?.identityKey == activeIdentity
+    return presentationActive && dynamicBackground && identityMatches
 }
 
 private fun playerSheetActions(
