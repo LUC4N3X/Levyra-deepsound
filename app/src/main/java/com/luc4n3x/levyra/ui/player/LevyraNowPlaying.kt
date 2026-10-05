@@ -717,7 +717,12 @@ fun LevyraNowPlaying(
                         glowColor = if (deckLayout == PlayerDeckLayout.Editorial) Color.Transparent else primary,
                         modifier = Modifier
                             .fillMaxSize()
-                            .playerLyricsFlipFace(lyricsFlip, back = false, depth = lyricsFlipDepth, rightToLeft = rightToLeft),
+                            .playerLyricsFlipFace(
+                                state = lyricsFlip,
+                                back = false,
+                                depth = lyricsFlipDepth,
+                                rightToLeft = rightToLeft
+                            ),
                         dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
                             deckMode.usesMotionCard(),
                         onDynamicBackdropPalette = acceptDynamicBackdropPalette
