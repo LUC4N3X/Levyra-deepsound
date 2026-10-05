@@ -8122,6 +8122,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun applySearchSnapshot(snapshot: SearchSessionSnapshot) {
         val clean = snapshot.query
+        val currentState = _state.value
+        if (
+            snapshot.results.artists.isNotEmpty() &&
+            currentState.animationsEnabled &&
+            currentState.motionArtworkEnabled
+        ) {
+            motionArtworkEngine.warmArtistMotionProvider(currentState.interfaceSettings.canvasSource)
+        }
         _state.update { current ->
             val strings = LevyraStrings.forCode(current.languageCode)
             current.copy(
