@@ -108,6 +108,15 @@ internal class EditorialChartsRepository private constructor(context: Context) {
             snapshot.explore(params, limit)
         }
 
+    suspend fun exploreCollection(params: String, limit: Int): EditorialExploreCollection? =
+        withContext(Dispatchers.IO) {
+            if (params.isBlank()) return@withContext null
+            val now = System.currentTimeMillis()
+            val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext null
+            if (snapshot.needsRefresh(now)) warm()
+            snapshot.explore(params, limit)
+        }
+
     suspend fun newReleaseTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyList()
