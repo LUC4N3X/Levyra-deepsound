@@ -397,7 +397,8 @@ internal class MotionVideoFrameSource {
 
     fun sampleBackdropPalette(identityKey: String): MotionBackdropPalette? {
         val view = textureView ?: return null
-        if (!frameReady || !view.isAvailable || view.width <= 1 || view.height <= 1) return null
+        if (!frameReady || !view.isAvailable) return null
+        if (view.width <= 1 || view.height <= 1) return null
         val bitmap = try {
             view.getBitmap(DYNAMIC_BACKDROP_SAMPLE_SIZE, DYNAMIC_BACKDROP_SAMPLE_SIZE)
         } catch (error: IllegalStateException) {
@@ -432,7 +433,9 @@ internal fun motionBackdropPalette(
     width: Int,
     height: Int
 ): MotionBackdropPalette? {
-    if (identityKey.isBlank() || width <= 0 || height <= 0 || pixels.size < width * height) return null
+    if (identityKey.isBlank()) return null
+    if (width <= 0 || height <= 0) return null
+    if (pixels.size < width * height) return null
     val top = MotionPaletteAccumulator()
     val bottom = MotionPaletteAccumulator()
     val all = MotionPaletteAccumulator()
@@ -840,7 +843,8 @@ private fun MotionArtworkVideo(
         firstFrameRendered,
         failed
     ) {
-        if (!dynamicBackdropEnabled || !isPlaying || !firstFrameRendered || failed) return@LaunchedEffect
+        if (!dynamicBackdropEnabled || !isPlaying) return@LaunchedEffect
+        if (!firstFrameRendered || failed) return@LaunchedEffect
         delay(DYNAMIC_BACKDROP_INITIAL_DELAY_MS)
         while (isActive) {
             frameSource.sampleBackdropPalette(artwork.identityKey)
