@@ -110,6 +110,7 @@ import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
+import com.luc4n3x.levyra.ui.canonicalExploreCategoryKey
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
@@ -9610,7 +9611,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val languageCode = _state.value.languageCode
-        val cacheKey = "zone:$languageCode:${zone.id}"
+        val matchedCategory = _state.value.exploreCategories.firstOrNull { category ->
+            canonicalExploreCategoryKey(category.title, category.sectionIndex) == zone.id
+        }
+        val cacheKey = "zone:$languageCode:${zone.id}:${matchedCategory?.params.orEmpty()}"
         val cached = exploreCache[cacheKey]
         _state.update { current ->
             current.copy(
@@ -9625,7 +9629,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         exploreJob = viewModelScope.launch {
-            val results = try {
+            val editorialTracks = if (matchedCategory != null && matchedCategory.params.isNotBlank()) {
+                try {
+                    editorialChartsRepository.exploreCollection(matchedCategory.params, 24)?.tracks.orEmpty()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.w(error, "Spotify editorial Explore zone category failed for %s", zone.id)
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+            val zoneTracks = try {
                 repository.exploreZone(zone.id, zone.query, languageCode, 24)
             } catch (error: CancellationException) {
                 throw error
@@ -9633,6 +9649,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 Timber.w(error, "Editorial Explore zone failed for %s", zone.id)
                 emptyList()
             }
+            val results = mergeExploreEditorialFallback(
+                editorial = editorialTracks,
+                fallback = zoneTracks,
+                limit = 24
+            )
             if (results.isNotEmpty()) exploreCache[cacheKey] = results
             if (
                 _state.value.exploreZoneId != zone.id ||

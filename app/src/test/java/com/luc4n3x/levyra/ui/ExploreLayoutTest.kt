@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -208,6 +209,75 @@ class ExploreLayoutTest {
         assertFalse(ExploreCatalog.NEW_RELEASES_ZONE_ID in fallbackIds)
         assertFalse(ExploreCatalog.LOCAL_WAVE_ZONE_ID in fallbackIds)
         assertTrue("rap-drill" in fallbackIds)
+    }
+
+    @Test
+    fun unifiedCatalogContainsAllPreviewItemsInFullCatalogsAndDeduplicatesMultilingualAliases() {
+        val strings = LevyraStrings.forCode("it")
+        val catalogZones = ExploreCatalog.getZones(strings)
+        val categories = listOf(
+            ExploreCategory("Allenamento", "spotify-workout", "Moods & moments", 0),
+            ExploreCategory("Workout", "spotify-workout-en", "Moods & moments", 0),
+            ExploreCategory("Relax", "spotify-chill", "Moods & moments", 0),
+            ExploreCategory("Chill", "spotify-chill-en", "Moods & moments", 0),
+            ExploreCategory("Festa", "spotify-party", "Moods & moments", 0),
+            ExploreCategory("Hip-Hop", "spotify-hiphop", "Genres", 1),
+            ExploreCategory("Rap & Drill", "spotify-rap", "Genres", 1),
+            ExploreCategory("Pop", "spotify-pop", "Genres", 1),
+            ExploreCategory("Indie", "spotify-indie", "Genres", 1),
+            ExploreCategory("Jazz", "spotify-jazz", "Genres", 1)
+        )
+
+        val catalog = buildUnifiedExploreCatalog(strings, catalogZones, categories)
+
+        val fullMoodIds = catalog.fullMoods.map { it.id }
+        val fullGenreIds = catalog.fullGenres.map { it.id }
+
+        assertEquals(fullMoodIds.size, fullMoodIds.toSet().size)
+        assertEquals(fullGenreIds.size, fullGenreIds.toSet().size)
+        assertTrue(fullMoodIds.intersect(fullGenreIds.toSet()).isEmpty())
+        assertTrue(catalog.featuredMoods.all { preview -> preview.id in fullMoodIds })
+        assertTrue(catalog.featuredGenres.all { preview -> preview.id in fullGenreIds })
+        assertEquals(
+            "spotify-workout",
+            catalog.fullMoods.first { it.id == "mood-workout" }.providerCategory?.params
+        )
+        assertEquals(
+            "spotify-chill",
+            catalog.fullMoods.first { it.id == "lofi-chill" }.providerCategory?.params
+        )
+        assertEquals(
+            "spotify-hiphop",
+            catalog.fullGenres.first { it.id == "rap-drill" }.providerCategory?.params
+        )
+        assertTrue("genre-indie" in fullGenreIds)
+        assertTrue("genre-jazz" in fullGenreIds)
+    }
+
+    @Test
+    fun unifiedExploreRowsRenderSeparateMoodAndGenreSectionsAheadOfSamples() {
+        val strings = LevyraStrings.forCode("it")
+        val catalog = buildUnifiedExploreCatalog(
+            strings = strings,
+            zones = ExploreCatalog.getZones(strings),
+            categories = emptyList()
+        )
+        val rows = buildExploreUnifiedRows(
+            catalog = catalog,
+            isFreshLoading = false,
+            hasFreshTracks = true,
+            hasSamples = true
+        )
+
+        val moodsIndex = exploreAnchorIndex(rows, ExploreAnchor.Moods)
+        val genresIndex = exploreAnchorIndex(rows, ExploreAnchor.Genres)
+        val samplesIndex = exploreAnchorIndex(rows, ExploreAnchor.Samples)
+
+        assertTrue(moodsIndex >= 0)
+        assertTrue(genresIndex > moodsIndex)
+        assertTrue(samplesIndex > genresIndex)
+        assertTrue(rows.subList(moodsIndex + 1, genresIndex).all { it is ExploreRow.UnifiedCategoryPair })
+        assertTrue(rows.subList(genresIndex + 1, samplesIndex).all { it is ExploreRow.UnifiedCategoryPair })
     }
 
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->

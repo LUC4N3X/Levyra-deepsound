@@ -19,11 +19,14 @@ class ExploreDestinationScreensTest {
         assertNull(exploreMoodDestinationId(null))
         assertNull(exploreMoodDestinationId(ExploreNewReleasesDestination))
         assertNull(exploreMoodDestinationId(ExploreMoodsDestination))
+        assertNull(exploreMoodDestinationId(ExploreGenresDestination))
     }
 
     @Test
     fun topLevelExploreDestinationsRemainDistinct() {
         assertNotEquals(ExploreNewReleasesDestination, ExploreMoodsDestination)
+        assertNotEquals(ExploreNewReleasesDestination, ExploreGenresDestination)
+        assertNotEquals(ExploreMoodsDestination, ExploreGenresDestination)
         assertNotEquals(ExploreNewReleasesDestination, exploreMoodDestination("nuove-uscite"))
     }
 

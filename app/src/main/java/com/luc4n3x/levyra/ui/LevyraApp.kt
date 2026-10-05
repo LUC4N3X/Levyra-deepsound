@@ -1230,11 +1230,15 @@ private fun HomeSectionHeader(
     title: String,
     subtitle: String? = null,
     onPlayAll: (() -> Unit)? = null,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     val displayTitle = remember(title) { cleanHomeSectionTitle(title) }
     val displayOverline = subtitle?.trim().orEmpty()
+    val resolvedAction = onAction ?: onPlayAll
+    val resolvedActionLabel = actionLabel?.takeIf { it.isNotBlank() } ?: strings.playAll
 
     Row(
         modifier = modifier
@@ -1267,8 +1271,8 @@ private fun HomeSectionHeader(
                 )
             }
         }
-        onPlayAll?.let { action ->
-            HomeOutlinedAction(label = strings.playAll, onClick = action)
+        resolvedAction?.let { action ->
+            HomeOutlinedAction(label = resolvedActionLabel, onClick = action)
         }
     }
 }
@@ -9328,20 +9332,13 @@ private fun HomeScreen(
         ) {
             item(key = "home-top", contentType = "home-header") {
                 val homeHeader: @Composable () -> Unit = {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        HomeSectionInset {
-                            GreetingBar(
-                                userName = state.userName,
-                                isResolving = state.isResolving,
-                                animationsEnabled = state.animationsEnabled,
-                                onSearch = viewModel::openSearch,
-                                onSettings = viewModel::openSettings
-                            )
-                        }
-                        MoodRow(
-                            moods = state.moods,
-                            selectedId = state.selectedMood?.id,
-                            onSelect = viewModel::selectMood
+                    HomeSectionInset {
+                        GreetingBar(
+                            userName = state.userName,
+                            isResolving = state.isResolving,
+                            animationsEnabled = state.animationsEnabled,
+                            onSearch = viewModel::openSearch,
+                            onSettings = viewModel::openSettings
                         )
                     }
                 }
@@ -10279,7 +10276,7 @@ private fun HomeStatusBarScrim(listState: LazyListState, height: Dp, canvas: Col
     )
 }
 
-private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 88.dp
+private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 36.dp
 private const val HOME_HERO_LANDSCAPE_VIEWPORT_SHARE = 0.62f
 private val HOME_HERO_LANDSCAPE_MIN_HEIGHT = 236.dp
 private val HOME_HERO_FADE_LENGTH = 360.dp
@@ -21393,30 +21390,6 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 }
 
 @Composable
-private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(
-            start = HomeHorizontalInset,
-            end = 48.dp
-        )
-    ) {
-        items(
-            items = moods,
-            key = { it.id },
-            contentType = { "home-mood" }
-        ) { mood ->
-            HomeChip(
-                label = mood.title,
-                selected = mood.id == selectedId,
-                onClick = { onSelect(mood) }
-            )
-        }
-    }
-}
-
-@Composable
 private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
     HomeSectionHeader(
         title = title,
@@ -23834,22 +23807,38 @@ private fun ExploreScreen(
     var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
 
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
-    val selectedZone = remember(zones, state.exploreZoneId) {
-        zones.firstOrNull { zone -> zone.id == state.exploreZoneId }
+    val unifiedCatalog = remember(strings, zones, state.exploreCategories) {
+        buildUnifiedExploreCatalog(
+            strings = strings,
+            zones = zones,
+            categories = state.exploreCategories
+        )
     }
     val freshTracks = state.exploreFreshTracks
     val samples = remember(state.exploreSamples) {
         exploreSampleTracks(state.exploreSamples, ExploreImmersiveSampleLimit)
     }
-    val rows = remember(zones, state.isExploreLoading, freshTracks.isNotEmpty(), samples.isNotEmpty()) {
-        buildExploreRows(
-            zones = zones,
+    val rows = remember(unifiedCatalog, state.isFreshCurrentsLoading, freshTracks.isNotEmpty(), samples.isNotEmpty()) {
+        buildExploreUnifiedRows(
+            catalog = unifiedCatalog,
             isFreshLoading = state.isFreshCurrentsLoading,
             hasFreshTracks = freshTracks.isNotEmpty(),
             hasSamples = samples.isNotEmpty()
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
+
+    val openUnifiedItem: (ExploreUnifiedItem, String?) -> Unit = { item, returnRoute ->
+        val category = item.providerCategory
+        exploreMoodReturn = returnRoute
+        if (category != null) {
+            viewModel.selectExploreCategory(category)
+            exploreDestination = exploreCategoryDestination(category)
+        } else {
+            viewModel.selectExploreZone(item.zone)
+            exploreDestination = exploreMoodDestination(item.zone.id)
+        }
+    }
 
     val onShortcut: (ExploreShortcut) -> Unit = { shortcut ->
         when (shortcut) {
@@ -23940,7 +23929,22 @@ private fun ExploreScreen(
                             subtitle = strings.exploreSamplesSubtitle,
                             onPlayAll = onPlaySamples
                         )
-                        ExploreAnchor.Moods -> ExploreSectionHeader(title = strings.exploreMoods)
+                        ExploreAnchor.Moods -> ExploreSectionHeader(
+                            title = strings.exploreMoodSection,
+                            actionLabel = strings.showAll,
+                            onAction = {
+                                samplesStartIndex = null
+                                exploreDestination = ExploreMoodsDestination
+                            }
+                        )
+                        ExploreAnchor.Genres -> ExploreSectionHeader(
+                            title = strings.genres,
+                            actionLabel = strings.showAll,
+                            onAction = {
+                                samplesStartIndex = null
+                                exploreDestination = ExploreGenresDestination
+                            }
+                        )
                     }
                     ExploreRow.FreshLoading -> Box(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
@@ -24027,6 +24031,67 @@ private fun ExploreScreen(
                             )
                         }
                     }
+                    is ExploreRow.UnifiedCategoryPair -> Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val leading = row.leading
+                        val leadingArtwork = leading.providerCategory?.let { state.exploreCategoryArtwork[it.params] }
+                        LaunchedEffect(leading.id, leading.providerCategory?.params, leadingArtwork) {
+                            val category = leading.providerCategory
+                            if (category != null && leadingArtwork.isNullOrBlank()) {
+                                viewModel.ensureExploreCategoryArtwork(
+                                    category.params,
+                                    leading.kind == ExploreUnifiedKind.Mood
+                                )
+                            }
+                        }
+                        MoodGenreCard(
+                            item = leading,
+                            artworkUrl = leadingArtwork,
+                            isSelected = leading.zone.id == state.exploreZoneId ||
+                                (leading.providerCategory != null && leading.providerCategory.params == state.exploreCategoryParams),
+                            compact = true,
+                            onClick = { openUnifiedItem(leading, null) },
+                            onStartZoneMix = {
+                                viewModel.startLevyraMix(
+                                    kind = LevyraMixKind.Genre,
+                                    seedQuery = leading.query,
+                                    label = leading.title
+                                )
+                            }
+                        )
+                        val trailing = row.trailing
+                        if (trailing == null) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else {
+                            val trailingArtwork = trailing.providerCategory?.let { state.exploreCategoryArtwork[it.params] }
+                            LaunchedEffect(trailing.id, trailing.providerCategory?.params, trailingArtwork) {
+                                val category = trailing.providerCategory
+                                if (category != null && trailingArtwork.isNullOrBlank()) {
+                                    viewModel.ensureExploreCategoryArtwork(
+                                        category.params,
+                                        trailing.kind == ExploreUnifiedKind.Mood
+                                    )
+                                }
+                            }
+                            MoodGenreCard(
+                                item = trailing,
+                                artworkUrl = trailingArtwork,
+                                isSelected = trailing.zone.id == state.exploreZoneId ||
+                                    (trailing.providerCategory != null && trailing.providerCategory.params == state.exploreCategoryParams),
+                                compact = true,
+                                onClick = { openUnifiedItem(trailing, null) },
+                                onStartZoneMix = {
+                                    viewModel.startLevyraMix(
+                                        kind = LevyraMixKind.Genre,
+                                        seedQuery = trailing.query,
+                                        label = trailing.title
+                                    )
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -24056,29 +24121,50 @@ private fun ExploreScreen(
                 onBack = { exploreDestination = null },
                 onOpenRelease = viewModel::openAlbum
             )
-            ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
-                zones = zones,
-                categories = state.exploreCategories,
+            ExploreMoodsDestination -> ExploreCatalogDestinationScreen(
+                title = strings.exploreMoodSection,
+                subtitle = strings.exploreSubtitle,
+                items = unifiedCatalog.fullMoods,
                 categoryArtwork = state.exploreCategoryArtwork,
-                isLoading = state.isExploreCategoriesLoading,
+                selectedZoneId = state.exploreZoneId,
+                selectedCategoryParams = state.exploreCategoryParams,
                 strings = strings,
                 backEnabled = backEnabled,
                 onBack = { exploreDestination = null },
-                onOpenZone = { zone ->
-                    viewModel.selectExploreZone(zone)
-                    exploreMoodReturn = ExploreMoodsDestination
-                    exploreDestination = exploreMoodDestination(zone.id)
+                onOpenItem = { item -> openUnifiedItem(item, ExploreMoodsDestination) },
+                onStartItemMix = { item ->
+                    viewModel.startLevyraMix(
+                        kind = LevyraMixKind.Genre,
+                        seedQuery = item.query,
+                        label = item.title
+                    )
                 },
-                onOpenCategory = { category ->
-                    viewModel.selectExploreCategory(category)
-                    exploreMoodReturn = ExploreMoodsDestination
-                    exploreDestination = exploreCategoryDestination(category)
+                onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
+            )
+            ExploreGenresDestination -> ExploreCatalogDestinationScreen(
+                title = strings.genres,
+                subtitle = strings.exploreSubtitle,
+                items = unifiedCatalog.fullGenres,
+                categoryArtwork = state.exploreCategoryArtwork,
+                selectedZoneId = state.exploreZoneId,
+                selectedCategoryParams = state.exploreCategoryParams,
+                strings = strings,
+                backEnabled = backEnabled,
+                onBack = { exploreDestination = null },
+                onOpenItem = { item -> openUnifiedItem(item, ExploreGenresDestination) },
+                onStartItemMix = { item ->
+                    viewModel.startLevyraMix(
+                        kind = LevyraMixKind.Genre,
+                        seedQuery = item.query,
+                        label = item.title
+                    )
                 },
                 onRequestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
             )
             else -> ExploreMoodCollectionDestination(
                 destination = exploreDestination,
                 returnDestination = exploreMoodReturn,
+                catalog = unifiedCatalog,
                 zones = zones,
                 state = state,
                 strings = strings,
@@ -24132,6 +24218,7 @@ private fun ExploreScreen(
 private fun ExploreMoodCollectionDestination(
     destination: String?,
     returnDestination: String?,
+    catalog: ExploreUnifiedCatalog,
     zones: List<ExploreZone>,
     state: LevyraUiState,
     strings: LevyraStrings,
@@ -24139,21 +24226,32 @@ private fun ExploreMoodCollectionDestination(
     backEnabled: Boolean,
     onDestinationChange: (String?) -> Unit
 ) {
+    val allUnifiedItems = remember(catalog) { catalog.fullMoods + catalog.fullGenres }
     val providerCategory = exploreCategoryDestinationValue(destination)
     if (providerCategory != null) {
         val activeCategory = state.exploreCategories
             .firstOrNull { category -> category.params == providerCategory.params }
             ?: providerCategory
+        val matchedItem = remember(allUnifiedItems, activeCategory.params, activeCategory.title) {
+            allUnifiedItems.firstOrNull { item ->
+                item.providerCategory?.params == activeCategory.params ||
+                    canonicalExploreCategoryKey(activeCategory.title, activeCategory.sectionIndex) == item.canonicalKey
+            }
+        }
         val isActive = state.exploreCategoryParams == providerCategory.params
         val tracks = if (isActive) state.exploreTracks else emptyList()
         LaunchedEffect(providerCategory.params, state.languageCode, isActive) {
             if (!isActive) viewModel.selectExploreCategory(activeCategory)
         }
         ExploreCollectionDestinationScreen(
-            identity = providerCategory.params,
-            title = activeCategory.title,
-            subtitle = activeCategory.section.ifBlank { strings.exploreMoods },
-            zone = null,
+            identity = matchedItem?.id ?: providerCategory.params,
+            title = matchedItem?.title ?: activeCategory.title,
+            subtitle = when (matchedItem?.kind) {
+                ExploreUnifiedKind.Mood -> strings.exploreMoodSection
+                ExploreUnifiedKind.Genre -> strings.genres
+                null -> activeCategory.section.ifBlank { strings.exploreMoods }
+            },
+            zone = matchedItem?.zone,
             tracks = tracks,
             isLoading = state.isExploreLoading || !isActive,
             currentTrackId = state.currentTrack?.id,
@@ -24169,7 +24267,13 @@ private fun ExploreMoodCollectionDestination(
     }
 
     val zoneId = exploreMoodDestinationId(destination) ?: return
-    val zone = zones.firstOrNull { candidate -> candidate.id == zoneId } ?: return
+    val matchedItem = remember(allUnifiedItems, zoneId) {
+        allUnifiedItems.firstOrNull { candidate -> candidate.id == zoneId }
+    }
+    val zone = matchedItem?.zone
+        ?: catalog.allZones.firstOrNull { candidate -> candidate.id == zoneId }
+        ?: zones.firstOrNull { candidate -> candidate.id == zoneId }
+        ?: return
     val isActive = state.exploreZoneId == zone.id
     val tracks = if (isActive) state.exploreTracks else emptyList()
     LaunchedEffect(zone.id, state.languageCode, isActive) {
@@ -24177,8 +24281,12 @@ private fun ExploreMoodCollectionDestination(
     }
     ExploreCollectionDestinationScreen(
         identity = zone.id,
-        title = zone.label,
-        subtitle = strings.exploreMoods,
+        title = matchedItem?.title ?: zone.label,
+        subtitle = when (matchedItem?.kind) {
+            ExploreUnifiedKind.Mood -> strings.exploreMoodSection
+            ExploreUnifiedKind.Genre -> strings.genres
+            null -> strings.exploreMoods
+        },
         zone = zone,
         tracks = tracks,
         isLoading = state.isExploreLoading || !isActive,
@@ -24197,12 +24305,16 @@ private fun ExploreMoodCollectionDestination(
 private fun ExploreSectionHeader(
     title: String,
     subtitle: String? = null,
-    onPlayAll: (() -> Unit)? = null
+    onPlayAll: (() -> Unit)? = null,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
 ) {
     HomeSectionHeader(
         title = title,
         subtitle = subtitle,
         onPlayAll = onPlayAll,
+        actionLabel = actionLabel,
+        onAction = onAction,
         modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
     )
 }

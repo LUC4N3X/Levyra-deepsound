@@ -59,7 +59,25 @@ private val ExploreMoodGlobalArtistPools = mapOf(
     "rock-alt" to listOf("Måneskin", "Arctic Monkeys", "Paramore", "Linkin Park"),
     "latino" to listOf("Bad Bunny", "KAROL G", "Rauw Alejandro", "Feid"),
     "lofi-chill" to listOf("Joji", "Laufey", "beabadoobee", "keshi"),
-    "anime-jpop" to listOf("Ado", "YOASOBI", "LiSA", "Kenshi Yonezu")
+    "anime-jpop" to listOf("Ado", "YOASOBI", "LiSA", "Kenshi Yonezu"),
+    "mood-workout" to listOf("Travis Scott", "Future", "David Guetta", "Calvin Harris", "21 Savage"),
+    "mood-focus" to listOf("Ludovico Einaudi", "Hans Zimmer", "Max Richter", "Bonobo"),
+    "mood-party" to listOf("Dua Lipa", "Calvin Harris", "Rihanna", "Bad Bunny", "Charli xcx"),
+    "mood-drive" to listOf("The Weeknd", "Post Malone", "Don Toliver", "Tame Impala"),
+    "mood-sad" to listOf("Billie Eilish", "Olivia Rodrigo", "Lana Del Rey", "Mitski"),
+    "mood-sleep" to listOf("Max Richter", "Brian Eno", "Sigur Rós", "Ludovico Einaudi"),
+    "mood-feel-good" to listOf("Bruno Mars", "Sabrina Carpenter", "Dua Lipa", "Pharrell Williams"),
+    "mood-romance" to listOf("SZA", "Frank Ocean", "Daniel Caesar", "Lana Del Rey"),
+    "genre-indie" to listOf("Tame Impala", "Arctic Monkeys", "The Strokes", "Phoebe Bridgers"),
+    "genre-metal" to listOf("Metallica", "Slipknot", "Bring Me The Horizon", "Linkin Park"),
+    "genre-kpop" to listOf("aespa", "NewJeans", "Stray Kids", "IVE"),
+    "genre-jazz" to listOf("Laufey", "Norah Jones", "Kamasi Washington", "Robert Glasper"),
+    "genre-classical" to listOf("Ludovico Einaudi", "Yo-Yo Ma", "Lang Lang", "Max Richter"),
+    "genre-country" to listOf("Zach Bryan", "Morgan Wallen", "Kacey Musgraves", "Chris Stapleton"),
+    "genre-reggae" to listOf("Bob Marley & The Wailers", "Sean Paul", "Koffee", "Burna Boy"),
+    "genre-afro" to listOf("Burna Boy", "Tems", "Rema", "Ayra Starr"),
+    "genre-folk" to listOf("Hozier", "Bon Iver", "Phoebe Bridgers", "Noah Kahan"),
+    "genre-blues" to listOf("Gary Clark Jr.", "John Mayer", "The Black Keys", "B.B. King")
 )
 
 private val ExploreMoodLocalWaveArtistPools = mapOf(
@@ -156,17 +174,73 @@ internal fun RowScope.ExploreMoodCard(
     onClick: () -> Unit,
     onStartZoneMix: (() -> Unit)? = null
 ) {
+    MoodGenreCard(
+        id = zone.id,
+        title = zone.label,
+        portraitKey = zone.id,
+        accentStart = zone.accentStart,
+        accentEnd = zone.accentEnd,
+        emoji = zone.emoji,
+        externalArtworkUrl = "",
+        isSelected = isSelected,
+        compact = true,
+        modifier = Modifier.weight(1f),
+        onClick = onClick,
+        onStartMix = onStartZoneMix
+    )
+}
+
+@Composable
+internal fun RowScope.MoodGenreCard(
+    item: ExploreUnifiedItem,
+    artworkUrl: String?,
+    isSelected: Boolean,
+    compact: Boolean = true,
+    onClick: () -> Unit,
+    onStartZoneMix: (() -> Unit)? = null
+) {
+    MoodGenreCard(
+        id = item.id,
+        title = item.title,
+        portraitKey = item.portraitKey,
+        accentStart = item.accentStart,
+        accentEnd = item.accentEnd,
+        emoji = item.emoji,
+        externalArtworkUrl = artworkUrl.orEmpty(),
+        isSelected = isSelected,
+        compact = compact,
+        modifier = Modifier.weight(1f),
+        onClick = onClick,
+        onStartMix = onStartZoneMix
+    )
+}
+
+@Composable
+internal fun MoodGenreCard(
+    id: String,
+    title: String,
+    portraitKey: String,
+    accentStart: Int,
+    accentEnd: Int,
+    emoji: String = "",
+    externalArtworkUrl: String = "",
+    isSelected: Boolean = false,
+    compact: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    onStartMix: (() -> Unit)? = null
+) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     val artworkRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
-    val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
-    val portraitCandidates = remember(zone.id, strings.code, rotationBucket) {
-        exploreMoodPortraitCandidates(zone.id, strings.code, rotationBucket)
+    val rotationBucket = remember(id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
+    val portraitCandidates = remember(portraitKey, strings.code, rotationBucket) {
+        exploreMoodPortraitCandidates(portraitKey, strings.code, rotationBucket)
     }
-    val portraitLookupLimit = remember(zone.id, portraitCandidates.size) {
-        exploreMoodPortraitLookupLimit(zone.id, portraitCandidates.size)
+    val portraitLookupLimit = remember(portraitKey, portraitCandidates.size) {
+        exploreMoodPortraitLookupLimit(portraitKey, portraitCandidates.size)
     }
-    val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
+    val hardFallbackPortraitUrl = remember(portraitKey) { exploreMoodHardFallbackPortraitUrl(portraitKey) }
     var portraitCandidateIndex by remember(portraitCandidates) { mutableStateOf(0) }
     var portraitUrl by remember(portraitCandidates, hardFallbackPortraitUrl) {
         mutableStateOf(hardFallbackPortraitUrl)
@@ -188,25 +262,27 @@ internal fun RowScope.ExploreMoodCard(
         }
     }
 
-    val accentStart = Color(zone.accentStart)
-    val accentEnd = Color(zone.accentEnd)
-    val shape = RoundedCornerShape(18.dp)
-    val backgroundBrush = remember(accentStart, accentEnd) {
+    val effectiveArtworkUrl = portraitUrl.ifBlank { externalArtworkUrl }
+    val startColor = Color(accentStart)
+    val endColor = Color(accentEnd)
+    val cardHeight = if (compact) 104.dp else 110.dp
+    val shape = RoundedCornerShape(16.dp)
+    val backgroundBrush = remember(startColor, endColor) {
         Brush.linearGradient(
             listOf(
                 LevyraPanel,
-                accentStart.copy(alpha = 0.26f),
-                accentEnd.copy(alpha = 0.18f)
+                startColor.copy(alpha = 0.25f),
+                endColor.copy(alpha = 0.17f)
             )
         )
     }
-    val imageScrim = remember(accentStart) {
+    val imageScrim = remember(startColor) {
         Brush.horizontalGradient(
             colorStops = arrayOf(
                 0f to LevyraPanel,
-                0.34f to LevyraPanel.copy(alpha = 0.94f),
-                0.58f to accentStart.copy(alpha = 0.38f),
-                0.80f to Color.Transparent,
+                0.35f to LevyraPanel.copy(alpha = 0.94f),
+                0.58f to startColor.copy(alpha = 0.36f),
+                0.82f to Color.Transparent,
                 1f to Color.Transparent
             )
         )
@@ -220,20 +296,20 @@ internal fun RowScope.ExploreMoodCard(
             )
         )
     }
-    val outlineBrush = remember(accentStart, accentEnd, isSelected) {
+    val outlineBrush = remember(startColor, endColor, isSelected) {
         Brush.linearGradient(
             listOf(
-                accentStart.copy(alpha = if (isSelected) 0.96f else 0.54f),
-                accentEnd.copy(alpha = if (isSelected) 0.72f else 0.30f),
+                startColor.copy(alpha = if (isSelected) 0.94f else 0.46f),
+                endColor.copy(alpha = if (isSelected) 0.70f else 0.26f),
                 Color.White.copy(alpha = if (isSelected) 0.18f else 0.08f)
             )
         )
     }
+    val titleSize = if (title.length >= 18) 15.sp else 16.sp
 
     Box(
-        modifier = Modifier
-            .weight(1f)
-            .height(108.dp)
+        modifier = modifier
+            .height(cardHeight)
             .clip(shape)
             .background(backgroundBrush)
             .border(
@@ -248,21 +324,21 @@ internal fun RowScope.ExploreMoodCard(
                 onClick = onClick,
                 pressedScale = LevyraPressScale.Tile,
                 role = Role.Button,
-                onClickLabel = zone.label,
-                onLongClick = onStartZoneMix,
-                onLongClickLabel = if (onStartZoneMix != null) strings.mixStartRadio else null
+                onClickLabel = title,
+                onLongClick = onStartMix,
+                onLongClickLabel = if (onStartMix != null) strings.mixStartRadio else null
             )
     ) {
-        if (portraitUrl.isNotBlank()) {
-            val activePortraitUrl = portraitUrl
+        if (effectiveArtworkUrl.isNotBlank()) {
+            val activeArtworkUrl = effectiveArtworkUrl
             AsyncImage(
-                model = activePortraitUrl,
+                model = activeArtworkUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
                 onError = {
-                    if (portraitUrl == activePortraitUrl) {
-                        if (activePortraitUrl == hardFallbackPortraitUrl) {
+                    if (portraitUrl == activeArtworkUrl) {
+                        if (activeArtworkUrl == hardFallbackPortraitUrl) {
                             portraitUrl = ""
                         } else {
                             portraitUrl = hardFallbackPortraitUrl
@@ -273,13 +349,13 @@ internal fun RowScope.ExploreMoodCard(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .fillMaxWidth(0.72f)
+                    .fillMaxWidth(0.70f)
             )
-        } else {
+        } else if (emoji.isNotBlank()) {
             Text(
-                text = zone.emoji,
-                color = Color.White.copy(alpha = 0.28f),
-                fontSize = 42.sp,
+                text = emoji,
+                color = Color.White.copy(alpha = 0.22f),
+                fontSize = 38.sp,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = 16.dp)
@@ -292,26 +368,27 @@ internal fun RowScope.ExploreMoodCard(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .fillMaxWidth(0.78f)
-                .padding(start = 14.dp, end = 8.dp, bottom = 13.dp),
+                .fillMaxWidth(0.76f)
+                .padding(start = 14.dp, end = 8.dp, bottom = 12.dp),
             horizontalAlignment = Alignment.Start
         ) {
             Box(
                 modifier = Modifier
-                    .width(if (isSelected) 30.dp else 22.dp)
+                    .width(if (isSelected) 28.dp else 20.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(if (isSelected) Color.White else accentEnd.copy(alpha = 0.92f))
+                    .background(if (isSelected) Color.White else endColor.copy(alpha = 0.92f))
             )
             Text(
-                text = zone.label,
+                text = title,
                 color = Color.White,
-                fontSize = 16.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(16.5.sp),
-                fontWeight = FontWeight.Black,
+                fontSize = titleSize,
+                lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
+                letterSpacing = (-0.2).sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 7.dp)
+                modifier = Modifier.padding(top = 6.dp)
             )
         }
     }

@@ -25,7 +25,8 @@ internal data class ExploreCategorySection(
 internal enum class ExploreAnchor {
     Fresh,
     Samples,
-    Moods
+    Moods,
+    Genres
 }
 
 internal enum class ExploreShortcut(val anchor: ExploreAnchor, val zoneId: String?) {
@@ -64,6 +65,14 @@ internal sealed interface ExploreRow {
     data class MoodPair(val leading: ExploreZone, val trailing: ExploreZone?) : ExploreRow {
         override val key: String = "explore-mood-${leading.id}"
     }
+
+    data class UnifiedCategoryPair(
+        val kind: ExploreUnifiedKind,
+        val leading: ExploreUnifiedItem,
+        val trailing: ExploreUnifiedItem?
+    ) : ExploreRow {
+        override val key: String = "explore-${kind.name.lowercase()}-${leading.id}"
+    }
 }
 
 internal fun buildExploreRows(
@@ -86,6 +95,66 @@ internal fun buildExploreRows(
         rows += ExploreRow.Header(ExploreAnchor.Moods)
         distinctZones.chunked(2).forEach { pair ->
             rows += ExploreRow.MoodPair(pair.first(), pair.getOrNull(1))
+        }
+    }
+
+    if (hasSamples) {
+        rows += ExploreRow.Header(ExploreAnchor.Samples)
+        rows += ExploreRow.Samples
+    }
+    return rows
+}
+
+internal fun buildExploreUnifiedRows(
+    catalog: ExploreUnifiedCatalog,
+    isFreshLoading: Boolean,
+    hasFreshTracks: Boolean,
+    hasSamples: Boolean
+): List<ExploreRow> = buildExploreUnifiedRows(
+    moods = catalog.featuredMoods,
+    genres = catalog.featuredGenres,
+    isFreshLoading = isFreshLoading,
+    hasFreshTracks = hasFreshTracks,
+    hasSamples = hasSamples
+)
+
+internal fun buildExploreUnifiedRows(
+    moods: List<ExploreUnifiedItem>,
+    genres: List<ExploreUnifiedItem>,
+    isFreshLoading: Boolean,
+    hasFreshTracks: Boolean,
+    hasSamples: Boolean
+): List<ExploreRow> {
+    val rows = mutableListOf<ExploreRow>()
+    rows += ExploreRow.Shortcuts
+    rows += ExploreRow.Header(ExploreAnchor.Fresh)
+    rows += when {
+        hasFreshTracks -> ExploreRow.FreshCarousel
+        isFreshLoading -> ExploreRow.FreshLoading
+        else -> ExploreRow.FreshEmpty
+    }
+
+    val distinctMoods = moods.distinctBy { it.id }
+    if (distinctMoods.isNotEmpty()) {
+        rows += ExploreRow.Header(ExploreAnchor.Moods)
+        distinctMoods.chunked(2).forEach { pair ->
+            rows += ExploreRow.UnifiedCategoryPair(
+                kind = ExploreUnifiedKind.Mood,
+                leading = pair.first(),
+                trailing = pair.getOrNull(1)
+            )
+        }
+    }
+
+    val distinctGenres = genres.distinctBy { it.id }
+    if (distinctGenres.isNotEmpty()) {
+        rows += ExploreRow.Header(ExploreAnchor.Genres)
+        distinctGenres.chunked(2).forEach { pair ->
+            rows += ExploreRow.UnifiedCategoryPair(
+                kind = ExploreUnifiedKind.Genre,
+                leading = pair.first(),
+                trailing = pair.getOrNull(1)
+            )
         }
     }
 
