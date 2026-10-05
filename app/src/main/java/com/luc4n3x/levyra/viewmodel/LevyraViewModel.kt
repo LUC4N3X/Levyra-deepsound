@@ -989,6 +989,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
     @Volatile private var motionArtworkRequestGeneration: Long = 0L
+    private val motionArtworkRequestToken = AtomicLong(0L)
     private var motionArtworkPrefetchJob: Job? = null
     @Volatile private var motionArtworkPrefetchKey: String? = null
     @Volatile private var motionArtworkPrefetchToken = 0L
@@ -10662,6 +10663,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val cachedIdentityKey = snapshot.motionArtwork?.identityKey
         motionArtworkJob?.cancel()
         motionArtworkPrefetchJob?.cancel()
+        motionArtworkRequestToken.incrementAndGet()
         motionArtworkRequestKey = null
         _state.update { state ->
             val activeTrack = state.currentTrack
@@ -10707,6 +10709,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled || _state.value.isVideoMode) {
             motionArtworkJob?.cancel()
             motionArtworkPrefetchJob?.cancel()
+            motionArtworkRequestToken.incrementAndGet()
             motionArtworkRequestKey = null
             _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
             return
@@ -10729,6 +10732,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ) {
             return
         }
+        val requestToken = motionArtworkRequestToken.incrementAndGet()
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = expectedKey
         motionArtworkRequestGeneration = ticket.generation
@@ -10738,6 +10742,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     val activeTrack = current.currentTrack
                     if (
                         activeTrack != null &&
+                        motionArtworkRequestToken.get() == requestToken &&
                         playbackGeneration.isCurrent(ticket) &&
                         MotionArtworkIdentityKey.create(activeTrack) == expectedKey
                     ) {
@@ -10768,7 +10773,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 publishForExpectedTrack(stabilized)
                 prefetchNextMotionArtwork(current)
             } finally {
-                if (motionArtworkRequestKey == expectedKey) motionArtworkRequestKey = null
+                if (
+                    motionArtworkRequestToken.get() == requestToken &&
+                    motionArtworkRequestKey == expectedKey
+                ) {
+                    motionArtworkRequestKey = null
+                }
             }
         }
     }

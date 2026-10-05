@@ -39,7 +39,7 @@ class CommunityCanvasProvider internal constructor(
     private val client: OkHttpClient,
     private val onDemandResolver: OnDemandCanvasResolver,
     private val minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
-) : MotionArtworkProvider, MotionArtworkRefreshableProvider {
+) : MotionArtworkRefreshableProvider {
     constructor(
         context: Context,
         onDemandResolver: OnDemandCanvasResolver = OnDemandCanvasResolver(context),

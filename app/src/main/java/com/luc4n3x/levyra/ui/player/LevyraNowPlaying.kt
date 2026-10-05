@@ -264,9 +264,6 @@ fun LevyraNowPlaying(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-hero-tone"
     )
-    val ambience = remember(primaryTarget, secondaryTarget) {
-        playerAmbienceOf(primaryTarget, secondaryTarget)
-    }
     val canvasBackdropTargets = canvasBackdropPalette
         ?.takeIf { palette ->
             backgroundMode == PlayerBackgroundMode.Dynamic &&
