@@ -258,6 +258,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         private const val HTTP_CACHE_DIRECTORY = "levyra_editorial_http"
         private const val HTTP_CACHE_BYTES = 4L * 1024L * 1024L
         private const val REFRESH_RETRY_TTL_MS = 5L * 60L * 1000L
+        private val PUBLISHED_YOUTUBE_BROWSE_PARAMS = Regex("[A-Za-z0-9_./=+\\-]+")
         private const val MAX_CATALOG_BYTES = 4 * 1024 * 1024
         private const val CATALOG_URL =
             "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json"
@@ -498,7 +499,7 @@ internal object EditorialCatalogParser {
     private fun publishedYoutubeBrowseParams(value: String?): String {
         val normalized = value.orEmpty().trim()
         return normalized.takeIf {
-            it.length <= 1024 && it.matches(Regex("[A-Za-z0-9_./=+\\-]+"))
+            it.length <= 1024 && PUBLISHED_YOUTUBE_BROWSE_PARAMS.matches(it)
         }.orEmpty()
     }
 
