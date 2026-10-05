@@ -65,7 +65,7 @@ class ExploreGenreEditorialTest {
     }
 
     @Test
-    fun editorialOmitsBlankArtistAlbumAndArtworkCards() {
+    fun editorialKeepsNamedCardsWhileArtworkIsStillLoading() {
         val tracks = listOf(
             track("1", "", "Album A", "", "album-a"),
             track("2", "Artist B", "", "artist-b", ""),
@@ -74,9 +74,9 @@ class ExploreGenreEditorialTest {
 
         val editorial = buildExploreGenreEditorial(tracks, "pop-global", 3L)
 
-        assertTrue(editorial.featured.size <= 2)
-        assertEquals(1, editorial.artists.size)
-        assertEquals(1, editorial.albums.size)
+        assertEquals(3, editorial.featured.size)
+        assertEquals(2, editorial.artists.size)
+        assertEquals(2, editorial.albums.size)
     }
 
     @Test
