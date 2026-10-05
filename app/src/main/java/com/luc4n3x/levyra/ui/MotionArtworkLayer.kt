@@ -104,6 +104,7 @@ internal fun MotionArtworkLayer(
     presentation: MotionArtworkPresentation = MotionArtworkPresentation.Card,
     quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     pageMode: Boolean = false,
+    staticArtworkMotionEnabled: Boolean = true,
     livingArtwork: LivingArtworkColors? = null,
     dynamicBackdropEnabled: Boolean = false,
     onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {},
@@ -197,34 +198,7 @@ internal fun MotionArtworkLayer(
     }
     val visibleBridge = bridgeFrame?.takeIf { retainedArtwork != null }
     val motionVisible = videoReady || visibleBridge != null || !handoffCaptured
-    var pageMotionGraceExpired by remember(pageMode, enabled, lifecycleActive, environment.remoteAllowed) {
-        mutableStateOf(!pageMode)
-    }
-    LaunchedEffect(pageMode, enabled, lifecycleActive, environment.remoteAllowed, artwork?.identityKey) {
-        if (!pageMode || !enabled || !lifecycleActive || !environment.remoteAllowed || artwork != null) {
-            if (!pageMode || !enabled || !lifecycleActive || !environment.remoteAllowed) {
-                pageMotionGraceExpired = true
-            }
-            return@LaunchedEffect
-        }
-        pageMotionGraceExpired = false
-        delay(PAGE_MOTION_LOOKUP_GRACE_MS)
-        pageMotionGraceExpired = true
-    }
-    val pageMotionResolving = pageMode &&
-        enabled &&
-        lifecycleActive &&
-        environment.remoteAllowed &&
-        artwork == null &&
-        !pageMotionGraceExpired
-    val videoCandidatePending = videoArtwork != null && !motionVisible && !videoUnavailable
-    val showStaticBed = motionStaticBedVisible(
-        pageMode = pageMode,
-        motionResolving = pageMotionResolving,
-        motionVisible = motionVisible,
-        videoCandidatePending = videoCandidatePending,
-        videoUnavailable = videoUnavailable
-    )
+    val showStaticBed = motionStaticBedVisible(motionVisible)
     LaunchedEffect(artwork?.identityKey, videoArtwork, enabled, lifecycleActive, environment.remoteAllowed, videoUnavailable) {
         if (artwork == null) return@LaunchedEffect
         Timber.d(
@@ -268,12 +242,15 @@ internal fun MotionArtworkLayer(
             videoUnavailable = false
         }
     }
-    val animateStatic = enabled &&
-        decorativeMotion &&
-        lifecycleActive &&
-        environment.localAllowed &&
-        layerActive &&
-        showStaticBed
+    val animateStatic = staticArtworkMotionActive(
+        enabled = enabled,
+        staticArtworkMotionEnabled = staticArtworkMotionEnabled,
+        decorativeMotion = decorativeMotion,
+        lifecycleActive = lifecycleActive,
+        localAllowed = environment.localAllowed,
+        layerActive = layerActive,
+        staticBedVisible = showStaticBed
+    )
     val staticBedAlpha by animateFloatAsState(
         targetValue = if (showStaticBed) 1f else 0f,
         animationSpec = if (!showStaticBed) {
@@ -369,20 +346,23 @@ internal fun motionVideoSlot(
     handoffCaptured: Boolean
 ): MotionArtwork? = if (retained != null && !handoffCaptured) retained else incoming
 
-internal fun motionStaticBedVisible(
-    pageMode: Boolean,
-    motionResolving: Boolean,
-    motionVisible: Boolean,
-    videoCandidatePending: Boolean,
-    videoUnavailable: Boolean
-): Boolean {
-    if (!pageMode) return !motionVisible
-    if (motionVisible) return false
-    if (videoUnavailable) return true
-    if (motionResolving) return false
-    if (videoCandidatePending) return true
-    return true
-}
+internal fun motionStaticBedVisible(motionVisible: Boolean): Boolean = !motionVisible
+
+internal fun staticArtworkMotionActive(
+    enabled: Boolean,
+    staticArtworkMotionEnabled: Boolean,
+    decorativeMotion: Boolean,
+    lifecycleActive: Boolean,
+    localAllowed: Boolean,
+    layerActive: Boolean,
+    staticBedVisible: Boolean
+): Boolean = enabled &&
+    staticArtworkMotionEnabled &&
+    decorativeMotion &&
+    lifecycleActive &&
+    localAllowed &&
+    layerActive &&
+    staticBedVisible
 
 internal class MotionBridgeFrame(
     val image: ImageBitmap,
@@ -901,7 +881,6 @@ private const val STATIC_ARTWORK_MOTION_ENTER_MS = 360
 private const val STATIC_ARTWORK_MOTION_EXIT_MS = 220
 private const val STATIC_ARTWORK_BED_FADE_MS = 420
 private const val PAGE_STATIC_FALLBACK_FADE_MS = 180
-private const val PAGE_MOTION_LOOKUP_GRACE_MS = 2_000L
 private const val VIDEO_FADE_IN_MS = 620
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
 private const val VIDEO_RETRY_DELAY_MS = 4_000L
