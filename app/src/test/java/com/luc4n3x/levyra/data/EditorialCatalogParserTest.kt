@@ -156,8 +156,67 @@ class EditorialCatalogParserTest {
     }
 
     @Test
-    fun selectsRequestedMarketAndUsesItalyOnlyForInvalidCountryCodes() {
+    fun parsesSpotifyFirstExploreCollectionByExactYoutubeParams() {
+        val spotifyArtwork = "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
+        val moodTrack = track(
+            title = "Midnight Drive",
+            artist = "Test Artist",
+            artworkUrl = spotifyArtwork
+        ).replace(
+            "\"album\": {\"name\": \"Midnight Drive\"}",
+            "\"album\": {\"name\": \"Real Album\"}"
+        )
+        val moodCollection = """{
+            "id": "mood-focus",
+            "kind": "mood",
+            "market": "GLOBAL",
+            "title": "Focus",
+            "artworkUrl": "$spotifyArtwork",
+            "youtubeParams": "ggM8SgQIBxAB/+=_",
+            "sectionIndex": 0,
+            "tracks": [$moodTrack]
+        }""".trimIndent()
         val body = catalog(
+            collections = collection("IT", track(title = "Italia")) + "," + moodCollection
+        )
+
+        val snapshot = EditorialCatalogParser.parse(body, loadedAt = 0L)!!
+        val explore = snapshot.explore("ggM8SgQIBxAB/+=_", 24)
+
+        assertNotNull(explore)
+        assertEquals("mood", explore!!.kind)
+        assertEquals("Focus", explore.title)
+        assertEquals(spotifyArtwork, explore.artworkUrl)
+        assertEquals("Real Album", explore.tracks.single().album)
+        assertEquals("Levyra Editorial Discovery", explore.tracks.single().metadataProvider)
+        assertNull(snapshot.explore("differentParams", 24))
+    }
+
+    @Test
+    fun rejectsUntrustedExploreArtworkWithoutDroppingTheCollection() {
+        val moodCollection = """{
+            "id": "genre-dance",
+            "kind": "genre",
+            "market": "GLOBAL",
+            "title": "Dance & Electronic",
+            "artworkUrl": "https://evil.example/cover.jpg",
+            "youtubeParams": "danceParams",
+            "sectionIndex": 1,
+            "tracks": [${track(title = "Faded", artist = "Alan Walker")}]
+        }""".trimIndent()
+        val body = catalog(
+            collections = collection("IT", track(title = "Italia")) + "," + moodCollection
+        )
+
+        val explore = EditorialCatalogParser.parse(body, loadedAt = 0L)!!
+            .explore("danceParams", 24)
+
+        assertNotNull(explore)
+        assertEquals("", explore!!.artworkUrl)
+    }
+
+    @Test
+    fun selectsRequestedMarketAndUsesItalyOnlyForInvalidCountryCodes() {        val body = catalog(
             collections = collection("IT", track(title = "Italia")) + "," +
                 collection("US", track(title = "USA"))
         )
