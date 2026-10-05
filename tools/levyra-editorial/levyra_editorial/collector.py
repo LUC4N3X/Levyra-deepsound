@@ -365,7 +365,11 @@ def validate_catalog_dict(payload: Mapping[str, Any]) -> None:
                     f"Catalog collection '{collection_id}' has invalid YouTube browse params."
                 )
             section_index = collection.get("sectionIndex")
-            if not isinstance(section_index, int) or section_index < -1:
+            if (
+                isinstance(section_index, bool)
+                or not isinstance(section_index, int)
+                or section_index < -1
+            ):
                 raise ValueError(
                     f"Catalog collection '{collection_id}' has an invalid section index."
                 )
