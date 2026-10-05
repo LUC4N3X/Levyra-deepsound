@@ -60,7 +60,7 @@ class OnDemandCanvasResolver(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?): Boolean =
             size > MAX_NEGATIVE_CACHE_ENTRIES
     }
-    private val negativeCacheGenerations = mutableMapOf<String, Long>()
+    private var negativeCacheGeneration = 0L
 
     suspend fun resolve(identity: MotionTrackIdentity): MotionArtworkCandidate? =
         when (val resolution = resolveResult(identity)) {
@@ -102,7 +102,7 @@ class OnDemandCanvasResolver(
         val cacheKey = onDemandCacheKey(identity)
         synchronized(negativeCacheLock) {
             negativeCache.remove(cacheKey)
-            negativeCacheGenerations[cacheKey] = (negativeCacheGenerations[cacheKey] ?: 0L) + 1L
+            negativeCacheGeneration += 1L
         }
         Timber.d("On-demand canvas negative cache invalidated for %s", identity.title)
     }
@@ -119,7 +119,7 @@ class OnDemandCanvasResolver(
         NegativeCacheRequestState(
             key = key,
             nowMs = nowMs,
-            generation = negativeCacheGenerations[key] ?: 0L
+            generation = negativeCacheGeneration
         )
     }
 
@@ -249,8 +249,7 @@ class OnDemandCanvasResolver(
 
     private fun recordNegative(requestState: NegativeCacheRequestState) {
         synchronized(negativeCacheLock) {
-            val currentGeneration = negativeCacheGenerations[requestState.key] ?: 0L
-            if (currentGeneration == requestState.generation) {
+            if (negativeCacheGeneration == requestState.generation) {
                 negativeCache[requestState.key] = requestState.nowMs + NEGATIVE_CACHE_TTL_MS
             }
         }
