@@ -27,7 +27,7 @@ class YoutubeMusicSearchRendererTest {
 
         requireNotNull(track)
         assertEquals("", track.artist)
-        assertEquals("YouTube Music", track.album)
+        assertEquals("", track.album)
     }
 
     @Test
@@ -58,7 +58,7 @@ class YoutubeMusicSearchRendererTest {
 
         requireNotNull(track)
         assertEquals("Coldplay", track.artist)
-        assertEquals("YouTube Music", track.album)
+        assertEquals("", track.album)
         assertEquals(listOf("UCsFc1cQ7K09jEUpVgJ7OrhQ"), track.artistBrowseIds)
     }
 
@@ -153,7 +153,7 @@ class YoutubeMusicSearchRendererTest {
 
         requireNotNull(track)
         assertEquals("Coldplay", track.artist)
-        assertEquals("YouTube Music", track.album)
+        assertEquals("", track.album)
     }
 
     @Test

@@ -38,7 +38,14 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
         val target = File(appContext.filesDir, CACHE_RELATIVE_PATH)
         val marker = appContext.getSharedPreferences(BOOTSTRAP_STATE, Context.MODE_PRIVATE)
         val cachePresent = target.isFile && target.length() in 1..MAX_CATALOG_BYTES.toLong()
-        if (cachePresent && marker.getInt(KEY_BOOTSTRAP_VERSION, 0) >= BOOTSTRAP_VERSION) return
+        val packageUpdateTime = runCatching {
+            appContext.packageManager.getPackageInfo(appContext.packageName, 0).lastUpdateTime
+        }.getOrDefault(0L)
+        if (
+            cachePresent &&
+            marker.getInt(KEY_BOOTSTRAP_VERSION, 0) >= BOOTSTRAP_VERSION &&
+            marker.getLong(KEY_PACKAGE_UPDATE_TIME, -1L) == packageUpdateTime
+        ) return
 
         val bundled = appContext.assets.open(ASSET_PATH).bufferedReader(StandardCharsets.UTF_8).use {
             it.readText()
@@ -50,16 +57,53 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
         if (root.optJSONArray("collections")?.length()?.let { it > 0 } != true) return
 
         val now = System.currentTimeMillis()
-        if (!cachePresent) {
-            // The bundled snapshot is a first-paint cache, not a claim that its source was generated now.
-            // Refreshing this local timestamp only makes the existing cache eligibility rules accept it;
-            // the real Spotify catalog refresh still starts immediately in the background.
-            root.put("generatedAt", Instant.ofEpochMilli(now).toString())
+        val cachedRoot = if (cachePresent) readCatalogRoot(target) else null
+        val bundledGeneratedAtMs = catalogGeneratedAtMs(root)
+        val cachedGeneratedAtMs = cachedRoot?.let(::catalogGeneratedAtMs)
+        val shouldInstall = shouldInstallBundledCatalog(
+            cachePresent = cachePresent,
+            cachedGeneratedAtMs = cachedGeneratedAtMs,
+            bundledGeneratedAtMs = bundledGeneratedAtMs,
+            cachedHasExplore = cachedRoot?.let(::hasExploreCollections) == true,
+            bundledHasExplore = hasExploreCollections(root)
+        )
+        if (shouldInstall) {
+            if (!cachePresent && bundledGeneratedAtMs == null) {
+                // A bundled fallback without source freshness can still seed first paint. Remote refresh
+                // starts immediately and replaces it with a timestamped catalog as soon as one is available.
+                root.put("generatedAt", Instant.ofEpochMilli(now).toString())
+            }
             writeCatalog(target, root.toString().toByteArray(StandardCharsets.UTF_8))
         }
 
         seedArtworkCache(appContext, root, now)
-        marker.edit().putInt(KEY_BOOTSTRAP_VERSION, BOOTSTRAP_VERSION).apply()
+        marker.edit()
+            .putInt(KEY_BOOTSTRAP_VERSION, BOOTSTRAP_VERSION)
+            .putLong(KEY_PACKAGE_UPDATE_TIME, packageUpdateTime)
+            .apply()
+    }
+
+    private fun catalogGeneratedAtMs(root: JSONObject): Long? =
+        runCatching { Instant.parse(root.optString("generatedAt").trim()).toEpochMilli() }.getOrNull()
+
+    private fun readCatalogRoot(file: File): JSONObject? =
+        runCatching {
+            if (!file.isFile || file.length() !in 1..MAX_CATALOG_BYTES.toLong()) return@runCatching null
+            val body = file.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+            JSONObject(body)
+        }.getOrNull()
+
+    private fun hasExploreCollections(root: JSONObject): Boolean {
+        val collections = root.optJSONArray("collections") ?: return false
+        for (index in 0 until collections.length()) {
+            val kind = collections.optJSONObject(index)
+                ?.optString("kind")
+                .orEmpty()
+                .trim()
+                .lowercase(Locale.ROOT)
+            if (kind == "mood" || kind == "genre") return true
+        }
+        return false
     }
 
     private fun writeCatalog(target: File, payload: ByteArray) {
@@ -197,9 +241,25 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
         const val ARTWORK_CACHE_NAME = "levyra_chart_official_artwork"
         const val BOOTSTRAP_STATE = "levyra_spotify_chart_bootstrap"
         const val KEY_BOOTSTRAP_VERSION = "version"
-        const val BOOTSTRAP_VERSION = 1
+        const val KEY_PACKAGE_UPDATE_TIME = "package_update_time"
+        const val BOOTSTRAP_VERSION = 2
         const val DEFAULT_MARKET = "IT"
         const val SUPPORTED_SCHEMA_VERSION = 1
-        const val MAX_CATALOG_BYTES = 2 * 1024 * 1024
+        const val MAX_CATALOG_BYTES = 4 * 1024 * 1024
     }
+}
+
+
+internal fun shouldInstallBundledCatalog(
+    cachePresent: Boolean,
+    cachedGeneratedAtMs: Long?,
+    bundledGeneratedAtMs: Long?,
+    cachedHasExplore: Boolean = false,
+    bundledHasExplore: Boolean = false
+): Boolean {
+    if (!cachePresent) return true
+    if (bundledHasExplore && !cachedHasExplore) return true
+    val bundled = bundledGeneratedAtMs ?: return false
+    val cached = cachedGeneratedAtMs ?: return true
+    return bundled > cached
 }

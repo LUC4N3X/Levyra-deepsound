@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -131,18 +133,23 @@ internal fun ExploreCollectionDestinationScreen(
     backEnabled: Boolean,
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
-    onPlayTrack: (Track) -> Unit
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val rotationBucket = remember(identity) {
         exploreGenreRotationBucket(System.currentTimeMillis())
     }
-    val editorial = remember(tracks, identity, rotationBucket) {
+    val trackStructure = remember(tracks) { tracks.map { track -> track.id } }
+    val editorialStructure = remember(trackStructure, identity, rotationBucket) {
         buildExploreGenreEditorial(
             tracks = tracks,
             zoneId = zone?.id ?: identity,
             rotationBucket = rotationBucket
         )
+    }
+    val editorial = remember(editorialStructure, tracks) {
+        refreshExploreGenreEditorialMetadata(editorialStructure, tracks)
     }
 
     ExploreDestinationSurface(
@@ -151,151 +158,328 @@ internal fun ExploreCollectionDestinationScreen(
         strings = strings,
         onBack = onBack,
         trailing = if (tracks.isNotEmpty()) {
-            {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(LevyraCyan, CircleShape)
-                        .semantics { role = Role.Button }
-                        .clickable(onClick = onPlayAll),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = strings.play,
-                        tint = LevyraBlack,
-                        modifier = Modifier.size(23.dp)
-                    )
-                }
-            }
+            { ExploreCollectionPlayAllButton(strings = strings, onPlayAll = onPlayAll) }
         } else {
             null
         }
     ) { contentPadding ->
-        when {
-            isLoading && tracks.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize().padding(contentPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
-            }
+        ExploreCollectionDestinationContent(
+            identity = identity,
+            title = title,
+            subtitle = subtitle,
+            zone = zone,
+            tracks = tracks,
+            editorial = editorial,
+            isLoading = isLoading,
+            currentTrackId = currentTrackId,
+            isPlaying = isPlaying,
+            strings = strings,
+            contentPadding = contentPadding,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+    }
+}
 
-            tracks.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 28.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = strings.exploreEmpty,
-                    color = LevyraMuted,
-                    fontSize = 15.sp,
-                    lineHeight = 21.sp,
-                    fontWeight = FontWeight.SemiBold
+@Composable
+private fun ExploreCollectionPlayAllButton(
+    strings: LevyraStrings,
+    onPlayAll: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .background(LevyraCyan, CircleShape)
+            .semantics { role = Role.Button }
+            .clickable(onClick = onPlayAll),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.PlayArrow,
+            contentDescription = strings.play,
+            tint = LevyraBlack,
+            modifier = Modifier.size(23.dp)
+        )
+    }
+}
+
+@Composable
+private fun ExploreCollectionDestinationContent(
+    identity: String,
+    title: String,
+    subtitle: String?,
+    zone: ExploreZone?,
+    tracks: List<Track>,
+    editorial: ExploreGenreEditorial,
+    isLoading: Boolean,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    strings: LevyraStrings,
+    contentPadding: PaddingValues,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    when {
+        isLoading && tracks.isEmpty() -> ExploreCollectionLoading(contentPadding)
+        tracks.isEmpty() -> ExploreCollectionEmpty(
+            contentPadding = contentPadding,
+            message = strings.exploreEmpty
+        )
+        else -> ExploreCollectionList(
+            identity = identity,
+            title = title,
+            subtitle = subtitle,
+            zone = zone,
+            tracks = tracks,
+            editorial = editorial,
+            currentTrackId = currentTrackId,
+            isPlaying = isPlaying,
+            strings = strings,
+            contentPadding = contentPadding,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+    }
+}
+
+@Composable
+private fun ExploreCollectionLoading(contentPadding: PaddingValues) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
+    }
+}
+
+@Composable
+private fun ExploreCollectionEmpty(
+    contentPadding: PaddingValues,
+    message: String
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 28.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            color = LevyraMuted,
+            fontSize = 15.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun ExploreCollectionList(
+    identity: String,
+    title: String,
+    subtitle: String?,
+    zone: ExploreZone?,
+    tracks: List<Track>,
+    editorial: ExploreGenreEditorial,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    strings: LevyraStrings,
+    contentPadding: PaddingValues,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 18.dp,
+            end = 18.dp,
+            top = contentPadding.calculateTopPadding() + 10.dp,
+            bottom = 130.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        exploreCollectionHeroItem(
+            identity = identity,
+            title = title,
+            subtitle = subtitle,
+            zone = zone,
+            track = tracks.first(),
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreFeaturedItems(
+            tracks = editorial.featured,
+            currentTrackId = currentTrackId,
+            strings = strings,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreArtistItems(
+            artists = editorial.artists,
+            strings = strings,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreAlbumItems(
+            albums = editorial.albums,
+            strings = strings,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreEssentialItems(
+            tracks = editorial.essentials,
+            currentTrackId = currentTrackId,
+            isPlaying = isPlaying,
+            strings = strings,
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+    }
+}
+
+private fun LazyListScope.exploreCollectionHeroItem(
+    identity: String,
+    title: String,
+    subtitle: String?,
+    zone: ExploreZone?,
+    track: Track,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    item(key = "explore-collection-hero") {
+        LaunchedEffect(track.id) {
+            onRequestTrackArtwork(track)
+        }
+        ExploreCollectionHero(
+            title = title,
+            subtitle = subtitle,
+            leadTrack = track,
+            identity = identity,
+            zone = zone
+        )
+    }
+}
+
+private fun LazyListScope.exploreFeaturedItems(
+    tracks: List<Track>,
+    currentTrackId: String?,
+    strings: LevyraStrings,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    if (tracks.isEmpty()) return
+    item(key = "explore-genre-popular-header") {
+        ExploreGenreSectionHeader(strings.popularTracks)
+    }
+    item(key = "explore-genre-popular") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            items(
+                items = tracks,
+                key = { track -> "explore-featured-${track.id}" }
+            ) { track ->
+                LaunchedEffect(track.id) {
+                    onRequestTrackArtwork(track)
+                }
+                ExploreGenreTrackCard(
+                    track = track,
+                    isCurrent = track.id == currentTrackId,
+                    onClick = { onPlayTrack(track) }
                 )
             }
+        }
+    }
+}
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 18.dp,
-                    end = 18.dp,
-                    top = contentPadding.calculateTopPadding() + 10.dp,
-                    bottom = 130.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                item(key = "explore-collection-hero") {
-                    ExploreCollectionHero(
-                        title = title,
-                        subtitle = subtitle,
-                        leadTrack = tracks.first(),
-                        identity = identity,
-                        zone = zone
-                    )
+private fun LazyListScope.exploreArtistItems(
+    artists: List<ExploreGenreArtistCard>,
+    strings: LevyraStrings,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    if (artists.isEmpty()) return
+    item(key = "explore-genre-artists-header") {
+        ExploreGenreSectionHeader(strings.artists)
+    }
+    item(key = "explore-genre-artists") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            items(
+                items = artists,
+                key = { artist -> "explore-artist-${artist.key}" }
+            ) { artist ->
+                LaunchedEffect(artist.track.id) {
+                    onRequestTrackArtwork(artist.track)
                 }
-
-                if (editorial.featured.isNotEmpty()) {
-                    item(key = "explore-genre-popular-header") {
-                        ExploreGenreSectionHeader(strings.popularTracks)
-                    }
-                    item(key = "explore-genre-popular") {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(end = 4.dp)
-                        ) {
-                            items(
-                                items = editorial.featured,
-                                key = { track -> "explore-featured-${track.id}" }
-                            ) { track ->
-                                ExploreGenreTrackCard(
-                                    track = track,
-                                    isCurrent = track.id == currentTrackId,
-                                    onClick = { onPlayTrack(track) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (editorial.artists.isNotEmpty()) {
-                    item(key = "explore-genre-artists-header") {
-                        ExploreGenreSectionHeader(strings.artists)
-                    }
-                    item(key = "explore-genre-artists") {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            contentPadding = PaddingValues(end = 4.dp)
-                        ) {
-                            items(
-                                items = editorial.artists,
-                                key = { artist -> "explore-artist-${artist.key}" }
-                            ) { artist ->
-                                ExploreGenreArtistCard(
-                                    artist = artist,
-                                    onClick = { onPlayTrack(artist.track) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (editorial.albums.isNotEmpty()) {
-                    item(key = "explore-genre-albums-header") {
-                        ExploreGenreSectionHeader(strings.albumsPlain)
-                    }
-                    item(key = "explore-genre-albums") {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(end = 4.dp)
-                        ) {
-                            items(
-                                items = editorial.albums,
-                                key = { album -> "explore-album-${album.key}" }
-                            ) { album ->
-                                ExploreGenreAlbumCard(
-                                    album = album,
-                                    onClick = { onPlayTrack(album.track) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                item(key = "explore-genre-songs-header") {
-                    ExploreGenreSectionHeader(strings.songsPlain)
-                }
-                items(
-                    items = editorial.essentials,
-                    key = { track -> "explore-destination-track-${track.id}" }
-                ) { track ->
-                    ExploreDestinationTrackRow(
-                        track = track,
-                        isCurrent = track.id == currentTrackId,
-                        isPlaying = isPlaying && track.id == currentTrackId,
-                        onClick = { onPlayTrack(track) }
-                    )
-                }
+                ExploreGenreArtistCard(
+                    artist = artist,
+                    onClick = { onPlayTrack(artist.track) }
+                )
             }
         }
+    }
+}
+
+private fun LazyListScope.exploreAlbumItems(
+    albums: List<ExploreGenreAlbumCard>,
+    strings: LevyraStrings,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    if (albums.isEmpty()) return
+    item(key = "explore-genre-albums-header") {
+        ExploreGenreSectionHeader(strings.albumsPlain)
+    }
+    item(key = "explore-genre-albums") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            items(
+                items = albums,
+                key = { album -> "explore-album-${album.key}" }
+            ) { album ->
+                LaunchedEffect(album.track.id) {
+                    onRequestTrackArtwork(album.track)
+                }
+                ExploreGenreAlbumCard(
+                    album = album,
+                    onClick = { onPlayTrack(album.track) }
+                )
+            }
+        }
+    }
+}
+
+private fun LazyListScope.exploreEssentialItems(
+    tracks: List<Track>,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    strings: LevyraStrings,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    item(key = "explore-genre-songs-header") {
+        ExploreGenreSectionHeader(strings.songsPlain)
+    }
+    items(
+        items = tracks,
+        key = { track -> "explore-destination-track-${track.id}" }
+    ) { track ->
+        LaunchedEffect(track.id) {
+            onRequestTrackArtwork(track)
+        }
+        ExploreDestinationTrackRow(
+            track = track,
+            isCurrent = track.id == currentTrackId,
+            isPlaying = isPlaying && track.id == currentTrackId,
+            onClick = { onPlayTrack(track) }
+        )
     }
 }
 
@@ -672,6 +856,7 @@ private fun ExploreDestinationReleaseRow(
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun ExploreMoodsDestinationScreen(
     zones: List<ExploreZone>,
@@ -683,394 +868,460 @@ internal fun ExploreMoodsDestinationScreen(
     onBack: () -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit,
-    onRequestCategoryArtwork: (String) -> Unit
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
-    val hasProviderGenres = sections.any { section ->
-        section.presentation == ExploreCategoryPresentation.Structured
+    val fallbackGenres = remember(zones, sections) {
+        fallbackExploreGenres(zones, sections)
     }
-    val fallbackGenres = remember(zones, hasProviderGenres) {
-        if (hasProviderGenres) emptyList() else exploreFallbackGenres(zones)
-    }
+
     ExploreDestinationSurface(
         title = strings.exploreMoods,
         subtitle = strings.exploreSubtitle,
         strings = strings,
         onBack = onBack
     ) { contentPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 18.dp,
-                end = 18.dp,
-                top = contentPadding.calculateTopPadding() + 14.dp,
-                bottom = 130.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ExploreMoodsList(
+            contentPadding = contentPadding,
+            sections = sections,
+            fallbackGenres = fallbackGenres,
+            categoryArtwork = categoryArtwork,
+            isLoading = isLoading,
+            strings = strings,
+            onOpenZone = onOpenZone,
+            onOpenCategory = onOpenCategory,
+            onRequestCategoryArtwork = onRequestCategoryArtwork
+        )
+    }
+}
+
+private fun fallbackExploreGenres(
+    zones: List<ExploreZone>,
+    sections: List<ExploreCategorySection>
+): List<ExploreZone> = if (
+    sections.any { section -> section.presentation == ExploreCategoryPresentation.Structured }
+) {
+    emptyList()
+} else {
+    exploreFallbackGenres(zones)
+}
+
+@Composable
+private fun ExploreMoodsList(
+    contentPadding: PaddingValues,
+    sections: List<ExploreCategorySection>,
+    fallbackGenres: List<ExploreZone>,
+    categoryArtwork: Map<String, String>,
+    isLoading: Boolean,
+    strings: LevyraStrings,
+    onOpenZone: (ExploreZone) -> Unit,
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = contentPadding.calculateTopPadding() + 18.dp,
+            bottom = 130.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        exploreMoodLoadingItems(isLoading, sections, strings)
+        exploreProviderCategoryItems(
+            sections = sections,
+            categoryArtwork = categoryArtwork,
+            strings = strings,
+            onOpenCategory = onOpenCategory,
+            onRequestCategoryArtwork = onRequestCategoryArtwork
+        )
+        exploreFallbackGenreItems(
+            fallbackGenres = fallbackGenres,
+            strings = strings,
+            onOpenZone = onOpenZone
+        )
+        exploreMoodEmptyItem(
+            isLoading = isLoading,
+            sections = sections,
+            fallbackGenres = fallbackGenres,
+            strings = strings
+        )
+    }
+}
+
+private fun LazyListScope.exploreMoodLoadingItems(
+    isLoading: Boolean,
+    sections: List<ExploreCategorySection>,
+    strings: LevyraStrings
+) {
+    if (!isLoading || sections.isNotEmpty()) return
+    item(key = "provider-moods-loading-title") {
+        ExploreCategorySectionHeader(strings.exploreMoodSection)
+    }
+    items(
+        count = 2,
+        key = { index -> "provider-mood-loading-row-$index" }
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(108.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (isLoading && sections.isEmpty()) {
-                item(key = "provider-moods-loading-title") {
-                    ExploreCategorySectionHeader(strings.exploreMoodSection, atmospheric = true)
-                }
-                item(key = "provider-moods-loading-cards") {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        userScrollEnabled = false
-                    ) {
-                        items(count = 2, key = { index -> "provider-mood-loading-$index" }) {
-                            ExploreAtmosphericCategoryPlaceholder()
-                        }
-                    }
-                }
-            }
-
-            sections.forEach { section ->
-                val title = section.providerTitle.ifBlank {
-                    when (section.presentation) {
-                        ExploreCategoryPresentation.Atmospheric -> strings.exploreMoodSection
-                        ExploreCategoryPresentation.Structured -> strings.genres
-                        ExploreCategoryPresentation.Mixed -> strings.exploreMoods
-                    }
-                }
-                item(key = "${section.key}-header") {
-                    ExploreCategorySectionHeader(
-                        title = title,
-                        atmospheric = section.presentation == ExploreCategoryPresentation.Atmospheric
-                    )
-                }
-                if (section.presentation == ExploreCategoryPresentation.Atmospheric) {
-                    item(key = "${section.key}-cards") {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(
-                                items = section.categories,
-                                key = { category -> "provider-mood-${category.params}" }
-                            ) { category ->
-                                LaunchedEffect(category.params) {
-                                    onRequestCategoryArtwork(category.params)
-                                }
-                                ExploreAtmosphericCategoryCard(
-                                    category = category,
-                                    artworkUrl = categoryArtwork[category.params].orEmpty(),
-                                    onClick = { onOpenCategory(category) }
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    items(
-                        items = section.categories.chunked(2),
-                        key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
-                    ) { pair ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            pair.forEach { category ->
-                                LaunchedEffect(category.params) {
-                                    onRequestCategoryArtwork(category.params)
-                                }
-                                ExploreStructuredCategoryCard(
-                                    title = category.title,
-                                    identity = category.params,
-                                    artworkUrl = categoryArtwork[category.params].orEmpty(),
-                                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                                    onClick = { onOpenCategory(category) }
-                                )
-                            }
-                            if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
-
-            if (fallbackGenres.isNotEmpty()) {
-                item(key = "editorial-genres-header") {
-                    ExploreCategorySectionHeader(strings.genres, atmospheric = false)
-                }
-                items(
-                    items = fallbackGenres.chunked(2),
-                    key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
-                ) { pair ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        pair.forEach { zone ->
-                            ExploreStructuredCategoryCard(
-                                title = zone.label,
-                                identity = zone.id,
-                                emoji = zone.emoji,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                onClick = { onOpenZone(zone) }
-                            )
-                        }
-                        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-
-            if (!isLoading && sections.isEmpty() && fallbackGenres.isEmpty()) {
-                item(key = "moods-and-genres-empty") {
-                    Text(
-                        text = strings.exploreEmpty,
-                        color = LevyraMuted,
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 42.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            ExploreDiscoveryCategoryPlaceholder(Modifier.weight(1f).fillMaxHeight())
+            ExploreDiscoveryCategoryPlaceholder(Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
 
+private fun LazyListScope.exploreProviderCategoryItems(
+    sections: List<ExploreCategorySection>,
+    categoryArtwork: Map<String, String>,
+    strings: LevyraStrings,
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
+) {
+    sections.forEach { section ->
+        exploreProviderCategorySection(
+            section = section,
+            categoryArtwork = categoryArtwork,
+            strings = strings,
+            onOpenCategory = onOpenCategory,
+            onRequestCategoryArtwork = onRequestCategoryArtwork
+        )
+    }
+}
+
+private fun LazyListScope.exploreProviderCategorySection(
+    section: ExploreCategorySection,
+    categoryArtwork: Map<String, String>,
+    strings: LevyraStrings,
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
+) {
+    val title = exploreProviderSectionTitle(section, strings)
+    val prominent = section.presentation == ExploreCategoryPresentation.Atmospheric
+    item(key = "${section.key}-header") {
+        ExploreCategorySectionHeader(title)
+    }
+    val pairs = section.categories.chunked(2)
+    items(
+        count = pairs.size,
+        key = { index -> "${section.key}-pair-$index" }
+    ) { index ->
+        val pair = pairs[index]
+        ExploreProviderCategoryRow(
+            pair = pair,
+            prominent = prominent,
+            categoryArtwork = categoryArtwork,
+            onOpenCategory = onOpenCategory,
+            onRequestCategoryArtwork = onRequestCategoryArtwork
+        )
+    }
+}
+
+private fun exploreProviderSectionTitle(
+    section: ExploreCategorySection,
+    strings: LevyraStrings
+): String = section.providerTitle.ifBlank {
+    when (section.presentation) {
+        ExploreCategoryPresentation.Atmospheric -> strings.exploreMoodSection
+        ExploreCategoryPresentation.Structured -> strings.genres
+        ExploreCategoryPresentation.Mixed -> strings.exploreMoods
+    }
+}
+
 @Composable
-private fun ExploreCategorySectionHeader(title: String, atmospheric: Boolean) {
+private fun ExploreProviderCategoryRow(
+    pair: List<ExploreCategory>,
+    prominent: Boolean,
+    categoryArtwork: Map<String, String>,
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().semantics { heading() },
-        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (prominent) 112.dp else 102.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(if (atmospheric) 24.dp else 10.dp)
-                .height(3.dp)
-                .clip(CircleShape)
-                .background(if (atmospheric) LevyraCyan else LevyraViolet)
-        )
-        Text(
-            text = title,
-            color = LevyraText,
-            fontSize = 19.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(19.sp),
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun ExploreAtmosphericCategoryCard(
-    category: ExploreCategory,
-    artworkUrl: String,
-    onClick: () -> Unit
-) {
-    val (accentStart, accentEnd) = exploreCategoryPalette(category.params)
-    val shape = RoundedCornerShape(24.dp)
-    Box(
-        modifier = Modifier
-            .width(232.dp)
-            .heightIn(min = 142.dp)
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        accentStart.copy(alpha = 0.62f),
-                        accentEnd.copy(alpha = 0.34f),
-                        LevyraPanel
-                    )
-                )
-            )
-            .border(BorderStroke(1.dp, accentStart.copy(alpha = 0.34f)), shape)
-            .semantics { role = Role.Button }
-            .clickable(onClick = onClick)
-    ) {
-        if (artworkUrl.isNotBlank()) {
-            AsyncImage(
-                model = artworkUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(accentStart.copy(alpha = 0.56f), LevyraBlack.copy(alpha = 0.08f))
-                        )
-                    )
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(LevyraBlack.copy(alpha = 0.04f), LevyraBlack.copy(alpha = 0.88f))
-                        )
-                    )
+        pair.forEach { category ->
+            LaunchedEffect(category.params) {
+                onRequestCategoryArtwork(category.params, prominent)
+            }
+            ExploreDiscoveryCategoryCard(
+                title = category.title,
+                identity = category.params,
+                artworkUrl = categoryArtwork[category.params].orEmpty(),
+                prominent = prominent,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                onClick = { onOpenCategory(category) }
             )
         }
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 14.dp, end = 16.dp)
-                .size(44.dp)
-                .background(LevyraBlack.copy(alpha = 0.44f), CircleShape)
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.92f),
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 25.dp, end = 28.dp).size(18.dp)
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .height(86.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            LevyraBlack.copy(alpha = 0f),
-                            LevyraBlack.copy(alpha = 0.78f),
-                            LevyraBlack.copy(alpha = 0.96f)
-                        )
-                    )
-                )
-        )
+        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+private fun LazyListScope.exploreFallbackGenreItems(
+    fallbackGenres: List<ExploreZone>,
+    strings: LevyraStrings,
+    onOpenZone: (ExploreZone) -> Unit
+) {
+    if (fallbackGenres.isEmpty()) return
+    item(key = "editorial-genres-header") {
+        ExploreCategorySectionHeader(strings.genres)
+    }
+    items(
+        items = fallbackGenres.chunked(2),
+        key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
+    ) { pair ->
+        ExploreFallbackGenreRow(pair = pair, onOpenZone = onOpenZone)
+    }
+}
+
+@Composable
+private fun ExploreFallbackGenreRow(
+    pair: List<ExploreZone>,
+    onOpenZone: (ExploreZone) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(102.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        pair.forEach { zone ->
+            ExploreDiscoveryCategoryCard(
+                title = zone.label,
+                identity = zone.id,
+                emoji = zone.emoji,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                onClick = { onOpenZone(zone) }
+            )
+        }
+        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+private fun LazyListScope.exploreMoodEmptyItem(
+    isLoading: Boolean,
+    sections: List<ExploreCategorySection>,
+    fallbackGenres: List<ExploreZone>,
+    strings: LevyraStrings
+) {
+    if (isLoading || sections.isNotEmpty() || fallbackGenres.isNotEmpty()) return
+    item(key = "moods-and-genres-empty") {
         Text(
-            text = category.title,
-            color = Color.White,
-            fontSize = 21.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(21.sp),
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(0.86f).padding(18.dp)
+            text = strings.exploreEmpty,
+            color = LevyraMuted,
+            fontSize = 15.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 42.dp),
+            textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-private fun ExploreAtmosphericCategoryPlaceholder() {
-    val shape = RoundedCornerShape(24.dp)
-    Box(
+private fun ExploreCategorySectionHeader(title: String) {
+    Text(
+        text = title,
+        color = LevyraText,
+        fontSize = 22.sp,
+        lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
+        fontWeight = FontWeight.Black,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier
-            .width(218.dp)
-            .height(126.dp)
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        LevyraPanelSoft.copy(alpha = 0.92f),
-                        LevyraCyan.copy(alpha = 0.12f),
-                        LevyraPanel
-                    )
-                )
-            )
-            .border(BorderStroke(1.dp, LevyraText.copy(alpha = 0.07f)), shape)
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 2.dp)
+            .semantics { heading() }
     )
 }
 
+private data class ExploreCategoryCardMetrics(
+    val artworkSize: androidx.compose.ui.unit.Dp,
+    val emojiSize: androidx.compose.ui.unit.TextUnit,
+    val placeholderSize: androidx.compose.ui.unit.Dp,
+    val titleSize: androidx.compose.ui.unit.TextUnit,
+    val titleWidthFraction: Float
+)
+
+private fun exploreCategoryCardMetrics(prominent: Boolean): ExploreCategoryCardMetrics =
+    if (prominent) {
+        ExploreCategoryCardMetrics(
+            artworkSize = 86.dp,
+            emojiSize = 30.sp,
+            placeholderSize = 38.dp,
+            titleSize = 17.sp,
+            titleWidthFraction = 0.62f
+        )
+    } else {
+        ExploreCategoryCardMetrics(
+            artworkSize = 78.dp,
+            emojiSize = 26.sp,
+            placeholderSize = 34.dp,
+            titleSize = 16.sp,
+            titleWidthFraction = 0.60f
+        )
+    }
+
 @Composable
-private fun ExploreStructuredCategoryCard(
+private fun ExploreDiscoveryCategoryCard(
     title: String,
     identity: String,
     artworkUrl: String = "",
     modifier: Modifier = Modifier,
+    prominent: Boolean = false,
     emoji: String = "",
     onClick: () -> Unit
 ) {
     val (accentStart, accentEnd) = exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(14.dp)
+    val metrics = exploreCategoryCardMetrics(prominent)
+    val longTitle = !prominent && title.length >= 18
+    val titleSize = if (longTitle) 15.sp else metrics.titleSize
+    val titleWidthFraction = if (longTitle) 0.72f else metrics.titleWidthFraction
     Box(
         modifier = modifier
-            .heightIn(min = 98.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        accentStart.copy(alpha = 0.15f),
-                        LevyraPanel.copy(alpha = 0.92f),
-                        LevyraPanel
+                        accentStart,
+                        accentEnd,
+                        accentEnd.copy(alpha = 0.88f)
                     )
                 )
             )
-            .border(BorderStroke(1.dp, accentStart.copy(alpha = 0.20f)), shape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape)
             .semantics { role = Role.Button }
             .clickable(onClick = onClick)
     ) {
-        if (artworkUrl.isNotBlank()) {
-            AsyncImage(
-                model = artworkUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 12.dp, y = 14.dp)
-                    .size(82.dp)
-                    .rotate(17f)
-                    .clip(RoundedCornerShape(9.dp))
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(96.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(LevyraPanel.copy(alpha = 0f), LevyraBlack.copy(alpha = 0.18f))
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            LevyraBlack.copy(alpha = 0.18f),
+                            LevyraBlack.copy(alpha = 0.02f),
+                            LevyraBlack.copy(alpha = 0.10f)
                         )
                     )
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 18.dp)
-                    .size(78.dp)
-                    .background(accentStart.copy(alpha = 0.12f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .background(Brush.linearGradient(listOf(accentStart, accentEnd)), CircleShape)
                 )
-            }
-        }
+        )
+        ExploreDiscoveryCategoryArtwork(
+            artworkUrl = artworkUrl,
+            emoji = emoji,
+            metrics = metrics
+        )
         Text(
             text = title,
-            color = LevyraText,
-            fontSize = 15.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+            color = Color.White,
+            fontSize = titleSize,
+            lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
             fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.64f)
-                .padding(start = 13.dp, top = 13.dp)
+                .fillMaxWidth(titleWidthFraction)
+                .padding(start = 14.dp, top = 14.dp, end = 4.dp)
         )
+    }
+}
+
+@Composable
+private fun BoxScope.ExploreDiscoveryCategoryArtwork(
+    artworkUrl: String,
+    emoji: String,
+    metrics: ExploreCategoryCardMetrics
+) {
+    val artworkModifier = Modifier
+        .align(Alignment.BottomEnd)
+        .offset(x = 14.dp, y = 12.dp)
+        .size(metrics.artworkSize)
+        .rotate(13f)
+        .clip(RoundedCornerShape(9.dp))
+    if (artworkUrl.isNotBlank()) {
+        AsyncImage(
+            model = artworkUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = artworkModifier
+        )
+        return
+    }
+    Box(
+        modifier = artworkModifier.background(Color.White.copy(alpha = 0.12f)),
+        contentAlignment = Alignment.Center
+    ) {
+        ExploreDiscoveryCategoryArtworkFallback(emoji, metrics)
+    }
+}
+
+@Composable
+private fun ExploreDiscoveryCategoryArtworkFallback(
+    emoji: String,
+    metrics: ExploreCategoryCardMetrics
+) {
+    if (emoji.isNotBlank()) {
+        Text(
+            text = emoji,
+            fontSize = metrics.emojiSize,
+            maxLines = 1
+        )
+        return
+    }
+    Box(
+        modifier = Modifier
+            .size(metrics.placeholderSize)
+            .background(Color.White.copy(alpha = 0.12f), CircleShape)
+    )
+}
+
+@Composable
+private fun ExploreDiscoveryCategoryPlaceholder(modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        LevyraPanelSoft,
+                        LevyraPanel,
+                        LevyraPanel.copy(alpha = 0.92f)
+                    )
+                )
+            )
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)), shape)
+    ) {
         Box(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 12.dp, bottom = 11.dp)
-                .size(27.dp)
-                .background(accentStart.copy(alpha = 0.18f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (emoji.isNotBlank()) {
-                Text(text = emoji, fontSize = 12.sp, maxLines = 1)
-            } else {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                    contentDescription = null,
-                    tint = accentStart,
-                    modifier = Modifier.size(15.dp)
-                )
-            }
-        }
+                .align(Alignment.BottomEnd)
+                .offset(x = 14.dp, y = 12.dp)
+                .size(78.dp)
+                .rotate(13f)
+                .clip(RoundedCornerShape(9.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+        )
     }
 }
 
 @Composable
 private fun exploreCategoryPalette(identity: String): Pair<Color, Color> {
-    val palette = listOf(LevyraCyan, LevyraBlue, LevyraViolet, LevyraPink, LevyraOrange)
-    val index = (identity.hashCode() and Int.MAX_VALUE) % palette.size
-    val secondaryIndex = (index + 2) % palette.size
-    return palette[index] to palette[secondaryIndex]
+    val palette = listOf(
+        Color(0xFF7C3AED) to Color(0xFF4C1D95),
+        Color(0xFFD81B60) to Color(0xFF7A1538),
+        Color(0xFF0F8A78) to Color(0xFF075E54),
+        Color(0xFF246BCE) to Color(0xFF173F7A),
+        Color(0xFFB96A16) to Color(0xFF70400F),
+        Color(0xFF238636) to Color(0xFF145325),
+        Color(0xFFB335B5) to Color(0xFF64236C),
+        Color(0xFFD9571C) to Color(0xFF7B3215)
+    )
+    return palette[(identity.hashCode() and Int.MAX_VALUE) % palette.size]
 }
 
 @Composable
@@ -1094,8 +1345,9 @@ private fun ExploreDestinationSurface(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
+                .zIndex(1f)
                 .statusBarsPadding()
-                .background(LevyraBlack.copy(alpha = 0.96f))
+                .background(LevyraBlack)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
