@@ -19,6 +19,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.net.HttpURLConnection
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -157,7 +158,7 @@ class OnDemandCanvasResolver(
         identity: MotionTrackIdentity,
         requestState: NegativeCacheRequestState
     ): OnDemandCanvasResolution =
-        if (resp.code == 404) {
+        if (resp.code == HttpURLConnection.HTTP_NOT_FOUND) {
             recordNegative(requestState)
             Timber.d("On-demand canvas resolver returned conclusive HTTP %d for %s", resp.code, identity.title)
             OnDemandCanvasResolution.NoMatch
