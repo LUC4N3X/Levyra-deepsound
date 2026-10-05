@@ -621,14 +621,16 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
     internal fun saveExploreDiscovery(
         categories: List<com.luc4n3x.levyra.domain.ExploreCategory>,
         artwork: Map<String, String>,
-        languageCode: String = languageCode()
+        languageCode: String = languageCode(),
+        savedAtMs: Long = System.currentTimeMillis()
     ) {
         if (categories.isEmpty()) return
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         val encoded = encodeExploreDiscoverySnapshot(
             languageCode = normalized,
             categories = categories,
-            artwork = artwork
+            artwork = artwork,
+            savedAtMs = savedAtMs
         )
         write { it[exploreDiscoveryKey(normalized)] = encoded }
     }
