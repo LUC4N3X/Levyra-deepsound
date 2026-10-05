@@ -11,7 +11,12 @@ import requests
 
 from .collector import normalize_playlist_items
 from .models import Collection
-from .spotify import EditorialSourceError, SourceApiError, SpotifyWebClient
+from .spotify import (
+    EditorialSourceError,
+    SourceApiError,
+    SpotifySearchUnavailable,
+    SpotifyWebClient,
+)
 from .youtube_music import DEFAULT_USER_AGENT, HOME_URL, ORIGIN, YoutubeMusicWebClient
 
 LOGGER = logging.getLogger(__name__)
@@ -296,11 +301,10 @@ def _resolve_spotify_explore_playlist(
                 queries,
             )
             return playlist_id, query
+        except SpotifySearchUnavailable:
+            raise
         except SourceApiError as error:
             last_error = error
-            lowered = str(error).casefold()
-            if "rate-limited" in lowered or "rotated the searchdesktop" in lowered:
-                raise
     if last_error is not None:
         raise last_error
     raise SourceApiError(f"No Spotify editorial query is available for '{seed.title}'.")
@@ -369,21 +373,19 @@ def collect_spotify_explore_collections(
                     section_title=seed.section or None,
                 )
             )
+        except SpotifySearchUnavailable as error:
+            LOGGER.warning(
+                "Spotify Explore search is unavailable for this run; "
+                "skipping the remaining Spotify category lookups: %s",
+                error,
+            )
+            break
         except (EditorialSourceError, requests.RequestException, RuntimeError, ValueError) as error:
             LOGGER.info(
                 "Explore category %s will use the YouTube Music fallback: %s",
                 seed.title,
                 str(error) if isinstance(error, SourceApiError) else type(error).__name__,
             )
-            if isinstance(error, SourceApiError) and (
-                "rate-limited" in str(error).casefold()
-                or "rotated the searchdesktop" in str(error).casefold()
-            ):
-                LOGGER.warning(
-                    "Spotify Explore search is unavailable for this run; "
-                    "skipping the remaining Spotify category lookups."
-                )
-                break
 
     LOGGER.info(
         "Collected Spotify editorial matches for %d of %d Explore categories.",
