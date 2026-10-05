@@ -63,6 +63,15 @@ class MotionArtworkLayerTest {
     }
 
     @Test
+    fun artistChangeNeverRetainsPreviousArtistMotion() {
+        val previous = motion(identity = "artist:a", url = "https://apple.example/a.m3u8")
+        val next = motion(identity = "artist:b", url = "https://apple.example/b.m3u8")
+
+        assertNull(retainedMotionArtwork(displayed = previous, incoming = next, gatesOpen = true))
+        assertNull(retainedMotionArtwork(displayed = previous, incoming = null, gatesOpen = true))
+    }
+
+    @Test
     fun closedGatesOrSameAssetRetainNothing() {
         val current = motion(identity = "track-a", url = "https://canvaz.example/a.mp4")
         val upgrade = motion(identity = "track-a", url = "https://apple.example/a.m3u8")
@@ -84,27 +93,48 @@ class MotionArtworkLayerTest {
     }
 
     @Test
-    fun pageMotionDoesNotFlashStaticCoverWhileCanvasIsResolving() {
-        assertFalse(
-            motionStaticBedVisible(
-                pageMode = true,
-                motionResolving = true,
-                motionVisible = false,
-                videoCandidatePending = false,
-                videoUnavailable = false
-            )
+    fun pageMotionShowsStaticCoverImmediatelyWhileCanvasIsResolving() {
+        assertTrue(
+            motionStaticBedVisible(motionVisible = false)
         )
     }
 
     @Test
     fun pageMotionKeepsStaticCoverVisibleUntilFirstVideoFrame() {
         assertTrue(
-            motionStaticBedVisible(
-                pageMode = true,
-                motionResolving = false,
-                motionVisible = false,
-                videoCandidatePending = true,
-                videoUnavailable = false
+            motionStaticBedVisible(motionVisible = false)
+        )
+    }
+
+    @Test
+    fun pageMotionReplacesStaticCoverAfterFirstVideoFrame() {
+        assertFalse(
+            motionStaticBedVisible(motionVisible = true)
+        )
+    }
+
+    @Test
+    fun artistHeroCanDisableStaticKenBurnsWithoutDisablingMotionVideo() {
+        assertFalse(
+            staticArtworkMotionActive(
+                enabled = true,
+                staticArtworkMotionEnabled = false,
+                decorativeMotion = true,
+                lifecycleActive = true,
+                localAllowed = true,
+                layerActive = true,
+                staticBedVisible = true
+            )
+        )
+        assertTrue(
+            staticArtworkMotionActive(
+                enabled = true,
+                staticArtworkMotionEnabled = true,
+                decorativeMotion = true,
+                lifecycleActive = true,
+                localAllowed = true,
+                layerActive = true,
+                staticBedVisible = true
             )
         )
     }
@@ -112,44 +142,20 @@ class MotionArtworkLayerTest {
     @Test
     fun pageMotionShowsStaticCoverAfterConclusiveMissOrVideoFailure() {
         assertTrue(
-            motionStaticBedVisible(
-                pageMode = true,
-                motionResolving = false,
-                motionVisible = false,
-                videoCandidatePending = false,
-                videoUnavailable = false
-            )
+            motionStaticBedVisible(motionVisible = false)
         )
         assertTrue(
-            motionStaticBedVisible(
-                pageMode = true,
-                motionResolving = true,
-                motionVisible = false,
-                videoCandidatePending = true,
-                videoUnavailable = true
-            )
+            motionStaticBedVisible(motionVisible = false)
         )
     }
 
     @Test
     fun nowPlayingStaticCoverBehaviorDoesNotChange() {
         assertTrue(
-            motionStaticBedVisible(
-                pageMode = false,
-                motionResolving = true,
-                motionVisible = false,
-                videoCandidatePending = true,
-                videoUnavailable = false
-            )
+            motionStaticBedVisible(motionVisible = false)
         )
         assertFalse(
-            motionStaticBedVisible(
-                pageMode = false,
-                motionResolving = false,
-                motionVisible = true,
-                videoCandidatePending = false,
-                videoUnavailable = false
-            )
+            motionStaticBedVisible(motionVisible = true)
         )
     }
 
