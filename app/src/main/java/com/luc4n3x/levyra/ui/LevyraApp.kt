@@ -138,6 +138,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import android.app.Activity
 import android.content.ClipData
+import android.content.Context
 import android.media.AudioManager
 import android.content.Intent
 import com.luc4n3x.levyra.update.AppUpdateContract

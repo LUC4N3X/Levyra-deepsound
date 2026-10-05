@@ -252,6 +252,8 @@ class ExploreLayoutTest {
         )
         assertTrue("genre-indie" in fullGenreIds)
         assertTrue("genre-jazz" in fullGenreIds)
+        assertEquals("mood-workout", canonicalExploreCategoryKey("운동", 0))
+        assertEquals("genre-jazz", canonicalExploreCategoryKey("ジャズ", 1))
     }
 
     @Test

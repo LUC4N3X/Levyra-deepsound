@@ -54,7 +54,11 @@ private data class CanonicalCategorySpec(
     val accentEnd: Int,
     val emoji: String,
     val aliases: Set<String>
-)
+) {
+    val normalizedAliases: Set<String> by lazy(LazyThreadSafetyMode.NONE) {
+        aliases.map(::normalizeExploreCategoryToken).filter { it.isNotBlank() }.toSet()
+    }
+}
 
 private val CanonicalMoodSpecs = listOf(
     CanonicalCategorySpec(
@@ -393,7 +397,8 @@ internal fun normalizeExploreCategoryToken(raw: String): String {
     if (raw.isBlank()) return ""
     val decomposed = Normalizer.normalize(raw.trim().lowercase(Locale.ROOT), Normalizer.Form.NFD)
     val withoutMarks = decomposed.replace(DiacriticsRegex, "")
-    return withoutMarks
+    val recomposed = Normalizer.normalize(withoutMarks, Normalizer.Form.NFC)
+    return recomposed
         .replace("&", " ")
         .replace(NonAlphaNumericRegex, " ")
         .replace(MultiSpaceRegex, " ")
@@ -425,14 +430,14 @@ private fun matchCanonicalSpec(
     }
 
     allSpecs.firstOrNull { spec ->
-        normalizedTitle in spec.aliases
+        normalizedTitle in spec.normalizedAliases
     }?.let { return it }
 
     val titleWords = normalizedTitle.split(' ').filter { it.length >= 2 }.toSet()
     if (titleWords.isEmpty()) return null
 
     return allSpecs.firstOrNull { spec ->
-        spec.aliases.any { alias ->
+        spec.normalizedAliases.any { alias ->
             val aliasWords = alias.split(' ').filter { it.isNotBlank() }
             if (aliasWords.size == 1) {
                 aliasWords.single() in titleWords
@@ -577,7 +582,7 @@ internal fun buildUnifiedExploreCatalog(
             query = zone.query,
             accentStart = startColor,
             accentEnd = endColor,
-            portraitKey = "lofi-chill",
+            portraitKey = "",
             zone = zone,
             providerCategory = provider
         )
@@ -666,7 +671,7 @@ internal fun buildUnifiedExploreCatalog(
             query = zone.query,
             accentStart = startColor,
             accentEnd = endColor,
-            portraitKey = "pop-global",
+            portraitKey = "",
             zone = zone,
             providerCategory = provider
         )
