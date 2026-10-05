@@ -39,7 +39,7 @@ class CommunityCanvasProvider internal constructor(
     private val client: OkHttpClient,
     private val onDemandResolver: OnDemandCanvasResolver,
     private val minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
-) : MotionArtworkProvider {
+) : MotionArtworkProvider, MotionArtworkRefreshableProvider {
     constructor(
         context: Context,
         onDemandResolver: OnDemandCanvasResolver = OnDemandCanvasResolver(context),
@@ -55,6 +55,10 @@ class CommunityCanvasProvider internal constructor(
     )
 
     override val id: String = PROVIDER_ID
+
+    override suspend fun invalidate(identity: MotionTrackIdentity) {
+        onDemandResolver.invalidate(identity)
+    }
 
     private val catalogMutex = Mutex()
     private val indexManifestMutex = Mutex()

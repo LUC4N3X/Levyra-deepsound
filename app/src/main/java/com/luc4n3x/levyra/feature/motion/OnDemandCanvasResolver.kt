@@ -90,6 +90,14 @@ class OnDemandCanvasResolver(
         }
     }
 
+    internal fun invalidate(identity: MotionTrackIdentity) {
+        val cacheKey = onDemandCacheKey(identity)
+        synchronized(negativeCacheLock) {
+            negativeCache.remove(cacheKey)
+        }
+        Timber.d("On-demand canvas negative cache invalidated for %s", identity.title)
+    }
+
     private fun isNegativeCached(key: String, nowMs: Long): Boolean =
         synchronized(negativeCacheLock) {
             val expiresAt = negativeCache[key]

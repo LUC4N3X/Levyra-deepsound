@@ -239,6 +239,38 @@ class MotionArtworkEngine(context: Context) {
         resolve(track, source)
     }
 
+    suspend fun invalidate(
+        track: Track,
+        source: LevyraCanvasSource = LevyraCanvasSource.Auto,
+        cachedIdentityKey: String? = null
+    ) {
+        val runtime = MotionArtworkRuntime.snapshot()
+        val prepared = metadataWarmCache.get(track)
+        val cacheKeys = linkedSetOf(motionArtworkRequestKey(track, source))
+        prepared?.let { cacheKeys += motionArtworkRequestKey(it, source) }
+        cachedIdentityKey
+            ?.takeIf { it.isNotBlank() }
+            ?.let(cacheKeys::add)
+
+        cacheKeys.forEach { cacheKey ->
+            requestCoordinator.cancel("${runtime.epoch}:$cacheKey")
+            repository.invalidate(cacheKey)
+        }
+
+        val identity = MotionTrackIdentity.from(prepared ?: track)
+        providersFor(runtime.epoch, runtime.value)
+            .filterIsInstance<MotionArtworkRefreshableProvider>()
+            .forEach { provider ->
+                try {
+                    provider.invalidate(identity)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (error: Throwable) {
+                    Timber.d(error, "Motion provider %s refresh invalidation failed", provider.id)
+                }
+            }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun resolveFreshProgressive(
         track: Track,
@@ -745,6 +777,13 @@ internal class MotionArtworkRequestCoordinator(
 ) {
     private val sessions = mutableMapOf<String, MotionProgressiveSession>()
 
+    fun cancel(requestKey: String) {
+        val session = synchronized(sessions) {
+            sessions.remove(requestKey)
+        }
+        session?.cancel()
+    }
+
     fun share(
         requestKey: String,
         block: suspend (emit: suspend (MotionArtwork) -> Unit) -> Unit
@@ -831,6 +870,19 @@ internal class MotionProgressiveSession {
         for (target in targets) {
             target.close()
         }
+    }
+
+    fun cancel() {
+        val targets = synchronized(stateLock) {
+            if (isCompleted) return
+            acceptingSubscriptions = false
+            isCompleted = true
+            collectors.toList()
+        }
+        for (target in targets) {
+            target.close()
+        }
+        worker?.cancel()
     }
 
     suspend fun collectInto(emit: suspend (MotionArtwork) -> Unit): Boolean {

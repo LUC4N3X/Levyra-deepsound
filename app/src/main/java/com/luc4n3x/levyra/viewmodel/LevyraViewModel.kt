@@ -10643,6 +10643,66 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ) prefetchAround(current)
     }
 
+    fun refreshCurrentMotionArtwork() {
+        val snapshot = _state.value
+        val current = snapshot.currentTrack ?: return
+        if (
+            !snapshot.animationsEnabled ||
+            !snapshot.motionArtworkEnabled ||
+            snapshot.isVideoMode ||
+            current.isLiveRadio() ||
+            isLocalPlaybackTrack(current)
+        ) {
+            return
+        }
+
+        val expectedKey = MotionArtworkIdentityKey.create(current)
+        val ticket = playbackGeneration.current()
+        val source = snapshot.interfaceSettings.canvasSource
+        val cachedIdentityKey = snapshot.motionArtwork?.identityKey
+        motionArtworkJob?.cancel()
+        motionArtworkPrefetchJob?.cancel()
+        motionArtworkRequestKey = null
+        _state.update { state ->
+            val activeTrack = state.currentTrack
+            if (
+                activeTrack != null &&
+                playbackGeneration.isCurrent(ticket) &&
+                MotionArtworkIdentityKey.create(activeTrack) == expectedKey
+            ) {
+                state.copy(motionArtwork = null, motionArtworkLoading = true)
+            } else {
+                state
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    motionArtworkEngine.invalidate(
+                        track = current,
+                        source = source,
+                        cachedIdentityKey = cachedIdentityKey
+                    )
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                Timber.d(error, "Motion artwork selective refresh invalidation failed for %s", current.id)
+            }
+
+            if (!isActive || !playbackGeneration.isCurrent(ticket)) return@launch
+            val activeTrack = _state.value.currentTrack ?: return@launch
+            if (
+                _state.value.isVideoMode ||
+                MotionArtworkIdentityKey.create(activeTrack) != expectedKey
+            ) {
+                return@launch
+            }
+            refreshMotionArtworkAround(activeTrack)
+        }
+    }
+
     private fun refreshMotionArtworkAround(current: Track) {
         if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled || _state.value.isVideoMode) {
             motionArtworkJob?.cancel()
@@ -10653,6 +10713,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         val expectedKey = MotionArtworkIdentityKey.create(current)
         val ticket = playbackGeneration.current()
+        val previousGeneration = motionArtworkRequestGeneration
+        if (
+            _state.value.motionArtwork != null &&
+            previousGeneration != ticket.generation
+        ) {
+            _state.update { state ->
+                state.copy(motionArtwork = null, motionArtworkLoading = true)
+            }
+        }
         if (
             motionArtworkJob?.isActive == true &&
             motionArtworkRequestKey == expectedKey &&

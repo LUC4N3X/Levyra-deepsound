@@ -484,4 +484,39 @@ class OnDemandCanvasResolverTest {
         }
     }
 
+
+    @Test
+    fun explicitInvalidationClearsTrackNegativeCache() {
+        runBlocking {
+            val requestCount = AtomicInteger(0)
+            val client = clientWithHandler { request ->
+                if (requestCount.incrementAndGet() == 1) {
+                    jsonResponse(request, 404, """{"status":"miss"}""")
+                } else {
+                    jsonResponse(
+                        request,
+                        200,
+                        """{"status":"resolved","url":"https://canvaz.scdn.co/upload/video/refreshed.mp4"}"""
+                    )
+                }
+            }
+            val resolver = OnDemandCanvasResolver(
+                client = client,
+                resolverUrl = fakeResolverUrl,
+                clientKey = fakeClientKey,
+                networkPolicyCheck = { true }
+            )
+            val identity = testIdentity()
+
+            assertTrue(resolver.resolveResult(identity) is OnDemandCanvasResolution.NoMatch)
+            assertTrue(resolver.resolveResult(identity) is OnDemandCanvasResolution.NoMatch)
+            assertEquals(1, requestCount.get())
+
+            resolver.invalidate(identity)
+
+            assertTrue(resolver.resolveResult(identity) is OnDemandCanvasResolution.Found)
+            assertEquals(2, requestCount.get())
+        }
+    }
+
 }
