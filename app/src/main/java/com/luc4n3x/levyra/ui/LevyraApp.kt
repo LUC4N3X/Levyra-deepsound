@@ -9328,20 +9328,13 @@ private fun HomeScreen(
         ) {
             item(key = "home-top", contentType = "home-header") {
                 val homeHeader: @Composable () -> Unit = {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        HomeSectionInset {
-                            GreetingBar(
-                                userName = state.userName,
-                                isResolving = state.isResolving,
-                                animationsEnabled = state.animationsEnabled,
-                                onSearch = viewModel::openSearch,
-                                onSettings = viewModel::openSettings
-                            )
-                        }
-                        MoodRow(
-                            moods = state.moods,
-                            selectedId = state.selectedMood?.id,
-                            onSelect = viewModel::selectMood
+                    HomeSectionInset {
+                        GreetingBar(
+                            userName = state.userName,
+                            isResolving = state.isResolving,
+                            animationsEnabled = state.animationsEnabled,
+                            onSearch = viewModel::openSearch,
+                            onSettings = viewModel::openSettings
                         )
                     }
                 }
@@ -21388,30 +21381,6 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
                 modifier = Modifier.weight(1f)
             )
             Icon(Icons.Rounded.Mic, null, tint = LevyraMuted, modifier = Modifier.size(19.dp))
-        }
-    }
-}
-
-@Composable
-private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(
-            start = HomeHorizontalInset,
-            end = 48.dp
-        )
-    ) {
-        items(
-            items = moods,
-            key = { it.id },
-            contentType = { "home-mood" }
-        ) { mood ->
-            HomeChip(
-                label = mood.title,
-                selected = mood.id == selectedId,
-                onClick = { onSelect(mood) }
-            )
         }
     }
 }
