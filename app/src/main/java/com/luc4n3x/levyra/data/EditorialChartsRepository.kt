@@ -144,10 +144,26 @@ internal class EditorialChartsRepository private constructor(context: Context) {
             val stored = usableSnapshot(System.currentTimeMillis())
             val remote = fetchRemoteSnapshot()
             if (remote != null) {
-                persist(remote.rawJson)
-                memorySnapshot = remote
+                val selected = if (
+                    remote.exploreByParams.isEmpty() &&
+                    stored?.exploreByParams?.isNotEmpty() == true
+                ) {
+                    mergeExploreCollectionsFromFallback(
+                        primaryJson = remote.rawJson,
+                        fallbackJson = stored.rawJson
+                    )?.let { mergedJson ->
+                        EditorialCatalogParser.parse(
+                            body = mergedJson,
+                            loadedAt = System.currentTimeMillis()
+                        )
+                    } ?: remote
+                } else {
+                    remote
+                }
+                persist(selected.rawJson)
+                memorySnapshot = selected
                 lastRefreshFailureAt = 0L
-                remote
+                selected
             } else {
                 lastRefreshFailureAt = System.currentTimeMillis()
                 stored
@@ -568,3 +584,37 @@ internal object EditorialCatalogParser {
         0xFFFFB000.toInt() to 0xFF00E5FF.toInt(),
     )
 }
+
+
+internal fun mergeExploreCollectionsFromFallback(
+    primaryJson: String,
+    fallbackJson: String
+): String? = runCatching {
+    val primary = JSONObject(primaryJson)
+    val fallback = JSONObject(fallbackJson)
+    val primaryCollections = primary.optJSONArray("collections") ?: return@runCatching null
+    val fallbackCollections = fallback.optJSONArray("collections") ?: return@runCatching null
+
+    var primaryHasExplore = false
+    for (index in 0 until primaryCollections.length()) {
+        val kind = primaryCollections.optJSONObject(index)
+            ?.optString("kind")
+            .orEmpty()
+            .trim()
+            .lowercase(Locale.ROOT)
+        if (kind == "mood" || kind == "genre") {
+            primaryHasExplore = true
+            break
+        }
+    }
+    if (primaryHasExplore) return@runCatching primary.toString()
+
+    for (index in 0 until fallbackCollections.length()) {
+        val collection = fallbackCollections.optJSONObject(index) ?: continue
+        val kind = collection.optString("kind").trim().lowercase(Locale.ROOT)
+        if (kind == "mood" || kind == "genre") {
+            primaryCollections.put(JSONObject(collection.toString()))
+        }
+    }
+    primary.toString()
+}.getOrNull()
