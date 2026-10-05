@@ -24152,7 +24152,8 @@ private fun ExploreMoodCollectionDestination(
             backEnabled = backEnabled,
             onBack = { onDestinationChange(returnDestination) },
             onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
-            onPlayTrack = { track -> viewModel.playFrom(tracks, track) }
+            onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
+            onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork
         )
         return
     }
@@ -24177,7 +24178,8 @@ private fun ExploreMoodCollectionDestination(
         backEnabled = backEnabled,
         onBack = { onDestinationChange(returnDestination) },
         onPlayAll = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
-        onPlayTrack = { track -> viewModel.playFrom(tracks, track) }
+        onPlayTrack = { track -> viewModel.playFrom(tracks, track) },
+        onRequestTrackArtwork = viewModel::ensureExploreTrackArtwork
     )
 }
 
