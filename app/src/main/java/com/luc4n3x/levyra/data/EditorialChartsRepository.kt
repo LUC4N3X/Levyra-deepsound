@@ -95,6 +95,28 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         snapshot.newReleases(country, limit)
     }
 
+    suspend fun cachedExploreCollection(params: String, limit: Int): EditorialExploreCollection? =
+        withContext(Dispatchers.IO) {
+            if (params.isBlank()) return@withContext null
+            val now = System.currentTimeMillis()
+            val snapshot = usableSnapshot(now)
+            if (snapshot == null) {
+                warm()
+                return@withContext null
+            }
+            if (snapshot.needsRefresh(now)) warm()
+            snapshot.explore(params, limit)
+        }
+
+    suspend fun exploreCollection(params: String, limit: Int): EditorialExploreCollection? =
+        withContext(Dispatchers.IO) {
+            if (params.isBlank()) return@withContext null
+            val now = System.currentTimeMillis()
+            val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext null
+            if (snapshot.needsRefresh(now)) warm()
+            snapshot.explore(params, limit)
+        }
+
     suspend fun newReleaseTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyList()
@@ -122,10 +144,26 @@ internal class EditorialChartsRepository private constructor(context: Context) {
             val stored = usableSnapshot(System.currentTimeMillis())
             val remote = fetchRemoteSnapshot()
             if (remote != null) {
-                persist(remote.rawJson)
-                memorySnapshot = remote
+                val selected = if (
+                    remote.exploreByParams.isEmpty() &&
+                    stored?.exploreByParams?.isNotEmpty() == true
+                ) {
+                    mergeExploreCollectionsFromFallback(
+                        primaryJson = remote.rawJson,
+                        fallbackJson = stored.rawJson
+                    )?.let { mergedJson ->
+                        EditorialCatalogParser.parse(
+                            body = mergedJson,
+                            loadedAt = System.currentTimeMillis()
+                        )
+                    } ?: remote
+                } else {
+                    remote
+                }
+                persist(selected.rawJson)
+                memorySnapshot = selected
                 lastRefreshFailureAt = 0L
-                remote
+                selected
             } else {
                 lastRefreshFailureAt = System.currentTimeMillis()
                 stored
@@ -236,15 +274,24 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         private const val HTTP_CACHE_DIRECTORY = "levyra_editorial_http"
         private const val HTTP_CACHE_BYTES = 4L * 1024L * 1024L
         private const val REFRESH_RETRY_TTL_MS = 5L * 60L * 1000L
-        private const val MAX_CATALOG_BYTES = 2 * 1024 * 1024
+        private const val MAX_CATALOG_BYTES = 4 * 1024 * 1024
         private const val CATALOG_URL =
             "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json"
     }
 }
 
+internal data class EditorialExploreCollection(
+    val params: String,
+    val kind: String,
+    val title: String,
+    val artworkUrl: String,
+    val tracks: List<Track>,
+)
+
 internal data class CatalogSnapshot(
     val byMarket: Map<String, List<Track>>,
     val releaseByMarket: Map<String, List<Track>>,
+    val exploreByParams: Map<String, EditorialExploreCollection>,
     val generatedAtMs: Long,
     val loadedAt: Long,
     val rawJson: String,
@@ -268,6 +315,11 @@ internal data class CatalogSnapshot(
         return localized.ifEmpty { fallback }.take(limit.coerceIn(1, MAX_TRACKS_PER_MARKET))
     }
 
+    fun explore(params: String, limit: Int): EditorialExploreCollection? {
+        val collection = exploreByParams[params] ?: return null
+        return collection.copy(tracks = collection.tracks.take(limit.coerceIn(1, MAX_TRACKS_PER_MARKET)))
+    }
+
     private companion object {
         const val DEFAULT_MARKET = "IT"
         const val MAX_TRACKS_PER_MARKET = 100
@@ -278,6 +330,8 @@ internal data class CatalogSnapshot(
 }
 
 internal object EditorialCatalogParser {
+    private val PUBLISHED_YOUTUBE_BROWSE_PARAMS = Regex("[A-Za-z0-9_./=+\\-]+")
+
     fun parse(body: String, loadedAt: Long): CatalogSnapshot? {
         val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
         if (root.optInt("schemaVersion", -1) != SUPPORTED_SCHEMA_VERSION) return null
@@ -285,23 +339,42 @@ internal object EditorialCatalogParser {
         val collections = root.optJSONArray("collections") ?: return null
         val byMarket = LinkedHashMap<String, List<Track>>()
         val releaseByMarket = LinkedHashMap<String, List<Track>>()
+        val exploreByParams = LinkedHashMap<String, EditorialExploreCollection>()
         for (index in 0 until collections.length()) {
             val collection = collections.optJSONObject(index) ?: continue
             val kind = collection.optString("kind").trim().lowercase(Locale.ROOT)
-            if (kind != "chart" && kind != "release") continue
-            val market = collection.optString("market")
-                .trim()
-                .uppercase(Locale.ROOT)
-                .takeIf { it.length == 2 }
-                ?: continue
             val tracks = parseTracks(collection.optJSONArray("tracks"), kind)
             if (tracks.isEmpty()) continue
-            if (kind == "release") releaseByMarket[market] = tracks else byMarket[market] = tracks
+            when (kind) {
+                "chart", "release" -> {
+                    val market = collection.optString("market")
+                        .trim()
+                        .uppercase(Locale.ROOT)
+                        .takeIf { it.length == 2 }
+                        ?: continue
+                    if (kind == "release") releaseByMarket[market] = tracks else byMarket[market] = tracks
+                }
+                "mood", "genre" -> {
+                    val params = publishedYoutubeBrowseParams(collection.optString("youtubeParams"))
+                    if (params.isBlank()) continue
+                    exploreByParams.putIfAbsent(
+                        params,
+                        EditorialExploreCollection(
+                            params = params,
+                            kind = kind,
+                            title = collection.optString("title").trim(),
+                            artworkUrl = publishedArtworkUrl(collection.optString("artworkUrl")),
+                            tracks = tracks,
+                        )
+                    )
+                }
+            }
         }
         if (byMarket.isEmpty()) return null
         return CatalogSnapshot(
             byMarket = byMarket,
             releaseByMarket = releaseByMarket,
+            exploreByParams = exploreByParams,
             generatedAtMs = generatedAtMs,
             loadedAt = loadedAt,
             rawJson = body,
@@ -312,6 +385,7 @@ internal object EditorialCatalogParser {
         if (items == null) return emptyList()
         val tracks = ArrayList<Track>(minOf(items.length(), MAX_TRACKS_PER_MARKET))
         val releaseCollection = kind.equals("release", ignoreCase = true)
+        val discoveryCollection = kind == "mood" || kind == "genre"
         for (index in 0 until items.length()) {
             if (tracks.size >= MAX_TRACKS_PER_MARKET) break
             val item = items.optJSONObject(index) ?: continue
@@ -357,7 +431,11 @@ internal object EditorialCatalogParser {
                 title = title,
                 artist = artist,
                 album = album?.optString("name").orEmpty().trim().ifBlank {
-                    if (releaseCollection) title else EDITORIAL_ALBUM
+                    when {
+                        releaseCollection -> title
+                        discoveryCollection -> ""
+                        else -> EDITORIAL_ALBUM
+                    }
                 },
                 durationMs = item.optLong("durationMs", 0L).coerceAtLeast(0L),
                 streamUrl = "",
@@ -367,11 +445,15 @@ internal object EditorialCatalogParser {
                     .orEmpty(),
                 thumbnailUrl = artwork,
                 largeThumbnailUrl = artwork,
-                source = if (releaseCollection) EDITORIAL_RELEASE_SOURCE else EDITORIAL_SOURCE,
-                moodTags = if (releaseCollection) {
-                    setOf("new-release", "editorial")
-                } else {
-                    setOf("hit", "chart")
+                source = when {
+                    releaseCollection -> EDITORIAL_RELEASE_SOURCE
+                    discoveryCollection -> EDITORIAL_DISCOVERY_SOURCE
+                    else -> EDITORIAL_SOURCE
+                },
+                moodTags = when {
+                    releaseCollection -> setOf("new-release", "editorial")
+                    discoveryCollection -> setOf(kind, "editorial")
+                    else -> setOf("hit", "chart")
                 },
                 energy = 70,
                 vocal = 55,
@@ -395,6 +477,8 @@ internal object EditorialCatalogParser {
                 metadataProvider = when {
                     releaseCollection && youtubePlaybackId.isNotBlank() -> "$EDITORIAL_RELEASE_SOURCE + YouTube Music"
                     releaseCollection -> EDITORIAL_RELEASE_SOURCE
+                    discoveryCollection && youtubePlaybackId.isNotBlank() -> "$EDITORIAL_DISCOVERY_SOURCE + YouTube Music"
+                    discoveryCollection -> EDITORIAL_DISCOVERY_SOURCE
                     youtubePlaybackId.isNotBlank() -> "$EDITORIAL_SOURCE + YouTube Music"
                     else -> EDITORIAL_SOURCE
                 },
@@ -427,6 +511,13 @@ internal object EditorialCatalogParser {
     private fun publishedYoutubeBrowseId(value: String?): String {
         val normalized = value.orEmpty().trim()
         return normalized.takeIf { it.length <= 128 && it.matches(Regex("[A-Za-z0-9_-]+")) }.orEmpty()
+    }
+
+    private fun publishedYoutubeBrowseParams(value: String?): String {
+        val normalized = value.orEmpty().trim()
+        return normalized.takeIf {
+            it.length <= 1024 && PUBLISHED_YOUTUBE_BROWSE_PARAMS.matches(it)
+        }.orEmpty()
     }
 
     private fun publishedArtworkUrl(value: String?): String {
@@ -478,6 +569,7 @@ internal object EditorialCatalogParser {
     private const val MAX_TRACKS_PER_MARKET = 100
     private const val EDITORIAL_SOURCE = "Levyra Editorial"
     private const val EDITORIAL_RELEASE_SOURCE = "Levyra Editorial Releases"
+    private const val EDITORIAL_DISCOVERY_SOURCE = "Levyra Editorial Discovery"
     private const val EDITORIAL_ALBUM = "Levyra Top 50"
     private const val MAX_ARTWORK_URL_LENGTH = 512
     private const val HTTPS_DEFAULT_PORT = 443
@@ -492,3 +584,37 @@ internal object EditorialCatalogParser {
         0xFFFFB000.toInt() to 0xFF00E5FF.toInt(),
     )
 }
+
+
+internal fun mergeExploreCollectionsFromFallback(
+    primaryJson: String,
+    fallbackJson: String
+): String? = runCatching {
+    val primary = JSONObject(primaryJson)
+    val fallback = JSONObject(fallbackJson)
+    val primaryCollections = primary.optJSONArray("collections") ?: return@runCatching null
+    val fallbackCollections = fallback.optJSONArray("collections") ?: return@runCatching null
+
+    var primaryHasExplore = false
+    for (index in 0 until primaryCollections.length()) {
+        val kind = primaryCollections.optJSONObject(index)
+            ?.optString("kind")
+            .orEmpty()
+            .trim()
+            .lowercase(Locale.ROOT)
+        if (kind == "mood" || kind == "genre") {
+            primaryHasExplore = true
+            break
+        }
+    }
+    if (primaryHasExplore) return@runCatching primary.toString()
+
+    for (index in 0 until fallbackCollections.length()) {
+        val collection = fallbackCollections.optJSONObject(index) ?: continue
+        val kind = collection.optString("kind").trim().lowercase(Locale.ROOT)
+        if (kind == "mood" || kind == "genre") {
+            primaryCollections.put(JSONObject(collection.toString()))
+        }
+    }
+    primary.toString()
+}.getOrNull()

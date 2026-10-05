@@ -360,6 +360,45 @@ def test_catalog_validation_rejects_credential_keys() -> None:
         validate_catalog_dict(payload)
 
 
+def test_config_validates_optional_explore_discovery_settings(tmp_path: Path) -> None:
+    base = {
+        "schemaVersion": 1,
+        "collections": [
+            {
+                "id": "top-50-italy",
+                "kind": "chart",
+                "market": "IT",
+                "playlistId": "37i9dQZEVXbIQnj7RRhdSX",
+            }
+        ],
+    }
+
+    valid_path = tmp_path / "valid.json"
+    valid_path.write_text(
+        json.dumps(
+            {
+                **base,
+                "exploreDiscovery": {"enabled": True, "trackLimit": 16},
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert load_config(valid_path)["exploreDiscovery"]["trackLimit"] == 16
+
+    invalid_path = tmp_path / "invalid.json"
+    invalid_path.write_text(
+        json.dumps(
+            {
+                **base,
+                "exploreDiscovery": {"enabled": True, "trackLimit": 100},
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="trackLimit"):
+        load_config(invalid_path)
+
+
 def test_config_rejects_duplicate_collection_ids(tmp_path: Path) -> None:
     config_path = tmp_path / "config.json"
     collection = {

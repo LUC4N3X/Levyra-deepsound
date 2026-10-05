@@ -608,6 +608,33 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[homeAlbumsKey(normalized)] = array.toString() }
     }
 
+    internal fun loadExploreDiscovery(languageCode: String = languageCode()): ExploreDiscoverySnapshot? {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        return store.derived("explore_discovery:$normalized") { preferences ->
+            decodeExploreDiscoverySnapshot(
+                raw = preferences[exploreDiscoveryKey(normalized)].orEmpty(),
+                languageCode = normalized
+            ) ?: ExploreDiscoverySnapshot(normalized, 0L, emptyList(), emptyMap())
+        }.takeIf { snapshot -> snapshot.categories.isNotEmpty() }
+    }
+
+    internal fun saveExploreDiscovery(
+        categories: List<com.luc4n3x.levyra.domain.ExploreCategory>,
+        artwork: Map<String, String>,
+        languageCode: String = languageCode(),
+        savedAtMs: Long = System.currentTimeMillis()
+    ) {
+        if (categories.isEmpty()) return
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        val encoded = encodeExploreDiscoverySnapshot(
+            languageCode = normalized,
+            categories = categories,
+            artwork = artwork,
+            savedAtMs = savedAtMs
+        )
+        write { it[exploreDiscoveryKey(normalized)] = encoded }
+    }
+
     fun loadChartTracks(languageCode: String = languageCode(), regionId: String = ""): List<Track> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         val chartRegion = regionId.ifBlank { com.luc4n3x.levyra.domain.ChartsCatalog.defaultRegionForLanguage(normalized).id }
@@ -792,6 +819,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
     private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_v2_${LevyraLanguageCatalog.normalize(languageCode)}")
 
     private fun homeAlbumsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_albums_${LevyraLanguageCatalog.normalize(languageCode)}")
+
+    private fun exploreDiscoveryKey(languageCode: String): Preferences.Key<String> =
+        stringPreferencesKey("explore_discovery_v1_${LevyraLanguageCatalog.normalize(languageCode)}")
 
     private fun chartTracksKey(languageCode: String, regionId: String): Preferences.Key<String> = stringPreferencesKey("chart_tracks_v2_${LevyraLanguageCatalog.normalize(languageCode)}_${regionId.lowercase()}")
 
