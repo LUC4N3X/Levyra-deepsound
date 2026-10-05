@@ -114,6 +114,21 @@ def load_config(path: Path) -> dict[str, Any]:
         optional = item.get("optional")
         if optional is not None and not isinstance(optional, bool):
             raise ValueError(f"Collection '{collection_id}' has an invalid optional flag.")
+
+    explore = payload.get("exploreDiscovery")
+    if explore is not None:
+        if not isinstance(explore, dict):
+            raise ValueError("Collector exploreDiscovery must be an object.")
+        enabled = explore.get("enabled")
+        if enabled is not None and not isinstance(enabled, bool):
+            raise ValueError("Collector exploreDiscovery enabled must be a boolean.")
+        track_limit = explore.get("trackLimit")
+        if track_limit is not None and (
+            not isinstance(track_limit, int)
+            or isinstance(track_limit, bool)
+            or track_limit not in range(8, 25)
+        ):
+            raise ValueError("Collector exploreDiscovery trackLimit must be between 8 and 24.")
     return payload
 
 
@@ -400,6 +415,8 @@ def build_spotify_canvas_catalog(
     """Create an account-free Canvas source for Levyra's existing motion index."""
     tracks_by_id: dict[str, Track] = {}
     for collection in catalog.collections:
+        if collection.kind in {"mood", "genre"}:
+            continue
         for track in collection.tracks:
             tracks_by_id.setdefault(track.id, track)
     canvas_urls = client.get_canvas_urls(list(tracks_by_id))
