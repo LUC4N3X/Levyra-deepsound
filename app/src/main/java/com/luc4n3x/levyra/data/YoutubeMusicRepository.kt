@@ -3079,7 +3079,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                 isPlausibleSearchMetadataLabel(token) &&
                     !isResolvedArtistMetadataToken(token, artist, artistReferences)
             }
-            ?: "YouTube Music"
+            ?: ""
         val thumbnail = findBestThumbnail(renderer)
         return buildTrack(
             id = videoId,
