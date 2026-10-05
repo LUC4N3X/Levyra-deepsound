@@ -876,6 +876,7 @@ internal fun ExploreMoodsDestinationScreen(
     val fallbackGenres = remember(zones, hasProviderGenres) {
         if (hasProviderGenres) emptyList() else exploreFallbackGenres(zones)
     }
+
     ExploreDestinationSurface(
         title = strings.exploreMoods,
         subtitle = strings.exploreSubtitle,
@@ -892,104 +893,172 @@ internal fun ExploreMoodsDestinationScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (isLoading && sections.isEmpty()) {
-                item(key = "provider-moods-loading-title") {
-                    ExploreCategorySectionHeader(strings.exploreMoodSection)
-                }
-                items(
-                    count = 2,
-                    key = { index -> "provider-mood-loading-row-$index" }
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(108.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        ExploreDiscoveryCategoryPlaceholder(Modifier.weight(1f).fillMaxHeight())
-                        ExploreDiscoveryCategoryPlaceholder(Modifier.weight(1f).fillMaxHeight())
-                    }
-                }
-            }
+            exploreMoodLoadingItems(isLoading, sections, strings)
+            exploreProviderCategoryItems(
+                sections = sections,
+                categoryArtwork = categoryArtwork,
+                strings = strings,
+                onOpenCategory = onOpenCategory,
+                onRequestCategoryArtwork = onRequestCategoryArtwork
+            )
+            exploreFallbackGenreItems(
+                fallbackGenres = fallbackGenres,
+                strings = strings,
+                onOpenZone = onOpenZone
+            )
+            exploreMoodEmptyItem(
+                isLoading = isLoading,
+                sections = sections,
+                fallbackGenres = fallbackGenres,
+                strings = strings
+            )
+        }
+    }
+}
 
-            sections.forEach { section ->
-                val title = section.providerTitle.ifBlank {
-                    when (section.presentation) {
-                        ExploreCategoryPresentation.Atmospheric -> strings.exploreMoodSection
-                        ExploreCategoryPresentation.Structured -> strings.genres
-                        ExploreCategoryPresentation.Mixed -> strings.exploreMoods
-                    }
-                }
-                item(key = "${section.key}-header") {
-                    ExploreCategorySectionHeader(title)
-                }
-                items(
-                    items = section.categories.chunked(2),
-                    key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
-                ) { pair ->
-                    val prominent = section.presentation == ExploreCategoryPresentation.Atmospheric
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(if (prominent) 112.dp else 102.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        pair.forEach { category ->
-                            LaunchedEffect(category.params) {
-                                onRequestCategoryArtwork(category.params, prominent)
-                            }
-                            ExploreDiscoveryCategoryCard(
-                                title = category.title,
-                                identity = category.params,
-                                artworkUrl = categoryArtwork[category.params].orEmpty(),
-                                prominent = prominent,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                onClick = { onOpenCategory(category) }
-                            )
-                        }
-                        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
+private fun LazyListScope.exploreMoodLoadingItems(
+    isLoading: Boolean,
+    sections: List<ExploreCategorySection>,
+    strings: LevyraStrings
+) {
+    if (!isLoading || sections.isNotEmpty()) return
+    item(key = "provider-moods-loading-title") {
+        ExploreCategorySectionHeader(strings.exploreMoodSection)
+    }
+    items(
+        count = 2,
+        key = { index -> "provider-mood-loading-row-$index" }
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(108.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ExploreDiscoveryCategoryPlaceholder(Modifier.weight(1f).fillMaxHeight())
+            ExploreDiscoveryCategoryPlaceholder(Modifier.weight(1f).fillMaxHeight())
+        }
+    }
+}
 
-            if (fallbackGenres.isNotEmpty()) {
-                item(key = "editorial-genres-header") {
-                    ExploreCategorySectionHeader(strings.genres)
-                }
-                items(
-                    items = fallbackGenres.chunked(2),
-                    key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
-                ) { pair ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(102.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        pair.forEach { zone ->
-                            ExploreDiscoveryCategoryCard(
-                                title = zone.label,
-                                identity = zone.id,
-                                emoji = zone.emoji,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                onClick = { onOpenZone(zone) }
-                            )
-                        }
-                        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-
-            if (!isLoading && sections.isEmpty() && fallbackGenres.isEmpty()) {
-                item(key = "moods-and-genres-empty") {
-                    Text(
-                        text = strings.exploreEmpty,
-                        color = LevyraMuted,
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 42.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
+private fun LazyListScope.exploreProviderCategoryItems(
+    sections: List<ExploreCategorySection>,
+    categoryArtwork: Map<String, String>,
+    strings: LevyraStrings,
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
+) {
+    sections.forEach { section ->
+        val title = section.providerTitle.ifBlank {
+            when (section.presentation) {
+                ExploreCategoryPresentation.Atmospheric -> strings.exploreMoodSection
+                ExploreCategoryPresentation.Structured -> strings.genres
+                ExploreCategoryPresentation.Mixed -> strings.exploreMoods
             }
         }
+        item(key = "${section.key}-header") {
+            ExploreCategorySectionHeader(title)
+        }
+        items(
+            items = section.categories.chunked(2),
+            key = { pair -> "${section.key}-${pair.joinToString("|") { it.params }}" }
+        ) { pair ->
+            ExploreProviderCategoryRow(
+                pair = pair,
+                prominent = section.presentation == ExploreCategoryPresentation.Atmospheric,
+                categoryArtwork = categoryArtwork,
+                onOpenCategory = onOpenCategory,
+                onRequestCategoryArtwork = onRequestCategoryArtwork
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExploreProviderCategoryRow(
+    pair: List<ExploreCategory>,
+    prominent: Boolean,
+    categoryArtwork: Map<String, String>,
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onRequestCategoryArtwork: (String, Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (prominent) 112.dp else 102.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        pair.forEach { category ->
+            LaunchedEffect(category.params) {
+                onRequestCategoryArtwork(category.params, prominent)
+            }
+            ExploreDiscoveryCategoryCard(
+                title = category.title,
+                identity = category.params,
+                artworkUrl = categoryArtwork[category.params].orEmpty(),
+                prominent = prominent,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                onClick = { onOpenCategory(category) }
+            )
+        }
+        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+private fun LazyListScope.exploreFallbackGenreItems(
+    fallbackGenres: List<ExploreZone>,
+    strings: LevyraStrings,
+    onOpenZone: (ExploreZone) -> Unit
+) {
+    if (fallbackGenres.isEmpty()) return
+    item(key = "editorial-genres-header") {
+        ExploreCategorySectionHeader(strings.genres)
+    }
+    items(
+        items = fallbackGenres.chunked(2),
+        key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
+    ) { pair ->
+        ExploreFallbackGenreRow(pair = pair, onOpenZone = onOpenZone)
+    }
+}
+
+@Composable
+private fun ExploreFallbackGenreRow(
+    pair: List<ExploreZone>,
+    onOpenZone: (ExploreZone) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(102.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        pair.forEach { zone ->
+            ExploreDiscoveryCategoryCard(
+                title = zone.label,
+                identity = zone.id,
+                emoji = zone.emoji,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                onClick = { onOpenZone(zone) }
+            )
+        }
+        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+private fun LazyListScope.exploreMoodEmptyItem(
+    isLoading: Boolean,
+    sections: List<ExploreCategorySection>,
+    fallbackGenres: List<ExploreZone>,
+    strings: LevyraStrings
+) {
+    if (isLoading || sections.isNotEmpty() || fallbackGenres.isNotEmpty()) return
+    item(key = "moods-and-genres-empty") {
+        Text(
+            text = strings.exploreEmpty,
+            color = LevyraMuted,
+            fontSize = 15.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 42.dp),
+            textAlign = TextAlign.Center
+        )
     }
 }
 
