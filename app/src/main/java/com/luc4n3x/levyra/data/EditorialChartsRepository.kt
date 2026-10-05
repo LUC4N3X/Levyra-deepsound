@@ -498,7 +498,7 @@ internal object EditorialCatalogParser {
     private fun publishedYoutubeBrowseParams(value: String?): String {
         val normalized = value.orEmpty().trim()
         return normalized.takeIf {
-            it.length <= 1024 && it.matches(Regex("[A-Za-z0-9_=+\\-]+"))
+            it.length <= 1024 && it.matches(Regex("[A-Za-z0-9_./=+\\-]+"))
         }.orEmpty()
     }
 
