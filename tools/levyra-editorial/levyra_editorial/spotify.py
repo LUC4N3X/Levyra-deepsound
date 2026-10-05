@@ -27,6 +27,7 @@ SERVER_TIME_URL = "https://open.spotify.com/api/server-time"
 TOKEN_URL = "https://open.spotify.com/api/token"
 API_BASE_URL = "https://api.spotify.com/v1"
 PATHFINDER_URL = "https://api-partner.spotify.com/pathfinder/v1/query"
+PATHFINDER_V2_URL = "https://api-partner.spotify.com/pathfinder/v2/query"
 CLIENT_TOKEN_URL = "https://clienttoken.spotify.com/v1/clienttoken"
 CANVAS_URL = "https://spclient.wg.spotify.com/canvaz-cache/v0/canvases"
 
@@ -35,7 +36,16 @@ DEFAULT_SECRET_DICT_URL = (
     "4cd9440671af3a419bad112164a193ea1374e0e1/secrets/secretDict.json"
 )
 DEFAULT_PLAYLIST_QUERY_HASH = (
-    "a65e12194ed5fc443a1cdebed5fabe33ca5b07b987185d63c72483867ad13cb4"
+    "8964e8eafb21aa992a7d951d256d83285c04be2105d209262901de70cb97584a"
+)
+PREVIOUS_PLAYLIST_QUERY_HASH = (
+    "243c0ba2736f16da721e3a227004bbcdb8df6c846f198bd478172e00aa1faf42"
+)
+DEFAULT_DESKTOP_SEARCH_QUERY_HASH = (
+    "db61238974d27839a136c9dc02bfdbe3fab7635f21cf85976ebff9a1ee281345"
+)
+PREVIOUS_DESKTOP_SEARCH_QUERY_HASH = (
+    "4801118d4a100f756e833d33984436a3899cff359c532f8fd3aaf174b60b3b49"
 )
 DEFAULT_SEARCH_QUERY_HASH = (
     "bc1ca2fcd0ba1013a0fc88e6cc4f190af501851e3dafd3e1ef85840297694428"
@@ -371,6 +381,7 @@ class SpotifyWebClient:
         secret_dict_url: str | None = None,
         playlist_query_hash: str | None = None,
         search_query_hash: str | None = None,
+        desktop_search_query_hash: str | None = None,
         timeout_seconds: float = 8.0,
     ) -> None:
         self._sp_dc = normalize_sp_dc(sp_dc)
@@ -392,6 +403,11 @@ class SpotifyWebClient:
             search_query_hash
             or os.environ.get("LEVYRA_EDITORIAL_SEARCH_QUERY_HASH")
             or DEFAULT_SEARCH_QUERY_HASH
+        )
+        self._desktop_search_query_hash = validate_search_query_hash(
+            desktop_search_query_hash
+            or os.environ.get("LEVYRA_EDITORIAL_DESKTOP_SEARCH_QUERY_HASH")
+            or DEFAULT_DESKTOP_SEARCH_QUERY_HASH
         )
         self._timeout = timeout_seconds
         self._access_token: str | None = None
@@ -548,7 +564,7 @@ class SpotifyWebClient:
         market: str,
         title_hints: Sequence[str] = (),
     ) -> str:
-        """Resolve one Spotify-owned editorial playlist through web-player search."""
+        """Resolve one Spotify-owned editorial playlist through Web Player GraphQL."""
         with self._upstream_lock:
             normalized_query = str(query or "").strip()
             normalized_market = str(market or "").strip().upper()
@@ -560,51 +576,69 @@ class SpotifyWebClient:
                 raise SourceApiError("The editorial playlist market is invalid.")
             self._ensure_authenticated()
 
-            params = {
-                "q": normalized_query,
-                "type": "playlist",
+            variables = {
+                "searchTerm": normalized_query,
+                "offset": 0,
                 "limit": 20,
+                "numberOfTopResults": 5,
+                "includeAudiobooks": True,
+                "includeArtistHasConcertsField": False,
+                "includePreReleases": False,
+                "includeLocalConcertsField": False,
+                "includeAuthors": False,
             }
-            if normalized_market not in {"GLOBAL", "WORLD"}:
-                params["market"] = normalized_market
-
-            def request_search() -> requests.Response:
-                return self._session.get(
-                    f"{API_BASE_URL}/search",
-                    params=params,
-                    headers=self._api_headers(),
-                    timeout=self._timeout,
+            hashes = [
+                self._desktop_search_query_hash,
+                PREVIOUS_DESKTOP_SEARCH_QUERY_HASH,
+            ]
+            payload: Mapping[str, Any] | None = None
+            for index, query_hash in enumerate(dict.fromkeys(hashes)):
+                response = self._pathfinder_post(
+                    operation_name="searchDesktop",
+                    query_hash=query_hash,
+                    variables=variables,
                 )
-
-            token_before = self._access_token
-            response = request_search()
-            if response.status_code == 401:
-                self._ensure_authenticated(rejected_token=token_before)
-                token_before = self._access_token
-                response = request_search()
-            if response.status_code == 429:
-                delay = _bounded_retry_after(response.headers.get("Retry-After"))
-                if delay > 0:
-                    time.sleep(delay)
-                token_before = self._access_token
-                response = request_search()
+                if response.status_code == 429:
+                    raise SourceApiError("Spotify Pathfinder playlist search is rate-limited.")
                 if response.status_code == 401:
+                    token_before = self._access_token
                     self._ensure_authenticated(rejected_token=token_before)
-                    response = request_search()
-            if response.status_code >= 400:
-                raise SourceApiError(
-                    f"Spotify editorial playlist search failed with HTTP {response.status_code}."
-                )
-            try:
-                payload = response.json()
-            except ValueError as error:
-                raise SourceApiError("Spotify playlist search returned invalid JSON.") from error
-            playlists = payload.get("playlists") if isinstance(payload, Mapping) else None
-            items = playlists.get("items") if isinstance(playlists, Mapping) else None
-            if not isinstance(items, list):
-                raise SourceApiError("Spotify playlist search returned no usable result list.")
+                    response = self._pathfinder_post(
+                        operation_name="searchDesktop",
+                        query_hash=query_hash,
+                        variables=variables,
+                    )
+                if response.status_code >= 400:
+                    raise SourceApiError(
+                        "Spotify Pathfinder playlist search failed with "
+                        f"HTTP {response.status_code}."
+                    )
+                try:
+                    candidate = response.json()
+                except ValueError as error:
+                    raise SourceApiError(
+                        "Spotify Pathfinder playlist search returned invalid JSON."
+                    ) from error
+                if not isinstance(candidate, Mapping):
+                    raise SourceApiError(
+                        "Spotify Pathfinder playlist search returned an invalid shape."
+                    )
+                if _has_persisted_query_not_found(candidate):
+                    if index < len(dict.fromkeys(hashes)) - 1:
+                        continue
+                    raise SourceApiError(
+                        "Spotify rotated the searchDesktop query hash. "
+                        "Update LEVYRA_EDITORIAL_DESKTOP_SEARCH_QUERY_HASH."
+                    )
+                _raise_search_graphql_error(candidate)
+                payload = candidate
+                break
+
+            if payload is None:
+                raise SourceApiError("Spotify Pathfinder playlist search returned no payload.")
+            items = _extract_search_playlist_items(payload)
             selected = select_official_spotify_playlist_id(
-                [item for item in items if isinstance(item, Mapping)],
+                items,
                 normalized_query,
                 title_hints,
             )
@@ -1127,6 +1161,31 @@ class SpotifyWebClient:
             timeout=self._timeout,
         )
 
+    def _pathfinder_post(
+        self,
+        *,
+        operation_name: str,
+        query_hash: str,
+        variables: Mapping[str, Any],
+    ) -> requests.Response:
+        headers = self._pathfinder_headers()
+        headers["Content-Type"] = "application/json"
+        return self._session.post(
+            PATHFINDER_V2_URL,
+            headers=headers,
+            json={
+                "operationName": operation_name,
+                "variables": dict(variables),
+                "extensions": {
+                    "persistedQuery": {
+                        "version": 1,
+                        "sha256Hash": query_hash,
+                    }
+                },
+            },
+            timeout=self._timeout,
+        )
+
     def _fetch_totp_secret_dictionary(self) -> dict[str, Any]:
         try:
             response = self._session.get(
@@ -1640,6 +1699,64 @@ def _parse_search_tracks_response(response: requests.Response) -> list[dict[str,
         if converted is not None:
             results.append(converted)
     return results
+
+
+def _has_persisted_query_not_found(payload: Mapping[str, Any]) -> bool:
+    errors = payload.get("errors")
+    if not isinstance(errors, list):
+        return False
+    return any(
+        isinstance(error, Mapping)
+        and "PersistedQueryNotFound" in str(error.get("message") or "")
+        for error in errors
+    )
+
+
+def _raise_search_graphql_error(payload: Mapping[str, Any]) -> None:
+    errors = payload.get("errors")
+    if isinstance(errors, list) and errors:
+        raise SourceApiError("Spotify playlist search returned a GraphQL error.")
+
+
+def _extract_search_playlist_items(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
+    data = _mapping(payload.get("data"))
+    search_v2 = _mapping(data.get("searchV2")) if data else None
+    playlists = _mapping(search_v2.get("playlists")) if search_v2 else None
+    raw_items = playlists.get("items") if playlists else None
+    if not isinstance(raw_items, list):
+        raise SourceApiError("Spotify playlist search returned no usable result list.")
+
+    output: list[dict[str, Any]] = []
+    for raw_item in raw_items:
+        wrapper = _mapping(raw_item)
+        nested = _mapping(wrapper.get("item")) if wrapper else None
+        wrapper = nested or wrapper
+        playlist = _mapping(wrapper.get("data")) if wrapper else None
+        if playlist is None:
+            continue
+        typename = _string(playlist.get("__typename"))
+        if typename and typename != "Playlist":
+            continue
+        uri = _string(playlist.get("uri"))
+        playlist_id = _spotify_id(_string(playlist.get("id"))) or _spotify_id(uri)
+        name = _string(playlist.get("name"))
+        owner_v2 = _mapping(playlist.get("ownerV2"))
+        owner_data = _mapping(owner_v2.get("data")) if owner_v2 else None
+        owner_uri = _string(owner_data.get("uri")) if owner_data else None
+        owner_name = _string(owner_data.get("name")) if owner_data else None
+        if not playlist_id or not name:
+            continue
+        output.append(
+            {
+                "id": playlist_id,
+                "name": name,
+                "owner": {
+                    "id": _spotify_id(owner_uri) or "",
+                    "display_name": owner_name or "",
+                },
+            }
+        )
+    return output
 
 
 def _check_search_graphql_errors(payload: Mapping[str, Any]) -> None:
