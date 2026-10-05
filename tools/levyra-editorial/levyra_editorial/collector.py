@@ -114,6 +114,21 @@ def load_config(path: Path) -> dict[str, Any]:
         optional = item.get("optional")
         if optional is not None and not isinstance(optional, bool):
             raise ValueError(f"Collection '{collection_id}' has an invalid optional flag.")
+
+    explore = payload.get("exploreDiscovery")
+    if explore is not None:
+        if not isinstance(explore, dict):
+            raise ValueError("Collector exploreDiscovery must be an object.")
+        enabled = explore.get("enabled")
+        if enabled is not None and not isinstance(enabled, bool):
+            raise ValueError("Collector exploreDiscovery enabled must be a boolean.")
+        track_limit = explore.get("trackLimit")
+        if track_limit is not None and (
+            not isinstance(track_limit, int)
+            or isinstance(track_limit, bool)
+            or track_limit not in range(8, 25)
+        ):
+            raise ValueError("Collector exploreDiscovery trackLimit must be between 8 and 24.")
     return payload
 
 
@@ -335,6 +350,33 @@ def validate_catalog_dict(payload: Mapping[str, Any]) -> None:
         if collection_id in ids:
             raise ValueError(f"Catalog collection id '{collection_id}' is duplicated.")
         ids.add(collection_id)
+        kind = str(collection.get("kind") or "").strip().lower()
+        if kind not in {"chart", "editorial", "release", "mood", "genre"}:
+            raise ValueError(f"Catalog collection '{collection_id}' has an invalid kind.")
+        youtube_params = collection.get("youtubeParams")
+        if kind in {"mood", "genre"}:
+            if (
+                not isinstance(youtube_params, str)
+                or not youtube_params
+                or len(youtube_params) > 1024
+                or re.fullmatch(r"[A-Za-z0-9_./=+-]+", youtube_params) is None
+            ):
+                raise ValueError(
+                    f"Catalog collection '{collection_id}' has invalid YouTube browse params."
+                )
+            section_index = collection.get("sectionIndex")
+            if (
+                isinstance(section_index, bool)
+                or not isinstance(section_index, int)
+                or section_index < -1
+            ):
+                raise ValueError(
+                    f"Catalog collection '{collection_id}' has an invalid section index."
+                )
+        elif youtube_params is not None:
+            raise ValueError(
+                f"Catalog collection '{collection_id}' unexpectedly has YouTube browse params."
+            )
         tracks = collection.get("tracks")
         if not isinstance(tracks, list) or not tracks:
             raise ValueError(f"Catalog collection '{collection_id}' has no tracks.")
@@ -377,6 +419,8 @@ def build_spotify_canvas_catalog(
     """Create an account-free Canvas source for Levyra's existing motion index."""
     tracks_by_id: dict[str, Track] = {}
     for collection in catalog.collections:
+        if collection.kind in {"mood", "genre"}:
+            continue
         for track in collection.tracks:
             tracks_by_id.setdefault(track.id, track)
     canvas_urls = client.get_canvas_urls(list(tracks_by_id))

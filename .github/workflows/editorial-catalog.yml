@@ -143,6 +143,184 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+
+  preview-apk:
+    name: Build Trusted Full Preview APK
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref_type == 'branch' &&
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner
+    needs:
+      - verify
+      - integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+      LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
+      LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
+      LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+      LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+      LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
+    steps:
+      - name: Checkout Selected Trusted Ref
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Download Sanitized Editorial Catalog
+        uses: actions/download-artifact@v7
+        with:
+          name: editorial-pr-${{ github.run_number }}
+          path: build/trusted-editorial
+
+      - name: Install Trusted Editorial Bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          CATALOG_PATH="$(find build/trusted-editorial -type f -name catalog.json -print -quit)"
+          test -n "${CATALOG_PATH}"
+          test -s "${CATALOG_PATH}"
+          test "$(jq -r '.schemaVersion' "${CATALOG_PATH}")" = "1"
+          if ! jq -e 'any(.collections[]; .kind == "mood" or .kind == "genre")' "${CATALOG_PATH}" >/dev/null; then
+            echo "::error::Trusted preview catalog has no Spotify-first Mood or Genre collections"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' "${CATALOG_PATH}" >/dev/null; then
+            echo "::error::Trusted preview catalog contains private source identifiers"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|client-token)"[[:space:]]*:|sp_dc=|authorization:[[:space:]]*bearer|bearer[[:space:]]+[a-z0-9._~-]{16,}' "${CATALOG_PATH}"; then
+            echo "::error::Trusted preview catalog contains credential-related material"
+            exit 1
+          fi
+          mkdir -p app/src/main/assets/editorial
+          cp "${CATALOG_PATH}" app/src/main/assets/editorial/spotify-bootstrap.json
+          echo "EDITORIAL_BOOTSTRAP_SHA256=$(sha256sum "${CATALOG_PATH}" | awk '{print $1}')" >> "${GITHUB_ENV}"
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-read-only: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Cache Native Audio Dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gradle/levyra-native-deps
+          key: levyra-native-deps-${{ runner.os }}-${{ hashFiles('levyra-native-audio/native-deps/prepare_native_deps.sh', 'levyra-native-audio/build.gradle.kts') }}
+
+      - name: Resolve Preview Version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          test -n "${VERSION}"
+          test -n "${VERSION_CODE}"
+          {
+            echo "VERSION=${VERSION}"
+            echo "VERSION_CODE=${VERSION_CODE}"
+            echo "SOURCE_REF=${GITHUB_REF_NAME}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Prepare Release Signing
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_CANVAS_RESOLVER_URL}"
+          test -n "${LEVYRA_CANVAS_CLIENT_KEY}"
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          printf '%s' "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            >/dev/null
+
+      - name: Build Full Preview APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-configuration-cache assemblePrDiagnostics \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Verify Full Preview APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          APK="app/build/outputs/apk/prDiagnostics/app-prDiagnostics.apk"
+          test -f "${APK}"
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${APK}" > artifacts/apk-signing-certs.txt
+          python3 scripts/verify_diagnostics_isolation.py --apk "${APK}" --expect present
+
+          unzip -p "${APK}" assets/editorial/spotify-bootstrap.json > /tmp/embedded-editorial.json
+          test "$(jq -r '.schemaVersion' /tmp/embedded-editorial.json)" = "1"
+          jq -e 'any(.collections[]; .kind == "mood" or .kind == "genre")' /tmp/embedded-editorial.json >/dev/null
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|client-token)"[[:space:]]*:|sp_dc=|authorization:[[:space:]]*bearer|bearer[[:space:]]+[a-z0-9._~-]{16,}' /tmp/embedded-editorial.json; then
+            echo "::error::Embedded editorial bootstrap contains credential-related material"
+            exit 1
+          fi
+
+          TARGET="artifacts/LEVYRA-${VERSION}-TRUSTED-PREVIEW-${GITHUB_RUN_NUMBER}.apk"
+          cp "${APK}" "${TARGET}"
+          sha256sum "${TARGET}" > "${TARGET}.sha256"
+          {
+            echo "LEVYRA trusted full preview APK"
+            echo "version=${VERSION}"
+            echo "versionCode=${VERSION_CODE}"
+            echo "branch=${SOURCE_REF}"
+            echo "commit=${GITHUB_SHA}"
+            echo "spotifyEditorial=embedded-sanitized"
+            echo "spotifySessionSecretInApk=false"
+            echo "editorialBootstrapSha256=${EDITORIAL_BOOTSTRAP_SHA256}"
+            echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > artifacts/build-info.txt
+
+      - name: Upload Trusted Full Preview APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-trusted-preview-${{ github.ref_name }}-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Cleanup Signing Material
+        if: always()
+        shell: bash
+        run: rm -f "${LEVYRA_KEYSTORE_FILE}"
+
+
   collect:
     name: Collect and Publish
     if: >-
