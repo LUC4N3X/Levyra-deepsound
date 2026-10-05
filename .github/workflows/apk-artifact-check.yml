@@ -24,6 +24,8 @@ jobs:
       YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
       LEVYRA_CANVAS_RESOLVER_URL: ${{ secrets.LEVYRA_CANVAS_RESOLVER_URL }}
       LEVYRA_CANVAS_CLIENT_KEY: ${{ secrets.LEVYRA_CANVAS_CLIENT_KEY }}
+      LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
       LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
       LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
       LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
@@ -33,6 +35,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
+
+      - name: Build Spotify Explore Preview Catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${LEVYRA_EDITORIAL_SP_DC:-}"
+          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
+          mkdir -p build/editorial app/src/main/assets/editorial
+          timeout --foreground 360s levyra-editorial \
+            --config tools/levyra-editorial/config.json \
+            --output build/editorial/pr-catalog.json
+          levyra-editorial --validate build/editorial/pr-catalog.json
+          EXPLORE_COUNT="$(jq '[.collections[] | select(.kind == "mood" or .kind == "genre")] | length' build/editorial/pr-catalog.json)"
+          test "${EXPLORE_COUNT}" -gt 0
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/pr-catalog.json >/dev/null; then
+            echo "::error::PR editorial preview contains private source identifiers"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial/pr-catalog.json; then
+            echo "::error::PR editorial preview contains credential-related material"
+            exit 1
+          fi
+          cp build/editorial/pr-catalog.json app/src/main/assets/editorial/spotify-bootstrap.json
+          sha256sum build/editorial/pr-catalog.json > build/editorial/pr-catalog.sha256
+          echo "Spotify Explore preview collections: ${EXPLORE_COUNT}"
 
       - name: Setup Java
         uses: actions/setup-java@v6
@@ -150,6 +184,8 @@ jobs:
           if [ -f app/build/outputs/mapping/prDiagnostics/mapping.txt ]; then
             cp app/build/outputs/mapping/prDiagnostics/mapping.txt artifacts/mapping.txt
           fi
+          cp build/editorial/pr-catalog.json artifacts/editorial-preview.json
+          cp build/editorial/pr-catalog.sha256 artifacts/editorial-preview.json.sha256
 
       - name: Upload Signed PR Diagnostics APK
         uses: actions/upload-artifact@v7
