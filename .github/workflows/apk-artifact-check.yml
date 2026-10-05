@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: apk-artifact-${{ github.ref }}
@@ -89,6 +90,63 @@ jobs:
             echo "VERSION_CODE=${VERSION_CODE}"
             echo "PR_NUMBER=${{ github.event.pull_request.number || github.run_number }}"
             echo "SOURCE_REF=${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha || github.sha }}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Prepare Sanitized Editorial Bootstrap
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/levyra-editorial app/src/main/assets/editorial
+          rm -rf /tmp/levyra-editorial/*
+
+          TRUSTED_RUN_ID="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/editorial-catalog.yml/runs?event=workflow_dispatch&branch=${SOURCE_REF}&status=success&per_page=30" \
+              --jq ".workflow_runs[] | select(.head_sha == \"${PR_HEAD_SHA}\" and .conclusion == \"success\") | .id" \
+              | head -n 1
+          )"
+
+          EDITORIAL_SOURCE="official"
+          if [ -n "${TRUSTED_RUN_ID}" ]; then
+            gh run download "${TRUSTED_RUN_ID}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --dir /tmp/levyra-editorial
+            CATALOG_PATH="$(find /tmp/levyra-editorial -type f -name catalog.json -print -quit)"
+            if [ -n "${CATALOG_PATH}" ]; then
+              EDITORIAL_SOURCE="trusted-preview:${TRUSTED_RUN_ID}"
+            fi
+          fi
+
+          if [ "${EDITORIAL_SOURCE}" = "official" ]; then
+            CATALOG_PATH="/tmp/levyra-editorial/official-editorial.json"
+            curl --fail --silent --show-error --location --retry 3 \
+              "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/editorial-data/catalog/editorial.json" \
+              --output "${CATALOG_PATH}"
+          fi
+
+          test -s "${CATALOG_PATH}"
+          test "$(jq -r '.schemaVersion' "${CATALOG_PATH}")" = "1"
+          test "$(jq '.collections | length' "${CATALOG_PATH}")" -gt 0
+
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' "${CATALOG_PATH}" >/dev/null; then
+            echo "::error::Editorial bootstrap contains private source identifiers"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|client-token)"[[:space:]]*:|sp_dc=|authorization:[[:space:]]*bearer|bearer[[:space:]]+[a-z0-9._~-]{16,}' "${CATALOG_PATH}"; then
+            echo "::error::Editorial bootstrap contains credential-related material"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("artworkUrl") and (.artworkUrl != "")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' "${CATALOG_PATH}" >/dev/null; then
+            echo "::error::Editorial bootstrap contains artwork outside the Spotify CDN allowlist"
+            exit 1
+          fi
+
+          cp "${CATALOG_PATH}" app/src/main/assets/editorial/spotify-bootstrap.json
+          {
+            echo "EDITORIAL_BOOTSTRAP_SOURCE=${EDITORIAL_SOURCE}"
+            echo "EDITORIAL_BOOTSTRAP_SHA256=$(sha256sum "${CATALOG_PATH}" | awk '{print $1}')"
           } >> "${GITHUB_ENV}"
 
       - name: Prepare Release Signing
@@ -147,6 +205,8 @@ jobs:
             echo "diagnosticsMarker=LEVYRA_PR_DIAGNOSTICS_V1"
             echo "commit=${GITHUB_SHA}"
             echo "branch=${SOURCE_REF}"
+            echo "editorialBootstrap=${EDITORIAL_BOOTSTRAP_SOURCE}"
+            echo "editorialBootstrapSha256=${EDITORIAL_BOOTSTRAP_SHA256}"
             echo "sizeBytes=${SIZE_BYTES}"
             echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } > artifacts/build-info.txt
