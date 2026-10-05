@@ -397,17 +397,11 @@ internal class MotionVideoFrameSource {
 
     fun sampleBackdropPalette(identityKey: String): MotionBackdropPalette? {
         val view = textureView
-        if (
-            view == null ||
-            !frameReady ||
-            !view.isAvailable ||
-            view.width <= 1 ||
-            view.height <= 1
-        ) {
-            return null
-        }
+        val surfaceReady = view != null && frameReady && view.isAvailable
+        val surfaceSized = (view?.width ?: 0) > 1 && (view?.height ?: 0) > 1
+        if (!surfaceReady || !surfaceSized) return null
         val bitmap = try {
-            view.getBitmap(DYNAMIC_BACKDROP_SAMPLE_SIZE, DYNAMIC_BACKDROP_SAMPLE_SIZE)
+            view?.getBitmap(DYNAMIC_BACKDROP_SAMPLE_SIZE, DYNAMIC_BACKDROP_SAMPLE_SIZE)
         } catch (error: IllegalStateException) {
             Timber.d(error, "Canvas dynamic backdrop frame capture failed")
             null
@@ -442,14 +436,10 @@ internal fun motionBackdropPalette(
     width: Int,
     height: Int
 ): MotionBackdropPalette? {
-    if (
-        identityKey.isBlank() ||
-        width <= 0 ||
-        height <= 0 ||
-        pixels.size < width * height
-    ) {
-        return null
-    }
+    val identityValid = identityKey.isNotBlank()
+    val dimensionsValid = width > 0 && height > 0
+    val pixelBufferValid = dimensionsValid && pixels.size >= width * height
+    if (!identityValid || !dimensionsValid || !pixelBufferValid) return null
     val top = MotionPaletteAccumulator()
     val bottom = MotionPaletteAccumulator()
     val all = MotionPaletteAccumulator()
