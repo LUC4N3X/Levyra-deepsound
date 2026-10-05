@@ -9634,7 +9634,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         exploreJob = viewModelScope.launch {
             val editorial = try {
-                editorialChartsRepository.cachedExploreCollection(params, 24)
+                editorialChartsRepository.exploreCollection(params, 24)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
