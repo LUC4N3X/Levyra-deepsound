@@ -13,6 +13,7 @@ import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
+import com.luc4n3x.levyra.ui.MotionBackdropPalette
 import com.luc4n3x.levyra.ui.PlayerAmbience
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
@@ -47,7 +48,8 @@ internal fun PlayerVisualHost(
     cinematicGeometry: PlayerCinematicGeometry,
     modifier: Modifier = Modifier,
     isVideoMode: Boolean = false,
-    backdropFocus: Float = 0.34f
+    backdropFocus: Float = 0.34f,
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {}
 ) {
     val isImmersive = visualMode.showsCinematicStage() && track != null && !isVideoMode
     val backdropArtworkUrl = playerBackdropArtworkUrl(isImmersive, backgroundMode, artworkUrl)
@@ -85,7 +87,9 @@ internal fun PlayerVisualHost(
                     morphAnchors = morphAnchors,
                     morphActive = morphActive,
                     swipeOffset = swipeOffset,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic && isImmersive,
+                    onDynamicBackdropPalette = onDynamicBackdropPalette
                 )
             }
         }
