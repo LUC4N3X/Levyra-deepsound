@@ -188,7 +188,8 @@ def run_collection(
                 )
             except (EditorialSourceError, OSError, RuntimeError, ValueError) as error:
                 LOGGER.warning(
-                    "Spotify-first Explore collection skipped; runtime YouTube Music fallback remains active: %s",
+                    "Spotify-first Explore collection skipped; "
+                    "runtime YouTube Music fallback remains active: %s",
                     type(error).__name__,
                 )
         if explore_collections:
