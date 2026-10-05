@@ -41,7 +41,12 @@ class MotionArtworkEngine(context: Context) {
     private val urlVerifier = MotionArtworkUrlVerifier(appContext)
     private val metadataResolver = ChartOfficialArtworkResolver(appContext)
     private val providerFactories: Map<String, (MotionArtworkConfig) -> MotionArtworkProvider> = mapOf(
-        "community-canvas" to { config -> CommunityCanvasProvider(appContext, minimumConfidence = config.minimumConfidence) },
+        "community-canvas" to { config ->
+            CommunityCanvasProvider(
+                context = appContext,
+                minimumConfidence = config.minimumConfidence
+            )
+        },
         "apple-motion" to { _: MotionArtworkConfig -> AppleMotionArtworkProvider(appContext) },
         "tidal-video-cover" to { config -> TidalVideoCoverProvider(appContext, config.minimumConfidence) }
     )
