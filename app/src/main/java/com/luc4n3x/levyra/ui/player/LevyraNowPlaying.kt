@@ -234,11 +234,13 @@ fun LevyraNowPlaying(
     ) {
         val activeIdentity = state.motionArtwork?.identityKey
         if (
-            !motionEnabled ||
-            !motionBackdropVisible ||
-            backgroundMode != PlayerBackgroundMode.Dynamic ||
-            activeIdentity == null ||
-            canvasBackdropPalette?.identityKey?.let { it != activeIdentity } == true
+            !canvasBackdropPaletteMatches(
+                palette = canvasBackdropPalette,
+                motionEnabled = motionEnabled,
+                motionBackdropVisible = motionBackdropVisible,
+                backgroundMode = backgroundMode,
+                activeIdentity = activeIdentity
+            )
         ) {
             canvasBackdropPalette = null
         }
@@ -269,10 +271,13 @@ fun LevyraNowPlaying(
     )
     val canvasBackdropTargets = canvasBackdropPalette
         ?.takeIf { palette ->
-            backgroundMode == PlayerBackgroundMode.Dynamic &&
-                motionEnabled &&
-                motionBackdropVisible &&
-                palette.identityKey == state.motionArtwork?.identityKey
+            canvasBackdropPaletteMatches(
+                palette = palette,
+                motionEnabled = motionEnabled,
+                motionBackdropVisible = motionBackdropVisible,
+                backgroundMode = backgroundMode,
+                activeIdentity = state.motionArtwork?.identityKey
+            )
         }
         ?.let { palette -> harmonizePlayerAccents(palette.primary, palette.secondary) }
     val backdropPrimaryTarget = canvasBackdropTargets?.primary ?: primaryTarget
@@ -1572,6 +1577,19 @@ private fun playerDockActions(
             )
         )
     }
+}
+
+private fun canvasBackdropPaletteMatches(
+    palette: MotionBackdropPalette?,
+    motionEnabled: Boolean,
+    motionBackdropVisible: Boolean,
+    backgroundMode: PlayerBackgroundMode,
+    activeIdentity: String?
+): Boolean {
+    val candidate = palette ?: return false
+    if (!motionEnabled || !motionBackdropVisible) return false
+    if (backgroundMode != PlayerBackgroundMode.Dynamic || activeIdentity == null) return false
+    return candidate.identityKey == activeIdentity
 }
 
 private fun playerSheetActions(

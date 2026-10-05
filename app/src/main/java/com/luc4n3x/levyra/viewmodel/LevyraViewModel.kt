@@ -10654,6 +10654,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return !current.isLiveRadio() && !isLocalPlaybackTrack(current)
     }
 
+    private fun canPublishMotionArtworkForRequest(
+        state: LevyraUiState,
+        ticket: PlaybackTicket,
+        expectedKey: String,
+        requestToken: Long
+    ): Boolean {
+        val activeTrack = state.currentTrack ?: return false
+        if (!state.animationsEnabled || !state.motionArtworkEnabled || state.isVideoMode) return false
+        if (motionArtworkRequestToken.get() != requestToken) return false
+        if (!playbackGeneration.isCurrent(ticket)) return false
+        return MotionArtworkIdentityKey.create(activeTrack) == expectedKey
+    }
+
     fun refreshCurrentMotionArtwork() {
         val snapshot = _state.value
         val current = snapshot.currentTrack ?: return
@@ -10741,16 +10754,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
             val publishForExpectedTrack: (MotionArtwork?) -> Unit = { artwork ->
                 _state.update { current ->
-                    val activeTrack = current.currentTrack
-                    if (
-                        activeTrack != null &&
-                        current.animationsEnabled &&
-                        current.motionArtworkEnabled &&
-                        !current.isVideoMode &&
-                        motionArtworkRequestToken.get() == requestToken &&
-                        playbackGeneration.isCurrent(ticket) &&
-                        MotionArtworkIdentityKey.create(activeTrack) == expectedKey
-                    ) {
+                    if (canPublishMotionArtworkForRequest(current, ticket, expectedKey, requestToken)) {
                         current.copy(
                             motionArtwork = artwork,
                             motionArtworkLoading = false
