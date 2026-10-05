@@ -42,6 +42,7 @@ import com.luc4n3x.levyra.ui.InstantArtworkPlaceholder
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
 import com.luc4n3x.levyra.ui.MotionArtworkLayer
 import com.luc4n3x.levyra.ui.MotionArtworkPresentation
+import com.luc4n3x.levyra.ui.MotionBackdropPalette
 import com.luc4n3x.levyra.ui.PlayerAmbience
 import com.luc4n3x.levyra.ui.artwork.ArtworkDissolveEdge
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
@@ -165,7 +166,9 @@ internal fun PlayerCinematicStage(
     morphAnchors: PlayerMorphAnchors,
     morphActive: Boolean,
     swipeOffset: () -> Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dynamicBackdropEnabled: Boolean = false,
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {}
 ) {
     val stacked = geometry.layout == PlayerCinematicLayout.Stacked
     val fullscreenCanvas = motionEnabled && playerCinematicUsesFullscreenCanvas(
@@ -242,6 +245,8 @@ internal fun PlayerCinematicStage(
                 presentation = MotionArtworkPresentation.Cinematic,
                 quality = canvasQuality,
                 livingArtwork = livingArtwork,
+                dynamicBackdropEnabled = dynamicBackdropEnabled,
+                onDynamicBackdropPalette = onDynamicBackdropPalette,
                 modifier = Modifier.fillMaxSize()
             ) {
                 SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
@@ -259,6 +264,8 @@ internal fun PlayerCinematicStage(
                 presentation = MotionArtworkPresentation.Cinematic,
                 quality = canvasQuality,
                 livingArtwork = null,
+                dynamicBackdropEnabled = dynamicBackdropEnabled,
+                onDynamicBackdropPalette = onDynamicBackdropPalette,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {

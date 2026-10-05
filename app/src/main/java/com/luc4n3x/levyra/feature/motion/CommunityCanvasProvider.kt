@@ -37,21 +37,28 @@ import kotlin.coroutines.resumeWithException
  */
 class CommunityCanvasProvider internal constructor(
     private val client: OkHttpClient,
-    private val onDemandResolver: OnDemandCanvasResolver
-) : MotionArtworkProvider {
+    private val onDemandResolver: OnDemandCanvasResolver,
+    private val minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
+) : MotionArtworkRefreshableProvider {
     constructor(
         context: Context,
-        onDemandResolver: OnDemandCanvasResolver = OnDemandCanvasResolver(context)
+        onDemandResolver: OnDemandCanvasResolver = OnDemandCanvasResolver(context),
+        minimumConfidence: Int = DEFAULT_MOTION_ARTWORK_MINIMUM_CONFIDENCE
     ) : this(
         client = LevyraHttpClientFactory.media(context).newBuilder()
             .connectTimeout(3, TimeUnit.SECONDS)
             .readTimeout(4, TimeUnit.SECONDS)
             .callTimeout(5, TimeUnit.SECONDS)
             .build(),
-        onDemandResolver = onDemandResolver
+        onDemandResolver = onDemandResolver,
+        minimumConfidence = minimumConfidence
     )
 
     override val id: String = PROVIDER_ID
+
+    override suspend fun invalidate(identity: MotionTrackIdentity) {
+        onDemandResolver.invalidate(identity)
+    }
 
     private val catalogMutex = Mutex()
     private val indexManifestMutex = Mutex()
@@ -81,38 +88,78 @@ class CommunityCanvasProvider internal constructor(
 
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
-            val entries = runCatching {
-                val indexedRows = when (val indexed = indexedEntries(identity)) {
-                    is CommunityCanvasIndexLookup.Available -> indexed.entries
-                    CommunityCanvasIndexLookup.Unavailable -> null
+            val local = localCandidates(identity)
+            if (!communityCanvasNeedsOnDemand(identity, local.candidates, minimumConfidence)) {
+                return MotionArtworkProviderResult.Found(local.candidates)
+            }
+
+            when (val onDemand = onDemandResolver.resolveResult(identity)) {
+                is OnDemandCanvasResolution.Found -> {
+                    val candidates = (local.candidates + onDemand.candidate)
+                        .distinctBy { candidate ->
+                            listOf(candidate.scope.name, candidate.url).joinToString("|")
+                        }
+                    Timber.d("Community canvas on-demand resolved candidate for %s", identity.title)
+                    MotionArtworkProviderResult.Found(candidates)
                 }
-                indexedRows?.takeIf { it.isNotEmpty() } ?: catalog()
-            }.getOrElse { error ->
-                if (error is CancellationException) throw error
-                Timber.d(error, "Community canvas local catalog unavailable for %s", identity.title)
-                emptyList()
-            }
-            Timber.d(
-                "Community canvas lookup entries=%d title=%s",
-                entries.size,
-                identity.title
-            )
-            val candidates = communityCanvasCandidates(identity, entries, System.currentTimeMillis())
-            if (candidates.isNotEmpty()) {
-                return MotionArtworkProviderResult.Found(candidates)
-            }
-            val onDemand = onDemandResolver.resolve(identity)
-            if (onDemand != null) {
-                Timber.d("Community canvas on-demand resolved candidate for %s", identity.title)
-                MotionArtworkProviderResult.Found(listOf(onDemand))
-            } else {
-                MotionArtworkProviderResult.NoMatch
+                OnDemandCanvasResolution.NoMatch -> {
+                    if (local.candidates.isNotEmpty()) {
+                        MotionArtworkProviderResult.Found(local.candidates)
+                    } else {
+                        MotionArtworkProviderResult.NoMatch
+                    }
+                }
+                OnDemandCanvasResolution.Unavailable -> when {
+                    local.candidates.isNotEmpty() -> MotionArtworkProviderResult.Found(local.candidates)
+                    local.conclusive -> MotionArtworkProviderResult.NoMatch
+                    else -> MotionArtworkProviderResult.Failed(local.failure)
+                }
+                is OnDemandCanvasResolution.Failed -> {
+                    Timber.d(onDemand.cause, "Community canvas on-demand lookup failed for %s", identity.title)
+                    MotionArtworkProviderResult.Failed(onDemand.cause ?: local.failure)
+                }
             }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             Timber.d(error, "Community canvas provider failed")
             MotionArtworkProviderResult.Failed(error)
+        }
+    }
+
+    private suspend fun localCandidates(identity: MotionTrackIdentity): CommunityCanvasLocalLookup {
+        val nowMs = System.currentTimeMillis()
+        return when (val indexed = indexedEntries(identity)) {
+            is CommunityCanvasIndexLookup.Available -> {
+                val candidates = communityCanvasCandidates(identity, indexed.entries, nowMs)
+                Timber.d(
+                    "Community canvas indexed lookup candidates=%d title=%s",
+                    candidates.size,
+                    identity.title
+                )
+                CommunityCanvasLocalLookup(candidates = candidates, conclusive = true)
+            }
+            CommunityCanvasIndexLookup.Unavailable -> {
+                try {
+                    val entries = catalog()
+                    val candidates = communityCanvasCandidates(identity, entries, nowMs)
+                    Timber.d(
+                        "Community canvas snapshot lookup candidates=%d title=%s",
+                        candidates.size,
+                        identity.title
+                    )
+                    CommunityCanvasLocalLookup(candidates = candidates, conclusive = true)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.d(error, "Community canvas local catalog unavailable for %s", identity.title)
+                    CommunityCanvasLocalLookup(
+                        candidates = emptyList(),
+                        conclusive = false,
+                        failure = error
+                    )
+                }
+            }
         }
     }
 
@@ -361,6 +408,21 @@ internal fun communityCanvasIndexBudgetMs(providerTimeoutMs: Long): Long =
         (providerTimeoutMs - CommunityCanvasProvider.CATALOG_FALLBACK_RESERVE_MS)
             .coerceAtLeast(0L)
     )
+
+internal fun communityCanvasNeedsOnDemand(
+    identity: MotionTrackIdentity,
+    candidates: List<MotionArtworkCandidate>,
+    minimumConfidence: Int
+): Boolean = candidates.none { candidate ->
+    val match = CanonicalTrackMatcher.match(identity, candidate)
+    match.accepted && match.score >= minimumConfidence
+}
+
+private data class CommunityCanvasLocalLookup(
+    val candidates: List<MotionArtworkCandidate>,
+    val conclusive: Boolean,
+    val failure: Throwable? = null
+)
 
 private sealed interface CommunityCanvasIndexLookup {
     data class Available(val entries: List<CommunityCanvasEntry>) : CommunityCanvasIndexLookup

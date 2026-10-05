@@ -36,6 +36,7 @@ import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.InstantArtworkPlaceholder
 import com.luc4n3x.levyra.ui.MotionArtworkLayer
 import com.luc4n3x.levyra.ui.MotionArtworkPresentation
+import com.luc4n3x.levyra.ui.MotionBackdropPalette
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
@@ -64,7 +65,9 @@ internal fun PlayerArtworkHero(
     artScale: Float,
     artOffset: Dp,
     glowColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dynamicBackdropEnabled: Boolean = false,
+    onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {}
 ) {
     val artworkShadow by animateDpAsState(
         targetValue = if (isPlaying) 28.dp else 12.dp,
@@ -156,6 +159,8 @@ internal fun PlayerArtworkHero(
                         presentation = MotionArtworkPresentation.Card,
                         quality = canvasQuality,
                         livingArtwork = livingArtwork,
+                        dynamicBackdropEnabled = dynamicBackdropEnabled,
+                        onDynamicBackdropPalette = onDynamicBackdropPalette,
                         modifier = Modifier.fillMaxSize()
                     ) {
                         SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
