@@ -121,7 +121,7 @@ class OnDemandCanvasResolver(
         nowMs: Long,
     ): OnDemandCanvasResolution {
         if (!resp.isSuccessful) {
-            if (resp.code == 400 || resp.code == 404) {
+            if (resp.code == 404) {
                 recordNegative(cacheKey, nowMs)
                 Timber.d("On-demand canvas resolver returned conclusive HTTP %d for %s", resp.code, identity.title)
                 return OnDemandCanvasResolution.NoMatch
