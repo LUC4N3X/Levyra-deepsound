@@ -6,7 +6,11 @@ import pytest
 
 import levyra_editorial.explore as explore_module
 from levyra_editorial.collector import validate_catalog_dict
-from levyra_editorial.explore import ExploreSeed, collect_spotify_explore_collections, parse_youtube_explore_categories
+from levyra_editorial.explore import (
+    ExploreSeed,
+    collect_spotify_explore_collections,
+    parse_youtube_explore_categories,
+)
 
 
 def _button(title: str, params: str, *, navigation: bool = False) -> dict:
@@ -36,6 +40,7 @@ def test_youtube_taxonomy_preserves_sections_order_and_opaque_params() -> None:
                 "items": [
                     _button("Dance & Electronic", "danceParams"),
                     _button("Focus duplicate", "ggM8SgQIBxAB/+=_"),
+                    _button("Unsafe", "bad?token"),
                 ],
             }
         },
@@ -67,6 +72,7 @@ class FakeSpotify:
             "description": "Official Spotify selection",
             "images": [{"url": "https://i.scdn.co/image/category-cover"}],
             "snapshot_id": "private-snapshot",
+            "tracks": {"total": 123},
             "external_urls": {"spotify": f"https://open.spotify.com/playlist/{playlist_id}"},
         }
 
@@ -113,6 +119,7 @@ def test_spotify_explore_collection_is_sanitized_and_keyed_by_youtube_params(
     assert public["youtubeParams"] == "opaque/+=_"
     assert public["sectionIndex"] == 0
     assert public["artworkUrl"] == "https://i.scdn.co/image/category-cover"
+    assert public["totalSourceItems"] == 123
     assert public["tracks"][0]["album"]["name"] == "Real Album"
     assert public["tracks"][0]["artworkUrl"] == "https://i.scdn.co/image/real-album"
 
