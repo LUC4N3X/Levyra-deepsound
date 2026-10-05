@@ -9635,6 +9635,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun ensureExploreTrackArtwork(track: Track) {
+        enqueueOfficialMetadata(listOf(track), 1, false)
+    }
+
     fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) {
         if (params.isBlank() || !_state.value.exploreCategoryArtwork[params].isNullOrBlank()) return
         val languageCode = _state.value.languageCode
