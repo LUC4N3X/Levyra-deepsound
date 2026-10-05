@@ -5696,8 +5696,8 @@ private fun ArtistHero(
                             AsyncImage(
                                 model = ImageRequest.Builder(heroContext).data(artworkUrl).crossfade(true).build(),
                                 contentDescription = profile.name,
-                                contentScale = ContentScale.Fit,
-                                alignment = Alignment.TopCenter,
+                                contentScale = ContentScale.Crop,
+                                alignment = Alignment.Center,
                                 modifier = Modifier.matchParentSize()
                             )
                         }
