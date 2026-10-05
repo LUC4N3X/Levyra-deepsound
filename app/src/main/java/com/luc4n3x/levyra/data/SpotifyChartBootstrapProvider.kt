@@ -38,7 +38,14 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
         val target = File(appContext.filesDir, CACHE_RELATIVE_PATH)
         val marker = appContext.getSharedPreferences(BOOTSTRAP_STATE, Context.MODE_PRIVATE)
         val cachePresent = target.isFile && target.length() in 1..MAX_CATALOG_BYTES.toLong()
-        if (cachePresent && marker.getInt(KEY_BOOTSTRAP_VERSION, 0) >= BOOTSTRAP_VERSION) return
+        val packageUpdateTime = runCatching {
+            appContext.packageManager.getPackageInfo(appContext.packageName, 0).lastUpdateTime
+        }.getOrDefault(0L)
+        if (
+            cachePresent &&
+            marker.getInt(KEY_BOOTSTRAP_VERSION, 0) >= BOOTSTRAP_VERSION &&
+            marker.getLong(KEY_PACKAGE_UPDATE_TIME, -1L) == packageUpdateTime
+        ) return
 
         val bundled = appContext.assets.open(ASSET_PATH).bufferedReader(StandardCharsets.UTF_8).use {
             it.readText()
@@ -50,17 +57,38 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
         if (root.optJSONArray("collections")?.length()?.let { it > 0 } != true) return
 
         val now = System.currentTimeMillis()
-        if (!cachePresent) {
-            // The bundled snapshot is a first-paint cache, not a claim that its source was generated now.
-            // Refreshing this local timestamp only makes the existing cache eligibility rules accept it;
-            // the real Spotify catalog refresh still starts immediately in the background.
-            root.put("generatedAt", Instant.ofEpochMilli(now).toString())
+        val bundledGeneratedAtMs = catalogGeneratedAtMs(root)
+        val cachedGeneratedAtMs = if (cachePresent) catalogGeneratedAtMs(target) else null
+        val shouldInstall = shouldInstallBundledCatalog(
+            cachePresent = cachePresent,
+            cachedGeneratedAtMs = cachedGeneratedAtMs,
+            bundledGeneratedAtMs = bundledGeneratedAtMs
+        )
+        if (shouldInstall) {
+            if (!cachePresent && bundledGeneratedAtMs == null) {
+                // A bundled fallback without source freshness can still seed first paint. Remote refresh
+                // starts immediately and replaces it with a timestamped catalog as soon as one is available.
+                root.put("generatedAt", Instant.ofEpochMilli(now).toString())
+            }
             writeCatalog(target, root.toString().toByteArray(StandardCharsets.UTF_8))
         }
 
         seedArtworkCache(appContext, root, now)
-        marker.edit().putInt(KEY_BOOTSTRAP_VERSION, BOOTSTRAP_VERSION).apply()
+        marker.edit()
+            .putInt(KEY_BOOTSTRAP_VERSION, BOOTSTRAP_VERSION)
+            .putLong(KEY_PACKAGE_UPDATE_TIME, packageUpdateTime)
+            .apply()
     }
+
+    private fun catalogGeneratedAtMs(root: JSONObject): Long? =
+        runCatching { Instant.parse(root.optString("generatedAt").trim()).toEpochMilli() }.getOrNull()
+
+    private fun catalogGeneratedAtMs(file: File): Long? =
+        runCatching {
+            if (!file.isFile || file.length() !in 1..MAX_CATALOG_BYTES.toLong()) return@runCatching null
+            val body = file.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+            catalogGeneratedAtMs(JSONObject(body))
+        }.getOrNull()
 
     private fun writeCatalog(target: File, payload: ByteArray) {
         if (payload.size !in 1..MAX_CATALOG_BYTES) return
@@ -197,9 +225,22 @@ class SpotifyChartBootstrapProvider : ContentProvider() {
         const val ARTWORK_CACHE_NAME = "levyra_chart_official_artwork"
         const val BOOTSTRAP_STATE = "levyra_spotify_chart_bootstrap"
         const val KEY_BOOTSTRAP_VERSION = "version"
-        const val BOOTSTRAP_VERSION = 1
+        const val KEY_PACKAGE_UPDATE_TIME = "package_update_time"
+        const val BOOTSTRAP_VERSION = 2
         const val DEFAULT_MARKET = "IT"
         const val SUPPORTED_SCHEMA_VERSION = 1
         const val MAX_CATALOG_BYTES = 4 * 1024 * 1024
     }
+}
+
+
+internal fun shouldInstallBundledCatalog(
+    cachePresent: Boolean,
+    cachedGeneratedAtMs: Long?,
+    bundledGeneratedAtMs: Long?
+): Boolean {
+    if (!cachePresent) return true
+    val bundled = bundledGeneratedAtMs ?: return false
+    val cached = cachedGeneratedAtMs ?: return true
+    return bundled > cached
 }
