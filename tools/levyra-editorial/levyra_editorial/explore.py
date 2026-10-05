@@ -17,7 +17,7 @@ from .spotify import (
     SpotifySearchUnavailable,
     SpotifyWebClient,
 )
-from .youtube_music import DEFAULT_USER_AGENT, HOME_URL, ORIGIN, YoutubeMusicWebClient
+from .youtube_music import DEFAULT_USER_AGENT, HOME_URL, ORIGIN
 
 LOGGER = logging.getLogger(__name__)
 
@@ -322,7 +322,6 @@ def _playlist_total_tracks(metadata: Mapping[str, Any], fallback: int) -> int:
 
 def collect_spotify_explore_collections(
     spotify: SpotifyWebClient,
-    youtube_music: YoutubeMusicWebClient | None,
     *,
     track_limit: int = DEFAULT_TRACK_LIMIT,
 ) -> list[Collection]:
