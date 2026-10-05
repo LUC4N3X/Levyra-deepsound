@@ -10,6 +10,7 @@ from levyra_editorial.explore import (
     ExploreSeed,
     collect_spotify_explore_collections,
     parse_youtube_explore_categories,
+    spotify_editorial_queries,
 )
 
 
@@ -56,6 +57,18 @@ def test_youtube_taxonomy_preserves_sections_order_and_opaque_params() -> None:
     assert categories[0].params == "ggM8SgQIBxAB/+=_"
 
 
+def test_spotify_editorial_queries_translate_youtube_intents() -> None:
+    energize = ExploreSeed("Energize", "energizeParams", "Moods & moments", 0)
+    decades = ExploreSeed("Decades", "decadesParams", "Moods & moments", 0)
+    dance = ExploreSeed("Dance & Electronic", "danceParams", "Genres", 1)
+    jazz = ExploreSeed("Jazz", "jazzParams", "Genres", 1)
+
+    assert spotify_editorial_queries(energize) == ("Energy Booster", "Mood Booster")
+    assert spotify_editorial_queries(decades) == ("All Out", "Throwback Party")
+    assert spotify_editorial_queries(dance) == ("Dance Rising", "mint")
+    assert spotify_editorial_queries(jazz) == ("Jazz",)
+
+
 class FakeSpotify:
     def __init__(self) -> None:
         self.queries: list[str] = []
@@ -63,7 +76,7 @@ class FakeSpotify:
     def resolve_playlist_id(self, query: str, market: str, title_hints: list[str]) -> str:
         self.queries.append(query)
         assert market == "US"
-        assert title_hints == [query]
+        assert query in title_hints
         return "37i9dQZF1DWZtZ8vUCzche"
 
     def get_playlist_metadata(self, playlist_id: str) -> dict:
