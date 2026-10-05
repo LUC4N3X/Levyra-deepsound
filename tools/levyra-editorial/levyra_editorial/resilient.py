@@ -183,7 +183,6 @@ def run_collection(
             try:
                 explore_collections = collect_spotify_explore_collections(
                     spotify,
-                    youtube_music,
                     track_limit=track_limit,
                 )
             except (EditorialSourceError, OSError, RuntimeError, ValueError) as error:
