@@ -21,6 +21,7 @@ from .collector import (
     write_catalog,
     write_spotify_canvas_catalog,
 )
+from .explore import collect_spotify_explore_collections
 from .models import Catalog, Collection
 from .spotify import EditorialSourceError, SourceApiError, SpotifyWebClient
 from .youtube_music import YoutubeMusicError, YoutubeMusicWebClient
@@ -43,6 +44,14 @@ class CentralEditorialClient:
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
         return self._spotify.iter_playlist_items(playlist_id, limit=limit)
+
+    def resolve_playlist_id(
+        self,
+        query: str,
+        market: str,
+        title_hints: list[str],
+    ) -> str:
+        return self._spotify.resolve_playlist_id(query, market, title_hints)
 
     def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         enriched = self._spotify.enrich_track_metadata(items)
@@ -163,6 +172,31 @@ def run_collection(
     canvas_count = 0
     try:
         catalog = build_resilient_catalog(config, client)
+        explore_config = config.get("exploreDiscovery")
+        explore_enabled = (
+            isinstance(explore_config, Mapping)
+            and explore_config.get("enabled") is True
+        )
+        explore_collections: list[Collection] = []
+        if explore_enabled:
+            track_limit = int(explore_config.get("trackLimit") or 16)
+            try:
+                explore_collections = collect_spotify_explore_collections(
+                    spotify,
+                    track_limit=track_limit,
+                )
+            except (OSError, RuntimeError, ValueError) as error:
+                LOGGER.warning(
+                    "Spotify-first Explore collection skipped; "
+                    "runtime YouTube Music fallback remains active: %s",
+                    type(error).__name__,
+                )
+        if explore_collections:
+            catalog = Catalog(
+                schema_version=catalog.schema_version,
+                generated_at=catalog.generated_at,
+                collections=[*catalog.collections, *explore_collections],
+            )
         write_catalog(catalog, output_path)
         if canvas_output_path is not None:
             try:

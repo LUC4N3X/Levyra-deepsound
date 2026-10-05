@@ -526,5 +526,9 @@
       ],
       "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
     }
-  ]
+  ],
+  "exploreDiscovery": {
+    "enabled": true,
+    "trackLimit": 16
+  }
 }
