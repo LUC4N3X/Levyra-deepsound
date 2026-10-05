@@ -1176,6 +1176,9 @@ private fun ExploreDiscoveryCategoryCard(
     val (accentStart, accentEnd) = exploreCategoryPalette(identity)
     val shape = RoundedCornerShape(14.dp)
     val metrics = exploreCategoryCardMetrics(prominent)
+    val longTitle = !prominent && title.length >= 18
+    val titleSize = if (longTitle) 15.sp else metrics.titleSize
+    val titleWidthFraction = if (longTitle) 0.72f else metrics.titleWidthFraction
     Box(
         modifier = modifier
             .clip(shape)
@@ -1213,14 +1216,14 @@ private fun ExploreDiscoveryCategoryCard(
         Text(
             text = title,
             color = Color.White,
-            fontSize = metrics.titleSize,
-            lineHeight = LevyraTypeRhythm.lineHeight(metrics.titleSize),
+            fontSize = titleSize,
+            lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
             fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(metrics.titleWidthFraction)
+                .fillMaxWidth(titleWidthFraction)
                 .padding(start = 14.dp, top = 14.dp, end = 4.dp)
         )
     }
@@ -1340,8 +1343,9 @@ private fun ExploreDestinationSurface(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
+                .zIndex(1f)
                 .statusBarsPadding()
-                .background(LevyraBlack.copy(alpha = 0.96f))
+                .background(LevyraBlack)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
