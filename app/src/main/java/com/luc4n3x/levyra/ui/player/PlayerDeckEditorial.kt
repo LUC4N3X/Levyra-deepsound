@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,7 +55,7 @@ internal fun PlayerEditorialDeck(
     compact: Boolean,
     scrollable: Boolean,
     gutter: Dp,
-    onArtistClick: () -> Unit,
+    onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
     headlineModifier: Modifier = Modifier
@@ -177,7 +176,7 @@ private fun EditorialHeadline(
     isFavorite: Boolean,
     animated: Boolean,
     compact: Boolean,
-    onArtistClick: () -> Unit,
+    onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -225,22 +224,21 @@ private fun EditorialHeadline(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                        .clip(LevyraPlayerDesign.ShapeXxs)
-                        .clickable(
-                            enabled = isCurrent,
-                            onClickLabel = strings.openArtist,
-                            onClick = onArtistClick
-                        ),
+                        .clip(LevyraPlayerDesign.ShapeXxs),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Text(
-                        text = shown.artist,
+                    PlayerArtistText(
+                        track = shown,
                         color = surfaces.contentMuted,
-                        fontSize = if (compact) 16.sp else 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontStyle = FontStyle.Italic,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        style = TextStyle(
+                            fontSize = if (compact) 16.sp else 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontStyle = FontStyle.Italic
+                        ),
+                        onClickLabel = strings.openArtist,
+                        onArtistClick = onArtistClick,
+                        enabled = isCurrent,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
                 if (isCurrent) {

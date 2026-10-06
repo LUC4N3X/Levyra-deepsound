@@ -5,7 +5,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,13 +26,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,7 +58,7 @@ internal fun PlayerTrackMetadata(
     compact: Boolean,
     openArtistLabel: String,
     favoritesLabel: String,
-    onArtistClick: () -> Unit,
+    onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -77,6 +76,7 @@ internal fun PlayerTrackMetadata(
             contentKey = { it.id },
             label = "player-metadata"
         ) { shown ->
+            val isCurrent = shown.id == track.id
             Column {
                 Text(
                     text = shown.title,
@@ -99,23 +99,21 @@ internal fun PlayerTrackMetadata(
                 Row(
                     modifier = Modifier
                         .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                        .widthIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                        .clip(LevyraPlayerDesign.ShapeXxs)
-                        .clickable(
-                            onClickLabel = openArtistLabel,
-                            onClick = onArtistClick
-                        ),
+                        .widthIn(min = LevyraPlayerDesign.MinimumTouchTarget),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = shown.artist,
+                    PlayerArtistText(
+                        track = shown,
                         color = surfaces.contentMuted,
-                        fontSize = artistSize,
-                        lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = (-0.1).sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        style = TextStyle(
+                            fontSize = artistSize,
+                            lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = (-0.1).sp
+                        ),
+                        onClickLabel = openArtistLabel,
+                        onArtistClick = onArtistClick,
+                        enabled = isCurrent
                     )
                 }
             }

@@ -41,6 +41,42 @@ class ArtistIdentityTest {
         assertEquals("ANNA", primaryArtistSegment("ANNA"))
         assertEquals("Ultimo", primaryArtistSegment("Ultimo"))
     }
+
+    @Test
+    fun structuredCreditsKeepArtistBrowseIdsAligned() {
+        assertEquals(
+            listOf(
+                ArtistCredit("Luis Fonsi", "UCfonsi"),
+                ArtistCredit("Daddy Yankee", "UCyankee")
+            ),
+            artistCredits(
+                value = "Luis Fonsi, Daddy Yankee",
+                artistBrowseIds = listOf("UCfonsi", "UCyankee")
+            )
+        )
+    }
+
+    @Test
+    fun localizedStructuredCreditsCanBeTargetedIndividually() {
+        assertEquals(
+            listOf(
+                ArtistCredit("Shiva", "UCshiva"),
+                ArtistCredit("Geolier", "UCgeolier")
+            ),
+            artistCredits(
+                value = "Shiva e Geolier",
+                artistBrowseIds = listOf("UCshiva", "UCgeolier")
+            )
+        )
+    }
+
+    @Test
+    fun unstructuredCreditFallsBackToPrimaryArtistOnly() {
+        assertEquals(
+            listOf(ArtistCredit("Dua Lipa", "")),
+            artistCredits("Dua Lipa feat. DaBaby", emptyList())
+        )
+    }
     @Test
     fun curatorAndPlaylistNamesAreRejectedFromArtistShelf() {
         assertTrue(!isArtistShelfNameEligible("HIT CANZONI SANREMO 2026"))

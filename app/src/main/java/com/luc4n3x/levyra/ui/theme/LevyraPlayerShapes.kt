@@ -4,6 +4,9 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+internal fun nonNegativeCornerRadius(radius: Dp): Dp = radius.coerceAtLeast(0.dp)
 
 enum class LevyraSegment {
     Leading,
@@ -21,7 +24,7 @@ object LevyraPlayerShapes {
             .coerceIn(LevyraPlayerDesign.ArtworkCornerMin, LevyraPlayerDesign.ArtworkCornerMax)
 
     fun segment(position: LevyraSegment, innerCorner: Dp): Shape {
-        val inner = CornerSize(innerCorner)
+        val inner = CornerSize(nonNegativeCornerRadius(innerCorner))
         return when (position) {
             LevyraSegment.Leading -> RoundedCornerShape(
                 topStart = Round,

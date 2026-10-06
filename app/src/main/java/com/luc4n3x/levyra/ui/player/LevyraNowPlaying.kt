@@ -923,7 +923,7 @@ fun LevyraNowPlaying(
                     compact = compactPlayer,
                     openArtistLabel = strings.openArtist,
                     favoritesLabel = strings.favoritesPlain,
-                    onArtistClick = { viewModel.openArtist(activeTrack) },
+                    onArtistClick = { artistIndex -> viewModel.openArtist(activeTrack, artistIndex) },
                     onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
                     modifier = lyricsFlipSwipeModifier
                 )
@@ -1075,7 +1075,7 @@ fun LevyraNowPlaying(
                 compact = compactPlayer,
                 scrollable = !fitsViewport,
                 gutter = gutter,
-                onArtistClick = { viewModel.openArtist(track) },
+                onArtistClick = { artistIndex -> viewModel.openArtist(track, artistIndex) },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier

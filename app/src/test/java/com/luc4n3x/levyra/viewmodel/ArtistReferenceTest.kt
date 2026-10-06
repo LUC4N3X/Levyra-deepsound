@@ -31,6 +31,20 @@ class ArtistReferenceTest {
     }
 
     @Test
+    fun `secondary credited artist resolves by index`() {
+        val track = track(
+            artist = "Luis Fonsi, Daddy Yankee",
+            browseIds = listOf("UCfonsi", "UCyankee")
+        )
+
+        assertEquals(
+            ArtistReference(name = "Daddy Yankee", browseId = "UCyankee"),
+            artistReferenceOf(track, 1)
+        )
+        assertNull(artistReferenceOf(track, 2))
+    }
+
+    @Test
     fun `featuring credit resolves to the main artist`() {
         assertEquals("Dua Lipa", artistReferenceOf(track(artist = "Dua Lipa feat. DaBaby"))?.name)
     }

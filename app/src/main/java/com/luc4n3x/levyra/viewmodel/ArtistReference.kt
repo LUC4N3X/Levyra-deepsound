@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.domain.primaryArtistSegment
+import com.luc4n3x.levyra.domain.artistCredits
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 
 internal data class ArtistReference(val name: String, val browseId: String)
@@ -13,9 +13,18 @@ internal fun isNavigableArtistName(name: String): Boolean {
         !clean.equals("YouTube", ignoreCase = true)
 }
 
-internal fun artistReferenceOf(track: Track): ArtistReference? {
-    if (track.isLiveRadio()) return null
-    val name = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
-    if (!isNavigableArtistName(name)) return null
-    return ArtistReference(name = name, browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim())
+internal fun artistReferencesOf(track: Track): List<ArtistReference> {
+    if (track.isLiveRadio()) return emptyList()
+    return artistCredits(track.artist, track.artistBrowseIds)
+        .mapNotNull { credit ->
+            val name = credit.name.trim()
+            if (!isNavigableArtistName(name)) null
+            else ArtistReference(name = name, browseId = credit.browseId.trim())
+        }
 }
+
+internal fun artistReferenceOf(track: Track): ArtistReference? =
+    artistReferencesOf(track).firstOrNull()
+
+internal fun artistReferenceOf(track: Track, artistIndex: Int): ArtistReference? =
+    artistReferencesOf(track).getOrNull(artistIndex)
