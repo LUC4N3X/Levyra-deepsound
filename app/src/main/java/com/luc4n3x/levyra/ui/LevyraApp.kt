@@ -370,7 +370,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxDefaults
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
@@ -6519,7 +6520,10 @@ private fun QueueOverlay(
                             )
                         }
                     }
-                    val dismissState = rememberSwipeToDismissBoxState()
+                    val dismissThreshold = SwipeToDismissBoxDefaults.positionalThreshold
+                    val dismissState = remember(entry.key) {
+                        SwipeToDismissBoxState(SwipeToDismissBoxValue.Settled, dismissThreshold)
+                    }
                     LaunchedEffect(dismissState.currentValue) {
                         if (isCurrent || dismissState.currentValue != SwipeToDismissBoxValue.EndToStart) return@LaunchedEffect
                         haptics.perform(LevyraHapticAction.TrackSwipe)
