@@ -43,6 +43,19 @@ class ArtistIdentityTest {
     }
 
     @Test
+    fun displayCandidatesRecoverCommaSeparatedArtistsWithoutBrowseIds() {
+        assertEquals(
+            listOf("Fred De Palma", "Anitta", "Emis Killa"),
+            artistDisplayCandidates("Fred De Palma, Anitta, Emis Killa")
+        )
+    }
+
+    @Test
+    fun displayCandidatesDoNotSplitAmpersandOnlyGroups() {
+        assertTrue(artistDisplayCandidates("Simon & Garfunkel").isEmpty())
+    }
+
+    @Test
     fun structuredCreditsKeepArtistBrowseIdsAligned() {
         assertEquals(
             listOf(
