@@ -74,10 +74,6 @@ Play streamed music and your own files in the same app, save tracks for offline 
 
 ## ✦ Why Levyra
 
-Looking for detailed information about Levyra? The full documentation covers features, setup, configuration, audio, providers, troubleshooting, architecture, and more.
-
-[**Open the full Levyra documentation →**](https://levyra.dpdns.org/docs/)
-
 I started Levyra because I wanted one player for the music I stream and the files I already have. I wanted local tracks to feel like part of the same library, with playlists, history and downloads that do not depend on a Levyra account.
 
 Downloaded tracks are saved as normal audio files in your device storage. Local and streamed music can share the same library, playlists and queues, while listening data stays on the device.
@@ -85,6 +81,10 @@ Downloaded tracks are saved as normal audio files in your device storage. Local 
 As I kept using Levyra, I added the things I missed in other players: synced lyrics with timing controls, romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, backups and a Windows version. They all use the same library and playback flow.
 
 Some features rely on outside services for music, lyrics, artwork and metadata. Levyra itself stays open source, and your library remains under your control.
+
+Want to dig deeper into how Levyra works? The full documentation covers setup, features, audio, providers, troubleshooting, architecture, and the details that do not fit here.
+
+[**Open the full Levyra documentation →**](https://levyra.dpdns.org/docs/)
 
 ## ✦ JioSaavn · Verified high-quality audio
 
