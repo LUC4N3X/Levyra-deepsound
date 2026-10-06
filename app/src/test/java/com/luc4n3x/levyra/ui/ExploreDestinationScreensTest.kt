@@ -61,6 +61,32 @@ class ExploreDestinationScreensTest {
         )
     }
 
+
+    @Test
+    fun oddProviderRowUsesFirstCuratedZoneInsteadOfLeavingAHole() {
+        val sections = listOf(
+            ExploreCategorySection(
+                key = "genres",
+                providerTitle = "Genres",
+                presentation = ExploreCategoryPresentation.Structured,
+                categories = listOf(
+                    ExploreCategory("R&B e soul", "rnb"),
+                    ExploreCategory("Reggae e caraibica", "reggae"),
+                    ExploreCategory("Rock", "rock")
+                )
+            )
+        )
+        val zones = listOf(zone("nuove-uscite"), zone("local-wave"))
+
+        assertEquals("nuove-uscite", exploreCuratedBridgeZone(sections, zones)?.id)
+        assertNull(
+            exploreCuratedBridgeZone(
+                sections.map { it.copy(categories = it.categories.dropLast(1)) },
+                zones
+            )
+        )
+    }
+
     private fun zone(id: String): ExploreZone = ExploreZone(
         id = id,
         label = id,
