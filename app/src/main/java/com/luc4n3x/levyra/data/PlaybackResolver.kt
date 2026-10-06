@@ -1048,7 +1048,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         val cacheMatch = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).get(track.id)
         if (cacheMatch != null && cacheMatch.videoId.isNotBlank()) {
             return track.copy(
-                id = cacheMatch.videoId,
                 videoUrl = cacheMatch.videoUrl.ifBlank { "https://www.youtube.com/watch?v=${cacheMatch.videoId}" },
                 counterpartVideoId = cacheMatch.videoId,
                 audioVideoId = cacheMatch.audioVideoId.ifBlank { cacheMatch.videoId },
@@ -1063,7 +1062,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?.candidate
         if (matchedYt != null) {
             com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).put(track.id, matchedYt)
-            return richerSong(track, matchedYt)
+            return richerSong(track, matchedYt).copy(id = track.id)
         }
         return track
     }

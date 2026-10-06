@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.spotify
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.luc4n3x.levyra.domain.Track
 import org.json.JSONObject
 
@@ -39,6 +40,10 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
     private val appContext = context?.applicationContext
     private val preferences = appContext?.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
+    init {
+        preferences?.let { prunePersisted(it, System.currentTimeMillis(), MAX_PERSISTED_ENTRIES) }
+    }
+
     fun get(spotifyIdOrKey: String): MatchedYouTubeData? {
         val key = cleanKey(spotifyIdOrKey)
         if (key.isBlank()) return null
@@ -61,6 +66,7 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
         return null
     }
 
+    @Synchronized
     fun put(spotifyIdOrKey: String, youtubeTrack: Track) {
         val key = cleanKey(spotifyIdOrKey)
         val videoId = youtubeTrack.id.trim()
@@ -81,7 +87,41 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
         )
 
         memoryCache.put(key, data)
-        preferences?.edit()?.putString(key, encode(data))?.apply()
+        val prefs = preferences ?: return
+        if (!prefs.contains(key) && prefs.all.size >= MAX_PERSISTED_ENTRIES) {
+            prunePersisted(prefs, data.timestampMs, MAX_PERSISTED_ENTRIES - 1)
+        }
+        prefs.edit().putString(key, encode(data)).apply()
+    }
+
+    private fun prunePersisted(
+        prefs: SharedPreferences,
+        now: Long,
+        maxEntries: Int
+    ) {
+        val valid = mutableListOf<Pair<String, MatchedYouTubeData>>()
+        val removals = LinkedHashSet<String>()
+
+        prefs.all.forEach { (key, rawValue) ->
+            val raw = rawValue as? String
+            val data = raw?.let { runCatching { decode(it) }.getOrNull() }
+            if (data == null || !isFresh(data, now)) {
+                removals.add(key)
+            } else {
+                valid.add(key to data)
+            }
+        }
+
+        valid
+            .sortedByDescending { (_, data) -> data.timestampMs }
+            .drop(maxEntries.coerceAtLeast(0))
+            .forEach { (key, _) -> removals.add(key) }
+
+        if (removals.isNotEmpty()) {
+            val editor = prefs.edit()
+            removals.forEach(editor::remove)
+            editor.apply()
+        }
     }
 
     private fun decode(raw: String): MatchedYouTubeData {
@@ -118,6 +158,7 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
     companion object {
         private const val PREFERENCES_NAME = "spotify_yt_match_cache"
         private const val MAX_MEMORY_ENTRIES = 1_000
+        private const val MAX_PERSISTED_ENTRIES = 1_000
         private const val MATCH_TTL_MS = 14L * 24L * 60L * 60L * 1000L
         private val YOUTUBE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 

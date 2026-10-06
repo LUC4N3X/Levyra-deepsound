@@ -415,6 +415,8 @@ private fun selectSongMetadataDonor(current: Track, candidate: Track): Track {
 }
 
 private fun selectSongPlaybackDonor(current: Track, candidate: Track): Track {
+    if (isLocalSearchTrack(current)) return current
+    if (isLocalSearchTrack(candidate)) return candidate
     val currentHasYtId = isYoutubeSearchTrack(current) ||
         isPlayableYoutubeId(current.id) ||
         isPlayableYoutubeId(current.counterpartVideoId) ||
@@ -432,6 +434,7 @@ private fun selectSongPlaybackDonor(current: Track, candidate: Track): Track {
 }
 
 private fun resolveMergedSongId(current: Track, candidate: Track, playbackDonor: Track): String {
+    if (isLocalSearchTrack(playbackDonor)) return playbackDonor.id
     val nonSpotify = sequenceOf(playbackDonor.id, current.id, candidate.id)
         .firstOrNull { it.isNotBlank() && !it.startsWith("spotify:") }
     return nonSpotify ?: current.id.ifBlank { candidate.id }
@@ -489,7 +492,11 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         videoType = playbackDonor.videoType.ifBlank { current.videoType.ifBlank { candidate.videoType } },
         isrc = metadataDonor.isrc.ifBlank { current.isrc.ifBlank { candidate.isrc } },
         explicit = current.explicit || candidate.explicit,
-        source = if (isAnySpotify) "spotify_youtube" else current.source.ifBlank { candidate.source },
+        source = when {
+            isAnySpotify -> "spotify_youtube"
+            isLocalSearchTrack(playbackDonor) -> playbackDonor.source
+            else -> current.source.ifBlank { candidate.source }
+        },
         metadataProvider = if (isAnySpotify) "spotify" else current.metadataProvider.ifBlank { candidate.metadataProvider },
         metadataConfidence = maxOf(current.metadataConfidence, candidate.metadataConfidence),
         youtubeViewCount = maxOf(current.youtubeViewCount, candidate.youtubeViewCount)
