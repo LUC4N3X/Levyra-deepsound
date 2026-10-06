@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -56,7 +53,7 @@ internal fun PlayerEditorialDeck(
     compact: Boolean,
     scrollable: Boolean,
     gutter: Dp,
-    onArtistClick: () -> Unit,
+    onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
     headlineModifier: Modifier = Modifier
@@ -177,7 +174,7 @@ private fun EditorialHeadline(
     isFavorite: Boolean,
     animated: Boolean,
     compact: Boolean,
-    onArtistClick: () -> Unit,
+    onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -221,28 +218,19 @@ private fun EditorialHeadline(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
             ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                        .clip(LevyraPlayerDesign.ShapeXxs)
-                        .clickable(
-                            enabled = isCurrent,
-                            onClickLabel = strings.openArtist,
-                            onClick = onArtistClick
-                        ),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(
-                        text = shown.artist,
-                        color = surfaces.contentMuted,
+                PlayerArtistText(
+                    track = shown,
+                    color = surfaces.contentMuted,
+                    style = TextStyle(
                         fontSize = if (compact) 16.sp else 18.sp,
                         fontWeight = FontWeight.Medium,
-                        fontStyle = FontStyle.Italic,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                        fontStyle = FontStyle.Italic
+                    ),
+                    onClickLabel = strings.openArtist,
+                    onArtistClick = onArtistClick,
+                    enabled = isCurrent,
+                    modifier = Modifier.weight(1f)
+                )
                 if (isCurrent) {
                     PlayerFavoriteButton(
                         trackId = shown.id,
