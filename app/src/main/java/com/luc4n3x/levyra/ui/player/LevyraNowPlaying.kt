@@ -433,8 +433,7 @@ fun LevyraNowPlaying(
         val estimatedHeroBottom = playerCinematicStackedHeroBottom(
             statusBarTop = statusBarTop,
             chromeTopPadding = LevyraPlayerDesign.SpaceXs,
-            headerHeight = LevyraPlayerDesign.MinimumTouchTarget +
-                if (showTopArtistCluster) 52.dp else 0.dp,
+            headerHeight = LevyraPlayerDesign.MinimumTouchTarget,
             itemSpacing = LevyraPlayerDesign.SpaceLg,
             heroVerticalPadding = 0.dp,
             artworkSize = min(maxWidth - gutter * 2, maxHeight * 0.42f)
@@ -678,21 +677,7 @@ fun LevyraNowPlaying(
                 }
             }
         }
-        val headerBlock: @Composable () -> Unit = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                headerRow(headerCentered)
-                if (showTopArtistCluster) {
-                    Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceXs))
-                    PlayerTopArtistCluster(
-                        artists = playerArtistHits,
-                        surfaces = surfaces,
-                        contentDescription = strings.openArtist,
-                        onClick = { showArtistPicker = true },
-                        modifier = Modifier.padding(start = LevyraPlayerDesign.SpaceXs)
-                    )
-                }
-            }
-        }
+        val headerBlock: @Composable () -> Unit = { headerRow(headerCentered) }
 
         val mediaHeroBlock: @Composable (Track, Dp, Dp?) -> Unit = { activeTrack, heroSize, cornerOverride ->
             val artworkCorner = cornerOverride ?: LevyraPlayerShapes.artworkCorner(heroSize)
@@ -1353,6 +1338,23 @@ fun LevyraNowPlaying(
                     onClick = { videoFullscreen = false }
                 )
             }
+        }
+
+        if (showTopArtistCluster) {
+            PlayerTopArtistCluster(
+                artists = playerArtistHits,
+                surfaces = surfaces,
+                contentDescription = strings.openArtist,
+                onClick = { showArtistPicker = true },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(
+                        start = gutter,
+                        top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceSm
+                    )
+                    .zIndex(24f)
+            )
         }
 
         if (showActions && track != null) {
