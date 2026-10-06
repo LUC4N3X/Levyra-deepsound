@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.data.spotify
 import android.content.Context
 import com.luc4n3x.levyra.domain.Track
 import org.json.JSONObject
-import java.util.concurrent.ConcurrentHashMap
 
 internal data class MatchedYouTubeData(
     val videoId: String,
@@ -28,81 +27,89 @@ private class SimpleLruCache<K, V>(private val maxSize: Int) {
     fun put(key: K, value: V) {
         map[key] = value
     }
+
+    @Synchronized
+    fun remove(key: K) {
+        map.remove(key)
+    }
 }
 
 internal class SpotifyYouTubeMatchCache private constructor(context: Context? = null) {
-    private val memoryCache = SimpleLruCache<String, MatchedYouTubeData>(1_000)
-    private val memoryFallback = ConcurrentHashMap<String, MatchedYouTubeData>()
+    private val memoryCache = SimpleLruCache<String, MatchedYouTubeData>(MAX_MEMORY_ENTRIES)
     private val appContext = context?.applicationContext
     private val preferences = appContext?.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     fun get(spotifyIdOrKey: String): MatchedYouTubeData? {
         val key = cleanKey(spotifyIdOrKey)
         if (key.isBlank()) return null
+        val now = System.currentTimeMillis()
 
-        memoryCache.get(key)?.let { return it }
-
-        memoryFallback[key]?.let { return it }
+        memoryCache.get(key)?.let { cached ->
+            if (isFresh(cached, now)) return cached
+            memoryCache.remove(key)
+        }
 
         val prefs = preferences ?: return null
         val raw = prefs.getString(key, null) ?: return null
-        val parsed = runCatching {
-            val json = JSONObject(raw)
-            val videoId = json.optString("videoId")
-            val viewCount = json.optLong("viewCount", -1L)
-            val videoUrl = json.optString("videoUrl")
-            val audioVideoId = json.optString("audioVideoId")
-            val videoType = json.optString("videoType")
-            val timestamp = json.optLong("timestamp", 0L)
-            MatchedYouTubeData(
-                videoId = videoId,
-                youtubeViewCount = viewCount,
-                videoUrl = videoUrl,
-                audioVideoId = audioVideoId,
-                videoType = videoType,
-                timestampMs = timestamp
-            )
-        }.getOrNull()
-
-        if (parsed != null) {
-            val now = System.currentTimeMillis()
-            if (now - parsed.timestampMs < MATCH_TTL_MS) {
-                memoryCache.put(key, parsed)
-                return parsed
-            }
+        val parsed = runCatching { decode(raw) }.getOrNull()
+        if (parsed != null && isFresh(parsed, now)) {
+            memoryCache.put(key, parsed)
+            return parsed
         }
+
+        prefs.edit().remove(key).apply()
         return null
     }
 
     fun put(spotifyIdOrKey: String, youtubeTrack: Track) {
         val key = cleanKey(spotifyIdOrKey)
         val videoId = youtubeTrack.id.trim()
-        if (key.isBlank() || videoId.isBlank()) return
+        if (key.isBlank() || !YOUTUBE_VIDEO_ID.matches(videoId)) return
 
+        val audioVideoId = youtubeTrack.audioVideoId
+            .trim()
+            .takeIf(YOUTUBE_VIDEO_ID::matches)
+            .orEmpty()
+            .ifBlank { videoId }
         val data = MatchedYouTubeData(
             videoId = videoId,
             youtubeViewCount = youtubeTrack.youtubeViewCount,
             videoUrl = youtubeTrack.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" },
-            audioVideoId = youtubeTrack.audioVideoId.ifBlank { videoId },
+            audioVideoId = audioVideoId,
             videoType = youtubeTrack.videoType,
             timestampMs = System.currentTimeMillis()
         )
 
         memoryCache.put(key, data)
-        memoryFallback[key] = data
+        preferences?.edit()?.putString(key, encode(data))?.apply()
+    }
 
-        preferences?.let { prefs ->
-            runCatching {
-                val json = JSONObject()
-                    .put("videoId", data.videoId)
-                    .put("viewCount", data.youtubeViewCount)
-                    .put("videoUrl", data.videoUrl)
-                    .put("audioVideoId", data.audioVideoId)
-                    .put("videoType", data.videoType)
-                    .put("timestamp", data.timestampMs)
-                prefs.edit().putString(key, json.toString()).apply()
-            }
-        }
+    private fun decode(raw: String): MatchedYouTubeData {
+        val json = JSONObject(raw)
+        return MatchedYouTubeData(
+            videoId = json.optString("videoId").trim(),
+            youtubeViewCount = json.optLong("viewCount", -1L),
+            videoUrl = json.optString("videoUrl"),
+            audioVideoId = json.optString("audioVideoId").trim(),
+            videoType = json.optString("videoType"),
+            timestampMs = json.optLong("timestamp", 0L)
+        )
+    }
+
+    private fun encode(data: MatchedYouTubeData): String =
+        JSONObject()
+            .put("videoId", data.videoId)
+            .put("viewCount", data.youtubeViewCount)
+            .put("videoUrl", data.videoUrl)
+            .put("audioVideoId", data.audioVideoId)
+            .put("videoType", data.videoType)
+            .put("timestamp", data.timestampMs)
+            .toString()
+
+    private fun isFresh(data: MatchedYouTubeData, now: Long): Boolean {
+        if (!YOUTUBE_VIDEO_ID.matches(data.videoId)) return false
+        val age = now - data.timestampMs
+        return age in 0 until MATCH_TTL_MS
     }
 
     private fun cleanKey(key: String): String =
@@ -110,7 +117,9 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
 
     companion object {
         private const val PREFERENCES_NAME = "spotify_yt_match_cache"
+        private const val MAX_MEMORY_ENTRIES = 1_000
         private const val MATCH_TTL_MS = 14L * 24L * 60L * 60L * 1000L
+        private val YOUTUBE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 
         @Volatile
         private var instance: SpotifyYouTubeMatchCache? = null

@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -23,7 +24,13 @@ internal class SpotifySearchClient(
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return@withContext SearchResults()
 
-        val bearer = runCatching { tokenProvider.token() }.getOrNull() ?: return@withContext SearchResults()
+        val bearer = try {
+            tokenProvider.token()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            return@withContext SearchResults()
+        }
         val payload = buildSearchPayload(trimmed, limit)
         val request = Request.Builder()
             .url(GRAPHQL_URL)
@@ -37,14 +44,18 @@ internal class SpotifySearchClient(
             .build()
 
         val client = clientFactory()
-        val responseJson = runCatching {
+        val responseJson = try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext SearchResults()
                 val body = response.body.string()
                 if (body.isEmpty()) return@withContext SearchResults()
                 JSONObject(body)
             }
-        }.getOrNull() ?: return@withContext SearchResults()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            return@withContext SearchResults()
+        }
 
         parseSearchResults(responseJson)
     }

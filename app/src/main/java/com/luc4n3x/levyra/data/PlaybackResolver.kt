@@ -1058,8 +1058,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             )
         }
         val candidates = findAlternativeAudioCandidates(track)
-        val bestMatch = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.findBestMatch(track, candidates, threshold = 0.50)
-        val matchedYt = bestMatch?.candidate ?: candidates.firstOrNull()
+        val matchedYt = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
+            .findBestMatch(track, candidates)
+            ?.candidate
         if (matchedYt != null) {
             com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).put(track.id, matchedYt)
             return richerSong(track, matchedYt)

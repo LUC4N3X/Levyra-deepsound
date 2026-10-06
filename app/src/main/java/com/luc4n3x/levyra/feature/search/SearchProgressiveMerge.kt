@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.data.mergeSearchAlbums
 import com.luc4n3x.levyra.data.mergeSearchArtists
 import com.luc4n3x.levyra.data.mergeSearchPlaylists
 import com.luc4n3x.levyra.data.mergeSearchSongs
+import com.luc4n3x.levyra.data.isSpotifySearchTrack
 import com.luc4n3x.levyra.data.richerSong
 import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -30,6 +31,19 @@ internal suspend inline fun <T> searchCatching(block: () -> T): Result<T> = try 
 internal fun provisionalSearchArtists(query: String, artists: List<ArtistHit>): List<ArtistHit> {
     if (artists.isEmpty()) return artists
     return mergeReliableArtistSearchResults(query = query, exactArtist = null, verifiedArtists = artists)
+}
+
+private fun mergeOverviewTop(existing: Track?, incoming: Track?): Track? {
+    if (incoming == null) return existing
+    if (existing == null) return incoming
+    if (SpotifyYouTubeMatcher.scoreMatch(existing, incoming) >= 0.52) {
+        return richerSong(existing, incoming)
+    }
+    return when {
+        isSpotifySearchTrack(incoming) -> incoming
+        isSpotifySearchTrack(existing) -> existing
+        else -> incoming
+    }
 }
 
 internal fun mergeFastSearchResults(
@@ -146,7 +160,7 @@ internal fun SearchSessionSnapshot.withOverview(raw: SearchResults, query: Strin
             baseTop ?: merged.topTrack
         }
     } else {
-        merged.topTrack
+        mergeOverviewTop(base.topTrack, raw.topTrack) ?: merged.topTrack
     }
     val resolvedTop = top?.let { t ->
         merged.songs.firstOrNull { it.id == t.id || it.counterpartVideoId == t.id } ?: t

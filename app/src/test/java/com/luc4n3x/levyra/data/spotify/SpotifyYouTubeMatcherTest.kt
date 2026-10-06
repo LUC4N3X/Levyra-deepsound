@@ -165,4 +165,78 @@ class SpotifyYouTubeMatcherTest {
         assertNotNull("Must find a match", best)
         assertEquals("ytorig00001", best?.candidate?.id)
     }
+
+    @Test
+    fun spotifyEnrichmentKeepsExistingYoutubeOrderStable() {
+        val youtubeMatch = sampleTrack(
+            "ytorder0001",
+            "Blinding Lights",
+            "The Weeknd",
+            durationMs = 200_000L,
+            viewCount = 3_000_000_000L
+        )
+        val youtubeRarity = sampleTrack(
+            "ytrarity001",
+            "Blinding Lights Live",
+            "The Weeknd",
+            durationMs = 245_000L,
+            viewCount = 12_000_000L
+        )
+        val spotify = sampleTrack(
+            "sp:order",
+            "Blinding Lights",
+            "The Weeknd",
+            album = "After Hours",
+            durationMs = 200_000L
+        )
+
+        val merged = mergeSpotifyAndYoutubeSongs(
+            existing = listOf(youtubeMatch, youtubeRarity),
+            incoming = listOf(spotify)
+        )
+
+        assertEquals(listOf("ytorder0001", "ytrarity001"), merged.map { it.id })
+        assertEquals("spotify", merged.first().metadataProvider)
+        assertEquals("After Hours", merged.first().album)
+    }
+
+    @Test
+    fun localTrackIsNeverUsedAsSpotifyYoutubeCounterpart() {
+        val local = sampleTrack(
+            "local:hello",
+            "Hello",
+            "Adele",
+            durationMs = 295_000L
+        ).copy(
+            streamUrl = "content://media/external/audio/1",
+            videoUrl = "",
+            source = "Offline",
+            metadataProvider = "spotify"
+        )
+        val youtube = sampleTrack(
+            "ytlocal0001",
+            "Hello",
+            "Adele",
+            durationMs = 295_000L,
+            viewCount = 4_000_000_000L
+        )
+        val spotify = sampleTrack(
+            "sp:local",
+            "Hello",
+            "Adele",
+            album = "25",
+            durationMs = 295_000L
+        )
+
+        val merged = mergeSpotifyAndYoutubeSongs(
+            existing = listOf(local, youtube),
+            incoming = listOf(spotify)
+        )
+
+        assertEquals("local:hello", merged.first().id)
+        assertEquals("Offline", merged.first().source)
+        assertEquals("ytlocal0001", merged[1].id)
+        assertEquals("spotify", merged[1].metadataProvider)
+        assertEquals(2, merged.size)
+    }
 }

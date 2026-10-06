@@ -337,21 +337,34 @@ internal class LevyraSearchEngine(
         coroutineScope {
             val exactArtist = async { searchCatching { remote.exactArtist(request.query, request.key) }.getOrNull() }
             val spotifyOverview = async {
-                searchCatching { remote.spotifyOverview(request.query, request.cacheKey) }.getOrNull()?.takeUnless { it.isEmpty }
+                searchCatching { remote.spotifyOverview(request.query, request.cacheKey) }
             }
             val youtubeOverview = async {
-                searchCatching { remote.overview(request.query, request.languageCode, request.cacheKey) }.getOrNull()?.takeUnless { it.isEmpty }
+                searchCatching { remote.overview(request.query, request.languageCode, request.cacheKey) }
             }
             val hedge = launch { hedgeSongs(session, youtubeOverview) }
 
-            val channel = Channel<SearchResults>(2)
+            val channel = Channel<Triple<String, Boolean, SearchResults?>>(2)
             val spotifyWorker = launch {
-                val s = spotifyOverview.await()
-                if (s != null) channel.send(s)
+                val attempt = spotifyOverview.await()
+                channel.send(
+                    Triple(
+                        "spotify",
+                        attempt.isSuccess,
+                        attempt.getOrNull()?.takeUnless { it.isEmpty }
+                    )
+                )
             }
             val youtubeWorker = launch {
-                val y = youtubeOverview.await()
-                if (y != null) channel.send(y)
+                val attempt = youtubeOverview.await()
+                channel.send(
+                    Triple(
+                        "youtube",
+                        attempt.isSuccess,
+                        attempt.getOrNull()?.takeUnless { it.isEmpty }
+                    )
+                )
+                hedge.cancel()
             }
             launch {
                 spotifyWorker.join()
@@ -360,11 +373,15 @@ internal class LevyraSearchEngine(
             }
 
             var deliveredCount = 0
-            for (results in channel) {
-                deliveredCount++
-                hedge.cancel()
-                applyOverview(session, results)
+            var youtubeSucceeded = false
+            for ((provider, succeeded, results) in channel) {
+                if (provider == "youtube") youtubeSucceeded = succeeded
+                if (results != null) {
+                    deliveredCount++
+                    applyOverview(session, results)
+                }
             }
+            hedge.cancel()
 
             val finalResults = _state.value.takeIf { it.generation == session.generation }?.results
             if (deliveredCount > 0 && finalResults != null && !finalResults.isEmpty) {
@@ -372,7 +389,11 @@ internal class LevyraSearchEngine(
                 runVerification(session, finalResults, exactArtist)
             } else {
                 exactArtist.cancel()
-                remoteFailed = !runSectionFallback(session)
+                remoteFailed = if (youtubeSucceeded) {
+                    false
+                } else {
+                    !runSectionFallback(session)
+                }
             }
         }
         settle(session, remoteFailed, cacheHit = false)
