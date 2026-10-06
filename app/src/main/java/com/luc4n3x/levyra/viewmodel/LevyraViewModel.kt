@@ -104,7 +104,9 @@ import com.luc4n3x.levyra.domain.batchDownloadProgress
 import com.luc4n3x.levyra.domain.batchDownloadState
 import com.luc4n3x.levyra.player.offline.work.OfflineDownloadBatchRef
 import com.luc4n3x.levyra.domain.artistCredits
+import com.luc4n3x.levyra.domain.artistDisplayCandidates
 import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.artistIdentityMatches
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.ChartsCatalog
@@ -6959,50 +6961,90 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean): List<ArtistHit> {
         if (track.isLiveRadio()) return emptyList()
-        val credits = withContext(Dispatchers.Default) {
-            artistCredits(track.artist, track.artistBrowseIds)
+        val (credits, displayCandidates) = withContext(Dispatchers.Default) {
+            val structured = artistCredits(track.artist, track.artistBrowseIds)
+            structured to if (structured.size >= 2) emptyList() else artistDisplayCandidates(track.artist)
         }
-        if (credits.size < 2) return emptyList()
 
-        val fallbacks = credits.map { credit ->
-            ArtistHit(
-                name = credit.name,
-                subscribers = "",
-                thumbnailUrl = "",
-                accentStart = track.accentStart,
-                accentEnd = track.accentEnd,
-                browseId = credit.browseId
-            )
-        }
-        if (!resolveArtwork) return fallbacks
+        if (credits.size >= 2) {
+            val fallbacks = credits.map { credit ->
+                ArtistHit(
+                    name = credit.name,
+                    subscribers = "",
+                    thumbnailUrl = "",
+                    accentStart = track.accentStart,
+                    accentEnd = track.accentEnd,
+                    browseId = credit.browseId
+                )
+            }
+            if (!resolveArtwork) return fallbacks
 
-        return coroutineScope {
-            fallbacks.map { fallback ->
-                async {
-                    if (!isNavigableArtistName(fallback.name)) {
-                        fallback
-                    } else {
-                        val resolved = runCatchingPreservingCancellation {
-                            if (fallback.browseId.isNotBlank()) {
-                                artistRepository.artistHit(fallback.browseId, fallback.name)
-                            } else {
-                                artistRepository.artistHitFor(fallback.name)
-                            }
-                        }.getOrNull()
-                        resolved?.copy(
-                            name = fallback.name,
-                            browseId = fallback.browseId.ifBlank { resolved.browseId }
-                        ) ?: fallback
+            return coroutineScope {
+                fallbacks.map { fallback ->
+                    async {
+                        if (!isNavigableArtistName(fallback.name)) {
+                            fallback
+                        } else {
+                            val resolved = runCatchingPreservingCancellation {
+                                if (fallback.browseId.isNotBlank()) {
+                                    artistRepository.artistHit(fallback.browseId, fallback.name)
+                                } else {
+                                    artistRepository.artistHitFor(fallback.name)
+                                }
+                            }.getOrNull()
+                            resolved?.copy(
+                                name = fallback.name,
+                                browseId = fallback.browseId.ifBlank { resolved.browseId }
+                            ) ?: fallback
+                        }
                     }
+                }.awaitAll()
+            }
+        }
+
+        if (!resolveArtwork || displayCandidates.size < 2) return emptyList()
+
+        val exactCombinedArtist = runCatchingPreservingCancellation {
+            artistRepository.artistHitFor(track.artist)
+        }.getOrNull()
+        if (exactCombinedArtist != null && artistIdentityMatches(exactCombinedArtist.name, track.artist)) {
+            return emptyList()
+        }
+
+        val resolved = coroutineScope {
+            displayCandidates.map { name ->
+                async {
+                    runCatchingPreservingCancellation {
+                        artistRepository.artistHitFor(name)
+                    }.getOrNull()
+                        ?.takeIf { hit -> artistIdentityMatches(hit.name, name) }
+                        ?.copy(name = name)
                 }
             }.awaitAll()
         }
+        if (resolved.any { it == null }) return emptyList()
+
+        val hits = resolved.filterNotNull()
+            .distinctBy { hit -> hit.browseId.ifBlank { artistIdentityKey(hit.name) } }
+        return hits.takeIf { it.size == displayCandidates.size } ?: emptyList()
     }
 
     fun openArtistFromPlayer(track: Track) {
         val reference = artistReferenceOf(track) ?: return
         restorePlayerReturnDetail()
         openArtistReference(name = reference.name, browseId = reference.browseId)
+        if (_state.value.selectedTab == LevyraTab.Player) {
+            moveToTab(previousTab(LevyraTab.Player), rememberCurrent = false)
+        }
+    }
+
+    fun openArtistFromPlayer(hit: ArtistHit) {
+        restorePlayerReturnDetail()
+        openArtistReference(
+            name = hit.name,
+            browseId = hit.browseId,
+            artworkHint = hit.thumbnailUrl
+        )
         if (_state.value.selectedTab == LevyraTab.Player) {
             moveToTab(previousTab(LevyraTab.Player), rememberCurrent = false)
         }
