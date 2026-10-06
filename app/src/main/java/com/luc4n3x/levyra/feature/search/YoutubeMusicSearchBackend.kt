@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SearchSuggestionBundle
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.providers.LevyraProviderRouter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -33,9 +34,13 @@ internal class YoutubeMusicSearchBackend(
 
     override suspend fun spotifyOverview(query: String): SearchResults? =
         withContext(Dispatchers.IO) {
-            runCatchingPreservingCancellation { spotifyClient.search(query) }
-                .getOrNull()
-                ?.copy(playlists = emptyList())
+            try {
+                spotifyClient.search(query).copy(playlists = emptyList())
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                null
+            }
         }
 
     override suspend fun section(
