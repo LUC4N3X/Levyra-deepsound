@@ -346,6 +346,117 @@ class QueueSpaceEngineTest {
     }
 
     @Test
+    fun queueSpacePlaylistReadKeepsOrderWithoutChangingTheActiveSpace() = runBlocking {
+        val storage = FakeQueueSpaceStorage()
+        storage.put(persisted("active", listOf(track("a1")), currentIndex = 0, positionMs = 0L))
+        storage.put(persisted("saved", listOf(track("s2"), track("s1")), currentIndex = 1, positionMs = 0L))
+        storage.activeId = "active"
+        val engine = PersistentQueueEngine(storage, ManualDispatcher())
+        engine.restore(emptyList(), -1, 0L)
+
+        val tracks = engine.tracksForSpace("saved")
+
+        assertEquals(listOf("s2", "s1"), tracks?.map { it.id })
+        assertEquals("active", engine.state.value.spaceId)
+        assertEquals(listOf("s2", "s1"), storage.saved.getValue("saved").tracks.map { it.id })
+    }
+
+    @Test
+    fun referencedRemovalBeforeCurrentKeepsTheSameTrackAndRebasesIndex() = runBlocking {
+        val storage = FakeQueueSpaceStorage()
+        storage.put(persisted("a", listOf(track("1"), track("2"), track("3"), track("4")), 2, 8_000L))
+        storage.activeId = "a"
+        val engine = PersistentQueueEngine(storage, ManualDispatcher())
+        val restored = engine.restore(emptyList(), -1, 0L)
+
+        val updated = engine.remove("a", restored.tracks.first())
+
+        assertNotNull(updated)
+        assertEquals(listOf("2", "3", "4"), updated!!.tracks.map { it.id })
+        assertEquals(1, updated.currentIndex)
+        assertEquals("3", updated.currentTrack?.id)
+        assertEquals(8_000L, updated.positionMs)
+    }
+
+    @Test
+    fun referencedRemovalAfterCurrentKeepsCurrentIndex() = runBlocking {
+        val storage = FakeQueueSpaceStorage()
+        storage.put(persisted("a", listOf(track("1"), track("2"), track("3")), 1, 6_000L))
+        storage.activeId = "a"
+        val engine = PersistentQueueEngine(storage, ManualDispatcher())
+        val restored = engine.restore(emptyList(), -1, 0L)
+
+        val updated = engine.remove("a", restored.tracks.last())
+
+        assertNotNull(updated)
+        assertEquals(listOf("1", "2"), updated!!.tracks.map { it.id })
+        assertEquals(1, updated.currentIndex)
+        assertEquals("2", updated.currentTrack?.id)
+        assertEquals(6_000L, updated.positionMs)
+    }
+
+    @Test
+    fun referencedRemovalWithShuffleKeepsTraversalCompleteAndPersists() = runBlocking {
+        val storage = FakeQueueSpaceStorage()
+        storage.put(
+            persisted("a", listOf(track("1"), track("2"), track("3"), track("4")), 1, 4_000L)
+                .copy(
+                    shuffleEnabled = true,
+                    shuffleOrder = listOf(1, 3, 0, 2),
+                    shuffleCursor = 0,
+                    history = listOf(0, 3)
+                )
+        )
+        storage.activeId = "a"
+        val engine = PersistentQueueEngine(storage, ManualDispatcher())
+        val restored = engine.restore(emptyList(), -1, 0L)
+
+        val updated = engine.remove("a", restored.tracks.last())
+        engine.flush()
+
+        assertNotNull(updated)
+        assertEquals("2", updated!!.currentTrack?.id)
+        assertEquals(updated.tracks.indices.toSet(), updated.shuffleOrder.toSet())
+        assertEquals(updated.tracks.size, updated.shuffleOrder.size)
+        assertEquals(updated.tracks.map { it.id }, storage.saved.getValue("a").tracks.map { it.id })
+    }
+
+    @Test
+    fun referencedRemovalTargetsTheSameTrackAfterTheQueueChanges() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("1"), track("2"), track("3")))
+        val gestureSnapshot = engine.state.value
+        engine.addLast(track("4"))
+
+        val result = engine.remove("a", gestureSnapshot.tracks[1])
+
+        assertNotNull(result)
+        assertEquals(listOf("1", "3", "4"), engine.state.value.tracks.map { it.id })
+    }
+
+    @Test
+    fun referencedRemovalSurvivesMetadataOnlyUpdates() = runBlocking {
+        val engine = restoredEngine("a", listOf(track("1"), track("2"), track("3")))
+        val gestureTrack = engine.state.value.tracks[1]
+        engine.updateTrackAt(1, gestureTrack.copy(title = "Updated title"))
+
+        val result = engine.remove("a", gestureTrack)
+
+        assertNotNull(result)
+        assertEquals(listOf("1", "3"), engine.state.value.tracks.map { it.id })
+    }
+
+    @Test
+    fun referencedRemovalRejectsAnAmbiguousIdentity() = runBlocking {
+        val duplicate = track("2")
+        val engine = restoredEngine("a", listOf(track("1"), duplicate, duplicate))
+
+        val result = engine.remove("a", duplicate)
+
+        assertNull(result)
+        assertEquals(listOf("1", "2", "2"), engine.state.value.tracks.map { it.id })
+    }
+
+    @Test
     fun removedAutomaticTrackIsNotReinsertedByRadioInTheSameSpace() = runBlocking {
         val engine = restoredEngine("a", listOf(track("seed")))
         engine.appendRadioTracks(listOf(track("r1"), track("r2")))

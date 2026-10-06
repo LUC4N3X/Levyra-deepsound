@@ -147,6 +147,7 @@ internal fun LevyraTrackActionSheet(
     activeQueueSpaceId: String = "",
     onAddToQueueSpace: (String) -> Unit = {},
     onAddToPlaylist: () -> Unit,
+    onRemoveFromQueue: (() -> Unit)? = null,
     onToggleFavorite: () -> Unit,
     onDownload: () -> Unit,
     onDeleteDownload: () -> Unit,
@@ -396,6 +397,14 @@ internal fun LevyraTrackActionSheet(
                                 label = strings.addToPlaylist,
                                 onClick = { perform(onAddToPlaylist) }
                             )
+                            if (onRemoveFromQueue != null) {
+                                TrackActionRow(
+                                    icon = Icons.Rounded.Delete,
+                                    label = strings.removeFromQueue,
+                                    tint = LevyraPink,
+                                    onClick = { perform(onRemoveFromQueue) }
+                                )
+                            }
                             if (onTogglePinToHome != null) {
                                 TrackActionRow(
                                     icon = Icons.Rounded.PushPin,
