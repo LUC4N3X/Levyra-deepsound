@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -20,7 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -61,14 +62,15 @@ import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.playerDeckShortLabels
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
-private val DeckCardWidth = 154.dp
-private val DeckCardCorner = 26.dp
-private val DeckPreviewCorner = 20.dp
-private const val DeckPreviewAspect = 0.74f
+private val DeckCardWidth = 166.dp
+private val DeckCardCorner = 28.dp
+private val DeckPreviewCorner = 22.dp
+private const val DeckPreviewAspect = 0.76f
 
 @Composable
 internal fun PlayerDeckSheet(
@@ -127,8 +129,9 @@ internal fun PlayerDeckSheet(
                     .fillMaxWidth()
                     .selectableGroup()
             ) {
-                items(PlayerDeckOrder, key = { it.name }) { mode ->
+                itemsIndexed(PlayerDeckOrder, key = { _, mode -> mode.name }) { index, mode ->
                     PlayerDeckCard(
+                        index = index,
                         mode = mode,
                         track = track,
                         artworkUrl = artworkUrl,
@@ -147,7 +150,6 @@ internal fun PlayerDeckSheet(
                 fontSize = 11.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = LevyraPlayerDesign.Gutter)
             )
         }
@@ -156,6 +158,7 @@ internal fun PlayerDeckSheet(
 
 @Composable
 private fun PlayerDeckCard(
+    index: Int,
     mode: PlayerVisualMode,
     track: Track,
     artworkUrl: String,
@@ -167,8 +170,11 @@ private fun PlayerDeckCard(
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(DeckCardCorner)
+    val previewShape = RoundedCornerShape(DeckPreviewCorner)
+    val labelShape = RoundedCornerShape(16.dp)
+    val label = playerDeckLabel(mode, strings)
     val outline by animateColorAsState(
-        targetValue = if (selected) accent else surfaces.contentFaint.copy(alpha = 0.18f),
+        targetValue = if (selected) accent else surfaces.contentFaint.copy(alpha = 0.22f),
         animationSpec = LevyraMotion.spec(animated, LevyraMotion.fade()),
         label = "player-deck-outline"
     )
@@ -177,31 +183,68 @@ private fun PlayerDeckCard(
         animationSpec = LevyraMotion.physics(animated, LevyraMotion.settle),
         label = "player-deck-lift"
     )
+    val cardBrush = if (selected) {
+        Brush.verticalGradient(
+            listOf(
+                accent.copy(alpha = 0.20f).compositeOnBlack(),
+                surfaces.active,
+                surfaces.controlQuiet
+            )
+        )
+    } else {
+        Brush.verticalGradient(
+            listOf(
+                surfaces.controlQuiet,
+                surfaces.controlQuiet.copy(alpha = 0.92f)
+            )
+        )
+    }
     Column(
         modifier = Modifier
             .width(DeckCardWidth)
             .graphicsLayer {
-                translationY = -lift * 4.dp.toPx()
-                scaleX = 1f + (lift * 0.016f)
-                scaleY = 1f + (lift * 0.016f)
+                translationY = -lift * 5.dp.toPx()
+                scaleX = 1f + (lift * 0.018f)
+                scaleY = 1f + (lift * 0.018f)
             }
             .clip(shape)
-            .background(if (selected) surfaces.active else surfaces.controlQuiet)
-            .border(if (selected) 2.dp else LevyraPlayerDesign.Hairline, outline, shape)
+            .background(cardBrush)
+            .then(
+                if (selected) {
+                    Modifier.border(
+                        width = 2.dp,
+                        brush = Brush.linearGradient(
+                            listOf(
+                                accent,
+                                Color.White.copy(alpha = 0.72f),
+                                accent.copy(alpha = 0.58f)
+                            )
+                        ),
+                        shape = shape
+                    )
+                } else {
+                    Modifier.border(LevyraPlayerDesign.Hairline, outline, shape)
+                }
+            )
             .selectable(
                 selected = selected,
                 role = Role.RadioButton,
                 onClick = onClick
             )
-            .padding(6.dp),
+            .padding(7.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(DeckPreviewAspect)
-                .clip(RoundedCornerShape(DeckPreviewCorner))
+                .clip(previewShape)
                 .background(Color.Black)
+                .border(
+                    LevyraPlayerDesign.Hairline,
+                    if (selected) Color.White.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.10f),
+                    previewShape
+                )
         ) {
             PlayerDeckPreview(
                 mode = mode,
@@ -209,38 +252,105 @@ private fun PlayerDeckCard(
                 artworkUrl = artworkUrl,
                 accent = accent
             )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.Black.copy(alpha = 0.42f))
+                    .border(
+                        LevyraPlayerDesign.Hairline,
+                        Color.White.copy(alpha = 0.18f),
+                        RoundedCornerShape(50)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = (index + 1).toString().padStart(2, '0'),
+                    color = Color.White.copy(alpha = 0.86f),
+                    fontSize = 9.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(9.sp),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp
+                )
+            }
             if (selected) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
-                        .size(24.dp)
-                        .background(accent, CircleShape)
-                        .border(1.dp, surfaces.heroContent.copy(alpha = 0.28f), CircleShape),
+                        .size(28.dp)
+                        .background(Color.Black.copy(alpha = 0.34f), CircleShape)
+                        .border(1.dp, Color.White.copy(alpha = 0.24f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = surfaces.heroContent,
-                        modifier = Modifier.size(15.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .background(accent, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = surfaces.heroContent,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
                 }
             }
         }
-        Text(
-            text = visualModeStateDescription(mode, strings),
-            color = if (selected) surfaces.activeContent else surfaces.content,
-            fontSize = 13.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 4.dp)
-        )
+                .clip(labelShape)
+                .background(
+                    if (selected) accent.copy(alpha = 0.14f)
+                    else surfaces.content.copy(alpha = 0.045f)
+                )
+                .border(
+                    LevyraPlayerDesign.Hairline,
+                    if (selected) accent.copy(alpha = 0.34f)
+                    else surfaces.content.copy(alpha = 0.07f),
+                    labelShape
+                )
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Icon(
+                imageVector = visualModeIcon(mode),
+                contentDescription = null,
+                tint = if (selected) accent else surfaces.contentMuted,
+                modifier = Modifier.size(15.dp)
+            )
+            Text(
+                text = label,
+                color = if (selected) surfaces.activeContent else surfaces.content,
+                fontSize = playerDeckLabelSize(label),
+                lineHeight = LevyraTypeRhythm.lineHeight(playerDeckLabelSize(label)),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2
+            )
+        }
     }
+}
+
+internal fun playerDeckLabel(mode: PlayerVisualMode, strings: LevyraStrings): String {
+    val labels = playerDeckShortLabels(strings.code)
+    return when (mode) {
+        PlayerVisualMode.CanvasImmersive -> labels.immersive
+        PlayerVisualMode.CanvasCard -> labels.canvasCard
+        PlayerVisualMode.Artwork -> labels.artwork
+        PlayerVisualMode.Editorial -> labels.editorial
+        PlayerVisualMode.Pulse -> labels.pulse
+    }
+}
+
+private fun playerDeckLabelSize(label: String) = when {
+    label.length <= 10 -> 13.sp
+    label.length <= 14 -> 12.sp
+    else -> 11.sp
 }
 
 internal fun playerDeckHint(mode: PlayerVisualMode, strings: LevyraStrings): String = when (mode) {
