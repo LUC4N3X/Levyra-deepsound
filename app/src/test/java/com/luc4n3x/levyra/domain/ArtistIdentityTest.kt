@@ -77,6 +77,17 @@ class ArtistIdentityTest {
             artistCredits("Dua Lipa feat. DaBaby", emptyList())
         )
     }
+
+    @Test
+    fun surplusParsedNamesFallBackInsteadOfMisaligningBrowseIds() {
+        assertEquals(
+            listOf(ArtistCredit("Simon & Garfunkel", "UCduo")),
+            artistCredits(
+                value = "Simon & Garfunkel feat. Guest",
+                artistBrowseIds = listOf("UCduo", "UCguest")
+            )
+        )
+    }
     @Test
     fun curatorAndPlaylistNamesAreRejectedFromArtistShelf() {
         assertTrue(!isArtistShelfNameEligible("HIT CANZONI SANREMO 2026"))
