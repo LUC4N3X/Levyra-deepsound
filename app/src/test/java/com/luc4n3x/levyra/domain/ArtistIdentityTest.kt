@@ -41,6 +41,66 @@ class ArtistIdentityTest {
         assertEquals("ANNA", primaryArtistSegment("ANNA"))
         assertEquals("Ultimo", primaryArtistSegment("Ultimo"))
     }
+
+    @Test
+    fun displayCandidatesRecoverCommaSeparatedArtistsWithoutBrowseIds() {
+        assertEquals(
+            listOf("Fred De Palma", "Anitta", "Emis Killa"),
+            artistDisplayCandidates("Fred De Palma, Anitta, Emis Killa")
+        )
+    }
+
+    @Test
+    fun displayCandidatesDoNotSplitAmpersandOnlyGroups() {
+        assertTrue(artistDisplayCandidates("Simon & Garfunkel").isEmpty())
+    }
+
+    @Test
+    fun structuredCreditsKeepArtistBrowseIdsAligned() {
+        assertEquals(
+            listOf(
+                ArtistCredit("Luis Fonsi", "UCfonsi"),
+                ArtistCredit("Daddy Yankee", "UCyankee")
+            ),
+            artistCredits(
+                value = "Luis Fonsi, Daddy Yankee",
+                artistBrowseIds = listOf("UCfonsi", "UCyankee")
+            )
+        )
+    }
+
+    @Test
+    fun localizedStructuredCreditsCanBeTargetedIndividually() {
+        assertEquals(
+            listOf(
+                ArtistCredit("Shiva", "UCshiva"),
+                ArtistCredit("Geolier", "UCgeolier")
+            ),
+            artistCredits(
+                value = "Shiva e Geolier",
+                artistBrowseIds = listOf("UCshiva", "UCgeolier")
+            )
+        )
+    }
+
+    @Test
+    fun unstructuredCreditFallsBackToPrimaryArtistOnly() {
+        assertEquals(
+            listOf(ArtistCredit("Dua Lipa", "")),
+            artistCredits("Dua Lipa feat. DaBaby", emptyList())
+        )
+    }
+
+    @Test
+    fun surplusParsedNamesFallBackInsteadOfMisaligningBrowseIds() {
+        assertEquals(
+            listOf(ArtistCredit("Simon & Garfunkel", "UCduo")),
+            artistCredits(
+                value = "Simon & Garfunkel feat. Guest",
+                artistBrowseIds = listOf("UCduo", "UCguest")
+            )
+        )
+    }
     @Test
     fun curatorAndPlaylistNamesAreRejectedFromArtistShelf() {
         assertTrue(!isArtistShelfNameEligible("HIT CANZONI SANREMO 2026"))
