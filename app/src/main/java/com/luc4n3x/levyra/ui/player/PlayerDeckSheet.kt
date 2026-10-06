@@ -129,15 +129,17 @@ internal fun PlayerDeckSheet(
             ) {
                 itemsIndexed(PlayerDeckOrder, key = { _, mode -> mode.name }) { index, mode ->
                     PlayerDeckCard(
-                        index = index,
-                        mode = mode,
+                        spec = PlayerDeckCardSpec(
+                            index = index,
+                            mode = mode,
+                            selected = mode == selected,
+                            label = playerDeckLabel(mode, strings),
+                            accent = accent,
+                            animated = animated
+                        ),
                         track = track,
                         artworkUrl = artworkUrl,
-                        selected = mode == selected,
                         surfaces = surfaces,
-                        accent = accent,
-                        animated = animated,
-                        strings = strings,
                         onClick = { onSelect(mode) }
                     )
                 }
@@ -154,49 +156,34 @@ internal fun PlayerDeckSheet(
     }
 }
 
+private data class PlayerDeckCardSpec(
+    val index: Int,
+    val mode: PlayerVisualMode,
+    val selected: Boolean,
+    val label: String,
+    val accent: Color,
+    val animated: Boolean
+)
+
 @Composable
 private fun PlayerDeckCard(
-    index: Int,
-    mode: PlayerVisualMode,
+    spec: PlayerDeckCardSpec,
     track: Track,
     artworkUrl: String,
-    selected: Boolean,
     surfaces: PlayerSurfaceTokens,
-    accent: Color,
-    animated: Boolean,
-    strings: LevyraStrings,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(DeckCardCorner)
-    val previewShape = RoundedCornerShape(DeckPreviewCorner)
-    val labelShape = RoundedCornerShape(16.dp)
-    val label = playerDeckLabel(mode, strings)
     val outline by animateColorAsState(
-        targetValue = if (selected) accent else surfaces.contentFaint.copy(alpha = 0.22f),
-        animationSpec = LevyraMotion.spec(animated, LevyraMotion.fade()),
+        targetValue = if (spec.selected) spec.accent else surfaces.contentFaint.copy(alpha = 0.22f),
+        animationSpec = LevyraMotion.spec(spec.animated, LevyraMotion.fade()),
         label = "player-deck-outline"
     )
     val lift by animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        animationSpec = LevyraMotion.physics(animated, LevyraMotion.settle),
+        targetValue = if (spec.selected) 1f else 0f,
+        animationSpec = LevyraMotion.physics(spec.animated, LevyraMotion.settle),
         label = "player-deck-lift"
     )
-    val cardBrush = if (selected) {
-        Brush.verticalGradient(
-            listOf(
-                accent.copy(alpha = 0.20f).compositeOnBlack(),
-                surfaces.active,
-                surfaces.controlQuiet
-            )
-        )
-    } else {
-        Brush.verticalGradient(
-            listOf(
-                surfaces.controlQuiet,
-                surfaces.controlQuiet.copy(alpha = 0.92f)
-            )
-        )
-    }
     Column(
         modifier = Modifier
             .width(DeckCardWidth)
@@ -206,132 +193,206 @@ private fun PlayerDeckCard(
                 scaleY = 1f + (lift * 0.018f)
             }
             .clip(shape)
-            .background(cardBrush)
-            .then(
-                if (selected) {
-                    Modifier.border(
-                        width = 2.dp,
-                        brush = Brush.linearGradient(
-                            listOf(
-                                accent,
-                                Color.White.copy(alpha = 0.72f),
-                                accent.copy(alpha = 0.58f)
-                            )
-                        ),
-                        shape = shape
-                    )
-                } else {
-                    Modifier.border(LevyraPlayerDesign.Hairline, outline, shape)
-                }
-            )
+            .background(playerDeckCardBrush(spec, surfaces))
+            .then(playerDeckCardBorder(spec, surfaces, outline, shape))
             .selectable(
-                selected = selected,
+                selected = spec.selected,
                 role = Role.RadioButton,
                 onClick = onClick
             )
             .padding(7.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        PlayerDeckCardPreview(
+            spec = spec,
+            track = track,
+            artworkUrl = artworkUrl,
+            surfaces = surfaces
+        )
+        PlayerDeckLabelBar(spec = spec, surfaces = surfaces)
+    }
+}
+
+private fun playerDeckCardBrush(
+    spec: PlayerDeckCardSpec,
+    surfaces: PlayerSurfaceTokens
+): Brush = if (spec.selected) {
+    Brush.verticalGradient(
+        listOf(
+            spec.accent.copy(alpha = 0.20f).compositeOnBlack(),
+            surfaces.active,
+            surfaces.controlQuiet
+        )
+    )
+} else {
+    Brush.verticalGradient(
+        listOf(
+            surfaces.controlQuiet,
+            surfaces.controlQuiet.copy(alpha = 0.92f)
+        )
+    )
+}
+
+private fun playerDeckCardBorder(
+    spec: PlayerDeckCardSpec,
+    surfaces: PlayerSurfaceTokens,
+    outline: Color,
+    shape: RoundedCornerShape
+): Modifier = if (spec.selected) {
+    Modifier.border(
+        width = 2.dp,
+        brush = Brush.linearGradient(
+            listOf(
+                spec.accent,
+                Color.White.copy(alpha = 0.72f),
+                spec.accent.copy(alpha = 0.58f)
+            )
+        ),
+        shape = shape
+    )
+} else {
+    Modifier.border(LevyraPlayerDesign.Hairline, outline, shape)
+}
+
+@Composable
+private fun PlayerDeckCardPreview(
+    spec: PlayerDeckCardSpec,
+    track: Track,
+    artworkUrl: String,
+    surfaces: PlayerSurfaceTokens
+) {
+    val shape = RoundedCornerShape(DeckPreviewCorner)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(DeckPreviewAspect)
+            .clip(shape)
+            .background(Color.Black)
+            .border(
+                LevyraPlayerDesign.Hairline,
+                if (spec.selected) Color.White.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.10f),
+                shape
+            )
+    ) {
+        PlayerDeckPreview(
+            mode = spec.mode,
+            track = track,
+            artworkUrl = artworkUrl,
+            accent = spec.accent
+        )
+        PlayerDeckIndexBadge(
+            index = spec.index,
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+        if (spec.selected) {
+            PlayerDeckSelectionBadge(
+                accent = spec.accent,
+                contentColor = surfaces.heroContent,
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerDeckIndexBadge(
+    index: Int,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(50)
+    Box(
+        modifier = modifier
+            .padding(8.dp)
+            .clip(shape)
+            .background(Color.Black.copy(alpha = 0.42f))
+            .border(
+                LevyraPlayerDesign.Hairline,
+                Color.White.copy(alpha = 0.18f),
+                shape
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = (index + 1).toString().padStart(2, '0'),
+            color = Color.White.copy(alpha = 0.86f),
+            fontSize = 9.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(9.sp),
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.8.sp
+        )
+    }
+}
+
+@Composable
+private fun PlayerDeckSelectionBadge(
+    accent: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .padding(8.dp)
+            .size(28.dp)
+            .background(Color.Black.copy(alpha = 0.34f), CircleShape)
+            .border(1.dp, Color.White.copy(alpha = 0.24f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(DeckPreviewAspect)
-                .clip(previewShape)
-                .background(Color.Black)
-                .border(
-                    LevyraPlayerDesign.Hairline,
-                    if (selected) Color.White.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.10f),
-                    previewShape
-                )
-        ) {
-            PlayerDeckPreview(
-                mode = mode,
-                track = track,
-                artworkUrl = artworkUrl,
-                accent = accent
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.Black.copy(alpha = 0.42f))
-                    .border(
-                        LevyraPlayerDesign.Hairline,
-                        Color.White.copy(alpha = 0.18f),
-                        RoundedCornerShape(50)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = (index + 1).toString().padStart(2, '0'),
-                    color = Color.White.copy(alpha = 0.86f),
-                    fontSize = 9.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(9.sp),
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp
-                )
-            }
-            if (selected) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .size(28.dp)
-                        .background(Color.Black.copy(alpha = 0.34f), CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.24f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(22.dp)
-                            .background(accent, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Check,
-                            contentDescription = null,
-                            tint = surfaces.heroContent,
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
-                }
-            }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(labelShape)
-                .background(
-                    if (selected) accent.copy(alpha = 0.14f)
-                    else surfaces.content.copy(alpha = 0.045f)
-                )
-                .border(
-                    LevyraPlayerDesign.Hairline,
-                    if (selected) accent.copy(alpha = 0.34f)
-                    else surfaces.content.copy(alpha = 0.07f),
-                    labelShape
-                )
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                .size(22.dp)
+                .background(accent, CircleShape),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = visualModeIcon(mode),
+                imageVector = Icons.Rounded.Check,
                 contentDescription = null,
-                tint = if (selected) accent else surfaces.contentMuted,
+                tint = contentColor,
                 modifier = Modifier.size(15.dp)
             )
-            Text(
-                text = label,
-                color = if (selected) surfaces.activeContent else surfaces.content,
-                fontSize = playerDeckLabelSize(label),
-                lineHeight = LevyraTypeRhythm.lineHeight(playerDeckLabelSize(label)),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2
-            )
         }
+    }
+}
+
+@Composable
+private fun PlayerDeckLabelBar(
+    spec: PlayerDeckCardSpec,
+    surfaces: PlayerSurfaceTokens
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val labelSize = playerDeckLabelSize(spec.label)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(shape)
+            .background(
+                if (spec.selected) spec.accent.copy(alpha = 0.14f)
+                else surfaces.content.copy(alpha = 0.045f)
+            )
+            .border(
+                LevyraPlayerDesign.Hairline,
+                if (spec.selected) spec.accent.copy(alpha = 0.34f)
+                else surfaces.content.copy(alpha = 0.07f),
+                shape
+            )
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Icon(
+            imageVector = visualModeIcon(spec.mode),
+            contentDescription = null,
+            tint = if (spec.selected) spec.accent else surfaces.contentMuted,
+            modifier = Modifier.size(15.dp)
+        )
+        Text(
+            text = spec.label,
+            color = if (spec.selected) surfaces.activeContent else surfaces.content,
+            fontSize = labelSize,
+            lineHeight = LevyraTypeRhythm.lineHeight(labelSize),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2
+        )
     }
 }
 
