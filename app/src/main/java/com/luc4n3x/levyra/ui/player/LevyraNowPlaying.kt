@@ -269,11 +269,13 @@ fun LevyraNowPlaying(
     var showDeck by rememberSaveable { mutableStateOf(false) }
     var showArtistPicker by remember(track?.id) { mutableStateOf(false) }
     var openArtistPickerAfterActions by remember(track?.id) { mutableStateOf(false) }
-    var playerArtistHits by remember(track?.id) { mutableStateOf(emptyList<ArtistHit>()) }
+    var playerArtistHits by remember(track?.id, track?.artist, track?.artistBrowseIds) {
+        mutableStateOf(emptyList<ArtistHit>())
+    }
     LaunchedEffect(track?.id, track?.artist, track?.artistBrowseIds) {
         val activeTrack = track
+        playerArtistHits = emptyList()
         if (activeTrack == null || activeTrack.isLiveRadio()) {
-            playerArtistHits = emptyList()
             showArtistPicker = false
             return@LaunchedEffect
         }
