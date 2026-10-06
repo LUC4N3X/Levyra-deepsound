@@ -13,18 +13,16 @@ internal fun isNavigableArtistName(name: String): Boolean {
         !clean.equals("YouTube", ignoreCase = true)
 }
 
-internal fun artistReferencesOf(track: Track): List<ArtistReference> {
-    if (track.isLiveRadio()) return emptyList()
-    return artistCredits(track.artist, track.artistBrowseIds)
-        .mapNotNull { credit ->
-            val name = credit.name.trim()
-            if (!isNavigableArtistName(name)) null
-            else ArtistReference(name = name, browseId = credit.browseId.trim())
-        }
+private fun artistReferenceOfCredit(track: Track, artistIndex: Int): ArtistReference? {
+    if (track.isLiveRadio()) return null
+    val credit = artistCredits(track.artist, track.artistBrowseIds).getOrNull(artistIndex) ?: return null
+    val name = credit.name.trim()
+    if (!isNavigableArtistName(name)) return null
+    return ArtistReference(name = name, browseId = credit.browseId.trim())
 }
 
 internal fun artistReferenceOf(track: Track): ArtistReference? =
-    artistReferencesOf(track).firstOrNull()
+    artistReferenceOfCredit(track, 0)
 
 internal fun artistReferenceOf(track: Track, artistIndex: Int): ArtistReference? =
-    artistReferencesOf(track).getOrNull(artistIndex)
+    artistReferenceOfCredit(track, artistIndex)
