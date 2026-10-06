@@ -65,10 +65,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
-private val DeckCardWidth = 148.dp
-private val DeckCardCorner = 22.dp
-private val DeckPreviewCorner = 16.dp
-private const val DeckPreviewAspect = 0.62f
+private val DeckCardWidth = 154.dp
+private val DeckCardCorner = 26.dp
+private val DeckPreviewCorner = 20.dp
+private const val DeckPreviewAspect = 0.74f
 
 @Composable
 internal fun PlayerDeckSheet(
@@ -96,30 +96,33 @@ internal fun PlayerDeckSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = LevyraPlayerDesign.SpaceXl),
-            verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg)
+            verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
         ) {
             Column(modifier = Modifier.padding(horizontal = LevyraPlayerDesign.Gutter)) {
                 Text(
                     text = strings.playerDeck,
                     color = surfaces.content,
-                    fontSize = 20.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
+                    fontSize = 22.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.4).sp,
+                    letterSpacing = (-0.5).sp,
                     modifier = Modifier.semantics { heading() }
                 )
                 Text(
                     text = strings.playerDeckSubtitle,
                     color = surfaces.contentMuted,
-                    fontSize = 13.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-                    fontWeight = FontWeight.Medium
+                    fontSize = 12.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 3.dp)
                 )
             }
             LazyRow(
                 state = listState,
                 contentPadding = PaddingValues(horizontal = LevyraPlayerDesign.Gutter),
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .selectableGroup()
@@ -141,8 +144,10 @@ internal fun PlayerDeckSheet(
             Text(
                 text = strings.playerDeckLandscapeNote,
                 color = surfaces.contentFaint,
-                fontSize = 12.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                fontSize = 11.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = LevyraPlayerDesign.Gutter)
             )
         }
@@ -175,17 +180,21 @@ private fun PlayerDeckCard(
     Column(
         modifier = Modifier
             .width(DeckCardWidth)
-            .graphicsLayer { translationY = -lift * 4.dp.toPx() }
+            .graphicsLayer {
+                translationY = -lift * 4.dp.toPx()
+                scaleX = 1f + (lift * 0.016f)
+                scaleY = 1f + (lift * 0.016f)
+            }
             .clip(shape)
             .background(if (selected) surfaces.active else surfaces.controlQuiet)
-            .border(if (selected) 1.5.dp else LevyraPlayerDesign.Hairline, outline, shape)
+            .border(if (selected) 2.dp else LevyraPlayerDesign.Hairline, outline, shape)
             .selectable(
                 selected = selected,
                 role = Role.RadioButton,
                 onClick = onClick
             )
-            .padding(LevyraPlayerDesign.SpaceSm),
-        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            .padding(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
@@ -204,41 +213,33 @@ private fun PlayerDeckCard(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(LevyraPlayerDesign.SpaceSm)
-                        .size(22.dp)
-                        .background(accent, CircleShape),
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .background(accent, CircleShape)
+                        .border(1.dp, surfaces.heroContent.copy(alpha = 0.28f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Check,
                         contentDescription = null,
                         tint = surfaces.heroContent,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                 }
             }
         }
-        Column(modifier = Modifier.padding(horizontal = LevyraPlayerDesign.SpaceXs)) {
-            Text(
-                text = visualModeStateDescription(mode, strings),
-                color = if (selected) surfaces.activeContent else surfaces.content,
-                fontSize = 14.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                minLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = playerDeckHint(mode, strings),
-                color = surfaces.contentMuted,
-                fontSize = 11.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
-                maxLines = 3,
-                minLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        Text(
+            text = visualModeStateDescription(mode, strings),
+            color = if (selected) surfaces.activeContent else surfaces.content,
+            fontSize = 13.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 4.dp)
+        )
     }
 }
 
