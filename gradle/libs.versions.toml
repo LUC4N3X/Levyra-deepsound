@@ -34,6 +34,7 @@ profileInstaller = "1.4.1"
 androidxTestExt = "1.3.0"
 androidxTestRunner = "1.7.0"
 uiautomator = "2.4.0"
+materialKolor = "5.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -95,6 +96,7 @@ androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchm
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExt" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+material-kolor-utilities = { group = "com.materialkolor", name = "material-color-utilities", version.ref = "materialKolor" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
