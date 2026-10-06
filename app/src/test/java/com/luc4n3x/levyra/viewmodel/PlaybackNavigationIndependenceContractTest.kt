@@ -63,7 +63,9 @@ class PlaybackNavigationIndependenceContractTest {
         assertTrue(restore > resolve)
         assertTrue(open > restore)
         assertTrue(leavePlayer > open)
-        assertTrue(readSource("viewmodel/LevyraScreenViewModels.kt").contains("fun openArtist(track: Track) = root.openArtistFromPlayer(track)"))
+        val playerViewModel = readSource("viewmodel/LevyraScreenViewModels.kt")
+        assertTrue(playerViewModel.contains("fun openArtist(track: Track, artistIndex: Int = 0)"))
+        assertTrue(playerViewModel.contains("root.openArtistFromPlayer("))
     }
 
     @Test
