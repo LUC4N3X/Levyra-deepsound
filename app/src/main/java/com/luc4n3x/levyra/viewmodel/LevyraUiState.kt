@@ -97,6 +97,12 @@ data class VideoQualityUiState(
         get() = ladder.isNotEmpty()
 }
 
+@Immutable
+data class QueuePlaylistDraft(
+    val sourceSpaceId: String,
+    val tracks: List<Track>
+)
+
 data class LevyraUiState(
     val selectedTab: LevyraTab = LevyraTab.Home,
     val moods: List<Mood> = emptyList(),
@@ -143,6 +149,8 @@ data class LevyraUiState(
     val queueCurrentIndex: Int = -1,
     val queueSpaces: List<QueueSpaceSummary> = emptyList(),
     val activeQueueSpaceId: String = DEFAULT_QUEUE_SPACE_ID,
+    val queuePlaylistLoadingSpaceId: String? = null,
+    val queuePlaylistDraft: QueuePlaylistDraft? = null,
     val pendingQueueAddTracks: List<Track> = emptyList(),
     val queueSwitching: Boolean = false,
     val queueUnavailableUris: Set<String> = emptySet(),
