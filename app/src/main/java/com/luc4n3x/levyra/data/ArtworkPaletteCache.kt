@@ -136,9 +136,9 @@ internal object ArtworkPaletteCache {
         } ?: candidates.drop(1).firstOrNull { candidate ->
             hueDistance(primary.hue, candidate.hue) >= 20f
         }
-        val start = normalize(primary, valueFloor = 0.48f, valueCeiling = 0.76f)
+        val start = normalize(primary, toneFloor = 48.0, toneCeiling = 72.0)
         val end = if (secondary != null) {
-            normalize(secondary, valueFloor = 0.38f, valueCeiling = 0.68f)
+            normalize(secondary, toneFloor = 40.0, toneCeiling = 64.0)
         } else {
             deriveCompanion(primary)
         }
@@ -163,30 +163,16 @@ internal object ArtworkPaletteCache {
 
     private fun normalize(
         candidate: ColorCandidate,
-        valueFloor: Float,
-        valueCeiling: Float
-    ): Int {
-        val saturation = candidate.saturation.coerceIn(0.48f, 0.88f)
-        val value = candidate.value.coerceIn(valueFloor, valueCeiling)
-        return AndroidColor.HSVToColor(floatArrayOf(candidate.hue, saturation, value))
-    }
+        toneFloor: Double,
+        toneCeiling: Double
+    ): Int = ArtworkToneMapper.withToneRange(
+        argb = candidate.toArgb(),
+        toneFloor = toneFloor,
+        toneCeiling = toneCeiling
+    )
 
-    private fun deriveCompanion(primary: ColorCandidate): Int {
-        val hue = when {
-            primary.hue < 55f -> primary.hue + 42f
-            primary.hue > 305f -> primary.hue - 42f
-            else -> primary.hue + if (primary.hue < 180f) 52f else -52f
-        }.let { raw ->
-            when {
-                raw < 0f -> raw + 360f
-                raw >= 360f -> raw - 360f
-                else -> raw
-            }
-        }
-        val saturation = (primary.saturation * 0.88f).coerceIn(0.46f, 0.82f)
-        val value = (primary.value * 0.78f).coerceIn(0.38f, 0.64f)
-        return AndroidColor.HSVToColor(floatArrayOf(hue, saturation, value))
-    }
+    private fun deriveCompanion(primary: ColorCandidate): Int =
+        ArtworkToneMapper.companion(primary.toArgb())
 
     private fun hueDistance(first: Float, second: Float): Float {
         val distance = abs(first - second)
@@ -245,5 +231,7 @@ internal object ArtworkPaletteCache {
         val hue: Float,
         val saturation: Float,
         val value: Float
-    )
+    ) {
+        fun toArgb(): Int = AndroidColor.rgb(red, green, blue)
+    }
 }
