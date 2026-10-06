@@ -6,11 +6,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -43,6 +46,16 @@ internal fun PlayerArtistText(
     }
     var layoutResult by remember(annotated) { mutableStateOf<TextLayoutResult?>(null) }
     val interactive = enabled && credits.isNotEmpty()
+    val latestOnArtistClick by rememberUpdatedState(onArtistClick)
+    val accessibilityActions = credits.mapIndexed { index, credit ->
+        CustomAccessibilityAction(
+            label = "$onClickLabel: ${credit.name}",
+            action = {
+                latestOnArtistClick(index)
+                true
+            }
+        )
+    }
 
     Text(
         text = annotated,
@@ -56,8 +69,11 @@ internal fun PlayerArtistText(
                 if (interactive) {
                     role = Role.Button
                     onClick(label = onClickLabel) {
-                        onArtistClick(0)
+                        latestOnArtistClick(0)
                         true
+                    }
+                    if (credits.size > 1) {
+                        customActions = accessibilityActions
                     }
                 }
             }
@@ -65,16 +81,25 @@ internal fun PlayerArtistText(
                 if (interactive) {
                     detectTapGestures { position ->
                         val layout = layoutResult ?: return@detectTapGestures
+                        if (annotated.isEmpty()) return@detectTapGestures
                         val offset = layout.getOffsetForPosition(position)
+                            .coerceIn(0, annotated.length - 1)
+                        if (!layout.getBoundingBox(offset).contains(position)) {
+                            return@detectTapGestures
+                        }
                         val artistIndex = annotated
-                            .getStringAnnotations(ArtistAnnotationTag, offset, offset)
+                            .getStringAnnotations(
+                                tag = ArtistAnnotationTag,
+                                start = offset,
+                                end = (offset + 1).coerceAtMost(annotated.length)
+                            )
                             .firstOrNull()
                             ?.item
                             ?.toIntOrNull()
 
                         when {
-                            artistIndex != null -> onArtistClick(artistIndex)
-                            credits.size == 1 -> onArtistClick(0)
+                            artistIndex != null -> latestOnArtistClick(artistIndex)
+                            credits.size == 1 -> latestOnArtistClick(0)
                         }
                     }
                 }
