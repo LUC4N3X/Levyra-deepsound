@@ -154,6 +154,8 @@ class PlayerDeckTest {
         LevyraStrings.all().forEach { strings ->
             PlayerDeckOrder.forEach { mode ->
                 assertTrue("${strings.code} $mode label", visualModeStateDescription(mode, strings).isNotBlank())
+                assertTrue("${strings.code} $mode short label", playerDeckLabel(mode, strings).isNotBlank())
+                assertTrue("${strings.code} $mode short label length", playerDeckLabel(mode, strings).length <= 16)
                 assertTrue("${strings.code} $mode hint", playerDeckHint(mode, strings).isNotBlank())
             }
             assertTrue(strings.playerDeck.isNotBlank())
@@ -163,6 +165,8 @@ class PlayerDeckTest {
         val italian = LevyraStrings.forCode("it")
         assertEquals("Editoriale", visualModeStateDescription(PlayerVisualMode.Editorial, italian))
         assertEquals("Pulse", visualModeStateDescription(PlayerVisualMode.Pulse, italian))
+        assertEquals("Immersivo", playerDeckLabel(PlayerVisualMode.CanvasImmersive, italian))
+        assertEquals("Scheda Canvas", playerDeckLabel(PlayerVisualMode.CanvasCard, italian))
     }
 
     private fun track(
