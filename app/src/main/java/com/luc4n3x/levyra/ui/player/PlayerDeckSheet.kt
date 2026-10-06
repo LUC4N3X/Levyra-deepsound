@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -194,7 +195,7 @@ private fun PlayerDeckCard(
             }
             .clip(shape)
             .background(playerDeckCardBrush(spec, surfaces))
-            .then(playerDeckCardBorder(spec, surfaces, outline, shape))
+            .then(playerDeckCardBorder(spec, outline, shape))
             .selectable(
                 selected = spec.selected,
                 role = Role.RadioButton,
@@ -235,7 +236,6 @@ private fun playerDeckCardBrush(
 
 private fun playerDeckCardBorder(
     spec: PlayerDeckCardSpec,
-    surfaces: PlayerSurfaceTokens,
     outline: Color,
     shape: RoundedCornerShape
 ): Modifier = if (spec.selected) {
@@ -319,6 +319,7 @@ private fun PlayerDeckSelectionBadge(
         }
     }
 }
+
 @Composable
 private fun PlayerDeckLabelBar(
     spec: PlayerDeckCardSpec,
