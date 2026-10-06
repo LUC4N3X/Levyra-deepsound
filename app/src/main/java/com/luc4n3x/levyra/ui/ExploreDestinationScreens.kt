@@ -931,7 +931,6 @@ private fun ExploreMoodsList(
         )
         exploreFallbackGenreItems(
             fallbackGenres = fallbackGenres,
-            strings = strings,
             onOpenZone = onOpenZone
         )
         exploreMoodEmptyItem(
@@ -1056,7 +1055,6 @@ private fun ExploreProviderCategoryRow(
 
 private fun LazyListScope.exploreFallbackGenreItems(
     fallbackGenres: List<ExploreZone>,
-    strings: LevyraStrings,
     onOpenZone: (ExploreZone) -> Unit
 ) {
     if (fallbackGenres.isEmpty()) return
