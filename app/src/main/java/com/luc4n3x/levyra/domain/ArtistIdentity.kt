@@ -92,6 +92,45 @@ internal fun canonicalArtistBrowseIds(values: Iterable<String>): List<String> =
         .distinct()
         .toList()
 
+internal data class ArtistCredit(val name: String, val browseId: String)
+
+internal fun artistDisplayCandidates(value: String): List<String> {
+    val clean = value.trim()
+    if (clean.isBlank()) return emptyList()
+    return ARTIST_EXPLICIT_SEPARATOR
+        .split(clean)
+        .map(String::trim)
+        .filter { it.length >= 2 }
+        .distinctBy(::artistIdentityKey)
+        .takeIf { it.size >= 2 }
+        .orEmpty()
+}
+
+internal fun artistCredits(value: String, artistBrowseIds: List<String>): List<ArtistCredit> {
+    val clean = value.trim()
+    if (clean.isBlank()) return emptyList()
+
+    val browseIds = canonicalArtistBrowseIds(artistBrowseIds)
+    val primary = primaryArtistSegment(clean).ifBlank { clean }
+    if (browseIds.size < 2) {
+        return listOf(ArtistCredit(name = primary, browseId = browseIds.firstOrNull().orEmpty()))
+    }
+
+    val names = ARTIST_EXPLICIT_SEPARATOR
+        .split(clean)
+        .flatMap { part -> ARTIST_JOINED_SEPARATOR.split(part) }
+        .map(String::trim)
+        .filter(String::isNotBlank)
+
+    if (names.size != browseIds.size) {
+        return listOf(ArtistCredit(name = primary, browseId = browseIds.first()))
+    }
+
+    return names.mapIndexed { index, name ->
+        ArtistCredit(name = name, browseId = browseIds[index])
+    }
+}
+
 internal fun primaryArtistCredit(value: String, artistBrowseIds: List<String>): String {
     val clean = value.trim()
     if (clean.isBlank()) return ""
