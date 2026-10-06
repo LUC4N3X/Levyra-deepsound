@@ -17,7 +17,7 @@ Play streamed music and your own files in the same app, save tracks for offline 
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-downloads-mobile-light.svg 126w, docs/assets/levyra-downloads-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-downloads-mobile.svg 126w, docs/assets/levyra-downloads.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-downloads.svg" srcset="docs/assets/levyra-downloads-mobile.svg 126w, docs/assets/levyra-downloads.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Total downloads"></picture></a>
   <a href="LICENSE"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-license-mobile-light.svg 126w, docs/assets/levyra-license-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-license-mobile.svg 126w, docs/assets/levyra-license.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-license.svg" srcset="docs/assets/levyra-license-mobile.svg 126w, docs/assets/levyra-license.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="GPL-3.0 License"></picture></a>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-stars-mobile-light.svg 126w, docs/assets/levyra-stars-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-stars-mobile.svg 126w, docs/assets/levyra-stars.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-stars.svg" srcset="docs/assets/levyra-stars-mobile.svg 126w, docs/assets/levyra-stars.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="GitHub Stars"></picture></a>
-  <a href="https://luc4n3x.github.io/Levyra-deepsound/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg 126w, docs/assets/levyra-wiki-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
+  <a href="https://levyra.dpdns.org/docs/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg 126w, docs/assets/levyra-wiki-light.svg 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg" srcset="docs/assets/levyra-wiki-mobile.svg 126w, docs/assets/levyra-wiki.svg 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
 </p>
 
 <br>
@@ -62,6 +62,14 @@ Play streamed music and your own files in the same app, save tracks for offline 
 </p>
 
 </div>
+
+---
+
+## ✦ Documentation
+
+Looking for detailed information about Levyra? The full documentation covers features, setup, configuration, audio, providers, troubleshooting, architecture, and more.
+
+**[Open the full Levyra documentation →](https://levyra.dpdns.org/docs/)**
 
 ---
 
@@ -170,7 +178,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 - **Levyra Vault**: backup and restore playlists, favorites, history, and preferences in a single local file.
 - **Private stats**: on-device play counts and listening hours, with optional Last.fm and ListenBrainz scrobbling.
 
-For full technical notes, platform architecture, and build details, check the [documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+For full technical notes, platform architecture, and build details, check the [documentation](https://levyra.dpdns.org/docs/).
 
 ## ✦ Under the hood
 
@@ -237,7 +245,7 @@ Levyra builds on ideas and work from several open-source projects:
 
 Previous Levyra app logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525). The current logo and visual identity are by [@LUC4N3X](https://github.com/LUC4N3X).
 
-Contributions and bug reports are welcome. Technical documentation and architecture notes are in the [project documentation](https://luc4n3x.github.io/Levyra-deepsound/).
+Contributions and bug reports are welcome. Technical documentation and architecture notes are in the [project documentation](https://levyra.dpdns.org/docs/).
 
 ---
 
