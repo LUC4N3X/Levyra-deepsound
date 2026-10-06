@@ -97,9 +97,8 @@ internal fun PlayerArtistText(
                             ?.item
                             ?.toIntOrNull()
 
-                        when {
-                            artistIndex != null -> latestOnArtistClick(artistIndex)
-                            credits.size == 1 -> latestOnArtistClick(0)
+                        if (artistIndex != null) {
+                            latestOnArtistClick(artistIndex)
                         }
                     }
                 }
