@@ -125,11 +125,9 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
         private var instance: SpotifyYouTubeMatchCache? = null
 
         fun init(context: Context) {
-            if (instance == null) {
-                synchronized(this) {
-                    if (instance == null) {
-                        instance = SpotifyYouTubeMatchCache(context.applicationContext)
-                    }
+            synchronized(this) {
+                if (instance?.preferences == null) {
+                    instance = SpotifyYouTubeMatchCache(context.applicationContext)
                 }
             }
         }

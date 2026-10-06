@@ -80,7 +80,7 @@ internal fun isMusicVideoResult(videoType: String): Boolean {
 }
 
 internal fun mergeSearchSongs(existing: List<Track>, incoming: List<Track>): List<Track> {
-    val hasSpotify = existing.any(::isSpotifyTrack) || incoming.any(::isSpotifyTrack)
+    val hasSpotify = existing.any(::isSpotifySearchTrack) || incoming.any(::isSpotifySearchTrack)
     if (!hasSpotify) {
         val strict = mergeSearchEntities(
             existing,
@@ -103,13 +103,13 @@ private fun isLocalSearchTrack(track: Track): Boolean {
         stream.startsWith("file://", ignoreCase = true)
 }
 
-internal fun isSpotifySearchTrack(track: Track): Boolean =
-    !isLocalSearchTrack(track) && (
-        track.metadataProvider.equals("spotify", ignoreCase = true) ||
-            track.id.startsWith("spotify:", ignoreCase = true) ||
-            track.source.equals("spotify", ignoreCase = true) ||
-            track.source.equals("spotify_youtube", ignoreCase = true)
-        )
+internal fun isSpotifySearchTrack(track: Track): Boolean {
+    if (isLocalSearchTrack(track)) return false
+    return track.metadataProvider.equals("spotify", ignoreCase = true) ||
+        track.id.startsWith("spotify:", ignoreCase = true) ||
+        track.source.equals("spotify", ignoreCase = true) ||
+        track.source.equals("spotify_youtube", ignoreCase = true)
+}
 
 private fun isPlayableYoutubeId(id: String): Boolean =
     id.length == 11 &&
