@@ -112,6 +112,7 @@ import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.youtubeWatchUrl
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
@@ -266,6 +267,22 @@ fun LevyraNowPlaying(
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showAudioRouteCenter by rememberSaveable { mutableStateOf(false) }
     var showDeck by rememberSaveable { mutableStateOf(false) }
+    var showArtistPicker by remember(track?.id) { mutableStateOf(false) }
+    var openArtistPickerAfterActions by remember(track?.id) { mutableStateOf(false) }
+    var playerArtistHits by remember(track?.id, track?.artist, track?.artistBrowseIds) {
+        mutableStateOf(emptyList<ArtistHit>())
+    }
+    LaunchedEffect(track?.id, track?.artist, track?.artistBrowseIds) {
+        val activeTrack = track
+        playerArtistHits = emptyList()
+        if (activeTrack == null || activeTrack.isLiveRadio()) {
+            showArtistPicker = false
+            return@LaunchedEffect
+        }
+        playerArtistHits = viewModel.playerArtistHits(activeTrack, resolveArtwork = false)
+        playerArtistHits = viewModel.playerArtistHits(activeTrack, resolveArtwork = true)
+        if (playerArtistHits.size < 2) showArtistPicker = false
+    }
     LaunchedEffect(state.isVideoMode, track == null) {
         if (state.isVideoMode || track == null) {
             showDeck = false
@@ -333,6 +350,10 @@ fun LevyraNowPlaying(
         val layoutMode = resolveLevyraLayoutMode(maxWidth.value, maxHeight.value)
         val compactLandscape = isLevyraCompactLandscape(maxWidth.value, maxHeight.value)
         val playerPane = resolveNowPlayingPane(maxWidth.value, maxHeight.value, state.isVideoMode)
+        val showTopArtistCluster = playerArtistHits.size > 1 &&
+            !liveRadio &&
+            !state.isVideoMode &&
+            playerPane != LevyraPlayerPane.SideBySide
         val deckLayout = resolvePlayerDeckLayout(
             mode = visualMode,
             isVideoMode = state.isVideoMode,
@@ -923,7 +944,10 @@ fun LevyraNowPlaying(
                     compact = compactPlayer,
                     openArtistLabel = strings.openArtist,
                     favoritesLabel = strings.favoritesPlain,
-                    onArtistClick = { viewModel.openArtist(activeTrack) },
+                    onArtistClick = { artistIndex ->
+                        playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                            ?: viewModel.openArtist(activeTrack, artistIndex)
+                    },
                     onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
                     modifier = lyricsFlipSwipeModifier
                 )
@@ -1075,7 +1099,10 @@ fun LevyraNowPlaying(
                 compact = compactPlayer,
                 scrollable = !fitsViewport,
                 gutter = gutter,
-                onArtistClick = { viewModel.openArtist(track) },
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
@@ -1313,6 +1340,23 @@ fun LevyraNowPlaying(
             }
         }
 
+        if (showTopArtistCluster) {
+            PlayerTopArtistCluster(
+                artists = playerArtistHits,
+                surfaces = surfaces,
+                contentDescription = strings.openArtist,
+                onClick = { showArtistPicker = true },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(
+                        start = gutter,
+                        top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceLg
+                    )
+                    .zIndex(24f)
+            )
+        }
+
         if (showActions && track != null) {
             val sheetActions = playerSheetActions(
                 track = track,
@@ -1343,7 +1387,13 @@ fun LevyraNowPlaying(
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 },
                 onAmbient = viewModel::openAmbient,
-                onOpenArtist = { viewModel.openArtist(track) }
+                onOpenArtist = {
+                    if (playerArtistHits.size > 1) {
+                        openArtistPickerAfterActions = true
+                    } else {
+                        viewModel.openArtist(track)
+                    }
+                }
             )
             PlayerActionsSheet(
                 track = track,
@@ -1351,7 +1401,13 @@ fun LevyraNowPlaying(
                 surfaces = surfaces,
                 animated = animated,
                 actions = sheetActions,
-                onDismiss = { showActions = false },
+                onDismiss = {
+                    showActions = false
+                    if (openArtistPickerAfterActions) {
+                        openArtistPickerAfterActions = false
+                        showArtistPicker = true
+                    }
+                },
                 engagementContent = if (engagementContent != null && !liveRadio) {
                     { engagementContent(track) }
                 } else {
@@ -1362,6 +1418,22 @@ fun LevyraNowPlaying(
                 } else {
                     null
                 }
+            )
+        }
+
+        if (showArtistPicker && track != null) {
+            PlayerArtistPickerSheet(
+                track = track,
+                artists = playerArtistHits,
+                title = strings.openArtist,
+                surfaces = surfaces,
+                animated = animated,
+                onArtistClick = { artistIndex ->
+                    showArtistPicker = false
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onDismiss = { showArtistPicker = false }
             )
         }
 

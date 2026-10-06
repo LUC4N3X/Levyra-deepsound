@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import com.luc4n3x.levyra.ui.theme.nonNegativeCornerRadius
 
 private const val ArtworkGlowPlaying = 0.42f
 private const val ArtworkGlowPaused = 0.18f
@@ -94,7 +95,7 @@ internal fun PlayerArtworkHero(
         )
         trackChangeScale.animateTo(1f, LevyraMotion.spatial.spec())
     }
-    val artworkShape = RoundedCornerShape(cornerRadius)
+    val artworkShape = RoundedCornerShape(nonNegativeCornerRadius(cornerRadius))
     val isImmersive = visualMode.showsCinematicStage()
 
     Box(
