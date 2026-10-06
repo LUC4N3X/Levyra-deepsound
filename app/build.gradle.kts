@@ -350,6 +350,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.material.kolor.utilities)
     implementation(libs.timber)
     debugImplementation(libs.chucker)
     releaseImplementation(libs.chucker.no.op)
