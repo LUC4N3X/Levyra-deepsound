@@ -479,6 +479,7 @@ internal fun AddTracksToPlaylistDialog(
     val strings = LocalLevyraStrings.current
     var creating by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("${strings.addToPlaylist} · ${strings.formatTrackCount(tracks.size)}") },
@@ -492,7 +493,7 @@ internal fun AddTracksToPlaylistDialog(
                         label = { Text(strings.playlistName) }
                     )
                 } else {
-                    TextButton(onClick = { creating = true }) {
+                    TextButton(onClick = { creating = true }, enabled = !submitting) {
                         Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null)
                         Spacer(Modifier.width(7.dp))
                         Text(strings.createNewPlaylist)
@@ -505,7 +506,13 @@ internal fun AddTracksToPlaylistDialog(
                             Surface(
                                 color = Color.Transparent,
                                 shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onAdd(playlist.id) })
+                                modifier = Modifier.fillMaxWidth().combinedClickable(
+                                    enabled = !submitting,
+                                    onClick = {
+                                        submitting = true
+                                        onAdd(playlist.id)
+                                    }
+                                )
                             ) {
                                 Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = LevyraMuted)
@@ -527,8 +534,13 @@ internal fun AddTracksToPlaylistDialog(
         confirmButton = {
             if (creating) {
                 TextButton(
-                    onClick = { if (name.isNotBlank()) onCreate(name.trim()) },
-                    enabled = name.isNotBlank()
+                    onClick = {
+                        if (name.isNotBlank() && !submitting) {
+                            submitting = true
+                            onCreate(name.trim())
+                        }
+                    },
+                    enabled = name.isNotBlank() && !submitting
                 ) { Text(strings.create) }
             }
         },
