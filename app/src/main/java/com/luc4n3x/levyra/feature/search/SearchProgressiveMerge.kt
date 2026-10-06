@@ -5,6 +5,8 @@ import com.luc4n3x.levyra.data.mergeSearchAlbums
 import com.luc4n3x.levyra.data.mergeSearchArtists
 import com.luc4n3x.levyra.data.mergeSearchPlaylists
 import com.luc4n3x.levyra.data.mergeSearchSongs
+import com.luc4n3x.levyra.data.richerSong
+import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
@@ -34,15 +36,34 @@ internal fun mergeFastSearchResults(
     existing: SearchResults,
     incoming: SearchResults,
     query: String
-): SearchResults = SearchResults(
-    topTrack = existing.topTrack ?: incoming.topTrack,
-    songs = mergeSearchSongs(existing.songs, incoming.songs),
-    videos = mergeSearchSongs(existing.videos, incoming.videos),
-    artists = provisionalSearchArtists(query, mergeSearchArtists(existing.artists, incoming.artists)),
-    albums = mergeSearchAlbums(existing.albums, incoming.albums),
-    playlists = mergeSearchPlaylists(existing.playlists, incoming.playlists),
-    failedSections = existing.failedSections + incoming.failedSections
-)
+): SearchResults {
+    val mergedTopTrack = when {
+        existing.topTrack != null && incoming.topTrack != null -> {
+            if (SpotifyYouTubeMatcher.scoreMatch(existing.topTrack, incoming.topTrack) >= 0.52) {
+                richerSong(existing.topTrack, incoming.topTrack)
+            } else {
+                existing.topTrack
+            }
+        }
+        existing.topTrack != null -> existing.topTrack
+        else -> incoming.topTrack
+    }
+
+    val mergedSongs = mergeSearchSongs(existing.songs, incoming.songs)
+    val resolvedTop = mergedTopTrack?.let { top ->
+        mergedSongs.firstOrNull { it.id == top.id || it.counterpartVideoId == top.id } ?: top
+    }
+
+    return SearchResults(
+        topTrack = resolvedTop,
+        songs = mergedSongs,
+        videos = mergeSearchSongs(existing.videos, incoming.videos),
+        artists = provisionalSearchArtists(query, mergeSearchArtists(existing.artists, incoming.artists)),
+        albums = mergeSearchAlbums(existing.albums, incoming.albums),
+        playlists = mergeSearchPlaylists(existing.playlists, incoming.playlists),
+        failedSections = existing.failedSections + incoming.failedSections
+    )
+}
 
 internal fun mergeRichSuggestionResults(
     base: SearchResults,
@@ -117,11 +138,23 @@ internal fun SearchSessionSnapshot.withLocalMatches(matches: List<LocalSearchMat
 internal fun SearchSessionSnapshot.withOverview(raw: SearchResults, query: String): SearchSessionSnapshot {
     val base = freshResults
     val merged = mergeFastSearchResults(base, raw, query)
-    val top = if (topLocked) base.topTrack ?: raw.topTrack else raw.topTrack ?: base.topTrack
+    val top = if (topLocked) {
+        val baseTop = base.topTrack
+        if (baseTop != null && raw.topTrack != null && SpotifyYouTubeMatcher.scoreMatch(baseTop, raw.topTrack) >= 0.52) {
+            richerSong(baseTop, raw.topTrack)
+        } else {
+            baseTop ?: merged.topTrack
+        }
+    } else {
+        merged.topTrack
+    }
+    val resolvedTop = top?.let { t ->
+        merged.songs.firstOrNull { it.id == t.id || it.counterpartVideoId == t.id } ?: t
+    }
     return copy(
-        results = merged.copy(topTrack = top),
+        results = merged.copy(topTrack = resolvedTop),
         carriedOver = false,
-        topLocked = topLocked || top != null
+        topLocked = topLocked || resolvedTop != null
     )
 }
 
