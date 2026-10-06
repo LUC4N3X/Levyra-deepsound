@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.data.spotify.MatchedYouTubeData
+import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache
+import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.PlaylistHit
@@ -77,14 +80,99 @@ internal fun isMusicVideoResult(videoType: String): Boolean {
 }
 
 internal fun mergeSearchSongs(existing: List<Track>, incoming: List<Track>): List<Track> {
-    val strict = mergeSearchEntities(
-        existing,
-        incoming,
-        ::searchSongIdentityKey,
-        ::searchSongMetadataKey,
-        ::richerSong
+    val hasSpotify = existing.any(::isSpotifyTrack) || incoming.any(::isSpotifyTrack)
+    if (!hasSpotify) {
+        val strict = mergeSearchEntities(
+            existing,
+            incoming,
+            ::searchSongIdentityKey,
+            ::searchSongMetadataKey,
+            ::richerSong
+        )
+        return mergeComplementarySearchSongMetadata(strict)
+    }
+
+    return mergeSpotifyAndYoutubeSongs(existing, incoming)
+}
+
+private fun isSpotifyTrack(track: Track): Boolean =
+    track.metadataProvider.equals("spotify", ignoreCase = true) ||
+        track.id.startsWith("spotify:", ignoreCase = true) ||
+        track.source.equals("spotify", ignoreCase = true)
+
+private fun isPlayableYoutubeId(id: String): Boolean =
+    id.length == 11 && !id.startsWith("spotify:") && id.all { it.isLetterOrDigit() || it == '-' || it == '_' }
+
+internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<Track>): List<Track> {
+    val existingSpotify = existing.filter(::isSpotifyTrack)
+    val incomingSpotify = incoming.filter(::isSpotifyTrack)
+    val existingYt = existing.filterNot(::isSpotifyTrack)
+    val incomingYt = incoming.filterNot(::isSpotifyTrack)
+
+    val allSpotify = (existingSpotify + incomingSpotify).distinctBy { searchSongIdentityKey(it) }
+    val allYt = (existingYt + incomingYt).distinctBy { searchSongIdentityKey(it) }
+
+    val matchCache = SpotifyYouTubeMatchCache.get()
+    val availableYt = allYt.toMutableList()
+    val consumedYtIds = HashSet<String>()
+
+    val resultSongs = mutableListOf<Track>()
+
+    for (spotifyTrack in allSpotify) {
+        val cached = matchCache.get(spotifyTrack.id)
+        val matchedFromCandidates = SpotifyYouTubeMatcher.findBestMatch(spotifyTrack, availableYt)
+
+        val enriched = if (matchedFromCandidates != null) {
+            val yt = matchedFromCandidates.candidate
+            consumedYtIds.add(yt.id)
+            availableYt.removeAll { it.id == yt.id }
+            matchCache.put(spotifyTrack.id, yt)
+            richerSong(spotifyTrack, yt)
+        } else if (cached != null) {
+            val cachedTrack = availableYt.firstOrNull { it.id == cached.videoId }
+            if (cachedTrack != null) {
+                consumedYtIds.add(cachedTrack.id)
+                availableYt.removeAll { it.id == cachedTrack.id }
+                richerSong(spotifyTrack, cachedTrack)
+            } else {
+                enrichWithCachedData(spotifyTrack, cached)
+            }
+        } else {
+            spotifyTrack
+        }
+        resultSongs.add(enriched)
+    }
+
+    for (ytTrack in allYt) {
+        if (ytTrack.id !in consumedYtIds) {
+            val isDuplicate = resultSongs.any { existingSong ->
+                existingSong.id == ytTrack.id ||
+                    existingSong.counterpartVideoId == ytTrack.id ||
+                    existingSong.audioVideoId == ytTrack.id ||
+                    SpotifyYouTubeMatcher.scoreMatch(existingSong, ytTrack) >= 0.75
+            }
+            if (!isDuplicate) {
+                resultSongs.add(ytTrack)
+            }
+        }
+    }
+
+    return resultSongs
+}
+
+private fun enrichWithCachedData(spotifyTrack: Track, cached: MatchedYouTubeData): Track {
+    val videoId = cached.videoId
+    val videoUrl = cached.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" }
+    return spotifyTrack.copy(
+        id = videoId,
+        videoUrl = videoUrl,
+        counterpartVideoId = videoId,
+        audioVideoId = cached.audioVideoId.ifBlank { videoId },
+        videoType = cached.videoType.ifBlank { spotifyTrack.videoType },
+        source = "spotify_youtube",
+        metadataProvider = "spotify",
+        youtubeViewCount = maxOf(spotifyTrack.youtubeViewCount, cached.youtubeViewCount)
     )
-    return mergeComplementarySearchSongMetadata(strict)
 }
 
 private fun mergeComplementarySearchSongMetadata(songs: List<Track>): List<Track> {
@@ -238,46 +326,135 @@ private fun <T> entityKeys(
     }
 }
 
-private fun richerSong(current: Track, candidate: Track): Track = current.copy(
-    artist = current.artist.ifBlank { candidate.artist },
-    thumbnailUrl = current.thumbnailUrl.ifBlank { candidate.thumbnailUrl },
-    largeThumbnailUrl = current.largeThumbnailUrl.ifBlank { candidate.largeThumbnailUrl },
-    album = current.album.ifBlank { candidate.album },
-    albumBrowseId = current.albumBrowseId.ifBlank { candidate.albumBrowseId },
-    artistBrowseIds = current.artistBrowseIds.ifEmpty { candidate.artistBrowseIds },
-    durationMs = if (current.durationMs > 0L) current.durationMs else candidate.durationMs,
-    videoType = current.videoType.ifBlank { candidate.videoType },
-    isrc = current.isrc.ifBlank { candidate.isrc },
-    youtubeViewCount = maxOf(current.youtubeViewCount, candidate.youtubeViewCount)
-)
+internal fun richerSong(current: Track, candidate: Track): Track {
+    val currentIsSpotify = isSpotifyTrack(current)
+    val candidateIsSpotify = isSpotifyTrack(candidate)
 
-private fun richerAlbum(current: AlbumHit, candidate: AlbumHit): AlbumHit = current.copy(
-    browseId = current.browseId.ifBlank { candidate.browseId },
-    artistBrowseId = current.artistBrowseId.ifBlank { candidate.artistBrowseId },
-    audioPlaylistId = current.audioPlaylistId.ifBlank { candidate.audioPlaylistId },
-    thumbnailUrl = current.thumbnailUrl.ifBlank { candidate.thumbnailUrl },
-    year = current.year.ifBlank { candidate.year },
-    releaseDate = current.releaseDate.ifBlank { candidate.releaseDate },
-    upc = current.upc.ifBlank { candidate.upc },
-    canonicalUrl = current.canonicalUrl.ifBlank { candidate.canonicalUrl },
-    explicit = current.explicit || candidate.explicit,
-    releaseType = if (current.releaseType == ReleaseType.Unknown) candidate.releaseType else current.releaseType
-)
+    val currentHasYtId = isPlayableYoutubeId(current.id) || current.counterpartVideoId.isNotBlank()
+    val candidateHasYtId = isPlayableYoutubeId(candidate.id) || candidate.counterpartVideoId.isNotBlank()
 
-private fun richerArtist(current: ArtistHit, candidate: ArtistHit): ArtistHit = current.copy(
-    browseId = current.browseId.ifBlank { candidate.browseId },
-    thumbnailUrl = current.thumbnailUrl.ifBlank { candidate.thumbnailUrl },
-    subscribers = current.subscribers.ifBlank { candidate.subscribers },
-    officialArtwork = current.officialArtwork || candidate.officialArtwork
-)
+    val metadataDonor = when {
+        currentIsSpotify && !candidateIsSpotify -> current
+        !currentIsSpotify && candidateIsSpotify -> candidate
+        else -> current
+    }
 
-private fun richerPlaylist(current: PlaylistHit, candidate: PlaylistHit): PlaylistHit = current.copy(
-    playlistId = current.playlistId.ifBlank { candidate.playlistId },
-    browseId = current.browseId.ifBlank { candidate.browseId },
-    thumbnailUrl = current.thumbnailUrl.ifBlank { candidate.thumbnailUrl },
-    author = current.author.ifBlank { candidate.author },
-    trackCountLabel = current.trackCountLabel.ifBlank { candidate.trackCountLabel }
-)
+    val playbackDonor = when {
+        candidateHasYtId && !currentHasYtId -> candidate
+        currentHasYtId -> current
+        candidate.videoUrl.isNotBlank() && current.videoUrl.isBlank() -> candidate
+        else -> current
+    }
+
+    val maxViewCount = maxOf(current.youtubeViewCount, candidate.youtubeViewCount)
+
+    val mergedId = if (playbackDonor.id.isNotBlank() && !playbackDonor.id.startsWith("spotify:")) {
+        playbackDonor.id
+    } else if (current.id.isNotBlank() && !current.id.startsWith("spotify:")) {
+        current.id
+    } else if (candidate.id.isNotBlank() && !candidate.id.startsWith("spotify:")) {
+        candidate.id
+    } else {
+        current.id.ifBlank { candidate.id }
+    }
+
+    val videoId = if (isPlayableYoutubeId(mergedId)) mergedId else playbackDonor.counterpartVideoId.ifBlank { current.counterpartVideoId.ifBlank { candidate.counterpartVideoId } }
+
+    val videoUrl = playbackDonor.videoUrl.ifBlank {
+        if (videoId.isNotBlank()) "https://www.youtube.com/watch?v=$videoId"
+        else current.videoUrl.ifBlank { candidate.videoUrl }
+    }
+
+    val counterpart = videoId.ifBlank {
+        playbackDonor.counterpartVideoId.ifBlank { current.counterpartVideoId.ifBlank { candidate.counterpartVideoId } }
+    }
+
+    val audioVideoId = playbackDonor.audioVideoId.ifBlank {
+        videoId.ifBlank { current.audioVideoId.ifBlank { candidate.audioVideoId } }
+    }
+
+    return current.copy(
+        id = mergedId,
+        title = metadataDonor.title.ifBlank { current.title.ifBlank { candidate.title } },
+        artist = metadataDonor.artist.ifBlank { current.artist.ifBlank { candidate.artist } },
+        thumbnailUrl = metadataDonor.thumbnailUrl.ifBlank { current.thumbnailUrl.ifBlank { candidate.thumbnailUrl } },
+        largeThumbnailUrl = metadataDonor.largeThumbnailUrl.ifBlank { current.largeThumbnailUrl.ifBlank { candidate.largeThumbnailUrl } },
+        album = metadataDonor.album.ifBlank { current.album.ifBlank { candidate.album } },
+        albumBrowseId = current.albumBrowseId.ifBlank { candidate.albumBrowseId },
+        artistBrowseIds = current.artistBrowseIds.ifEmpty { candidate.artistBrowseIds },
+        durationMs = if (metadataDonor.durationMs > 0L) metadataDonor.durationMs else (if (current.durationMs > 0L) current.durationMs else candidate.durationMs),
+        videoUrl = videoUrl,
+        streamUrl = if (playbackDonor.streamUrl.isNotBlank()) playbackDonor.streamUrl else current.streamUrl.ifBlank { candidate.streamUrl },
+        counterpartVideoId = counterpart,
+        audioVideoId = audioVideoId,
+        videoType = playbackDonor.videoType.ifBlank { current.videoType.ifBlank { candidate.videoType } },
+        isrc = metadataDonor.isrc.ifBlank { current.isrc.ifBlank { candidate.isrc } },
+        explicit = current.explicit || candidate.explicit,
+        source = if (currentIsSpotify || candidateIsSpotify) "spotify_youtube" else current.source.ifBlank { candidate.source },
+        metadataProvider = if (currentIsSpotify || candidateIsSpotify) "spotify" else current.metadataProvider.ifBlank { candidate.metadataProvider },
+        metadataConfidence = maxOf(current.metadataConfidence, candidate.metadataConfidence),
+        youtubeViewCount = maxViewCount
+    )
+}
+
+private fun richerAlbum(current: AlbumHit, candidate: AlbumHit): AlbumHit {
+    val ytBrowseId = sequenceOf(current.browseId, candidate.browseId)
+        .firstOrNull { it.isNotBlank() && !it.startsWith("spotify:", ignoreCase = true) }
+        .orEmpty()
+    val ytPlaylistId = sequenceOf(current.audioPlaylistId, candidate.audioPlaylistId)
+        .firstOrNull { it.isNotBlank() && !it.startsWith("spotify:", ignoreCase = true) }
+        .orEmpty()
+    val spotifyArtwork = sequenceOf(current.thumbnailUrl, candidate.thumbnailUrl)
+        .firstOrNull { it.contains("scdn.co") || it.contains("spotifycdn.com") }
+        .orEmpty()
+    val chosenArtwork = spotifyArtwork.ifBlank { current.thumbnailUrl.ifBlank { candidate.thumbnailUrl } }
+
+    return current.copy(
+        browseId = ytBrowseId.ifBlank { current.browseId.ifBlank { candidate.browseId } },
+        artistBrowseId = current.artistBrowseId.ifBlank { candidate.artistBrowseId },
+        audioPlaylistId = ytPlaylistId.ifBlank { current.audioPlaylistId.ifBlank { candidate.audioPlaylistId } },
+        thumbnailUrl = chosenArtwork,
+        year = current.year.ifBlank { candidate.year },
+        releaseDate = current.releaseDate.ifBlank { candidate.releaseDate },
+        upc = current.upc.ifBlank { candidate.upc },
+        canonicalUrl = current.canonicalUrl.ifBlank { candidate.canonicalUrl },
+        explicit = current.explicit || candidate.explicit,
+        releaseType = if (current.releaseType == ReleaseType.Unknown) candidate.releaseType else current.releaseType
+    )
+}
+
+private fun richerArtist(current: ArtistHit, candidate: ArtistHit): ArtistHit {
+    val ytBrowseId = sequenceOf(current.browseId, candidate.browseId)
+        .firstOrNull { it.isNotBlank() && !it.startsWith("spotify:", ignoreCase = true) }
+        .orEmpty()
+    val spotifyArtwork = sequenceOf(current.thumbnailUrl, candidate.thumbnailUrl)
+        .firstOrNull { isAllowedSpotifyArtistArtworkUrl(it) }
+        .orEmpty()
+    val chosenArtwork = spotifyArtwork.ifBlank { current.thumbnailUrl.ifBlank { candidate.thumbnailUrl } }
+    val chosenSubscribers = current.subscribers.ifBlank { candidate.subscribers }
+    return current.copy(
+        browseId = ytBrowseId.ifBlank { current.browseId.ifBlank { candidate.browseId } },
+        thumbnailUrl = chosenArtwork,
+        subscribers = chosenSubscribers,
+        officialArtwork = current.officialArtwork || candidate.officialArtwork || spotifyArtwork.isNotBlank()
+    )
+}
+
+private fun richerPlaylist(current: PlaylistHit, candidate: PlaylistHit): PlaylistHit {
+    val ytPlaylistId = sequenceOf(current.playlistId, candidate.playlistId)
+        .firstOrNull { it.isNotBlank() && !it.startsWith("spotify:", ignoreCase = true) }
+        .orEmpty()
+    val ytBrowseId = sequenceOf(current.browseId, candidate.browseId)
+        .firstOrNull { it.isNotBlank() && !it.startsWith("spotify:", ignoreCase = true) }
+        .orEmpty()
+    return current.copy(
+        playlistId = ytPlaylistId.ifBlank { current.playlistId.ifBlank { candidate.playlistId } },
+        browseId = ytBrowseId.ifBlank { current.browseId.ifBlank { candidate.browseId } },
+        thumbnailUrl = current.thumbnailUrl.ifBlank { candidate.thumbnailUrl },
+        author = current.author.ifBlank { candidate.author },
+        trackCountLabel = current.trackCountLabel.ifBlank { candidate.trackCountLabel }
+    )
+}
 
 private const val MUSIC_VIDEO_TYPE_AUDIO = "MUSIC_VIDEO_TYPE_ATV"
 

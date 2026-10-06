@@ -1041,9 +1041,36 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
+    private suspend fun resolveSpotifyTrackIfUnmatched(track: Track): Track {
+        if (!track.id.startsWith("spotify:") || track.counterpartVideoId.isNotBlank() || track.audioVideoId.isNotBlank()) {
+            return track
+        }
+        val cacheMatch = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).get(track.id)
+        if (cacheMatch != null && cacheMatch.videoId.isNotBlank()) {
+            return track.copy(
+                id = cacheMatch.videoId,
+                videoUrl = cacheMatch.videoUrl.ifBlank { "https://www.youtube.com/watch?v=${cacheMatch.videoId}" },
+                counterpartVideoId = cacheMatch.videoId,
+                audioVideoId = cacheMatch.audioVideoId.ifBlank { cacheMatch.videoId },
+                videoType = cacheMatch.videoType.ifBlank { track.videoType },
+                source = "spotify_youtube",
+                youtubeViewCount = maxOf(track.youtubeViewCount, cacheMatch.youtubeViewCount)
+            )
+        }
+        val candidates = findAlternativeAudioCandidates(track)
+        val bestMatch = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.findBestMatch(track, candidates, threshold = 0.50)
+        val matchedYt = bestMatch?.candidate ?: candidates.firstOrNull()
+        if (matchedYt != null) {
+            com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).put(track.id, matchedYt)
+            return richerSong(track, matchedYt)
+        }
+        return track
+    }
+
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
+        val targetTrack = resolveSpotifyTrackIfUnmatched(track)
         val resolved = resolveWithLanguageRevisionRetry(
-            originalTrack = track,
+            originalTrack = targetTrack,
             acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
         ) { requestTrack, _ ->
             val alternativeQuery = highQualityPlayback

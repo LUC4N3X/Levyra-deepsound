@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.feature.search
 
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.data.spotify.SpotifySearchClient
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.SearchFilter
@@ -16,6 +17,7 @@ internal class YoutubeMusicSearchBackend(
     private val repository: YoutubeMusicRepository,
     private val artistRepository: ArtistRepository,
     private val providerRouter: LevyraProviderRouter,
+    private val spotifyClient: SpotifySearchClient = SpotifySearchClient(),
     private val localCandidateSource: () -> List<LocalSearchCandidate>,
     private val playableTrack: (Track) -> Boolean
 ) : SearchBackend {
@@ -28,6 +30,11 @@ internal class YoutubeMusicSearchBackend(
 
     override suspend fun overview(query: String, languageCode: String): SearchResults =
         providerRouter.searchEverything(query, languageCode)
+
+    override suspend fun spotifyOverview(query: String): SearchResults? =
+        withContext(Dispatchers.IO) {
+            runCatching { spotifyClient.search(query) }.getOrNull()
+        }
 
     override suspend fun section(
         filter: SearchFilter,
