@@ -94,6 +94,18 @@ internal fun canonicalArtistBrowseIds(values: Iterable<String>): List<String> =
 
 internal data class ArtistCredit(val name: String, val browseId: String)
 
+internal fun artistDisplayCandidates(value: String): List<String> {
+    val clean = value.trim()
+    if (clean.isBlank()) return emptyList()
+    return ARTIST_EXPLICIT_SEPARATOR
+        .split(clean)
+        .map(String::trim)
+        .filter { it.length >= 2 }
+        .distinctBy(::artistIdentityKey)
+        .takeIf { it.size >= 2 }
+        .orEmpty()
+}
+
 internal fun artistCredits(value: String, artistBrowseIds: List<String>): List<ArtistCredit> {
     val clean = value.trim()
     if (clean.isBlank()) return emptyList()
