@@ -447,7 +447,22 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun openAmbient() = root.openAmbient()
     fun exportCurrentTrack() = root.exportCurrentTrack()
     fun next() = root.next()
-    fun openArtist(track: Track) = root.openArtistFromPlayer(track)
+    suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean = true): List<ArtistHit> =
+        root.playerArtistHits(track, resolveArtwork)
+    fun openArtist(track: Track, artistIndex: Int = 0) {
+        val reference = artistReferenceOf(track, artistIndex) ?: return
+        root.openArtistFromPlayer(
+            track.copy(
+                artist = reference.name,
+                artistBrowseIds = if (reference.browseId.isNotBlank()) {
+                    listOf(reference.browseId)
+                } else {
+                    emptyList()
+                }
+            )
+        )
+    }
+    fun openArtist(hit: ArtistHit) = root.openArtistFromPlayer(hit)
     fun openAudioQualityPanel() = root.openAudioQualityPanel()
     fun openLyrics() = root.openLyrics()
     fun openQueue() = root.openQueue()

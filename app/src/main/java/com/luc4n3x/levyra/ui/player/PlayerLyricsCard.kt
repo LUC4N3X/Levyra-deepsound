@@ -62,6 +62,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
+import com.luc4n3x.levyra.ui.theme.nonNegativeCornerRadius
 import java.util.Locale
 import kotlinx.coroutines.delay
 
@@ -100,7 +101,7 @@ internal fun PlayerLyricsCard(
 ) {
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
-    val shape = RoundedCornerShape(cornerRadius)
+    val shape = RoundedCornerShape(nonNegativeCornerRadius(cornerRadius))
     val cardLines = remember(lines) { playerLyricsCardLines(lines) }
     val route = rememberLyricsAudioOutputRoute()
     val offsetMs = latencyProfiles.resolve(route?.stableKey, route?.bluetooth == true)
