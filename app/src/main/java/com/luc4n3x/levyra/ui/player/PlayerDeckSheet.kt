@@ -16,11 +16,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -172,7 +172,7 @@ private fun PlayerDeckCard(
     surfaces: PlayerSurfaceTokens,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(DeckCardCorner)
+    val cardShape = RoundedCornerShape(DeckCardCorner)
     val outline by animateColorAsState(
         targetValue = if (spec.selected) spec.accent else surfaces.contentFaint.copy(alpha = 0.22f),
         animationSpec = LevyraMotion.spec(spec.animated, LevyraMotion.fade()),
@@ -191,11 +191,11 @@ private fun PlayerDeckCard(
                 scaleX = 1f + (lift * 0.012f)
                 scaleY = 1f + (lift * 0.012f)
                 shadowElevation = lift * 14.dp.toPx()
-                shape = shape
+                shape = cardShape
             }
-            .clip(shape)
+            .clip(cardShape)
             .background(playerDeckCardBrush(spec, surfaces))
-            .then(playerDeckCardBorder(spec, outline, shape))
+            .then(playerDeckCardBorder(spec, outline, cardShape))
             .selectable(
                 selected = spec.selected,
                 role = Role.RadioButton,
@@ -330,7 +330,7 @@ private fun PlayerDeckLabelBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(46.dp)
+            .heightIn(min = 46.dp)
             .clip(shape)
             .background(
                 if (spec.selected) spec.accent.copy(alpha = 0.13f)
