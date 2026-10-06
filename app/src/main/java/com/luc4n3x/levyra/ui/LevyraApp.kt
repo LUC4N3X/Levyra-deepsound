@@ -2807,7 +2807,7 @@ fun LevyraApp(
                     onDeleteQueueSpace = viewModel::deleteQueueSpace,
                     onPlayNext = viewModel::playNext,
                     onRemove = { target ->
-                        viewModel.removeFromQueue(target.track, target.spaceId, target.generation)
+                        viewModel.removeFromQueue(target.track, target.spaceId)
                     },
                     onRemoveSelected = viewModel::removeTracksFromQueue,
                     onMove = viewModel::moveQueueItem,
