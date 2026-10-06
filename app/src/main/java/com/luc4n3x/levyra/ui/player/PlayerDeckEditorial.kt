@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
@@ -55,7 +56,9 @@ internal fun PlayerEditorialDeck(
     compact: Boolean,
     scrollable: Boolean,
     gutter: Dp,
+    artistHits: List<ArtistHit>,
     onArtistClick: (Int) -> Unit,
+    onArtistGroupClick: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
     headlineModifier: Modifier = Modifier
@@ -110,7 +113,9 @@ internal fun PlayerEditorialDeck(
             isFavorite = isFavorite,
             animated = animated,
             compact = compact,
+            artistHits = artistHits,
             onArtistClick = onArtistClick,
+            onArtistGroupClick = onArtistGroupClick,
             onToggleFavorite = onToggleFavorite,
             modifier = headlineModifier
         )
@@ -176,7 +181,9 @@ private fun EditorialHeadline(
     isFavorite: Boolean,
     animated: Boolean,
     compact: Boolean,
+    artistHits: List<ArtistHit>,
     onArtistClick: (Int) -> Unit,
+    onArtistGroupClick: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -220,27 +227,21 @@ private fun EditorialHeadline(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
             ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                        .clip(LevyraPlayerDesign.ShapeXxs),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    PlayerArtistText(
-                        track = shown,
-                        color = surfaces.contentMuted,
-                        style = TextStyle(
-                            fontSize = if (compact) 16.sp else 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            fontStyle = FontStyle.Italic
-                        ),
-                        onClickLabel = strings.openArtist,
-                        onArtistClick = onArtistClick,
-                        enabled = isCurrent,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                PlayerArtistIdentityRow(
+                    track = shown,
+                    artists = if (isCurrent) artistHits else emptyList(),
+                    surfaces = surfaces,
+                    style = TextStyle(
+                        fontSize = if (compact) 16.sp else 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontStyle = FontStyle.Italic
+                    ),
+                    openArtistLabel = strings.openArtist,
+                    enabled = isCurrent,
+                    onArtistClick = onArtistClick,
+                    onGroupClick = onArtistGroupClick,
+                    modifier = Modifier.weight(1f)
+                )
                 if (isCurrent) {
                     PlayerFavoriteButton(
                         trackId = shown.id,
