@@ -52,6 +52,7 @@ FDROID_RUNTIME_DEPENDENCIES = {
     "androidx.work.runtime.ktx": "androidx.work:work-runtime-ktx",
     "androidx.profileinstaller": "androidx.profileinstaller:profileinstaller",
     "kotlinx.serialization.json": "org.jetbrains.kotlinx:kotlinx-serialization-json",
+    "material.kolor.utilities": "com.materialkolor:material-color-utilities",
     "timber": "com.jakewharton.timber:timber",
     "shimmer": "com.valentinilk.shimmer:compose-shimmer",
     "chucker.no.op": "com.github.chuckerteam.chucker:library-no-op",
