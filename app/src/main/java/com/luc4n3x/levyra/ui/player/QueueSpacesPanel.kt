@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -150,7 +152,9 @@ internal fun QueueSpacesPanel(
     onRename: (String, String) -> Unit,
     onDuplicate: (String) -> Unit,
     onClear: (String) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    playlistLoadingSpaceId: String?,
+    onSaveAsPlaylist: (String) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     var managedSpaceId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -244,6 +248,11 @@ internal fun QueueSpacesPanel(
                 label = queueSpaceLabel(managed, strings),
                 accent = accent,
                 pendingDelete = pendingDeleteId == managed.id,
+                savingPlaylist = playlistLoadingSpaceId == managed.id,
+                onSaveAsPlaylist = {
+                    managedSpaceId = null
+                    onSaveAsPlaylist(managed.id)
+                },
                 onRename = {
                     editorSpaceId = managed.id
                     managedSpaceId = null
@@ -470,6 +479,8 @@ private fun QueueSpaceActions(
     label: String,
     accent: Color,
     pendingDelete: Boolean,
+    savingPlaylist: Boolean,
+    onSaveAsPlaylist: () -> Unit,
     onRename: () -> Unit,
     onDuplicate: () -> Unit,
     onClear: () -> Unit,
@@ -517,6 +528,15 @@ private fun QueueSpaceActions(
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     QueueSpaceAction(
+                        Icons.Rounded.BookmarkAdd,
+                        strings.mixLabSaveAsPlaylist,
+                        accent,
+                        onSaveAsPlaylist,
+                        enabled = space.trackCount > 0 && !savingPlaylist
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    QueueSpaceAction(
                         Icons.Rounded.DriveFileRenameOutline,
                         strings.queueSpaceRename,
                         LevyraText,
@@ -550,7 +570,7 @@ private fun QueueSpaceAction(
     Surface(
         color = LevyraPanelSoft.copy(alpha = if (enabled) 1f else 0.4f),
         shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.height(40.dp)
+        modifier = Modifier.heightIn(min = 48.dp)
     ) {
         Row(
             modifier = Modifier
