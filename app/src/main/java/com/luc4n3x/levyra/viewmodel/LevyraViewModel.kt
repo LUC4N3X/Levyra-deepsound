@@ -306,7 +306,9 @@ import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import com.luc4n3x.levyra.player.queue.shouldPromptForQueueDestination
 import com.luc4n3x.levyra.player.queue.mergePendingQueueDestinationTracks
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
+import com.luc4n3x.levyra.player.queue.QueuePlaylistExport
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import com.luc4n3x.levyra.player.queue.prepareQueuePlaylistExport
 import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
 import com.luc4n3x.levyra.player.queue.queueAfterPlayNextIntent
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
@@ -1166,6 +1168,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
     private var queueSpaceJob: Job? = null
+    private var queuePlaylistExportJob: Job? = null
+    private var queuePlaylistExportGeneration: Long = 0L
     private var consecutiveUnavailableLocalSkips: Int = 0
     private val localLibrarySortFlow = MutableStateFlow(
         startupSettings.interfaceSettings.librarySort to startupSettings.interfaceSettings.librarySortDirection
@@ -2840,10 +2844,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun createPlaylistWithTracks(name: String, tracks: List<Track>) {
         viewModelScope.launch {
             val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }
-            val playlist = playlistStore.create(name)
-            playlistStore.addTracks(playlist.id, cleanTracks.map { it.copy(streamUrl = "") })
+            if (cleanTracks.isEmpty()) {
+                _state.update { it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).queueEmpty) }
+                return@launch
+            }
+            val playlist = runCatchingPreservingCancellation {
+                playlistStore.createWithTracks(name, cleanTracks.map { it.copy(streamUrl = "") })
+            }.onFailure { error ->
+                Timber.w(error, "Playlist batch create failed")
+            }.getOrNull()
+            if (playlist == null) {
+                _state.update {
+                    it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveFailed)
+                }
+                return@launch
+            }
             loadPlaylists()
-            _state.update { it.copy(offlineExportMessage = "Playlist creata: ${playlist.name}") }
+            _state.update {
+                it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveSuccess)
+            }
         }
     }
 
@@ -3443,10 +3462,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }
         if (cleanTracks.isEmpty()) return
         viewModelScope.launch {
-            playlistStore.addTracks(playlistId, cleanTracks.map { it.copy(streamUrl = "") })
+            val saved = runCatchingPreservingCancellation {
+                playlistStore.addTracks(playlistId, cleanTracks.map { it.copy(streamUrl = "") })
+            }.onFailure { error ->
+                Timber.w(error, "Playlist batch add failed")
+            }.isSuccess
+            if (!saved) {
+                _state.update {
+                    it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveFailed)
+                }
+                return@launch
+            }
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
-            _state.update { it.copy(offlineExportMessage = "Aggiunti ${cleanTracks.size} brani alla playlist") }
+            _state.update {
+                it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveSuccess)
+            }
         }
     }
 
@@ -6056,6 +6087,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun prepareQueueSpacePlaylist(spaceId: String) {
+        if (spaceId.isBlank()) return
+        queuePlaylistExportJob?.cancel()
+        queuePlaylistExportGeneration += 1L
+        val requestGeneration = queuePlaylistExportGeneration
+        _state.update {
+            it.copy(queuePlaylistLoadingSpaceId = spaceId, queuePlaylistDraft = null)
+        }
+        queuePlaylistExportJob = viewModelScope.launch {
+            val export = loadQueueSpacePlaylist(spaceId)
+            if (requestGeneration != queuePlaylistExportGeneration) return@launch
+            val strings = LevyraStrings.forCode(_state.value.languageCode)
+            _state.update { current ->
+                when {
+                    export == null -> current.copy(
+                        queuePlaylistLoadingSpaceId = null,
+                        offlineExportMessage = strings.mixLabSaveFailed
+                    )
+                    export.tracks.isEmpty() -> current.copy(
+                        queuePlaylistLoadingSpaceId = null,
+                        offlineExportMessage = strings.queueEmpty
+                    )
+                    else -> current.copy(
+                        queuePlaylistLoadingSpaceId = null,
+                        queuePlaylistDraft = QueuePlaylistDraft(spaceId, export.tracks),
+                        offlineExportMessage = if (export.skippedCount > 0) {
+                            "${strings.formatTrackCount(export.skippedCount)} · ${strings.localFileUnavailable}"
+                        } else {
+                            current.offlineExportMessage
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissQueuePlaylistDraft() {
+        _state.update { it.copy(queuePlaylistDraft = null) }
+    }
+
+    private suspend fun loadQueueSpacePlaylist(spaceId: String): QueuePlaylistExport? {
+        val tracks = withContext(Dispatchers.IO) { queueEngine.tracksForSpace(spaceId) }
+            ?: return null
+        return prepareQueuePlaylistExport(tracks)
+    }
+
     private fun isUnavailableLocalTrack(track: Track): Boolean =
         track.streamUrl.startsWith("content://", ignoreCase = true) &&
             track.streamUrl in _state.value.queueUnavailableUris
@@ -6247,6 +6324,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val track = _state.value.queue.getOrNull(index) ?: return
         if (routeJamAction(JamAction.RemoveTrack(track.id))) return
         removeFromQueueLocal(index)
+    }
+
+    fun removeFromQueue(track: Track, expectedSpaceId: String) {
+        if (routeJamAction(JamAction.RemoveTrack(track.id))) return
+        val snapshot = queueEngine.remove(expectedSpaceId, track) ?: return
+        if (snapshot.tracks.isEmpty()) {
+            closePlayer()
+        } else {
+            refreshQueuePrefetch()
+        }
+        refreshSmartOrbit()
     }
 
     fun removeTracksFromQueue(indices: Collection<Int>) {
@@ -10551,7 +10639,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun closeQueue() {
-        _state.update { it.copy(showQueue = false) }
+        queuePlaylistExportJob?.cancel()
+        queuePlaylistExportJob = null
+        queuePlaylistExportGeneration += 1L
+        _state.update {
+            it.copy(
+                showQueue = false,
+                queuePlaylistLoadingSpaceId = null,
+                queuePlaylistDraft = null
+            )
+        }
     }
 
     fun openLyrics() {
