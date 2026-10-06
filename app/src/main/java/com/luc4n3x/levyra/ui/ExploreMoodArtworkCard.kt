@@ -149,6 +149,39 @@ internal fun exploreMoodPortraitLookupLimit(zoneId: String, candidateCount: Int)
 internal fun exploreMoodHardFallbackPortraitUrl(zoneId: String): String =
     if (zoneId == "rap-drill") ExploreRapFallbackPortraitUrl else ""
 
+
+@Composable
+internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
+    val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
+    val artworkRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
+    val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
+    val portraitCandidates = remember(zone.id, strings.code, rotationBucket) {
+        exploreMoodPortraitCandidates(zone.id, strings.code, rotationBucket)
+    }
+    val portraitLookupLimit = remember(zone.id, portraitCandidates.size) {
+        exploreMoodPortraitLookupLimit(zone.id, portraitCandidates.size)
+    }
+    val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
+    var artworkUrl by remember(portraitCandidates, hardFallbackPortraitUrl) {
+        mutableStateOf(hardFallbackPortraitUrl)
+    }
+
+    LaunchedEffect(portraitCandidates, portraitLookupLimit, artworkRepository, hardFallbackPortraitUrl) {
+        val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
+            var candidateArtwork = ""
+            for (candidate in portraitCandidates.take(portraitLookupLimit)) {
+                candidateArtwork = artworkRepository.resolveArtistPortrait(candidate)
+                if (candidateArtwork.isNotBlank()) break
+            }
+            candidateArtwork
+        }
+        artworkUrl = resolved.ifBlank { hardFallbackPortraitUrl }
+    }
+
+    return artworkUrl
+}
+
 @Composable
 internal fun RowScope.ExploreMoodCard(
     zone: ExploreZone,
@@ -190,13 +223,13 @@ internal fun RowScope.ExploreMoodCard(
 
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(20.dp)
     val backgroundBrush = remember(accentStart, accentEnd) {
         Brush.linearGradient(
             listOf(
                 LevyraPanel,
-                accentStart.copy(alpha = 0.26f),
-                accentEnd.copy(alpha = 0.18f)
+                accentStart.copy(alpha = 0.30f),
+                accentEnd.copy(alpha = 0.22f)
             )
         )
     }
@@ -204,9 +237,9 @@ internal fun RowScope.ExploreMoodCard(
         Brush.horizontalGradient(
             colorStops = arrayOf(
                 0f to LevyraPanel,
-                0.34f to LevyraPanel.copy(alpha = 0.94f),
-                0.58f to accentStart.copy(alpha = 0.38f),
-                0.80f to Color.Transparent,
+                0.32f to LevyraPanel.copy(alpha = 0.96f),
+                0.56f to accentStart.copy(alpha = 0.42f),
+                0.82f to Color.Transparent,
                 1f to Color.Transparent
             )
         )
@@ -216,7 +249,7 @@ internal fun RowScope.ExploreMoodCard(
             listOf(
                 Color.Transparent,
                 Color.Transparent,
-                Color.Black.copy(alpha = 0.36f)
+                Color.Black.copy(alpha = 0.44f)
             )
         )
     }
@@ -233,7 +266,7 @@ internal fun RowScope.ExploreMoodCard(
     Box(
         modifier = Modifier
             .weight(1f)
-            .height(108.dp)
+            .height(112.dp)
             .clip(shape)
             .background(backgroundBrush)
             .border(
@@ -273,7 +306,7 @@ internal fun RowScope.ExploreMoodCard(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .fillMaxWidth(0.72f)
+                    .fillMaxWidth(0.76f)
             )
         } else {
             Text(
@@ -292,22 +325,23 @@ internal fun RowScope.ExploreMoodCard(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .fillMaxWidth(0.78f)
-                .padding(start = 14.dp, end = 8.dp, bottom = 13.dp),
+                .fillMaxWidth(0.80f)
+                .padding(start = 15.dp, end = 8.dp, bottom = 14.dp),
             horizontalAlignment = Alignment.Start
         ) {
             Box(
                 modifier = Modifier
-                    .width(if (isSelected) 30.dp else 22.dp)
-                    .height(3.dp)
+                    .width(if (isSelected) 32.dp else 24.dp)
+                    .height(3.5.dp)
                     .clip(RoundedCornerShape(50))
                     .background(if (isSelected) Color.White else accentEnd.copy(alpha = 0.92f))
             )
             Text(
                 text = zone.label,
                 color = Color.White,
-                fontSize = 16.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(16.5.sp),
+                fontSize = 17.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+                letterSpacing = (-0.2).sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
