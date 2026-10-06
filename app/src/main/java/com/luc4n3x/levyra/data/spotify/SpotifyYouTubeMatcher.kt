@@ -183,6 +183,6 @@ internal object SpotifyYouTubeMatcher {
             }
         }
 
-        return (2.0 * matches) / (bigrams1.size + bigrams2.size)
+        return 2.0 * matches / (bigrams1.size + bigrams2.size)
     }
 }
