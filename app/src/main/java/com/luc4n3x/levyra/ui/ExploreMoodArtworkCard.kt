@@ -149,6 +149,39 @@ internal fun exploreMoodPortraitLookupLimit(zoneId: String, candidateCount: Int)
 internal fun exploreMoodHardFallbackPortraitUrl(zoneId: String): String =
     if (zoneId == "rap-drill") ExploreRapFallbackPortraitUrl else ""
 
+
+@Composable
+internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
+    val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
+    val artworkRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
+    val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
+    val portraitCandidates = remember(zone.id, strings.code, rotationBucket) {
+        exploreMoodPortraitCandidates(zone.id, strings.code, rotationBucket)
+    }
+    val portraitLookupLimit = remember(zone.id, portraitCandidates.size) {
+        exploreMoodPortraitLookupLimit(zone.id, portraitCandidates.size)
+    }
+    val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
+    var artworkUrl by remember(portraitCandidates, hardFallbackPortraitUrl) {
+        mutableStateOf(hardFallbackPortraitUrl)
+    }
+
+    LaunchedEffect(portraitCandidates, portraitLookupLimit, artworkRepository, hardFallbackPortraitUrl) {
+        val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
+            var candidateArtwork = ""
+            for (candidate in portraitCandidates.take(portraitLookupLimit)) {
+                candidateArtwork = artworkRepository.resolveArtistPortrait(candidate)
+                if (candidateArtwork.isNotBlank()) break
+            }
+            candidateArtwork
+        }
+        artworkUrl = resolved.ifBlank { hardFallbackPortraitUrl }
+    }
+
+    return artworkUrl
+}
+
 @Composable
 internal fun RowScope.ExploreMoodCard(
     zone: ExploreZone,
