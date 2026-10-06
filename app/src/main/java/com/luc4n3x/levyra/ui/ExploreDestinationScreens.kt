@@ -1058,9 +1058,6 @@ private fun LazyListScope.exploreFallbackGenreItems(
     onOpenZone: (ExploreZone) -> Unit
 ) {
     if (fallbackGenres.isEmpty()) return
-    item(key = "editorial-genres-header") {
-        ExploreCategorySectionHeader("Levyra")
-    }
     items(
         items = fallbackGenres.chunked(2),
         key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
@@ -1075,13 +1072,15 @@ private fun ExploreFallbackGenreRow(
     onOpenZone: (ExploreZone) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().height(102.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         pair.forEach { zone ->
-            ExploreMoodCard(
-                zone = zone,
-                isSelected = false,
+            ExploreDiscoveryCategoryCard(
+                title = zone.label,
+                identity = zone.id,
+                emoji = zone.emoji,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { onOpenZone(zone) }
             )
         }
