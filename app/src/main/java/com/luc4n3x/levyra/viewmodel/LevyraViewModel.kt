@@ -103,6 +103,7 @@ import com.luc4n3x.levyra.domain.batchDownloadKindOf
 import com.luc4n3x.levyra.domain.batchDownloadProgress
 import com.luc4n3x.levyra.domain.batchDownloadState
 import com.luc4n3x.levyra.player.offline.work.OfflineDownloadBatchRef
+import com.luc4n3x.levyra.domain.artistCredits
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
@@ -6954,6 +6955,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openArtist(track: Track) {
         val reference = artistReferenceOf(track) ?: return
         openArtistReference(name = reference.name, browseId = reference.browseId)
+    }
+
+    suspend fun playerArtistHits(track: Track, resolveArtwork: Boolean): List<ArtistHit> {
+        if (track.isLiveRadio()) return emptyList()
+        val credits = withContext(Dispatchers.Default) {
+            artistCredits(track.artist, track.artistBrowseIds)
+        }
+        if (credits.size < 2) return emptyList()
+
+        val fallbacks = credits.map { credit ->
+            ArtistHit(
+                name = credit.name,
+                subscribers = "",
+                thumbnailUrl = "",
+                accentStart = track.accentStart,
+                accentEnd = track.accentEnd,
+                browseId = credit.browseId
+            )
+        }
+        if (!resolveArtwork) return fallbacks
+
+        return coroutineScope {
+            fallbacks.map { fallback ->
+                async {
+                    if (!isNavigableArtistName(fallback.name)) {
+                        fallback
+                    } else {
+                        val resolved = if (fallback.browseId.isNotBlank()) {
+                            artistRepository.artistHit(fallback.browseId, fallback.name)
+                        } else {
+                            artistRepository.artistHitFor(fallback.name)
+                        }
+                        resolved?.copy(
+                            name = fallback.name,
+                            browseId = fallback.browseId.ifBlank { resolved.browseId }
+                        ) ?: fallback
+                    }
+                }
+            }.awaitAll()
+        }
     }
 
     fun openArtistFromPlayer(track: Track) {
