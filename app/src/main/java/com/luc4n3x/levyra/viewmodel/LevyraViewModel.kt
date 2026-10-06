@@ -6130,19 +6130,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun loadQueueSpacePlaylist(spaceId: String): QueuePlaylistExport? {
         val tracks = withContext(Dispatchers.IO) { queueEngine.tracksForSpace(spaceId) }
             ?: return null
-        val localUris = tracks.mapNotNullTo(LinkedHashSet()) { track ->
-            track.streamUrl.takeIf { it.startsWith("content://", ignoreCase = true) }
-        }
-        val unavailableUris = if (localUris.isEmpty()) {
-            emptySet()
-        } else {
-            withContext(Dispatchers.IO) {
-                runCatchingPreservingCancellation { localLibrary.unavailableContentUris(localUris) }
-                    .onFailure { Timber.w(it, "Queue playlist availability check failed") }
-                    .getOrDefault(emptySet())
-            }
-        }
-        return prepareQueuePlaylistExport(tracks, unavailableUris)
+        return prepareQueuePlaylistExport(tracks)
     }
 
     private fun isUnavailableLocalTrack(track: Track): Boolean =

@@ -9,16 +9,14 @@ class QueuePlaylistExportTest {
 
     @Test
     fun exportKeepsQueueOrderAndSkipsLocalOrInvalidTracks() {
-        val unavailableUri = "content://library/missing"
         val export = prepareQueuePlaylistExport(
             tracks = listOf(
                 track("first"),
-                track("missing").copy(streamUrl = unavailableUri),
+                track("missing").copy(streamUrl = "content://library/missing"),
                 track("local").copy(streamUrl = "file:///music/local.mp3"),
                 track("third"),
                 track("")
-            ),
-            unavailableLocalUris = setOf(unavailableUri)
+            )
         )
 
         assertEquals(listOf("first", "third"), export.tracks.map { it.id })
@@ -27,7 +25,7 @@ class QueuePlaylistExportTest {
 
     @Test
     fun emptyQueueProducesAnEmptyExport() {
-        val export = prepareQueuePlaylistExport(emptyList(), emptySet())
+        val export = prepareQueuePlaylistExport(emptyList())
 
         assertTrue(export.tracks.isEmpty())
         assertEquals(0, export.skippedCount)

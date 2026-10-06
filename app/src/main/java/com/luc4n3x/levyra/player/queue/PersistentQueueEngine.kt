@@ -616,7 +616,9 @@ class PersistentQueueEngine internal constructor(
         val matchingIndices = current.tracks.indices.filter { index ->
             playbackQueueIdentity(current.tracks[index]) == expectedIdentity
         }
-        matchingIndices.singleOrNull()?.let { index -> remove(index) }
+        matchingIndices.singleOrNull()
+            ?.takeIf { it != current.currentIndex }
+            ?.let { index -> remove(index) }
     }
 
     fun removeIndices(indices: Collection<Int>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->

@@ -7,17 +7,13 @@ internal data class QueuePlaylistExport(
     val skippedCount: Int
 )
 
-internal fun prepareQueuePlaylistExport(
-    tracks: List<Track>,
-    unavailableLocalUris: Set<String>
-): QueuePlaylistExport {
+internal fun prepareQueuePlaylistExport(tracks: List<Track>): QueuePlaylistExport {
     val eligible = tracks.filter { track ->
         val localUri = track.streamUrl.startsWith("content://", ignoreCase = true) ||
             track.streamUrl.startsWith("file://", ignoreCase = true)
         track.id.isNotBlank() &&
             track.title.isNotBlank() &&
-            !localUri &&
-            track.streamUrl !in unavailableLocalUris
+            !localUri
     }
     return QueuePlaylistExport(
         tracks = eligible,

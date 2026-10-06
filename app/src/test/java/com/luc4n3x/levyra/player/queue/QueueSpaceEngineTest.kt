@@ -379,6 +379,21 @@ class QueueSpaceEngineTest {
     }
 
     @Test
+    fun referencedRemovalRejectsTheCurrentTrack() = runBlocking {
+        val storage = FakeQueueSpaceStorage()
+        storage.put(persisted("a", listOf(track("1"), track("2"), track("3")), 1, 6_000L))
+        storage.activeId = "a"
+        val engine = PersistentQueueEngine(storage, ManualDispatcher())
+        val restored = engine.restore(emptyList(), -1, 0L)
+
+        val result = engine.remove("a", restored.tracks[1])
+
+        assertNull(result)
+        assertEquals(listOf("1", "2", "3"), engine.state.value.tracks.map { it.id })
+        assertEquals("2", engine.state.value.currentTrack?.id)
+    }
+
+    @Test
     fun referencedRemovalAfterCurrentKeepsCurrentIndex() = runBlocking {
         val storage = FakeQueueSpaceStorage()
         storage.put(persisted("a", listOf(track("1"), track("2"), track("3")), 1, 6_000L))
