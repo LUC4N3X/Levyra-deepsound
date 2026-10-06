@@ -6982,11 +6982,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     if (!isNavigableArtistName(fallback.name)) {
                         fallback
                     } else {
-                        val resolved = if (fallback.browseId.isNotBlank()) {
-                            artistRepository.artistHit(fallback.browseId, fallback.name)
-                        } else {
-                            artistRepository.artistHitFor(fallback.name)
-                        }
+                        val resolved = runCatchingPreservingCancellation {
+                            if (fallback.browseId.isNotBlank()) {
+                                artistRepository.artistHit(fallback.browseId, fallback.name)
+                            } else {
+                                artistRepository.artistHitFor(fallback.name)
+                            }
+                        }.getOrNull()
                         resolved?.copy(
                             name = fallback.name,
                             browseId = fallback.browseId.ifBlank { resolved.browseId }
