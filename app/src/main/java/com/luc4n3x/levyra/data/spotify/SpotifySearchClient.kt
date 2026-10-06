@@ -184,13 +184,12 @@ internal class SpotifySearchClient(
             val data = wrapper.optJSONObject("data") ?: continue
             val name = data.optJSONObject("profile")?.optString("name").orEmpty().trim()
             if (name.isBlank()) continue
-            val uri = data.optString("uri").trim()
             val sources = data.optJSONObject("visuals")?.optJSONObject("avatarImage")?.optJSONArray("sources")
             val (thumbnail, _) = selectArtworkUrls(sources)
             results.add(
                 ArtistHit(
                     name = name,
-                    browseId = uri,
+                    browseId = "",
                     thumbnailUrl = thumbnail,
                     subscribers = "",
                     accentStart = 0,
@@ -211,7 +210,6 @@ internal class SpotifySearchClient(
             val data = wrapper.optJSONObject("data") ?: continue
             val name = data.optString("name").trim()
             if (name.isBlank()) continue
-            val uri = data.optString("uri").trim()
             val artistsArray = data.optJSONObject("artists")?.optJSONArray("items")
             val artistLine = parseArtistNames(artistsArray).joinToString(", ")
             val year = data.optJSONObject("date")?.optString("year").orEmpty().trim()
@@ -219,7 +217,7 @@ internal class SpotifySearchClient(
             val (thumbnail, _) = selectArtworkUrls(coverSources)
             results.add(
                 AlbumHit(
-                    browseId = uri,
+                    browseId = "",
                     title = name,
                     artist = artistLine,
                     year = year,

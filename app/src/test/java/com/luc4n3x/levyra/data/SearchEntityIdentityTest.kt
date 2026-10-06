@@ -157,6 +157,39 @@ class SearchEntityIdentityTest {
         assertEquals(3_600_000_000L, merged.single().youtubeViewCount)
     }
 
+
+
+    @Test
+    fun `local recording keeps local identity when merged with remote duplicate`() {
+        val local = track(
+            id = "local:yellow",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            streamUrl = "content://media/external/audio/42",
+            source = "Offline"
+        )
+        val remote = track(
+            id = "AbCdEf12345",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            videoUrl = "https://www.youtube.com/watch?v=AbCdEf12345",
+            source = "YouTube Music"
+        )
+
+        val localFirst = mergeSearchSongs(listOf(local), listOf(remote)).single()
+        val localSecond = mergeSearchSongs(listOf(remote), listOf(local)).single()
+
+        listOf(localFirst, localSecond).forEach { merged ->
+            assertEquals("local:yellow", merged.id)
+            assertEquals("Offline", merged.source)
+            assertEquals("content://media/external/audio/42", merged.streamUrl)
+        }
+    }
+
     @Test
     fun `different song variants remain separate`() {
         val merged = deduplicateSearchSongs(
