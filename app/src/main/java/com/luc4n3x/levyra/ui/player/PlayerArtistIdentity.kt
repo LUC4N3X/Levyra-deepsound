@@ -6,12 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,8 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,98 +36,62 @@ import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 private const val PlayerArtistAvatarLimit = 2
-private val PlayerArtistAvatarSize = 34.dp
-private val PlayerArtistAvatarStep = 25.dp
+private val PlayerTopArtistAvatarSize = 46.dp
+private val PlayerTopArtistAvatarStep = 34.dp
 private val PlayerArtistPickerAvatar = 78.dp
 private val PlayerArtistPickerCardWidth = 118.dp
 
 @Composable
-internal fun PlayerArtistIdentityRow(
-    track: Track,
-    artists: List<ArtistHit>,
-    surfaces: PlayerSurfaceTokens,
-    style: TextStyle,
-    openArtistLabel: String,
-    enabled: Boolean,
-    onArtistClick: (Int) -> Unit,
-    onGroupClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (artists.size > 1) {
-            PlayerArtistAvatarStack(
-                artists = artists,
-                surfaces = surfaces,
-                contentDescription = openArtistLabel,
-                enabled = enabled,
-                onClick = onGroupClick
-            )
-            Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceSm))
-        }
-        PlayerArtistText(
-            track = track,
-            color = surfaces.contentMuted,
-            style = style,
-            onClickLabel = openArtistLabel,
-            onArtistClick = onArtistClick,
-            enabled = enabled,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun PlayerArtistAvatarStack(
+internal fun PlayerTopArtistCluster(
     artists: List<ArtistHit>,
     surfaces: PlayerSurfaceTokens,
     contentDescription: String,
-    enabled: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    if (artists.size < 2) return
+
     val visible = artists.take(PlayerArtistAvatarLimit)
     val overflow = (artists.size - visible.size).coerceAtLeast(0)
     val slots = visible.size + if (overflow > 0) 1 else 0
-    val totalWidth = PlayerArtistAvatarSize +
-        PlayerArtistAvatarStep * (slots - 1).coerceAtLeast(0).toFloat()
+    val totalWidth = PlayerTopArtistAvatarSize +
+        PlayerTopArtistAvatarStep * (slots - 1).coerceAtLeast(0).toFloat()
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .width(totalWidth)
-            .height(PlayerArtistAvatarSize)
+            .height(PlayerTopArtistAvatarSize)
             .clickable(
-                enabled = enabled,
                 role = Role.Button,
                 onClickLabel = contentDescription,
                 onClick = onClick
             )
     ) {
         visible.forEachIndexed { index, artist ->
-            PlayerArtistAvatar(
+            PlayerTopArtistAvatar(
                 artist = artist,
                 surfaces = surfaces,
                 modifier = Modifier
-                    .offset(x = PlayerArtistAvatarStep * index.toFloat())
+                    .offset(x = PlayerTopArtistAvatarStep * index.toFloat())
                     .zIndex(index.toFloat())
             )
         }
         if (overflow > 0) {
             Box(
                 modifier = Modifier
-                    .offset(x = PlayerArtistAvatarStep * visible.size.toFloat())
+                    .offset(x = PlayerTopArtistAvatarStep * visible.size.toFloat())
                     .zIndex(visible.size.toFloat())
-                    .size(PlayerArtistAvatarSize)
+                    .size(PlayerTopArtistAvatarSize)
+                    .shadow(8.dp, CircleShape)
                     .clip(CircleShape)
                     .background(surfaces.control)
-                    .border(1.dp, surfaces.content.copy(alpha = 0.18f), CircleShape),
+                    .border(1.dp, surfaces.content.copy(alpha = 0.20f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "+$overflow",
                     color = surfaces.content,
-                    fontSize = 11.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -139,30 +100,35 @@ private fun PlayerArtistAvatarStack(
 }
 
 @Composable
-private fun PlayerArtistAvatar(
+private fun PlayerTopArtistAvatar(
     artist: ArtistHit,
     surfaces: PlayerSurfaceTokens,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
-            .size(PlayerArtistAvatarSize)
+            .size(PlayerTopArtistAvatarSize)
+            .shadow(8.dp, CircleShape)
             .clip(CircleShape)
             .background(surfaces.controlQuiet)
-            .border(1.dp, surfaces.content.copy(alpha = 0.18f), CircleShape)
+            .border(2.dp, surfaces.surface, CircleShape)
     ) {
         SeamlessArtworkImage(
             url = artist.thumbnailUrl,
             contentDescription = artist.name,
             modifier = Modifier.fillMaxSize()
         ) {
-            PlayerArtistInitial(artist.name, surfaces)
+            PlayerArtistInitial(artist.name, surfaces, 15.sp)
         }
     }
 }
 
 @Composable
-private fun PlayerArtistInitial(name: String, surfaces: PlayerSurfaceTokens) {
+private fun PlayerArtistInitial(
+    name: String,
+    surfaces: PlayerSurfaceTokens,
+    fontSize: androidx.compose.ui.unit.TextUnit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -172,7 +138,7 @@ private fun PlayerArtistInitial(name: String, surfaces: PlayerSurfaceTokens) {
         Text(
             text = name.trim().firstOrNull()?.uppercaseChar()?.toString().orEmpty(),
             color = surfaces.content,
-            fontSize = 13.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.Bold
         )
     }
@@ -284,7 +250,7 @@ private fun PlayerArtistPickerCard(
                 contentDescription = artist.name,
                 modifier = Modifier.fillMaxSize()
             ) {
-                PlayerArtistInitial(artist.name, surfaces)
+                PlayerArtistInitial(artist.name, surfaces, 24.sp)
             }
         }
         Text(
