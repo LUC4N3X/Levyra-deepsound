@@ -17,7 +17,7 @@ internal data class ArtworkPalette(
 )
 
 internal object ArtworkPaletteCache {
-    private const val preferencesName = "levyra_artwork_palette_v1"
+    private const val preferencesName = "levyra_artwork_palette_v2"
     private const val orderKey = "__order__"
     private const val persistentLimit = 128
     private const val memoryLimit = 96
