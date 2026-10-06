@@ -44,6 +44,21 @@ class ArtistReferenceTest {
         assertNull(artistReferenceOf(track, 2))
     }
 
+
+    @Test
+    fun `invalid earlier credit does not shift later artist index`() {
+        val track = track(
+            artist = "X, Queen",
+            browseIds = listOf("UCinvalid", "UCqueen")
+        )
+
+        assertNull(artistReferenceOf(track, 0))
+        assertEquals(
+            ArtistReference(name = "Queen", browseId = "UCqueen"),
+            artistReferenceOf(track, 1)
+        )
+    }
+
     @Test
     fun `featuring credit resolves to the main artist`() {
         assertEquals("Dua Lipa", artistReferenceOf(track(artist = "Dua Lipa feat. DaBaby"))?.name)
