@@ -33,7 +33,9 @@ internal class YoutubeMusicSearchBackend(
 
     override suspend fun spotifyOverview(query: String): SearchResults? =
         withContext(Dispatchers.IO) {
-            runCatching { spotifyClient.search(query) }.getOrNull()
+            runCatching { spotifyClient.search(query) }
+                .getOrNull()
+                ?.copy(playlists = emptyList())
         }
 
     override suspend fun section(
