@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.domain.ExploreCategory
+import com.luc4n3x.levyra.domain.ExploreZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -44,4 +45,28 @@ class ExploreDestinationScreensTest {
         assertNull(exploreCategoryDestinationValue("explore-destination-provider-category:not-valid"))
         assertNull(exploreCategoryDestinationValue(ExploreMoodsDestination))
     }
+
+    @Test
+    fun fullMoodsDestinationKeepsTheCuratedExploreCards() {
+        val zones = listOf(
+            zone("nuove-uscite"),
+            zone("local-wave"),
+            zone("rap-drill"),
+            zone("rap-drill")
+        )
+
+        assertEquals(
+            listOf("nuove-uscite", "local-wave", "rap-drill"),
+            destinationCuratedExploreZones(zones).map { it.id }
+        )
+    }
+
+    private fun zone(id: String): ExploreZone = ExploreZone(
+        id = id,
+        label = id,
+        emoji = "🎧",
+        query = id,
+        accentStart = 0xFF00E5FF.toInt(),
+        accentEnd = 0xFF2979FF.toInt()
+    )
 }
