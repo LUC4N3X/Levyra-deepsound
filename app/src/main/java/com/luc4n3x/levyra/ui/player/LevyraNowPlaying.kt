@@ -348,6 +348,10 @@ fun LevyraNowPlaying(
         val layoutMode = resolveLevyraLayoutMode(maxWidth.value, maxHeight.value)
         val compactLandscape = isLevyraCompactLandscape(maxWidth.value, maxHeight.value)
         val playerPane = resolveNowPlayingPane(maxWidth.value, maxHeight.value, state.isVideoMode)
+        val showTopArtistCluster = playerArtistHits.size > 1 &&
+            !liveRadio &&
+            !state.isVideoMode &&
+            playerPane != LevyraPlayerPane.SideBySide
         val deckLayout = resolvePlayerDeckLayout(
             mode = visualMode,
             isVideoMode = state.isVideoMode,
@@ -427,7 +431,8 @@ fun LevyraNowPlaying(
         val estimatedHeroBottom = playerCinematicStackedHeroBottom(
             statusBarTop = statusBarTop,
             chromeTopPadding = LevyraPlayerDesign.SpaceXs,
-            headerHeight = LevyraPlayerDesign.MinimumTouchTarget,
+            headerHeight = LevyraPlayerDesign.MinimumTouchTarget +
+                if (showTopArtistCluster) 52.dp else 0.dp,
             itemSpacing = LevyraPlayerDesign.SpaceLg,
             heroVerticalPadding = 0.dp,
             artworkSize = min(maxWidth - gutter * 2, maxHeight * 0.42f)
@@ -671,7 +676,21 @@ fun LevyraNowPlaying(
                 }
             }
         }
-        val headerBlock: @Composable () -> Unit = { headerRow(headerCentered) }
+        val headerBlock: @Composable () -> Unit = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                headerRow(headerCentered)
+                if (showTopArtistCluster) {
+                    Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceXs))
+                    PlayerTopArtistCluster(
+                        artists = playerArtistHits,
+                        surfaces = surfaces,
+                        contentDescription = strings.openArtist,
+                        onClick = { showArtistPicker = true },
+                        modifier = Modifier.padding(start = LevyraPlayerDesign.SpaceXs)
+                    )
+                }
+            }
+        }
 
         val mediaHeroBlock: @Composable (Track, Dp, Dp?) -> Unit = { activeTrack, heroSize, cornerOverride ->
             val artworkCorner = cornerOverride ?: LevyraPlayerShapes.artworkCorner(heroSize)
@@ -938,14 +957,9 @@ fun LevyraNowPlaying(
                     compact = compactPlayer,
                     openArtistLabel = strings.openArtist,
                     favoritesLabel = strings.favoritesPlain,
-                    artistHits = if (activeTrack.id == track?.id) playerArtistHits else emptyList(),
                     onArtistClick = { artistIndex ->
                         playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
                             ?: viewModel.openArtist(activeTrack, artistIndex)
-                    },
-                    onArtistGroupClick = {
-                        if (playerArtistHits.size > 1) showArtistPicker = true
-                        else viewModel.openArtist(activeTrack)
                     },
                     onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
                     modifier = lyricsFlipSwipeModifier
@@ -1098,14 +1112,9 @@ fun LevyraNowPlaying(
                 compact = compactPlayer,
                 scrollable = !fitsViewport,
                 gutter = gutter,
-                artistHits = playerArtistHits,
                 onArtistClick = { artistIndex ->
                     playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
                         ?: viewModel.openArtist(track, artistIndex)
-                },
-                onArtistGroupClick = {
-                    if (playerArtistHits.size > 1) showArtistPicker = true
-                    else viewModel.openArtist(track)
                 },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
                 headlineModifier = lyricsFlipSwipeModifier,
