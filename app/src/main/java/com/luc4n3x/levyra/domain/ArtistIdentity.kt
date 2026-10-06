@@ -110,11 +110,11 @@ internal fun artistCredits(value: String, artistBrowseIds: List<String>): List<A
         .map(String::trim)
         .filter(String::isNotBlank)
 
-    if (names.size < browseIds.size) {
+    if (names.size != browseIds.size) {
         return listOf(ArtistCredit(name = primary, browseId = browseIds.first()))
     }
 
-    return names.take(browseIds.size).mapIndexed { index, name ->
+    return names.mapIndexed { index, name ->
         ArtistCredit(name = name, browseId = browseIds[index])
     }
 }
