@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
@@ -58,7 +59,9 @@ internal fun PlayerTrackMetadata(
     compact: Boolean,
     openArtistLabel: String,
     favoritesLabel: String,
+    artistHits: List<ArtistHit>,
     onArtistClick: (Int) -> Unit,
+    onArtistGroupClick: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -96,26 +99,21 @@ internal fun PlayerTrackMetadata(
                         Modifier
                     }
                 )
-                Row(
-                    modifier = Modifier
-                        .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                        .widthIn(min = LevyraPlayerDesign.MinimumTouchTarget),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    PlayerArtistText(
-                        track = shown,
-                        color = surfaces.contentMuted,
-                        style = TextStyle(
-                            fontSize = artistSize,
-                            lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = (-0.1).sp
-                        ),
-                        onClickLabel = openArtistLabel,
-                        onArtistClick = onArtistClick,
-                        enabled = isCurrent
-                    )
-                }
+                PlayerArtistIdentityRow(
+                    track = shown,
+                    artists = if (isCurrent) artistHits else emptyList(),
+                    surfaces = surfaces,
+                    style = TextStyle(
+                        fontSize = artistSize,
+                        lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = (-0.1).sp
+                    ),
+                    openArtistLabel = openArtistLabel,
+                    enabled = isCurrent,
+                    onArtistClick = onArtistClick,
+                    onGroupClick = onArtistGroupClick
+                )
             }
         }
         Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceMd))
