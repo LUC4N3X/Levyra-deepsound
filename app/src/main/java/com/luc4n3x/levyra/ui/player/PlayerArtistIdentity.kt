@@ -111,7 +111,7 @@ private fun PlayerTopArtistAvatar(
             .shadow(8.dp, CircleShape)
             .clip(CircleShape)
             .background(surfaces.controlQuiet)
-            .border(2.dp, surfaces.surface, CircleShape)
+            .border(2.dp, surfaces.outline.copy(alpha = 0.72f), CircleShape)
     ) {
         SeamlessArtworkImage(
             url = artist.thumbnailUrl,
