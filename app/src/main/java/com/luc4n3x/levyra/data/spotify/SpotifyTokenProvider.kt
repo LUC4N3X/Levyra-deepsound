@@ -98,7 +98,7 @@ internal class SpotifyTokenProvider private constructor(
             for (index in 0 until cipher.length()) {
                 val value = cipher.optInt(index, -1)
                 if (value !in 0..255) error("Spotify TOTP material is invalid")
-                append(value xor ((index % 33) + 9))
+                append(value xor (index % 33 + 9))
             }
         }.toByteArray(StandardCharsets.US_ASCII)
         return TotpMaterial(version, decoded)

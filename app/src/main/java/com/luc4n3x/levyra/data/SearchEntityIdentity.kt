@@ -326,39 +326,52 @@ private fun <T> entityKeys(
     }
 }
 
-internal fun richerSong(current: Track, candidate: Track): Track {
+private fun selectSongMetadataDonor(current: Track, candidate: Track): Track {
     val currentIsSpotify = isSpotifyTrack(current)
     val candidateIsSpotify = isSpotifyTrack(candidate)
-
-    val currentHasYtId = isPlayableYoutubeId(current.id) || current.counterpartVideoId.isNotBlank()
-    val candidateHasYtId = isPlayableYoutubeId(candidate.id) || candidate.counterpartVideoId.isNotBlank()
-
-    val metadataDonor = when {
+    return when {
         currentIsSpotify && !candidateIsSpotify -> current
         !currentIsSpotify && candidateIsSpotify -> candidate
         else -> current
     }
+}
 
-    val playbackDonor = when {
+private fun selectSongPlaybackDonor(current: Track, candidate: Track): Track {
+    val currentHasYtId = isPlayableYoutubeId(current.id) || current.counterpartVideoId.isNotBlank()
+    val candidateHasYtId = isPlayableYoutubeId(candidate.id) || candidate.counterpartVideoId.isNotBlank()
+    return when {
         candidateHasYtId && !currentHasYtId -> candidate
         currentHasYtId -> current
         candidate.videoUrl.isNotBlank() && current.videoUrl.isBlank() -> candidate
         else -> current
     }
+}
 
-    val maxViewCount = maxOf(current.youtubeViewCount, candidate.youtubeViewCount)
+private fun resolveMergedSongId(current: Track, candidate: Track, playbackDonor: Track): String {
+    val nonSpotify = sequenceOf(playbackDonor.id, current.id, candidate.id)
+        .firstOrNull { it.isNotBlank() && !it.startsWith("spotify:") }
+    return nonSpotify ?: current.id.ifBlank { candidate.id }
+}
 
-    val mergedId = if (playbackDonor.id.isNotBlank() && !playbackDonor.id.startsWith("spotify:")) {
-        playbackDonor.id
-    } else if (current.id.isNotBlank() && !current.id.startsWith("spotify:")) {
-        current.id
-    } else if (candidate.id.isNotBlank() && !candidate.id.startsWith("spotify:")) {
-        candidate.id
-    } else {
-        current.id.ifBlank { candidate.id }
-    }
+private fun resolveMergedVideoId(mergedId: String, current: Track, candidate: Track, playbackDonor: Track): String {
+    if (isPlayableYoutubeId(mergedId)) return mergedId
+    return sequenceOf(playbackDonor.counterpartVideoId, current.counterpartVideoId, candidate.counterpartVideoId)
+        .firstOrNull(String::isNotBlank)
+        .orEmpty()
+}
 
-    val videoId = if (isPlayableYoutubeId(mergedId)) mergedId else playbackDonor.counterpartVideoId.ifBlank { current.counterpartVideoId.ifBlank { candidate.counterpartVideoId } }
+private fun selectBestDuration(metadataDonor: Track, current: Track, candidate: Track): Long {
+    if (metadataDonor.durationMs > 0L) return metadataDonor.durationMs
+    if (current.durationMs > 0L) return current.durationMs
+    return candidate.durationMs
+}
+
+internal fun richerSong(current: Track, candidate: Track): Track {
+    val isAnySpotify = isSpotifyTrack(current) || isSpotifyTrack(candidate)
+    val metadataDonor = selectSongMetadataDonor(current, candidate)
+    val playbackDonor = selectSongPlaybackDonor(current, candidate)
+    val mergedId = resolveMergedSongId(current, candidate, playbackDonor)
+    val videoId = resolveMergedVideoId(mergedId, current, candidate, playbackDonor)
 
     val videoUrl = playbackDonor.videoUrl.ifBlank {
         if (videoId.isNotBlank()) "https://www.youtube.com/watch?v=$videoId"
@@ -366,7 +379,9 @@ internal fun richerSong(current: Track, candidate: Track): Track {
     }
 
     val counterpart = videoId.ifBlank {
-        playbackDonor.counterpartVideoId.ifBlank { current.counterpartVideoId.ifBlank { candidate.counterpartVideoId } }
+        sequenceOf(playbackDonor.counterpartVideoId, current.counterpartVideoId, candidate.counterpartVideoId)
+            .firstOrNull(String::isNotBlank)
+            .orEmpty()
     }
 
     val audioVideoId = playbackDonor.audioVideoId.ifBlank {
@@ -382,7 +397,7 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         album = metadataDonor.album.ifBlank { current.album.ifBlank { candidate.album } },
         albumBrowseId = current.albumBrowseId.ifBlank { candidate.albumBrowseId },
         artistBrowseIds = current.artistBrowseIds.ifEmpty { candidate.artistBrowseIds },
-        durationMs = if (metadataDonor.durationMs > 0L) metadataDonor.durationMs else (if (current.durationMs > 0L) current.durationMs else candidate.durationMs),
+        durationMs = selectBestDuration(metadataDonor, current, candidate),
         videoUrl = videoUrl,
         streamUrl = if (playbackDonor.streamUrl.isNotBlank()) playbackDonor.streamUrl else current.streamUrl.ifBlank { candidate.streamUrl },
         counterpartVideoId = counterpart,
@@ -390,10 +405,10 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         videoType = playbackDonor.videoType.ifBlank { current.videoType.ifBlank { candidate.videoType } },
         isrc = metadataDonor.isrc.ifBlank { current.isrc.ifBlank { candidate.isrc } },
         explicit = current.explicit || candidate.explicit,
-        source = if (currentIsSpotify || candidateIsSpotify) "spotify_youtube" else current.source.ifBlank { candidate.source },
-        metadataProvider = if (currentIsSpotify || candidateIsSpotify) "spotify" else current.metadataProvider.ifBlank { candidate.metadataProvider },
+        source = if (isAnySpotify) "spotify_youtube" else current.source.ifBlank { candidate.source },
+        metadataProvider = if (isAnySpotify) "spotify" else current.metadataProvider.ifBlank { candidate.metadataProvider },
         metadataConfidence = maxOf(current.metadataConfidence, candidate.metadataConfidence),
-        youtubeViewCount = maxViewCount
+        youtubeViewCount = maxOf(current.youtubeViewCount, candidate.youtubeViewCount)
     )
 }
 
