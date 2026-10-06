@@ -1230,6 +1230,7 @@ private fun HomeSectionHeader(
     title: String,
     subtitle: String? = null,
     onPlayAll: (() -> Unit)? = null,
+    onShowAll: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -1266,6 +1267,9 @@ private fun HomeSectionHeader(
                     fontWeight = FontWeight.Medium
                 )
             }
+        }
+        onShowAll?.let { action ->
+            HomeOutlinedAction(label = strings.showAll, onClick = action)
         }
         onPlayAll?.let { action ->
             HomeOutlinedAction(label = strings.playAll, onClick = action)
@@ -23909,7 +23913,14 @@ private fun ExploreScreen(
                             subtitle = strings.exploreSamplesSubtitle,
                             onPlayAll = onPlaySamples
                         )
-                        ExploreAnchor.Moods -> ExploreSectionHeader(title = strings.exploreMoods)
+                        ExploreAnchor.Moods -> ExploreSectionHeader(
+                            title = strings.exploreMoods,
+                            onShowAll = {
+                                samplesStartIndex = null
+                                exploreMoodReturn = null
+                                exploreDestination = ExploreMoodsDestination
+                            }
+                        )
                     }
                     ExploreRow.FreshLoading -> Box(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
@@ -23955,8 +23966,8 @@ private fun ExploreScreen(
                         }
                     )
                     is ExploreRow.MoodPair -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         ExploreMoodCard(
                             zone = row.leading,
@@ -24166,12 +24177,14 @@ private fun ExploreMoodCollectionDestination(
 private fun ExploreSectionHeader(
     title: String,
     subtitle: String? = null,
-    onPlayAll: (() -> Unit)? = null
+    onPlayAll: (() -> Unit)? = null,
+    onShowAll: (() -> Unit)? = null
 ) {
     HomeSectionHeader(
         title = title,
         subtitle = subtitle,
         onPlayAll = onPlayAll,
+        onShowAll = onShowAll,
         modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
     )
 }

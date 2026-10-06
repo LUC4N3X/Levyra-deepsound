@@ -872,8 +872,8 @@ internal fun ExploreMoodsDestinationScreen(
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
-    val fallbackGenres = remember(zones, sections) {
-        fallbackExploreGenres(zones, sections)
+    val fallbackGenres = remember(zones) {
+        destinationCuratedExploreZones(zones)
     }
 
     ExploreDestinationSurface(
@@ -896,16 +896,8 @@ internal fun ExploreMoodsDestinationScreen(
     }
 }
 
-private fun fallbackExploreGenres(
-    zones: List<ExploreZone>,
-    sections: List<ExploreCategorySection>
-): List<ExploreZone> = if (
-    sections.any { section -> section.presentation == ExploreCategoryPresentation.Structured }
-) {
-    emptyList()
-} else {
-    exploreFallbackGenres(zones)
-}
+internal fun destinationCuratedExploreZones(zones: List<ExploreZone>): List<ExploreZone> =
+    zones.distinctBy { zone -> zone.id }
 
 @Composable
 private fun ExploreMoodsList(
@@ -919,6 +911,13 @@ private fun ExploreMoodsList(
     onOpenCategory: (ExploreCategory) -> Unit,
     onRequestCategoryArtwork: (String, Boolean) -> Unit
 ) {
+    val bridgeZone = remember(sections, fallbackGenres) {
+        exploreCuratedBridgeZone(sections, fallbackGenres)
+    }
+    val remainingFallbackGenres = remember(fallbackGenres, bridgeZone) {
+        if (bridgeZone == null) fallbackGenres else fallbackGenres.drop(1)
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -934,12 +933,13 @@ private fun ExploreMoodsList(
             sections = sections,
             categoryArtwork = categoryArtwork,
             strings = strings,
+            bridgeZone = bridgeZone,
+            onOpenZone = onOpenZone,
             onOpenCategory = onOpenCategory,
             onRequestCategoryArtwork = onRequestCategoryArtwork
         )
         exploreFallbackGenreItems(
-            fallbackGenres = fallbackGenres,
-            strings = strings,
+            fallbackGenres = remainingFallbackGenres,
             onOpenZone = onOpenZone
         )
         exploreMoodEmptyItem(
@@ -974,18 +974,29 @@ private fun LazyListScope.exploreMoodLoadingItems(
     }
 }
 
+internal fun exploreCuratedBridgeZone(
+    sections: List<ExploreCategorySection>,
+    fallbackGenres: List<ExploreZone>
+): ExploreZone? = fallbackGenres.firstOrNull()?.takeIf {
+    sections.lastOrNull()?.categories?.size?.rem(2) == 1
+}
+
 private fun LazyListScope.exploreProviderCategoryItems(
     sections: List<ExploreCategorySection>,
     categoryArtwork: Map<String, String>,
     strings: LevyraStrings,
+    bridgeZone: ExploreZone?,
+    onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit,
     onRequestCategoryArtwork: (String, Boolean) -> Unit
 ) {
-    sections.forEach { section ->
+    sections.forEachIndexed { index, section ->
         exploreProviderCategorySection(
             section = section,
             categoryArtwork = categoryArtwork,
             strings = strings,
+            trailingZone = bridgeZone.takeIf { index == sections.lastIndex },
+            onOpenZone = onOpenZone,
             onOpenCategory = onOpenCategory,
             onRequestCategoryArtwork = onRequestCategoryArtwork
         )
@@ -996,6 +1007,8 @@ private fun LazyListScope.exploreProviderCategorySection(
     section: ExploreCategorySection,
     categoryArtwork: Map<String, String>,
     strings: LevyraStrings,
+    trailingZone: ExploreZone?,
+    onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit,
     onRequestCategoryArtwork: (String, Boolean) -> Unit
 ) {
@@ -1014,6 +1027,8 @@ private fun LazyListScope.exploreProviderCategorySection(
             pair = pair,
             prominent = prominent,
             categoryArtwork = categoryArtwork,
+            trailingZone = trailingZone.takeIf { index == pairs.lastIndex && pair.size == 1 },
+            onOpenZone = onOpenZone,
             onOpenCategory = onOpenCategory,
             onRequestCategoryArtwork = onRequestCategoryArtwork
         )
@@ -1036,6 +1051,8 @@ private fun ExploreProviderCategoryRow(
     pair: List<ExploreCategory>,
     prominent: Boolean,
     categoryArtwork: Map<String, String>,
+    trailingZone: ExploreZone?,
+    onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit,
     onRequestCategoryArtwork: (String, Boolean) -> Unit
 ) {
@@ -1058,19 +1075,30 @@ private fun ExploreProviderCategoryRow(
                 onClick = { onOpenCategory(category) }
             )
         }
-        if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+        if (pair.size == 1) {
+            if (trailingZone != null) {
+                val artworkUrl = rememberExploreMoodArtworkUrl(trailingZone)
+                ExploreDiscoveryCategoryCard(
+                    title = trailingZone.label,
+                    identity = trailingZone.id,
+                    artworkUrl = artworkUrl,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    onClick = { onOpenZone(trailingZone) }
+                )
+            } else {
+                ExploreDiscoveryCategoryPlaceholder(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
+            }
+        }
     }
 }
 
 private fun LazyListScope.exploreFallbackGenreItems(
     fallbackGenres: List<ExploreZone>,
-    strings: LevyraStrings,
     onOpenZone: (ExploreZone) -> Unit
 ) {
     if (fallbackGenres.isEmpty()) return
-    item(key = "editorial-genres-header") {
-        ExploreCategorySectionHeader(strings.genres)
-    }
     items(
         items = fallbackGenres.chunked(2),
         key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
@@ -1089,10 +1117,11 @@ private fun ExploreFallbackGenreRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         pair.forEach { zone ->
+            val artworkUrl = rememberExploreMoodArtworkUrl(zone)
             ExploreDiscoveryCategoryCard(
                 title = zone.label,
                 identity = zone.id,
-                emoji = zone.emoji,
+                artworkUrl = artworkUrl,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { onOpenZone(zone) }
             )
@@ -1153,7 +1182,7 @@ private fun exploreCategoryCardMetrics(prominent: Boolean): ExploreCategoryCardM
             emojiSize = 30.sp,
             placeholderSize = 38.dp,
             titleSize = 17.sp,
-            titleWidthFraction = 0.62f
+            titleWidthFraction = 0.68f
         )
     } else {
         ExploreCategoryCardMetrics(
@@ -1161,7 +1190,7 @@ private fun exploreCategoryCardMetrics(prominent: Boolean): ExploreCategoryCardM
             emojiSize = 26.sp,
             placeholderSize = 34.dp,
             titleSize = 16.sp,
-            titleWidthFraction = 0.60f
+            titleWidthFraction = 0.70f
         )
     }
 
@@ -1180,7 +1209,7 @@ private fun ExploreDiscoveryCategoryCard(
     val metrics = exploreCategoryCardMetrics(prominent)
     val longTitle = !prominent && title.length >= 18
     val titleSize = if (longTitle) 15.sp else metrics.titleSize
-    val titleWidthFraction = if (longTitle) 0.72f else metrics.titleWidthFraction
+    val titleWidthFraction = if (longTitle) 0.78f else metrics.titleWidthFraction
     Box(
         modifier = modifier
             .clip(shape)
