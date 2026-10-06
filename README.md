@@ -65,14 +65,6 @@ Play streamed music and your own files in the same app, save tracks for offline 
 
 ---
 
-## ✦ Documentation
-
-Looking for detailed information about Levyra? The full documentation covers features, setup, configuration, audio, providers, troubleshooting, architecture, and more.
-
-**[Open the full Levyra documentation →](https://levyra.dpdns.org/docs/)**
-
----
-
 > [!IMPORTANT]
 > **Legal & responsible use · No piracy.** Levyra is independent open-source client software and does not host or distribute third-party music. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Use Levyra only with media you are allowed to access or save, and follow the terms of any third-party service you use.
 >
@@ -81,6 +73,10 @@ Looking for detailed information about Levyra? The full documentation covers fea
 > Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
 
 ## ✦ Why Levyra
+
+Looking for detailed information about Levyra? The full documentation covers features, setup, configuration, audio, providers, troubleshooting, architecture, and more.
+
+[**Open the full Levyra documentation →**](https://levyra.dpdns.org/docs/)
 
 I started Levyra because I wanted one player for the music I stream and the files I already have. I wanted local tracks to feel like part of the same library, with playlists, history and downloads that do not depend on a Levyra account.
 
