@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.domain.ExploreCategory
+import com.luc4n3x.levyra.domain.ExploreZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -44,4 +45,54 @@ class ExploreDestinationScreensTest {
         assertNull(exploreCategoryDestinationValue("explore-destination-provider-category:not-valid"))
         assertNull(exploreCategoryDestinationValue(ExploreMoodsDestination))
     }
+
+    @Test
+    fun fullMoodsDestinationKeepsTheCuratedExploreCards() {
+        val zones = listOf(
+            zone("nuove-uscite"),
+            zone("local-wave"),
+            zone("rap-drill"),
+            zone("rap-drill")
+        )
+
+        assertEquals(
+            listOf("nuove-uscite", "local-wave", "rap-drill"),
+            destinationCuratedExploreZones(zones).map { it.id }
+        )
+    }
+
+
+    @Test
+    fun oddProviderRowUsesFirstCuratedZoneInsteadOfLeavingAHole() {
+        val sections = listOf(
+            ExploreCategorySection(
+                key = "genres",
+                providerTitle = "Genres",
+                presentation = ExploreCategoryPresentation.Structured,
+                categories = listOf(
+                    ExploreCategory("R&B e soul", "rnb"),
+                    ExploreCategory("Reggae e caraibica", "reggae"),
+                    ExploreCategory("Rock", "rock")
+                )
+            )
+        )
+        val zones = listOf(zone("nuove-uscite"), zone("local-wave"))
+
+        assertEquals("nuove-uscite", exploreCuratedBridgeZone(sections, zones)?.id)
+        assertNull(
+            exploreCuratedBridgeZone(
+                sections.map { it.copy(categories = it.categories.dropLast(1)) },
+                zones
+            )
+        )
+    }
+
+    private fun zone(id: String): ExploreZone = ExploreZone(
+        id = id,
+        label = id,
+        emoji = "🎧",
+        query = id,
+        accentStart = 0xFF00E5FF.toInt(),
+        accentEnd = 0xFF2979FF.toInt()
+    )
 }
