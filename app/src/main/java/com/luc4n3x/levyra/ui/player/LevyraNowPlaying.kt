@@ -949,7 +949,7 @@ fun LevyraNowPlaying(
                     artistHits = if (activeTrack.id == track?.id) playerArtistHits else emptyList(),
                     onArtistClick = { artistIndex -> viewModel.openArtist(activeTrack, artistIndex) },
                     onArtistGroupClick = {
-                        if (hasMultipleStructuredArtists) showArtistPicker = true
+                        if (playerArtistHits.size > 1) showArtistPicker = true
                         else viewModel.openArtist(activeTrack)
                     },
                     onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
@@ -1106,7 +1106,7 @@ fun LevyraNowPlaying(
                 artistHits = playerArtistHits,
                 onArtistClick = { artistIndex -> viewModel.openArtist(track, artistIndex) },
                 onArtistGroupClick = {
-                    if (hasMultipleStructuredArtists) showArtistPicker = true
+                    if (playerArtistHits.size > 1) showArtistPicker = true
                     else viewModel.openArtist(track)
                 },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
@@ -1377,7 +1377,7 @@ fun LevyraNowPlaying(
                 },
                 onAmbient = viewModel::openAmbient,
                 onOpenArtist = {
-                    if (hasMultipleStructuredArtists) {
+                    if (playerArtistHits.size > 1) {
                         openArtistPickerAfterActions = true
                     } else {
                         viewModel.openArtist(track)
