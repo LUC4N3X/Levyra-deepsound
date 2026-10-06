@@ -383,6 +383,15 @@ class PersistentQueueEngine internal constructor(
         }
     }
 
+    suspend fun tracksForSpace(spaceId: String): List<Track>? = switchMutex.withLock {
+        if (spaceId.isBlank()) return@withLock null
+        val current = _state.value
+        if (current.spaceId == spaceId) return@withLock current.tracks.toList()
+        runCatchingPreservingCancellation { store.load(spaceId)?.tracks }
+            .onFailure { Timber.w(it, "Queue space playlist load failed") }
+            .getOrNull()
+    }
+
     private fun queueSpaceSeed(spaceId: String, tracks: List<Track>): PlaybackQueueSnapshot? {
         val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
         if (normalized.isEmpty()) return null
@@ -592,12 +601,24 @@ class PersistentQueueEngine internal constructor(
 
     fun remove(index: Int): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         if (index !in current.tracks.indices) return@mutate current
-        val removed = current.tracks[index]
-        undoRemoval = QueueRemoval(removed, index, tombstones.isAutomatic(current.spaceId, removed))
-        tombstones.recordRemoval(current.spaceId, listOf(removed))
-        val nextTracks = current.tracks.toMutableList().apply { removeAt(index) }
-        val nextCurrentIndex = queueRemovalCurrentIndex(index, current.currentIndex, nextTracks.lastIndex)
-        rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex).copy(undoAvailable = true)
+        removeAt(current, index)
+    }
+
+    fun remove(
+        expectedSpaceId: String,
+        expectedTrack: Track
+    ): PlaybackQueueSnapshot? = synchronized(lock) {
+        val current = _state.value
+        if (current.spaceId != expectedSpaceId) {
+            return@synchronized null
+        }
+        val expectedIdentity = playbackQueueIdentity(expectedTrack)
+        val matchingIndices = current.tracks.indices.filter { index ->
+            playbackQueueIdentity(current.tracks[index]) == expectedIdentity
+        }
+        matchingIndices.singleOrNull()
+            ?.takeIf { it != current.currentIndex }
+            ?.let { index -> remove(index) }
     }
 
     fun removeIndices(indices: Collection<Int>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
@@ -640,6 +661,15 @@ class PersistentQueueEngine internal constructor(
         nextTracks.add(to, moved)
         val nextCurrentIndex = currentIdentity?.let { key -> nextTracks.indexOfFirst { playbackQueueIdentity(it) == key } } ?: -1
         rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex)
+    }
+
+    private fun removeAt(current: PlaybackQueueSnapshot, index: Int): PlaybackQueueSnapshot {
+        val removed = current.tracks[index]
+        undoRemoval = QueueRemoval(removed, index, tombstones.isAutomatic(current.spaceId, removed))
+        tombstones.recordRemoval(current.spaceId, listOf(removed))
+        val nextTracks = current.tracks.toMutableList().apply { removeAt(index) }
+        val nextCurrentIndex = queueRemovalCurrentIndex(index, current.currentIndex, nextTracks.lastIndex)
+        return rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex).copy(undoAvailable = true)
     }
 
     fun updateTrackAt(index: Int, track: Track): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
