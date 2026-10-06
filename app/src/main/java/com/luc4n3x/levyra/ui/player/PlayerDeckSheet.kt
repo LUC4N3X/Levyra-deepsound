@@ -301,6 +301,7 @@ private fun PlayerDeckCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(48.dp)
                 .clip(labelShape)
                 .background(
                     if (selected) accent.copy(alpha = 0.14f)
