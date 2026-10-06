@@ -116,8 +116,7 @@ internal fun PlayerDeckSheet(
                     fontSize = 12.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 2,
                     modifier = Modifier.padding(top = 3.dp)
                 )
             }
