@@ -167,8 +167,7 @@ internal fun SearchSessionSnapshot.withOverview(raw: SearchResults, query: Strin
     }
     return copy(
         results = merged.copy(topTrack = resolvedTop),
-        carriedOver = false,
-        topLocked = topLocked || resolvedTop != null
+        carriedOver = false
     )
 }
 
