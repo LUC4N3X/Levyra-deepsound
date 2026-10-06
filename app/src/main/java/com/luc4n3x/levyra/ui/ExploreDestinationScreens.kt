@@ -1076,10 +1076,11 @@ private fun ExploreFallbackGenreRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         pair.forEach { zone ->
+            val artworkUrl = rememberExploreMoodArtworkUrl(zone)
             ExploreDiscoveryCategoryCard(
                 title = zone.label,
                 identity = zone.id,
-                emoji = zone.emoji,
+                artworkUrl = artworkUrl,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { onOpenZone(zone) }
             )
