@@ -872,8 +872,8 @@ internal fun ExploreMoodsDestinationScreen(
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val sections = remember(categories) { buildExploreCategorySections(categories) }
-    val fallbackGenres = remember(zones, sections) {
-        fallbackExploreGenres(zones, sections)
+    val fallbackGenres = remember(zones) {
+        destinationCuratedExploreZones(zones)
     }
 
     ExploreDestinationSurface(
@@ -896,16 +896,8 @@ internal fun ExploreMoodsDestinationScreen(
     }
 }
 
-private fun fallbackExploreGenres(
-    zones: List<ExploreZone>,
-    sections: List<ExploreCategorySection>
-): List<ExploreZone> = if (
-    sections.any { section -> section.presentation == ExploreCategoryPresentation.Structured }
-) {
-    emptyList()
-} else {
-    exploreFallbackGenres(zones)
-}
+internal fun destinationCuratedExploreZones(zones: List<ExploreZone>): List<ExploreZone> =
+    zones.distinctBy { zone -> zone.id }
 
 @Composable
 private fun ExploreMoodsList(
@@ -1069,7 +1061,7 @@ private fun LazyListScope.exploreFallbackGenreItems(
 ) {
     if (fallbackGenres.isEmpty()) return
     item(key = "editorial-genres-header") {
-        ExploreCategorySectionHeader(strings.genres)
+        ExploreCategorySectionHeader("Levyra")
     }
     items(
         items = fallbackGenres.chunked(2),
@@ -1085,15 +1077,13 @@ private fun ExploreFallbackGenreRow(
     onOpenZone: (ExploreZone) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(102.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         pair.forEach { zone ->
-            ExploreDiscoveryCategoryCard(
-                title = zone.label,
-                identity = zone.id,
-                emoji = zone.emoji,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
+            ExploreMoodCard(
+                zone = zone,
+                isSelected = false,
                 onClick = { onOpenZone(zone) }
             )
         }
