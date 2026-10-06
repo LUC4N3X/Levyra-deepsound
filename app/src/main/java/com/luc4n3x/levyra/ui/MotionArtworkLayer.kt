@@ -58,6 +58,7 @@ import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
+import com.luc4n3x.levyra.ui.theme.nonNegativeCornerRadius
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
 import com.luc4n3x.levyra.ui.artwork.LivingArtworkLayer
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
@@ -288,7 +289,7 @@ internal fun MotionArtworkLayer(
                 ),
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(RoundedCornerShape(cornerRadius))
+                    .clip(RoundedCornerShape(nonNegativeCornerRadius(cornerRadius)))
             )
         }
         visibleBridge?.let { frame ->
@@ -298,7 +299,7 @@ internal fun MotionArtworkLayer(
                 contentScale = ContentScale.FillBounds,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(cornerRadius))
+                    .clip(RoundedCornerShape(nonNegativeCornerRadius(cornerRadius)))
                     .graphicsLayer {
                         scaleX = frame.scaleX
                         scaleY = frame.scaleY
@@ -589,7 +590,7 @@ private fun MotionArtworkStaticFallback(
     modifier: Modifier,
     content: @Composable () -> Unit
 ) {
-    val shape = RoundedCornerShape(cornerRadius)
+    val shape = RoundedCornerShape(nonNegativeCornerRadius(cornerRadius))
     var artworkSize by remember { mutableStateOf(IntSize.Zero) }
     val zoomPhase = remember { Animatable(0f) }
     val horizontalDrift = remember { Animatable(0f) }
@@ -844,7 +845,7 @@ private fun MotionArtworkVideo(
     AndroidView(
         factory = { textureView },
         modifier = modifier
-            .clip(RoundedCornerShape(cornerRadius))
+            .clip(RoundedCornerShape(nonNegativeCornerRadius(cornerRadius)))
             .onSizeChanged { surfaceSize = it }
             .graphicsLayer {
                 alpha = videoAlpha
