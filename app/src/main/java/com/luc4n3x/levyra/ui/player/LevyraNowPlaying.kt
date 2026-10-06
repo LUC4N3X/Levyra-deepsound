@@ -1351,7 +1351,7 @@ fun LevyraNowPlaying(
                     .statusBarsPadding()
                     .padding(
                         start = gutter,
-                        top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceSm
+                        top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceLg
                     )
                     .zIndex(24f)
             )
