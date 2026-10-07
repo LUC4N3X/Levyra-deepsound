@@ -135,6 +135,8 @@ abstract class LevyraScreenViewModel(
 }
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
+    fun openExploreZone(zone: ExploreZone) = root.openExploreZone(zone)
+
     private val freezeHomeContent = MutableStateFlow(false)
     private val explicitMoodSelection = MutableStateFlow<Mood?>(null)
     private var homeRenderSettleJob: Job? = null
@@ -272,6 +274,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
 }
 
 class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::exploreProjection) {
+    fun consumeExploreOpenRequest() = root.consumeExploreOpenRequest()
     private var mixPresentationJob: Job? = null
 
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
@@ -1216,6 +1219,7 @@ internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchPr
 
 internal data class ExploreProjection(
     val currentTrack: Track?,
+    val exploreOpenRequest: String?,
     val exploreTracks: List<Track>,
     val exploreFreshTracks: List<Track>,
     val exploreNewReleases: List<AlbumHit>,
@@ -1245,6 +1249,7 @@ internal data class ExploreProjection(
 
 internal fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
     currentTrack = state.currentTrack,
+    exploreOpenRequest = state.exploreOpenRequest,
     exploreTracks = state.exploreTracks,
     exploreFreshTracks = state.exploreFreshTracks,
     exploreNewReleases = state.exploreNewReleases,

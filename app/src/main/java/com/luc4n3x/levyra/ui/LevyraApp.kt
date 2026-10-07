@@ -142,6 +142,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.luc4n3x.levyra.ui.components.levyraMarquee
+import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
 import com.luc4n3x.levyra.ui.components.levyraCarouselDepth
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -9345,6 +9346,16 @@ private fun HomeScreen(
                     homeHeader()
                 }
             }
+            item(key = "home-genre-chips", contentType = "home-genre-chips") {
+                val chipZones = remember(strings) { ExploreCatalog.getZones(strings) }
+                HomeGenreChips(
+                    zones = chipZones,
+                    contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
+                    onSelect = { zone ->
+                        viewModel.openExploreZone(zone)
+                    }
+                )
+            }
             if (speedDialPins.isNotEmpty()) {
                 item(key = "home-speed-dial", contentType = "home-speed-dial") {
                     Box(
@@ -9766,6 +9777,15 @@ private fun HomeScreen(
                                 .coerceIn(280.dp, 360.dp)
                         }
                         val chartRowState = key(state.selectedChartId) { rememberLazyListState() }
+                        val podiumTracks = remember(state.charts) { state.charts.take(HomeChartPodiumSize) }
+                        val restChunks = remember(state.charts) { state.charts.drop(HomeChartPodiumSize).chunked(4) }
+                        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        HomeChartPodium(
+                            tracks = podiumTracks,
+                            currentId = state.currentTrack?.id,
+                            contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
+                            onPlay = { track -> viewModel.playFrom(state.charts, track) }
+                        )
                         LazyRow(
                             state = chartRowState,
                             modifier = Modifier.fillMaxWidth(),
@@ -9776,7 +9796,7 @@ private fun HomeScreen(
                             )
                         ) {
                             itemsIndexed(
-                                items = chartChunks,
+                                items = restChunks,
                                 key = { chunkIndex, _ -> "chart-column-$chunkIndex" },
                                 contentType = { _, _ -> "chart-column" }
                             ) { chunkIndex, chunk ->
@@ -9785,7 +9805,7 @@ private fun HomeScreen(
                                     verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
                                     chunk.forEachIndexed { itemIndex, track ->
-                                        val rank = chunkIndex * 4 + itemIndex + 1
+                                        val rank = HomeChartPodiumSize + chunkIndex * 4 + itemIndex + 1
                                         ChartRow(
                                             rank = rank,
                                             track = track,
@@ -9801,6 +9821,7 @@ private fun HomeScreen(
                                     }
                                 }
                             }
+                        }
                         }
                     }
                 }
@@ -10230,6 +10251,7 @@ private fun HomeStatusBarScrim(listState: LazyListState, height: Dp, canvas: Col
     )
 }
 
+private const val HomeChartPodiumSize = 10
 private val HOME_HERO_STAGE_BODY_HEIGHT = LevyraHomeDesign.HeroHeight - 88.dp
 private const val HOME_HERO_LANDSCAPE_VIEWPORT_SHARE = 0.62f
 private val HOME_HERO_LANDSCAPE_MIN_HEIGHT = 236.dp
@@ -10337,7 +10359,7 @@ private fun HomeEditorialCollectionsShelf(
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
@@ -10346,7 +10368,7 @@ private fun HomeEditorialCollectionsShelf(
             val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
                 .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
             val collectionsState = rememberLazyListState()
-            val collectionsDepth = LocalAnimationsEnabled.current
+            val collectionsDepth = carouselDepthEnabled()
             LazyRow(
                 state = collectionsState,
                 modifier = Modifier.fillMaxWidth(),
@@ -10498,13 +10520,13 @@ private fun HomeQuickAccessShelf(
     onTrackActions: ((Track) -> Unit)? = null
 ) {
     val columns = remember(tracks) { tracks.distinctBy(LevyraPersonalOrbit::identityKey).chunked(2) }
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionInset { HomeSectionHeader(title = title, onPlayAll = onPlayAll) }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val cardWidth = ((maxWidth - HomeHorizontalInset * 2 - LevyraHomeDesign.ShelfItemGap) / 2)
                 .coerceAtMost(LevyraHomeDesign.DiscoveryArtworkWidth)
             val shelfState = rememberLazyListState()
-            val depthEnabled = LocalAnimationsEnabled.current
+            val depthEnabled = carouselDepthEnabled()
             LazyRow(
                 state = shelfState,
                 horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
@@ -10855,7 +10877,7 @@ private fun ResonanceShelf(
             val cardWidth = (maxWidth - HomeHorizontalInset - 24.dp)
                 .coerceIn(292.dp, 330.dp)
             val resonanceState = rememberLazyListState()
-            val resonanceDepth = LocalAnimationsEnabled.current
+            val resonanceDepth = carouselDepthEnabled()
             LazyRow(
                 state = resonanceState,
                 modifier = Modifier.fillMaxWidth(),
@@ -13294,7 +13316,7 @@ private fun RecentSearchesRow(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle(title)
         val recentState = rememberLazyListState()
-        val recentDepth = LocalAnimationsEnabled.current
+        val recentDepth = carouselDepthEnabled()
         LazyRow(
             state = recentState,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -20572,15 +20594,19 @@ private fun GreetingBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp)
         ) {
-            LevyraLogoMark(size = 38.dp)
+            LevyraLogoMark(size = 32.dp)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = greeting,
-                    color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f),
-                    style = LevyraType.screenTitle,
+                    color = if (LevyraIsLight) LevyraText else Color.White,
+                    style = LevyraType.screenTitle.copy(
+                        fontSize = 24.sp,
+                        lineHeight = 28.sp,
+                        letterSpacing = (-0.6).sp
+                    ),
                     softWrap = true,
                     modifier = Modifier.fillMaxWidth().semantics { heading() }
                 )
@@ -20665,7 +20691,7 @@ private fun HomeHeaderIconButton(
     val background = if (isLight) {
         Color.White.copy(alpha = 0.86f)
     } else {
-        Color(0xFF12141A).copy(alpha = 0.86f)
+        Color.White.copy(alpha = 0.08f)
     }
     val border = if (isLight) {
         Color(0x1911131F)
@@ -20676,13 +20702,6 @@ private fun HomeHeaderIconButton(
     Box(
         modifier = Modifier
             .size(LevyraHomeDesign.SettingsControlHeight)
-            .shadow(
-                elevation = if (isLight) 2.dp else 8.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.12f),
-                spotColor = Color.Black.copy(alpha = 0.28f)
-            )
             .clip(shape)
             .background(background)
             .border(Dp.Hairline, border, shape)
@@ -23300,6 +23319,12 @@ private fun ExploreScreen(
     var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
     var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(state.exploreOpenRequest) {
+        val requestedZoneId = state.exploreOpenRequest ?: return@LaunchedEffect
+        exploreMoodReturn = null
+        exploreDestination = exploreMoodDestination(requestedZoneId)
+        viewModel.consumeExploreOpenRequest()
+    }
 
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val selectedZone = remember(zones, state.exploreZoneId) {
@@ -23436,7 +23461,7 @@ private fun ExploreScreen(
                         val cardWidth = (maxWidth - LevyraHomeDesign.EditorialPeek)
                             .coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)
                         val freshState = rememberLazyListState()
-                        val freshDepth = LocalAnimationsEnabled.current
+                        val freshDepth = carouselDepthEnabled()
                         LazyRow(
                             state = freshState,
                             contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
@@ -23808,7 +23833,7 @@ private fun ExploreSamplesRow(
     onOpen: (Track) -> Unit
 ) {
     val rowState = rememberLazyListState()
-    val sampleDepth = LocalAnimationsEnabled.current
+    val sampleDepth = carouselDepthEnabled()
     LazyRow(
         state = rowState,
         contentPadding = PaddingValues(horizontal = 24.dp),
