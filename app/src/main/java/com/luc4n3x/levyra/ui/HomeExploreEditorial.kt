@@ -146,6 +146,7 @@ internal fun DiscoveryLoadingIndicator(modifier: Modifier = Modifier, color: Col
 
 @Composable
 internal fun DiscoveryTrackActions(
+    trackTitle: String,
     isFavorite: Boolean,
     onFavorite: () -> Unit,
     onShare: () -> Unit,
@@ -155,7 +156,7 @@ internal fun DiscoveryTrackActions(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Rounded.MoreHoriz, strings.songOptions, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Rounded.MoreHoriz, "${strings.songOptions}, $trackTitle", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(

@@ -23516,6 +23516,7 @@ private fun ExploreScreen(
                                     modifier = Modifier.width(cardWidth),
                                     trailing = {
                                         DiscoveryTrackActions(
+                                            trackTitle = track.title,
                                             isFavorite = track.id in state.favoriteIds,
                                             onFavorite = { viewModel.toggleFavorite(track) },
                                             onAddToPlaylist = { addToPlaylistTarget = track },
