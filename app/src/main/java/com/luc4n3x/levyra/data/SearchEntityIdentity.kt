@@ -282,14 +282,37 @@ private fun mergeComplementarySearchSongMetadata(songs: List<Track>): List<Track
     return merged.filterIndexed { index, _ -> index !in removed }
 }
 
+private fun mergeTopResultDisplayDuplicates(tracks: List<Track>): List<Track> {
+    if (tracks.size < 2) return tracks
+    val merged = mutableListOf<Track>()
+    val slotByRecording = HashMap<String, Int>()
+    tracks.forEach { candidate ->
+        val recordingKey = searchSongLooseMetadataKey(candidate)
+        val slot = recordingKey.takeIf(String::isNotBlank)?.let(slotByRecording::get)
+        if (slot == null) {
+            val index = merged.size
+            merged.add(candidate)
+            if (recordingKey.isNotBlank()) slotByRecording[recordingKey] = index
+        } else {
+            merged[slot] = richerSong(merged[slot], candidate)
+        }
+    }
+    return merged
+}
+
 internal fun selectSearchTopResultTracks(
     topTrack: Track?,
     songs: List<Track>,
     limit: Int = 3
 ): List<Track> {
     val hero = topTrack ?: return emptyList()
-    val merged = deduplicateSearchSongs(listOf(hero) + songs)
-    val resolvedHero = merged.firstOrNull { it.id == hero.id } ?: hero
+    val merged = mergeTopResultDisplayDuplicates(deduplicateSearchSongs(listOf(hero) + songs))
+    val heroRecordingKey = searchSongLooseMetadataKey(hero)
+    val resolvedHero = merged.firstOrNull { candidate ->
+        candidate.id == hero.id ||
+            candidate.counterpartVideoId == hero.id ||
+            (heroRecordingKey.isNotBlank() && searchSongLooseMetadataKey(candidate) == heroRecordingKey)
+    } ?: hero
     val heroArtist = primaryArtistSegment(resolvedHero.artist).ifBlank { resolvedHero.artist.trim() }
     val heroBrowseIds = resolvedHero.artistBrowseIds
         .map { it.trim().lowercase(Locale.ROOT) }
@@ -327,12 +350,20 @@ internal fun filterSearchSongsExcludingTopResult(
         .mapNotNullTo(HashSet()) { track -> searchSongIdentityKey(track).takeIf(String::isNotBlank) }
     val topResultMetadataKeys = topResultTracks
         .mapNotNullTo(HashSet()) { track -> searchSongMetadataKey(track).takeIf(String::isNotBlank) }
+    val topResultRecordingKeys = topResultTracks
+        .asSequence()
+        .filter { track -> track.durationMs > 0L }
+        .map(::searchSongLooseMetadataKey)
+        .filter(String::isNotBlank)
+        .toHashSet()
 
     return songs.filterNot { song ->
         val identity = searchSongIdentityKey(song)
         val metadata = searchSongMetadataKey(song)
+        val recording = searchSongLooseMetadataKey(song)
         identity in topResultIds ||
             (metadata.isNotBlank() && metadata in topResultMetadataKeys) ||
+            (recording.isNotBlank() && recording in topResultRecordingKeys) ||
             topResultTracks.any { topTrack -> areComplementarySearchSongResults(song, topTrack) }
     }
 }

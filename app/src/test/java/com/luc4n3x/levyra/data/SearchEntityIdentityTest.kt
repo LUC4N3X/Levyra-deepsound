@@ -219,6 +219,72 @@ class SearchEntityIdentityTest {
         assertEquals(listOf("hero", "one", "two"), selected.map { it.id })
     }
 
+
+
+    @Test
+    fun `top result collapses the same visible recording across providers even when durations disagree`() {
+        val spotify = track(
+            id = "spotify:da-dio",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 173_000L
+        ).copy(
+            source = "spotify",
+            metadataProvider = "spotify"
+        )
+        val youtube = track(
+            id = "AbCdEf12345",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 250_000L,
+            youtubeViewCount = 934_000L
+        )
+        val other = track(
+            id = "ZyXwVu98765",
+            title = "Introvabile",
+            artist = "Bresh",
+            durationMs = 190_000L,
+            youtubeViewCount = 4_300_000L
+        )
+
+        val selected = selectSearchTopResultTracks(
+            topTrack = spotify,
+            songs = listOf(spotify, youtube, other)
+        )
+
+        assertEquals(listOf("Da Dio", "Introvabile"), selected.map { it.title })
+        assertEquals(934_000L, selected.first().youtubeViewCount)
+    }
+
+    @Test
+    fun `songs shelf excludes same visible recording already used by top result despite duration drift`() {
+        val hero = track(
+            id = "hero-da-dio",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 173_000L
+        )
+        val duplicate = track(
+            id = "other-da-dio",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 250_000L
+        )
+        val other = track(
+            id = "other-song",
+            title = "Introvabile",
+            artist = "Bresh",
+            durationMs = 190_000L
+        )
+
+        val filtered = filterSearchSongsExcludingTopResult(
+            songs = listOf(duplicate, other),
+            topResultTracks = listOf(hero)
+        )
+
+        assertEquals(listOf("other-song"), filtered.map { it.id })
+    }
+
     @Test
     fun `songs shelf excludes metadata duplicate of top result`() {
         val hero = track(
