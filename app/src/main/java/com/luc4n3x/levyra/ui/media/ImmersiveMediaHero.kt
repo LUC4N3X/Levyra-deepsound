@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -20,8 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,14 +45,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -61,6 +60,7 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.PlayerMinimumContrast
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.harmonizePlayerAccents
@@ -68,7 +68,9 @@ import com.luc4n3x.levyra.ui.playerAdjustForegroundToward
 import com.luc4n3x.levyra.ui.playerAmbienceOf
 import com.luc4n3x.levyra.ui.playerContrastGradient
 import com.luc4n3x.levyra.ui.playerMix
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import com.luc4n3x.levyra.ui.theme.LevyraType
 
 @Immutable
 internal data class ImmersiveMediaColors(
@@ -140,9 +142,8 @@ internal fun immersiveMediaColors(primary: Color, secondary: Color, lightTheme: 
 }
 
 internal fun immersivePortraitHeroHeight(width: Dp, height: Dp): Dp {
-    val viewportTarget = height * 0.42f
-    val widthGuard = width * 1.08f
-    return min(viewportTarget, widthGuard)
+    val viewportTarget = height * 0.54f
+    return min(viewportTarget, width)
 }
 
 internal fun immersiveWideArtworkSize(width: Dp, height: Dp): Dp =
@@ -205,39 +206,47 @@ internal fun ImmersiveMediaHero(
     onSubtitleClick: (() -> Unit)?,
     actions: @Composable () -> Unit,
     artwork: @Composable BoxScope.() -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    overline: String = ""
 ) {
     val heroHeight = immersiveHeroHeight(wide, viewportWidth, viewportHeight, topBarHeight)
+    val gutter = immersiveMediaGutter(viewportWidth)
     if (wide) {
         val artworkSize = immersiveWideArtworkSize(viewportWidth, viewportHeight)
+        val artworkShape = RoundedCornerShape(LevyraCardDesign.EditorialCorner)
         Row(
             modifier = modifier
                 .fillMaxWidth()
                 .height(heroHeight)
                 .padding(top = topBarHeight, start = 32.dp, end = 32.dp, bottom = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(32.dp),
+            verticalAlignment = Alignment.Bottom
         ) {
             Box(
                 modifier = Modifier
                     .size(artworkSize)
-                    .clip(RoundedCornerShape(LevyraPlayerDesign.CornerLg))
+                    .shadow(
+                        elevation = 18.dp,
+                        shape = artworkShape,
+                        clip = false,
+                        ambientColor = Color.Black.copy(alpha = 0.40f),
+                        spotColor = Color.Black.copy(alpha = 0.55f)
+                    )
+                    .clip(artworkShape)
             ) {
                 artwork()
             }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 ImmersiveMediaMetadata(
                     title = title,
+                    overline = overline,
                     subtitle = subtitle,
                     metadata = metadata,
                     colors = colors,
-                    centered = false,
+                    wide = true,
                     onSubtitleClick = onSubtitleClick
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(18.dp))
                 actions()
             }
         }
@@ -249,74 +258,93 @@ internal fun ImmersiveMediaHero(
                     .height(heroHeight)
             ) {
                 artwork()
-                val scrim = remember(colors.fieldTop, colors.base) {
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.34f to Color.Transparent,
-                        0.60f to colors.fieldTop.copy(alpha = 0.26f),
-                        0.80f to colors.fieldMid.copy(alpha = 0.82f),
-                        1f to colors.base
-                    )
-                }
+                val scrim = remember(colors.base) { immersiveHeroScrim(colors.base) }
                 Box(modifier = Modifier.fillMaxSize().background(scrim))
                 ImmersiveMediaMetadata(
                     title = title,
+                    overline = overline,
                     subtitle = subtitle,
-                    metadata = metadata,
-                    colors = if (colors.content.luminance() > 0.5f) {
-                        colors.copy(
-                            content = Color.White,
-                            contentMuted = Color.White.copy(alpha = 0.78f),
-                            accent = Color.White
-                        )
-                    } else {
-                        colors
-                    },
-                    centered = true,
+                    metadata = "",
+                    colors = colors,
+                    wide = false,
                     onSubtitleClick = onSubtitleClick,
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                        .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .padding(horizontal = 22.dp, vertical = 16.dp)
+                        .padding(start = gutter, end = gutter, bottom = 2.dp)
                 )
             }
-            Box(
+            val tail = remember(colors.base) {
+                Brush.verticalGradient(0f to colors.base, 1f to colors.base.copy(alpha = 0f))
+            }
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.base)
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center
+                    .background(tail)
+                    .padding(start = gutter, end = gutter, bottom = 12.dp)
             ) {
+                if (metadata.isNotBlank()) {
+                    Text(
+                        text = metadata,
+                        color = colors.contentMuted,
+                        style = LevyraType.metadata,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = if (subtitle.isBlank()) 8.dp else 0.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(14.dp))
                 actions()
             }
         }
     }
 }
 
+private val ImmersiveMediaMinimumGutter: Dp = 20.dp
+private val ImmersiveMediaContentMaxWidth: Dp = 680.dp
+
+internal fun immersiveMediaGutter(width: Dp): Dp =
+    max(ImmersiveMediaMinimumGutter, (width - ImmersiveMediaContentMaxWidth) / 2)
+
+private fun immersiveHeroScrim(base: Color): Brush = Brush.verticalGradient(
+    0f to Color.Transparent,
+    0.36f to Color.Transparent,
+    0.58f to base.copy(alpha = 0.50f),
+    0.80f to base.copy(alpha = 0.88f),
+    1f to base
+)
+
 @Composable
 private fun ImmersiveMediaMetadata(
     title: String,
+    overline: String,
     subtitle: String,
     metadata: String,
     colors: ImmersiveMediaColors,
-    centered: Boolean,
+    wide: Boolean,
     onSubtitleClick: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
-    val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
-    val textAlign = if (centered) TextAlign.Center else TextAlign.Start
-    Column(modifier = modifier, horizontalAlignment = horizontal) {
-        ImmersiveMediaTitle(title, colors, centered, textAlign)
+    Column(modifier = modifier, horizontalAlignment = Alignment.Start) {
+        if (overline.isNotBlank()) {
+            Text(
+                text = overline.uppercase(),
+                color = colors.contentMuted,
+                style = LevyraType.overline,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+        ImmersiveMediaTitle(title, colors, wide)
         if (subtitle.isNotBlank()) {
-            ImmersiveMediaSubtitle(subtitle, colors, textAlign, onSubtitleClick)
+            ImmersiveMediaSubtitle(subtitle, colors, onSubtitleClick)
         }
         if (metadata.isNotBlank()) {
             Text(
                 text = metadata,
                 color = colors.contentMuted,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = textAlign,
+                style = LevyraType.metadata,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -328,18 +356,17 @@ private fun ImmersiveMediaMetadata(
 private fun ImmersiveMediaTitle(
     title: String,
     colors: ImmersiveMediaColors,
-    centered: Boolean,
-    textAlign: TextAlign
+    wide: Boolean
 ) {
+    val size = remember(title, wide) { LevyraType.heroTitleSize(title, wide) }
     Text(
         text = title,
         color = colors.content,
-        fontSize = if (centered) 28.sp else 30.sp,
-        lineHeight = if (centered) 32.sp else 34.sp,
-        fontWeight = FontWeight.Black,
-        letterSpacing = (-0.8).sp,
-        textAlign = textAlign,
-        maxLines = 2,
+        style = LevyraType.heroTitle.copy(
+            fontSize = size,
+            lineHeight = LevyraType.heroLineHeight(size)
+        ),
+        maxLines = 3,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.semantics { heading() }
     )
@@ -349,30 +376,25 @@ private fun ImmersiveMediaTitle(
 private fun ImmersiveMediaSubtitle(
     subtitle: String,
     colors: ImmersiveMediaColors,
-    textAlign: TextAlign,
     onClick: (() -> Unit)?
 ) {
-    val interactive = onClick != null
     val interactionModifier = if (onClick != null) {
         Modifier
-            .clip(LevyraPlayerDesign.ShapePill)
-            .levyraPressable(onClick = onClick, role = Role.Button)
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+            .clip(LevyraPlayerDesign.ShapeXs)
+            .levyraPressable(onClick = onClick, role = Role.Button, pressedScale = LevyraPressScale.Row)
     } else {
-        Modifier.padding(top = 4.dp)
+        Modifier.padding(vertical = 6.dp)
     }
-    Text(
-        text = subtitle,
-        color = if (interactive) colors.accent else colors.contentMuted,
-        fontSize = 16.sp,
-        fontWeight = FontWeight.SemiBold,
-        textAlign = textAlign,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .heightIn(min = if (interactive) 40.dp else 24.dp)
-            .then(interactionModifier)
-    )
+    Box(modifier = interactionModifier, contentAlignment = Alignment.CenterStart) {
+        Text(
+            text = subtitle,
+            color = colors.content.copy(alpha = 0.92f),
+            style = LevyraType.artist,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }
 
 @Composable
@@ -385,78 +407,24 @@ internal fun ImmersiveMediaActionRow(
     downloadEnabled: Boolean,
     onShuffle: () -> Unit,
     onDownload: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    secondary: @Composable RowScope.() -> Unit = {}
 ) {
     Row(
-        modifier = modifier.widthIn(max = 430.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ImmersiveMediaSideAction(
-            icon = Icons.Rounded.Shuffle,
+        ImmersiveMediaPlayButton(primary = primary, colors = colors)
+        Spacer(modifier = Modifier.width(12.dp))
+        ImmersiveMediaShuffleButton(
             label = shuffleLabel,
             enabled = shuffleEnabled,
             colors = colors,
             onClick = onShuffle
         )
-        Box(
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .widthIn(min = 132.dp, max = 190.dp)
-                .height(48.dp)
-                .shadow(
-                    elevation = if (primary.enabled) 12.dp else 0.dp,
-                    shape = LevyraPlayerDesign.ShapePill,
-                    clip = false,
-                    spotColor = colors.actionStart.copy(alpha = 0.45f)
-                )
-                .clip(LevyraPlayerDesign.ShapePill)
-                .background(
-                    if (primary.enabled) {
-                        Brush.horizontalGradient(listOf(colors.actionStart, colors.actionEnd))
-                    } else {
-                        Brush.horizontalGradient(listOf(colors.secondaryFill, colors.secondaryFill))
-                    }
-                )
-                .levyraPressable(
-                    onClick = primary.onClick,
-                    enabled = primary.enabled && !primary.loading,
-                    role = Role.Button,
-                    onClickLabel = primary.contentDescription
-                )
-                .semantics(mergeDescendants = true) {},
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 18.dp),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (primary.loading) {
-                    CircularProgressIndicator(
-                        color = colors.actionContent,
-                        strokeWidth = 2.5.dp,
-                        modifier = Modifier.size(20.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = primary.icon,
-                        contentDescription = null,
-                        tint = if (primary.enabled) colors.actionContent else colors.contentMuted,
-                        modifier = Modifier.size(23.dp)
-                    )
-                }
-                Text(
-                    text = primary.label,
-                    color = if (primary.enabled) colors.actionContent else colors.contentMuted,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        ImmersiveMediaSideAction(
+        Spacer(modifier = Modifier.weight(1f))
+        secondary()
+        ImmersiveMediaQuietAction(
             icon = Icons.Rounded.Download,
             label = downloadLabel,
             enabled = downloadEnabled,
@@ -467,8 +435,64 @@ internal fun ImmersiveMediaActionRow(
 }
 
 @Composable
-private fun ImmersiveMediaSideAction(
-    icon: ImageVector,
+private fun ImmersiveMediaPlayButton(
+    primary: ImmersiveMediaPrimaryAction,
+    colors: ImmersiveMediaColors
+) {
+    val fill = remember(primary.enabled, colors.actionStart, colors.actionEnd, colors.secondaryFill) {
+        if (primary.enabled) {
+            Brush.horizontalGradient(listOf(colors.actionStart, colors.actionEnd))
+        } else {
+            Brush.horizontalGradient(listOf(colors.secondaryFill, colors.secondaryFill))
+        }
+    }
+    val content = if (primary.enabled) colors.actionContent else colors.contentMuted
+    Row(
+        modifier = Modifier
+            .widthIn(min = 128.dp, max = 220.dp)
+            .height(ImmersiveMediaActionHeight)
+            .clip(LevyraPlayerDesign.ShapePill)
+            .background(fill)
+            .levyraPressable(
+                onClick = primary.onClick,
+                enabled = primary.enabled && !primary.loading,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button,
+                onClickLabel = primary.contentDescription
+            )
+            .semantics(mergeDescendants = true) {}
+            .padding(start = 20.dp, end = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (primary.loading) {
+            CircularProgressIndicator(
+                color = content,
+                strokeWidth = 2.5.dp,
+                modifier = Modifier.size(20.dp)
+            )
+        } else {
+            Icon(
+                imageVector = primary.icon,
+                contentDescription = null,
+                tint = content,
+                modifier = Modifier.size(26.dp)
+            )
+        }
+        Text(
+            text = primary.label,
+            color = content,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.2).sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun ImmersiveMediaShuffleButton(
     label: String,
     enabled: Boolean,
     colors: ImmersiveMediaColors,
@@ -476,22 +500,66 @@ private fun ImmersiveMediaSideAction(
 ) {
     Box(
         modifier = Modifier
-            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-            .size(48.dp)
+            .size(ImmersiveMediaActionHeight)
             .clip(CircleShape)
             .background(colors.secondaryFill)
-            .border(LevyraPlayerDesign.Hairline, colors.hairline, CircleShape)
-            .levyraPressable(onClick = onClick, enabled = enabled, role = Role.Button),
+            .levyraPressable(
+                onClick = onClick,
+                enabled = enabled,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Shuffle,
+            contentDescription = label,
+            tint = if (enabled) colors.content else colors.contentMuted.copy(alpha = 0.45f),
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+internal fun ImmersiveMediaQuietAction(
+    icon: ImageVector,
+    label: String,
+    enabled: Boolean,
+    colors: ImmersiveMediaColors,
+    onClick: () -> Unit,
+    active: Boolean = false,
+    activeTint: Color = colors.accent,
+    toggleable: Boolean = false
+) {
+    Box(
+        modifier = Modifier
+            .size(LevyraPlayerDesign.MinimumTouchTarget)
+            .clip(CircleShape)
+            .levyraPressable(
+                onClick = onClick,
+                enabled = enabled,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            )
+            .semantics {
+                if (toggleable) toggleableState = ToggleableState(active)
+            },
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (enabled) colors.content else colors.contentMuted.copy(alpha = 0.45f),
-            modifier = Modifier.size(22.dp)
+            tint = when {
+                !enabled -> colors.contentMuted.copy(alpha = 0.40f)
+                active -> activeTint
+                else -> colors.contentMuted
+            },
+            modifier = Modifier.size(24.dp)
         )
     }
 }
+
+private val ImmersiveMediaActionHeight: Dp = 52.dp
 
 @Composable
 internal fun ImmersiveMediaTopBar(
@@ -539,18 +607,19 @@ internal fun ImmersiveMediaTopBar(
                 icon = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = backLabel,
                 onClick = onBack,
-                size = 48.dp,
+                size = ImmersiveTopBarButtonSize,
                 iconSize = 21.dp,
                 tint = Color.White,
-                fill = Color.Black.copy(alpha = 0.34f),
-                borderTop = Color.White.copy(alpha = 0.18f),
-                borderBottom = Color.White.copy(alpha = 0.08f)
+                fill = ImmersiveTopBarButtonFill,
+                borderTop = Color.Transparent,
+                borderBottom = Color.Transparent
             )
             Text(
                 text = title,
                 color = colors.content,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.2).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
@@ -566,3 +635,6 @@ internal fun ImmersiveMediaTopBar(
         }
     }
 }
+
+internal val ImmersiveTopBarButtonSize: Dp = 40.dp
+internal val ImmersiveTopBarButtonFill: Color = Color.Black.copy(alpha = 0.30f)

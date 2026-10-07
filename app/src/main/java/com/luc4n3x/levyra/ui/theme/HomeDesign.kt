@@ -30,12 +30,12 @@ object LevyraHomeDesign {
     val HeroCorner: Dp = 12.dp
     val HeroHeight: Dp = 472.dp
     val ShelfCorner: Dp = 2.dp
-    val ArtworkCorner: Dp = 6.dp
-    val ThumbCorner: Dp = 4.dp
+    val ArtworkCorner: Dp = LevyraCardDesign.ArtworkCorner
+    val ThumbCorner: Dp = LevyraCardDesign.ThumbCorner
     val ArtworkCardWidth: Dp = 156.dp
     val ArtworkGridCardWidth: Dp = 122.dp
-    val ShelfItemGap: Dp = 8.dp
-    val TrackRowHeight: Dp = 60.dp
+    val ShelfItemGap: Dp = 12.dp
+    val TrackRowHeight: Dp = 62.dp
     val TrackThumbSize: Dp = 48.dp
     val TrackColumnPeek: Dp = 28.dp
     val TrackColumnGap: Dp = 6.dp
@@ -56,8 +56,8 @@ object LevyraHomeDesign {
     const val SPEED_DIAL_PAGE_SIZE: Int = 9
     val SpeedDialGap: Dp = 4.dp
     val SectionTitleSize = 21.sp
-    val CardTitleSize = 14.sp
-    val CardSubtitleSize = 12.sp
+    val CardTitleSize = LevyraCardDesign.CardTitleSize
+    val CardSubtitleSize = LevyraCardDesign.CardSubtitleSize
     val OrbitTileTitleSize = 15.sp
     val OrbitHeaderNameSize = 15.sp
     val OrbitHeaderTitleSize = 24.sp

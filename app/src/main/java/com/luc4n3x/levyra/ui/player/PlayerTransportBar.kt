@@ -6,14 +6,18 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
@@ -27,19 +31,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.ui.components.LevyraPlayPauseGlyph
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerIcon
+import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
-import com.luc4n3x.levyra.ui.theme.LevyraSegment
 
 private const val ModeSegmentWeight = 0.86f
 private const val SkipSegmentWeight = 1f
@@ -110,7 +121,6 @@ internal fun PlayerTransportBar(
 ) {
     val height = if (compact) LevyraPlayerDesign.TransportHeightCompact else LevyraPlayerDesign.TransportHeight
     val skipGlyph = if (compact) LevyraPlayerDesign.TransportGlyphCompact else LevyraPlayerDesign.TransportGlyph
-    val controlOutline = if (surfaces.amoled) surfaces.outline else Color.Transparent
 
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth()
@@ -123,61 +133,47 @@ internal fun PlayerTransportBar(
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.TransportGap),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PlayerModeSegment(
-                position = LevyraSegment.Leading,
+            PlayerModeControl(
                 icon = Icons.Rounded.Shuffle,
                 label = labels.shuffle,
                 active = shuffleOn,
                 surfaces = surfaces,
-                outline = controlOutline,
                 animated = animated,
                 weight = weights.modeWeight,
                 onClick = onShuffle
             )
-            PlayerSegmentButton(
-                position = LevyraSegment.Middle,
+            PlayerSkipControl(
+                icon = Icons.Rounded.SkipPrevious,
+                label = labels.previous,
+                tint = surfaces.content,
+                glyph = skipGlyph,
                 weight = weights.skipWeight,
-                container = surfaces.control,
-                innerCorner = LevyraPlayerDesign.TransportInnerCorner,
-                contentDescription = labels.previous,
-                animated = animated,
-                outline = controlOutline,
-                haptic = LevyraHapticAction.Transport,
                 onClick = onPrevious
-            ) {
-                PlayerIcon(Icons.Rounded.SkipPrevious, surfaces.content, Modifier.size(skipGlyph))
-            }
-            PlayerPlaySegment(
+            )
+            PlayerPlayControl(
                 isPlaying = isPlaying,
                 isResolving = isResolving,
                 surfaces = surfaces,
-                height = height,
+                diameter = if (compact) LevyraPlayerDesign.TransportPlayDiameterCompact else LevyraPlayerDesign.TransportPlayDiameter,
                 glyph = if (compact) LevyraPlayerDesign.TransportPlayGlyphCompact else LevyraPlayerDesign.TransportPlayGlyph,
                 animated = animated,
                 labels = labels,
                 weight = weights.playWeight,
                 onClick = onTogglePlay
             )
-            PlayerSegmentButton(
-                position = LevyraSegment.Middle,
+            PlayerSkipControl(
+                icon = Icons.Rounded.SkipNext,
+                label = labels.next,
+                tint = surfaces.content,
+                glyph = skipGlyph,
                 weight = weights.skipWeight,
-                container = surfaces.control,
-                innerCorner = LevyraPlayerDesign.TransportInnerCorner,
-                contentDescription = labels.next,
-                animated = animated,
-                outline = controlOutline,
-                haptic = LevyraHapticAction.Transport,
                 onClick = onNext
-            ) {
-                PlayerIcon(Icons.Rounded.SkipNext, surfaces.content, Modifier.size(skipGlyph))
-            }
-            PlayerModeSegment(
-                position = LevyraSegment.Trailing,
+            )
+            PlayerModeControl(
                 icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                 label = labels.repeat,
                 active = repeatMode != RepeatMode.Off,
                 surfaces = surfaces,
-                outline = controlOutline,
                 animated = animated,
                 weight = weights.modeWeight,
                 onClick = onRepeat
@@ -187,19 +183,54 @@ internal fun PlayerTransportBar(
 }
 
 @Composable
-private fun RowScope.PlayerPlaySegment(
+private fun RowScope.PlayerSkipControl(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+    glyph: Dp,
+    weight: Float,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxHeight(),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = PlayerSkipTouchSize)
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(CircleShape)
+                .levyraPressable(
+                    onClick = onClick,
+                    pressedScale = LevyraPressScale.Control,
+                    role = Role.Button,
+                    haptic = LevyraHapticAction.Transport
+                )
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center
+        ) {
+            PlayerIcon(icon, tint, Modifier.size(glyph))
+        }
+    }
+}
+
+@Composable
+private fun RowScope.PlayerPlayControl(
     isPlaying: Boolean,
     isResolving: Boolean,
     surfaces: PlayerSurfaceTokens,
-    height: Dp,
+    diameter: Dp,
     glyph: Dp,
     animated: Boolean,
     labels: PlayerControlLabels,
-    weight: Float = PlaySegmentWeight,
+    weight: Float,
     onClick: () -> Unit
 ) {
-    val innerCorner by animateDpAsState(
-        targetValue = playInnerCorner(isPlaying, height),
+    val corner by animateDpAsState(
+        targetValue = if (isPlaying) diameter * PlayingCornerRatio else diameter / 2,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "player-play-corner"
     )
@@ -213,27 +244,45 @@ private fun RowScope.PlayerPlaySegment(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-play-fill"
     )
-    PlayerSegmentButton(
-        position = LevyraSegment.Middle,
-        weight = weight,
-        container = hero,
-        innerCorner = innerCorner,
-        contentDescription = playDescription(isPlaying, labels),
-        animated = animated,
-        haptic = LevyraHapticAction.Transport,
-        onClick = onClick
+    val shape = RoundedCornerShape(corner.coerceAtLeast(0.dp))
+    Box(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxHeight(),
+        contentAlignment = Alignment.Center
     ) {
-        PlayGlyphContent(
-            isResolving = isResolving,
-            isPlaying = isPlaying,
-            content = content,
-            glyph = glyph
-        )
+        Box(
+            modifier = Modifier
+                .widthIn(max = diameter)
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .shadow(
+                    elevation = PlayShadowElevation,
+                    shape = shape,
+                    clip = false,
+                    ambientColor = Color.Black.copy(alpha = 0.35f),
+                    spotColor = Color.Black.copy(alpha = 0.45f)
+                )
+                .clip(shape)
+                .background(hero)
+                .levyraPressable(
+                    onClick = onClick,
+                    pressedScale = LevyraPressScale.Control,
+                    role = Role.Button,
+                    haptic = LevyraHapticAction.Transport
+                )
+                .semantics { contentDescription = playDescription(isPlaying, labels) },
+            contentAlignment = Alignment.Center
+        ) {
+            PlayGlyphContent(
+                isResolving = isResolving,
+                isPlaying = isPlaying,
+                content = content,
+                glyph = glyph
+            )
+        }
     }
 }
-
-private fun playInnerCorner(isPlaying: Boolean, height: Dp): Dp =
-    if (isPlaying) LevyraPlayerDesign.TransportInnerCorner else height / 2
 
 private fun playDescription(isPlaying: Boolean, labels: PlayerControlLabels): String =
     if (isPlaying) labels.pause else labels.play
@@ -252,37 +301,22 @@ private fun PlayGlyphContent(
             color = content
         )
     } else {
-        PlayIconAnimated(
-            isPlaying = isPlaying,
-            content = content,
-            glyph = glyph
+        LevyraPlayPauseGlyph(
+            playing = isPlaying,
+            color = content,
+            modifier = Modifier.size(glyph)
         )
     }
 }
 
 @Composable
-private fun PlayIconAnimated(
-    isPlaying: Boolean,
-    content: Color,
-    glyph: Dp
-) {
-    LevyraPlayPauseGlyph(
-        playing = isPlaying,
-        color = content,
-        modifier = Modifier.size(glyph)
-    )
-}
-
-@Composable
-private fun RowScope.PlayerModeSegment(
-    position: LevyraSegment,
+private fun RowScope.PlayerModeControl(
     icon: ImageVector,
     label: String,
     active: Boolean,
     surfaces: PlayerSurfaceTokens,
-    outline: Color,
     animated: Boolean,
-    weight: Float = ModeSegmentWeight,
+    weight: Float,
     onClick: () -> Unit
 ) {
     val tint by animateColorAsState(
@@ -295,29 +329,44 @@ private fun RowScope.PlayerModeSegment(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.expressiveSpring()),
         label = "player-mode-indicator"
     )
-    PlayerSegmentButton(
-        position = position,
-        weight = weight,
-        container = if (active) surfaces.active else surfaces.controlQuiet,
-        innerCorner = LevyraPlayerDesign.TransportInnerCorner,
-        contentDescription = label,
-        animated = animated,
-        toggleState = ToggleableState(active),
-        outline = outline,
-        onClick = onClick
+    Box(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxHeight(),
+        contentAlignment = Alignment.Center
     ) {
-        PlayerIcon(icon, tint, Modifier.size(LevyraPlayerDesign.TransportModeGlyph))
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = LevyraPlayerDesign.SpaceMd)
-                .size(LevyraPlayerDesign.ModeIndicator)
-                .graphicsLayer {
-                    alpha = indicator
-                    scaleX = indicator
-                    scaleY = indicator
-                }
-                .background(tint, CircleShape)
-        )
+                .size(LevyraPlayerDesign.MinimumTouchTarget)
+                .clip(CircleShape)
+                .levyraPressable(
+                    onClick = onClick,
+                    pressedScale = LevyraPressScale.Control,
+                    role = Role.Button
+                )
+                .semantics {
+                    contentDescription = label
+                    toggleableState = ToggleableState(active)
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            PlayerIcon(icon, tint, Modifier.size(LevyraPlayerDesign.TransportModeGlyph))
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = LevyraPlayerDesign.SpaceXs)
+                    .size(LevyraPlayerDesign.ModeIndicator)
+                    .graphicsLayer {
+                        alpha = indicator
+                        scaleX = indicator
+                        scaleY = indicator
+                    }
+                    .background(tint, CircleShape)
+            )
+        }
     }
 }
+
+private const val PlayingCornerRatio = 0.32f
+private val PlayShadowElevation: Dp = 10.dp
+private val PlayerSkipTouchSize: Dp = 56.dp
