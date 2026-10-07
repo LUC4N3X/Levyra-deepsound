@@ -4867,9 +4867,7 @@ private fun ArtistOverlay(
         mutableStateOf(false)
     }
     val rankedPopularTracks = remember(profile?.topSongs) {
-        profile?.topSongs.orEmpty()
-            .distinctBy { track -> track.id.ifBlank { track.artist + "|" + track.title } }
-            .take(ARTIST_POPULAR_MAX_COUNT)
+        artistPopularTracksForDisplay(profile?.topSongs.orEmpty())
     }
     var popularExpanded by rememberSaveable(artistSelectionScopeKey, "popular", rankedPopularTracks.size) {
         mutableStateOf(false)
@@ -5230,8 +5228,6 @@ private fun ArtistOverlay(
 }
 
 private const val ARTIST_FAVORITES_COLLAPSED_COUNT = 4
-private const val ARTIST_POPULAR_COLLAPSED_COUNT = 5
-private const val ARTIST_POPULAR_MAX_COUNT = 10
 
 @Composable
 private fun ArtistFavoriteTracksShelf(
@@ -5323,14 +5319,10 @@ private fun ArtistPopularTracksShelf(
     onPlayAll: (List<Track>) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val distinctTracks = remember(tracks) {
-        tracks.distinctBy { track -> track.id.ifBlank { track.artist + "|" + track.title } }
-    }
-    if (distinctTracks.isEmpty()) return
-    val rankedTracks = remember(distinctTracks) { distinctTracks.take(ARTIST_POPULAR_MAX_COUNT) }
-
+    val rankedTracks = remember(tracks) { artistPopularTracksForDisplay(tracks) }
+    if (rankedTracks.isEmpty()) return
     val visibleTracks = remember(rankedTracks, expanded) {
-        if (expanded) rankedTracks else rankedTracks.take(ARTIST_POPULAR_COLLAPSED_COUNT)
+        visibleArtistPopularTracks(rankedTracks, expanded)
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -5356,7 +5348,7 @@ private fun ArtistPopularTracksShelf(
                 shape = CircleShape,
                 modifier = Modifier
                     .height(44.dp)
-                    .pressable { onPlayAll(distinctTracks) }
+                    .pressable { onPlayAll(rankedTracks) }
             ) {
                 Box(
                     modifier = Modifier.padding(horizontal = 15.dp),

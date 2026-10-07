@@ -12962,7 +12962,10 @@ internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): T
     val fromIdUrl = youtubeVideoId(track.id).trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val rawId = track.id.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val storedAudio = track.audioVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val regular = sequenceOf(storedAudio, fromIdUrl, rawId, fromUrl)
+    val cachedVideoId = if (track.id.startsWith("spotify:")) {
+        com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get().get(track.id)?.videoId?.trim()?.takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
+    } else ""
+    val regular = sequenceOf(storedAudio, fromIdUrl, rawId, fromUrl, cachedVideoId)
         .firstOrNull(String::isNotBlank)
         .orEmpty()
     val type = track.videoType.uppercase()

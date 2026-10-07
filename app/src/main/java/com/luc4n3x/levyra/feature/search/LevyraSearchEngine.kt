@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +54,7 @@ internal interface SearchBackend {
     fun acceptsLocalTrack(track: Track): Boolean = true
     suspend fun suggestions(query: String, languageCode: String): SearchSuggestionBundle
     suspend fun overview(query: String, languageCode: String): SearchResults
+    suspend fun spotifyOverview(query: String): SearchResults? = null
     suspend fun section(filter: SearchFilter, query: String, languageCode: String, continuation: String): SearchSectionPage
     suspend fun exactArtist(query: String): ArtistHit?
     suspend fun officialArtists(candidates: List<ArtistHit>): List<ArtistHit>
@@ -334,19 +336,64 @@ internal class LevyraSearchEngine(
         var remoteFailed = false
         coroutineScope {
             val exactArtist = async { searchCatching { remote.exactArtist(request.query, request.key) }.getOrNull() }
-            val overview = async {
+            val spotifyOverview = async {
+                searchCatching { remote.spotifyOverview(request.query, request.cacheKey) }
+            }
+            val youtubeOverview = async {
                 searchCatching { remote.overview(request.query, request.languageCode, request.cacheKey) }
             }
-            val hedge = launch { hedgeSongs(session, overview) }
-            val raw = overview.await().getOrNull()
+            val hedge = launch { hedgeSongs(session, youtubeOverview) }
+
+            val channel = Channel<Triple<String, Boolean, SearchResults?>>(2)
+            val spotifyWorker = launch {
+                val attempt = spotifyOverview.await()
+                channel.send(
+                    Triple(
+                        "spotify",
+                        attempt.isSuccess,
+                        attempt.getOrNull()?.takeUnless { it.isEmpty }
+                    )
+                )
+            }
+            val youtubeWorker = launch {
+                val attempt = youtubeOverview.await()
+                channel.send(
+                    Triple(
+                        "youtube",
+                        attempt.isSuccess,
+                        attempt.getOrNull()?.takeUnless { it.isEmpty }
+                    )
+                )
+                hedge.cancel()
+            }
+            launch {
+                spotifyWorker.join()
+                youtubeWorker.join()
+                channel.close()
+            }
+
+            var deliveredCount = 0
+            var youtubeSucceeded = false
+            for ((provider, succeeded, results) in channel) {
+                if (provider == "youtube") youtubeSucceeded = succeeded
+                if (results != null) {
+                    deliveredCount++
+                    applyOverview(session, results)
+                }
+            }
             hedge.cancel()
-            if (raw != null) {
-                applyOverview(session, raw)
+
+            val finalResults = _state.value.takeIf { it.generation == session.generation }?.results
+            if (deliveredCount > 0 && finalResults != null && !finalResults.isEmpty) {
                 schedulePrefetch(session)
-                runVerification(session, raw, exactArtist)
+                runVerification(session, finalResults, exactArtist)
             } else {
                 exactArtist.cancel()
-                remoteFailed = !runSectionFallback(session)
+                remoteFailed = if (youtubeSucceeded) {
+                    false
+                } else {
+                    !runSectionFallback(session)
+                }
             }
         }
         settle(session, remoteFailed, cacheHit = false)
