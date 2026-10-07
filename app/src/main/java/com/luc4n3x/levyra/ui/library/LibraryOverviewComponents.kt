@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -74,6 +73,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -115,8 +116,6 @@ import java.util.Locale
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import com.luc4n3x.levyra.domain.ListeningChartProjection
 
 internal val LibraryPillShape = RoundedCornerShape(999.dp)
@@ -755,38 +754,33 @@ internal fun LibraryListeningDashboard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp)
+                .padding(20.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "${number.format(weekMinutes)} ${strings.pulseMinuteShort}",
-                            color = LevyraText,
-                            fontSize = 30.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(30.sp),
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.7).sp
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = LevyraType.heroTitle
                         )
                         Text(
                             text = strings.pulseWeek,
-                            color = LevyraMuted,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = LevyraType.metadata
                         )
                     }
 
                     Surface(
                         color = LevyraCyan.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.24f)),
                         shape = CircleShape
                     ) {
                         Box(
-                            modifier = Modifier.size(38.dp),
+                            modifier = Modifier.size(48.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -805,26 +799,23 @@ internal fun LibraryListeningDashboard(
                     durationLabel = { strings.formatLibraryDuration(it) }
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     PulsePreviewInsight(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         icon = Icons.Rounded.LocalFireDepartment,
                         label = strings.pulseStreak,
                         value = number.format(pulse.streakDays),
                         accent = LevyraViolet
                     )
                     PulsePreviewInsight(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         icon = Icons.Rounded.Schedule,
                         label = strings.pulsePeakHour,
                         value = peakHour,
                         accent = LevyraCyan
                     )
                     PulsePreviewInsight(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         icon = Icons.Rounded.Person,
                         label = strings.pulseTopArtists,
                         value = topArtist,
@@ -844,38 +835,17 @@ private fun PulsePreviewInsight(
     value: String,
     accent: Color
 ) {
-    Surface(
+    Row(
         modifier = modifier,
-        color = Color.White.copy(alpha = 0.035f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.055f)),
-        shape = RoundedCornerShape(15.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(15.dp)
-            )
-            Text(
-                text = label,
-                color = LevyraMuted,
-                fontSize = 8.5.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = value,
-                color = LevyraText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        Surface(color = accent.copy(alpha = 0.12f), shape = LevyraCardDesign.ThumbShape) {
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.padding(10.dp).size(20.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = LevyraType.caption)
+            Text(value, color = MaterialTheme.colorScheme.onSurface, style = LevyraType.contentTitle, softWrap = true)
         }
     }
 }
@@ -953,8 +923,6 @@ private fun LibraryInsightMetric(
     }
 }
 
-private const val WEEK_CHART_MIN_PEAK_MS = 5L * 60L * 1000L
-
 private val LibraryRingPalette = listOf(
     LevyraCyan,
     LevyraViolet,
@@ -972,82 +940,80 @@ private fun LibraryWeekChart(
     locale: Locale,
     durationLabel: (Long) -> String
 ) {
-    val week = pulse.week.takeLast(7)
-
-    if (week.isEmpty()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(82.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            repeat(7) {
-                Box(
-                    modifier = Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = 0.07f))
-                )
-            }
-        }
-        return
-    }
-
-    val fractions = remember(week) {
-        ListeningChartProjection.weekFractions(week, WEEK_CHART_MIN_PEAK_MS)
-    }
-    val peakIndex = remember(week) { ListeningChartProjection.peakDayIndex(week) }
-    val today = remember(week) { week.lastIndex }
-    val reveal by animateFloatAsState(
-        targetValue = if (fractions.any { it > 0f }) 1f else 0f,
-        animationSpec = tween(durationMillis = 560, easing = FastOutSlowInEasing),
-        label = "library-week-reveal"
-    )
-
-    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(76.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            week.forEachIndexed { index, day ->
-                val active = day.listenedMs > 0L
-                val fraction = (fractions[index] * reveal).coerceIn(0.10f, 1f)
-                val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL, locale)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(fraction)
-                        .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    weekBarTop(index, peakIndex, today).copy(alpha = if (active) 0.95f else 0.13f),
-                                    LevyraViolet.copy(alpha = if (active) 0.70f else 0.08f)
-                                )
-                            )
-                        )
-                        .semantics {
-                            contentDescription = dayName + " · " + durationLabel(day.listenedMs)
-                        }
-                )
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            week.forEachIndexed { index, day ->
-                val label = day.date.dayOfWeek.getDisplayName(DayTextStyle.NARROW, locale).uppercase(locale)
+    val week = remember(pulse.week) { pulse.week.takeLast(7) }
+    val fractions = remember(week) { ListeningChartProjection.weekFractions(week, 1L) }
+    val today = week.lastIndex
+    val dateFormatter = remember(locale) { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale) }
+    val colors = MaterialTheme.colorScheme
+    val gridColor = colors.outlineVariant.copy(alpha = 0.30f)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (week.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = label,
-                    color = if (index == today) LevyraCyan else LevyraMuted,
-                    fontSize = 9.sp,
-                    fontWeight = if (index == today) FontWeight.SemiBold else FontWeight.Medium,
-                    textAlign = TextAlign.Center,
+                    week.first().date.format(dateFormatter) + " · " + week.last().date.format(dateFormatter),
+                    color = colors.onSurfaceVariant, style = LevyraType.caption,
                     modifier = Modifier.weight(1f)
                 )
+                Text(
+                    durationLabel(week.maxOf { it.listenedMs }),
+                    color = colors.onSurfaceVariant, style = LevyraType.caption, textAlign = TextAlign.End
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().height(132.dp).drawBehind {
+                for (line in 0..2) {
+                    val y = size.height * line / 2f
+                    drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+                }
+            },
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            if (week.isEmpty()) {
+                repeat(7) {
+                    Box(Modifier.weight(1f).height(4.dp).clip(LevyraCardDesign.ThumbShape).background(colors.surfaceContainerHighest))
+                }
+            } else {
+                week.forEachIndexed { index, day ->
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight().semantics {
+                            contentDescription = day.date.toString() + " · " +
+                                day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL, locale) + " · " + durationLabel(day.listenedMs)
+                        },
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        Box(
+                            Modifier.width(22.dp).fillMaxHeight(fractions[index].coerceAtLeast(0.025f))
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(
+                                    if (day.listenedMs == 0L) colors.outlineVariant
+                                    else if (index == today) colors.primary
+                                    else colors.onSurface.copy(alpha = 0.48f)
+                                )
+                        )
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            week.forEachIndexed { index, day ->
+                Column(
+                    Modifier.weight(1f).clip(LevyraCardDesign.ThumbShape)
+                        .background(if (index == today) colors.primaryContainer else Color.Transparent).padding(vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        day.date.dayOfWeek.getDisplayName(DayTextStyle.NARROW, locale),
+                        color = if (index == today) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                        style = LevyraType.caption, textAlign = TextAlign.Center
+                    )
+                    Text(
+                        day.date.dayOfMonth.toString(), color = if (index == today) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                        style = LevyraType.caption, textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
-}
-
-private fun weekBarTop(index: Int, peakIndex: Int, todayIndex: Int): Color = when (index) {
-    peakIndex -> LevyraPink
-    todayIndex -> LevyraCyan
-    else -> LevyraCyan.copy(alpha = 0.72f)
 }

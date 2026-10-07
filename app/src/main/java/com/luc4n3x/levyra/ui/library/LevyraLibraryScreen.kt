@@ -630,7 +630,7 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
-            if (category != LibraryCategory.Overview) {
+            if (category != LibraryCategory.Overview && (category != LibraryCategory.Playlists || state.playlists.isNotEmpty())) {
                 item(key = "library-toolbar") {
                     LibraryToolbar(
                         category = category,
@@ -746,11 +746,7 @@ internal fun LevyraLibraryScreen(
                                     Icons.AutoMirrored.Rounded.QueueMusic,
                                     strings.filterByTag
                                 )
-                                else -> LibraryEmpty(
-                                    Icons.AutoMirrored.Rounded.QueueMusic,
-                                    strings.createFirstPlaylist,
-                                    strings.createFirstPlaylistSubtitle
-                                )
+                                else -> LibraryPlaylistEmpty(onCreate = { viewModel.openPlaylistStudio() })
                             }
                         }
                     } else if (layout == LibraryLayout.List) {
@@ -1065,7 +1061,7 @@ internal fun LevyraLibraryScreen(
             )
         }
 
-        if (category == LibraryCategory.Playlists && !selectionActive) {
+        if (category == LibraryCategory.Playlists && !selectionActive && (state.playlists.isNotEmpty() || query.isNotBlank() || showHiddenPlaylists || selectedTagIds.isNotEmpty())) {
             FloatingActionButton(
                 onClick = { viewModel.openPlaylistStudio() },
                 containerColor = LevyraCyan,
