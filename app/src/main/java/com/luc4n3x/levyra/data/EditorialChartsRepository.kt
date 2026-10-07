@@ -51,6 +51,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val refreshGuard = Any()
+    private val storedSnapshotGuard = Any()
     private val cacheFile = AtomicFile(File(appContext.filesDir, CACHE_RELATIVE_PATH))
     private val httpClient = LevyraHttpClientFactory.media(appContext).newBuilder()
         .connectTimeout(4, TimeUnit.SECONDS)
@@ -68,6 +69,9 @@ internal class EditorialChartsRepository private constructor(context: Context) {
 
     @Volatile
     private var lastRefreshFailureAt: Long = 0L
+
+    @Volatile
+    private var unusableStoredStamp: Long = 0L
 
     fun warm() {
         refreshAsync()
@@ -138,7 +142,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         refreshDeferred?.takeIf { it.isActive }?.let { return@synchronized it }
         val now = System.currentTimeMillis()
         if (now - lastRefreshFailureAt in 0 until REFRESH_RETRY_TTL_MS) {
-            return@synchronized CompletableDeferred(usableSnapshot(now))
+            return@synchronized CompletableDeferred(usableMemorySnapshot(now))
         }
         scope.async {
             val stored = usableSnapshot(System.currentTimeMillis())
@@ -179,13 +183,26 @@ internal class EditorialChartsRepository private constructor(context: Context) {
     }
 
     private fun usableSnapshot(now: Long): CatalogSnapshot? {
-        memorySnapshot?.let { cached ->
-            if (cached.isUsable(now)) return cached
-            memorySnapshot = null
+        usableMemorySnapshot(now)?.let { return it }
+        synchronized(storedSnapshotGuard) {
+            usableMemorySnapshot(now)?.let { return it }
+            val storedStamp = cacheFile.baseFile.lastModified()
+            if (storedStamp == 0L || storedStamp == unusableStoredStamp) return null
+            val stored = readStoredSnapshot(now)
+            if (stored == null) {
+                unusableStoredStamp = storedStamp
+                return null
+            }
+            memorySnapshot = stored
+            return stored
         }
-        val stored = readStoredSnapshot(now) ?: return null
-        memorySnapshot = stored
-        return stored
+    }
+
+    private fun usableMemorySnapshot(now: Long): CatalogSnapshot? {
+        val cached = memorySnapshot ?: return null
+        if (cached.isUsable(now)) return cached
+        memorySnapshot = null
+        return null
     }
 
     private suspend fun fetchRemoteSnapshot(): CatalogSnapshot? =

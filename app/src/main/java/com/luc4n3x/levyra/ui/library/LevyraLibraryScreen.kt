@@ -557,8 +557,8 @@ internal fun LevyraLibraryScreen(
                 LibraryHero(
                     title = strings.libraryTitle,
                     subtitle = when (category) {
-                        LibraryCategory.Overview, LibraryCategory.Songs ->
-                            strings.formatTrackCount(catalog.tracks.size)
+                        LibraryCategory.Overview -> ""
+                        LibraryCategory.Songs -> strings.formatTrackCount(catalog.tracks.size)
                         LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
                         LibraryCategory.Albums -> "${catalog.albums.size} ${strings.albumsPlain}"
                         LibraryCategory.Artists -> "${catalog.artists.size} ${strings.artists}"
@@ -662,7 +662,7 @@ internal fun LevyraLibraryScreen(
             when (category) {
                 LibraryCategory.Overview -> {
                     item(key = "overview-smart-title") {
-                        LibrarySectionTitle(strings.quickPicks, strings.librarySubtitle)
+                        LibrarySectionTitle(strings.quickPicks, "")
                     }
                     item(key = "overview-smart-grid") {
                         SmartCollectionGrid(
