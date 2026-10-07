@@ -18,6 +18,9 @@ class MaterialExpressiveContractTest {
         assertTrue(theme.contains("MotionScheme.expressive()"))
         assertTrue(theme.contains("LevyraStaticMotionScheme"))
         assertTrue(theme.contains("snap()"))
+        assertTrue(theme.contains("largeIncreased = RoundedCornerShape(28.dp)"))
+        assertTrue(theme.contains("extraLargeIncreased = RoundedCornerShape(36.dp)"))
+        assertTrue(theme.contains("extraExtraLarge = RoundedCornerShape(44.dp)"))
     }
 
     @Test
@@ -47,10 +50,39 @@ class MaterialExpressiveContractTest {
             "app/src/main/java/com/luc4n3x/levyra/ui/selection/TrackSelectionBar.kt",
             "src/main/java/com/luc4n3x/levyra/ui/selection/TrackSelectionBar.kt"
         )
+        val matching = source(
+            "app/src/main/java/com/luc4n3x/levyra/ui/playlistimport/PlaylistChangeMatchSheet.kt",
+            "src/main/java/com/luc4n3x/levyra/ui/playlistimport/PlaylistChangeMatchSheet.kt"
+        )
 
         assertTrue(discovery.contains("LevyraExpressiveIconButton("))
         assertTrue(library.contains("LevyraExpressiveIconButton("))
         assertTrue(selection.contains("LevyraExpressiveIconButton("))
+        assertTrue(matching.contains("LevyraExpressiveIconButton("))
+        assertTrue(matching.contains("LevyraLoadingIndicator("))
+    }
+
+    @Test
+    fun `home and library filters use expressive shape changes with accessible targets`() {
+        val home = source(
+            "app/src/main/java/com/luc4n3x/levyra/ui/HomeExperience.kt",
+            "src/main/java/com/luc4n3x/levyra/ui/HomeExperience.kt"
+        )
+        val localLibrary = source(
+            "app/src/main/java/com/luc4n3x/levyra/ui/library/LocalLibraryPane.kt",
+            "src/main/java/com/luc4n3x/levyra/ui/library/LocalLibraryPane.kt"
+        )
+        val matching = source(
+            "app/src/main/java/com/luc4n3x/levyra/ui/playlistimport/PlaylistChangeMatchSheet.kt",
+            "src/main/java/com/luc4n3x/levyra/ui/playlistimport/PlaylistChangeMatchSheet.kt"
+        )
+
+        assertTrue(home.contains("levyraExpressiveCorner("))
+        assertTrue(home.contains(".heightIn(min = 48.dp)"))
+        assertTrue(localLibrary.contains("FilterChipDefaults.shapes("))
+        assertTrue(localLibrary.contains("selectedShape = MaterialTheme.shapes.extraLarge"))
+        assertTrue(localLibrary.contains("Modifier.heightIn(min = 48.dp)"))
+        assertTrue(matching.contains("FilterChipDefaults.shapes("))
     }
 
     @Test
