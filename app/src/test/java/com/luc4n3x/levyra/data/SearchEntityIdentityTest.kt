@@ -214,12 +214,36 @@ class SearchEntityIdentityTest {
             metadataProvider = "spotify"
         )
 
-        val merged = richerSong(spotify, local)
+        val spotifyFirst = mergeSearchSongs(listOf(spotify), listOf(local)).single()
+        val localFirst = mergeSearchSongs(listOf(local), listOf(spotify)).single()
 
-        assertEquals("local:spotify-yellow", merged.id)
-        assertEquals("Offline", merged.source)
-        assertEquals("content://media/external/audio/99", merged.streamUrl)
-        assertEquals("spotify", merged.metadataProvider)
+        listOf(spotifyFirst, localFirst).forEach { merged ->
+            assertEquals("local:spotify-yellow", merged.id)
+            assertEquals("Offline", merged.source)
+            assertEquals("content://media/external/audio/99", merged.streamUrl)
+            assertEquals("spotify", merged.metadataProvider)
+        }
+    }
+
+
+    @Test
+    fun `spotify records stay spotify until a youtube match exists`() {
+        val first = track(
+            id = "spotify:yellow",
+            title = "Yellow",
+            artist = "Coldplay",
+            durationMs = 240_000L
+        ).copy(
+            source = "spotify",
+            metadataProvider = "spotify"
+        )
+        val second = first.copy(thumbnailUrl = "https://img/spotify-yellow")
+
+        val merged = mergeSearchSongs(listOf(first), listOf(second)).single()
+
+        assertEquals("spotify", merged.source)
+        assertTrue(merged.counterpartVideoId.isBlank())
+        assertTrue(merged.audioVideoId.isBlank())
     }
 
     @Test
@@ -262,7 +286,8 @@ class SearchEntityIdentityTest {
             durationMs = 173_000L
         ).copy(
             source = "spotify",
-            metadataProvider = "spotify"
+            metadataProvider = "spotify",
+            counterpartVideoId = "AbCdEf12345"
         )
         val youtube = track(
             id = "AbCdEf12345",
@@ -270,6 +295,13 @@ class SearchEntityIdentityTest {
             artist = "Bresh",
             durationMs = 250_000L,
             youtubeViewCount = 934_000L
+        )
+        val alternate = track(
+            id = "LiveAlt1234",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 310_000L,
+            youtubeViewCount = 120_000L
         )
         val other = track(
             id = "ZyXwVu98765",
@@ -281,26 +313,36 @@ class SearchEntityIdentityTest {
 
         val selected = selectSearchTopResultTracks(
             topTrack = spotify,
-            songs = listOf(spotify, youtube, other)
+            songs = listOf(spotify, youtube, alternate, other)
         )
 
-        assertEquals(listOf("Da Dio", "Introvabile"), selected.map { it.title })
+        assertEquals(listOf("AbCdEf12345", "LiveAlt1234", "ZyXwVu98765"), selected.map { it.id })
         assertEquals(934_000L, selected.first().youtubeViewCount)
     }
 
     @Test
     fun `songs shelf excludes same visible recording already used by top result despite duration drift`() {
         val hero = track(
-            id = "hero-da-dio",
+            id = "spotify:da-dio",
             title = "Da Dio",
             artist = "Bresh",
             durationMs = 173_000L
+        ).copy(
+            source = "spotify",
+            metadataProvider = "spotify",
+            counterpartVideoId = "DupDaDio123"
         )
         val duplicate = track(
-            id = "other-da-dio",
+            id = "DupDaDio123",
             title = "Da Dio",
             artist = "Bresh",
             durationMs = 250_000L
+        )
+        val alternate = track(
+            id = "AltDaDio123",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 310_000L
         )
         val other = track(
             id = "other-song",
@@ -310,11 +352,11 @@ class SearchEntityIdentityTest {
         )
 
         val filtered = filterSearchSongsExcludingTopResult(
-            songs = listOf(duplicate, other),
+            songs = listOf(duplicate, alternate, other),
             topResultTracks = listOf(hero)
         )
 
-        assertEquals(listOf("other-song"), filtered.map { it.id })
+        assertEquals(listOf("AltDaDio123", "other-song"), filtered.map { it.id })
     }
 
     @Test
