@@ -26,8 +26,8 @@ object LevyraHomeDesign {
     val SettingsControlHeight: Dp = 48.dp
     val MoodChipHeight: Dp = 48.dp
     val MoodChipVisualHeight: Dp = 32.dp
-    val MoodChipCorner: Dp = 8.dp
-    val HeroCorner: Dp = 12.dp
+    val MoodChipCorner: Dp = 12.dp
+    val HeroCorner: Dp = 24.dp
     val HeroHeight: Dp = 472.dp
     val ShelfCorner: Dp = 2.dp
     val ArtworkCorner: Dp = LevyraCardDesign.ArtworkCorner
@@ -35,12 +35,12 @@ object LevyraHomeDesign {
     val ArtworkCardWidth: Dp = 156.dp
     val ArtworkGridCardWidth: Dp = 122.dp
     val ShelfItemGap: Dp = 12.dp
-    val TrackRowHeight: Dp = 62.dp
+    val TrackRowHeight: Dp = 64.dp
     val TrackThumbSize: Dp = 48.dp
     val TrackColumnPeek: Dp = 28.dp
     val TrackColumnGap: Dp = 6.dp
     val OrbitTileGap: Dp = 4.5.dp
-    val OrbitTileCorner: Dp = 7.dp
+    val OrbitTileCorner: Dp = 8.dp
     val OrbitTileTitleInset: Dp = 9.dp
     val OrbitPageEndInset: Dp = 20.dp
     val OrbitAvatarSize: Dp = 34.dp

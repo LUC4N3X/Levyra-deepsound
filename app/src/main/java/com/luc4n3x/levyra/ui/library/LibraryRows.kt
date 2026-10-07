@@ -39,7 +39,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -65,6 +64,7 @@ import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraArtistAvatar
 import com.luc4n3x.levyra.ui.components.LevyraRowText
+import com.luc4n3x.levyra.ui.components.LevyraWavyProgress
 import com.luc4n3x.levyra.ui.components.levyraArtistAccent
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
@@ -152,11 +152,11 @@ internal fun LibraryTrackRow(
                 favoriteLabel = strings.favoritesPlain
             )
             if (downloadProgress != null) {
-                LinearProgressIndicator(
-                    progress = { downloadProgress.coerceIn(0, 100) / 100f },
-                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp).height(2.dp),
+                LevyraWavyProgress(
+                    progress = downloadProgress.coerceIn(0, 100) / 100f,
                     color = LevyraCyan,
-                    trackColor = LevyraPanelSoft
+                    trackColor = LevyraPanelSoft,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
                 )
             }
         }

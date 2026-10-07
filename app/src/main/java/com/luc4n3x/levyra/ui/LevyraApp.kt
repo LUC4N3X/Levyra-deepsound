@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.domain.ChartMarketDirectory
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
@@ -1546,9 +1547,8 @@ private fun HomeNowPlayingScrim(
     ) {
         Box(contentAlignment = Alignment.Center) {
             when {
-                isResolving -> CircularProgressIndicator(
+                isResolving -> LevyraLoadingIndicator(
                     modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
                     color = LevyraCyan
                 )
                 isPlaying -> ActiveTrackEqualizer(
@@ -4076,7 +4076,7 @@ private fun AlbumOverlay(
                         .padding(top = topBarHeight, start = 20.dp, end = 20.dp)
                 ) {
                     if (state.albumLoading) {
-                        CircularProgressIndicator(
+                        LevyraLoadingIndicator(
                             color = stage.accent,
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
@@ -4916,7 +4916,7 @@ private fun ArtistOverlay(
                     item {
                         Spacer(modifier = Modifier.statusBarsPadding().height(56.dp))
                         Box(modifier = Modifier.fillMaxWidth().padding(top = 150.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = LevyraCyan)
+                            LevyraLoadingIndicator(color = LevyraCyan)
                         }
                     }
                 }
@@ -4974,9 +4974,8 @@ private fun ArtistOverlay(
                     if (state.artistLoading && artist.topSongs.isEmpty()) {
                         item(key = "artist-loading", contentType = "artist-loading") {
                             Box(modifier = Modifier.fillMaxWidth().padding(top = 28.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(
+                                LevyraLoadingIndicator(
                                     modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp,
                                     color = highlight
                                 )
                             }
@@ -5447,9 +5446,8 @@ private fun ArtistPopularTrackRow(
                     tint = if (selected) LevyraCyan else LevyraMuted,
                     modifier = Modifier.size(26.dp)
                 )
-                isResolving -> CircularProgressIndicator(
+                isResolving -> LevyraLoadingIndicator(
                     modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
                     color = LevyraCyan
                 )
                 isCurrent -> LevyraPlayingIndicator(
@@ -6786,9 +6784,8 @@ private fun QueueOverlay(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     if (loading) {
-                        CircularProgressIndicator(
+                        LevyraLoadingIndicator(
                             color = queueAccent,
-                            strokeWidth = 2.dp,
                             modifier = Modifier.size(18.dp)
                         )
                     } else {
@@ -7612,9 +7609,8 @@ private fun LyricsOverlay(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (state.lyricsLoading) {
-                            CircularProgressIndicator(
+                            LevyraLoadingIndicator(
                                 modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
                                 color = Color.White.copy(alpha = 0.82f)
                             )
                         }
@@ -10764,9 +10760,8 @@ private fun HomeQuickAccessCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isResolving) {
-                        CircularProgressIndicator(
+                        LevyraLoadingIndicator(
                             modifier = Modifier.size(16.dp),
-                            strokeWidth = 1.8.dp,
                             color = LevyraCyan
                         )
                     } else {
@@ -10874,9 +10869,8 @@ private fun HomeQuickPickRow(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isResolving) {
-                        CircularProgressIndicator(
+                        LevyraLoadingIndicator(
                             modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
                             color = LevyraCyan
                         )
                     } else {
@@ -11207,9 +11201,8 @@ private fun ResonanceFeaturedCard(
                             contentAlignment = Alignment.Center
                         ) {
                             if (isResolving) {
-                                CircularProgressIndicator(
+                                LevyraLoadingIndicator(
                                     modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
                                     color = LevyraCyan
                                 )
                             } else {
@@ -11268,9 +11261,8 @@ private fun ResonanceFeaturedCard(
                             modifier = Modifier.size(16.dp)
                         )
                         when {
-                            snippet?.isLoading == true -> CircularProgressIndicator(
+                            snippet?.isLoading == true -> LevyraLoadingIndicator(
                                 modifier = Modifier.size(12.dp),
-                                strokeWidth = 1.5.dp,
                                 color = LevyraMuted
                             )
                             commentCount != null -> Text(
@@ -12059,9 +12051,8 @@ private fun PersonalOrbitTile(
                 contentAlignment = Alignment.Center
             ) {
                 if (isResolving) {
-                    CircularProgressIndicator(
+                    LevyraLoadingIndicator(
                         modifier = Modifier.size(12.dp),
-                        strokeWidth = 1.5.dp,
                         color = LevyraCyan
                     )
                 } else {
@@ -12712,9 +12703,8 @@ private fun QuickSongRow(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         when {
-                            isResolving -> CircularProgressIndicator(
+                            isResolving -> LevyraLoadingIndicator(
                                 modifier = Modifier.size(13.dp),
-                                strokeWidth = 2.dp,
                                 color = LevyraCyan
                             )
                             isPlaying -> Icon(
@@ -16478,9 +16468,8 @@ private fun PlayerSimilarSongsSection(
                 )
             }
             when {
-                loading && similarSongs.isEmpty() -> CircularProgressIndicator(
+                loading && similarSongs.isEmpty() -> LevyraLoadingIndicator(
                     color = accent,
-                    strokeWidth = 2.dp,
                     modifier = Modifier.size(18.dp)
                 )
 
@@ -21724,7 +21713,7 @@ private fun CompactRow(
             if (isPlaying || isResolving) {
                 Surface(color = Color.Black.copy(alpha = 0.45f), shape = LevyraCardDesign.ThumbShape, modifier = Modifier.matchParentSize()) {
                     Box(contentAlignment = Alignment.Center) {
-                        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                        if (isResolving) LevyraLoadingIndicator(modifier = Modifier.size(18.dp), color = LevyraCyan)
                         else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
                     }
                 }
@@ -21914,7 +21903,7 @@ private fun FeaturedTrackCard(
                 if (isPlaying || isResolving) {
                     Surface(color = Color.Black.copy(alpha = 0.5f), shape = CircleShape, modifier = Modifier.matchParentSize()) {
                         Box(contentAlignment = Alignment.Center) {
-                            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = LevyraCyan)
+                            if (isResolving) LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = LevyraCyan)
                             else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(32.dp))
                         }
                     }
@@ -22058,7 +22047,7 @@ private fun SearchSuggestionTrackCard(
                 contentAlignment = Alignment.Center
             ) {
                 when {
-                    isResolving -> CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                    isResolving -> LevyraLoadingIndicator(modifier = Modifier.size(18.dp), color = LevyraCyan)
                     isPlaying -> Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
                     else -> Icon(Icons.Rounded.PlayArrow, null, tint = if (isCurrent) LevyraCyan else LevyraText, modifier = Modifier.size(24.dp))
                 }
@@ -22405,9 +22394,8 @@ private fun TopResultTrackRow(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         if (isResolving) {
-                            CircularProgressIndicator(
+                            LevyraLoadingIndicator(
                                 modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
                                 color = LevyraCyan
                             )
                         } else {
@@ -22642,7 +22630,7 @@ private fun SearchTrackCard(
             if (isPlaying || isResolving) {
                 Surface(color = Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(9.dp), modifier = Modifier.matchParentSize()) {
                     Box(contentAlignment = Alignment.Center) {
-                        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                        if (isResolving) LevyraLoadingIndicator(modifier = Modifier.size(18.dp), color = LevyraCyan)
                         else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
                     }
                 }
@@ -22991,7 +22979,7 @@ private fun TrackRow(
                 Surface(color = Color.Black.copy(alpha = 0.5f), shape = TrackRowArtworkShape, modifier = Modifier.matchParentSize()) {
                     Box(contentAlignment = Alignment.Center) {
                         if (isResolving) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = rowAccent)
+                            LevyraLoadingIndicator(modifier = Modifier.size(20.dp), color = rowAccent)
                         } else {
                             LevyraPlayingIndicator(
                                 playing = isPlaying,
@@ -23549,9 +23537,8 @@ private fun MiniPlayerToggleButton(
         contentAlignment = Alignment.Center
     ) {
         if (isResolving) {
-            CircularProgressIndicator(
+            LevyraLoadingIndicator(
                 modifier = Modifier.size(22.dp),
-                strokeWidth = 2.dp,
                 color = buttonColor
             )
         } else {
@@ -23607,7 +23594,7 @@ private fun GradientPlayButton(isPlaying: Boolean, isResolving: Boolean, enabled
             .pressable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = LevyraBlack)
+        if (isResolving) LevyraLoadingIndicator(modifier = Modifier.size(24.dp), color = LevyraBlack)
         else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(30.dp))
     }
 }

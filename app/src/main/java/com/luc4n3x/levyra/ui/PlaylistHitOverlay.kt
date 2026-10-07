@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -292,7 +293,7 @@ private fun PlaylistHitList(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp, color = colors.accent)
+                    LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = colors.accent)
                 }
             }
             tracks.isEmpty() -> item(key = "playlist-hit-empty", contentType = "playlist-hit-state") {

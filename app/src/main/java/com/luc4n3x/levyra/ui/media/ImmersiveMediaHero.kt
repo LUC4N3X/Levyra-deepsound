@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,7 +60,9 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.PlayerMinimumContrast
+import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.harmonizePlayerAccents
@@ -439,37 +441,39 @@ private fun ImmersiveMediaPlayButton(
     primary: ImmersiveMediaPrimaryAction,
     colors: ImmersiveMediaColors
 ) {
-    val fill = remember(primary.enabled, colors.actionStart, colors.actionEnd, colors.secondaryFill) {
-        if (primary.enabled) {
-            Brush.horizontalGradient(listOf(colors.actionStart, colors.actionEnd))
-        } else {
-            Brush.horizontalGradient(listOf(colors.secondaryFill, colors.secondaryFill))
-        }
-    }
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = ImmersiveMediaActionHeight / 2,
+        pressed = ImmersiveMediaPressedCorner,
+        label = "immersive-play-corner"
+    )
+    val shape = RoundedCornerShape(corner)
+    val fill = if (primary.enabled) colors.actionStart else colors.secondaryFill
     val content = if (primary.enabled) colors.actionContent else colors.contentMuted
     Row(
         modifier = Modifier
-            .widthIn(min = 128.dp, max = 220.dp)
+            .widthIn(min = 136.dp, max = 220.dp)
             .height(ImmersiveMediaActionHeight)
-            .clip(LevyraPlayerDesign.ShapePill)
+            .clip(shape)
             .background(fill)
             .levyraPressable(
                 onClick = primary.onClick,
                 enabled = primary.enabled && !primary.loading,
                 pressedScale = LevyraPressScale.Control,
+                interactionSource = interaction,
                 role = Role.Button,
                 onClickLabel = primary.contentDescription
             )
             .semantics(mergeDescendants = true) {}
-            .padding(start = 20.dp, end = 24.dp),
+            .padding(start = 22.dp, end = 26.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (primary.loading) {
-            CircularProgressIndicator(
+            LevyraLoadingIndicator(
                 color = content,
-                strokeWidth = 2.5.dp,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(28.dp)
             )
         } else {
             Icon(
@@ -498,15 +502,23 @@ private fun ImmersiveMediaShuffleButton(
     colors: ImmersiveMediaColors,
     onClick: () -> Unit
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val corner = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = ImmersiveMediaActionHeight / 2,
+        pressed = ImmersiveMediaPressedCorner,
+        label = "immersive-shuffle-corner"
+    )
     Box(
         modifier = Modifier
             .size(ImmersiveMediaActionHeight)
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(corner))
             .background(colors.secondaryFill)
             .levyraPressable(
                 onClick = onClick,
                 enabled = enabled,
                 pressedScale = LevyraPressScale.Control,
+                interactionSource = interaction,
                 role = Role.Button
             ),
         contentAlignment = Alignment.Center
@@ -559,7 +571,8 @@ internal fun ImmersiveMediaQuietAction(
     }
 }
 
-private val ImmersiveMediaActionHeight: Dp = 52.dp
+private val ImmersiveMediaActionHeight: Dp = 56.dp
+private val ImmersiveMediaPressedCorner: Dp = 16.dp
 
 @Composable
 internal fun ImmersiveMediaTopBar(
