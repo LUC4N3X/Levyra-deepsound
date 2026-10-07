@@ -38,7 +38,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,7 +74,10 @@ internal fun LocalTagEditorSheet(
     onSave: (LocalTagEdits) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
     var title by remember(media.identityKey) { mutableStateOf(media.title) }
     var artist by remember(media.identityKey) { mutableStateOf(media.artist) }
     var album by remember(media.identityKey) { mutableStateOf(media.album) }

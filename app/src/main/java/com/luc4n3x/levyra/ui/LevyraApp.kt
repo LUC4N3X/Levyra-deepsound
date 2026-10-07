@@ -24,7 +24,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import com.luc4n3x.levyra.ui.components.LevyraIonicons
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsLink
 import com.luc4n3x.levyra.ui.components.PlaybackDiagnosticsDialog
@@ -7750,7 +7751,10 @@ private fun LyricsOverlay(
     if (showLyricsOptions) {
         ModalBottomSheet(
             onDismissRequest = { showLyricsOptions = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            sheetState = rememberBottomSheetState(
+                initialValue = SheetValue.Hidden,
+                enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+            )
         ) {
             Text(
                 text = strings.options,
@@ -11562,7 +11566,7 @@ private fun HomeMusicVideoArtwork(item: HomeVideoCardItem) {
     val squareArtwork = item.squareArtwork
     val showArtwork = squareArtwork != null && (frameVideoId == null || frameFit.squareContent)
     CoverImage(
-        track = if (showArtwork) squareArtwork ?: item.track else item.track,
+        track = if (showArtwork) squareArtwork else item.track,
         modifier = Modifier.fillMaxSize(),
         highRes = true,
         zoom = if (showArtwork) 1f else frameFit.zoom
