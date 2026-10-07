@@ -1,5 +1,13 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -51,6 +59,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -151,23 +160,30 @@ internal fun ExploreCollectionDestinationScreen(
     val editorial = remember(editorialStructure, tracks) {
         refreshExploreGenreEditorialMetadata(editorialStructure, tracks)
     }
+    val categoryPalette = exploreCategoryPalette(identity)
+    val accent = zone?.let { value -> Color(value.accentStart) } ?: categoryPalette.first
+    val headerColor = remember(accent) { lerp(accent, LevyraBlack, ExploreCollectionHeaderShade) }
+    val listState = rememberLazyListState()
+    val heroScrolledAway by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 }
+    }
 
     ExploreDestinationSurface(
         title = title,
         subtitle = subtitle,
         strings = strings,
         onBack = onBack,
-        trailing = if (tracks.isNotEmpty()) {
+        headerColor = headerColor,
+        titleVisible = tracks.isEmpty() || heroScrolledAway,
+        trailing = if (tracks.isNotEmpty() && heroScrolledAway) {
             { ExploreCollectionPlayAllButton(strings = strings, onPlayAll = onPlayAll) }
         } else {
             null
         }
     ) { contentPadding ->
         ExploreCollectionDestinationContent(
-            identity = identity,
             title = title,
             subtitle = subtitle,
-            zone = zone,
             tracks = tracks,
             editorial = editorial,
             isLoading = isLoading,
@@ -175,6 +191,9 @@ internal fun ExploreCollectionDestinationScreen(
             isPlaying = isPlaying,
             strings = strings,
             contentPadding = contentPadding,
+            listState = listState,
+            headerColor = headerColor,
+            onPlayAll = onPlayAll,
             onPlayTrack = onPlayTrack,
             onRequestTrackArtwork = onRequestTrackArtwork
         )
@@ -184,11 +203,12 @@ internal fun ExploreCollectionDestinationScreen(
 @Composable
 private fun ExploreCollectionPlayAllButton(
     strings: LevyraStrings,
-    onPlayAll: () -> Unit
+    onPlayAll: () -> Unit,
+    size: Dp = 42.dp
 ) {
     Box(
         modifier = Modifier
-            .size(42.dp)
+            .size(size)
             .background(LevyraCyan, CircleShape)
             .semantics { role = Role.Button }
             .clickable(onClick = onPlayAll),
@@ -198,17 +218,15 @@ private fun ExploreCollectionPlayAllButton(
             imageVector = Icons.Rounded.PlayArrow,
             contentDescription = strings.play,
             tint = LevyraBlack,
-            modifier = Modifier.size(23.dp)
+            modifier = Modifier.size(size * 0.55f)
         )
     }
 }
 
 @Composable
 private fun ExploreCollectionDestinationContent(
-    identity: String,
     title: String,
     subtitle: String?,
-    zone: ExploreZone?,
     tracks: List<Track>,
     editorial: ExploreGenreEditorial,
     isLoading: Boolean,
@@ -216,6 +234,9 @@ private fun ExploreCollectionDestinationContent(
     isPlaying: Boolean,
     strings: LevyraStrings,
     contentPadding: PaddingValues,
+    listState: LazyListState,
+    headerColor: Color,
+    onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
     onRequestTrackArtwork: (Track) -> Unit
 ) {
@@ -226,16 +247,17 @@ private fun ExploreCollectionDestinationContent(
             message = strings.exploreEmpty
         )
         else -> ExploreCollectionList(
-            identity = identity,
             title = title,
             subtitle = subtitle,
-            zone = zone,
             tracks = tracks,
             editorial = editorial,
             currentTrackId = currentTrackId,
             isPlaying = isPlaying,
             strings = strings,
             contentPadding = contentPadding,
+            listState = listState,
+            headerColor = headerColor,
+            onPlayAll = onPlayAll,
             onPlayTrack = onPlayTrack,
             onRequestTrackArtwork = onRequestTrackArtwork
         )
@@ -278,35 +300,38 @@ private fun ExploreCollectionEmpty(
 
 @Composable
 private fun ExploreCollectionList(
-    identity: String,
     title: String,
     subtitle: String?,
-    zone: ExploreZone?,
     tracks: List<Track>,
     editorial: ExploreGenreEditorial,
     currentTrackId: String?,
     isPlaying: Boolean,
     strings: LevyraStrings,
     contentPadding: PaddingValues,
+    listState: LazyListState,
+    headerColor: Color,
+    onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
     onRequestTrackArtwork: (Track) -> Unit
 ) {
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            start = 18.dp,
-            end = 18.dp,
-            top = contentPadding.calculateTopPadding() + 10.dp,
+            start = ExploreCollectionGutter,
+            end = ExploreCollectionGutter,
             bottom = 130.dp
         ),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         exploreCollectionHeroItem(
-            identity = identity,
             title = title,
             subtitle = subtitle,
-            zone = zone,
+            headerColor = headerColor,
+            topInset = contentPadding.calculateTopPadding(),
             track = tracks.first(),
+            strings = strings,
+            onPlayAll = onPlayAll,
             onRequestTrackArtwork = onRequestTrackArtwork
         )
         exploreFeaturedItems(
@@ -340,11 +365,13 @@ private fun ExploreCollectionList(
 }
 
 private fun LazyListScope.exploreCollectionHeroItem(
-    identity: String,
     title: String,
     subtitle: String?,
-    zone: ExploreZone?,
+    headerColor: Color,
+    topInset: Dp,
     track: Track,
+    strings: LevyraStrings,
+    onPlayAll: () -> Unit,
     onRequestTrackArtwork: (Track) -> Unit
 ) {
     item(key = "explore-collection-hero") {
@@ -354,9 +381,11 @@ private fun LazyListScope.exploreCollectionHeroItem(
         ExploreCollectionHero(
             title = title,
             subtitle = subtitle,
-            leadTrack = track,
-            identity = identity,
-            zone = zone
+            headerColor = headerColor,
+            topInset = topInset,
+            artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+            strings = strings,
+            onPlayAll = onPlayAll
         )
     }
 }
@@ -652,95 +681,109 @@ private fun ExploreGenreAlbumCard(
 private fun ExploreCollectionHero(
     title: String,
     subtitle: String?,
-    leadTrack: Track,
-    identity: String,
-    zone: ExploreZone?
+    headerColor: Color,
+    topInset: Dp,
+    artworkUrl: String,
+    strings: LevyraStrings,
+    onPlayAll: () -> Unit
 ) {
-    val categoryPalette = exploreCategoryPalette(identity)
-    val accentStart = zone?.let { value -> Color(value.accentStart) } ?: categoryPalette.first
-    val accentEnd = zone?.let { value -> Color(value.accentEnd) } ?: categoryPalette.second
-    val artwork = leadTrack.largeThumbnailUrl.ifBlank { leadTrack.thumbnailUrl }
-    val shape = RoundedCornerShape(24.dp)
-
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(214.dp)
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), shape)
+            .exploreFullBleed(ExploreCollectionGutter)
+            .height(topInset + ExploreCollectionHeroHeight)
+            .background(Brush.verticalGradient(listOf(headerColor, LevyraBlack)))
     ) {
-        if (artwork.isNotBlank()) {
+        if (artworkUrl.isNotBlank()) {
             AsyncImage(
-                model = artwork,
+                model = artworkUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(204.dp)
+                modifier = Modifier.matchParentSize()
             )
         }
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            accentStart.copy(alpha = 0.99f),
-                            accentStart.copy(alpha = 0.92f),
-                            accentEnd.copy(alpha = 0.36f),
-                            accentEnd.copy(alpha = 0f)
-                        )
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(LevyraBlack.copy(alpha = 0f), LevyraBlack.copy(alpha = 0.58f))
+                        0f to headerColor.copy(alpha = 0.55f),
+                        0.35f to Color.Transparent,
+                        0.68f to LevyraBlack.copy(alpha = 0.62f),
+                        1f to LevyraBlack
                     )
                 )
         )
-        zone?.emoji?.takeIf(String::isNotBlank)?.let { emoji ->
-            Text(
-                text = emoji,
-                fontSize = 24.sp,
-                modifier = Modifier.align(Alignment.TopStart).padding(18.dp)
-            )
-        }
-        Column(
+        ExploreCollectionHeroText(
+            title = title,
+            subtitle = subtitle,
+            strings = strings,
+            onPlayAll = onPlayAll,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .fillMaxWidth(0.74f)
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(start = ExploreCollectionGutter, end = ExploreCollectionGutter, bottom = 12.dp)
+        )
+    }
+}
+
+@Composable
+private fun ExploreCollectionHeroText(
+    title: String,
+    subtitle: String?,
+    strings: LevyraStrings,
+    onPlayAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = title,
+            color = LevyraText,
+            fontSize = 40.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(40.sp),
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-1).sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() }
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = title,
-                color = Color.White,
-                fontSize = 28.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(28.sp),
-                fontWeight = FontWeight.Black,
+                text = subtitle.orEmpty(),
+                color = LevyraText.copy(alpha = 0.78f),
+                fontSize = 14.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
             )
-            subtitle?.takeIf(String::isNotBlank)?.let { detail ->
-                Text(
-                    text = detail,
-                    color = Color.White.copy(alpha = 0.82f),
-                    fontSize = 12.5.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            ExploreCollectionPlayAllButton(
+                strings = strings,
+                onPlayAll = onPlayAll,
+                size = 56.dp
+            )
         }
     }
 }
+
+private fun Modifier.exploreFullBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
+    val gutterPx = gutter.roundToPx()
+    val width = constraints.maxWidth + gutterPx * 2
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) {
+        placeable.place(-gutterPx, 0)
+    }
+}
+
+private val ExploreCollectionGutter = 18.dp
+private val ExploreCollectionHeroHeight = 260.dp
+private const val ExploreCollectionHeaderShade = 0.32f
 
 @Composable
 internal fun ExploreNewReleasesDestinationScreen(
@@ -1359,9 +1402,15 @@ private fun ExploreDestinationSurface(
     subtitle: String?,
     strings: LevyraStrings,
     onBack: () -> Unit,
+    headerColor: Color = LevyraBlack,
+    titleVisible: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (titleVisible) 1f else 0f,
+        label = "explore-destination-title"
+    )
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(
         modifier = Modifier
@@ -1375,8 +1424,8 @@ private fun ExploreDestinationSurface(
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .zIndex(1f)
+                .background(headerColor.copy(alpha = headerColor.alpha * titleAlpha))
                 .statusBarsPadding()
-                .background(LevyraBlack)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1396,7 +1445,12 @@ private fun ExploreDestinationSurface(
                     modifier = Modifier.size(21.dp)
                 )
             }
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer { alpha = titleAlpha }
+                    .then(if (titleVisible) Modifier else Modifier.clearAndSetSemantics { })
+            ) {
                 Text(
                     text = title,
                     color = LevyraText,
