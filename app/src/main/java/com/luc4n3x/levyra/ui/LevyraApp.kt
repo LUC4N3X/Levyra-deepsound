@@ -2233,7 +2233,8 @@ fun LevyraApp(
                     .glassBackdropSource(dockGlass)
             ) {
             LevyraHomeAtmosphere(
-                isLight = LevyraIsLight
+                isLight = LevyraIsLight,
+                accent = yourSoundAccent
             )
             AnimatedContent(
                 targetState = backgroundTab,
@@ -9736,8 +9737,9 @@ private fun HomeScreen(
                         val chartRowState = key(state.selectedChartId) { rememberLazyListState() }
                         val podiumTracks = remember(state.charts) { state.charts.take(HomeChartPodiumSize) }
                         val restTracks = remember(state.charts) { state.charts.drop(HomeChartPodiumSize) }
-                        val restChunks = remember(restTracks) {
-                            restTracks.chunked(chartRowsPerColumn(restTracks.size))
+                        val rowsPerColumn = remember(restTracks) { chartRowsPerColumn(restTracks.size) }
+                        val restChunks = remember(restTracks, rowsPerColumn) {
+                            restTracks.chunked(rowsPerColumn)
                         }
                         val chartDepthEnabled = carouselDepthEnabled()
                         Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -9773,7 +9775,7 @@ private fun HomeScreen(
                                     verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
                                     chunk.forEachIndexed { itemIndex, track ->
-                                        val rank = HomeChartPodiumSize + chunkIndex * 4 + itemIndex + 1
+                                        val rank = HomeChartPodiumSize + chunkIndex * rowsPerColumn + itemIndex + 1
                                         ChartRow(
                                             rank = rank,
                                             track = track,
