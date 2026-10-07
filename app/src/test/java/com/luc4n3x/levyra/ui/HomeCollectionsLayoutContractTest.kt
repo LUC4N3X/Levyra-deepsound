@@ -7,58 +7,56 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeCollectionsLayoutContractTest {
-    private val source: String by lazy {
+    private fun source(file: String): String {
         val path = sequenceOf(
-            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"),
-            Path.of("src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
-        ).firstOrNull(Files::exists) ?: error("LevyraApp.kt not found")
-        Files.readString(path)
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/$file"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/$file")
+        ).firstOrNull(Files::exists) ?: error("$file not found")
+        return Files.readString(path)
     }
 
-    private fun dpConstant(name: String): Float {
-        val match = Regex("private val $name = ([0-9.]+)\\.dp").find(source)
-            ?: error("$name not found")
-        return match.groupValues[1].toFloat()
-    }
-
-    private fun collectionsShelfBlock(): String {
-        val start = source.indexOf("private fun HomeEditorialCollectionsShelf(")
-        require(start >= 0) { "HomeEditorialCollectionsShelf not found" }
-        val end = source.indexOf("@Composable\nprivate fun HomeEditorialCollectionCard(", start)
-        require(end > start) { "HomeEditorialCollectionCard boundary not found" }
-        return source.substring(start, end)
-    }
-
-    private fun collectionCardBlock(): String {
-        val start = source.indexOf("private fun HomeEditorialCollectionCard(")
-        require(start >= 0) { "HomeEditorialCollectionCard not found" }
-        val end = source.indexOf("@Composable\nprivate fun HomeEditorialArtworkStack(", start)
-        require(end > start) { "HomeEditorialArtworkStack boundary not found" }
-        return source.substring(start, end)
+    private fun functionBlock(source: String, signature: String): String {
+        val start = source.indexOf(signature)
+        require(start >= 0) { "$signature not found" }
+        val bodyStart = source.indexOf('{', start)
+        require(bodyStart > start)
+        var depth = 0
+        for (index in bodyStart until source.length) {
+            when (source[index]) {
+                '{' -> depth += 1
+                '}' -> {
+                    depth -= 1
+                    if (depth == 0) return source.substring(start, index + 1)
+                }
+            }
+        }
+        error("$signature body is not balanced")
     }
 
     @Test
-    fun `collections shelf is a single substantial editorial row`() {
-        val shelf = collectionsShelfBlock()
+    fun `collections shelf is a single responsive editorial row`() {
+        val shelf = functionBlock(source("LevyraApp.kt"), "private fun HomeEditorialCollectionsShelf(")
         assertFalse(shelf.contains(".chunked(2)"))
+        assertTrue(shelf.contains("LazyRow("))
         assertTrue(shelf.contains("items = collections"))
-
-        val width = dpConstant("HOME_COLLECTION_CARD_WIDTH")
-        val height = dpConstant("HOME_COLLECTION_CARD_HEIGHT")
-        val artwork = dpConstant("HOME_COLLECTION_ART_SIZE")
-
-        assertTrue(width >= 180f)
-        assertTrue(height >= 168f)
-        assertTrue(height / width >= 0.88f)
-        assertTrue(artwork >= 78f)
+        assertTrue(shelf.contains("key = { collection ->"))
+        assertTrue(shelf.contains("DiscoveryEditorialCard("))
+        assertTrue(shelf.contains("maxWidth - LevyraHomeDesign.EditorialPeek"))
+        assertTrue(shelf.contains("coerceAtMost(LevyraHomeDesign.EditorialMaxWidth)"))
     }
 
     @Test
-    fun `collection text wraps without ellipsis and keeps clear of artwork`() {
-        val card = collectionCardBlock()
-
-        assertFalse(card.contains("TextOverflow.Ellipsis"))
-        assertTrue(card.contains("maxLines = 2"))
-        assertTrue(card.contains("HOME_COLLECTION_ART_TEXT_KEEPOUT"))
+    fun `collection text wraps and stays separate from artwork on narrow screens`() {
+        val editorial = source("HomeExploreEditorial.kt")
+        val card = functionBlock(editorial, "internal fun DiscoveryEditorialCard(")
+        val text = functionBlock(editorial, "private fun DiscoveryEditorialText(")
+        assertTrue(card.contains("maxWidth < 300.dp"))
+        assertTrue(card.contains("LocalDensity.current.fontScale > 1.4f"))
+        assertTrue(card.contains("if (stacked)"))
+        assertTrue(card.contains("Modifier.weight(1f).heightIn(min = LevyraHomeDesign.EditorialThumb)"))
+        assertTrue(card.contains("Arrangement.spacedBy(LevyraHomeDesign.EditorialPadding)"))
+        assertTrue(text.contains("softWrap = true"))
+        assertFalse(text.contains("TextOverflow.Ellipsis"))
+        assertFalse(text.contains("maxLines"))
     }
 }

@@ -20637,11 +20637,10 @@ private fun GreetingBar(
             ) {
                 Text(
                     text = greeting,
-                    color = LevyraText,
+                    color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.92f),
                     style = LevyraType.screenTitle,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { heading() }
+                    softWrap = true,
+                    modifier = Modifier.fillMaxWidth().semantics { heading() }
                 )
             }
         }

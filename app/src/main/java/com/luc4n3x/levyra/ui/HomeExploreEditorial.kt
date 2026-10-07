@@ -240,9 +240,9 @@ internal fun DiscoveryEditorialCard(
 private fun DiscoveryEditorialText(title: String, subtitle: String, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
-        Text(title, style = LevyraType.sectionTitle, color = colors.onSurface, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Text(title, style = LevyraType.sectionTitle, color = colors.onSurface, softWrap = true)
         if (subtitle.isNotBlank()) {
-            Text(subtitle, style = LevyraType.metadata, color = colors.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, style = LevyraType.metadata, color = colors.onSurfaceVariant, softWrap = true)
         }
     }
 }
