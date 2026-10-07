@@ -464,7 +464,7 @@ private fun ImportProgressScreen(state: PlaylistImportUiState, copy: PlaylistImp
             )
             val determinate = total != null && total > 0 &&
                 (state.activity == PlaylistImportActivity.MATCHING || state.activity == PlaylistImportActivity.READING)
-            if (determinate && total != null) {
+            if (determinate) {
                 LinearProgressIndicator(
                     progress = { (state.progressDone.toFloat() / total.toFloat()).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth().height(6.dp),
