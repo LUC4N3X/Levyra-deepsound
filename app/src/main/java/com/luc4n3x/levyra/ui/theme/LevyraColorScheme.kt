@@ -5,7 +5,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import com.luc4n3x.levyra.ui.PlayerMinimumContrast
+import com.luc4n3x.levyra.ui.playerContrastRatio
 import com.materialkolor.hct.Hct
 
 internal data class LevyraTonalRole(
@@ -36,27 +39,47 @@ internal fun levyraInverseAccent(seed: Color, isLight: Boolean): Color {
     return Color(Hct.from(source.hue, source.chroma, if (isLight) 80.0 else 40.0).toInt())
 }
 
+internal fun levyraReadableAccent(accent: Color, content: Color): Color {
+    if (playerContrastRatio(content, accent) >= PlayerMinimumContrast) return accent
+    val source = Hct.fromInt(accent.toArgb())
+    val step = if (content.luminance() > 0.5f) -1.0 else 1.0
+    var tone = source.tone
+    var candidate = accent
+    while (tone in 0.0..100.0) {
+        tone += step
+        candidate = Color(Hct.from(source.hue, source.chroma, tone.coerceIn(0.0, 100.0)).toInt())
+        if (playerContrastRatio(content, candidate) >= PlayerMinimumContrast) return candidate
+    }
+    return candidate
+}
+
 internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
     val light = palette.isLight
     val primary = levyraTonalRole(palette.cyan, light, AccentContainerChroma)
     val secondary = levyraTonalRole(palette.violet, light, NeutralContainerChroma)
     val tertiary = levyraTonalRole(palette.pink, light, AccentContainerChroma)
     val inversePrimary = levyraInverseAccent(palette.cyan, light)
+    val onPrimaryColor = if (light) Color.White else palette.black
+    val onSecondaryColor = if (light) Color.White else palette.black
+    val onTertiaryColor = if (light) Color.White else palette.black
+    val primaryColor = levyraReadableAccent(palette.cyan, onPrimaryColor)
+    val secondaryColor = levyraReadableAccent(palette.violet, onSecondaryColor)
+    val tertiaryColor = levyraReadableAccent(palette.pink, onTertiaryColor)
     val containerHighest = lerp(palette.panelSoft, palette.text, 0.06f)
     val outlineVariant = lerp(palette.panelSoft, palette.muted, 0.35f)
     return if (light) {
         lightColorScheme(
-            primary = palette.cyan,
-            onPrimary = Color.White,
+            primary = primaryColor,
+            onPrimary = onPrimaryColor,
             primaryContainer = primary.container,
             onPrimaryContainer = primary.onContainer,
             inversePrimary = inversePrimary,
-            secondary = palette.violet,
-            onSecondary = Color.White,
+            secondary = secondaryColor,
+            onSecondary = onSecondaryColor,
             secondaryContainer = secondary.container,
             onSecondaryContainer = secondary.onContainer,
-            tertiary = palette.pink,
-            onTertiary = Color.White,
+            tertiary = tertiaryColor,
+            onTertiary = onTertiaryColor,
             tertiaryContainer = tertiary.container,
             onTertiaryContainer = tertiary.onContainer,
             background = palette.black,
@@ -65,7 +88,7 @@ internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
             onSurface = palette.text,
             surfaceVariant = palette.panel,
             onSurfaceVariant = palette.muted,
-            surfaceTint = palette.cyan,
+            surfaceTint = primaryColor,
             inverseSurface = palette.text,
             inverseOnSurface = palette.ink,
             outline = palette.outline,
@@ -80,17 +103,17 @@ internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
         )
     } else {
         darkColorScheme(
-            primary = palette.cyan,
-            onPrimary = palette.black,
+            primary = primaryColor,
+            onPrimary = onPrimaryColor,
             primaryContainer = primary.container,
             onPrimaryContainer = primary.onContainer,
             inversePrimary = inversePrimary,
-            secondary = palette.violet,
-            onSecondary = palette.text,
+            secondary = secondaryColor,
+            onSecondary = onSecondaryColor,
             secondaryContainer = secondary.container,
             onSecondaryContainer = secondary.onContainer,
-            tertiary = palette.pink,
-            onTertiary = palette.black,
+            tertiary = tertiaryColor,
+            onTertiary = onTertiaryColor,
             tertiaryContainer = tertiary.container,
             onTertiaryContainer = tertiary.onContainer,
             background = palette.black,
@@ -99,7 +122,7 @@ internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
             onSurface = palette.text,
             surfaceVariant = palette.panel,
             onSurfaceVariant = palette.muted,
-            surfaceTint = palette.cyan,
+            surfaceTint = primaryColor,
             inverseSurface = palette.text,
             inverseOnSurface = palette.ink,
             outline = palette.outline,
