@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.library
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,15 +9,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,7 +41,6 @@ import com.luc4n3x.levyra.domain.isValidPlaylistTagName
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
-import com.luc4n3x.levyra.ui.theme.LevyraText
 
 @Composable
 internal fun LibraryPlaylistFilterRow(
@@ -87,54 +83,39 @@ internal fun LibraryPlaylistFilterRow(
 }
 
 @Composable
-internal fun PlaylistOrganizationBar(
+internal fun PlaylistTagsLine(
     playlist: Playlist,
+    contentColor: Color,
     onEditTags: () -> Unit,
-    onToggleHidden: () -> Unit
+    modifier: Modifier = Modifier
 ) {
-    val strings = LocalLevyraStrings.current
+    if (playlist.tags.isEmpty()) return
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            playlist.tags.forEach { tag ->
-                PlaylistTagChip(label = tag.name, onClick = onEditTags)
-            }
-            PlaylistTagChip(
-                label = if (playlist.tags.isEmpty()) strings.playlistTags else strings.editPlaylistTags,
-                onClick = onEditTags,
-                outlined = true
-            )
-        }
-        IconButton(onClick = onToggleHidden) {
-            Icon(
-                imageVector = if (playlist.hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-                contentDescription = if (playlist.hidden) strings.unhidePlaylist else strings.hidePlaylist,
-                tint = if (playlist.hidden) LevyraCyan else LevyraMuted
-            )
+        playlist.tags.forEach { tag ->
+            PlaylistTagChip(label = tag.name, contentColor = contentColor, onClick = onEditTags)
         }
     }
 }
 
 @Composable
-private fun PlaylistTagChip(label: String, onClick: () -> Unit, outlined: Boolean = false) {
+private fun PlaylistTagChip(label: String, contentColor: Color, onClick: () -> Unit) {
     Surface(
-        color = if (outlined) Color.Transparent else LevyraCyan.copy(alpha = 0.16f),
-        border = if (outlined) BorderStroke(1.dp, LevyraMuted.copy(alpha = 0.35f)) else null,
-        shape = RoundedCornerShape(14.dp),
+        color = contentColor.copy(alpha = 0.10f),
+        shape = CircleShape,
         onClick = onClick
     ) {
         Text(
             text = label,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            color = if (outlined) LevyraMuted else LevyraText,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+            color = contentColor.copy(alpha = 0.88f),
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1
         )
     }
 }

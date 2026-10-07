@@ -383,7 +383,7 @@ internal class MotionVideoFrameSource {
         val surfaceSized = (view?.width ?: 0) > 1 && (view?.height ?: 0) > 1
         if (!surfaceReady || !surfaceSized) return null
         val bitmap = try {
-            view?.getBitmap(DYNAMIC_BACKDROP_SAMPLE_SIZE, DYNAMIC_BACKDROP_SAMPLE_SIZE)
+            view.getBitmap(DYNAMIC_BACKDROP_SAMPLE_SIZE, DYNAMIC_BACKDROP_SAMPLE_SIZE)
         } catch (error: IllegalStateException) {
             Timber.d(error, "Canvas dynamic backdrop frame capture failed")
             null
